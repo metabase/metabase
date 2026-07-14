@@ -14,7 +14,6 @@ import {
   METABOT_REQUEST_IDS,
   type MetabotProfileId,
 } from "../constants";
-import { type ConversationChart, hasLinkableChartQuery } from "../utils/links";
 
 import type {
   MetabotAgentId,
@@ -44,10 +43,11 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-export const getSavedChartCardId = (
-  state: State,
-  entityId: string,
-): number | undefined => getMetabotState(state).savedChartCardIds[entityId];
+export const getSavedChartCardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedChartCardIds[entityId],
+);
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,
@@ -205,15 +205,15 @@ export const getMetabotRequestState = createSelector(
   (convo) => convo.state,
 );
 
-export const getConversationChart = (
-  state: State,
-  chartId: string,
-): ConversationChart | undefined => {
-  const charts = Object.values(getMetabotState(state).conversations)
-    .map((convo) => convo?.state?.charts?.[chartId])
-    .filter((chart) => chart != null);
-  return charts.find(hasLinkableChartQuery) ?? charts[0];
-};
+export const getConversationChart = createSelector(
+  [getMetabotState, (_state: State, chartId: string) => chartId],
+  (metabotState, chartId): Urls.ConversationChart | undefined => {
+    const charts = Object.values(metabotState.conversations)
+      .map((convo) => convo?.state?.charts?.[chartId])
+      .filter((chart) => chart != null);
+    return charts.find(Urls.hasLinkableChartQuery) ?? charts[0];
+  },
+);
 
 export const getIsLongMetabotConversation = createSelector(
   getMessages,

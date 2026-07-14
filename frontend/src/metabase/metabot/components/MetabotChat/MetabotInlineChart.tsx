@@ -1,6 +1,5 @@
 import { useClipboard } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -15,6 +14,7 @@ import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
@@ -51,13 +51,7 @@ export function MetabotInlineChart({
   readonly?: boolean;
 }) {
   const datasetQuery = query.query;
-  const dispatch = useDispatch();
   const clipboard = useClipboard();
-  const [createCard] = useCreateCardMutation();
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const savedCardId = useSelector((state) =>
-    getSavedChartCardId(state, entityId),
-  );
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
   const question = useMemo(() => {
@@ -109,29 +103,6 @@ export function MetabotInlineChart({
     : undefined;
   const chartError = datasetError ?? requestError;
 
-  const handleCreate = async (
-    newQuestion: Question,
-    options?: { dashboardTabId?: DashboardTabId },
-  ) => {
-    const created = await createCard({
-      ...newQuestion.card(),
-      dashboard_tab_id: options?.dashboardTabId,
-    }).unwrap();
-    const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ entityId, cardId: created.id }));
-    dispatch(
-      addUndo({
-        icon: "check_filled",
-        message: t`Saved`,
-        extraAction: {
-          label: t`View`,
-          action: () => dispatch(push(Urls.question(savedQuestion))),
-        },
-      }),
-    );
-    return savedQuestion;
-  };
-
   return (
     <Box className={S.container} data-testid="metabot-inline-chart">
       <Flex className={S.header} align="center" gap="sm">
@@ -156,31 +127,11 @@ export function MetabotInlineChart({
             <Icon name="copy" size={16} />
           </ActionIcon>
         </Tooltip>
-        {match({ savedCardId, readonly })
-          .with({ savedCardId: P.number }, ({ savedCardId }) => (
-            <Button
-              component={ForwardRefLink}
-              to={Urls.question(question.setId(savedCardId))}
-              target="_blank"
-              variant="subtle"
-              color="text-secondary"
-              size="compact-xs"
-              leftSection={<Icon name="check" size={14} />}
-            >
-              {t`Saved`}
-            </Button>
-          ))
-          .with({ readonly: true }, () => null)
-          .with({ savedCardId: P.nullish, readonly: false }, () => (
-            <Button
-              variant="subtle"
-              size="compact-xs"
-              onClick={() => setIsSaveModalOpen(true)}
-            >
-              {t`Save`}
-            </Button>
-          ))
-          .exhaustive()}
+        <SaveChartAction
+          entityId={entityId}
+          question={question}
+          readonly={readonly}
+        />
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
@@ -197,6 +148,76 @@ export function MetabotInlineChart({
           />
         )}
       </Box>
+    </Box>
+  );
+}
+
+function SaveChartAction({
+  entityId,
+  question,
+  readonly,
+}: {
+  entityId: string;
+  question: Question;
+  readonly: boolean;
+}) {
+  const dispatch = useDispatch();
+  const [createCard] = useCreateCardMutation();
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const savedCardId = useSelector((state) =>
+    getSavedChartCardId(state, entityId),
+  );
+
+  const handleCreate = async (
+    newQuestion: Question,
+    options?: { dashboardTabId?: DashboardTabId },
+  ) => {
+    const created = await createCard({
+      ...newQuestion.card(),
+      dashboard_tab_id: options?.dashboardTabId,
+    }).unwrap();
+    const savedQuestion = newQuestion.setId(created.id);
+    dispatch(markChartSaved({ entityId, cardId: created.id }));
+    dispatch(
+      addUndo({
+        icon: "check_filled",
+        message: t`Saved`,
+        extraAction: {
+          label: t`View`,
+          action: () => dispatch(push(Urls.question(savedQuestion))),
+        },
+      }),
+    );
+    return savedQuestion;
+  };
+
+  return (
+    <>
+      {match({ savedCardId, readonly })
+        .with({ savedCardId: P.number }, ({ savedCardId }) => (
+          <Button
+            component={ForwardRefLink}
+            to={Urls.question(question.setId(savedCardId))}
+            target="_blank"
+            variant="subtle"
+            color="text-secondary"
+            size="compact-xs"
+            leftSection={<Icon name="check" size={14} />}
+          >
+            {t`Saved`}
+          </Button>
+        ))
+        .with({ readonly: true }, () => null)
+        .with({ savedCardId: P.nullish, readonly: false }, () => (
+          <Button
+            variant="subtle"
+            size="compact-xs"
+            onClick={() => setIsSaveModalOpen(true)}
+          >
+            {t`Save`}
+          </Button>
+        ))
+        .exhaustive()}
       {isSaveModalOpen && (
         <SaveQuestionModal
           opened
@@ -208,6 +229,6 @@ export function MetabotInlineChart({
           closeOnSuccess
         />
       )}
-    </Box>
+    </>
   );
 }

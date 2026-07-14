@@ -1,26 +1,24 @@
+import { P, isMatching } from "ts-pattern";
+
+import * as Urls from "metabase/urls";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
-import type {
-  Card,
-  CardDisplayType,
-  DatasetQuery,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Card, CardDisplayType, DatasetQuery } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
 
 import { deserializeCardFromUrl } from "./card";
 
 const ADHOC_QUESTION_HASH_REGEX = /\/question#([A-Za-z0-9_=-]+)/;
 
-export type ChartClipboardPayload = {
-  name: string;
-  description?: string;
-  display: CardDisplayType;
-  dataset_query: DatasetQuery;
-  visualization_settings: VisualizationSettings;
-  chart_id: string;
-  query_id: string;
-};
+export type ChartClipboardPayload = Pick<
+  Card,
+  "name" | "dataset_query" | "visualization_settings"
+> &
+  Partial<Pick<Card, "description">> & {
+    display: CardDisplayType;
+    chart_id: string;
+    query_id: string;
+  };
 
 export function serializeChartClipboard(
   payload: ChartClipboardPayload,
@@ -28,18 +26,23 @@ export function serializeChartClipboard(
 ): string {
   const hash = utf8_to_b64url(
     stableStringify({
-      name: payload.name,
+      ...payload,
       description: payload.description ?? undefined,
-      display: payload.display,
-      dataset_query: payload.dataset_query,
-      visualization_settings: payload.visualization_settings,
       displayIsLocked: true,
-      chart_id: payload.chart_id,
-      query_id: payload.query_id,
     }),
   );
-  return `${siteUrl.replace(/\/$/, "")}/question#${hash}`;
+  return `${siteUrl.replace(/\/$/, "")}${Urls.card(null, { hash })}`;
 }
+
+const CHART_CLIPBOARD_CARD_PATTERN = {
+  chart_id: P.string.minLength(1),
+  query_id: P.string.minLength(1),
+  display: P.when(isCardDisplayType),
+  dataset_query: P.when(
+    (value): value is DatasetQuery =>
+      typeof value === "object" && value !== null,
+  ),
+};
 
 export function parseChartClipboard(
   text: string | null | undefined,
@@ -51,15 +54,7 @@ export function parseChartClipboard(
   try {
     const card: Card & { chart_id?: unknown; query_id?: unknown } =
       deserializeCardFromUrl(hash);
-    if (
-      typeof card.chart_id !== "string" ||
-      card.chart_id === "" ||
-      typeof card.query_id !== "string" ||
-      card.query_id === "" ||
-      !isCardDisplayType(card.display) ||
-      typeof card.dataset_query !== "object" ||
-      card.dataset_query === null
-    ) {
+    if (!isMatching(CHART_CLIPBOARD_CARD_PATTERN, card)) {
       return null;
     }
     return {

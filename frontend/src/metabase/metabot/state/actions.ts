@@ -73,7 +73,6 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   markChartSaved,
-  insertPastedChart,
 } = metabot.actions;
 
 type HandledResponseError = {

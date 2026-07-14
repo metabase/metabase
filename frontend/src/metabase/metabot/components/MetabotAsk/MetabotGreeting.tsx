@@ -99,7 +99,6 @@ export const MetabotGreeting = ({
                 onChange={metabot.setPrompt}
                 onSubmit={handleSubmit}
                 onStop={metabot.cancelRequest}
-                onPasteChart={metabot.onPasteChart}
                 suggestionConfig={{ suggestionModels }}
                 data-testid="metabot-chat-input"
               />

@@ -12,7 +12,10 @@ import registerVisualizations from "metabase/visualizations/register";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
-import { AgentMessage, Messages } from "./MetabotChatMessage";
+import {
+  AgentMessage,
+  Messages,
+} from "../components/MetabotChat/MetabotChatMessage";
 
 registerVisualizations();
 
@@ -180,7 +183,7 @@ describe("AgentMessage", () => {
 });
 
 describe("UserMessage chart mentions", () => {
-  it("renders a pasted chart mention as an icon chip using conversation state", async () => {
+  it("renders a chart mention as an icon chip using conversation state", async () => {
     const datasetQuery = createMockStructuredDatasetQuery();
     const metabotState = assocIn(
       getMetabotInitialState(),

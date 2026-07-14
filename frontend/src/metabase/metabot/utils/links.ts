@@ -1,6 +1,3 @@
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import type { CardDisplayType, DatasetQuery } from "metabase-types/api";
-
 export const METABSE_PROTOCOL_LINK =
   /metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)/;
 
@@ -88,33 +85,4 @@ export const createMetabaseProtocolLink = ({
   model,
 }: ParsedMetabaseProtocolLink & { name: string }): string => {
   return `[${name}](metabase://${model}/${id})`;
-};
-
-export type ConversationChart = {
-  queries?: DatasetQuery[];
-  visualization_settings?: { chart_type?: CardDisplayType };
-};
-
-export const hasLinkableChartQuery = (chart: ConversationChart): boolean => {
-  const query = chart.queries?.[0];
-  return query != null && !("lib/type" in query);
-};
-
-export const conversationChartUrl = (
-  chart: ConversationChart,
-): string | undefined => {
-  const query = chart.queries?.[0];
-  if (query == null || !hasLinkableChartQuery(chart)) {
-    return undefined;
-  }
-  const hash = serializeCardForUrl(
-    {
-      display: chart.visualization_settings?.chart_type ?? "table",
-      dataset_query: query,
-      visualization_settings: {},
-      displayIsLocked: true,
-    },
-    { includeDisplayIsLocked: true },
-  );
-  return `/question#${hash}`;
 };

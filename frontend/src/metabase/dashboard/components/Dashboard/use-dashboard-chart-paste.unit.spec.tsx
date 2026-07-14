@@ -126,6 +126,33 @@ describe("useDashboardChartPaste", () => {
     });
   });
 
+  it("shows an in-progress toast and ignores repeated pastes while saving", async () => {
+    setupCardMocks(CREATED_CARD);
+    fetchMock.post("path:/api/card", CREATED_CARD, {
+      name: "create-card",
+      delay: 100,
+    });
+
+    const { store } = setup({ isEditing: true });
+    act(() => {
+      paste(chartText);
+      paste(chartText);
+    });
+
+    await waitFor(() => {
+      expect(store.getState().undo).toContainEqual(
+        expect.objectContaining({ message: "Adding chart to dashboard…" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(store.getState().undo).toContainEqual(
+        expect.objectContaining({ message: "Chart added to dashboard" }),
+      );
+    });
+    expect(fetchMock.callHistory.calls("create-card")).toHaveLength(1);
+  });
+
   it("does nothing when not editing", () => {
     fetchMock.post("path:/api/card", CREATED_CARD);
 

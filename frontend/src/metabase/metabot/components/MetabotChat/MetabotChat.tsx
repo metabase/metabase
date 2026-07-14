@@ -193,7 +193,6 @@ export const MetabotChat = ({
               onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
-              onPasteChart={metabot.onPasteChart}
               suggestionConfig={{
                 suggestionModels: config.suggestionModels,
               }}
