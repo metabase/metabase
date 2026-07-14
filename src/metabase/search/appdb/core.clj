@@ -16,7 +16,6 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -45,13 +44,7 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or config/is-dev?
-           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
-           ;;                         Perhaps just an explicit setting for enabling it.
-           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
-           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
-           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
-       (supported-db? (mdb/db-type))))
+  (supported-db? (mdb/db-type)))
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)

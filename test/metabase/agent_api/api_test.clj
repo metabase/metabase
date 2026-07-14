@@ -90,7 +90,7 @@
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
         (testing "Returns search results for term queries"
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
@@ -517,7 +517,7 @@
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
                                           :type          :metric
                                           :database_id   (mt/id)
