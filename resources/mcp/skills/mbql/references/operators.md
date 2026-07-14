@@ -1,9 +1,7 @@
 # MBQL operator catalog
 
-Every clause is `["op", {options}, ...args]`. The schema is the source of truth
-(`src/metabase/lib/schema/{aggregation,filter,temporal_bucketing}.cljc` and
-`src/metabase/lib/schema/expression/*.cljc`); if something you need is missing here, try it — the
-schema may have grown.
+Every clause is `["op", {options}, ...args]`. This catalog is the operators in common use, not a closed
+set — if something you need is missing, try it and read the error, which names the rule it broke.
 
 ## Aggregations
 

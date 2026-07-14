@@ -3,52 +3,73 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   ;; the boot-time wiring that publishes the skills as resources, which `skills-are-served-as-resources-test` reads back
+   [metabase.mcp.init]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.skills :as mcp.skills]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private skills-dir "resources/mcp/skills")
+(def ^:private min-skills
+  "The registry ships at least this many skills. Every test here walks the registry, so without a floor
+   they would all pass an empty one."
+  5)
 
 (def ^:private max-description-chars
   "A skill's description is what a client routes on, and every skill's rides in the index. Long enough
-   to say when to load it, short enough that seven of them are not a second instructions blob."
+   to say when to load it, short enough that the whole set is not a second instructions blob."
   1024)
 
+(defn- skill-directories
+  "The skill directories on the classpath — the same place [[mcp.skills/skills]] reads from, rather than
+   a path relative to whatever directory the tests happen to run in."
+  []
+  (into #{}
+        (comp (filter #(.isDirectory ^java.io.File %))
+              (map #(.getName ^java.io.File %)))
+        (some-> "mcp/skills" io/resource io/file .listFiles)))
+
 (deftest ^:parallel skills-load-and-validate-test
-  (doseq [{:keys [name description markdown]} (mcp.skills/skills)]
-    (testing name
-      (is (not (str/blank? description)))
-      (is (<= (count description) max-description-chars)
-          (str "the `" name "` description is " (count description) " chars; the body is where detail goes"))
-      (testing "the description says when to load the skill, not just what it covers"
-        (is (str/includes? description "Load")))
-      (is (str/includes? markdown "\n# ")
-          "a skill body with no heading is a description with extra steps"))))
+  (let [skills (mcp.skills/skills)]
+    (is (<= min-skills (count skills)))
+    (doseq [{:keys [name description markdown]} skills]
+      (testing name
+        (is (not (str/blank? description)))
+        (is (<= (count description) max-description-chars)
+            (str "the `" name "` description is " (count description) " chars; the body is where detail goes"))
+        (testing "the description says when to load the skill, not just what it covers"
+          (is (str/includes? description "Load")))
+        (is (str/includes? markdown "\n# ")
+            "a skill body with no heading is a description with extra steps")))))
 
 (deftest ^:parallel skills-match-the-registry-test
-  (testing "every skill directory on disk is in the registry, and vice versa — a skill the registry
-            does not name is served to nobody"
-    (let [on-disk    (into #{} (comp (filter #(.isDirectory ^java.io.File %))
-                                     (map #(.getName ^java.io.File %)))
-                           (.listFiles (io/file skills-dir)))
+  (testing "every skill directory on the classpath is in the registry, and vice versa — a skill the
+            registry does not name is served to nobody, and a row that names no directory fails to load"
+    (let [on-disk    (skill-directories)
           registered (into #{} (map :skill) mcp.skills/registry)]
+      (is (<= min-skills (count on-disk)))
       (is (= on-disk registered))))
-  (testing "and every reference file a skill declares exists"
-    (doseq [{:keys [name references]} (mcp.skills/skills)
-            {:keys [file markdown]}   references]
-      (testing (str name "/" file)
-        (is (not (str/blank? markdown)))))))
+  (testing "a reference file is named by the body of the skill that ships it, so the agent knows to fetch it"
+    (let [references (for [{:keys [name markdown references]} (mcp.skills/skills)
+                           {:keys [file]}                     references]
+                       (do (testing (str name "/" file)
+                             (is (str/includes? markdown file)
+                                 (str "the `" name "` body never names `" file "`, so nothing routes to it")))
+                           file))]
+      (is (seq references)
+          "no skill declares a reference file, so this test proved nothing"))))
 
 (deftest ^:parallel skills-are-served-as-resources-test
   (testing "each skill is readable at the `skill://` URI SEP-2640 proposes, by any authenticated caller"
-    (doseq [{:keys [name uri markdown]} (mcp.skills/skills)]
-      (testing name
-        (let [result (mcp.resources/read-resource uri #{"agent:discover:read"} {})]
-          (is (= :ok (:status result)))
-          (is (= markdown (:text (first (:contents result)))))
-          (testing "and it is cacheable for everyone, since the bytes don't vary by caller"
-            (is (= "global" (get-in result [:cache :scope]))))))))
+    (let [skills (mcp.skills/skills)]
+      (is (<= min-skills (count skills)))
+      (doseq [{:keys [name uri markdown]} skills]
+        (testing name
+          (let [result (mcp.resources/read-resource uri #{"agent:discover:read"} {})]
+            (is (= :ok (:status result)))
+            (is (= markdown (:text (first (:contents result)))))
+            (testing "and it is cacheable for everyone, since the bytes don't vary by caller"
+              (is (= "public" (get-in result [:cache :scope])))))))))
   (testing "reference files are addressed on their own, so loading a skill doesn't drag its catalogs in"
     (doseq [{:keys [references]} (mcp.skills/skills)
             {:keys [uri markdown]} references]

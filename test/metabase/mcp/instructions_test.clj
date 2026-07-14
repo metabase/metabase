@@ -31,6 +31,8 @@
 (deftest ^:parallel instructions-route-to-every-skill-test
   (testing "every shipped skill is named in the instructions — a skill nothing routes to is a skill nobody loads"
     (let [instructions (mcp.instructions/instructions)]
+      (is (<= 5 (count mcp.skills/registry))
+          "an empty registry would walk this test's loop zero times and prove nothing")
       (doseq [{:keys [skill]} mcp.skills/registry]
         (is (str/includes? instructions (str "`" skill "`"))
             (str "the `" skill "` skill is not named in the server instructions"))))))

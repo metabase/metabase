@@ -6,8 +6,8 @@ description: Choose a chart and configure it — the `display` types a question 
 # Visualization
 
 A saved question carries a `display` (the chart type) and `visualization_settings` (how that chart is
-configured). Both are fields on `question_write`; `visualize_query` renders a query in the chat client
-without saving anything.
+configured). Both are fields on `create_question` and `update_question`; `visualize_query` renders a
+query in the chat client without saving anything.
 
 The chart follows the query, not the other way round. A bar chart needs a breakout to put on the x
 axis; a trend needs a time series; a scalar needs exactly one number. If a chart renders empty, the
@@ -55,8 +55,7 @@ query shape is usually the reason — fix the query, not the settings.
   **column name** (the machine name the query returns: `count`, `sum`, `CREATED_AT`). Set these
   explicitly on any chart with more than one candidate column; guessing is how a chart ends up plotting
   the wrong series.
-- **`graph.show_goal` + `graph.goal_value`** — the goal line. An alert with a `goal_above` /
-  `goal_below` condition requires one on the chart, so set it before creating that alert.
+- **`graph.show_goal` + `graph.goal_value`** — the goal line, and the number it sits at.
 - **`stackable.stack_type`** — `"stacked"` or `"normalized"` (100%), on bar and area charts.
 - **`column_settings`** — per-column formatting, keyed by the JSON string `["name","COLUMN"]`. Common
   values: `column_title`, `number_style` (`decimal`, `percent`, `currency`, `scientific`), `currency`,
@@ -69,13 +68,12 @@ query shape is usually the reason — fix the query, not the settings.
 
 ## On a dashboard
 
-A dashboard card can override the question's own settings without touching the saved question — that's
-`dashboard_write`'s `{op: "patch_dashcard", dashcard_id, patch}` (see the `dashboard` skill). Use it
-for `card.title`, `card.hide_empty`, and `click_behavior`. Change the *question's* own chart with
-`question_write` instead; every dashboard showing it will follow.
+A card on a dashboard renders the question's own `display` and `visualization_settings`. There is no
+per-card override here: change the chart with `update_question`, and every dashboard showing it
+follows.
 
 ## In chat
 
 `visualize_query(query_handle)` renders a chart inline in clients that support it. It takes the handle
-`execute_query` or `execute_sql` already returned — don't re-run the query to get one, and don't call
-`execute_query` again afterwards to "show the numbers": the chart is the answer.
+`execute_query` already returned — don't re-run the query to get one, and don't call `execute_query`
+again afterwards to "show the numbers": the chart is the answer.

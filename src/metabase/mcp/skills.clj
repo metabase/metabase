@@ -1,9 +1,13 @@
 (ns metabase.mcp.skills
   "Tier 2 of the guidance layer: the skills the server ships.
 
-   Server instructions say how to use the tools; a skill says how to run a *process* with them — build
-   a dashboard, author a query, edit a document. Most agent failures are cognitive rather than
+   Server instructions say how to use the tools; a skill says how to run a *process* with them — author
+   a query, assemble a dashboard, chart a result. Most agent failures are cognitive rather than
    tool-selection ones, which is why this tier is co-equal with tool shape rather than garnish on it.
+
+   A skill may only teach tools the server actually registers: guidance an agent cannot follow is worse
+   than no guidance, because it spends a turn on a call that does not exist. `metabase.mcp.guidance-test`
+   holds every tool named under `mcp/` to the live manifest.
 
    Each skill is a directory on the classpath under `mcp/skills/`, in the Agent Skills open-standard
    format (agentskills.io): a `SKILL.md` whose YAML frontmatter carries the `name` and the
@@ -24,7 +28,7 @@
 (def ^:private skill-cache
   "Skill markdown is read off the classpath and changes only when the instance is upgraded."
   {:ttl-ms (* 24 60 60 1000)
-   :scope  "global"})
+   :scope  "public"})
 
 (def registry
   "The skills this server ships, in the order they are advertised.
@@ -36,9 +40,7 @@
    {:skill "mbql" :references ["operators.md"]}
    {:skill "native-sql"}
    {:skill "dashboard"}
-   {:skill "visualization"}
-   {:skill "document"}
-   {:skill "curation"}])
+   {:skill "visualization"}])
 
 (defn skill-uri
   "The `skill://` URI a skill is served at."
@@ -109,8 +111,7 @@
       :render-fn   (constantly (:markdown reference))})))
 
 (defn register-skills!
-  "Publish every skill as an MCP resource. Idempotent — the registry overwrites by URI."
+  "Publish every skill as an MCP resource. Idempotent — the registry overwrites by URI. Called from
+   [[metabase.mcp.init]]."
   []
   (run! register-skill! (skills)))
-
-(register-skills!)

@@ -9,7 +9,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-> To learn how to use the Metabase MCP server and CLI for AI data exploration, [register for our free MCP and CLI workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
+> To learn how to use the Metabase MCP server for AI data exploration, [register for our free MCP workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
 
 ## Connect a client to your Metabase MCP server's URL
 
@@ -70,28 +70,26 @@ These render inline visualizations in your AI client, and only work in clients t
 
 ### Read-only tools
 
-- **Construct query** (`construct_query`): Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
-- **Execute query** (`execute_query`): Execute a previously constructed query and return the results with column metadata, row count, and execution time.
-- **Query tables and metrics** (`query`): Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token. Paging returns up to 200 rows per page and 2,000 rows total.
-- **Read resource** (`read_resource`): Read up to five Metabase entities (or lists) per call by `metabase://` URI. List URIs (like a collection's items or a table's fields) return up to 25 items each. Entities available to read include:
-  - collection
-  - dashboard
-  - database
-  - metric
-  - model
-  - question
-  - schema
-  - table
-  - transform
-- **Search tables and metrics** (`search`): Find tables and metrics using keyword or natural language search.
+- **Search** (`search`): Find content — questions, models, metrics, dashboards, collections, and more — by keyword or natural language. Can also list what you looked at recently.
+- **Browse data** (`browse_data`): Walk the data hierarchy: databases, schemas, tables, and a table's fields.
+- **Browse collection** (`browse_collection`): Walk the collection tree and see what's saved in a collection.
+- **Get content** (`get_content`): Read Metabase entities by type and id — up to ten per call, of mixed types. Ask for extra sections to get an entity's query definition, fields, filter widgets, dashboard layout, or revision history.
+- **Get parameter values** (`get_parameter_values`): List the values a dashboard or question filter can take.
+- **Execute query** (`execute_query`): Run a query and return its rows with column metadata. Returns a query handle that a save or a chart can reuse, so what gets saved is the query that ran.
+- **Construct query** (`construct_query`): Construct a query against a table or metric. Returns a query handle.
+- **Construct native query** (`construct_native_query`): Turn a raw SQL string into a query handle you can save as a question. Doesn't run the SQL.
+- **Query tables and metrics** (`query`): Run a query and page through large result sets with a continuation token.
+- **Read resource** (`read_resource`): Read up to five Metabase entities (or lists) per call by `metabase://` URI. List URIs (like a collection's items or a table's fields) return up to 25 items each.
+- **Execute question** (`execute_question`): Run a saved question and return its results.
 
 ### Write/delete tools
 
 - **Create collection** (`create_collection`): Create a new collection, optionally nested under a parent collection.
 - **Create dashboard** (`create_dashboard`): Create a new dashboard, optionally populated with saved questions.
 - **Create question** (`create_question`): Save a query as a named question.
+- **Create metric** (`create_metric`) and **Update metric** (`update_metric`): Save and edit a reusable metric.
 - **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
-- **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
+- **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived), and add, remove, or move its cards.
 - **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 
 ## The server tells your client how to use Metabase
@@ -99,11 +97,11 @@ These render inline visualizations in your AI client, and only work in clients t
 Tools are only half of what the MCP server hands your client. The other half is guidance: how to go about a job in Metabase, not just which calls exist.
 
 - **Instructions.** On connecting, your client gets a short brief on what Metabase is and how to work with it: search before you build, check a table's columns before you query them, don't save anything nobody asked for. Most clients (Claude Code, Claude Desktop, VS Code) load these automatically.
-- **Skills.** Longer reference material your agent can pull in when a job needs it — how to write a query, wire up a dashboard filter, edit a document, or decide whether something should be a model. Your agent loads the one it needs and ignores the rest.
+- **Skills.** Longer reference material on how to do a job in Metabase — write a query, run raw SQL, assemble a dashboard, pick a chart. Your Metabase serves each skill as an MCP resource, and the instructions tell your agent which one to read before a given job. Clients differ in how much of this they pick up: a client that reads MCP resources can fetch a skill when it needs one, and a client that doesn't still has the instructions and the tools.
 - **Prompts.** Ready-made playbooks you can run yourself. In clients that support MCP prompts, they show up as slash commands:
 
   - `/mcp__metabase__explore_database` — map a database and report what it holds, what's already built on it, and what it can answer.
-  - `/mcp__metabase__build_dashboard` — find or write the questions for a topic, assemble them into a dashboard, and wire up the filters.
+  - `/mcp__metabase__build_dashboard` — find or write the questions for a topic, then assemble them into a dashboard.
 
 You'll only see the prompts your connection is allowed to run: a read-only connection is offered the exploration playbook and not the one that builds a dashboard.
 
@@ -178,7 +176,7 @@ Use the event filter to narrow the list to a single event type.
 
 MCP server requests are handled by whatever AI client you're using (like a desktop AI app or editor plugin). The MCP server just provides tools (like searching for an entity or running the query) for your AI.
 
-For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tool **construct_query** and **execute_query**, and what those queries might be. Then your client will call those tools for Metabase to run.
+For example, if you ask your AI client to use your Metabase's MCP server "what's our q3 revenue," your client will interact with the MCP server to figure out which tools it needs to field your request. Your AI can decide that it needs to use the tools **search** and **browse_data** to find the right table, then **execute_query** to answer the question. Then your client will call those tools for Metabase to run.
 
 You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 

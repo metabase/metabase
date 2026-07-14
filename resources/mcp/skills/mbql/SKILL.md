@@ -21,7 +21,7 @@ units. This file is the shape and the traps.
 2. `execute_query(query: {...}, validate_only: true)` — validates against schema and metadata, and
    returns a `query_handle` without running anything.
 3. `execute_query(query_handle: "...")` — run it.
-4. `question_write(method: "create", query_handle: "...")` — save exactly what you ran.
+4. `create_question(query: "<the handle>")` — save exactly what you ran.
 
 Skipping step 1 is the single most common cause of a query that runs and answers the wrong question.
 
@@ -64,9 +64,8 @@ Cross-database queries do not exist. Every reference in a query resolves in one 
 ## Filters, aggregations, breakouts
 
 ```json
-"filters": [["and", {},
-             [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-             ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]],
+"filters": [[">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
+            ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]],
 "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
 "breakout": [["field", {"temporal-unit": "month"},
               ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
@@ -74,6 +73,10 @@ Cross-database queries do not exist. Every reference in a query resolves in one 
 "limit": 50
 ```
 
+- **`filters` is a list of predicates, already ANDed together.** One predicate per constraint, side by
+  side. Do not wrap them in an `["and", {}, …]` — `and` takes two or more arguments, so wrapping is
+  redundant with two predicates and a validation error with one. Reach for `and` only *inside* an `or`
+  or a `not`, where a branch has to hold several predicates.
 - A **constraint is a filter, not a breakout.** "only paid orders", "for the EU region" → `filters`.
   Reserve `breakout` for grouping language: "by", "per", "for each", "over time".
 - Apply *every* constraint the user stated. Dropping one produces a query that runs cleanly and answers

@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.util.i18n :refer [deferred-tru]]
    [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
@@ -20,29 +21,28 @@
 (def ^:private prompts
   "The playbooks the server ships, in the order they are advertised.
 
-   `:arguments` is the MCP `PromptArgument` list, with `:default` carrying what the template renders
-   when an optional argument is absent — the phrasing has to hold up as prose, since it is substituted
-   into a sentence the model reads."
+   `:title`, `:description`, and each argument's `:description` are what a person reads in the client —
+   the slash command's name and its argument hints — so they are translated. `:default` is not: it is
+   substituted into the template the *model* reads, and the phrasing has to hold up as prose in that
+   sentence."
   [{:name        "explore_database"
-    :title       "Explore a database"
-    :description (str "Map a database and report what it holds, how its tables join, what is already "
-                      "modeled, and what it can answer. Read-only.")
+    :title       (deferred-tru "Explore a database")
+    :description (deferred-tru "Map a database and report what it holds, how its tables join, what is already modeled, and what it can answer. Read-only.")
     :scope       "agent:discover:read"
     :template    "mcp/prompts/explore_database.md"
     :arguments   [{:name        "database"
-                   :description "The database to explore — its name or its id."
+                   :description (deferred-tru "The database to explore — its name or its id.")
                    :required    true}]}
    {:name        "build_dashboard"
-    :title       "Build a dashboard"
-    :description (str "Build a dashboard on a topic — find or write the questions, assemble them, and "
-                      "wire up the filters.")
+    :title       (deferred-tru "Build a dashboard")
+    :description (deferred-tru "Build a dashboard on a topic — find or write the questions, then assemble them into one.")
     :scope       "agent:author:write"
     :template    "mcp/prompts/build_dashboard.md"
     :arguments   [{:name        "topic"
-                   :description "What the dashboard should cover, in the user's words."
+                   :description (deferred-tru "What the dashboard should cover, in the words the user used.")
                    :required    true}
                   {:name        "collection"
-                   :description "Where to save it. Defaults to asking."
+                   :description (deferred-tru "Where to save it. Defaults to asking.")
                    :required    false
                    :default     "a collection you have chosen with the user"}]}])
 
@@ -52,41 +52,53 @@
 
 (defn- public-argument
   [{:keys [name description required]}]
-  {:name name :description description :required (boolean required)})
+  {:name name :description (str description) :required (boolean required)})
 
 (defn list-prompts
   "The MCP `prompts/list` payload, filtered by `token-scopes`. A prompt whose workflow the token could
    not carry out is not advertised, for the same reason `tools/list` hides a tool it cannot call."
   [token-scopes]
   {:prompts (mapv (fn [prompt]
-                    (-> (select-keys prompt [:name :title :description])
-                        (assoc :arguments (mapv public-argument (:arguments prompt)))))
+                    {:name        (:name prompt)
+                     :title       (str (:title prompt))
+                     :description (str (:description prompt))
+                     :arguments   (mapv public-argument (:arguments prompt))})
                   (visible-prompts token-scopes))})
 
-(defn- render
-  "Render `prompt`'s template with `arguments`, filling optional arguments the caller omitted with the
-   default phrasing. Returns the message text, or throws with the missing argument named."
-  [{:keys [template] :as prompt} arguments]
-  (let [values (into {}
-                     (for [{:keys [name required default]} (:arguments prompt)]
-                       (let [supplied (some-> (get arguments (keyword name)) str str/trim not-empty)]
-                         (cond
-                           supplied [(keyword name) supplied]
-                           required (throw (ex-info (str "Missing required argument: " name)
-                                                    {:prompt (:name prompt) :argument name}))
-                           :else    [(keyword name) default]))))]
-    (stencil/render-file template values)))
+(def ^:private ^:const missing-argument
+  "Sentinel key marking the argument map a required argument was absent from."
+  ::missing-argument)
+
+(defn- template-values
+  "The values `prompt`'s template renders with, filling optional arguments the caller omitted with the
+   default phrasing. Returns `{::missing-argument <name>}` when a required argument has no value."
+  [prompt arguments]
+  (reduce (fn [values {:keys [name required default]}]
+            (if-let [supplied (some-> (get arguments (keyword name)) str str/trim not-empty)]
+              (assoc values (keyword name) supplied)
+              (if required
+                (reduced {missing-argument name})
+                (assoc values (keyword name) default))))
+          {}
+          (:arguments prompt)))
 
 (defn get-prompt
-  "The MCP `prompts/get` payload for `prompt-name`, or `{:status :not-found}` when no prompt of that
-   name is visible to `token-scopes` — an unknown prompt and one the token may not use are the same
-   answer, so the listing and the fetch can't disagree.
+  "The MCP `prompts/get` payload for `prompt-name`. Every outcome is a `:status` on the returned map, so
+   a caller reads one channel:
 
-   Throws with the argument named when a required one is missing."
+   - `{:status :ok :description ... :messages [...]}`
+   - `{:status :not-found}` — no prompt of that name is visible to `token-scopes`. An unknown prompt and
+     one the token may not use are the same answer, so the listing and the fetch can't disagree.
+   - `{:status :missing-argument :argument <name>}` — a required argument had no value. The client can
+     ask the user for the argument it names."
   [prompt-name arguments token-scopes]
   (if-let [prompt (first (filter #(= prompt-name (:name %)) (visible-prompts token-scopes)))]
-    {:status      :ok
-     :description (:description prompt)
-     :messages    [{:role    "user"
-                    :content {:type "text" :text (render prompt arguments)}}]}
+    (let [values (template-values prompt arguments)]
+      (if-let [absent (get values missing-argument)]
+        {:status :missing-argument :argument absent}
+        {:status      :ok
+         :description (str (:description prompt))
+         :messages    [{:role    "user"
+                        :content {:type "text"
+                                  :text (stencil/render-file (:template prompt) values)}}]}))
     {:status :not-found}))
