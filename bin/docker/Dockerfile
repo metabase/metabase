@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
