@@ -217,7 +217,10 @@
                                           :creator_id    creator-id
                                           :database_id   (or (:database_id first-sr)
                                                              (-> dataset-query :database))
-                                          :dataset_query dataset-query})))
+                                          :dataset_query dataset-query
+                                          ;; `composite/combine` refreshed :row_count to the
+                                          ;; combined row set's size.
+                                          :row_count     (:row_count composite-qp)})))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))

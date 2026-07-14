@@ -1609,6 +1609,21 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v63.srrowcount
+      author: johnswanson
+      comment: Add stored_result.row_count
+      changes:
+        - addColumn:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: row_count
+                  type: int
+                  remarks: Number of rows in the snapshot
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v63.storedresultdataaccesstokenbf
       author: johnswanson
       comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).

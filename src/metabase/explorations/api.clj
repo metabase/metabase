@@ -275,10 +275,11 @@
 
 (mr/def ::ExplorationQuerySummary
   "Schema for a query row in API responses. The result blob and `dataset_query` aren't
-   asserted here; `interestingness_score` and `contextual_interestingness_score` are
-   left-joined (in `/:id/queries`) or batched-hydrated (in `/:id`) from
-   `exploration_query_result` and may be nil for pending/errored queries or — for the
-   contextual score — when the LLM is unconfigured or the thread had no prompt."
+   asserted here; `interestingness_score`, `contextual_interestingness_score`, and
+   `row_count` are left-joined (in `/:id/queries`) or batched-hydrated (in `/:id`) — the
+   scores from `exploration_query_result`, `row_count` from the linked `stored_result` —
+   and may be nil for pending/errored queries or — for the contextual score — when the LLM
+   is unconfigured or the thread had no prompt."
   [:map
    [:id                               ms/PositiveInt]
    [:exploration_thread_id            ms/PositiveInt]
@@ -298,6 +299,7 @@
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
+   [:row_count                        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:timeline_interestingness         {:optional true} [:maybe [:sequential
                                                                 [:map
                                                                  [:timeline_id           ms/PositiveInt]
@@ -671,7 +673,9 @@
 
 (def ^:private query-summary-columns
   "Column projection for `::ExplorationQuerySummary` rows — excludes `dataset_query` and the
-  result blob, joins both interestingness scores from `exploration_query_result`."
+  result blob, joins both interestingness scores from `exploration_query_result` and the
+  snapshot `row_count` from `stored_result` (reached through the EQR FK — callers must
+  left-join both tables)."
   [:exploration_query.id :exploration_query.exploration_thread_id
    :exploration_query.card_id :exploration_query.segment_id
    :exploration_query.dimension_id :exploration_query.query_type
@@ -680,7 +684,8 @@
    :exploration_query.started_at :exploration_query.finished_at
    :exploration_query.entity_id
    [:exploration_query_result.interestingness_score            :interestingness_score]
-   [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]])
+   [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]
+   [:stored_result.row_count                                    :row_count]])
 
 (defn- get-exploration-page-or-404
   [page-id]
@@ -890,7 +895,9 @@
               {:left-join [:exploration_thread
                            [:= :exploration_query.exploration_thread_id :exploration_thread.id]
                            :exploration_query_result
-                           [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
+                           [:= :exploration_query_result.exploration_query_id :exploration_query.id]
+                           :stored_result
+                           [:= :stored_result.id :exploration_query_result.stored_result_id]]
                :where     [:= :exploration_thread.exploration_id id]
                :order-by  [[:exploration_query.position :asc]
                            [:exploration_query.id :asc]]})
