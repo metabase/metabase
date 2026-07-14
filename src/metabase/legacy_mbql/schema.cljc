@@ -391,7 +391,9 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
-                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
+                        (when-not ((some-fn nil? map?) opts)
+                          (throw (ex-info "Attempted to normalize an MBQL 5 :field clause as MBQL 4"
+                                          {:clause x})))
                         ;; if someone accidentally nests `:field` clauses fix it for them
                         (if (and (sequential? id-or-name)
                                  ((some-fn keyword? string?) (first id-or-name))
