@@ -1,4 +1,4 @@
-import register from "metabase/visualizations/register";
+import { registerVisualizations as register } from "metabase/visualizations/register";
 
 import { getIcon } from "./icon";
 

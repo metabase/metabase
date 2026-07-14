@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 
 import { BaseChartSettings } from "../BaseChartSettings";
 import { useChartSettingsState } from "../hooks";

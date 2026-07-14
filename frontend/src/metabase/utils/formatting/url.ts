@@ -1,16 +1,9 @@
-import cx from "classnames";
-
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Link } from "metabase/common/components/Link";
-import CS from "metabase/css/core/index.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
-import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { removeNewLines } from "metabase/utils/formatting/strings";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
+import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
-import { removeNewLines } from "./strings";
+import { getJsxLinkRenderer } from "./registry";
 import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
@@ -40,37 +33,10 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
   const url = getLinkUrl(value, options);
 
-  if (jsx && rich && url) {
+  const jsxLinkRenderer = getJsxLinkRenderer();
+  if (jsx && rich && url && jsxLinkRenderer) {
     const text = getLinkText(value, options);
-    const className = cx(CS.link, CS.linkWrappable);
-
-    // on the react sdk we treat all user provided urls as external links
-    if (isSameOrSiteUrlOrigin(url) && !isEmbeddingSdk()) {
-      return (
-        <Link className={className} to={url}>
-          {text}
-        </Link>
-      );
-    }
-
-    const onClickCaptureInSdk = isEmbeddingSdk()
-      ? {
-          onClickCapture: async (e: React.MouseEvent<HTMLAnchorElement>) => {
-            e.preventDefault(); // Prevent immediately while we await the response
-            const result = await handleLinkSdkPlugin(url);
-            if (!result.handled) {
-              // Parent didn't handle it - proceed with default navigation
-              window.open(url, "_blank", "noopener");
-            }
-          },
-        }
-      : {};
-
-    return (
-      <ExternalLink className={className} href={url} {...onClickCaptureInSdk}>
-        {text}
-      </ExternalLink>
-    );
+    return jsxLinkRenderer(url, text);
   } else if (!url && !isURL(column)) {
     // Even when no URL is found, return a formatted value
     return formatValue(value, { ...options, view_as: null });

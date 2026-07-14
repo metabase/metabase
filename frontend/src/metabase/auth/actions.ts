@@ -2,6 +2,7 @@ import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
+import { loadLocalization } from "metabase/api/localization";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
@@ -12,7 +13,6 @@ import { SessionApi, UtilApi } from "metabase/services";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import { loadLocalization } from "metabase/utils/i18n";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { LoginData } from "./types";

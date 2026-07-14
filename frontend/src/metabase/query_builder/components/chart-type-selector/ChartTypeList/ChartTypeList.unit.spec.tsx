@@ -1,7 +1,7 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import visualizations from "metabase/visualizations";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { DEFAULT_VIZ_ORDER } from "../viz-order";
 

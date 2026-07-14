@@ -9,7 +9,7 @@ import { ChartSettingsVisualization } from "metabase/visualizations/components/C
 import { useChartSettingsState } from "metabase/visualizations/components/ChartSettings/hooks";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { DashboardChartSettingsProps } from "./types";
