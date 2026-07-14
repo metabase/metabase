@@ -22,6 +22,7 @@
    it needs the BigQuery driver module on the classpath."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -958,3 +959,127 @@
                    (log/warnf t "destroy-workspace-isolation! failed for %s during public-grant test cleanup"
                               driver)))
             (maybe-drop-input-namespace! admin-spec driver database in-schema src-name)))))))
+
+;; --- Password leak probes (GHY-3660) -----------------------------------------
+
+(defn- reachable-throwables
+  "Every Throwable reachable from `t`: the cause chain, suppressed exceptions,
+   Throwable-valued `ex-data` entries, and `SQLException.getNextException`
+   links (the path the GHY-3660 leak took — the JDBC batch exception's message
+   echoed the aborted CREATE USER statement, password included)."
+  [^Throwable t]
+  (loop [queue [t], seen #{}, out []]
+    (if (empty? queue)
+      out
+      (let [^Throwable cur (peek queue)
+            queue          (pop queue)]
+        (if (or (nil? cur) (contains? seen cur))
+          (recur queue seen out)
+          (recur (into queue
+                       (remove nil?)
+                       (concat [(.getCause cur)]
+                               (.getSuppressed cur)
+                               (filter #(instance? Throwable %) (vals (or (ex-data cur) {})))
+                               (when (instance? java.sql.SQLException cur)
+                                 [(.getNextException ^java.sql.SQLException cur)])))
+                 (conj seen cur)
+                 (conj out cur)))))))
+
+(defn- throwable-log-text
+  "Everything a logger or debug print could plausibly render for `t`: the full
+   stack-trace printout, `Throwable->map`, and the message + `ex-data` of every
+   [[reachable-throwables]] node."
+  [^Throwable t]
+  (let [sw (java.io.StringWriter.)]
+    (.printStackTrace t (java.io.PrintWriter. sw))
+    (str/join "\n"
+              (into [(str sw) (pr-str (Throwable->map t))]
+                    (map (fn [^Throwable e]
+                           (str (ex-message e) " " (pr-str (ex-data e)))))
+                    (reachable-throwables t)))))
+
+(deftest ^:synchronized init-workspace-isolation-never-exposes-password-test
+  ;; GHY-3660: a failed CREATE USER logged the generated password verbatim — the
+  ;; postgres JDBC batch exception echoes the aborted statement, password and
+  ;; all, and provisioning logs that exception. Workspace passwords are
+  ;; generated once, so a logged password may be the live credential.
+  ;;
+  ;; Reproduce the failure for real: run `init-workspace-isolation!` for a
+  ;; second workspace over a connection authenticated as an existing workspace's
+  ;; low-privilege user, which by design cannot CREATE USER. Then assert the
+  ;; generated password appears nowhere in any text a logger could print from
+  ;; the thrown exception.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                           (mt/normal-drivers-with-feature :workspace))
+    (testing "failed init-workspace-isolation! never exposes the generated password (GHY-3660)"
+      (let [driver     driver/*driver*
+            database   (mt/db)
+            details    (:details database)
+            admin-spec (sql-jdbc.conn/connection-details->spec driver details)
+            run-id     (random-suffix)
+            ws-a       {:id   (Long/parseLong run-id 16)
+                        :name (str "wsd-pwleak-a-" run-id)}
+            ws-b       {:id   (inc (Long/parseLong run-id 16))
+                        :name (str "wsd-pwleak-b-" run-id)}
+            b-ns       (driver.u/workspace-isolation-namespace-name ws-b)
+            generated  (atom [])
+            gen-orig   driver.u/random-workspace-password
+            ws-a-state (atom (merge ws-a
+                                    {:schema           (driver.u/workspace-isolation-namespace-name ws-a)
+                                     :database_details {:user (driver.u/workspace-isolation-user-name ws-a)}}))]
+        (try
+          (let [init-a    (driver/init-workspace-isolation! driver database ws-a)
+                ws-a-full (merge ws-a init-a)]
+            (reset! ws-a-state ws-a-full)
+            ;; MySQL: the workspace user's JDBC handshake needs access to the
+            ;; bound DB (see [[reuse-bound-db-as-input?]]), which comes from a
+            ;; read grant.
+            (when (reuse-bound-db-as-input? driver)
+              (driver/grant-workspace-read-access! driver database ws-a-full
+                                                   [(-> database :details :db)]))
+            ;; The ticket's failure shape is a caller that CAN create schemas but
+            ;; CANNOT create users: postgres/redshift check CREATE at the database
+            ;; level, so grant it to user A. Elsewhere, pre-create ws-b's
+            ;; namespace so the leading `CREATE ... IF NOT EXISTS` skips instead
+            ;; of failing — either way execution reaches the password-bearing
+            ;; CREATE USER, which fails with permission denied.
+            (when (#{:postgres :redshift} driver)
+              (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
+                                                 (or (:dbname details) (:db details))
+                                                 (driver.u/workspace-isolation-user-name ws-a))]))
+            (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)])
+            (mt/with-temp [:model/Database low-priv-db {:engine  driver
+                                                        :details (merge details (:database_details ws-a-full))}]
+              (let [thrown (with-redefs [driver.u/random-workspace-password
+                                         (fn []
+                                           (let [pw (gen-orig)]
+                                             (swap! generated conj pw)
+                                             pw))]
+                             (try
+                               (driver/init-workspace-isolation! driver low-priv-db ws-b)
+                               nil
+                               (catch Throwable t t)))]
+                (sql-jdbc.conn/invalidate-pool-for-db! low-priv-db)
+                (is (some? thrown)
+                    "init-workspace-isolation! over a low-privilege connection should have thrown")
+                (is (seq @generated)
+                    "the instrumented password generator should have been called")
+                (when thrown
+                  (let [text (throwable-log-text thrown)]
+                    (doseq [pw @generated]
+                      (is (not (str/includes? text pw))
+                          (str "generated password leaked into exception text:\n" text)))
+                    ;; Postgres echoes the aborted statement in the batch
+                    ;; exception message; requiring the redaction marker proves
+                    ;; this test reached the CREATE USER echo rather than failing
+                    ;; earlier and passing vacuously.
+                    (when (= driver :postgres)
+                      (is (str/includes? text "****")
+                          (str "expected redacted CREATE USER echo in exception text:\n" text))))))))
+          (finally
+            (doseq [sql (drop-input-namespace-sqls driver b-ns [])]
+              (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            (try (driver/destroy-workspace-isolation! driver database @ws-a-state)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
+                              driver)))))))))
