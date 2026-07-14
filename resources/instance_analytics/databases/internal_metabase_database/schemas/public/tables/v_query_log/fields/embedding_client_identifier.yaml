@@ -1,0 +1,21 @@
+name: embedding_client_identifier
+display_name: Embedding Client Identifier
+created_at: '2026-07-13T00:00:00Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_query_log]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+position: 39
+custom_position: 0
+database_position: 39
+has_field_values: none
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_query_log, model: Table}
+- {id: embedding_client_identifier, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
