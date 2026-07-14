@@ -648,26 +648,6 @@
 ;;; |                                          Category 9: Measure Source                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-metric-with-measure-aggregation-test
-  (testing "POST /api/metric/dataset can add measures as extra aggregations to a metric"
-    (let [mp             (mt/metadata-provider)
-          table-metadata (lib.metadata/table mp (mt/id :venues))
-          price-col      (lib.metadata/field mp (mt/id :venues :price))
-          measure-query  (-> (lib/query mp table-metadata)
-                             (lib/aggregate (lib/sum price-col)))]
-      (mt/with-temp [:model/Card metric {:name          "Venue Count"
-                                         :type          :metric
-                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-                     :model/Measure measure {:name       "Total Price"
-                                             :table_id   (mt/id :venues)
-                                             :definition measure-query}]
-        (mt/with-full-data-perms-for-all-users!
-          (let [response (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
-                                           :measures   [(:id measure)]})]
-            (is (= "completed" (:status response)))
-            (is (= 1 (:row_count response)))
-            (is (= [100 203] (first (result-rows response))))))))))
-
 (deftest dataset-measure-count-test
   (testing "POST /api/metric/dataset with source-measure count"
     (let [mp             (mt/metadata-provider)

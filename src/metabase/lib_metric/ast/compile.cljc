@@ -216,14 +216,10 @@
         breakouts (when (seq group-by)
                     (perf/mapv #(resolve-dimension-ref % mappings) group-by))
 
-        aggregations (into [(compile-aggregation-node (:aggregation source))]
-                           (map compile-aggregation-node)
-                           (:additional-aggregations source))
-
         ;; Build stage
         stage (cond-> {:lib/type     :mbql.stage/mbql
                        :source-table (perf/get-in source [:base-table :id])
-                       :aggregation  aggregations}
+                       :aggregation  [(compile-aggregation-node (:aggregation source))]}
                 (seq all-filters) (assoc :filters all-filters)
                 (seq breakouts)   (assoc :breakout breakouts)
                 limit             (assoc :limit limit))
@@ -254,11 +250,8 @@
         user-filters (when filter [(compile-filter-node filter mappings)])
         breakouts    (when (seq group-by)
                        (perf/mapv #(resolve-dimension-ref % mappings) group-by))
-        aggregations (into [(compile-aggregation-node (:aggregation source))]
-                           (map compile-aggregation-node)
-                           (:additional-aggregations source))
         stage-1      (cond-> {:lib/type    :mbql.stage/mbql
-                              :aggregation aggregations}
+                              :aggregation [(compile-aggregation-node (:aggregation source))]}
                        (seq user-filters) (assoc :filters user-filters)
                        (seq breakouts)    (assoc :breakout breakouts)
                        limit              (assoc :limit limit))
