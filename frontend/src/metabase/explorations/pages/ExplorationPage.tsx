@@ -184,8 +184,6 @@ export function ExplorationPage({
   const [shouldPoll, setShouldPoll] = useState(true);
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  // A new turn (e.g. "Explore further") started while a filtered tab is active lands in "All" but
-  // is hidden by the current filter — flag it so the "All" tab shows a dot until the user visits it.
   const [hasUnviewedTurnInAll, setHasUnviewedTurnInAll] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [sortOrder, setSortOrder] = useState<ExplorationSortOrder>(() =>

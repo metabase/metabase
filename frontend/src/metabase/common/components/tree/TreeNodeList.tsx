@@ -19,12 +19,6 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
-  /**
-   * Wrap each node and its (expanded) subtree in an <li>, so CSS can treat
-   * them as one block — e.g. a `position: sticky` group heading is then
-   * contained by (and pushed out at the end of) its own group instead of
-   * sticking for the lifetime of the whole list.
-   */
   wrapNodes?: boolean;
 }
 
@@ -84,7 +78,6 @@ function BaseTreeNodeList<TData = unknown>({
         );
 
         return wrapNodes ? (
-          // Presentation-only wrapper: the semantic roles live on the node rows.
           <Box component="li" role="none" key={item.id}>
             {node}
           </Box>

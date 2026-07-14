@@ -324,8 +324,6 @@ export function ActionToolbar({
           onChange={setMoreActionsOpen}
         >
           <Menu.Target>
-            {/* Suppress the tooltip while the menu is open — showing both at
-             * once reads as clutter. */}
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
               <ActionIcon
                 size="2rem"

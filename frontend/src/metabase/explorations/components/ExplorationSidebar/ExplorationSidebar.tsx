@@ -68,9 +68,6 @@ import {
   pickInitialSidebarEntity,
 } from "./utils";
 
-// Each kind of heading carries a distinct icon so the tree reads as a legible
-// investigation history: the initial spark, its follow-up branches, and the
-// metric groups within each.
 const HEADING_ICON: Record<
   ExplorationHeadingKind,
   { name: IconProps["name"]; color: IconProps["c"] }
