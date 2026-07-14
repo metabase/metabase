@@ -163,3 +163,76 @@ databaseChangeLog:
             columns:
               - column:
                   name: channel_id
+
+  ## Polymorphic references (type + id column pairs) can't have FK constraints, but every other
+  ## polymorphic pair in the schema (comment, dependency, cache_config, task_run, ...) carries a
+  ## composite (type, id) index. These four were missing theirs.
+  - changeSet:
+      id: v63.2026-07-14T00:00:10
+      author: ranquild
+      comment: Index audit_log (model, model_id)
+      changes:
+        - createIndex:
+            tableName: audit_log
+            indexName: idx_audit_log_model_model_id
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:11
+      author: ranquild
+      comment: Index recent_views (model, model_id)
+      changes:
+        - createIndex:
+            tableName: recent_views
+            indexName: idx_recent_views_model_model_id
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:12
+      author: ranquild
+      comment: Index notification (payload_type, payload_id)
+      changes:
+        - createIndex:
+            tableName: notification
+            indexName: idx_notification_payload_type_payload_id
+            columns:
+              - column:
+                  name: payload_type
+              - column:
+                  name: payload_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:13
+      author: ranquild
+      comment: Index source_replacement_run (source_entity_type, source_entity_id)
+      changes:
+        - createIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_source_entity
+            columns:
+              - column:
+                  name: source_entity_type
+              - column:
+                  name: source_entity_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:14
+      author: ranquild
+      comment: Index source_replacement_run (target_entity_type, target_entity_id)
+      changes:
+        - createIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_target_entity
+            columns:
+              - column:
+                  name: target_entity_type
+              - column:
+                  name: target_entity_id
