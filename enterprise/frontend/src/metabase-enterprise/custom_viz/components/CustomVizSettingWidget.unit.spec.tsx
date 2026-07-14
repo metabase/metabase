@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
 import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
+
+import { render, screen, waitFor } from "__support__/ui";
 
 import { wrapPluginWidget } from "../widget-mount";
 
@@ -133,7 +134,6 @@ describe("CustomVizSettingWidget", () => {
       expect(getWidgetContainer()).toHaveAttribute("data-plugin-sandbox", "11");
     });
 
-    // eslint-disable-next-line testing-library/no-node-access
     const wrapper = getWidgetContainer()?.parentElement;
     expect(wrapper).not.toBeNull();
     expect(wrapper).not.toHaveAttribute("data-plugin-sandbox");
