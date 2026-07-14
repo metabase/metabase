@@ -8,7 +8,7 @@ import {
   updateSettings,
 } from "metabase/admin/settings/settings";
 import { userApi } from "metabase/api";
-import { loadLocalization } from "metabase/lib/i18n";
+import { loadLocalization } from "metabase/api/localization";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";

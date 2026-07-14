@@ -1,10 +1,34 @@
 import ActionViz from "metabase/actions/components/ActionViz";
+import { registerJsxFormatting } from "metabase/lib/formatting/ui";
 import { ListViz } from "metabase/list-view/components/ListViz";
 import {
+  registerSettingWidgets,
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
 
+import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
+import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
+import { ChartSettingColorPicker } from "./components/settings/ChartSettingColorPicker";
+import { ChartSettingColorsPicker } from "./components/settings/ChartSettingColorsPicker";
+import { ChartSettingEnumToggle } from "./components/settings/ChartSettingEnumToggle";
+import { ChartSettingFieldPicker } from "./components/settings/ChartSettingFieldPicker";
+import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
+import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
+import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
+import { ChartSettingInput } from "./components/settings/ChartSettingInput";
+import { ChartSettingInputNumeric } from "./components/settings/ChartSettingInputNumeric";
+import { ChartSettingMaxCategories } from "./components/settings/ChartSettingMaxCategories";
+import { ChartSettingMultiSelect } from "./components/settings/ChartSettingMultiSelect";
+import { chartSettingNestedSettings } from "./components/settings/ChartSettingNestedSettings";
+import { ChartSettingOrderedSimple } from "./components/settings/ChartSettingOrderedSimple";
+import { ChartSettingRadio } from "./components/settings/ChartSettingRadio";
+import { ChartSettingSegmentedControl } from "./components/settings/ChartSettingSegmentedControl";
+import { ChartSettingSegmentsEditor } from "./components/settings/ChartSettingSegmentsEditor";
+import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
+import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
+import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
+import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { BoxPlot } from "./visualizations/BoxPlot";
@@ -19,6 +43,8 @@ import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
 import { ObjectDetail } from "./visualizations/ObjectDetail";
 import { PieChart } from "./visualizations/PieChart";
+import { DimensionsWidget } from "./visualizations/PieChart/DimensionsWidget";
+import { SliceNameWidget } from "./visualizations/PieChart/SliceNameWidget";
 import { PivotTable } from "./visualizations/PivotTable";
 import { Progress } from "./visualizations/Progress";
 import { RowChart } from "./visualizations/RowChart";
@@ -26,12 +52,12 @@ import { SankeyChart } from "./visualizations/SankeyChart";
 import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
+import { SmartScalarComparisonWidget } from "./visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 import { Table } from "./visualizations/Table/Table";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function () {
+function registerVisualizationComponents() {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);
@@ -62,4 +88,39 @@ export default function () {
   registerVisualization(ListViz);
 
   setDefaultVisualization(Table);
+}
+
+function registerVisualizationSettingWidgets() {
+  registerSettingWidgets({
+    input: ChartSettingInput,
+    number: ChartSettingInputNumeric,
+    radio: ChartSettingRadio,
+    select: ChartSettingSelect,
+    toggle: ChartSettingToggle,
+    segmentedControl: ChartSettingSegmentedControl,
+    field: ChartSettingFieldPicker,
+    fields: ChartSettingFieldsPicker,
+    fieldsPartition: ChartSettingFieldsPartition,
+    color: ChartSettingColorPicker,
+    colors: ChartSettingColorsPicker,
+    multiselect: ChartSettingMultiSelect,
+    enumToggle: ChartSettingEnumToggle,
+    goalInput: ChartSettingGoalInput,
+    maxCategories: ChartSettingMaxCategories,
+    orderedSimple: ChartSettingOrderedSimple,
+    segmentsEditor: ChartSettingSegmentsEditor,
+    seriesOrder: ChartSettingSeriesOrder,
+    tableColumns: ChartSettingTableColumns,
+    nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
+    nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
+    pieDimensions: DimensionsWidget,
+    pieSliceName: SliceNameWidget,
+    smartScalarComparison: SmartScalarComparisonWidget,
+  });
+}
+
+export function registerVisualizations() {
+  registerVisualizationComponents();
+  registerVisualizationSettingWidgets();
+  registerJsxFormatting();
 }

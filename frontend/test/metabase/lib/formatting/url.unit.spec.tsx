@@ -3,8 +3,11 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { registerJsxFormatting } from "metabase/lib/formatting/ui";
 import { formatUrl } from "metabase/lib/formatting/url";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
+registerJsxFormatting();
 
 describe("formatUrl", () => {
   afterEach(() => {

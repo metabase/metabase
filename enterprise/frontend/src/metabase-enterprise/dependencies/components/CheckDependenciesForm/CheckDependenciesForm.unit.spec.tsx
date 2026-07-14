@@ -2,7 +2,7 @@ import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import type { IconName } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   CardDisplayType,
   CardType,

@@ -15,8 +15,11 @@ import {
   getCurrencySymbol,
   slugify,
 } from "metabase/lib/formatting";
+import { registerJsxFormatting } from "metabase/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
+
+registerJsxFormatting();
 
 const SITE_URL = "http://localhost:3000";
 

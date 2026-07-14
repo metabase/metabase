@@ -7,11 +7,11 @@ import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
   copyColumn,
-  createDataSourceNameRef,
   createVisualizerColumnReference,
   extractReferencedColumns,
-  isDraggedColumnItem,
-} from "metabase/visualizer/utils";
+} from "metabase/visualizer/utils/column";
+import { createDataSourceNameRef } from "metabase/visualizer/utils/data-source";
+import { isDraggedColumnItem } from "metabase/visualizer/utils/drag-and-drop";
 import {
   isDimension,
   isMetric,

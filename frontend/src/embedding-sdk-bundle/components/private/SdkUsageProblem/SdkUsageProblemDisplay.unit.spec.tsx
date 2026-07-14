@@ -26,7 +26,9 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
+jest.mock("metabase/visualizations/register", () => ({
+  registerVisualizations: jest.fn(),
+}));
 
 interface Options {
   authConfig: MetabaseAuthConfig;

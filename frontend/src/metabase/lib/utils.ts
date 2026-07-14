@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { EntityToken } from "metabase-types/api/entity";
 
 export function isEmpty(str: string | null) {
@@ -167,7 +166,6 @@ export function versionIsLatest({
  * Use only we want to display something differently based on specifically the build,
  * ie: "Switch binary" vs "Put a valid token in the settings"
  */
-export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
 
 // Extract resource id from signed JWT token used in Static Embedding
 export const extractResourceIdFromJwtToken = (jwtToken: EntityToken) => {

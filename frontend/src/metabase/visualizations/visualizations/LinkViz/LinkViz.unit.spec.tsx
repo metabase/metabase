@@ -15,7 +15,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
   Parameter,

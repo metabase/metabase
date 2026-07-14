@@ -2,9 +2,9 @@ import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
+import { loadLocalization } from "metabase/api/localization";
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import { isSmallScreen, reload } from "metabase/lib/dom";
-import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";

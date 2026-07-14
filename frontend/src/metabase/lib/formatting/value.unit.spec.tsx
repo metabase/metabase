@@ -1,9 +1,12 @@
 import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
+import { registerJsxFormatting } from "metabase/lib/formatting/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import type { OptionsType } from "./types";
 import { formatValue } from "./value";
+
+registerJsxFormatting();
 
 describe("formatValue", () => {
   const setup = (value: any, overrides: Partial<OptionsType> = {}) => {

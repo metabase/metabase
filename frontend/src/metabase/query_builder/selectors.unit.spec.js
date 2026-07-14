@@ -9,7 +9,7 @@ import {
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {

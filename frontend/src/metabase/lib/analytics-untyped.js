@@ -1,7 +1,6 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
 import Settings from "metabase/lib/settings";
-import { getUserId } from "metabase/selectors/user";
 
 export const trackPageView = (url) => {
   if (!url || !Settings.trackingEnabled()) {
@@ -21,7 +20,9 @@ export const createTracker = (store) => {
 const createSnowplowPlugin = (store) => {
   return {
     beforeTrack: () => {
-      const userId = getUserId(store.getState());
+      // inline the selector to keep the static-viz bundle from pulling
+      // metabase/selectors (and through it the plugins barrel)
+      const userId = store.getState().currentUser?.id;
       userId && Snowplow.setUserId(String(userId));
     },
     contexts: () => {

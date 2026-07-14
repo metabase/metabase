@@ -16,9 +16,8 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
@@ -29,8 +28,7 @@ import {
 
 import * as data from "./stories-data";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
-registerVisualization(Table);
+registerVisualizations();
 
 const settings = mockSettings();
 
