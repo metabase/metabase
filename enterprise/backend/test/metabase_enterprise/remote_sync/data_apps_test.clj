@@ -33,7 +33,7 @@
     (mt/with-model-cleanup [:model/DataApp]
       (let [files  {"main" {"collections/c/c.yaml"
                             (test-helpers/generate-collection-yaml "data-apps-test-collx" "DA Coll")
-                            "data_apps/sales/data_app.yml"  "name: Sales\nslug: sales\npath: ./dist/index.js\n"
+                            "data_apps/sales/data_app.yaml"  "name: Sales\npath: ./dist/index.js\n"
                             "data_apps/sales/dist/index.js" "SALESBUNDLE"}}
             result (import! files)]
         (is (= :success (:status result)))
@@ -47,12 +47,12 @@
 (deftest import-keeps-data-apps-absent-from-repo-test
   (testing "an import whose repo no longer has an app dir keeps that app (a sync never deletes)"
     (mt/with-model-cleanup [:model/DataApp]
-      (import! {"main" {"data_apps/gone/data_app.yml" "name: Gone\nslug: gone\npath: ./i.js\n"
+      (import! {"main" {"data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
                         "data_apps/gone/i.js"         "X"
-                        "data_apps/kept/data_app.yml" "name: Kept\nslug: kept\npath: ./i.js\n"
+                        "data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
                         "data_apps/kept/i.js"         "K"}})
       (is (= #{"gone" "kept"} (t2/select-fn-set :name :model/DataApp)))
-      (import! {"main" {"data_apps/kept/data_app.yml" "name: Kept\nslug: kept\npath: ./i.js\n"
+      (import! {"main" {"data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
                         "data_apps/kept/i.js"         "K"}})
       (is (some? (t2/select-one :model/DataApp :name "gone"))
           "the app absent from the later import is kept, not pruned")

@@ -31,6 +31,23 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders a sync-failed app's name as plain text (the link would lead to a dead end)", () => {
+    renderWithProviders(
+      <DataAppSummary
+        app={createMockDataApp({
+          display_name: "Sales",
+          enabled: true,
+          sync_error: "Bundle file not found",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Sales")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Sales" }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("sync status", () => {
     it("shows the short synced SHA when the app has synced", () => {
       renderWithProviders(

@@ -2,7 +2,7 @@
   "Data-app endpoints, mounted at `/api/apps`.
 
    Data apps come from the repository connected via the remote-sync feature. The
-   repo's `data_apps/<dir>/data_app.yml` files are discovered on sync and each is
+   repo's `data_apps/<dir>/data_app.yaml` files are discovered on sync and each is
    materialized as one `data_app` row, caching the app's bundle. Users navigate to
    `/apps/:slug`, which fetches `/api/apps/:slug/bundle` and evaluates the
    bytes inside a Near Membrane sandbox.

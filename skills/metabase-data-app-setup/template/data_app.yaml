@@ -1,5 +1,4 @@
 name: Data App Template
-slug: data-app-template
 path: ./dist/index.js
 
 # Origins this app may call with fetch/XHR. Everything else is blocked — both in

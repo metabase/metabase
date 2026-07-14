@@ -1,16 +1,15 @@
 (ns metabase-enterprise.data-apps.config
-  "Parsing + validation of a per-app `data_app.yml`. Each data app lives in its
+  "Parsing + validation of a per-app `data_app.yaml`. Each data app lives in its
    own directory under `data_apps/` at the repo root, alongside its built bundle:
 
      data_apps/
-       sales/
-         data_app.yml
+       sales/                   # the directory name is the slug: /apps/sales
+         data_app.yaml
          dist/index.js
 
-   where `data_app.yml` is:
+   where `data_app.yaml` is:
 
      name: Sales dashboard      # display name
-     slug: sales                # URL identity (/apps/:slug)
      path: dist/index.js        # bundle path, relative to this app's directory
      allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
        - https://api.example.com
@@ -27,20 +26,18 @@
 (set! *warn-on-reflection* true)
 
 (def config-file-name
-  "Canonical name of the per-app config file (used in error messages). Both
-   `data_app.yml` and `data_app.yaml` are accepted on disk — see [[config-file-re]]."
-  "data_app.yml")
-
-(def config-file-re
-  "Matches the per-app config filename, either extension."
-  #"data_app\.ya?ml")
+  "Name of the per-app config file (used in error messages)."
+  "data_app.yaml")
 
 (def apps-dir
   "Directory at the repo root that holds one subdirectory per data app."
   "data_apps")
 
 (def ^:private slug-pattern
-  "Lowercase letters/numbers separated by single dashes."
+  "Lowercase letters/numbers separated by single dashes. An app *directory* must
+   match this: the name is used verbatim as the slug, never normalized. Folding
+   case here would reintroduce the collisions the directory naming rules out —
+   git happily holds both `data_apps/Sales` and `data_apps/sales`."
   #"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 (def ^:private reserved-slugs
@@ -106,24 +103,30 @@
       (throw (ex-info (tru "Could not parse {0}/{1}: {2}" dir config-file-name (ex-message e))
                       {:status-code 400})))))
 
+(defn- dir-slug
+  "The app's slug: the name of its directory (`data_apps/sales` -> `sales`)."
+  [^String dir]
+  (subs dir (inc (str/last-index-of dir "/"))))
+
 (defn parse-app-config
-  "Parse the bytes of one `data_app.yml` (from directory `dir`, used only for
-   error messages) into `{:slug ..., :display_name ..., :path ...,
-   :allowed_hosts [...]}`. `path` is relative to the app's directory;
-   `:allowed_hosts` is a (possibly empty) vector of origins the sandboxed bundle
-   may reach. Throws an `ex-info` with `:status-code` 400 on malformed or
-   incomplete content."
+  "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
+   `data_apps/sales`) into `{:slug ..., :display_name ..., :path ...,
+   :allowed_hosts [...]}`. The slug is the directory's name; `path` is relative to
+   the directory; `:allowed_hosts` is a (possibly empty) vector of origins the
+   sandboxed bundle may reach. Throws an `ex-info` with `:status-code` 400 on
+   malformed or incomplete content — including a directory whose name isn't a
+   usable slug, since that app has no URL to be served at."
   [^bytes bytes ^String dir]
   (let [parsed        (parse-yaml bytes dir)
-        slug          (some-> (:slug parsed) str str/trim not-empty)
+        slug          (dir-slug dir)
         name          (some-> (:name parsed) str str/trim not-empty)
         path          (some-> (:path parsed) normalize-path not-empty)
         allowed-hosts (parse-allowed-hosts parsed dir)]
-    (when-not (and slug (re-matches slug-pattern slug))
-      (throw (ex-info (tru "{0}/{1}: \"slug\" must be lowercase letters, numbers, and dashes." dir config-file-name)
+    (when-not (re-matches slug-pattern slug)
+      (throw (ex-info (tru "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes." dir)
                       {:status-code 400})))
     (when (contains? reserved-slugs slug)
-      (throw (ex-info (tru "{0}/{1}: \"{2}\" is a reserved slug." dir config-file-name slug)
+      (throw (ex-info (tru "{0}: \"{1}\" is a reserved slug — rename the directory." dir slug)
                       {:status-code 400})))
     (when-not name
       (throw (ex-info (tru "{0}/{1}: \"name\" is required." dir config-file-name)

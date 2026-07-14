@@ -31,9 +31,9 @@
     result))
 
 (defn- app-tree
-  "Repo files for one data app: its `data_app.yml` + a bundle at `dist/index.js`."
+  "Repo files for one data app: its `data_app.yaml` + a bundle at `dist/index.js`."
   [slug bundle]
-  {(str "data_apps/" slug "/data_app.yml")  (str "name: " slug "\nslug: " slug "\npath: dist/index.js\n")
+  {(str "data_apps/" slug "/data_app.yaml")  (str "name: " slug "\npath: dist/index.js\n")
    (str "data_apps/" slug "/dist/index.js") bundle})
 
 ;; One self-contained serdes entity (a bare collection — no DB deps), used as the

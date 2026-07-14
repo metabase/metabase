@@ -22,7 +22,7 @@ export interface LoadedDataApp {
 /** Response carrying the bundle source plus the app's fetch/XHR allowlist. */
 export interface FetchedDataAppBundle {
   code: string;
-  /** Origins the sandboxed bundle may fetch/XHR (from `data_app.yml`). */
+  /** Origins the sandboxed bundle may fetch/XHR (from `data_app.yaml`). */
   allowedHosts: string[];
 }
 

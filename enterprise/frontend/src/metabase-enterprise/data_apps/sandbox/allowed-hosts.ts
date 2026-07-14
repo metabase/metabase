@@ -3,7 +3,7 @@
  *
  * By default the sandbox hard-blocks all network egress (see
  * `metabase/utils/scripts-sandbox/distortions-blocked-apis`). When an app
- * declares `allowed_hosts` in its `data_app.yml`, those origins — and ONLY
+ * declares `allowed_hosts` in its `data_app.yaml`, those origins — and ONLY
  * those, never the Metabase origin, which stays reachable only via sanctioned
  * SDK calls — become reachable through `fetch`/`XMLHttpRequest`. Host matching
  * mirrors the CSP `connect-src` the backend emits for the same hosts, so the JS

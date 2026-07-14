@@ -2,13 +2,13 @@ export type DataAppId = number;
 
 /**
  * A data app materialized from the connected repository. The repo's
- * `data_apps/<dir>/data_app.yml` files are discovered on sync; one row exists
+ * `data_apps/<dir>/data_app.yaml` files are discovered on sync; one row exists
  * per app and the bundle is cached in the app DB and served at `/apps/:name`.
  * The repository itself is configured via the remote-sync settings.
  */
 export interface DataApp {
   id: DataAppId;
-  /** Stable slug from the app's `data_app.yml`; also the URL segment. */
+  /** The app's slug. */
   name: string;
   display_name: string;
   /** Path within the repo to the built bundle. */
@@ -17,7 +17,7 @@ export interface DataApp {
   enabled: boolean;
   /**
    * External origins the app's sandboxed bundle may `fetch`/XHR, from its
-   * `data_app.yml`. Empty means none (Metabase data still flows through the
+   * `data_app.yaml`. Empty means none (Metabase data still flows through the
    * SDK). Each entry is an origin, optionally with a `*.` wildcard.
    */
   allowed_hosts: string[];

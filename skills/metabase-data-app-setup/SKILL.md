@@ -7,7 +7,7 @@ description: Scaffold a new Metabase data-app into the connected remote-sync rep
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed.
 
-**Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yml` (name/slug/path), and the committed built bundle at the `path` its `data_app.yml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/apps/<slug>`. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
+**Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yaml` (name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/apps/<slug>` url, where the slug **is** the directory's name. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
 
 **The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, or `src/index.tsx` by hand, stop — copy the template instead.
 
@@ -33,7 +33,7 @@ Data apps live inside the Git repository connected to Metabase via remote-sync. 
 
 ## Step 2 — Name the app and create its directory
 
-1. Settle on the app's **slug** before scaffolding — it's the directory name *and* the `/apps/<slug>` URL. Lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`). If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a slug; confirm it.
+1. Settle on the app's **directory name** before scaffolding — it is used verbatim as the slug (the `/apps/<slug>` URL), so it **must be dash-cased**: lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`), e.g. `sales-overview`. Anything else (uppercase, spaces, underscores) is rejected on sync. If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a name; confirm it.
 2. Ensure `<repo>/data_apps/` exists; create it if missing.
 3. Create `<repo>/data_apps/<slug>/`. **If it already exists**, treat it as an existing project (see below) — never overwrite without confirmation.
 
@@ -123,15 +123,14 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 5. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
 6. **Fix the app's `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
    - **Lockfile** — strip the lockfile-ignoring block (the chunk between `# Lockfiles —` and `bun.lockb`, covering `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb`) so the project commits its lockfile for reproducible installs.
-   - **The built bundle** — Metabase serves the file at the `path` declared in `data_app.yml` (the template builds to `dist/index.js`, the default `path`) straight from the committed Git tree, so **that file must be committed**. If the template's `.gitignore` ignores `dist/` (or wherever your build outputs), remove that line.
+   - **The built bundle** — Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`, the default `path`) straight from the committed Git tree, so **that file must be committed**. If the template's `.gitignore` ignores `dist/` (or wherever your build outputs), remove that line.
    **Verify with `git status`** — after `npm install` + a build, both the generated lockfile and the built bundle (the file `path` points at) must appear as untracked/committable files. If either doesn't, the relevant `.gitignore` line is still there; remove it and re-check. Do **not** skip this — agents have repeatedly shipped projects with no committed lockfile or an un-synced bundle.
 7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
-9. **Edit `data_app.yml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
+9. **Edit `data_app.yaml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
 
    ```yaml
    name: Sales App        # display name shown in the admin UI
-   slug: sales            # URL identity → /apps/sales (match the directory name)
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
    # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
    #   - https://api.example.com
@@ -164,7 +163,7 @@ project scaffold and proving the starter bundle works.
 
 1. Run `npm run typecheck`.
 2. Run `npm run build`.
-3. Confirm `git status` shows the app source, lockfile, `data_app.yml`, and the
+3. Confirm `git status` shows the app source, lockfile, `data_app.yaml`, and the
    built bundle (`dist/index.js` by default) as committable files.
 4. If the user asked for a live preview, run `npm run dev` and confirm the
    starter "Hello, data app" screen renders through the sandbox preview.
@@ -366,15 +365,15 @@ The bundle imports React hooks/JSX, SDK components from `@metabase/embedding-sdk
 
 The Near Membrane sandbox throws at runtime on these globals. Use the endowed replacement instead:
 
-| Blocked | Use instead |
-|---|---|
-| **Network** — `fetch`, `XMLHttpRequest`, `WebSocket` | Use the SDK/data-app APIs for Metabase reads and writes — never raw `fetch`. Raw `fetch`/`XHR` reach **only** the external origins listed in `data_app.yml`'s `allowed_hosts` (Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked. |
-| **UI dialogs** — `alert`, `confirm`, `prompt` | Render a React modal in your own tree. |
-| **Storage** — `localStorage`, `sessionStorage`, `indexedDB`, `document.cookie` | Treat the data app as stateless across reloads; persist via a Metabase action. |
-| **Window / history navigation** — `window.open`, `history.pushState`, `history.replaceState` | `useDataAppLocation().navigate` for in-app; `<a target="_blank" rel="noopener">` for external. |
-| **Clipboard** — `document.execCommand("copy")`, `navigator.clipboard` | `copy` (write-only): `import { copy } from "@metabase/embedding-sdk-react/data-app"`, then `await copy(text)` from a user event. There is **no** read/paste API — that would let a bundle exfiltrate whatever the user copied. |
-| **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available. |
-| **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works. |
+| Blocked | Use instead                                                                                                                                                                                                                                                                     |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Network** — `fetch`, `XMLHttpRequest`, `WebSocket` | Use the SDK/data-app APIs for Metabase reads and writes — never raw `fetch`. Raw `fetch`/`XHR` reach **only** the external origins listed in `data_app.yaml`'s `allowed_hosts` (Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked. |
+| **UI dialogs** — `alert`, `confirm`, `prompt` | Render a React modal in your own tree.                                                                                                                                                                                                                                          |
+| **Storage** — `localStorage`, `sessionStorage`, `indexedDB`, `document.cookie` | Treat the data app as stateless across reloads; persist via a Metabase action.                                                                                                                                                                                                  |
+| **Window / history navigation** — `window.open`, `history.pushState`, `history.replaceState` | `useDataAppLocation().navigate` for in-app; `<a target="_blank" rel="noopener">` for external.                                                                                                                                                                                  |
+| **Clipboard** — `document.execCommand("copy")`, `navigator.clipboard` | `copy` (write-only): `import { copy } from "@metabase/embedding-sdk-react/data-app"`, then `await copy(text)` from a user event. There is **no** read/paste API — that would let a bundle exfiltrate whatever the user copied.                                                  |
+| **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available.                                                                                                                                                                                                                                                                  |
+| **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works.                                                                                         |
 
 **Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + React DOM + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
@@ -414,8 +413,8 @@ Without `height`/`width`, the SDK component renders at its intrinsic size and ov
 
 Data apps are delivered by Git, not uploaded — you commit the app directory and Metabase pulls it on its next remote-sync import.
 
-1. `npm run build` → produces the bundle at your `data_app.yml` `path` (the template builds to `dist/index.js`).
-2. From the **repo root**, commit the app directory — its `data_app.yml`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
+1. `npm run build` → produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`).
+2. From the **repo root**, commit the app directory — its `data_app.yaml`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
    ```bash
    git add data_apps/<slug>
    git commit -m "Add <slug> data app"
@@ -423,7 +422,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
    ```
 3. The app appears in Metabase on the next remote-sync import — a manual **Pull changes** (Admin → Data apps / Remote sync), the auto-import poll, or a restart — reachable at `/apps/<slug>`.
 
-**To update:** commit a new build and pull again. **To remove:** delete `data_apps/<slug>/`, commit, and pull — Metabase prunes apps whose directory is gone from the repo.
+**To update:** commit a new build and pull again. **To remove:** a sync never deletes, so removing the app's directory from the repo does *not* remove the app — an admin removes it in Metabase (Admin → Data apps).
 
 ## Common pitfalls
 
