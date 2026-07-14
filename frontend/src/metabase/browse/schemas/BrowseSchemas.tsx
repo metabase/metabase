@@ -21,7 +21,6 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
-import { CopyPermalinkButton } from "../components/CopyPermalinkButton";
 
 type Schema = { id: string; name: string };
 
@@ -81,13 +80,7 @@ const BrowseSchemasContainer = ({
                       title={schema.name}
                       icon="folder"
                       to={Urls.browseSchemaBySlug(params.slug, schema.name)}
-                    >
-                      {database && (
-                        <CopyPermalinkButton
-                          url={Urls.permalinkSchema(database, schema.name)}
-                        />
-                      )}
-                    </BrowseCard>
+                    />
                   ))}
                 </BrowseGrid>
               )}
