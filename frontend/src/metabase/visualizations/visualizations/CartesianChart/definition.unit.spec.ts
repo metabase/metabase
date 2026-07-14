@@ -1,9 +1,9 @@
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { getCartesianChartDefinition } from "./chart-definition";
+import { getCartesianChartDefinition } from "./definition";
 
-describe("chart-definition", () => {
+describe("definition", () => {
   describe("onDisplayUpdate", () => {
     const onDisplayUpdate = getCartesianChartDefinition({}).onDisplayUpdate!;
 

@@ -46,7 +46,7 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
