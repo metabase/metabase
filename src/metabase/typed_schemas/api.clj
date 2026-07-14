@@ -7,22 +7,19 @@
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.metabot.tools.entity-details :as entity-details]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.system.core :as system]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.render :as render]
+   [metabase.typed-schemas.api.schema :as schema]
+   [metabase.typed-schemas.api.schema.common :as schema.common]
+   [metabase.typed-schemas.api.schema.question :as schema.question]
+   [metabase.typed-schemas.api.schema.table :as schema.table]
    [metabase.typed-schemas.api.scope :as scope]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time Instant)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,40 +29,6 @@
    "Cross-Origin-Resource-Policy" "same-origin"
    "Referrer-Policy"              "no-referrer"
    "Cache-Control"                "no-store"})
-
-(defn- select-cards
-  ([card-type database-ids]
-   (select-cards card-type database-ids nil))
-  ([card-type database-ids collection-ids]
-   (->> (t2/select :model/Card
-                   {:where    (cond-> [:and
-                                       [:= :type (name card-type)]
-                                       [:= :archived false]
-                                       (collection/visible-collection-filter-clause :collection_id)]
-                                database-ids (conj (scope/database-id-filter-clause database-ids :database_id))
-                                collection-ids (conj (scope/id-filter-clause collection-ids :collection_id)))
-                    :order-by [[:name :asc] [:id :asc]]})
-        (filter mi/can-read?))))
-
-(defn- card-type-name
-  [card]
-  (some-> (:type card) name))
-
-(defn- schema-details-error-message
-  [card error-message]
-  (format "Failed to build schema details for %s \"%s\" (card %s): %s"
-          (or (card-type-name card) "card")
-          (or (:name card) "Untitled")
-          (:id card)
-          (or error-message "unknown error")))
-
-(defn- schema-details-error-data
-  [card m]
-  (m/assoc-some
-   {:card-id   (:id card)
-    :card-name (:name card)
-    :card-type (:type card)}
-   :status-code (:status-code m)))
 
 (defn- model-action-error-message
   ([model error-message]
@@ -83,18 +46,18 @@
            (or error-message "unknown error"))))
 
 (defn- model-action-error-data
-  ([model m]
+  ([model error-data]
    (m/assoc-some
     {:model-id   (:id model)
      :model-name (:name model)}
-    :status-code (:status-code m)))
-  ([model action m]
+    :status-code (:status-code error-data)))
+  ([model action error-data]
    (m/assoc-some
-    (assoc (model-action-error-data model m)
+    (assoc (model-action-error-data model error-data)
            :action-id   (:id action)
            :action-name (:name action)
            :action-type (:type action))
-    :status-code (:status-code m))))
+    :status-code (:status-code error-data))))
 
 (defn- raw-model-actions
   [model-id]
@@ -126,39 +89,9 @@
   (assoc (model-action-error-data model nil)
          :dropped-actions (mapv #(select-keys % [:id :name :type]) dropped-actions)))
 
-(defn- question-details
-  [card]
-  (let [response (try
-                   (entity-details/get-report-details {:report-id             (:id card)
-                                                       :with-field-values?    false
-                                                       :with-related-tables?  false
-                                                       :with-metrics?         false
-                                                       :with-measures?        false
-                                                       :with-segments?        false})
-                   (catch Exception e
-                     (throw (ex-info (schema-details-error-message card (ex-message e))
-                                     (assoc (schema-details-error-data card (ex-data e))
-                                            :cause-message (ex-message e))
-                                     e))))]
-    (or (:structured-output response)
-        (let [error-message (:output response)]
-          (throw (ex-info (schema-details-error-message card error-message)
-                          (assoc (schema-details-error-data card response)
-                                 :error-message error-message
-                                 :response response)))))))
-
 (defn- metric-result-column
   [card]
-  (try
-    (let [mp    (lib-be/application-database-metadata-provider (:database_id card))
-          query (lib/query mp (:dataset_query card))
-          col   (->> (lib/returned-columns query)
-                     (filter #(= (:lib/source %) :source/aggregations))
-                     first)]
-      (when col
-        (metabot.tools.u/->result-column query col)))
-    (catch Exception _
-      nil)))
+  (schema.common/aggregation-result-column (:database_id card) (:dataset_query card)))
 
 (defn- metric-details
   [card]
@@ -169,26 +102,13 @@
                                           :with-segments?                  false})
       :structured-output))
 
-(defn- question-schema
-  [{:keys [id name description verified display result-columns portable_entity_id]}]
-  (m/assoc-some
-   {:type    "card"
-    :key     (common/generated-key name id)
-    :id      id
-    :name    name
-    :display display
-    :columns (mapv common/column-schema result-columns)}
-   :entityId portable_entity_id
-   :description description
-   :verified (when verified true)))
-
 (defn- ->keyword
   "Coerces strings or keywords into a keyword for uniform type inspection."
-  [v]
+  [value]
   (cond
-    (keyword? v) v
-    (string? v)  (keyword v)
-    :else        nil))
+    (keyword? value) value
+    (string? value)  (keyword value)
+    :else            nil))
 
 (defn- param-type->js-type
   "Maps a Metabase parameter type (`:number`, `:string/=`, `:date/single`,
@@ -196,8 +116,8 @@
   Returns nil for ambiguous types (`:=`, `:id`, `:category`, …) so the
   caller can fall back to other type sources like a backing template-tag."
   [param-type]
-  (when-let [k (->keyword param-type)]
-    (let [prefix (or (namespace k) (name k))]
+  (when-let [param-type-keyword (->keyword param-type)]
+    (let [prefix (or (namespace param-type-keyword) (name param-type-keyword))]
       (case prefix
         ("number" "numeric") "number"
         ("text" "string")    "string"
@@ -289,11 +209,11 @@
                    :model_id (:id model)
                    :archived false
                    :type [:not= "http"])
-                  (catch Exception e
-                    (throw (ex-info (model-action-error-message model (ex-message e))
-                                    (assoc (model-action-error-data model (ex-data e))
-                                           :cause-message (ex-message e))
-                                    e))))
+                  (catch Exception exception
+                    (throw (ex-info (model-action-error-message model (ex-message exception))
+                                    (assoc (model-action-error-data model (ex-data exception))
+                                           :cause-message (ex-message exception))
+                                    exception))))
         dropped (dropped-actions raw-actions actions)]
     (when dropped
       (throw (ex-info (dropped-actions-message model dropped)
@@ -302,11 +222,11 @@
       (mapv (fn [action]
               (try
                 (action-schema action)
-                (catch Exception e
-                  (throw (ex-info (model-action-error-message model action (ex-message e))
-                                  (assoc (model-action-error-data model action (ex-data e))
-                                         :cause-message (ex-message e))
-                                  e)))))
+                (catch Exception exception
+                  (throw (ex-info (model-action-error-message model action (ex-message exception))
+                                  (assoc (model-action-error-data model action (ex-data exception))
+                                         :cause-message (ex-message exception))
+                                  exception)))))
             actions))))
 
 (defn- model-schema
@@ -329,17 +249,12 @@
      :semantic_type  (some-> (:semantic-type dimension) u/qualified-name)
      :field_id       field-id}))
 
-(defn- field-table-id
-  [field-id]
-  (when (integer? field-id)
-    (t2/select-one-fn :table_id :model/Field :id field-id)))
-
 (defn- dimension-table-id
   [{:keys [field_id] :as dimension}]
   (let [field-id (or field_id (some-> dimension :sources first :field-id))]
     (or (:table_id dimension)
         (:table-id dimension)
-        (field-table-id field-id))))
+        (schema.table/field-table-id field-id))))
 
 (defn- dimension-schema
   ([dimension metric-id]
@@ -370,22 +285,6 @@
       :metricId metric-id
       :keyDisambiguator (when (integer? table-id)
                           (get table-key-by-id table-id))))))
-
-(defn- field-schema
-  ([field]
-   (field-schema field nil))
-  ([{:keys [id field_id] :as field} source-name]
-   (let [field-id (or id field_id)
-         table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
-     (m/assoc-some
-      (assoc (common/column-schema field)
-             :type "column"
-             :key (common/generated-key (:name field) field-id)
-             :id field-id)
-      :sourceName source-name
-      :fieldId (when (integer? field-id) field-id)
-      :tableId (when (integer? table-id) table-id)
-      :defaultTemporalBucket (:unit field)))))
 
 (defn- mapping-source-field-id
   [{:keys [target]}]
@@ -469,20 +368,6 @@
    :displayName   name
    :jsType        "unknown"})
 
-(defn- measure-result-column
-  [database-id measure-id]
-  (try
-    (when-let [definition (t2/select-one-fn :definition :model/Measure :id measure-id)]
-      (let [mp    (lib-be/application-database-metadata-provider database-id)
-            query (lib/query mp definition)
-            col   (->> (lib/returned-columns query)
-                       (filter #(= (:lib/source %) :source/aggregations))
-                       first)]
-        (when col
-          (metabot.tools.u/->result-column query col))))
-    (catch Exception _
-      nil)))
-
 (defn- metric-schema
   [{:keys [id name description verified portable_entity_id base_table_portable_fk] :as details}
    card]
@@ -522,97 +407,12 @@
      :mappedTableIds (not-empty mapped-table-ids)
      :dimensions (not-empty (common/keyed-map dimension-schemas)))))
 
-(defn- select-tables
-  ([database-ids]
-   (select-tables database-ids nil))
-  ([database-ids table-ids]
-   (->> (t2/select :model/Table
-                   {:where    (cond-> [:and [:= :active true]]
-                                database-ids (conj (scope/database-id-filter-clause database-ids :db_id))
-                                table-ids (conj (scope/id-filter-clause table-ids :id)))
-                    :order-by [[:name :asc] [:id :asc]]})
-        (filter mi/can-read?))))
-
-(defn- select-library-tables
-  [{:keys [data-collection-ids]}]
-  (->> (t2/select :model/Table
-                  {:where    [:and
-                              [:= :active true]
-                              [:= :is_published true]
-                              (scope/id-filter-clause data-collection-ids :collection_id)]
-                   :order-by [[:name :asc] [:id :asc]]})
-       (filter mi/can-read?)))
-
-(defn- segment-schema
-  [table-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
-  (m/assoc-some
-   {:type    "segment"
-    :key     (common/generated-key (or display-name name) id)
-    :id      id
-    :tableId table-id
-    :name    name}
-   :entityId (or portable_entity_id portable-entity-id)
-   :description description))
-
-(defn- measure-schema
-  [table-id database-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
-  (m/assoc-some
-   {:type    "measure"
-    :key     (common/generated-key (or display-name name) id)
-    :id      id
-    :tableId table-id
-    :name    name
-    :columns [(or (some-> (measure-result-column database-id id) common/column-schema)
-                  (fallback-metric-column {:name (or display-name name)}))]}
-   :entityId (or portable_entity_id portable-entity-id)
-   :description description))
-
-(defn- table-schema
-  [{:keys [id name description display_name database_id database_name database_schema portable_entity_id fields segments measures]}]
-  (let [segments-map (common/keyed-map (map #(segment-schema id %) segments))
-        measures-map (common/keyed-map (map #(measure-schema id database_id %) measures))]
-    (m/assoc-some
-     {:type         "table"
-      :key          (common/generated-key (or display_name name) id)
-      :id           id
-      :name         (or display_name name)
-      :databaseName database_name
-      :tableName    name
-      :fields       (common/keyed-map (map #(field-schema % name) fields))}
-     :entityId portable_entity_id
-     :description description
-     :schemaName database_schema
-     :segments (not-empty segments-map)
-     :measures (not-empty measures-map))))
-
-(defn- table-details
-  [table]
-  (some-> (entity-details/get-table-details
-           {:entity-type          :table
-            :entity-id            (:id table)
-            :with-fields?         true
-            :with-field-values?   false
-            :with-related-tables? false
-            :with-metrics?        false
-            :with-measures?       true
-            :with-segments?       true})
-          :structured-output))
-
-(defn- question-schemas
-  ([database-ids]
-   (question-schemas database-ids nil))
-  ([database-ids collection-ids]
-   (for [card (select-cards :question database-ids collection-ids)
-         :let [details (question-details card)]
-         :when details]
-     (question-schema details))))
-
 (defn- model-schemas
   ([database-ids]
    (model-schemas database-ids nil))
   ([database-ids collection-ids]
-   (for [card (select-cards :model database-ids collection-ids)
-         :let [details (question-details card)
+   (for [card (schema.common/select-schema-cards :model database-ids collection-ids)
+         :let [details (schema.common/question-details card)
                schema  (some-> details model-schema)]
          :when schema]
      schema)))
@@ -621,28 +421,10 @@
   ([database-ids]
    (metric-schemas database-ids nil))
   ([database-ids collection-ids]
-   (for [card (select-cards :metric database-ids collection-ids)
+   (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
          :let [details (metric-details card)]
          :when details]
      (metric-schema details card))))
-
-(defn- table-schemas
-  [tables]
-  (for [table tables
-        :let [details (table-details table)]
-        :when details]
-    (table-schema details)))
-
-(defn- base-schema
-  [questions models tables metrics]
-  (array-map
-   :schemaVersion 2
-   :generatedAt   (str (Instant/now))
-   :metabase      {:instanceUrl (system/site-url)}
-   :questions     (common/keyed-map questions)
-   :models        (common/keyed-model-map models)
-   :tables        (common/keyed-map tables)
-   :metrics       (common/keyed-map metrics)))
 
 (defn- validate-query-params!
   [query-params]
@@ -675,10 +457,10 @@
   (let [{:keys [metric-collection-ids]} library-scope
         metrics               (metric-schemas nil metric-collection-ids)
         mapped-table-ids      (->> metrics (mapcat :mappedTableIds) set)
-        library-table-ids     (->> (select-library-tables library-scope) (map :id) set)
+        library-table-ids     (->> (schema.table/select-library-tables library-scope) (map :id) set)
         table-ids             (set/union library-table-ids mapped-table-ids)
-        tables                (table-schemas (select-tables nil table-ids))]
-    (base-schema [] models tables metrics)))
+        tables                (schema.table/table-schemas (schema.table/select-tables nil table-ids))]
+    (schema/base-schema [] models tables metrics)))
 
 (defn- typed-schema
   [query-params]
@@ -707,23 +489,23 @@
           question-collection-values
           (and include-models? (nil? database-ids)))
       (let [questions           (if question-collection-values
-                                  (question-schemas nil question-collection-ids)
+                                  (schema.question/question-schemas nil question-collection-ids)
                                   [])
             library-schema      (some-> library-scope
                                         (typed-schema-for-library-scope models))]
-        (base-schema questions
-                     models
-                     (-> library-schema :tables vals)
-                     (-> library-schema :metrics vals)))
+        (schema/base-schema questions
+                            models
+                            (-> library-schema :tables vals)
+                            (-> library-schema :metrics vals)))
 
       questions-only
-      (base-schema (question-schemas database-ids) models [] [])
+      (schema/base-schema (schema.question/question-schemas database-ids) models [] [])
 
       :else
-      (let [questions (question-schemas database-ids)
+      (let [questions (schema.question/question-schemas database-ids)
             metrics   (metric-schemas database-ids)
-            tables    (table-schemas (select-tables database-ids))]
-        (base-schema questions models tables metrics)))))
+            tables    (schema.table/table-schemas (schema.table/select-tables database-ids))]
+        (schema/base-schema questions models tables metrics)))))
 
 (def ^:private TypedSchemaQueryParams
   [:map
