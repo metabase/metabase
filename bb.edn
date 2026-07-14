@@ -37,10 +37,14 @@
 
   actionlint
   {:doc "Lint GitHub Actions files with actionlint."
-   :examples [["./bin/mage actionlint" "Lints every workflow under .github/workflows"]
-              ["./bin/mage actionlint .github/workflows/backend.yml" "Lints a single workflow"]]
+   :examples [["./bin/mage actionlint -c" "Lints every workflow under .github/workflows with colorized output"]
+              ["./bin/mage actionlint -v .github/workflows/backend.yml" "Lints a single workflow with verbose output"]
+              ["./bin/mage actionlint -- -version" "Print out version of actionlint installed, use -- to pass flags directly to actionlint"]]
+   ;; Declare useful actionlint flags as Mage options for better ergonomics 
+   :options [["-c" "--[no-]color" "Colorize the output" :default false]
+             ["-v" "--[no-]verbose" "Verbose output" :default false]]
    :requires [[mage.actionlint]]
-   :task (mage.actionlint/actionlint *command-line-args*)}
+   :task (task! (mage.actionlint/actionlint parsed))}
 
   cljfmt-staged
   {:doc "Runs cljfmt on staged files"

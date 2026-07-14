@@ -35,4 +35,4 @@ jobs:
           path: .actionlint
           key: actionlint-${{ runner.os }}-${{ hashFiles('mage/src/mage/actionlint.clj') }}
       - name: Run actionlint
-        run: ./bin/mage actionlint -color -verbose ${{ steps.changes.outputs.actionlint_files }}
+        run: ./bin/mage actionlint --color --verbose ${{ steps.changes.outputs.actionlint_files }}

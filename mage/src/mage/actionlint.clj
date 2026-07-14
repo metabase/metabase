@@ -65,16 +65,22 @@
   Any passed path that no longer exists on disk is dropped, so a diff that only *deletes* workflow files
   is a clean no-op rather than an actionlint \"file not found\" error.
 
-  `cli-args` are the raw command-line args: mage's option parser would
-  otherwise strip single-dash tokens, so passing them raw lets actionlint flags (e.g. `-shellcheck=`)
-  reach the binary."
-  [cli-args]
-  (let [bin      (ensure-binary!)
-        flags    (filter #(str/starts-with? % "-") cli-args)
-        paths    (remove #(str/starts-with? % "-") cli-args)
-        existing (filter #(fs/exists? (str u/project-root-directory "/" %)) paths)]
+  `parsed` is mage's parsed CLI map. `:color`/`:verbose` (both default on, see `bb.edn`) become
+  actionlint's `-color`/`-verbose` flags.
+
+  To pass arbitrary actionlint flags, put them after a `--` separator, which mage's parser leaves
+  untouched in `:arguments` (e.g. `./bin/mage actionlint -- -shellcheck=`). Those dash-prefixed tokens
+  are forwarded to actionlint verbatim; the rest are treated as workflow paths to lint."
+  [{:keys [options arguments]}]
+  (let [bin          (ensure-binary!)
+        option-flags (cond-> []
+                       (:verbose options) (conj "-verbose")
+                       (:color options)   (conj "-color"))
+        passthrough  (filter #(str/starts-with? % "-") arguments)
+        paths        (remove #(str/starts-with? % "-") arguments)
+        existing     (filter #(fs/exists? (str u/project-root-directory "/" %)) paths)]
     (if (and (seq paths) (empty? existing))
       (do (println (c/green "No existing GitHub Actions workflow files to lint."))
           (System/exit 0))
-      (let [{:keys [exit], :or {exit -1}} (apply shell/sh* bin (concat flags existing))]
+      (let [{:keys [exit], :or {exit -1}} (apply shell/sh* bin (concat option-flags passthrough existing))]
         (System/exit exit)))))
