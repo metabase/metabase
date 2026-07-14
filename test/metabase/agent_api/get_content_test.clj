@@ -4,10 +4,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.agent-api.get-content :as get-content]
-   [metabase.events.core :as events]
+   [metabase.agent-api.test-util :refer [captured-events!]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -66,7 +67,7 @@
                                             {:type "question" :id (:id card)}]})
             [missing found] (:data response)]
         (is (= 2 (:returned response)))
-        (is (= {:type "question" :id Integer/MAX_VALUE} (dissoc missing :error)))
+        (is (= {:type "question" :id Integer/MAX_VALUE :status 404} (dissoc missing :error)))
         (is (string? (:error missing)))
         (is (= (:id card) (:id found)))
         (is (nil? (:error found)))))))
@@ -81,7 +82,9 @@
         (let [response        (get-content! {:items [{:type "question" :id (:id hidden)}
                                                      {:type "question" :id (:id open)}]})
               [denied allowed] (:data response)]
-          (is (some? (:error denied)))
+          (testing "the refusal keeps its status, so a 403 that regresses to a 404 cannot pass unnoticed"
+            (is (= 403 (:status denied)))
+            (is (string? (:error denied))))
           (is (= "AgentV2 Open" (:name allowed))))))))
 
 (deftest batch-cap-test
@@ -122,14 +125,21 @@
       (is (= (mt/id :orders) (:table_id concise))))))
 
 (deftest detailed-is-the-whole-record-test
-  (mt/with-temp [:model/Card card (mbql-card {})]
-    (let [concise  (element! {:items [{:type "question" :id (:id card)}]})
-          detailed (element! {:items [{:type "question" :id (:id card)}] :response_format "detailed"})]
-      (is (< (count (keys concise)) (count (keys detailed))))
-      (testing "detail carries the fields concise does not — the stored query, the creator, the timestamps"
-        (is (contains? detailed :dataset_query))
-        (is (contains? detailed :creator_id))
-        (is (contains? detailed :updated_at))))))
+  (testing "detail is the whole REST record, so it is compared against the REST record — a field-count
+            comparison passes on any superset and lets a missing field through"
+    (mt/with-temp [:model/Card card (mbql-card {})]
+      (let [rest-record (mt/user-http-request :rasta :get 200 (str "card/" (:id card)))
+            detailed    (element! {:items [{:type "question" :id (:id card)}] :response_format "detailed"})]
+        (is (empty? (remove (set (keys detailed)) (keys rest-record)))
+            "every property GET /api/card/:id returns is on the detailed read")
+        (testing "`last-edit-info` among them: who touched it last is on the REST record, and detail is the
+                  REST record"
+          (is (= (:last-edit-info rest-record) (:last-edit-info detailed)))))))
+  (testing "and a dashboard's detailed read carries it too"
+    (mt/with-temp [:model/Dashboard dash {:name "AgentV2 Edited"}]
+      (let [rest-record (mt/user-http-request :rasta :get 200 (str "dashboard/" (:id dash)))
+            detailed    (element! {:items [{:type "dashboard" :id (:id dash)}] :response_format "detailed"})]
+        (is (= (:last-edit-info rest-record) (:last-edit-info detailed)))))))
 
 (deftest dashboard-concise-is-the-editing-skeleton-test
   (mt/with-temp [:model/Card          card {:name "AgentV2 Card"}
@@ -202,9 +212,13 @@
     (mt/with-temp [:model/Card card (mbql-card {})]
       (let [definition (:definition (element! {:items [{:type "question" :id (:id card)}]
                                                :include ["definition"]}))
-            constructed (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                              {:query definition})]
-        (is (string? (:query constructed)))))))
+            ran        (mt/user-http-request :rasta :post 200 "agent/v2/execute-query"
+                                             {:query definition})]
+        (testing "the read's `definition` is a query the query tool runs, and it returns the card's own result"
+          (is (= 1 (:row_count ran)))
+          (is (= ["count"] (mapv :name (:cols ran))))
+          (is (= (mt/rows (mt/run-mbql-query orders {:aggregation [[:count]]}))
+                 (:rows ran))))))))
 
 (deftest layout-include-carries-the-raw-dashcards-test
   (mt/with-temp [:model/Card          card {:name "AgentV2 Card"}
@@ -376,12 +390,10 @@
 (defn- read-events!
   "The `:event/*-read` topics `get_content` publishes for `items`, as `[topic object-id]` pairs."
   [items]
-  (let [published (atom [])]
-    (mt/with-test-user :rasta
-      (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
-        (get-content/get-content {:items items})))
-    (for [[topic {:keys [object object-id]}] @published]
-      [topic (or object-id (:id object))])))
+  (for [[topic {:keys [object object-id]}]
+        (captured-events! #(mt/with-test-user :rasta (get-content/get-content {:items items})))
+        :when (= "event" (namespace topic))]
+    [topic (or object-id (:id object))]))
 
 (deftest read-events-match-the-rest-endpoints-test
   (testing "a tool read leaves the trail the app's read leaves — the same topics, and no others"
@@ -430,30 +442,104 @@
           (is (= ["test-data (h2)" "PUBLIC" "ORDERS"]
                  (:source-table (first (get-in item [:definition :stages]))))))))))
 
-(deftest each-type-reads-test
-  (testing "every type in the catalog has a read behind it"
-    (mt/with-temp [:model/Collection          coll    {:name "AgentV2 Types"}
-                   :model/Card                question (mbql-card {:name "AgentV2 Question"})
-                   :model/Card                model   (mbql-card {:name "AgentV2 Model" :type :model})
-                   :model/Card                metric  (mbql-card {:name "AgentV2 Metric" :type :metric})
-                   :model/Dashboard           dash    {:name "AgentV2 Dashboard"}
-                   :model/Document            doc     {:name "AgentV2 Document"}
-                   :model/NativeQuerySnippet  snippet {:name "AgentV2 Snippet" :content "WHERE 1 = 1"}
-                   :model/Segment             segment {:name "AgentV2 Segment" :table_id (mt/id :orders)}
-                   :model/Measure             measure {:name "AgentV2 Measure" :table_id (mt/id :orders)}
-                   :model/Timeline            timeline {:name "AgentV2 Timeline"}]
-      (doseq [[type id expected] [["collection" (:id coll)     "AgentV2 Types"]
-                                  ["question"   (:id question) "AgentV2 Question"]
-                                  ["model"      (:id model)    "AgentV2 Model"]
-                                  ["metric"     (:id metric)   "AgentV2 Metric"]
-                                  ["dashboard"  (:id dash)     "AgentV2 Dashboard"]
-                                  ["document"   (:id doc)      "AgentV2 Document"]
-                                  ["snippet"    (:id snippet)  "AgentV2 Snippet"]
-                                  ["segment"    (:id segment)  "AgentV2 Segment"]
-                                  ["measure"    (:id measure)  "AgentV2 Measure"]
-                                  ["timeline"   (:id timeline) "AgentV2 Timeline"]]]
-        (testing type
-          (let [item (element! {:items [{:type type :id id}]})]
-            (is (nil? (:error item)))
-            (is (= expected (:name item)))
-            (is (= type (:type item)))))))))
+(defn- do-with-one-of-every-type
+  "Run `f` with `{type => id}`, one live entity per type the tool reads.
+
+   Driven by [[get-content/types]], the catalog the tool itself exports: a type added there and not created
+   here fails [[every-type-in-the-catalog-reads-test]] rather than quietly going untested, which is how
+   `alert` and `subscription` came to have no coverage at all while sitting in the type table."
+  [f]
+  (mt/with-premium-features #{:transforms-basic :hosting}
+    (mt/with-temp [:model/Collection         coll      {:name "AgentV2 Types"}
+                   :model/Card               question  (mbql-card {:name "AgentV2 Question"})
+                   :model/Card               model     (mbql-card {:name "AgentV2 Model" :type :model})
+                   :model/Card               metric    (mbql-card {:name "AgentV2 Metric" :type :metric})
+                   :model/Dashboard          dash      {:name "AgentV2 Dashboard"}
+                   :model/Document           doc       {:name "AgentV2 Document"}
+                   :model/NativeQuerySnippet snippet   {:name "AgentV2 Snippet" :content "WHERE 1 = 1"}
+                   :model/Segment            segment   {:name "AgentV2 Segment" :table_id (mt/id :orders)}
+                   :model/Measure            measure   {:name "AgentV2 Measure" :table_id (mt/id :orders)}
+                   :model/Timeline           timeline  {:name "AgentV2 Timeline"}
+                   :model/Transform          transform {:name   "AgentV2 Transform"
+                                                        :source {:type  "query"
+                                                                 :query (mt/mbql-query orders)}
+                                                        :target {:type   "table"
+                                                                 :schema "PUBLIC"
+                                                                 :name   "agent_v2_types_out"}}
+                   :model/Pulse              pulse     {:name         "AgentV2 Subscription"
+                                                        :dashboard_id (:id dash)
+                                                        :creator_id   (mt/user->id :crowberto)}]
+      (notification.tu/with-card-notification
+        [alert {:card         {:name "AgentV2 Alert Card"}
+                :notification {:creator_id (mt/user->id :crowberto)}}]
+        (f {"collection"   (:id coll)
+            "question"     (:id question)
+            "model"        (:id model)
+            "metric"       (:id metric)
+            "dashboard"    (:id dash)
+            "document"     (:id doc)
+            "snippet"      (:id snippet)
+            "segment"      (:id segment)
+            "measure"      (:id measure)
+            "timeline"     (:id timeline)
+            "transform"    (:id transform)
+            "subscription" (:id pulse)
+            "alert"        (:id alert)})))))
+
+(deftest every-type-in-the-catalog-reads-test
+  (testing "every type the tool exports has a read behind it, and the batch is driven by that catalog —
+            a type added to it and to nothing else fails here rather than shipping untested"
+    (do-with-one-of-every-type
+     (fn [id-by-type]
+       (is (= (set get-content/types) (set (keys id-by-type)))
+           "the fixture covers exactly the catalog")
+       (doseq [type get-content/types]
+         (testing type
+           (let [item (first (:data (get-content! :crowberto 200
+                                                  {:items [{:type type :id (id-by-type type)}]})))]
+             (is (nil? (:error item)))
+             (is (= type (:type item)))
+             (is (= (id-by-type type) (:id item))))))))))
+
+(deftest every-include-in-the-catalog-is-exercised-on-every-type-it-fits-test
+  (testing "each `include` is asked for on every type it declares, and skipped-and-named on one it does not —
+            the include table is walked from the tool's own catalog, so a section that fits eight types and is
+            tested on one cannot hide"
+    (do-with-one-of-every-type
+     (fn [id-by-type]
+       (doseq [include get-content/includes
+               type    get-content/types]
+         (testing (str include " on " type)
+           (let [item (first (:data (get-content! :crowberto 200
+                                                  {:items   [{:type type :id (id-by-type type)}]
+                                                   :include [include]})))
+                 skipped (set (map :include (:skipped_includes item)))]
+             (is (nil? (:error item)))
+             (if (contains? skipped include)
+               (testing "a section that does not fit names itself in the item, and the batch survives"
+                 (is (some? (some #(when (= include (:include %)) (:message %))
+                                  (:skipped_includes item)))))
+               (testing "a section that fits contributes its key"
+                 (is (contains? item (keyword include))))))))))))
+
+(deftest alert-takes-a-numeric-id-only-test
+  (testing "a notification carries no entity_id, so an alert says so rather than 404ing on a value that was
+            never translatable"
+    (is (re-find #"takes a numeric id"
+                 (:error (element! {:items [{:type "alert" :id "FReCLx5hSWTBU7kjCWfuu"}]}))))))
+
+(deftest alert-and-subscription-read-their-channels-test
+  (do-with-one-of-every-type
+   (fn [id-by-type]
+     (testing "an alert reads with the condition that fires it and the channels it fires into"
+       (let [item (first (:data (get-content! :crowberto 200
+                                              {:items [{:type "alert" :id (id-by-type "alert")}]})))]
+         (is (contains? item :alert_condition))
+         (is (contains? item :channels))
+         (is (contains? item :card))))
+     (testing "a subscription reads with the dashboard it sends and the channels it sends to"
+       (let [item (first (:data (get-content! :crowberto 200
+                                              {:items [{:type "subscription" :id (id-by-type "subscription")}]})))]
+         (is (= "AgentV2 Subscription" (:name item)))
+         (is (= (id-by-type "dashboard") (:dashboard_id item)))
+         (is (contains? item :channels)))))))

@@ -6,13 +6,13 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
+   [metabase.agent-api.catalog :as agent-api.catalog]
    [metabase.agent-api.handles :as agent-api.handles]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.toolsets :as mcp.toolsets]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -108,66 +108,16 @@
   {"construct_query" construct-query-mcp-input-malli
    "query"           query-mcp-input-malli})
 
-(def ^:private list-envelope-mcp-output-malli
-  "MCP-visible output of a v2 list read. The rows travel once, in the `content` text block; the
-   structured channel carries only what a next call consumes — how much came back, how much there is,
-   and how to get the rest. See [[v2-content]]."
-  [:map
-   [:returned           {:tool/description "Rows in this page."} :int]
-   [:total              {:optional true :tool/description "Rows in the whole set, when it is countable."} [:maybe :int]]
-   [:truncated          {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
-   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]])
-
-(def ^:private browse-data-mcp-output-malli
-  "MCP-visible output of `browse_data` — the list envelope's structured channel plus `omitted`, the
-   `get_fields` remainder a next call works through."
-  [:map
-   [:returned           {:tool/description "Rows in this page — tables, for `get_fields`."} :int]
-   [:total              {:optional true :tool/description "Rows in the whole set; requested tables, for `get_fields`."} [:maybe :int]]
-   [:truncated          {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
-   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]
-   [:omitted            {:optional true :tool/description "`get_fields` only: requested tables not in this response, each with the reason."} [:maybe [:sequential :map]]]])
-
-(def ^:private get-content-mcp-output-malli
-  "MCP-visible output of `get_content` — the envelope's structured channel plus `omitted`, the items the
-   response budget cut, which a next call works through."
-  [:map
-   [:returned           {:tool/description "Items in this response."} :int]
-   [:total              {:tool/description "Items requested."} :int]
-   [:truncated          {:optional true :tool/description "Whether the response budget cut items."} [:maybe :boolean]]
-   [:truncation_message {:optional true :tool/description "How to reach the rest."} [:maybe :string]]
-   [:omitted            {:optional true :tool/description "Requested items not in this response, by type and id."} [:maybe [:sequential :map]]]])
-
-(def ^:private execute-query-mcp-output-malli
-  "MCP-visible output of `execute_query`. The rows travel once, in the `content` text block; the
-   structured channel carries the handle — what a save, a chart, or a next page is addressed by — plus
-   the count and the truncation steer."
-  [:map
-   [:query_handle       {:tool/description "The query that ran. Pass it to `question_write`, `visualize_query`, or back to `execute_query` with an `offset`."} ms/UUIDString]
-   [:validated          {:optional true :tool/description "`validate_only` only: the query is valid and nothing ran."} [:maybe :boolean]]
-   [:row_count          {:optional true :tool/description "Rows in this page."} [:maybe :int]]
-   [:truncated          {:optional true :tool/description "Whether more rows may sit behind this page."} [:maybe :boolean]]
-   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset, and what narrows the result instead."} [:maybe :string]]])
-
-(def ^:private parameter-values-mcp-output-malli
-  "MCP-visible output of `get_parameter_values`. The values themselves travel in the text block; the structured
-   channel carries the one field a next call acts on — whether the list was capped, and so whether to narrow it."
-  [:map
-   [:has_more_values {:tool/description "Whether the backend capped the list — narrow it with `query`."} :boolean]])
-
 (def ^:private mcp-output-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`.
-   Both construct tools emit `{:query_handle}` via the body transform (see
-   [[tools-storing-query-handle]]), so they share the same output schema. A v2 read declares the
-   structured channel, not the body: the body is in the text block."
+
+   Only the construct tools need one: this layer rewrites their body, storing the base64 payload and
+   emitting `{:query_handle}` in its place (see [[tools-storing-query-handle]]), so the endpoint's own
+   response schema is not what reaches the client. An endpoint whose MCP-visible output merely *narrows*
+   its body — a v2 read publishing its structured channel — declares that schema itself, on the
+   defendpoint, and needs no entry here."
   {"construct_query"        construct-query-mcp-output-malli
-   "construct_native_query" construct-query-mcp-output-malli
-   "search"                 list-envelope-mcp-output-malli
-   "browse_data"            browse-data-mcp-output-malli
-   "browse_collection"      list-envelope-mcp-output-malli
-   "get_content"            get-content-mcp-output-malli
-   "get_parameter_values"   parameter-values-mcp-output-malli
-   "execute_query"          execute-query-mcp-output-malli})
+   "construct_native_query" construct-query-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)
@@ -191,8 +141,7 @@
   "Generate tools manifest from agent API endpoint metadata, then patch input/output schemas for tools
   whose MCP-visible shape differs from the wire shape."
   []
-  (-> (tools-manifest/generate-tools-manifest
-       {'metabase.agent-api.api "/api/agent"})
+  (-> (tools-manifest/generate-tools-manifest agent-api.catalog/tool-namespaces)
       (update :tools apply-schema-overrides)))
 
 (def ^:private manifest-delay
@@ -561,7 +510,10 @@
         api-path              (strip-api-prefix resolved-path)
         body-transform-fn     (when (tools-storing-query-handle tool-name)
                                 (make-store-construct-query-result api/*current-user-id*))
-        content-fn            (if (mcp.toolsets/tool->toolset tool-name) v2-content text-content)]
+        ;; A tool that declared a structured output on its endpoint carries its payload once, in the text
+        ;; block, and puts only the next-step fields on the structured channel. Every other tool mirrors its
+        ;; whole body into both.
+        content-fn            (if (:structuredOutput tool-def) v2-content text-content)]
     (invoke-agent-api method api-path token-scopes remaining-args
                       :body-transform-fn body-transform-fn
                       :content-fn content-fn)))

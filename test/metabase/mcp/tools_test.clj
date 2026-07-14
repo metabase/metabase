@@ -190,3 +190,49 @@
           (is (contains? (set (map first (:values text))) "Doohickey"))
           (testing "and the structured channel carries only the steer: whether the list was capped"
             (is (= {:has_more_values false} (:structuredContent result)))))))))
+
+;;; ---------------------------------- Descriptions name only real tools --------------------------------------------
+
+(def ^:private tool-name-pattern
+  "A tool name as a description writes it: a snake_case word of two or more segments. Every tool in the
+   catalog is named that way, and so are a good many wire properties, which is what [[not-tool-names]] is
+   for."
+  #"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+
+(def ^:private not-tool-names
+  "The snake_case words a tool description uses that are not tools: wire property names, action and mode
+   enums, and the Metabot prompt document the construct tools point at."
+  #{"query_handle" "collection_path" "collection_id" "database_id" "table_id" "source_card_id"
+    "parameter_id" "source_table" "source_card" "content_markdown" "template_tags" "has_more_values"
+    "row_limit" "row_count" "response_format" "sort_column" "sort_direction" "display_size"
+    "question_ids" "dashcard_id" "card_id" "include_hidden" "term_queries" "semantic_queries"
+    "created_by" "validate_only" "parent_collection_id" "visualization_settings" "dataset_query"
+    "truncation_message" "skipped_includes" "parameter_mappings" "continuation_token" "last_edited_at"
+    "construct_notebook_query" "query_metadata" "entity_id" "table_ids" "field_id" "has_field_values"
+    "list_databases" "list_schemas" "list_tables" "list_models" "get_fields"})
+
+(defn- named-tools
+  "Every tool name `text` mentions."
+  [text]
+  (into #{}
+        (remove not-tool-names)
+        (re-seq tool-name-pattern (str text))))
+
+(deftest descriptions-name-only-tools-that-exist-test
+  (testing "a description that tells the model to call a tool the catalog does not contain teaches a call the
+            model cannot make: it spends a turn discovering that, or it invents a fallback"
+    (let [catalog   (into #{} (mcp.toolsets/all-tools))
+          ;; The manifest tools: the ones whose descriptions live on a `defendpoint` in `agent-api`. The UI
+          ;; tools are authored in `metabase.mcp.resources` and are checked where they are written.
+          published (into #{} (map :name) (:tools (#'mcp.tools/manifest)))
+          tools     (filter #(and (published (:name %)) (mcp.toolsets/tool->toolset (:name %)))
+                            (mcp.tools/list-tools #{::api.scope/unrestricted}))]
+      (is (seq tools) "there are tools in the catalog to check")
+      (doseq [{tool-name :name :keys [description inputSchema]} tools
+              [where text] (into [[:description description]]
+                                 (for [[property schema] (:properties inputSchema)]
+                                   [property (:description schema)]))
+              named (named-tools text)]
+        (testing (str tool-name " / " (name where))
+          (is (contains? catalog named)
+              (str "names `" named "`, which is not a tool in the catalog")))))))

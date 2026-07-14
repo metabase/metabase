@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.ingestion :as search.ingestion]
@@ -208,3 +209,54 @@
 (deftest max-limit-test
   (testing "a page bigger than the cap is refused at the schema, before any search runs"
     (is (some? (search! :rasta 400 {:term_queries ["orders"] :limit 500})))))
+
+(deftest concise-description-is-the-first-line-test
+  (with-indexed
+    (mt/with-temp [:model/Card _ {:name        "AgentV2 Wordy Question"
+                                  :description "What it is.\nAnd then three paragraphs nobody asked for."}]
+      (testing "a page of hits is a menu, so a concise hit's description is its first line — the rest is
+                prose the agent will not read before it picks one, and it is paid for on every hit"
+        (is (= "What it is."
+               (:description (first (:data (search! {:term_queries ["AgentV2 Wordy"]})))))))
+      (testing "detailed and a `fields` pick both return the description whole"
+        (is (= "What it is.\nAnd then three paragraphs nobody asked for."
+               (:description (first (:data (search! {:term_queries     ["AgentV2 Wordy"]
+                                                     :response_format "detailed"}))))))
+        (is (= "What it is.\nAnd then three paragraphs nobody asked for."
+               (:description (first (:data (search! {:term_queries ["AgentV2 Wordy"]
+                                                     :fields       ["description"]}))))))))))
+
+(deftest fields-picks-paths-test
+  (with-indexed
+    (mt/with-temp [:model/Card card {:name "AgentV2 Picked Question"}]
+      (testing "`fields` picks exactly the named paths and overrides response_format"
+        (is (= [{:id (:id card) :name "AgentV2 Picked Question"}]
+               (:data (search! {:term_queries     ["AgentV2 Picked"]
+                                :fields           ["id" "name"]
+                                :response_format "detailed"})))))
+      (testing "an unknown path is refused, naming the paths that exist and the near miss"
+        (let [message (refusal! {:term_queries ["AgentV2 Picked"] :fields ["naem"]})]
+          (is (re-find #"Unknown field \"naem\"" message))
+          (is (re-find #"Did you mean \"name\"\?" message))))
+      (testing "and it is refused even when the search matched nothing — otherwise a typo reads as
+                \"there is nothing there\""
+        (let [message (refusal! {:term_queries ["AgentV2 NoSuchThingAnywhere"] :fields ["naem"]})]
+          (is (re-find #"Unknown field \"naem\"" message)))))))
+
+(deftest personal-collections-of-other-users-are-not-searchable-test
+  (testing "an admin may read every personal collection, but an agent searching on their behalf must not
+            surface a colleague's drafts in answer to \"find me the revenue dashboard\" — the app's own
+            global search excludes them, and so does this"
+    (with-indexed
+      (mt/with-temp [:model/Card _ {:name          "AgentV2 Someone Elses Draft"
+                                    :collection_id (:id (collection/user->personal-collection
+                                                         (mt/user->id :lucky)))}
+                     :model/Card _ {:name          "AgentV2 My Own Draft"
+                                    :collection_id (:id (collection/user->personal-collection
+                                                         (mt/user->id :crowberto)))}]
+        (let [names (set (map second (hits (search! :crowberto 200
+                                                    {:term_queries ["AgentV2"] :type ["question"]}))))]
+          (testing "the admin's own personal collection is still theirs to search"
+            (is (contains? names "AgentV2 My Own Draft")))
+          (testing "and another user's is not, superuser or no"
+            (is (not (contains? names "AgentV2 Someone Elses Draft")))))))))

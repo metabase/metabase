@@ -8,19 +8,26 @@
    [metabase.mcp.toolsets :as toolsets]))
 
 (deftest ^:parallel registry-shape-test
-  (testing "7 toolsets covering 24 tools, each with a risk level and a group scope"
+  (testing "7 toolsets, each with a risk level, a registered group scope, and at least one tool"
     (is (= 7 (count toolsets/toolsets)))
-    (is (= 24 (count (toolsets/all-tools))))
-    (is (= 24 (count (distinct (toolsets/all-tools))))
-        "no tool belongs to two toolsets")
     (is (every? (fn [{:keys [risk scope tools]}]
                   (and (#{:read :write} risk)
-                       (string? scope)
+                       (api-scope/registered-scope? scope)
                        (seq tools)))
                 toolsets/toolsets)))
-  (testing "the catalog matches the design: 5 discover, 3 query, 6 author, 3 curate, 3 definitions, 2 notify, 2 ui"
-    (is (= {:discover 5 :query 3 :author 6 :curate 3 :definitions 3 :notify 2 :ui 2}
-           (into {} (map (juxt :toolset (comp count :tools))) toolsets/toolsets)))))
+  (testing "no tool belongs to two toolsets"
+    (is (= (count (toolsets/all-tools))
+           (count (distinct (toolsets/all-tools))))))
+  (testing "the catalog: 5 discover, 3 query, 6 author, 4 curate, 3 definitions, 2 notify, 2 ui"
+    (is (= {:discover 5 :query 3 :author 6 :curate 4 :definitions 3 :notify 2 :ui 2}
+           (into {} (map (juxt :toolset (comp count :tools))) toolsets/toolsets)))
+    (is (= 25 (count (toolsets/all-tools)))
+        "the counts above have to add up to the catalog")))
+
+(deftest ^:parallel timeline-tools-are-named-for-what-they-write-test
+  (testing "a timeline and an event on it are separate writes, and the registry names both"
+    (is (= :curate (toolsets/tool->toolset "timeline_write")))
+    (is (= :curate (toolsets/tool->toolset "timeline_event_write")))))
 
 (deftest ^:parallel tool->toolset-test
   (is (= :discover (toolsets/tool->toolset "search")))

@@ -4,7 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.agent-api.browse-collection :as browse-collection]
-   [metabase.events.core :as events]
+   [metabase.agent-api.test-util :refer [captured-events!]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -190,10 +190,10 @@
   (testing "browsing a collection publishes the read event its REST endpoint publishes, so the view is logged exactly
             as opening the collection in the app logs it"
     (mt/with-temp [:model/Collection coll {:name "AgentV2 Read Trail"}]
-      (let [events (atom [])]
-        (mt/with-test-user :rasta
-          (with-redefs [events/publish-event! (fn [topic event] (swap! events conj [topic event]) event)]
-            (browse-collection/browse-collection {:id (:id coll)})))
+      (let [published (captured-events!
+                       #(mt/with-test-user :rasta
+                          (browse-collection/browse-collection {:id (:id coll)})))]
         (is (= [[:event/collection-read {:object (:id coll) :user-id (mt/user->id :rasta)}]]
-               (for [[topic {:keys [object user-id]}] @events]
+               (for [[topic {:keys [object user-id]}] published
+                     :when (= :event/collection-read topic)]
                  [topic {:object (:id object) :user-id user-id}])))))))

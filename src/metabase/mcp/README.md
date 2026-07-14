@@ -165,12 +165,9 @@ the other two tiers rather than repeating them — and they are what makes the s
 skill support at all. Scope-filtered like tools: a token that cannot write is not offered a playbook whose fourth step
 is a write.
 
-**No `load_skill` tool, for now.** A skill-loading *tool* would work in every tools-only client, at the cost of one
-catalog slot and one more decision for the model to get wrong. Whether that trade is worth making is a question about
-clients that will never fetch a `skill://` resource, and the eval harness is what answers it: `mcp-evals` runs the
-suite for a `tools-only` client class and the `guidance-lift` gate reports the gap. Ship the tool when that gap says
-those clients need it — not before, and never alongside SEP-2640 fetching, because two ways to load a skill is one too
-many.
+**No `load_skill` tool.** A skill-loading *tool* would reach the clients that never fetch a `skill://` resource, at the
+cost of one catalog slot and one more decision for the model to get wrong — and two ways to load one skill is the
+ambiguity this catalog exists to avoid.
 
 ## Protocol
 
@@ -197,14 +194,15 @@ half-served. The server responds with JSON or SSE depending on the `Accept` head
 user, and the embedding session key the MCP Apps iframe authenticates with is derived from the user id. A handle
 stored by one connection therefore resolves from the next, and there is nothing left for a session id to own.
 
-**Client capabilities travel per-request**, in `params._meta` under `io.modelcontextprotocol/capabilities`. That is
-how `tools/list` knows whether the caller can render MCP Apps, and so whether to offer the UI tools.
+**Client capabilities travel per-request**, in `params._meta` under `io.modelcontextprotocol/clientCapabilities`. That
+is how `tools/list` knows whether the caller can render MCP Apps, and so whether to offer the UI tools.
 
 **Cacheable results.** `tools/list`, `resources/list`, and `resources/read` carry `ttlMs` and `cacheScope` so a
-client can hold the payload in its prompt prefix across turns. `cacheScope` is `"global"` when every caller gets
-byte-identical content (the reference docs) and `"session"` when the content is settled by the caller's granted
-scopes and capabilities (the listings). Content that varies per caller in a way that must never be reused — the MCP
-Apps iframe, which embeds a live session key — carries no cache metadata at all. `tools/list` is sorted by name
+client can hold the payload in its prompt prefix across turns. `cacheScope` is `"public"` when every caller gets
+byte-identical content (the reference docs) and `"private"` when the content is settled by the caller's granted
+scopes and capabilities (the listings), so a shared intermediary may never serve one caller's copy to another.
+Content that must never be reused at all — the MCP Apps iframe, which embeds a live session key — is `"private"`
+with a zero TTL. `tools/list` is sorted by name
 across both the manifest and the UI registry, because an unstable order costs the client its cache hit on every
 reconnect.
 
@@ -342,7 +340,9 @@ the query processor when the card is *run*.
 public REST endpoint it stands in for, as the same user under one permission scenario — blocked
 database, no collection access, no native-query permission, read-only collection, archived target,
 sandboxed user — and asserts the two give the same answer. Adding a tool means adding its rows with
-`check-parity!`. The release gate is zero discrepancies.
+`check-parity!`. The standard is zero discrepancies: a row asserts the same verdict, the same payload,
+and the same read events on both surfaces, so a sandbox that filters rows rather than denying them
+cannot pass by returning an answer at all.
 
 ### Reviewing a tool
 
@@ -351,22 +351,6 @@ sandboxed user — and asserts the two give the same answer. Adding a tool means
 - Does a read publish the read event its REST endpoint publishes?
 - Does a workflow tool abort the whole call on a failed op, rather than half-applying?
 - Are there parity rows for its denial scenarios?
-
-## Evals
-
-Tool descriptions are the API, and a copyedit to one is a behavior change. Unit tests cannot see that;
-[`mcp-evals/`](../../../mcp-evals/) can. It runs 30+ realistic BI tasks against a seeded instance
-through the Claude Agent SDK and reports pass@k, the wrong-tool confusion matrix, argument
-hallucination, tokens, call counts against a reference trajectory, and p95 response size. Every
-release gate in the plan carries a number, and `mcp-evals/src/gates.ts` is where those numbers live —
-including the three owned by tests elsewhere (`read_resource` coverage, the dashboard op map, the
-permission-parity matrix), which are reported in rather than re-derived, so one report answers whether
-the server can ship.
-
-The suite is what *decides* the design's contested calls rather than arguing them: each merged
-`<entity>_write` tool is probed on create, on update, and on a deliberate wrong method, and a method
-whose pass rate lags the catalog median by more than ten points fires the pre-registered trigger to
-split that entity back into `create_X`/`update_X`. Re-run it on every description change.
 
 **Projections live in one place.** `metabase.agent-api.projections` holds the concise field set for
 every entity a read tool returns. A tool never invents its own — it looks the entity up and hands the

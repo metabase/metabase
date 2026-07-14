@@ -1,6 +1,7 @@
 (ns metabase.warehouses.browse
   "The domain functions behind browsing the data hierarchy: which databases the current user may see,
-   which schemas a database shows them, and which tables a schema shows them. `GET /api/database`,
+   which schemas a database shows them, and which tables a database or one of its schemas shows them.
+   `GET /api/database`,
    `GET /api/database/:id/schemas`, and `GET /api/database/:id/schema/:schema` are thin wrappers over
    these, and the agent-api `browse_data` tool calls the same functions — one implementation of each
    permission filter, shared by every surface."
@@ -144,3 +145,31 @@
      (if (seq hydration-keys)
        (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))
+
+;;; ─────────────────────────────────────── Tables in a database ────────────────────────────────────
+
+(defn database-tables-list
+  "Every Table of Database `db-id` the current user may see, across all its schemas, ordered by schema and
+   then display name.
+
+   The same result as calling [[schema-tables-list]] once per schema, in one query and one hydration
+   instead of one of each per schema. There is no per-schema `can-read-schema?` gate because there is no
+   schema to refuse: the per-table read filter is what narrows the listing, exactly as it does there."
+  ([db-id]
+   (database-tables-list db-id {}))
+  ([db-id {:keys [include-hidden?]}]
+   (api/read-check :model/Database db-id)
+   (let [order-by         {:order-by [[:schema :asc] [:display_name :asc]]}
+         candidate-tables (if include-hidden?
+                            (t2/select :model/Table
+                                       :db_id db-id
+                                       :active true
+                                       order-by)
+                            (t2/select :model/Table
+                                       :db_id db-id
+                                       :active true
+                                       :visibility_type nil
+                                       order-by))
+         filtered-tables  (filterv mi/can-read? candidate-tables)]
+     (cond-> filtered-tables
+       (premium-features/any-transforms-enabled?) (t2/hydrate :transform)))))

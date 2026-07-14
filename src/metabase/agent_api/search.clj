@@ -2,15 +2,15 @@
   "The v2 `search` tool: one entry point for discovery.
 
    Three modes, each named explicitly rather than inferred from which arguments happen to be present:
-   ranked **queries** (keyword and natural-language, fused into one ranking), a filter-only
-   **listing** (\"all my dashboards\"), and the caller's **recents**. A call that picks none of them
-   gets a teaching error naming all three, because argument-presence dispatch would make a listing and
-   a recents call look the same.
+   ranked **queries** (keyword and natural-language, fused into one ranking), a filter-only **listing**
+   (\"all my dashboards\"), and the caller's **recents**. A call that picks none of them gets a teaching
+   error naming all three, because argument-presence dispatch would make a listing and a recents call
+   look the same.
 
    The filters are the search engine's own — the tool plumbs them, it does not add capabilities. Two
-   things sit on top of the engine, and only these two: snippets, which are `excluded-models` in the
-   index and so come from their own table, and `collection_path`, which the engine has no reason to
-   carry but an agent needs on every hit to say where something lives."
+   things sit on top of the engine, and only these two: snippets, which are `excluded-models` in the index
+   and so come from their own table, and `collection_path`, which the engine has no reason to carry but an
+   agent needs on every hit to say where something lives."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -25,7 +25,8 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -79,6 +80,52 @@
   "The most hits one call returns. A page beyond this is paging, not searching."
   50)
 
+(def ^:private personal-collection-filter
+  "Which personal collections a hit may come from. The agent acts as its user, and the app's own global
+   search shows a user their own personal collection and nobody else's — an admin's read permission on
+   every personal collection is not a licence for an agent to surface a colleague's drafts in answer to
+   \"find me the revenue dashboard\". `collection_id` still reaches a personal collection named outright,
+   which is how a caller reads their own."
+  "exclude-others")
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Arguments
+;;; ──────────────────────────────────────────────────────────────────
+
+(def ^:private Params
+  "The arguments [[search]] contracts on. `POST /v2/search` declares the wire schema, with the enums and
+   the bounds a client is held to; this is the looser shape the domain function accepts from any caller."
+  [:map
+   [:term_queries     {:optional true} [:maybe [:or [:sequential :string] :string]]]
+   [:semantic_queries {:optional true} [:maybe [:or [:sequential :string] :string]]]
+   [:recent           {:optional true} [:maybe :boolean]]
+   [:type             {:optional true} [:maybe [:sequential :string]]]
+   [:collection_id    {:optional true} [:maybe [:or :int :string]]]
+   [:created_by       {:optional true} [:maybe :string]]
+   [:archived         {:optional true} [:maybe :boolean]]
+   [:limit            {:optional true} [:maybe :int]]
+   [:offset           {:optional true} [:maybe :int]]
+   [:fields           {:optional true} [:maybe [:sequential :string]]]
+   [:response_format  {:optional true} [:maybe :string]]])
+
+(defn coerce-queries
+  "The query arguments as a vector of strings. Some MCP clients (notably Codex) serialize array arguments
+   through a string layer, so a caller that meant `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`.
+   An array passes through; a string that parses as a JSON array of non-blank strings is unwrapped; any
+   other string is one query."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) v
+    (string? v)     (or (try
+                          (let [parsed (json/decode+kw v)]
+                            (when (and (sequential? parsed)
+                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
+                              parsed))
+                          (catch Exception _ nil))
+                        [v])
+    :else           v))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Validation — every refusal names the fix
 ;;; ──────────────────────────────────────────────────────────────────
@@ -89,48 +136,51 @@
   [queries? filters? recent]
   (cond
     (and recent queries?)
-    (tools/teaching-error
-     (tru "`recent: true` returns your recently viewed items and cannot be ranked by a query. Drop `term_queries` and `semantic_queries`, or drop `recent`."))
+    (tools/teaching-error!
+     (str "`recent: true` returns your recently viewed items and cannot be ranked by a query. Drop "
+          "`term_queries` and `semantic_queries`, or drop `recent`."))
 
     (not (or queries? filters? recent))
-    (tools/teaching-error
-     (tru "Give `search` something to do: `term_queries` and `semantic_queries` rank content by relevance, a filter (`type`, `collection_id`, `created_by`, `archived`) lists it, and `recent: true` returns your recently viewed items."))))
+    (tools/teaching-error!
+     (str "Give `search` something to do: `term_queries` and `semantic_queries` rank content by "
+          "relevance, a filter (`type`, `collection_id`, `created_by`, `archived`) lists it, and "
+          "`recent: true` returns your recently viewed items."))))
 
 (defn- check-recents-filters!
   "Recents are a log of what the caller opened, not a query over the index — the filters that narrow a
    search have nothing to narrow here."
   [{:keys [collection_id created_by archived]}]
   (when (or collection_id created_by (some? archived))
-    (tools/teaching-error
-     (tru "`recent: true` takes only `type`, `limit`, and `offset`. Drop `collection_id`, `created_by`, and `archived`, or drop `recent`."))))
+    (tools/teaching-error!
+     (str "`recent: true` takes only `type`, `limit`, and `offset`. Drop `collection_id`, `created_by`, "
+          "and `archived`, or drop `recent`."))))
 
 (defn- check-created-by!
-  "`created_by` against a type the index gives no creator matches nothing. Say so, rather than
-   returning the empty result the plain search API would."
+  "`created_by` against a type the index gives no creator matches nothing. Say so, rather than returning
+   the empty result the plain search API would."
   [created_by requested-types]
   (when created_by
     (when-let [creatorless (not-empty (remove creator-types requested-types))]
-      (tools/teaching-error
-       (tru "`created_by` only filters {0}. Drop {1} from `type`, or drop `created_by`."
-            (str/join ", " (sort creator-types))
-            (str/join ", " creatorless))))))
+      (tools/teaching-error!
+       (str "`created_by` only filters " (str/join ", " (sort creator-types)) ". Drop "
+            (str/join ", " creatorless) " from `type`, or drop `created_by`.")))))
 
 (defn- check-snippet-filters!
   "A snippet lives in the snippet namespace and is not indexed, so the index's filters do not reach it."
   [snippet? {:keys [collection_id created_by]}]
   (when (and snippet? (or collection_id created_by))
-    (tools/teaching-error
-     (tru "Snippets are not in the search index, so `collection_id` and `created_by` do not filter them. Drop the filter, or drop \"snippet\" from `type`."))))
+    (tools/teaching-error!
+     (str "Snippets are not in the search index, so `collection_id` and `created_by` do not filter them. "
+          "Drop the filter, or drop \"snippet\" from `type`."))))
 
 (defn- recents-models
   "The recents-log models `requested-types` selects, or nil for \"every model recents records\"."
   [requested-types]
   (when (seq requested-types)
     (when-let [unrecordable (not-empty (remove type->recents-model requested-types))]
-      (tools/teaching-error
-       (tru "Recently viewed items only cover {0}. Drop {1} from `type`, or drop `recent`."
-            (str/join ", " (sort (keys type->recents-model)))
-            (str/join ", " unrecordable))))
+      (tools/teaching-error!
+       (str "Recently viewed items only cover " (str/join ", " (sort (keys type->recents-model))) ". Drop "
+            (str/join ", " unrecordable) " from `type`, or drop `recent`.")))
     (mapv type->recents-model requested-types)))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -184,6 +234,13 @@
                 (m/assoc-some :collection_path (get paths (collection-id-fn row)))))
             rows))))
 
+(defn- first-line
+  "The first line of a hit's description. A page of hits is a menu, and a paragraph per hit spends the
+   response budget on prose the agent will not read before it picks one. `response_format: \"detailed\"`
+   and a `fields` pick both return the description whole."
+  [description]
+  (some-> description not-empty str/split-lines first))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The three modes
 ;;; ──────────────────────────────────────────────────────────────────
@@ -195,16 +252,17 @@
    because a call that also asks for snippets has to page across both sources. The engine's `total`
    counts the whole ranked set either way, so asking for the `offset + limit` window costs nothing."
   [{:keys [collection_id created_by archived]} index-types window]
-  (cond-> {:models                (into #{} (map metabot/entity-type->search-model) index-types)
-           :archived              (boolean archived)
-           :context               :api
-           :current-user-id       api/*current-user-id*
-           :is-superuser?         api/*is-superuser?*
-           :current-user-perms    @api/*current-user-permissions-set*
-           :is-impersonated-user? (perms/impersonated-user?)
-           :is-sandboxed-user?    (perms/sandboxed-user?)
-           :limit                 window
-           :offset                0}
+  (cond-> {:models                              (into #{} (map metabot/entity-type->search-model) index-types)
+           :archived                            (boolean archived)
+           :context                             :api
+           :current-user-id                     api/*current-user-id*
+           :is-superuser?                       api/*is-superuser?*
+           :current-user-perms                  @api/*current-user-permissions-set*
+           :is-impersonated-user?               (perms/impersonated-user?)
+           :is-sandboxed-user?                  (perms/sandboxed-user?)
+           :filter-items-in-personal-collection personal-collection-filter
+           :limit                               window
+           :offset                              0}
     collection_id (assoc :collection (tools/resolve-id :model/Collection collection_id))
     created_by    (assoc :created-by #{api/*current-user-id*})))
 
@@ -278,34 +336,17 @@
 ;;; The tool
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- envelope
-  [{:keys [rows total limit offset response_format]}]
-  (let [page      (into [] (comp (drop offset) (take limit)) rows)
-        returned  (count page)
-        ;; With a total the page is the last one when it reaches it; without one (a fused ranking has
-        ;; no total) a full page is the only evidence there may be more.
-        more?     (if total
-                    (< (+ offset returned) total)
-                    (= returned limit))]
-    (tools/list-envelope
-     (tools/project-all response_format (projections/spec :search-result) page)
-     (cond-> {:total total}
-       more? (assoc :truncation-message
-                    (tools/truncation-message {:total       total
-                                               :returned    returned
-                                               :noun        "results"
-                                               :narrow-with [:type :collection_id]
-                                               :offset      offset
-                                               :limit       limit}))))))
-
-(defn search
+(mu/defn search :- ::tools/list-response
   "Run the `search` tool. See the tool's description on `POST /v2/search` for the argument contract."
-  [{:keys [term_queries semantic_queries recent type collection_id created_by archived
-           limit offset response_format]
-    :as   params}]
-  (let [limit    (min (or limit default-limit) max-limit)
-        offset   (or offset 0)
-        queries? (boolean (seq (concat term_queries semantic_queries)))
+  [params :- Params]
+  (let [{:keys [recent type collection_id created_by archived fields response_format] :as params}
+        (-> params
+            (m/update-existing :term_queries coerce-queries)
+            (m/update-existing :semantic_queries coerce-queries))
+
+        limit    (tools/clamp-limit (:limit params) default-limit max-limit)
+        offset   (or (:offset params) 0)
+        queries? (boolean (seq (concat (:term_queries params) (:semantic_queries params))))
         filters? (boolean (some some? [type collection_id created_by archived]))]
     (check-mode! queries? filters? recent)
     (let [{:keys [rows total]} (if recent
@@ -313,9 +354,16 @@
                                  (content-search params (+ offset limit)))
           ;; Recents and the snippet table are both bounded, small, and fully in hand — their count is
           ;; the total. The index's total is whatever the engine ranked.
-          total                (if recent (count rows) total)]
-      (envelope {:rows            rows
-                 :total           total
-                 :limit           limit
-                 :offset          offset
-                 :response_format response_format}))))
+          total                (if recent (count rows) total)
+          page                 (cond->> (tools/page-of rows limit offset)
+                                 (and (empty? fields) (not (tools/detailed? response_format)))
+                                 (mapv #(m/update-existing % :description first-line)))]
+      (tools/paged-envelope page
+                            {:limit           limit
+                             :offset          offset
+                             :total           total
+                             :response-format response_format
+                             :fields          fields
+                             :spec            (projections/spec :search-result)
+                             :noun            "results"
+                             :narrow-with     [:type :collection_id]}))))

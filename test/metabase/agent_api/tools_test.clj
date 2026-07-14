@@ -1,13 +1,9 @@
 (ns metabase.agent-api.tools-test
   (:require
    [clojure.test :refer :all]
+   [metabase.agent-api.test-util :refer [captured-events!]]
    [metabase.agent-api.tools :as tools]
-   [metabase.api.macros :as api.macros]
-   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.events.core :as events]
-   [metabase.test :as mt]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical])
+   [metabase.test :as mt])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -17,18 +13,15 @@
 ;;; Teaching errors
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel teaching-error-test
+(deftest ^:parallel teaching-error!-test
   (testing "throws an ex-info carrying :status-code, default 400"
-    (let [ex (try (tools/teaching-error "fix it this way") (catch ExceptionInfo e e))]
+    (let [ex (try (tools/teaching-error! "fix it this way") (catch ExceptionInfo e e))]
       (is (= "fix it this way" (ex-message ex)))
       (is (= 400 (:status-code (ex-data ex))))))
   (testing "explicit status and extra data"
-    (let [ex (try (tools/teaching-error "nope" 403 {:field :name}) (catch ExceptionInfo e e))]
+    (let [ex (try (tools/teaching-error! "nope" 403 {:field :name}) (catch ExceptionInfo e e))]
       (is (= 403 (:status-code (ex-data ex))))
-      (is (= :name (:field (ex-data ex))))))
-  (testing "permission-error is a 403"
-    (let [ex (try (tools/permission-error "grant author:write") (catch ExceptionInfo e e))]
-      (is (= 403 (:status-code (ex-data ex)))))))
+      (is (= :name (:field (ex-data ex)))))))
 
 (deftest ^:parallel check-exactly-one!-test
   (testing "exactly one present returns params unchanged"
@@ -48,30 +41,6 @@
          (tools/check-exactly-one! {:query nil :query_handle nil} [:query :query_handle])))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; The `_write` recipe
-;;; ──────────────────────────────────────────────────────────────────
-
-(deftest ^:parallel validate-write!-test
-  (testing "create missing a per-method-required field → teaching error naming field + method"
-    (is (thrown-with-msg?
-         ExceptionInfo #"name is required for the create method"
-         (tools/validate-write! {:method "create"} {"create" [:name] "update" []}))))
-  (testing "update without id → teaching error"
-    (is (thrown-with-msg?
-         ExceptionInfo #"id is required for the update method"
-         (tools/validate-write! {:method "update"} {"create" [:name] "update" []}))))
-  (testing "unknown method → teaching error naming the valid values"
-    (is (thrown-with-msg?
-         ExceptionInfo #"method must be one of"
-         (tools/validate-write! {:method "delete"} {"create" [] "update" []}))))
-  (testing "valid create returns params unchanged"
-    (is (= {:method "create" :name "Revenue"}
-           (tools/validate-write! {:method "create" :name "Revenue"} {"create" [:name] "update" []}))))
-  (testing "valid update returns params unchanged"
-    (is (= {:method "update" :id 7 :name "Renamed"}
-           (tools/validate-write! {:method "update" :id 7 :name "Renamed"} {"create" [:name] "update" []})))))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Ref ergonomics
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -86,6 +55,22 @@
     (is (thrown-with-msg?
          ExceptionInfo #"expected a numeric id or a 21-character entity_id"
          (tools/classify-ref "not-an-id")))))
+
+(deftest ^:parallel resolve-id-test
+  (testing "a numeric id passes through and an absent id stays absent"
+    (is (= 42 (tools/resolve-id :model/Card 42)))
+    (is (nil? (tools/resolve-id :model/Card nil))))
+  (testing "an entity_id is translated against the model"
+    (mt/with-temp [:model/Card card {}]
+      (is (= (:id card) (tools/resolve-id :model/Card (:entity_id card))))))
+  (testing "an entity_id that names nothing is a 404, not a nil"
+    (let [ex (try (tools/resolve-id :model/Card "0000000000000000000AA")
+                  (catch ExceptionInfo e e))]
+      (is (= 404 (:status-code (ex-data ex))))))
+  (testing "a token that is neither is a teaching error"
+    (is (thrown-with-msg?
+         ExceptionInfo #"numeric id or a 21-character entity_id"
+         (tools/resolve-id :model/Card "root")))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; response_format projections
@@ -107,24 +92,75 @@
              (tools/project-all "concise" spec [record]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Bounded envelope + steering truncation
+;;; `fields` dot-path picks
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel list-envelope-test
-  (testing "the bare envelope carries data + returned, omits total/truncated when absent"
-    (is (= {:data [{:id 1}] :returned 1} (tools/list-envelope [{:id 1}]))))
-  (testing "total surfaces when known"
-    (is (= {:data [{:id 1}] :returned 1 :total 9} (tools/list-envelope [{:id 1}] {:total 9}))))
-  (testing "a truncation message flips :truncated and names the narrowing param"
-    (let [msg (tools/truncation-message {:total 143 :returned 50 :noun "tables"
-                                         :scope "in schema `public`"
-                                         :narrow-with [:schema] :offset 0 :limit 50})
-          env (tools/list-envelope (repeat 50 {:id 1}) {:total 143 :truncation-message msg})]
-      (is (true? (:truncated env)))
-      (is (= 143 (:total env)))
-      (is (re-find #"`schema`" (:truncation_message env)))
-      (is (re-find #"`offset: 50`" (:truncation_message env)))
-      (is (re-find #"143 tables in schema `public`" (:truncation_message env))))))
+(def ^:private card-spec
+  {:concise [:id :name :description :collection_id]})
+
+(defn- declared []
+  (tools/spec-paths card-spec))
+
+(deftest ^:parallel pick-fields-test
+  (let [records [{:id 1 :name "Orders" :collection_id 3 :updated_at "2026-01-01"
+                  :last-edit-info {:id 7 :email "a@b.c"}}]]
+    (testing "picks exactly the named paths, and nothing else"
+      (is (= [{:id 1 :name "Orders"}]
+             (tools/pick-fields ["id" "name"] records (declared)))))
+    (testing "a dot-path reaches into a nested map and keeps the nesting"
+      (is (= [{:last-edit-info {:email "a@b.c"}}]
+             (tools/pick-fields ["last-edit-info.email"] records (declared)))))
+    (testing "a path only the record carries — detail is the whole REST record — is pickable"
+      (is (= [{:updated_at "2026-01-01"}]
+             (tools/pick-fields ["updated_at"] records (declared)))))))
+
+(deftest ^:parallel pick-fields-validates-against-the-declaration-test
+  (testing "an unknown path on an EMPTY result set is refused, not silently answered with []"
+    (is (thrown-with-msg?
+         ExceptionInfo #"Unknown field \"naem\""
+         (tools/pick-fields ["naem"] [] (declared)))))
+  (testing "a declared path on an empty result set returns the empty page"
+    (is (= [] (tools/pick-fields ["name"] [] (declared)))))
+  (testing "the refusal names the paths that exist and suggests the near miss"
+    (let [message (try (tools/pick-fields ["colection_id"] [] (declared))
+                       (catch ExceptionInfo e (ex-message e)))]
+      (is (re-find #"Did you mean \"collection_id\"\?" message))
+      (is (re-find #"id, name" message))))
+  (testing "a path far from every valid one gets no misleading suggestion"
+    (let [message (try (tools/pick-fields ["zzzzzzzzzzzz"] [] (declared))
+                       (catch ExceptionInfo e (ex-message e)))]
+      (is (not (re-find #"Did you mean" message))))))
+
+(deftest ^:parallel pick-fields-across-a-heterogeneous-batch-test
+  (testing "a path one record carries and another does not is absent from the one that lacks it,
+            and valid for the batch — the caller wrote one `fields` list against the whole batch"
+    (is (= [{:id 1 :collection_id 3} {:id 2}]
+           (tools/pick-fields ["id" "collection_id"]
+                              [{:id 1 :collection_id 3} {:id 2 :table_id 9}]
+                              (declared))))))
+
+(deftest ^:parallel project-rows-test
+  (let [records [{:id 1 :name "Orders" :description "d" :collection_id 3 :updated_at "x"}]]
+    (testing "without `fields`, the concise/detailed projection applies"
+      (is (= [{:id 1 :name "Orders" :description "d" :collection_id 3}]
+             (tools/project-rows {:response-format "concise" :spec card-spec} records)))
+      (is (= records (tools/project-rows {:response-format "detailed" :spec card-spec} records))))
+    (testing "`fields` overrides `response_format`"
+      (is (= [{:id 1}]
+             (tools/project-rows {:response-format "detailed" :fields ["id"] :spec card-spec}
+                                 records))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Response budget
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel estimate-tokens-test
+  (testing "the estimate is the JSON encoding at ~4 characters per token"
+    (is (zero? (tools/estimate-tokens {})))
+    (is (pos? (tools/estimate-tokens {:name (apply str (repeat 400 "x"))})))
+    (testing "and it grows with the payload"
+      (is (< (tools/estimate-tokens {:a "x"})
+             (tools/estimate-tokens {:a (apply str (repeat 4000 "x"))}))))))
 
 (deftest ^:parallel budget-units-test
   (let [size (fn [n] n)]
@@ -136,111 +172,79 @@
              (tools/budget-units [10 10] {:token-budget 1000 :size-fn size}))))
     (testing "a single over-budget unit is still included (caller decides whether to slice it)"
       (is (= {:included [500] :omitted [10] :truncated? true}
-             (tools/budget-units [500 10] {:token-budget 100 :size-fn size}))))))
+             (tools/budget-units [500 10] {:token-budget 100 :size-fn size}))))
+    (testing "no units at all is not a truncation"
+      (is (= {:included [] :omitted [] :truncated? false}
+             (tools/budget-units [] {:token-budget 100 :size-fn size}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; A fixture `<entity>_write` endpoint proving the recipe end to end
+;;; Bounded envelope + steering truncation
 ;;; ──────────────────────────────────────────────────────────────────
 
-(api.macros/defendpoint :post "/v1/widget-write" :- [:map [:id ms/PositiveInt] [:method :string]]
-  "Create or update a widget. name is required for the create method."
-  {:scope "agent:author:write"
-   :tool  {:name           "widget_write"
-           :input-examples [{:method "create" :name "Revenue widget"}
-                            {:method "update" :id 12 :archived true}]}}
-  [_route-params
-   _query-params
-   {:keys [method id] :as body}
-   :- [:map
-       [:method   tools/MethodField]
-       [:id       {:optional true} [:maybe tools/IdRef]]
-       [:name     {:optional true} [:maybe ms/NonBlankString]]
-       [:archived {:optional true} [:maybe :boolean]]]]
-  (tools/validate-write! body {"create" [:name] "update" []})
-  {:id (or id 1) :method method})
+(deftest ^:parallel clamp-limit-test
+  (is (= 20 (tools/clamp-limit nil 20 50)) "no limit named → the default")
+  (is (= 10 (tools/clamp-limit 10 20 50)))
+  (is (= 50 (tools/clamp-limit 500 20 50)) "never above the maximum"))
 
-(defn- widget-write-tool []
-  (let [manifest (tools-manifest/generate-tools-manifest
-                  {'metabase.agent-api.tools-test "/api/test"})]
-    (some #(when (= (:name %) "widget_write") %) (:tools manifest))))
+(deftest ^:parallel list-envelope-test
+  (testing "the bare envelope carries data + returned, omits total/truncated when absent"
+    (is (= {:data [{:id 1}] :returned 1} (tools/list-envelope [{:id 1}]))))
+  (testing "total surfaces when known"
+    (is (= {:data [{:id 1}] :returned 1 :total 9} (tools/list-envelope [{:id 1}] {:total 9}))))
+  (testing "the one envelope constructor carries `omitted`, so no read has to hand-spell the map"
+    (is (= {:data     []
+            :returned 0
+            :total    2
+            :omitted  [{:id 7 :reason "not found, or you do not have access to it"}]}
+           (tools/list-envelope
+            []
+            {:total 2 :omitted [{:id 7 :reason "not found, or you do not have access to it"}]}))))
+  (testing "a truncation message flips :truncated and names the narrowing param"
+    (let [msg (tools/truncation-message {:total 143 :returned 50 :noun "tables"
+                                         :scope "in schema `public`"
+                                         :narrow-with [:schema] :next-offset 50})
+          env (tools/list-envelope (repeat 50 {:id 1}) {:total 143 :truncation-message msg})]
+      (is (true? (:truncated env)))
+      (is (= 143 (:total env)))
+      (is (re-find #"`schema`" (:truncation_message env)))
+      (is (re-find #"`offset: 50`" (:truncation_message env)))
+      (is (re-find #"143 tables in schema `public`" (:truncation_message env))))))
 
-(deftest ^:parallel write-recipe-manifest-test
-  (let [tool   (widget-write-tool)
-        schema (:inputSchema tool)]
-    (testing "the generated schema has no top-level combinator (strict clients reject those)"
-      (is (= "object" (:type schema)))
-      (is (not (contains? schema :oneOf)))
-      (is (not (contains? schema :anyOf)))
-      (is (not (contains? schema :allOf))))
-    (testing "`method` is the only truly-required field: a non-nullable enum"
-      (is (= {:type "string" :enum ["create" "update"]}
-             (get-in schema [:properties :method])))
-      (testing "every other field is nullable (strict transform makes them required-but-nullable)"
-        (doseq [k [:id :name :archived]]
-          (is (re-find #"null" (pr-str (get-in schema [:properties k])))
-              (str k " should carry a null branch")))))
-    (testing "input_examples flow schema → manifest"
-      (is (= [{:method "create" :name "Revenue widget"}
-              {:method "update" :id 12 :archived true}]
-             (:inputExamples tool))))
-    (testing "a write tool is not read-only"
-      (is (false? (get-in tool [:annotations :readOnlyHint])))
-      (is (false? (get-in tool [:annotations :destructiveHint]))))
-    (testing "the toolset group scope rides along"
-      (is (= "agent:author:write" (:scope tool))))))
+(deftest ^:parallel paged-envelope-test
+  (let [rows (mapv (fn [i] {:id i :name (str "row " i) :extra "x"}) (range 5))
+        spec {:concise [:id :name]}]
+    (testing "projects the page and reports the total"
+      (is (= {:data [{:id 0 :name "row 0"} {:id 1 :name "row 1"}]
+              :returned 2
+              :total 5
+              :truncated true
+              :truncation_message "5 items — showing 2. page with `offset: 2`."}
+             (tools/paged-envelope (tools/page-of rows 2 0)
+                                   {:limit 2 :offset 0 :total 5 :spec spec :noun "items"}))))
+    (testing "the last page is not truncated"
+      (is (nil? (:truncated (tools/paged-envelope (tools/page-of rows 2 4)
+                                                  {:limit 2 :offset 4 :total 5 :spec spec :noun "items"})))))
+    (testing "without a total, a full page is the only evidence there may be more"
+      (is (true? (:truncated (tools/paged-envelope (tools/page-of rows 2 0)
+                                                   {:limit 2 :offset 0 :spec spec :noun "items"}))))
+      (is (nil? (:truncated (tools/paged-envelope (tools/page-of rows 9 0)
+                                                  {:limit 9 :offset 0 :spec spec :noun "items"})))))))
 
-;;; ──────────────────────────────────────────────────────────────────
-;;; Composed writes
-;;; ──────────────────────────────────────────────────────────────────
-
-(deftest run-ops!-test
-  (testing "ops apply in order and their results come back in order"
-    (is (= [1 2 3] (tools/run-ops! [1 2 3] identity))))
-  (testing "a failing op aborts the call naming its index and the underlying message"
-    (is (thrown-with-msg?
-         ExceptionInfo #"Op 1 failed: no such card"
-         (tools/run-ops! [:ok :bad :never]
-                         (fn [op]
-                           (when (= op :bad)
-                             (throw (ex-info "no such card" {:status-code 404})))
-                           op)))))
-  (testing "the failing op's status code and index survive on the ex-data"
-    (let [ex (try (tools/run-ops! [:bad] (fn [_] (throw (ex-info "denied" {:status-code 403}))))
-                  (catch ExceptionInfo e e))]
-      (is (= 403 (:status-code (ex-data ex))))
-      (is (= 0 (:op-index (ex-data ex))))))
-  (testing "ops after the failing one never run"
-    (let [applied (atom [])]
-      (try
-        (tools/run-ops! [:a :bad :c]
-                        (fn [op]
-                          (swap! applied conj op)
-                          (when (= op :bad) (throw (ex-info "boom" {})))
-                          op))
-        (catch ExceptionInfo _ nil))
-      (is (= [:a :bad] @applied)))))
+(deftest ^:parallel paged-envelope-enforces-the-token-budget-test
+  (testing "a page within the row cap is still cut back to the response budget, and says how to continue"
+    (let [fat  (apply str (repeat (* 4 tools/token-budget) "x"))
+          rows (mapv (fn [i] {:id i :body fat}) (range 10))
+          env  (tools/paged-envelope (tools/page-of rows 10 0)
+                                     {:limit 10 :offset 0 :total 10
+                                      :spec {:concise [:id :body]} :noun "items"})]
+      (is (= 1 (:returned env)) "at least one row surfaces, and no more than the budget allows")
+      (is (true? (:truncated env)))
+      (is (re-find #"`offset: 1`" (:truncation_message env))
+          "the next offset counts what was actually returned, not the page size that was asked for"))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Read events
 ;;; ──────────────────────────────────────────────────────────────────
-
-(defn- captured-events!
-  "The `[topic event]` pairs `thunk` publishes. Spies with an aux method rather than redefining
-   `publish-event!` — it is a methodical multimethod, and swapping its var out from under the
-   namespaces that `defmethod` on it breaks them."
-  [thunk]
-  (let [published (atom [])
-        spy-key   (gensym "captured-events!")]
-    (try
-      (methodical/add-aux-method-with-unique-key!
-       #'events/publish-event! :before :default
-       (fn [topic event] (swap! published conj [topic event]))
-       spy-key)
-      (thunk)
-      (finally
-        (methodical/remove-aux-method-with-unique-key!
-         #'events/publish-event! :before :default spy-key)))
-    @published))
 
 (defn- read-event-signature
   "Topic, reader, and entity of a read event — the part that has to match across the two surfaces.
@@ -256,13 +260,17 @@
     (mt/with-temp [:model/Dashboard  dash {}
                    :model/Collection coll {}]
       (testing "dashboard — the payload carries the id"
-        (is (= (read-event-signature
-                (captured-events! #(mt/user-http-request :rasta :get 200 (str "dashboard/" (:id dash))))
-                :event/dashboard-read)
-               (read-event-signature
-                (captured-events! #(mt/with-test-user :rasta
-                                     (tools/publish-read-event! :model/Dashboard dash)))
-                :event/dashboard-read))))
+        (let [rest-events (read-event-signature
+                           (captured-events! #(mt/user-http-request :rasta :get 200 (str "dashboard/" (:id dash))))
+                           :event/dashboard-read)
+              tool-events (read-event-signature
+                           (captured-events! #(mt/with-test-user :rasta
+                                                (tools/publish-read-event! :model/Dashboard dash)))
+                           :event/dashboard-read)]
+          ;; Without this the comparison below is satisfied by two empty lists, and a spy that captures
+          ;; nothing at all passes as a read tool that publishes exactly what the REST endpoint publishes.
+          (is (seq tool-events) "the spy has to actually see the event")
+          (is (= rest-events tool-events))))
       (testing "collection — the payload carries the instance, because the handler reads more than the id"
         (is (= (read-event-signature
                 (captured-events! #(mt/user-http-request :rasta :get 200 (str "collection/" (:id coll) "/items")))

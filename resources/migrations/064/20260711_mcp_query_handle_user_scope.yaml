@@ -1,12 +1,12 @@
-## User-scope and TTL for mcp_query_handle: reads resolve by (user_id, id) directly and
-## handles expire on their own instead of relying on core_session reaping. mcp_session_id
-## becomes nullable because the stateless MCP core carries no transport session id.
+## mcp_query_handle rows belong to a user and carry their own expiry: `user_id` names the owner that
+## reads are scoped to, `expires_at` bounds how long the row resolves, and `mcp_session_id` is optional
+## because a request can arrive without a transport session.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/062_update_migrations.yaml
+  - logicalFilePath: migrations/064_update_migrations.yaml
 
   - changeSet:
-      id: v62.2026-07-11T00:00:00
+      id: v64.2026-07-11T00:00:00
       author: aleksandr
       comment: Add user_id to mcp_query_handle so reads resolve without a core_session join
       changes:
@@ -23,9 +23,9 @@ databaseChangeLog:
             columnName: user_id
 
   - changeSet:
-      id: v62.2026-07-11T00:00:01
+      id: v64.2026-07-11T00:00:01
       author: aleksandr
-      comment: Backfill mcp_query_handle.user_id from the core_session that currently backs each row
+      comment: Backfill mcp_query_handle.user_id from the core_session that backs each row
       changes:
         - sql:
             sql: >-
@@ -36,7 +36,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-07-11T00:00:02
+      id: v64.2026-07-11T00:00:02
       author: aleksandr
       comment: Index mcp_query_handle.user_id for user-scoped reads
       changes:
@@ -52,7 +52,7 @@ databaseChangeLog:
             indexName: idx_mcp_query_handle_user_id
 
   - changeSet:
-      id: v62.2026-07-11T00:00:03
+      id: v64.2026-07-11T00:00:03
       author: aleksandr
       comment: FK from mcp_query_handle.user_id to core_user, cascade on delete
       changes:
@@ -69,7 +69,7 @@ databaseChangeLog:
             constraintName: fk_mcp_query_handle_ref_core_user
 
   - changeSet:
-      id: v62.2026-07-11T00:00:04
+      id: v64.2026-07-11T00:00:04
       author: aleksandr
       comment: Add expires_at to mcp_query_handle so handles have an explicit TTL
       changes:
@@ -85,12 +85,11 @@ databaseChangeLog:
             tableName: mcp_query_handle
             columnName: expires_at
 
-  # Backfill expires_at to created_at + 14 days (the default TTL) for pre-existing rows. Date
-  # arithmetic differs per dialect, so each is gated by dbms.
+  # Date arithmetic differs per dialect, so each backfill is gated by dbms.
   - changeSet:
-      id: v62.2026-07-11T00:00:05
+      id: v64.2026-07-11T00:00:05
       author: aleksandr
-      comment: Backfill mcp_query_handle.expires_at from created_at + default TTL
+      comment: Backfill mcp_query_handle.expires_at from created_at plus the default TTL of 14 days
       changes:
         - sql:
             dbms: postgresql,h2
@@ -104,9 +103,9 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-07-11T00:00:06
+      id: v64.2026-07-11T00:00:06
       author: aleksandr
-      comment: Index mcp_query_handle.expires_at for TTL sweeps
+      comment: Index mcp_query_handle.expires_at so the cleanup task can find expired rows
       changes:
         - createIndex:
             tableName: mcp_query_handle
@@ -120,9 +119,9 @@ databaseChangeLog:
             indexName: idx_mcp_query_handle_expires_at
 
   - changeSet:
-      id: v62.2026-07-11T00:00:07
+      id: v64.2026-07-11T00:00:07
       author: aleksandr
-      comment: Make mcp_query_handle.mcp_session_id nullable; the stateless MCP core has no session id
+      comment: Make mcp_query_handle.mcp_session_id nullable; a request can carry no transport session id
       changes:
         - dropNotNullConstraint:
             tableName: mcp_query_handle

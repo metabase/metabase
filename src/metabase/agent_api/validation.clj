@@ -6,6 +6,8 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.util.i18n :refer [tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defn check-agent-api-enabled
   "Check that the Agent API is enabled, or throw a 403."
   []

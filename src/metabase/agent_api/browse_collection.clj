@@ -21,7 +21,7 @@
    [metabase.collection-items.core :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,6 +80,21 @@
   "The most collections one tree response carries, across every level."
   100)
 
+(def ^:private Params
+  "The arguments [[browse-collection]] contracts on. `POST /v2/browse-collection` declares the wire schema,
+   with the enums and the bounds a client is held to; this is the looser shape the domain function accepts."
+  [:map
+   [:id                             [:or :int :string]]
+   [:mode           {:optional true} [:maybe (into [:enum] modes)]]
+   [:type           {:optional true} [:maybe [:sequential :string]]]
+   [:sort_column    {:optional true} [:maybe :string]]
+   [:sort_direction {:optional true} [:maybe :string]]
+   [:limit          {:optional true} [:maybe :int]]
+   [:offset         {:optional true} [:maybe :int]]
+   [:depth          {:optional true} [:maybe :int]]
+   [:fields         {:optional true} [:maybe [:sequential :string]]]
+   [:response_format {:optional true} [:maybe :string]]])
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Validation — every refusal names the fix
 ;;; ──────────────────────────────────────────────────────────────────
@@ -90,14 +105,17 @@
     (doseq [[k param] [[type "type"] [sort_column "sort_column"] [sort_direction "sort_direction"]
                        [limit "limit"] [offset "offset"]]
             :when (some? k)]
-      (tools/teaching-error
-       (tru "`{0}` applies to `mode: \"items\"`. A tree lists collections only, and re-roots instead of paging." param)))
+      (tools/teaching-error!
+       (str "`" param "` applies to `mode: \"items\"`. A tree lists collections only, and re-roots instead "
+            "of paging.")))
     (when (seq fields)
-      (tools/teaching-error
-       (tru "`fields` picks fields from an item, so it applies to `mode: \"items\"`. Drop it, or switch the mode."))))
+      (tools/teaching-error!
+       (str "`fields` picks fields from an item, so it applies to `mode: \"items\"`. Drop it, or switch "
+            "the mode."))))
   (when (and (= "items" mode) (some? depth))
-    (tools/teaching-error
-     (tru "`depth` applies to `mode: \"tree\"`. `items` lists the contents of one collection. Drop it, or switch the mode."))))
+    (tools/teaching-error!
+     (str "`depth` applies to `mode: \"tree\"`. `items` lists the contents of one collection. Drop it, or "
+          "switch the mode."))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The collection a call is about
@@ -110,8 +128,9 @@
   (case (:kind (tools/classify-ref id))
     :root  collection/root-collection
     :trash (api/read-check (collection/trash-collection))
-    :null  (tools/teaching-error
-            (tru "`browse_collection` needs an `id`: a collection id, an entity_id, `\"root\"` for the top level, or `\"trash\"`."))
+    :null  (tools/teaching-error!
+            (str "`browse_collection` needs an `id`: a collection id, an entity_id, `\"root\"` for the top "
+                 "level, or `\"trash\"`."))
     (api/read-check :model/Collection (tools/resolve-id :model/Collection id))))
 
 (defn- listing
@@ -167,26 +186,21 @@
 
 (defn- items
   [collection {:keys [response_format fields] :as params}]
-  (let [limit         (min (or (:limit params) default-limit) max-limit)
-        offset        (or (:offset params) 0)
-        {:keys [rows total]} (page collection (listing-options collection params) limit offset)
-        more?         (< (+ offset (count rows)) total)]
+  (let [limit  (tools/clamp-limit (:limit params) default-limit max-limit)
+        offset (or (:offset params) 0)
+        {:keys [rows total]} (page collection (listing-options collection params) limit offset)]
     (when (:id collection)
       (tools/publish-read-event! :model/Collection collection))
-    (tools/list-envelope
-     (tools/project-rows {:response-format response_format
-                          :fields          fields
-                          :spec            (projections/spec :collection-item)}
-                         (mapv item-row rows))
-     (cond-> {:total total}
-       more? (assoc :truncation-message
-                    (tools/truncation-message {:total       total
-                                               :returned    (count rows)
-                                               :noun        "items"
-                                               :scope       (str "in " (pr-str (:name collection)))
-                                               :narrow-with [:type]
-                                               :offset      offset
-                                               :limit       limit}))))))
+    (tools/paged-envelope (mapv item-row rows)
+                          {:limit           limit
+                           :offset          offset
+                           :total           total
+                           :response-format response_format
+                           :fields          fields
+                           :spec            (projections/spec :collection-item)
+                           :noun            "items"
+                           :scope           (str "in " (pr-str (:name collection)))
+                           :narrow-with     [:type]})))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; tree — collections only, and a cut branch names its expansion
@@ -212,12 +226,12 @@
 
 (defn- expansion-message
   [{:keys [id name]} shown total]
-  (tru "{0} more under {1} — browse_collection(id: {2}, mode: \"tree\")"
-       (str (- total shown)) (pr-str name) (str id)))
+  (str (- total shown) " more under " (pr-str name)
+       " — browse_collection(id: " id ", mode: \"tree\")"))
 
 (defn- unexpanded-message
   [{:keys [id name]}]
-  (tru "not expanded — browse_collection(id: {0}, mode: \"tree\") walks below {1}" (str id) (pr-str name)))
+  (str "not expanded — browse_collection(id: " id ", mode: \"tree\") walks below " (pr-str name)))
 
 (declare node)
 
@@ -260,10 +274,10 @@
 ;;; The tool
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn browse-collection
-  "Run the `browse_collection` tool. See the tool's description on `POST /v2/browse-collection` for the argument
-   contract."
-  [{:keys [id mode] :as params}]
+(mu/defn browse-collection :- ::tools/list-response
+  "Run the `browse_collection` tool. See the tool's description on `POST /v2/browse-collection` for the
+   argument contract."
+  [{:keys [id mode] :as params} :- Params]
   (let [mode (or mode "items")]
     (check-mode-args! (assoc params :mode mode))
     (let [collection (resolve-collection id)]

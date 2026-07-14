@@ -1,7 +1,7 @@
 (ns metabase.mcp.toolsets
   "The v2 MCP toolset registry: 7 toolsets that map 1:1 to OAuth scope groups.
 
-   Admins grant at the toolset level (7 groups) rather than toggling 24 individual
+   Admins grant at the toolset level (7 groups) rather than toggling individual
    tools, `tools/list` is filtered by the granted group scopes, and a read-only
    server is a grant policy (read toolsets only) rather than a code fork. Each
    toolset's member tools carry the toolset's group scope in their `defendpoint`
@@ -23,8 +23,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 ;;
 ;; One group scope per toolset. Read toolsets take a `:read` scope, write toolsets a
-;; `:write` scope. The `ui` toolset reuses the pre-existing `agent:viz:mcp-ui:*`
-;; scopes (declared with the visualization tools), so it has no group scope here.
+;; `:write` scope. The `ui` toolset's grant is a wildcard over the two concrete
+;; visualization scopes the tools themselves declare.
 
 (api-scope/defscope agent-discover-read "agent:discover:read"
   (deferred-tru "Find and read content, data, and metadata"))
@@ -39,11 +39,11 @@
 (api-scope/defscope agent-notify-write "agent:notify:write"
   (deferred-tru "Create and edit alerts and subscriptions"))
 
-;; The wildcard a `ui` grant carries; it covers both concrete visualization scopes
-;; (`agent:viz:mcp-ui:query`, `agent:viz:mcp-ui:drill-through`), which the tools
-;; themselves declare and which `all-scopes` already advertises via the resource
-;; registry.
-(def ^:private ui-group-scope "agent:viz:mcp-ui:*")
+;; The wildcard a `ui` grant carries. It covers both concrete visualization scopes —
+;; `agent:viz:mcp-ui:query` and `agent:viz:mcp-ui:drill-through` — which the tools
+;; themselves declare and which `all-scopes` advertises via the resource registry.
+(api-scope/defscope agent-viz-mcp-ui "agent:viz:mcp-ui:*"
+  (deferred-tru "Render charts and drill-throughs in the chat"))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Registry
@@ -79,7 +79,7 @@
     :risk       :write
     :default-on true
     :scope      agent-curate-write
-    :tools      ["bookmark_content" "revert_content" "add_timeline_event"]}
+    :tools      ["bookmark_content" "revert_content" "timeline_write" "timeline_event_write"]}
    {:toolset    :definitions
     :label      (deferred-tru "Definitions")
     :risk       :write
@@ -97,7 +97,7 @@
     :risk               :read
     :default-on         true
     :requires-extension :mcp-app-ui
-    :scope              ui-group-scope
+    :scope              agent-viz-mcp-ui
     :tools              ["visualize_query" "render_drill_through"]}])
 
 (def ^:private toolset-index
@@ -118,21 +118,16 @@
   [toolset-kw]
   (:scope (toolset-index toolset-kw)))
 
-(defn read-toolset?
-  "Whether `toolset-kw` is a read-risk toolset."
-  [toolset-kw]
-  (= :read (:risk (toolset-index toolset-kw))))
-
 (def default-toolsets
   "Toolset keywords that are on by default. All 7 ship on; the admin ceiling narrows
    this per group."
   (into [] (comp (filter :default-on) (map :toolset)) toolsets))
 
 (defn group-scopes
-  "The registered group scope strings for the six toolsets that introduce a new scope.
-   Excludes `ui`, whose grant is the pre-existing `agent:viz:mcp-ui:*` wildcard and
-   whose concrete scopes `all-scopes` already advertises via the resource registry.
-   Fed into [[metabase.mcp.core/all-scopes]] so the OAuth server advertises them."
+  "The group scope strings of the six toolsets that introduce a scope of their own.
+   Excludes `ui`, whose grant is a wildcard over the two concrete visualization scopes
+   the resource registry already advertises. Fed into [[metabase.mcp.core/all-scopes]]
+   so the OAuth server advertises them."
   []
   (into [] (comp (remove #(= :ui (:toolset %))) (map :scope)) toolsets))
 

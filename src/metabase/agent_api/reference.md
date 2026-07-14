@@ -246,6 +246,7 @@ Request:
   "archived": false,
   "limit": 20,
   "offset": 0,
+  "fields": null,
   "response_format": "concise"
 }
 ```
@@ -284,7 +285,11 @@ countable (a fused ranking is a union of ranked windows and counts nothing):
 ```
 
 `response_format: "detailed"` returns every field the search index carries
-instead of the five above.
+instead of the five above. A concise hit's `description` is its **first line** —
+a page of hits is a menu, and a paragraph per hit spends the response budget on
+prose the agent will not read before it picks one; `detailed` and a `fields` pick
+both return it whole. `fields` picks dot-paths out of a hit and overrides
+`response_format`.
 
 ### POST /v2/browse-data
 
@@ -302,8 +307,11 @@ from which arguments happen to be present.
 
 Shared arguments: `include_hidden` (hidden tables/fields, default `false`),
 `response_format`, and — for the `list_*` actions — `limit` (default 50, max
-200) and `offset`. `search` is a case-insensitive substring filter on table
-name. Every id argument accepts a numeric id or a 21-character `entity_id`.
+200), `offset`, and `fields`. `search` is a case-insensitive substring filter on
+table name. Every id argument accepts a numeric id or a 21-character `entity_id`.
+`fields` picks dot-paths out of a row and overrides `response_format`; it does
+not apply to `list_schemas` (which returns bare strings) or to `get_fields`
+(whose table units carry the field list `get_fields` exists for).
 
 Request:
 
@@ -321,7 +329,11 @@ Request:
 `list_*` responses are the bounded list envelope (`data`, `returned`, `total`,
 `truncated?`, `truncation_message?`); a cut page's message names the narrowing
 parameters and the next offset ("143 tables in schema `public` — showing 50.
-narrow with `search` or page with `offset: 50`.").
+narrow with `search` or page with `offset: 50`."). A page is bounded by both the
+row cap and the response budget: `response_format: "detailed"` returns whole REST
+records, and two hundred of those overrun a response long before two hundred rows
+do, so a page that will not fit comes back smaller and the message names the
+offset it actually reached.
 
 `get_fields` bounds by response budget with per-table fault isolation: complete
 tables in request order until the budget runs out, then the rest named in
@@ -350,12 +362,16 @@ listed in `omitted` with the reason.
 }
 ```
 
-When a single requested table alone exceeds the budget, the response is an
-explicit slice instead: fields in position order, `returned`/`total` field
-counts on the table, and a `truncation_message` naming the continuation —
-"ORDERS: 150 of 620 fields — continue with `browse_data(action: "get_fields",
-table_ids: [7], offset: 150)`". `offset` applies to `get_fields` only in this
-single-table case.
+When a requested table is too wide to fit a response on its own — wherever it
+sits in `table_ids` — that table comes back as an explicit slice instead, and
+every other requested table is named in `omitted`: a slice beside whole tables
+would be two bounding rules in one response, and omitting the wide one means an
+agent that asked for its fields never gets them. The slice is fields in position
+order, `returned`/`total` field counts on the table, and a `truncation_message`
+naming the continuation — "ORDERS: 150 of 620 fields — continue with
+`browse_data(action: "get_fields", table_ids: [7], offset: 150)`". `offset`
+applies to `get_fields` only with a single table in `table_ids`, to continue such
+a slice.
 
 `response_format: "detailed"` on `get_fields` returns each field's whole REST
 record (fingerprint stats, `has_field_values`), attaches up to 20 stored
@@ -413,8 +429,12 @@ own — same permission filter, same pinned-first order:
 ```
 
 `fields` (items mode) picks dot-paths out of an item's full record — `["id",
-"name"]` — and overrides `response_format`. An unknown path is a 400 listing the
-paths that exist.
+"name"]` — and overrides `response_format`. A path is valid when the item's
+projection declares it or a returned record carries it, so a detailed-only
+property is pickable and a typo is refused even when the page came back empty
+(checking only the records would let `fields: ["naem"]` answer `[]`, which reads
+as "nothing there"). An unknown path is a 400 listing the paths that exist and
+naming the nearest one.
 
 `tree` mode carries collection nodes with their `children`. A tree does not page:
 a branch cut by the per-node cap, the node budget, or `depth` carries a
@@ -516,8 +536,10 @@ server converts, so a read hands back exactly what a write will accept:
 
 `fields` (the parameter, not the section) picks dot-paths out of each item's full
 record — `["id", "collection_id"]` — and overrides `response_format`. It applies
-to every item, so a path a type does not carry is simply absent from it; a path
-no type carries is an error listing the ones that exist.
+to every item, and the paths it may name are declared by the projections of the
+types in the batch, so a path one type carries and another does not is simply
+absent from the ones that lack it; a path no type declares and no record carries
+is an error listing the ones that exist and naming the nearest.
 
 ### POST /v2/parameter-values
 
@@ -566,12 +588,12 @@ Exactly one of `query` | `query_handle` names the query. `query` is portable MBQ
 5 (the `::lib.schema/external-query` dialect described under
 `/v2/construct-query`): field refs are name arrays, sources are table-name paths
 or card entity_ids, never numeric ids, never base64. `query_handle` is a handle a
-previous call minted.
+previous `execute_query` call minted.
 
 | Parameter | Meaning |
 | --- | --- |
 | `query` | Portable MBQL 5, as a JSON object. |
-| `query_handle` | A handle from an earlier `execute_query` / `execute_sql` / `visualize_query`. |
+| `query_handle` | A handle from an earlier `execute_query`. |
 | `validate_only` | Validate and mint the handle without running anything (default `false`). |
 | `row_limit` | Rows to return (default 100, max 2000). |
 | `offset` | Rows to skip. Must be a multiple of the page size. |
@@ -613,18 +635,33 @@ a `truncation_message` naming the next `offset`. Continue by passing the
 
 A page is `row_limit` rows, or fewer if the instance's own row cap for the query
 is lower (`unaggregated-query-row-limit` / `aggregated-query-row-limit`, which an
-admin can set per database). The page is sized to what the query processor will
-actually return, because it enforces its cap by trimming the result rather than
-narrowing the SQL — so a wider page would drop rows that the next `offset` then
-steps over. `offset` is a multiple of that page size: MBQL pages by page number,
-so an arbitrary offset is not expressible, and every offset a truncation message
-names conforms. A query with no `order-by` is told so in its truncation message:
+admin can set per database — the cap is read with that database's settings bound,
+so a lowered per-database value is honored). The page is sized to what the query
+processor will actually return, because it enforces its cap by trimming the result
+rather than narrowing the SQL — so a wider page would drop rows that the next
+`offset` then steps over.
+
+A page is also bounded by the response budget: a page within the row cap can still
+overrun the response — two hundred wide rows do it long before two thousand narrow
+ones. When it does, the rows that fit come back with `truncated: true` and a
+message naming a `row_limit` that will fit and the `offset` to continue from. That
+smaller `row_limit` is a whole fraction of the one asked for, so every offset the
+caller already holds stays valid.
+
+`offset` is a multiple of the page size: MBQL pages by page number, so an
+arbitrary offset is not expressible, and every offset a truncation message names
+conforms. A query with no `order-by` is told so in its truncation message:
 `offset` compiles to SQL `OFFSET`, whose row order across two windows a database
 does not guarantee, so paging an unordered query can repeat one row and miss
 another.
 
 A handle comes back from every call, including `validate_only`, which returns
-`{"query_handle": "...", "validated": true}` and nothing else. It is the query
+`{"query_handle": "...", "validated": true}` and nothing else. `validate_only`
+runs every check execution runs — the shape rules, the row-cap and `offset`
+arithmetic, query permission on every table the query reads across every stage and
+join, and sandbox visibility on every column it names. A dry run that blessed what
+execution would refuse would be an existence oracle for exactly the tables and
+columns the permission was there to hide. It is the query
 that ran, so saving it via `question_write` saves byte-identically what the caller
 saw, rather than a regenerated near-miss. The store is content-addressed and keyed
 by `(user, query)`: the same query from the same user is the same handle, and a

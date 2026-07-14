@@ -128,16 +128,36 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest validate-only-mints-a-handle-and-runs-nothing-test
-  (let [before   (t2/count :model/QueryExecution)
-        response (execute! {:query (orders-query :limit 5) :validate_only true})]
-    (testing "the handle is there, and nothing else is — nothing ran"
-      (is (= #{:query_handle :validated} (set (keys response))))
-      (is (true? (:validated response)))
-      (is (some? (parse-uuid (:query_handle response)))))
-    (testing "no warehouse query was executed"
-      (is (= before (t2/count :model/QueryExecution))))
-    (testing "and the handle it minted runs"
-      (is (= 5 (:row_count (execute! {:query_handle (:query_handle response)})))))))
+  ;; The audit row is counted for a user nobody else runs anything as. A global `query_execution` count
+  ;; would be moved by any namespace that happens to run a query at the same moment.
+  (mt/with-temp [:model/User runner {}]
+    (let [executions (fn [] (t2/count :model/QueryExecution :executor_id (:id runner)))
+          response   (mt/with-current-user (:id runner)
+                       (execute-query/execute-query {:query (orders-query :limit 5) :validate_only true}))]
+      (testing "the handle is there, and nothing else is — nothing ran"
+        (is (= #{:query_handle :validated} (set (keys response))))
+        (is (true? (:validated response)))
+        (is (some? (parse-uuid (:query_handle response)))))
+      (testing "no warehouse query was executed"
+        (is (zero? (executions))))
+      (testing "and the handle it minted runs, and *that* is audited"
+        (is (= 5 (:row_count (mt/with-current-user (:id runner)
+                               (execute-query/execute-query {:query_handle (:query_handle response)})))))
+        (is (= 1 (executions)))))))
+
+(deftest validate-only-refuses-what-running-the-same-call-would-refuse-test
+  (testing "the dry run runs every check execution runs, `offset` included — a dry run that blesses a call
+            the same handle would then refuse is worse than no dry run at all"
+    (is (re-find #"multiple of the page size"
+                 (refusal (execute! :rasta 400 {:query         (orders-query)
+                                                :row_limit     100
+                                                :offset        150
+                                                :validate_only true}))))
+    (is (re-find #"own limit of 5 rows"
+                 (refusal (execute! :rasta 400 {:query         (orders-query :limit 5)
+                                                :row_limit     5
+                                                :offset        5
+                                                :validate_only true}))))))
 
 (deftest validate-only-refuses-an-invalid-query-test
   (is (=? {:error "unknown-table"}
@@ -198,19 +218,32 @@
           page-2 (execute! {:query_handle (:query_handle page-1) :row_limit 2 :offset 2})]
       (is (= (:query_handle page-1) (:query_handle page-2))))))
 
-(deftest a-page-never-exceeds-the-instances-own-row-cap-test
-  (testing "an instance that caps rows below the requested row_limit gets pages of the cap, still steering
-            to a reachable next offset — a page sized above the cap would be trimmed after the SQL window
-            was drawn, and the rows in between would be skipped by the next offset"
-    (mt/with-temporary-setting-values [unaggregated-query-row-limit 4]
-      (let [response (execute! {:query (orders-query) :row_limit 100})]
-        (is (= 4 (:row_count response)))
-        (is (true? (:truncated response)))
-        (is (re-find #"offset: 4" (:truncation_message response)))
-        (testing "and that offset is accepted"
-          (is (= 4 (:row_count (execute! {:query_handle (:query_handle response)
-                                          :row_limit    100
-                                          :offset       4})))))))))
+(defn- capped-page-is-reachable!
+  "A `row_limit` above the instance's row cap must come back as a page of the cap, steering to an offset that
+   is actually the next unread row. A page sized above the cap is trimmed *after* the SQL window is drawn, so
+   an offset that counted on the full page would step straight over the rows the trim dropped."
+  [cap]
+  (let [response (execute! {:query (orders-query) :row_limit 100})]
+    (is (= cap (:row_count response)))
+    (is (true? (:truncated response)))
+    (is (re-find (re-pattern (str "offset: " cap)) (:truncation_message response)))
+    (testing "and reading from that offset is the next row, not a row further down"
+      (let [next-page (execute! {:query_handle (:query_handle response)
+                                 :row_limit    100
+                                 :offset       cap})]
+        (is (= cap (:row_count next-page)))
+        (is (not= (:rows response) (:rows next-page)))))))
+
+(deftest a-page-never-exceeds-the-instances-site-wide-row-cap-test
+  (mt/with-temporary-setting-values [unaggregated-query-row-limit 4]
+    (capped-page-is-reachable! 4)))
+
+(deftest a-page-never-exceeds-the-databases-own-row-cap-test
+  (testing "the row caps are database-local settings, so an admin can lower one for a single database — and
+            that value is only visible with the database's settings bound. Read site-wide it is invisible, and
+            the page is sized above what the query processor will actually return"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:unaggregated-query-row-limit 4}}
+      (capped-page-is-reachable! 4))))
 
 (deftest an-unordered-page-says-its-order-is-not-guaranteed-test
   (testing "paging compiles to SQL OFFSET, which is only stable under an order-by"

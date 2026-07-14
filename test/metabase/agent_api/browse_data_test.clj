@@ -238,17 +238,37 @@
                    :description   (apply str (repeat 120 "x"))}))
     (f table)))
 
-(deftest get-fields-budget-isolates-per-table-test
+(deftest get-fields-slices-a-wide-table-wherever-it-appears-test
   (with-wide-table
     400
     (fn [wide]
-      (testing "a table beyond the budget is named in omitted — never half-emitted"
-        (let [response (browse! {:action "get_fields" :table_ids [(mt/id :categories) (:id wide)]})]
-          (is (= [(mt/id :categories)] (map :id (:data response))))
+      (testing "a table too wide for a response of its own is sliced even when another table was asked for
+                first — the alternative omits it, and an agent that asked for its fields never gets them"
+        (let [response (browse! {:action "get_fields" :table_ids [(mt/id :categories) (:id wide)]})
+              table    (first (:data response))]
+          (is (= [(:id wide)] (map :id (:data response))))
+          (is (= 400 (:total table)))
+          (is (< 0 (:returned table) 400))
           (is (true? (:truncated response)))
-          (is (=? [{:id (:id wide) :name "AGENTV2_WIDE" :reason #"response budget.*"}]
-                  (:omitted response)))
-          (is (re-find #"response budget" (:truncation_message response))))))))
+          (is (re-find #"offset" (:truncation_message response)))
+          (testing "and the tables that made way for the slice are named, never silently absent"
+            (is (=? [{:id (mt/id :categories) :reason #"response budget.*"}]
+                    (:omitted response)))))))))
+
+(deftest get-fields-budget-cuts-whole-tables-test
+  (testing "tables that each fit but together overrun the budget come back complete until the budget runs
+            out, and the rest are named — never half a table"
+    (let [ids      (mapv mt/id [:orders :people :products :reviews :venues :checkins :users :categories])
+          response (browse! {:action "get_fields" :table_ids ids :response_format "detailed"})]
+      (is (= (count ids) (:total response)))
+      (is (pos? (:returned response)))
+      (is (every? (fn [table] (= (count (:fields table)) (count (distinct (map :id (:fields table))))))
+                  (:data response))
+          "every returned table carries its whole field list")
+      (when (:truncated response)
+        (is (re-find #"response budget" (:truncation_message response)))
+        (is (= (- (count ids) (:returned response)) (count (:omitted response))))
+        (is (every? #(re-find #"response budget" (:reason %)) (:omitted response)))))))
 
 (deftest get-fields-single-wide-table-slices-explicitly-test
   (with-wide-table
@@ -324,3 +344,37 @@
                            (map (juxt :model :id))
                            (:recents (activity-feed/get-recents (mt/user->id :rasta) [:views])))
                      [:table (mt/id :orders)])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; fields — dot-path picks on the list_* actions
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest list-tables-fields-test
+  (testing "`fields` picks exactly the named paths from a row, and overrides response_format"
+    (let [rows (:data (browse! {:action          "list_tables"
+                                :database_id     (mt/id)
+                                :search          "orders"
+                                :fields          ["id" "name"]
+                                :response_format "detailed"}))]
+      (is (= [#{:id :name}] (distinct (map (comp set keys) rows))))))
+  (testing "an unknown path is refused, naming the paths that exist"
+    (let [message (refusal! {:action "list_tables" :database_id (mt/id) :fields ["naem"]})]
+      (is (re-find #"Unknown field \"naem\"" message))
+      (is (re-find #"Did you mean \"name\"\?" message))))
+  (testing "`fields` has nothing to pick from a bare schema name, or from a table unit's own field list"
+    (is (re-find #"`fields` picks fields from a record"
+                 (refusal! {:action "list_schemas" :database_id (mt/id) :fields ["name"]})))
+    (is (re-find #"`fields` picks fields from a record"
+                 (refusal! {:action "get_fields" :table_ids [(mt/id :orders)] :fields ["name"]})))))
+
+(deftest list-tables-without-a-schema-spans-every-schema-test
+  (testing "an unscoped list_tables is the database's tables, across every schema it has — one listing, not
+            one per schema"
+    (let [tables (:data (browse! {:action "list_tables" :database_id (mt/id) :limit 200}))]
+      (is (= (set (map :name (:data (browse! {:action      "list_tables"
+                                              :database_id (mt/id)
+                                              :schema      "PUBLIC"
+                                              :limit       200}))))
+             (set (map :name tables)))
+          "the sample database has one schema, so the scoped and unscoped listings agree")
+      (is (contains? (set (map :name tables)) "ORDERS")))))

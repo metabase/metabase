@@ -53,8 +53,10 @@
    [metabase.timeline.core :as timeline]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,6 +64,17 @@
   "The most entities one call may name. Past this the response budget decides what comes back anyway, and a
    batch an agent cannot hold in its head is worse than two it can."
   10)
+
+(def ^:private Params
+  "The arguments [[get-content]] contracts on. `POST /v2/content` declares the wire schema, with the enums a
+   client is held to; this is the looser shape the domain function accepts."
+  [:map
+   [:items [:sequential [:map
+                         [:type :string]
+                         [:id   [:or :int :string]]]]]
+   [:include         {:optional true} [:maybe [:sequential :string]]]
+   [:fields          {:optional true} [:maybe [:sequential :string]]]
+   [:response_format {:optional true} [:maybe :string]]])
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Reading one entity
@@ -72,6 +85,12 @@
    so a `search` hit names its own type and a mismatched read can be told exactly what to ask for."
   #{"question" "model" "metric"})
 
+(defn- with-last-edit-info
+  "`record` annotated with `:last-edit-info` — who touched it last, and when. The REST read of a card and of
+   a dashboard both carry it, and `detailed` is the whole REST record."
+  [model record]
+  (first (revisions/with-last-edit-info [record] model)))
+
 (defn- read-card
   "The card `id` names, checked against the flavor the caller asked for. A metric is re-read through the
    metric endpoint's own function, which carries the semantic dimensions a plain card read does not."
@@ -79,16 +98,18 @@
   (let [card   (queries/get-card id)
         actual (name (:type card))]
     (when-not (= actual type)
-      (tools/teaching-error
-       (tru "{0} is a {1}, not a {2}. Ask for it with type \"{3}\"." (str id) actual type actual)
+      (tools/teaching-error!
+       (str id " is a " actual ", not a " type ". Ask for it with type \"" actual "\".")
        404))
-    (if (= "metric" type)
-      (metrics.api/get-metric id)
-      card)))
+    (with-last-edit-info :card (if (= "metric" type)
+                                 (metrics.api/get-metric id)
+                                 card))))
 
 (defn- read-dashboard
   [id]
-  (tools/publish-read-event! :model/Dashboard (dashboards.read/get-dashboard id)))
+  (->> (dashboards.read/get-dashboard id)
+       (with-last-edit-info :dashboard)
+       (tools/publish-read-event! :model/Dashboard)))
 
 (defn- read-collection
   "The collection `id` names. No read event: `GET /api/collection/:id` publishes none — a collection is
@@ -225,19 +246,19 @@
     (tools/resolve-id model id)
     (if (integer? id)
       id
-      (tools/teaching-error
-       (tru "An {0} takes a numeric id; {1} is not one. `search` returns the ids." type (pr-str id))))))
+      (tools/teaching-error!
+       (str "An " type " takes a numeric id; " (pr-str id) " is not one. `search` returns the ids.")))))
 
 (defn- project-record
   "The item's fields: its concise projection, the whole record, or the dot-paths `fields` picked out of the
    record. `fields` picks against the detailed shape, so a document's `content_markdown` is as pickable as
    any REST property is."
-  [type record {:keys [response_format fields]}]
+  [type record {:keys [response_format fields declared-paths]}]
   (let [{:keys [spec concise detailed]} (entity-types type)
         full                            ((or detailed identity) record)]
     (cond
       (seq fields)
-      (first (tools/pick-fields fields [full]))
+      (first (tools/pick-fields fields [full] declared-paths))
 
       (tools/detailed? response_format)
       full
@@ -325,6 +346,20 @@
    :table_id           (:table-id column)
    :fk_target_field_id (:fk-target-field-id column)})
 
+(defn- sandbox-visible
+  "`rows` narrowed to the columns the caller's column sandbox exposes.
+
+   Lib's column metadata is not sandbox-aware — `batch-fetch-table-query-metadatas` is, which is why every
+   other field read in this tool goes through it. Without this filter a column-restricting sandbox leaks the
+   names, types, and semantic types of exactly the columns it was configured to hide, from a tool and from
+   nowhere else. A column with no table (an expression, an aggregation) belongs to no sandbox and stays."
+  [rows]
+  (let [in-a-table (filter :table_id rows)
+        visible    (into #{}
+                         (mapcat val)
+                         (schema.table/batch-filter-sandboxed-fields (group-by :table_id in-a-table)))]
+    (filterv (fn [row] (or (nil? (:table_id row)) (contains? visible row))) rows)))
+
 (defn- dimensions-section
   "The columns a metric can be grouped and filtered by — what a query *using* the metric may break out on,
    its own breakouts removed so the answer is what is reachable rather than what is already chosen. Not the
@@ -332,7 +367,8 @@
   [record]
   (let [mp    (lib-be/application-database-metadata-provider (:database_id record))
         query (lib/query mp (lib.metadata/card mp (:id record)))]
-    {:dimensions (mapv dimension-row (lib/filterable-columns (lib/remove-all-breakouts query)))}))
+    {:dimensions (sandbox-visible
+                  (mapv dimension-row (lib/filterable-columns (lib/remove-all-breakouts query))))}))
 
 (def ^:private revision-entities
   "Type → the name the revision system knows it by. A card's three flavors all revise as one entity, which is
@@ -392,14 +428,52 @@
                 (merge element (build type id record))
                 (update element :skipped_includes (fnil conj [])
                         {:include include
-                         :message (tru "`{0}` applies to {1}, not to a {2}."
-                                       include (section-types include) type)}))))
+                         :message (str "`" include "` applies to " (section-types include)
+                                       ", not to a " type ".")}))))
           element
           includes))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; One item
 ;;; ──────────────────────────────────────────────────────────────────
+
+(defn- declared-paths
+  "The dot-paths a `fields` pick may name across a batch of `types`: the union of the concise projections of
+   the types in it. Declared once for the whole call, so a path one type carries and another does not is
+   simply absent from the ones that lack it rather than an error on them — a mixed batch shares one `fields`
+   list, and it is the batch the caller wrote it against."
+  [types]
+  (into #{}
+        (mapcat #(tools/spec-paths (projections/spec (:spec (entity-types %)))))
+        types))
+
+(def ^:private char-budget
+  "Characters an element may spend before it overruns the response budget on its own."
+  (* 4 tools/token-budget))
+
+(defn- longest-text-key
+  [element]
+  (when-let [entries (seq (filter (comp string? val) element))]
+    (key (apply max-key (comp count val) entries))))
+
+(defn- fit-element
+  "An element that overruns the response budget on its own, cut down to fit: its longest text value truncated,
+   and the cut named. The budgeter always emits at least one element, so without this a single long document
+   body would blow the very response the budget exists to bound — and the client would hard-truncate the JSON
+   mid-value, leaving the model with neither the content nor a way to ask for less."
+  [element]
+  (if (<= (tools/estimate-tokens element) tools/token-budget)
+    element
+    (if-let [k (longest-text-key element)]
+      (let [text (get element k)
+            room (max 200 (- char-budget (count (json/encode (dissoc element k)))))
+            kept (subs text 0 (min (count text) room))]
+        (assoc element
+               k                   kept
+               :truncated          true
+               :truncation_message (str "`" (name k) "` was cut at " (count kept) " of " (count text)
+                                        " characters to fit the response budget.")))
+      element)))
 
 (defn- item-element
   "One entity, read and shaped: its fields, its sections, and the `type` and `id` that address it.
@@ -416,14 +490,22 @@
 
 (defn- item-result
   "One item's element, or — when the read refused — an error in its place. A batch that dies on its worst id
-   teaches an agent to read one entity at a time, which is the habit the batch exists to break."
+   teaches an agent to read one entity at a time, which is the habit the batch exists to break.
+
+   Only a refusal becomes an element: an `ex-info` carrying a `:status-code` is a permission denial, a 404,
+   or a teaching error, and its message is written for the model to act on. Anything else is a bug, and a
+   bug reported as `\"could not be read\"` sends the agent off to fix an id that was never the problem."
   [item params]
   (try
     (item-element item params)
-    (catch Exception e
-      {:type  (:type item)
-       :id    (:id item)
-       :error (or (ex-message e) (tru "Could not be read."))})))
+    (catch clojure.lang.ExceptionInfo e
+      (let [status (:status-code (ex-data e))]
+        (when-not status
+          (throw e))
+        {:type   (:type item)
+         :id     (:id item)
+         :status status
+         :error  (ex-message e)}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Validation — every refusal names the fix
@@ -432,13 +514,13 @@
 (defn- check-items!
   [items]
   (when (empty? items)
-    (tools/teaching-error
-     (tru "`get_content` needs `items` — up to {0} per call, each a type and an id `search` returned."
-          (str max-items))))
+    (tools/teaching-error!
+     (str "`get_content` needs `items` — up to " max-items
+          " per call, each a type and an id `search` returned.")))
   (when (> (count items) max-items)
-    (tools/teaching-error
-     (tru "`get_content` reads at most {0} items per call — you asked for {1}. Split the request."
-          (str max-items) (str (count items))))))
+    (tools/teaching-error!
+     (str "`get_content` reads at most " max-items " items per call — you asked for " (count items)
+          ". Split the request."))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The tool
@@ -446,18 +528,19 @@
 
 (defn- budget-message
   [returned requested]
-  (tru "{0} of {1} items returned — the rest exceeded the response budget. Ask for each omitted item on its own."
-       (str returned) (str requested)))
+  (str returned " of " requested " items returned — the rest exceeded the response budget. Ask for each "
+       "omitted item on its own."))
 
-(defn get-content
+(mu/defn get-content :- ::tools/list-response
   "Run the `get_content` tool. See the tool's description on `POST /v2/content` for the argument contract."
-  [{:keys [items] :as params}]
+  [{:keys [items] :as params} :- Params]
   (check-items! items)
-  (let [elements                              (mapv #(item-result % params) items)
+  (let [params                                (assoc params :declared-paths
+                                                     (declared-paths (map :type items)))
+        elements                              (mapv #(fit-element (item-result % params)) items)
         {:keys [included omitted truncated?]} (tools/budget-units elements {})]
-    (cond-> {:data     included
-             :returned (count included)
-             :total    (count items)}
-      truncated? (assoc :truncated          true
-                        :truncation_message (budget-message (count included) (count items))
-                        :omitted            (mapv #(select-keys % [:type :id]) omitted)))))
+    (tools/list-envelope
+     included
+     (cond-> {:total (count items)}
+       truncated? (assoc :truncation-message (budget-message (count included) (count items))
+                         :omitted            (mapv #(select-keys % [:type :id]) omitted))))))
