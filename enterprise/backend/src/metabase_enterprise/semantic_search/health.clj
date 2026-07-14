@@ -121,13 +121,11 @@
 (health-inspector/register-check! :semantic-search-index index-health-check)
 
 (defn- persist-index-check-on-breaker-change!
-  "Re-persist the semantic-search index check on every embedder-breaker transition, so an outage or its
-  recovery shows up within minutes instead of at the next daily report."
+  "Re-run and persist the semantic-search index check against a fresh embedder probe."
   [_state]
-  ;; Clear the probe cache first: the transition is fresher evidence than a probe from up to 10s ago -- on
-  ;; :closed (two real trial successes) a cached failure would otherwise persist a false "unreachable" row
-  ;; that nothing revisits until the daily report. This also covers the NLQ hook, which runs after this one
-  ;; (the NLQ health namespace requires this one), so every embedder-dependent check sees a fresh probe.
+  ;; Clear the probe cache first so the re-persist uses fresh evidence, not a probe up to 10s old: on recovery
+  ;; a stale "unreachable" would otherwise persist a false row until the next daily report. The NLQ hook runs
+  ;; after this one and rides the same fresh probe.
   (memoize/memo-clear! embedding-service-reachable?)
   (health-inspector/run-and-save-check! :semantic-search-index))
 

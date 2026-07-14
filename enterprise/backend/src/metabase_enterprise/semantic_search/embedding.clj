@@ -211,8 +211,8 @@
   (atom []))
 
 (defn register-embedder-circuit-state-change-hook!
-  "Register `hook-var` (pass a var, so a REPL redef of the fn takes effect live) to run on every breaker
-  state change. Idempotent by var identity: re-running it on namespace reload is a no-op, not a duplicate."
+  "Register `hook-var` to run on every breaker state change. Pass a var so a REPL redef takes effect live;
+  idempotent by identity, so re-running on a namespace reload won't duplicate the hook."
   [hook-var]
   (swap! embedder-circuit-state-change-hooks
          (fn [hooks] (if (some #{hook-var} hooks) hooks (conj hooks hook-var)))))

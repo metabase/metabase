@@ -63,11 +63,9 @@
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
 (defn- persist-nlq-check-on-breaker-change!
-  "Re-persist the NLQ retrieval check on every embedder-breaker transition, so an outage or its recovery
-  shows up within minutes instead of at the next daily report."
+  "Re-run and persist the NLQ retrieval check."
   [_state]
-  ;; The shared probe cache is cleared by the semantic-search hook, which registers (and so runs) before this
-  ;; one -- this namespace requires that one.
+  ;; No cache clear: the semantic-search hook runs first (this ns requires it) and already refreshed the probe.
   (health-inspector/run-and-save-check! :nlq-retrieval))
 
 (semantic.embedding/register-embedder-circuit-state-change-hook! #'persist-nlq-check-on-breaker-change!)
