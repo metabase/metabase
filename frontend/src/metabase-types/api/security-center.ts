@@ -6,7 +6,7 @@ export type AdvisoryMatchStatus =
   | "not_affected"
   | "error";
 
-export type AdvisoryVersion = {
+export type AdvisoryVersionRange = {
   min: string;
   fixed: string;
 };
@@ -32,7 +32,7 @@ export type Advisory = {
   last_evaluated_at: string | null;
   acknowledged_by: { id: number; common_name: string; email: string } | null;
   acknowledged_at: string | null;
-  affected_versions: AdvisoryVersion[];
+  affected_versions: AdvisoryVersionRange[];
   download_jar_urls: AdvisoryDownloadJarUrl[];
 };
 

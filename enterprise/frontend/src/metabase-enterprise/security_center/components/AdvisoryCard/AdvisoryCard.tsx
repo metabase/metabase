@@ -36,7 +36,7 @@ export function AdvisoryCard({
   isAffecting,
   onAcknowledge,
 }: AdvisoryCardProps) {
-  const currentVersion = useSetting("version")?.tag ?? "";
+  const currentVersion = useSetting("version").tag ?? "";
   const acknowledged = isAcknowledged(advisory);
   const downloadJar = isAffecting
     ? getDownloadJarForInstance(advisory, currentVersion)

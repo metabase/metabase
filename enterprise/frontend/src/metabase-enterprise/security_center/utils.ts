@@ -1,7 +1,4 @@
-import {
-  compareVersions,
-  versionToNumericComponents,
-} from "metabase/utils/version";
+import { compareVersions, getMajorVersion } from "metabase/utils/version";
 import type {
   Advisory,
   AdvisoryDownloadJarUrl,
@@ -14,13 +11,13 @@ export const getDownloadJarForInstance = (
   advisory: Advisory,
   currentVersion: string,
 ): AdvisoryDownloadJarUrl | null => {
-  const currentMajor = versionToNumericComponents(currentVersion)?.[1];
+  const currentMajor = getMajorVersion(currentVersion);
   if (currentMajor == null) {
     return null;
   }
   return (
     advisory.download_jar_urls.find(
-      (jar) => versionToNumericComponents(jar.version)?.[1] === currentMajor,
+      (jar) => getMajorVersion(jar.version) === currentMajor,
     ) ?? null
   );
 };
