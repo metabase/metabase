@@ -1,7 +1,6 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import { DATA_APP_GLOBAL_NAMES } from "embedding-sdk-package/data-app-dev/bundle";
-
+import { DATA_APP_GLOBAL_NAMES } from "./globals";
 import { createDataAppSandbox } from "./sandbox";
 
 jest.mock("@locker/near-membrane-dom");

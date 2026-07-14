@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 
+import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
@@ -10,7 +11,6 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";

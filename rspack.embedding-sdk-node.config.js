@@ -15,6 +15,8 @@ const SDK_CLI_PATH = path.join(SDK_PACKAGE_SRC_PATH, "cli");
 
 const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");
 const TYPES_SRC_PATH = path.join(__dirname, "/frontend/src/metabase-types");
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const BUILD_CONFIGS_PATH = path.join(__dirname, "/frontend/build");
 
 const BABEL_CONFIG = {
@@ -28,6 +30,7 @@ const sharedResolve = {
     "metabase-types": TYPES_SRC_PATH,
     "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
     "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+    "metabase-enterprise": ENTERPRISE_SRC_PATH,
     "build-configs": BUILD_CONFIGS_PATH,
   },
 };
