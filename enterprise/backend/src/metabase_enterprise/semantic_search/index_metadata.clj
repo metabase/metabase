@@ -204,7 +204,8 @@
 (defn- index-table-exists? [pgvector index]
   (semantic.util/table-exists? pgvector (:table-name index)))
 
-(defn- control-and-metadata-tables-exist?
+(defn control-and-metadata-tables-exist?
+  "Have the index bookkeeping tables been created, i.e. has init ever run against this pgvector DB?"
   [pgvector index-metadata]
   (and (semantic.util/table-exists? pgvector (:metadata-table-name index-metadata))
        (semantic.util/table-exists? pgvector (:control-table-name index-metadata))))

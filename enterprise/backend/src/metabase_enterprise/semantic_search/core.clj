@@ -3,12 +3,12 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.engine :as search.engine]
@@ -24,14 +24,11 @@
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
-;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  (and
-   (some? semantic.db.datasource/db-url)
-   (semantic.settings/semantic-search-enabled)))
+  (semantic.util/semantic-search-available?))
 
 (defenterprise results
   "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
@@ -134,7 +131,11 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/debug "repair-index! called prior to init!")
+      ;; Semantic can become active at runtime (kill switch re-enabled, or added to additional-search-engines)
+      ;; without init! ever having run; initializing here lets the periodic repair task backfill the index.
+      (do
+        (log/info "No active semantic index, initializing it instead of repairing")
+        (init! searchable-documents {}))
       (semantic.repair/with-repair-table!
         pgvector
         (fn [repair-table-name]
