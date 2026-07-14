@@ -78,7 +78,7 @@ export interface DataAppConfigOverrides {
  * `vite.config.ts` needs:
  *
  * ```ts
- * import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev";
+ * import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev/config";
  *
  * export default dataAppConfig();
  * ```

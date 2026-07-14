@@ -29,6 +29,12 @@
       ],
       "@metabase/embedding-sdk-react/data-app": [
         "./enterprise/frontend/src/embedding-sdk-package/data-app.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app-dev": [
+        "./enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app-dev/config": [
+        "./enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.ts"
       ]
     },
     "plugins": [
