@@ -590,18 +590,21 @@
                                                                     :collection_id collection_id
                                                                     :creator_id    api/*current-user-id*}))
                 coll-id     (:collection_id exploration)
+                ;; `started_at` is the signal to the background planning worker that this thread
+                ;; is ready to plan + execute: the worker's claim predicate matches threads with
+                ;; `started_at IS NOT NULL` and `query_plan_started_at IS NULL`. Setting it in the
+                ;; INSERT is safe — the worker reads on another connection, so it can't see (or
+                ;; claim) the thread before this whole transaction, including the dependent
+                ;; document/block/timeline rows below, commits atomically.
                 thread      (first (t2/insert-returning-instances! :model/ExplorationThread
                                                                    {:exploration_id (:id exploration)
                                                                     :prompt         prompt
-                                                                    :position       0}))
+                                                                    :position       0
+                                                                    :started_at     (t/offset-date-time)}))
                 tid         (:id thread)]
             (insert-thread-default-documents! tid coll-id)
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
-            ;; Setting `started_at` is the signal to the background planning worker that this
-            ;; thread is ready to plan + execute. The worker's claim predicate matches threads
-            ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
-            (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
             (t2/select-one :model/Exploration :id (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.
