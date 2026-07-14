@@ -1,7 +1,7 @@
 // @ts-check
 /* eslint-disable no-undef */
 // Node-targeted builds for the SDK package: the `npx` CLI and the data-app dev
-// preset (`@metabase/embedding-sdk-react/data-app-dev`). Both run
+// preset (`@metabase/embedding-sdk-react/data-app-dev/config`). Both run
 // in Node (not the browser), so they can't go through the browser rspack bundle.
 const path = require("path");
 
@@ -72,13 +72,15 @@ const cliConfig = {
 };
 
 // ESM-only: this entry is imported from a Vite config (`import { dataAppConfig }
-// from "@metabase/embedding-sdk-react/data-app-dev"`), which Vite loads through the
-// ESM `import` condition. ESM-only lets the dev plugin read its sibling dev-entry
-// bundle via `import.meta.url` natively (no `__dirname` shim needed).
+// from "@metabase/embedding-sdk-react/data-app-dev/config"`), which Vite loads
+// through the ESM `import` condition. ESM-only lets the dev plugin read its
+// sibling dev-entry bundle via `import.meta.url` natively (no `__dirname` shim
+// needed). The browser subpath (`/data-app-dev`) is built from `data-app-dev.ts`
+// by rspack.embedding-sdk-package.config.js.
 /** @type {import('@rspack/cli').Configuration} */
 const dataAppDevConfig = {
   mode: "production",
-  entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`,
+  entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.config.ts`,
   target: "node",
   context: SDK_PACKAGE_SRC_PATH,
   // The consumer's app provides the Vite toolchain (the same Vite instance runs
@@ -94,7 +96,7 @@ const dataAppDevConfig = {
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev.js",
+    filename: "data-app-dev.config.js",
     library: { type: "module" },
   },
   experiments: { outputModule: true },

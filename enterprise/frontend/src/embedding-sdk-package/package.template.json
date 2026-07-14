@@ -28,6 +28,10 @@
       "types": "./dist/data-app-dev.d.ts",
       "import": "./dist/data-app-dev.js"
     },
+    "./data-app-dev/config": {
+      "types": "./dist/data-app-dev.config.d.ts",
+      "import": "./dist/data-app-dev.config.js"
+    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
