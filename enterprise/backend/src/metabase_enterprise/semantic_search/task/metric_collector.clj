@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.health :as semantic.health]
@@ -91,7 +92,7 @@
   ;; Gate scheduling on pgvector being configured (boot-fixed), NOT a feature-inclusive gate like
   ;; semantic-search-configured?: the token is often entered after boot, and collect-metrics! already
   ;; self-gates each run, so this lets the AI-index gauges start emitting once licensed without a restart.
-  (when (semantic.u/pgvector-configured?)
+  (when (semantic.datasource/pgvector-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))

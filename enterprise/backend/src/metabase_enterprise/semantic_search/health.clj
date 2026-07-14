@@ -13,7 +13,6 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
-   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
@@ -23,8 +22,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- healthy [message] {:health 100 :message message})
-(defn- degraded [message] {:health 0 :message message})
+(defn healthy
+  "A healthy (100) check result with `message`."
+  [message] {:health 100 :message message})
+(defn degraded
+  "A degraded (0) check result with `message`."
+  [message] {:health 0 :message message})
 
 (defn- probe-embedding-service
   "Raw embedding-service probe; see [[embedding-service-reachable?]] for the memoized entry point."
@@ -80,11 +83,10 @@
   map: healthy when an active index is present, queryable, un-stalled, and the embedding service is
   reachable; degraded (naming the failing conditions) otherwise."
   []
-  ;; Mirror the engine's own gate (semantic-search core/supported?): beyond pgvector + license this respects
-  ;; the semantic-search-enabled kill switch, so a disabled instance neither records runs nor probes the
+  ;; semantic-search-available? is capability (pgvector + license) AND the semantic-search-enabled kill
+  ;; switch, matching the engine's own gate -- so a disabled instance neither records runs nor probes the
   ;; embedder.
-  (when (and (semantic.util/semantic-search-available?)
-             (semantic-settings/semantic-search-enabled))
+  (when (semantic.util/semantic-search-available?)
     ;; Datasource acquisition is inside the try: ensure-initialized-data-source! throws on a malformed
     ;; MB_PGVECTOR_DB_URL, and that must read as degraded, not throw out of the check.
     (let [active (try
@@ -220,11 +222,17 @@
       (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 
 (defn- run-measure!
-  "Run one measure's collector and write its labelled Prometheus gauge (Prometheus is independent of the
-  inspector setting); an N/A collector (nil) clears the gauge instead of leaving a stale value standing.
-  Returns the `{:health :message}` result, or nil when N/A (so the health row is omitted)."
-  [{:keys [gauge-key engine collect]}]
-  (let [{:keys [value health message]} (collect)]
+  "Run one measure's collector, write its labelled Prometheus gauge (independent of the inspector setting),
+  and return the `{:health :message}` result -- or nil when N/A. A nil or *throwing* collector clears the
+  gauge instead of leaving a stale value, so a failing collector never freezes the gauge at its last healthy
+  reading."
+  [{:keys [gauge-key engine collect check-name]}]
+  (let [{:keys [value health message]}
+        (try
+          (collect)
+          (catch Throwable e
+            (log/error e "AI index metric collector errored" {:check check-name})
+            nil))]
     (set-index-gauge! gauge-key engine value)
     (when health {:health health :message message})))
 
@@ -244,20 +252,13 @@
     descriptor))
 
 (defn- refresh-measure!
-  "Refresh one measure: run its collector (writing the gauge) and, when the inspector is enabled, persist the
-  (deduplicated) health row. Never throws, and each failure mode is contained: a throwing collector clears
-  its gauge -- run-measure! writes the gauge only after a successful collect, so the series would otherwise
-  freeze at its last (healthy) value for as long as the collector keeps failing -- and a failed appdb persist
-  can't undo the gauge write or affect other measures."
-  [{:keys [check-name gauge-key engine] :as descriptor}]
+  "Refresh one measure: run its collector (which writes/clears the gauge) and, when the inspector is enabled,
+  persist the deduplicated health row. Never throws -- a failed persist can't undo the gauge write or stop
+  the other measures."
+  [{:keys [check-name] :as descriptor}]
   (try
-    (let [result (try
-                   (run-measure! descriptor)
-                   (catch Throwable e
-                     (log/error e "AI index metric refresh errored" {:check check-name})
-                     (set-index-gauge! gauge-key engine nil)
-                     nil))]
-      (when (and result (health-inspector/enabled?))
+    (when-let [result (run-measure! descriptor)]
+      (when (health-inspector/enabled?)
         (health-inspector/save-check-result! check-name result)))
     (catch Throwable e
       (log/error e "AI index health-row persist errored" {:check check-name}))))
@@ -284,8 +285,7 @@
   disabled, there's no active index, or pgvector is unreachable. Never throws -- availability is the
   `:semantic-search-index` check's job; the metrics just skip when there's nothing to measure."
   []
-  (when (and (semantic.util/semantic-search-available?)
-             (semantic-settings/semantic-search-enabled))
+  (when (semantic.util/semantic-search-available?)
     (try
       (let [pgvector (semantic.env/get-pgvector-datasource!)
             state    (semantic.index-metadata/get-active-index-state pgvector (semantic.env/get-index-metadata))]
@@ -348,11 +348,10 @@
   (atom nil))
 
 (defn- semantic-garbage
-  ;; Serves the repair job's pushed count through the same measure machinery as the pull collectors, so
-  ;; gauge clearing (feature off, count failed) and health-row persistence need no parallel push-only path.
-  ;; Gated on active-index (available? + the semantic-search-enabled kill switch + an actual active index):
-  ;; the repair job only checks semantic-search-available?, which ignores the kill switch, so serving the
-  ;; last pushed count with the feature disabled would keep a dead instance's garbage reading alive.
+  ;; Serves the repair job's pushed count through the same measure machinery as the pull collectors, so gauge
+  ;; clearing and health-row persistence need no separate push-only path. Gated on active-index (available? +
+  ;; an active index) because last-repair-orphans lingers from the last push -- without the gate a
+  ;; since-disabled instance would keep serving a stale garbage reading.
   []
   (when (active-index)
     (when-let [orphans @last-repair-orphans]

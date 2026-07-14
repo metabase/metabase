@@ -5,7 +5,8 @@
    [metabase-enterprise.entity-retrieval.health :as entity-retrieval.health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.health :as semantic.health]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
 
@@ -79,4 +80,13 @@
                                                                  :populated? false))]
       (is (nil? (#'entity-retrieval.health/nlq-coverage)))
       (is (nil? (#'entity-retrieval.health/nlq-garbage)))
+      (is (nil? (#'entity-retrieval.health/nlq-staleness))))))
+
+(deftest nlq-staleness-tolerates-missing-reconciled-at-test
+  (testing "reconciled_at is added lazily by the first reconcile, so an index built before the column existed
+           lacks it and the staleness query throws 'column does not exist' -- that must read as N/A (skipped),
+           not a spurious errored/degraded row"
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.health/library-datasource (constantly ::ds)
+       jdbc/execute-one!                           (fn [& _] (throw (ex-info "column \"reconciled_at\" does not exist" {})))]
       (is (nil? (#'entity-retrieval.health/nlq-staleness))))))

@@ -80,11 +80,24 @@
                                            (select-keys [:health :message])
                                            (assoc :check_name (name check-name))))))
 
+(def ^:private run-retention-days
+  "Days of health-inspector runs to keep. Metric checks embed changing values (coverage %, ages) in their
+  `:message`, so dedup can't collapse them and the table would grow unbounded without pruning."
+  30)
+
+(defn- delete-old-runs!
+  "Delete health-inspector runs older than [[run-retention-days]]."
+  []
+  (t2/delete! :health_inspector_runs
+              :run_at [:< (.minusDays (java.time.OffsetDateTime/now) run-retention-days)]))
+
 (defn save-report
-  "Run every registered check and persist the results; not-applicable (nil) checks are omitted."
+  "Run every registered check and persist the results (not-applicable (nil) checks are omitted), then prune
+  runs past the retention window."
   []
   (doseq [[check-name result] (report)]
-    (persist-check-result! check-name result)))
+    (persist-check-result! check-name result))
+  (delete-old-runs!))
 
 (defn- latest-run
   [check-name]

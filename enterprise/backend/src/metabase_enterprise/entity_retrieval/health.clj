@@ -23,13 +23,11 @@
    [metabase.entity-retrieval.core :as er]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
-
-(defn- healthy [message] {:health 100 :message message})
-(defn- degraded [message] {:health 0 :message message})
 
 (defn nlq-retrieval-health-check
   "Health-inspector check for NLQ curated retrieval, registered as `:nlq-retrieval`.
@@ -46,19 +44,22 @@
       ;; A thrown probe is a pgvector-connectivity fault, not a model mismatch: report it as such rather than
       ;; misdirecting the operator to a rebuild (mirrors the semantic-search check's "pgvector unreachable").
       probe-error
-      (degraded (str "pgvector store unreachable: " probe-error " — NLQ curated retrieval unavailable."))
+      (semantic.health/degraded
+       (str "pgvector store unreachable: " probe-error " — NLQ curated retrieval unavailable."))
 
       (not index-compatible?)
-      (degraded (str "NLQ curated index not built for the current embedding model (rebuild pending) — "
-                     "agent on general-search fallback."))
+      (semantic.health/degraded
+       (str "NLQ curated index not built for the current embedding model (rebuild pending) — "
+            "agent on general-search fallback."))
 
       (not populated?)
-      (degraded "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
+      (semantic.health/degraded
+       "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
 
       :else
       (if-let [problem (semantic.health/embedding-problem)]
-        (degraded (str (u/capitalize-first-char problem) " — NLQ curated retrieval unavailable."))
-        (healthy "NLQ curated retrieval available and serving.")))))
+        (semantic.health/degraded (str (u/capitalize-first-char problem) " — NLQ curated retrieval unavailable."))
+        (semantic.health/healthy "NLQ curated retrieval available and serving.")))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
@@ -143,14 +144,22 @@
     ;; undetected membership/name drift that the osi_ai_context write hooks don't catch. reconciled_at is null
     ;; until the first reconcile after a (re)build, so an empty rebuilt index reads N/A (omitted) rather than
     ;; falsely fresh -- coverage carries the "index empty" signal in that window.
-    (let [{:keys [age]} (jdbc/execute-one! ds
-                                           [(format "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age FROM \"%s\" WHERE id = 1"
-                                                    index-table/*meta-table*)]
-                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-      (when age
-        (semantic.health/staleness-result
-         age staleness-warn-seconds staleness-critical-seconds
-         "Membership/name changes not hooked are caught by the ~15m full reconcile.")))))
+    ;;
+    ;; reconciled_at is added lazily -- ensure-tables! ALTERs it in on the first reconcile -- so an index
+    ;; built before the column existed lacks it until then. Read defensively: a missing column reads as N/A
+    ;; (skip), not a spurious degraded row; availability is the :nlq-retrieval check's job.
+    (try
+      (let [{:keys [age]} (jdbc/execute-one! ds
+                                             [(format "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age FROM \"%s\" WHERE id = 1"
+                                                      index-table/*meta-table*)]
+                                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+        (when age
+          (semantic.health/staleness-result
+           age staleness-warn-seconds staleness-critical-seconds
+           "Membership/name changes not hooked are caught by the ~15m full reconcile.")))
+      (catch Throwable e
+        (log/debug e "NLQ staleness metric skipped (reconciled_at unavailable)")
+        nil))))
 
 (semantic.health/register-index-check! :nlq :coverage  nlq-coverage)
 (semantic.health/register-index-check! :nlq :garbage   nlq-garbage)

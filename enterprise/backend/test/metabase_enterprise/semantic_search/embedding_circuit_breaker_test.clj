@@ -14,44 +14,18 @@
 
 (def ^:private call-through   #'semantic.embedding/call-through-embedder-breaker)
 (def ^:private circuit-state  semantic.embedding/embedder-circuit-state)
-;; deref'd to the fn value (not the var): diehard's :fail-if spec requires fn?, which a var fails
-(def ^:private outage?        @#'semantic.embedding/embedder-outage?)
 
 (defn- boom [] (throw (ex-info "embedder down" {:kind :boom})))
 
-(deftest embedder-outage?-test
-  (testing "service-down / server-error failures count toward opening the breaker"
-    (are [e] (true? (outage? nil e))
-      (java.net.ConnectException. "connection refused")
-      (java.net.SocketTimeoutException. "read timed out")
-      (java.net.UnknownHostException. "embedder.internal")
-      (java.net.NoRouteToHostException. "no route to host")
-      (java.net.SocketException. "Connection reset")
-      (org.apache.http.conn.ConnectTimeoutException. "connect timed out")
-      (ex-info "ai-service unavailable (connection refused)" {:status 502} (java.net.ConnectException.))
-      ;; the network fault can be buried more than one cause deep -- the whole chain is walked
-      (ex-info "embedding batch failed" {} (ex-info "http call failed" {} (java.net.UnknownHostException. "dns")))
-      (ex-info "server error" {:status 503})))
-  (testing "caller/config errors do NOT trip the breaker (they'd recur regardless of breaker state)"
-    (are [e] (false? (outage? nil e))
-      (ex-info "bad request" {:status 400})
-      (ex-info "Premium embedding token not set" {:provider "ai-service"})
-      (RuntimeException. "json decode failure")
-      nil)))
-
-(deftest ^:sequential fail-if-limits-breaker-to-outages-test
-  (testing "with the production :fail-if, a 4xx propagates but doesn't open the breaker; an outage opens it"
+(deftest ^:sequential every-failure-trips-the-breaker-test
+  (testing "every failed embedding call counts toward opening the breaker, a 4xx included -- a 4xx must not be
+           recorded as a success, which would reset the consecutive-failure count and keep a real outage from
+           tripping the breaker"
     (with-redefs [semantic.embedding/embedder-circuit-breaker
-                  (dh.cb/circuit-breaker {:failure-threshold 2 :success-threshold 1 :delay-ms 60000
-                                          :fail-if outage?})]
-      (testing "two caller-errors leave the breaker closed"
-        (dotimes [_ 2]
-          (is (thrown? Exception (call-through #(throw (ex-info "bad input" {:status 400}))))))
-        (is (= :closed (circuit-state))))
-      (testing "two outages trip it open"
-        (dotimes [_ 2]
-          (is (thrown? Exception (call-through #(throw (ex-info "service down" {:status 503}))))))
-        (is (= :open (circuit-state)))))))
+                  (dh.cb/circuit-breaker {:failure-threshold 3 :success-threshold 1 :delay-ms 60000})]
+      (dotimes [_ 3]
+        (is (thrown? Exception (call-through #(throw (ex-info "bad request" {:status 400}))))))
+      (is (= :open (circuit-state)) "consecutive 4xx trip the breaker rather than being recorded as successes"))))
 
 (deftest ^:sequential opens-after-threshold-and-fast-fails-test
   (testing "consecutive failures trip the breaker; while open, calls fast-fail with the mapped 502 ex-info"
@@ -101,13 +75,13 @@
            :half-open -- so the health verdict can't flap as the breaker cycles between them"
     (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
       (doseq [state [:open :half-open]]
-        (with-redefs [semantic.embedding/embedder-circuit-state (constantly state)]
+        (mt/with-dynamic-fn-redefs [semantic.embedding/embedder-circuit-state (constantly state)]
           (is (true? (semantic.embedding/embedder-circuit-untrusted?)) (str state " reads untrusted"))))
-      (with-redefs [semantic.embedding/embedder-circuit-state (constantly :closed)]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/embedder-circuit-state (constantly :closed)]
         (is (false? (semantic.embedding/embedder-circuit-untrusted?)) ":closed reads trusted"))))
   (testing "disabled -> trusted regardless of raw state (calls bypass the breaker)"
     (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled false]
-      (with-redefs [semantic.embedding/embedder-circuit-state (constantly :half-open)]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/embedder-circuit-state (constantly :half-open)]
         (is (false? (semantic.embedding/embedder-circuit-untrusted?)))))))
 
 (deftest ^:sequential state-change-persists-affected-checks-test

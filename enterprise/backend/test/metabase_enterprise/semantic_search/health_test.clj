@@ -31,7 +31,7 @@
     (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
       (is (nil? (semantic.health/index-health-check)))))
   (testing "the semantic-search-enabled kill switch off -> nil, even with pgvector + license present"
-    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available?  (constantly true)
+    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-capable?     (constantly true)
                                 semantic-settings/semantic-search-enabled (constantly false)]
       (is (nil? (semantic.health/index-health-check))))))
 
@@ -169,7 +169,7 @@
 (deftest ^:sequential run-measure!-test
   (let [calls (atom [])]
     ;; capture the labelled gauge write without asserting on the (env-flaky) Prometheus registry value
-    (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+    (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
       (testing "a collector result sets the labelled gauge and returns the health row"
         (is (= {:health 75 :message "ok"}
                (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
@@ -183,7 +183,18 @@
                                                    :collect   (constantly nil)})))
         (is (= 1 (count @calls)))
         (is (= [:metabase-ai-index/coverage-ratio {:engine "semantic"}] (butlast (first @calls))))
-        (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale")))))
+        (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale"))
+      (testing "a throwing collector clears the gauge (rather than freezing its last value) and reads as N/A"
+        ;; make the series live first, then a failing collect must NaN-clear it rather than leave it stale-healthy
+        (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                         :engine    :throwing-collector-test
+                                         :collect   (constantly {:value 0.9 :health 90 :message "was fine"})})
+        (reset! calls [])
+        (is (nil? (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                                   :engine    :throwing-collector-test
+                                                   :collect   (fn [] (throw (ex-info "collector boom" {})))})))
+        (is (= [:metabase-ai-index/coverage-ratio {:engine "throwing-collector-test"}] (butlast (first @calls))))
+        (is (Double/isNaN ^double (last (first @calls))) "a throwing collector clears the gauge with NaN")))))
 
 (deftest ^:sequential report-repair-orphans!-test
   ;; health-inspector disabled (the default): the measure refresh skips the appdb persist; assert on the gauge
@@ -191,16 +202,16 @@
     (testing "with an active index, a pushed count lands on the labelled garbage-count gauge immediately"
       (let [calls (atom [])]
         ;; active-index truthy = available? + kill switch + an active index; the garbage collector gates on it
-        (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
-                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                                    analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3))
         (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"} 3]] @calls))))
     (testing "with no active index (kill switch off / feature unavailable), the pushed count is not served:
              the measure reads N/A and the gauge only ever clears, so a disabled instance can't keep a
              garbage reading alive"
       (let [calls (atom [])]
-        (with-redefs [semantic.health/active-index (constantly nil)
-                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [semantic.health/active-index (constantly nil)
+                                    analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3)
           (semantic.health/report-repair-orphans! nil))
         (is (every? (fn [[_gauge _labels value]] (and (double? value) (Double/isNaN ^double value))) @calls)
@@ -208,26 +219,26 @@
     (testing "a nil count (the orphan query failed) with an active index NaNs the gauge rather than leaving a
              stale count standing -- gauges don't age out while the process is scraped"
       (let [calls (atom [])]
-        (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
-                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                                    analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3) ; make the series live so the clear is observable
           (reset! calls [])
           (semantic.health/report-repair-orphans! nil))
         (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"}]] (mapv butlast @calls)))
         (is (Double/isNaN ^double (last (first @calls))))))
     (testing "never throws -- a metric-sink error must not fail the repair job that calls it"
-      (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
-                    analytics/set-gauge!          (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                                  analytics/set-gauge!          (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (semantic.health/report-repair-orphans! 3)))))))
 
 (deftest ^:sequential refresh-clears-garbage-when-disabled-test
   (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
            repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]
-      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (mt/with-temporary-setting-values [health-inspector-enabled false]
           ;; make the series live: a repair push while the feature was on
-          (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})]
+          (mt/with-dynamic-fn-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})]
             (semantic.health/report-repair-orphans! 3))
           (reset! calls [])
           (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
@@ -243,7 +254,7 @@
   (testing "an N/A measure whose series never emitted a real value doesn't get created just to hold NaN
            (e.g. pgvector configured but unlicensed: the collector job runs with every measure N/A)"
     (let [calls (atom [])]
-      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
                                          :engine    :never-emitted-test-engine
                                          :collect   (constantly nil)}))
@@ -257,10 +268,10 @@
           series           [:metabase-ai-index/coverage-ratio :failed-write-test-engine]
           calls            (atom [])]
       (try
-        (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "prometheus down" {})))]
+        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "prometheus down" {})))]
           (is (thrown? Exception (apply set-index-gauge! (conj series 1.0))))
           (is (not (contains? @live series)) "a failed write must not mark the series live"))
-        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
           (apply set-index-gauge! (conj series nil))
           (is (= [] @calls) "an N/A clear after the failed write emits nothing")
           (apply set-index-gauge! (conj series 0.5))
@@ -281,7 +292,7 @@
                    :gauge-key  :metabase-ai-index/coverage-ratio
                    :engine     :refresh-isolation-test
                    :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
-        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
           ;; make boom's series live so the clear is observable
           (#'semantic.health/run-measure! (assoc boom :collect (constantly {:value 5 :health 100 :message "was fine"})))
           (reset! calls [])

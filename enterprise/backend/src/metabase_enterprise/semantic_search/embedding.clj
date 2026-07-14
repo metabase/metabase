@@ -20,8 +20,7 @@
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
    [dev.failsafe CircuitBreakerOpenException FailsafeException]
-   [java.net ConnectException SocketException SocketTimeoutException UnknownHostException]
-   [org.apache.http.conn ConnectTimeoutException]))
+   [java.net ConnectException]))
 
 (set! *warn-on-reflection* true)
 
@@ -177,34 +176,6 @@
   {:connection-timeout 10000
    :socket-timeout     60000})
 
-(defn- network-outage-cause?
-  "Whether one throwable in a failure's cause chain says the service is unreachable at the network level:
-  refused / reset / no-route ([[SocketException]] covers [[ConnectException]] and friends), a DNS failure,
-  or a connect/read timeout ([[ConnectTimeoutException]] is Apache HttpClient's connect timeout, which does
-  not extend [[SocketTimeoutException]])."
-  [t]
-  (or (instance? SocketException t)
-      (instance? SocketTimeoutException t)
-      (instance? UnknownHostException t)
-      (instance? ConnectTimeoutException t)))
-
-(defn- embedder-outage?
-  "Whether an embedding-call failure reflects the service being unreachable or server-erroring -- the only
-  failures that should trip the breaker. A caller/config error (a 4xx on over-long or malformed input, a
-  missing premium-embedding-token, a decode error) would recur regardless of the breaker and must NOT open
-  the circuit, or one poison indexing batch would fast-fail every unrelated query for the open window.
-  The whole cause chain is walked: clj-http and our own wrapping can bury the network fault more than one
-  cause deep.
-  Signature is diehard's `:fail-if` bipredicate `[result exception]`; result is ignored (only throws count)."
-  [_result ^Throwable e]
-  (boolean
-   (when e
-     (let [status (:status (ex-data e))]
-       (or (some network-outage-cause? (u/full-exception-chain e))
-           ;; 5xx (incl. the wrapped 502 the connection-refused path throws) = service-side failure; a 4xx is
-           ;; the caller's bad request and stays off the breaker.
-           (and (integer? status) (>= (long status) 500)))))))
-
 (defonce ^{:doc "Insertion-ordered set of `(fn [state])` hooks run on every breaker state change.
   Health namespaces `conj` a hook here (inverting the dep -- they require this module) to re-persist their
   embedder-dependent check on a transition, so an outage or recovery surfaces in minutes, not the next daily
@@ -227,12 +198,13 @@
           (log/error e "Embedder circuit state-change hook failed"))))))
 
 (defonce ^:private embedder-circuit-breaker
+  ;; No failure condition, so every embedding-call failure counts toward opening the breaker. That suits an
+  ;; embedder whose failures are almost all service-wide -- network, 5xx, a 429 throttle storm, or auth on
+  ;; the shared instance credentials -- where backing off is the right response.
   (dh.cb/circuit-breaker
    {:failure-threshold embedder-circuit-breaker-failure-threshold
     :success-threshold embedder-circuit-breaker-success-threshold
     :delay-ms          embedder-circuit-breaker-delay-ms
-    ;; Only genuine service outages count toward opening; a 4xx / config error propagates but doesn't trip.
-    :fail-if      embedder-outage?
     :on-open      (fn [_] (on-embedder-circuit-state-change! :open))
     :on-half-open (fn [_] (on-embedder-circuit-state-change! :half-open))
     :on-close     (fn [_] (on-embedder-circuit-state-change! :closed))}))
