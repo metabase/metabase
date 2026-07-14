@@ -302,14 +302,6 @@
   "A sequence of typed projections."
   [:sequential ::typed-projection])
 
-(mr/def ::measure-reference
-  "A measure ID to add as an extra aggregation to a metric source."
-  pos-int?)
-
-(mr/def ::measure-references
-  "A sequence of measure IDs to add as extra aggregations."
-  [:sequential ::measure-reference])
-
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.
 
@@ -356,7 +348,6 @@
    [:expression        ::metric-math-expression]
    [:filters           ::instance-filters]
    [:projections       ::typed-projections]
-   [:measures          {:optional true} ::measure-references]
    [:metadata-provider [:maybe :some]]])
 
 ;;; ------------------------------------------------- Fetchable Dimension Metadata -------------------------------------------------
