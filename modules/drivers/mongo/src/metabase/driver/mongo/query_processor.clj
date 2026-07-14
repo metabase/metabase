@@ -109,7 +109,6 @@
    [:= "$setWindowFields"]
    [:map-of ::lib.schema.common/non-blank-string :any]])
 
-
 (mr/def ::stage
   [:and
    :map
@@ -199,7 +198,7 @@
 (mu/defn- get-mongo-version
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (driver-api/cached ::version
-    (driver/dbms-version :mongo (driver-api/database metadata-providerable))))
+                     (driver/dbms-version :mongo (driver-api/database metadata-providerable))))
 
 (defmulti ^:private ->rvalue
   "Format this MBQL clause or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -1254,7 +1253,6 @@ function(bin) {
 (mu/defmethod compile-cond :>=
   [query stage-number [_ _opts field value] :- :mbql.clause/>=]
   {$gte [(->rvalue query stage-number field) (->rvalue query stage-number value)]})
-
 
 (mu/defmethod compile-cond :and
   [query stage-number [_ _opts & args] :- :mbql.clause/and]

@@ -18,14 +18,14 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some mapv empty? get-in]]
-   [taoensso.nippy :as nippy]
    [metabase.util.malli :as mu]
-   [metabase.lib.schema :as lib.schema])
+   [metabase.util.performance :refer [some mapv empty? get-in]]
+   [taoensso.nippy :as nippy])
   (:import
    (com.mongodb MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
