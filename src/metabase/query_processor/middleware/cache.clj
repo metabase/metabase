@@ -267,6 +267,25 @@
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
+(defn- reduce-with-serialization!
+  "Reduce with `orig-reduce`, serializing every reduced object into the current cache entry -- if a [[*write-permits*]]
+  permit is available. Otherwise reduce without serializing: this run just isn't cached ([[*result-fn*]] stays nil, so
+  [[save-results-xform]] reports `:stored false` and skips the save)."
+  [orig-reduce rff metadata rows]
+  (let [^Semaphore permits (force *write-permits*)]
+    (if-not (.tryAcquire permits)
+      (do (log/throttle (u/minutes->ms 1)
+                        (log/warn "Not caching results: the concurrent cache-write limit was reached"))
+          (orig-reduce rff metadata rows))
+      (try
+        (impl/do-with-serialization
+         (fn [in-fn result-fn]
+           (binding [*in-fn*     in-fn
+                     *result-fn* result-fn]
+             (orig-reduce rff metadata rows))))
+        (finally
+          (.release permits))))))
+
 (defn- run-and-cache!
   "Run `query` through `qp` and save the results to the cache (if eligible). Used on a cache miss, or when this process
   holds the stale-while-revalidate refresh lease.
@@ -281,19 +300,7 @@
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
                                      {:post [(some? %)]}
-                                     (let [^Semaphore permits (force *write-permits*)]
-                                       (if-not (.tryAcquire permits)
-                                         (do (log/throttle (u/minutes->ms 1)
-                                                           (log/warn "Not caching results: the concurrent cache-write limit was reached"))
-                                             (orig-reduce rff metadata rows))
-                                         (try
-                                           (impl/do-with-serialization
-                                            (fn [in-fn result-fn]
-                                              (binding [*in-fn*     in-fn
-                                                        *result-fn* result-fn]
-                                                (orig-reduce rff metadata rows))))
-                                           (finally
-                                             (.release permits))))))]
+                                     (reduce-with-serialization! orig-reduce rff metadata rows))]
       (qp query
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
