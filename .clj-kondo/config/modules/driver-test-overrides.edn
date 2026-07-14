@@ -8,6 +8,7 @@
 {:exempt-modules
  #{analytics
    analytics.interface
+   analytics.internal-stats
    api
    api-keys
    api-scope
@@ -33,7 +34,6 @@
    geojson
    initialization-status
    interestingness
-   internal-stats
    login-history
    mcp
    mcp.oauth-server
@@ -49,7 +49,6 @@
    remote-sync
    request
    search
-   secrets
    server
    session
    settings
@@ -69,6 +68,7 @@
    version
    view-log
    warehouses.schema
+   warehouses.secrets
    enterprise/api
    enterprise/scim
    enterprise/serialization
