@@ -9,9 +9,11 @@ summary: Add a second step to logins by having people confirm their identity wit
 
 Two-factor authentication (2FA) adds a second step to signing in. On top of their email and password, people confirm their identity with a time-based code from an authenticator app, so a stolen password isn't enough to get into an account.
 
+Metabase's native 2FA only applies to password logins and LDAP. 2FA for SSO is managed through your identity provider.
+
 ## Turn on two-factor authentication
 
-An admin turn 2FA on for your Metabase, and people opt in from their own [account settings](./account-settings.md#two-factor-authentication).
+An admin can turn 2FA on for your Metabase, and people opt in from their own [account settings](./account-settings.md#two-factor-authentication).
 
 1. Go to **Admin settings** > **Settings** > **Authentication**.
 2. Find the **Two-factor authentication** card.
