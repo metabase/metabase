@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :vertica, :parent #{:sql-mbql5 :sql-jdbc
+(driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
@@ -342,13 +342,7 @@
 
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
-
-(defmethod sql.qp/->honeysql [:vertica :value]
-  [driver [_ {:keys [base-type effective-type]} value]]
-  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
-   driver
-   [:value value {:base_type base-type :effective_type effective-type}]))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
   [_ e]

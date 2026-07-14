@@ -80,12 +80,12 @@
 
   This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
   expression refs by name, if necessary, to determine whether their value is a boolean literal."
-  [driver clause]
+  [clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
               [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
-            (sql.qp/expression-by-name driver sql.qp/*inner-query*)
+            (sql.qp/expression-by-name sql.qp/*inner-query*)
             (boolean-value-clause?))))
 
 (defn predicate-expression-clause?
@@ -93,12 +93,12 @@
 
   This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
    expression refs by name, if necessary, to determine whether the expression is a predicate operator."
-  [driver clause]
+  [clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
               [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
-            (sql.qp/expression-by-name driver sql.qp/*inner-query*)
+            (sql.qp/expression-by-name sql.qp/*inner-query*)
             (driver-api/is-clause? lib.schema.filter/predicate-operators))))
 
 (defn boolean->comparison
@@ -112,23 +112,23 @@
   If `boolean-field-types` is provided, it will override the set of types that are considered boolean for a :field
   ref. This is useful for drivers that do not have a separately distinguishable boolean type (for example Oracle uses
   a numeric type)."
-  ([driver clause]
-   (boolean->comparison driver clause default-boolean-types))
-  ([driver clause boolean-field-types]
+  ([clause]
+   (boolean->comparison clause default-boolean-types))
+  ([clause boolean-field-types]
    (if (or (boolean? clause)
            (boolean-value-clause? clause)
            (boolean-field-clause? clause boolean-field-types)
-           (boolean-expression-clause? driver clause))
-     (sql.qp/mbql-clause driver := clause true)
+           (boolean-expression-clause? clause))
+     [:= {} clause true]
      clause)))
 
 (defn case-boolean->comparison
   "Replace booleans with comparisons in a CASE clause."
-  ([driver clause]
-   (case-boolean->comparison driver clause default-boolean-types))
-  ([driver clause boolean-field-types]
+  ([clause]
+   (case-boolean->comparison clause default-boolean-types))
+  ([clause boolean-field-types]
    (let [rewrite-cases (fn [cond-cases]
                          (mapv (fn [[e1 e2]]
-                                 [(boolean->comparison driver e1 boolean-field-types) e2])
+                                 [(boolean->comparison e1 boolean-field-types) e2])
                                cond-cases))]
-     (update clause (sql.qp/clause-value-idx driver) rewrite-cases))))
+     (update clause 2 rewrite-cases))))

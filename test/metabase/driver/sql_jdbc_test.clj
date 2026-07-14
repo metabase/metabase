@@ -258,10 +258,8 @@
         ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (let [mbql5-driver? (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-            field (get (lib/ref col) 2)
-            col-ref (cond-> (lib/ref col)
-                      (not mbql5-driver?) lib/->legacy-MBQL)]
+      (let [field (get (lib/ref col) 2)
+            col-ref (lib/ref col)]
         (testing ":= uses indexable query"
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
@@ -271,18 +269,14 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   (sql.qp/mbql-clause driver/*driver*
-                                       := col-ref
-                                       (sql.qp/mbql-clause-with-opts driver/*driver* :value {:base_type :type/UUID} (str uuid))))))
+                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed
                                  [:cast (str uuid) [:raw "uuid"]]
                                  {:database-type "uuid"}]
                                 %))]
-                  (sql.qp/->honeysql
-                   driver/*driver*
-                   (sql.qp/mbql-clause driver/*driver* := col-ref uuid)))))))))
+                  (sql.qp/->honeysql driver/*driver* [:= {} col-ref uuid]))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"

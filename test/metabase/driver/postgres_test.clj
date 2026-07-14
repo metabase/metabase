@@ -462,15 +462,14 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
-                                                         :field
-                                                         {:binning
-                                                          {:strategy  :num-bins
-                                                           :num-bins  100
-                                                           :min-value 0.75
-                                                           :max-value 54.0
-                                                           :bin-width 0.75}}
-                                                         1)]
+        (let [field-clause [:field
+                            {:binning
+                             {:strategy  :num-bins
+                              :num-bins  100
+                              :min-value 0.75
+                              :max-value 54.0
+                              :bin-width 0.75}}
+                            1]]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
@@ -503,13 +502,13 @@
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
         ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
         (let [field-bucketed-fn (fn []
-                                  (sql.qp/mbql-clause-with-opts
-                                   driver/*driver* :field
+                                  [:field
                                    {:temporal-unit                                              :month
                                     :metabase.query-processor.util.add-alias-info/source-table  1
                                     :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
                                     :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
-                                    :metabase.query-processor.util.add-alias-info/position      1} 1))
+                                    :metabase.query-processor.util.add-alias-info/position      1}
+                                   1])
               compile-res (maybe-convert-and-compile
                            driver/*driver*
                            (mt/query nil
@@ -542,7 +541,7 @@
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
-        (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
+        (let [field-ordinary [:field {} 1]
               only-order (maybe-convert-and-compile
                           driver/*driver*
                           {:database 1
@@ -928,7 +927,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
+             (sql.qp/->honeysql driver/*driver* [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres

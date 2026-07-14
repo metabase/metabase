@@ -261,7 +261,7 @@
 
 (defmethod sql.qp/->honeysql [:sparksql ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
   [_ e]
