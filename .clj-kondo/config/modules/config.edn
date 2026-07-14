@@ -99,9 +99,9 @@
            api
            driver
            events
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            model-persistence
@@ -1067,7 +1067,7 @@
    :uses #{analytics
            api
            driver
-           legacy-mbql
+           lib.legacy-mbql
            lib.schema
            models
            permissions
@@ -1124,20 +1124,11 @@
                     :model/QueryExecution
                     :model/User}}
 
-  legacy-mbql
-  {:team "Querying Platform"
-   :api  #{metabase.legacy-mbql.normalize
-           metabase.legacy-mbql.schema
-           metabase.legacy-mbql.util}
-   :uses #{lib
-           lib.schema
-           types
-           util}}
-
   lib
   {:team "Querying Platform"
    :module-exports #{lib.agent-lib
                      lib.be
+                     lib.legacy-mbql
                      lib.metadata
                      lib.schema
                      lib.source-swap}
@@ -1155,7 +1146,7 @@
            metabase.lib.walk}
    :uses #{config
            graph
-           legacy-mbql
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            types
@@ -1189,8 +1180,8 @@
   {:team "Querying Platform"
    :ns-prefix "metabase.lib-be"
    :api  #{metabase.lib-be.core metabase.lib-be.init metabase.lib-be.schema}
-   :uses #{legacy-mbql
-           lib
+   :uses #{lib
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
@@ -1208,6 +1199,15 @@
                     :model/Table
                     :model/Transform}}
 
+  lib.legacy-mbql
+  {:team "Querying Platform"
+   :ns-prefix "metabase.legacy-mbql"
+   :api #{metabase.legacy-mbql.normalize metabase.legacy-mbql.schema metabase.legacy-mbql.util}
+   :uses #{lib
+           lib.schema
+           types
+           util}}
+
   lib.metadata
   {:team "Querying Platform"
    :ns-prefix "metabase.lib.metadata"
@@ -1220,8 +1220,8 @@
           metabase.lib.metadata.protocols
           metabase.lib.metadata.result-metadata}
    :uses #{config
-           legacy-mbql
            lib
+           lib.legacy-mbql
            lib.schema
            types
            util}}
@@ -1583,8 +1583,8 @@
    :uses #{api
            app-db
            classloader
-           legacy-mbql
            lib
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            settings
@@ -2034,9 +2034,9 @@
   {:team "UX West"
    :api  #{metabase.query-permissions.core}
    :uses #{api
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
@@ -2097,10 +2097,10 @@
            driver
            events
            formatter
-           legacy-mbql
            lib
            lib-metric
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            model-persistence
@@ -2147,9 +2147,9 @@
            connection-pool
            database-routing
            events
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            logger
@@ -2590,9 +2590,9 @@
            metabase.tiles.init
            metabase.tiles.settings}
    :uses #{api
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.schema
            parameters
            premium-features
@@ -3061,9 +3061,9 @@
            collections
            dashboards
            driver
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
@@ -3771,9 +3771,9 @@
            audit-app
            driver
            events
-           legacy-mbql
            lib
            lib.be
+           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
