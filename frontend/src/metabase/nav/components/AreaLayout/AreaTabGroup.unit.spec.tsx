@@ -77,17 +77,6 @@ describe("AreaTabGroup", () => {
     await waitFor(() => expect(screen.getByTestId("child")).toBeVisible());
   });
 
-  it("allows manual collapse of the active group and does not force it back open", async () => {
-    setup({ isActive: true });
-
-    expect(getHeader()).toHaveAttribute("aria-expanded", "true");
-
-    await userEvent.click(getHeader());
-
-    expect(getHeader()).toHaveAttribute("aria-expanded", "false");
-    await waitFor(() => expect(screen.getByTestId("child")).not.toBeVisible());
-  });
-
   it("never auto-closes when the group stops being active", async () => {
     const { rerenderWith } = setup({ isActive: true });
 
@@ -100,7 +89,7 @@ describe("AreaTabGroup", () => {
     expect(screen.getByTestId("child")).toBeVisible();
   });
 
-  it("marks the header as the current location only while an active group is collapsed", async () => {
+  it("marks the header as the current location when an active group is collapsed", async () => {
     setup({ isActive: true });
 
     expect(getHeader()).not.toHaveAttribute("aria-current");

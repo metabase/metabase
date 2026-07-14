@@ -97,4 +97,8 @@
 
 .upperGroup {
   overflow-y: auto;
+
+  /* keep the 4px focus ring (2px outline + 2px offset) inside the scrollport */
+  padding: 4px;
+  margin: -4px;
 }
