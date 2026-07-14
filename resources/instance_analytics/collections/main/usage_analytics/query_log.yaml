@@ -674,6 +674,7 @@ visualization_settings:
   - {enabled: true, name: action_qualified_id}
   - {enabled: true, name: query}
   - {enabled: true, name: embedding_client}
+  - {enabled: true, name: embedding_client_identifier}
   - {enabled: true, name: is_preview}
   - {enabled: true, name: embedding_sdk_version}
   - {enabled: true, name: metabase_version}

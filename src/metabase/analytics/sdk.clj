@@ -151,7 +151,8 @@
     "embedding-iframe-static"   (analytics/inc! :metabase-embedding-iframe-static/response {:status (str status)})
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
-    "data-app"                  (analytics/inc! :metabase-data-app/response {:status (str status)})
+    ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
+    "data-app"                  nil
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn embedding-context?
