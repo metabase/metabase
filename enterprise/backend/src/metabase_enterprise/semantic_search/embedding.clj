@@ -111,7 +111,7 @@
                    (do
                      (log/warn
                       (format "Skipping text that exceeds maximum measure per batch: %s"
-                              (str (subs text 0 10) "..."))
+                              (str (subs text 0 (min 10 (count text))) "..."))
                       {:measure text-measure :threshold threshold})
                      acc)
 
@@ -189,7 +189,14 @@
   "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread, in
   registration order, each isolated so one failing hook doesn't starve the rest."
   [state]
-  (log/warn "Embedding service circuit breaker changed state" {:state state})
+  ;; Log level tracks the resulting state's severity:
+  ;;   :open      -> WARN  (degradation)
+  ;;   :half-open -> INFO  (probing)
+  ;;   :closed    -> INFO  (recovered)
+  ;; Recovery is still captured level-independently -- the hooks below persist a health row per transition.
+  (if (= :open state)
+    (log/warn "Embedding service circuit breaker opened" {:state state})
+    (log/info "Embedding service circuit breaker changed state" {:state state}))
   (future
     (doseq [hook @embedder-circuit-state-change-hooks]
       (try
@@ -249,7 +256,7 @@
       (catch CircuitBreakerOpenException _
         ;; Mirror the connection-refused 502 shape so callers already handling embedder-down keep working.
         (throw (ex-info "embedding service unavailable (circuit open)"
-                        (cond-> {:status 502 :cause :embedder/circuit-open}
+                        (cond-> {:status 502, :cause :embedder/circuit-open}
                           endpoint (assoc :endpoint endpoint)))))
       ;; Diehard wraps a thunk failure in FailsafeException; unwrap so callers see the original.
       (catch FailsafeException e
