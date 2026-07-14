@@ -1768,7 +1768,7 @@
            settings
            tracing
            util
-           enterprise/advanced-permissions}
+           enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
                     :model/DataPermissions
@@ -1925,8 +1925,8 @@
            task.history
            tracing
            util
-           enterprise/advanced-permissions
-           enterprise/sandbox}
+           enterprise/permissions
+           enterprise/permissions.sandbox}
    :model-exports #{:model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
@@ -2389,7 +2389,7 @@
            models
            premium-features
            util
-           enterprise/advanced-permissions}
+           enterprise/permissions}
    :model-exports #{:model/Setting}
    :model-imports #{:model/User}}
 
@@ -2856,7 +2856,7 @@
            system
            tenants
            util
-           enterprise/advanced-permissions}
+           enterprise/permissions}
    :model-exports #{:model/User :model/UserParameterValue}
    :model-imports #{:model/Dashboard
                     :model/Database
@@ -2883,7 +2883,7 @@
            tenants
            users
            util
-           enterprise/advanced-permissions}
+           enterprise/permissions}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3058,7 +3058,7 @@
            util
            warehouse-schema
            warehouses
-           enterprise/advanced-permissions}
+           enterprise/permissions}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3145,31 +3145,6 @@
            users
            util}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
-
-  enterprise/advanced-permissions
-  {:team "UX West"
-   :api  #{metabase-enterprise.advanced-permissions.api.routes
-           metabase-enterprise.advanced-permissions.common
-           metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api
-           audit-app
-           lib
-           lib.schema
-           permissions
-           premium-features
-           query-permissions
-           query-processor
-           remote-sync
-           util
-           warehouses
-           enterprise/impersonation}
-   :model-imports #{:model/ApplicationPermissionsRevision
-                    :model/ConnectionImpersonation
-                    :model/DataPermissions
-                    :model/Permissions
-                    :model/PermissionsGroupMembership
-                    :model/Sandbox
-                    :model/Table}}
 
   enterprise/agent-api
   {:team "Metabot"
@@ -3580,22 +3555,6 @@
            store-api
            util}}
 
-  enterprise/impersonation
-  {:team "Graphy"
-   :api  #{metabase-enterprise.impersonation.api}
-   :uses #{api
-           audit-app
-           driver
-           lib.metadata
-           models
-           premium-features
-           query-processor
-           util
-           warehouse-schema
-           enterprise/sandbox}
-   :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
-
   enterprise/internal-stats
   {:team "UX West"
    :api  #{}
@@ -3702,6 +3661,83 @@
            util}
    :model-imports #{:model/Card :model/User}}
 
+  enterprise/permissions
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.advanced-permissions"
+   :module-exports #{enterprise/permissions.impersonation
+                     enterprise/permissions.sandbox}
+   :api #{metabase-enterprise.advanced-permissions.api.routes metabase-enterprise.advanced-permissions.common metabase-enterprise.advanced-permissions.models.permissions.group-manager}
+   :uses #{api
+           audit-app
+           lib
+           lib.schema
+           permissions
+           premium-features
+           query-permissions
+           query-processor
+           remote-sync
+           util
+           warehouses
+           enterprise/permissions.impersonation}
+   :model-imports #{:model/ApplicationPermissionsRevision
+                    :model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Permissions
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Table}}
+
+  enterprise/permissions.impersonation
+  {:team "Graphy"
+   :ns-prefix "metabase-enterprise.impersonation"
+   :api #{metabase-enterprise.impersonation.api}
+   :uses #{api
+           audit-app
+           driver
+           lib.metadata
+           models
+           premium-features
+           query-processor
+           util
+           warehouse-schema
+           enterprise/permissions.sandbox}
+   :model-exports #{:model/ConnectionImpersonation}
+   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
+
+  enterprise/permissions.sandbox
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.sandbox"
+   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util}
+   :uses #{api
+           app-db
+           audit-app
+           driver
+           events
+           lib
+           lib.be
+           lib.legacy-mbql
+           lib.metadata
+           lib.schema
+           models
+           permissions
+           premium-features
+           query-processor
+           request
+           tenants
+           users
+           util
+           warehouse-schema
+           warehouses
+           enterprise/api}
+   :model-exports #{:model/Sandbox}
+   :model-imports #{:model/Card
+                    :model/ConnectionImpersonation
+                    :model/Database
+                    :model/Field
+                    :model/PermissionsGroupMembership
+                    :model/Table
+                    :model/User}}
+
   enterprise/premium-features
   {:team "UX West"
    :api  #{}
@@ -3776,40 +3812,6 @@
                     :model/Segment
                     :model/Table
                     :model/Transform}}
-
-  enterprise/sandbox
-  {:team "UX West"
-   :api  #{metabase-enterprise.sandbox.api.routes
-           metabase-enterprise.sandbox.api.util}
-   :uses #{api
-           app-db
-           audit-app
-           driver
-           events
-           lib
-           lib.be
-           lib.legacy-mbql
-           lib.metadata
-           lib.schema
-           models
-           permissions
-           premium-features
-           query-processor
-           request
-           tenants
-           users
-           util
-           warehouse-schema
-           warehouses
-           enterprise/api}
-   :model-exports #{:model/Sandbox}
-   :model-imports #{:model/Card
-                    :model/ConnectionImpersonation
-                    :model/Database
-                    :model/Field
-                    :model/PermissionsGroupMembership
-                    :model/Table
-                    :model/User}}
 
   enterprise/scim
   {:team "UX West"
@@ -3952,8 +3954,9 @@
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
 
-  enterprise/stale
+  enterprise/staleness
   {:team "UX West"
+   :ns-prefix "metabase-enterprise.stale"
    :api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
    :uses #{analytics
