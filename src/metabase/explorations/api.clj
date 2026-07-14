@@ -23,6 +23,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -251,16 +252,38 @@
     (t2/update! :model/Document doc-id {:document (ai-summary/placeholder-pm-doc)})))
 
 (defn- reset-thread-for-rerun!
+  "CAS-reset a *terminal* thread (`completed_at` set — natural completion, terminal failure, or
+  cancel) back to the freshly-created state the planning worker claims: `started_at` set, every
+  other lifecycle timestamp NULL, and zero `exploration_query` rows — exactly the shape
+  `claim-unplanned-thread!` (see `metabase.explorations.task.runner`) will pick up. Returns true
+  when the reset applied; false when the guarded UPDATE matched no row.
+
+  The guard refuses while the thread is still in flight: not yet terminal, or a query worker
+  still holds a `running` row (possible on a canceled thread, whose in-flight queries run to
+  natural completion). A restart racing in-flight work could otherwise strand late-inserted
+  query rows on a thread whose `query_plan_started_at` we just cleared — a state the planner
+  never re-claims — or let the worker's completion CAS stamp the freshly-reset thread."
   [thread-id]
-  (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
-  (reset-ai-summary-doc! thread-id)
-  (t2/update! :model/ExplorationThread thread-id
-              {:started_at            (t/offset-date-time)
-               :query_plan_started_at nil
-               :query_plan_transcript nil
-               :analysis_started_at   nil
-               :completed_at          nil
-               :canceled_at           nil}))
+  (t2/with-transaction [_conn]
+    (when (pos? (t2/query-one
+                 {:update :exploration_thread
+                  :set    {:started_at            (t/offset-date-time)
+                           :query_plan_started_at nil
+                           :query_plan_transcript nil
+                           :analysis_started_at   nil
+                           :completed_at          nil
+                           :canceled_at           nil}
+                  :where  [:and
+                           [:= :id thread-id]
+                           [:not= :completed_at nil]
+                           [:not-exists {:select [1]
+                                         :from   [:exploration_query]
+                                         :where  [:and
+                                                  [:= :exploration_thread_id thread-id]
+                                                  [:= :status "running"]]}]]}))
+      (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
+      (reset-ai-summary-doc! thread-id)
+      true)))
 
 (defn- stringify-dim-types
   "Turn a block's `:dimensions` back into wire form for re-insertion. The model's read transform
@@ -848,15 +871,20 @@
 (api.macros/defendpoint :post "/thread/:thread-id/restart" :- ::HydratedExploration
   "Re-run one exploration thread in place, keeping its selections: drops the thread's materialized
   queries, resets its AI Summary doc to the placeholder, and clears the terminal-state gates so the
-  background planner re-claims it. Returns the parent exploration."
+  background planner re-claims it. Returns the parent exploration. Only a terminal thread
+  (completed, failed, or canceled) can restart; while planning, execution, or analysis is still in
+  flight this returns a 409 — cancel the thread first, then restart.
+
+  No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
+  is no revision to record (the revision push skips unchanged objects). The AI-summary document
+  reset does record a Document revision, which is what `/mine`'s last-touched ordering composes."
   [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
-    (t2/with-transaction [_]
-      (reset-thread-for-rerun! thread-id)
-      (events/publish-event! :event/exploration-update
-                             {:object exploration :user-id api/*current-user-id*})
-      (hydrate-exploration exploration))))
+    (when-not (reset-thread-for-rerun! thread-id)
+      (throw (ex-info (tru "Exploration is still running; cancel it before restarting.")
+                      {:status-code 409})))
+    (hydrate-exploration exploration)))
 
 (mr/def ::CanceledThread
   "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to

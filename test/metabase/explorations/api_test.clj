@@ -895,11 +895,13 @@
               tid     (-> created :threads first :id)
               doc-id  (-> created :threads first :ai_summary_document_id)]
           (is (some? doc-id) "an AI Summary placeholder doc is created up-front")
-          ;; Simulate a finished run: overwrite the placeholder with a real summary.
+          ;; Simulate a finished run: overwrite the placeholder with a real summary and mark the
+          ;; thread terminal (restart refuses in-flight threads with a 409).
           (t2/update! :model/Document doc-id
                       {:document {:type "doc"
                                   :content [{:type "paragraph"
                                              :content [{:type "text" :text "Old summary"}]}]}})
+          (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [persisted (t2/select-one-fn :document :model/Document :id doc-id)
                 all-text  (->> persisted
@@ -918,6 +920,8 @@
                                            :collection_id (:id (collection/user->personal-collection (:id owner)))})
             tid     (-> created :threads first :id)]
         ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
+        ;; Mark the thread terminal — restart refuses in-flight threads with a 409.
+        (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
         (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -2645,3 +2649,45 @@
             tid  (-> resp :threads first :id)]
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))
             "the duplicate id collapses to a single attachment")))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                  POST /thread/:thread-id/restart CAS guard                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest restart-refuses-in-flight-thread-test
+  (testing "POST /thread/:thread-id/restart refuses non-terminal or mid-execution threads with a 409"
+    (mt/with-temp [:model/User u {:email "restart-guard@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [created (create-exploration! u {:name       "restart guard"
+                                            :metrics    [{:card_id (:id metric)
+                                                          :dimension_mappings [{:dimension_id "d1"
+                                                                                :table_id (mt/id :venues)
+                                                                                :target ["field" {} (mt/id :venues :price)]}]}]
+                                            :dimensions [{:dimension_id "d1" :display_name "Price"
+                                                          :effective_type "type/Number"}]})
+            tid     (-> created :threads first :id)
+            eq-id   (t2/select-one-fn :id :model/ExplorationQuery :exploration_thread_id tid)]
+        (testing "an in-flight (non-terminal) thread returns 409 and nothing is reset"
+          (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
+          (is (pos? (t2/count :model/ExplorationQuery :exploration_thread_id tid))
+              "its materialized queries are untouched"))
+        (testing "a canceled thread with a query still mid-QP-execution returns 409"
+          (t2/update! :model/ExplorationThread tid
+                      {:canceled_at  (t/offset-date-time)
+                       :completed_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationQuery eq-id {:status "running" :started_at (t/offset-date-time)})
+          (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
+          (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id tid))
+              "the terminal stamp survives — nothing was reset"))
+        (testing "once no query is mid-execution, restart succeeds and leaves the thread claimable"
+          (t2/update! :model/ExplorationQuery eq-id {:status "canceled"})
+          (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
+          (let [thread (t2/select-one :model/ExplorationThread :id tid)]
+            ;; exactly the state the planning worker's claim-unplanned-thread! predicate claims:
+            ;; started_at set, every other lifecycle timestamp NULL, zero exploration_query rows.
+            (is (some? (:started_at thread)))
+            (is (nil? (:query_plan_started_at thread)))
+            (is (nil? (:analysis_started_at thread)))
+            (is (nil? (:completed_at thread)))
+            (is (nil? (:canceled_at thread)))
+            (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))))
