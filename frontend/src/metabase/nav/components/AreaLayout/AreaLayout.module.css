@@ -76,6 +76,19 @@
   }
 }
 
+.chevron {
+  color: var(--mb-color-text-secondary);
+  transition: transform 200ms ease;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
 .badgeOverlay {
   position: absolute;
   top: 0.25rem;

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -8,7 +9,11 @@ import {
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
 } from "metabase/common/monitor/selectors";
-import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
+import {
+  AreaLayout,
+  AreaTab,
+  AreaTabGroup,
+} from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { FixedSizeIcon } from "metabase/ui";
@@ -19,6 +24,50 @@ import { MonitorContent } from "./MonitorContent";
 type MonitorLayoutProps = {
   children?: ReactNode;
 };
+
+type MonitorSection =
+  | "diagnostics"
+  | "erroring-questions"
+  | "alerts"
+  | "tasks"
+  | "jobs"
+  | "logs"
+  | "model-caching";
+
+const CONTENT_MANAGEMENT_SECTIONS: readonly MonitorSection[] = [
+  "diagnostics",
+  "erroring-questions",
+  "alerts",
+];
+
+const LOGS_AND_ACTIVITY_SECTIONS: readonly MonitorSection[] = [
+  "tasks",
+  "jobs",
+  "logs",
+  "model-caching",
+];
+
+function getActiveSection(pathname: string): MonitorSection | null {
+  return match(pathname)
+    .returnType<MonitorSection | null>()
+    .with(
+      P.string.startsWith(Urls.dependencyDiagnostics()),
+      () => "diagnostics",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorErroringQuestions()),
+      () => "erroring-questions",
+    )
+    .with(P.string.startsWith(Urls.monitorNotifications()), () => "alerts")
+    .with(P.string.startsWith(Urls.monitorTasks()), () => "tasks")
+    .with(P.string.startsWith(Urls.monitorJobs()), () => "jobs")
+    .with(P.string.startsWith(Urls.monitorLogs()), () => "logs")
+    .with(
+      P.string.startsWith(Urls.monitorModelCaching()),
+      () => "model-caching",
+    )
+    .otherwise(() => null);
+}
 
 export function MonitorLayout({ children }: MonitorLayoutProps) {
   const {
@@ -38,66 +87,94 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
 
+  const activeSection = getActiveSection(pathname);
+
+  const hasContentManagement =
+    canAccessDiagnostics || canAccessTools || canAccessAlerts;
+  const hasLogsAndActivity = canAccessTools;
+
   const upperNav = (
     <>
-      {canAccessDiagnostics && (
-        <AreaTab
-          label={t`Dependency diagnostics`}
-          icon="search_check"
-          to={Urls.dependencyDiagnostics()}
-          isSelected={pathname.startsWith(Urls.dependencyDiagnostics())}
+      {hasContentManagement && (
+        <AreaTabGroup
+          label={t`Content management`}
+          icon="folder"
           showLabel={isNavbarOpened}
-          isGated={!hasDependenciesFeature}
-        />
+          isActive={
+            activeSection != null &&
+            CONTENT_MANAGEMENT_SECTIONS.includes(activeSection)
+          }
+        >
+          {canAccessDiagnostics && (
+            <AreaTab
+              label={t`Dependency diagnostics`}
+              icon="search_check"
+              to={Urls.dependencyDiagnostics()}
+              isSelected={activeSection === "diagnostics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasDependenciesFeature}
+            />
+          )}
+          {canAccessTools && (
+            <AreaTab
+              label={t`Erroring questions`}
+              icon="warning_round_filled"
+              to={Urls.monitorErroringQuestions()}
+              isSelected={activeSection === "erroring-questions"}
+              showLabel={isNavbarOpened}
+              isGated={!hasAuditAppFeature}
+            />
+          )}
+          {canAccessAlerts && (
+            <AreaTab
+              label={t`Alerts management`}
+              icon="bell"
+              to={Urls.monitorNotifications()}
+              isSelected={activeSection === "alerts"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+        </AreaTabGroup>
       )}
-      {canAccessTools && (
-        <>
+      {hasLogsAndActivity && (
+        <AreaTabGroup
+          label={t`Logs and activity`}
+          icon="list"
+          showLabel={isNavbarOpened}
+          isActive={
+            activeSection != null &&
+            LOGS_AND_ACTIVITY_SECTIONS.includes(activeSection)
+          }
+        >
           <AreaTab
-            label={t`Tasks`}
+            label={t`Background tasks`}
             icon="clipboard"
             to={Urls.monitorTasks()}
-            isSelected={pathname.startsWith(Urls.monitorTasks())}
+            isSelected={activeSection === "tasks"}
             showLabel={isNavbarOpened}
           />
           <AreaTab
-            label={t`Jobs`}
+            label={t`Scheduled jobs`}
             icon="clock"
             to={Urls.monitorJobs()}
-            isSelected={pathname.startsWith(Urls.monitorJobs())}
+            isSelected={activeSection === "jobs"}
             showLabel={isNavbarOpened}
           />
           <AreaTab
-            label={t`Logs`}
+            label={t`Application logs`}
             icon="audit"
             to={Urls.monitorLogs()}
-            isSelected={pathname.startsWith(Urls.monitorLogs())}
+            isSelected={activeSection === "logs"}
             showLabel={isNavbarOpened}
           />
           <AreaTab
-            label={t`Erroring questions`}
-            icon="warning_round_filled"
-            to={Urls.monitorErroringQuestions()}
-            isSelected={pathname.startsWith(Urls.monitorErroringQuestions())}
-            showLabel={isNavbarOpened}
-            isGated={!hasAuditAppFeature}
-          />
-          <AreaTab
-            label={t`Model cache log`}
+            label={t`Model caching log`}
             icon="database"
             to={Urls.monitorModelCaching()}
-            isSelected={pathname.startsWith(Urls.monitorModelCaching())}
+            isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}
           />
-        </>
-      )}
-      {canAccessAlerts && (
-        <AreaTab
-          label={t`Alerts management`}
-          icon="bell"
-          to={Urls.monitorNotifications()}
-          isSelected={pathname.startsWith(Urls.monitorNotifications())}
-          showLabel={isNavbarOpened}
-        />
+        </AreaTabGroup>
       )}
     </>
   );
