@@ -4,10 +4,7 @@ import { useState } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import {
-  type GeneratedCard,
-  getGeneratedCardPath,
-} from "metabase/api/ai-streaming/schemas";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -16,6 +13,7 @@ import {
   setup,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
+import * as Urls from "metabase/urls";
 
 import { useMetabot } from "./use-metabot";
 
@@ -49,7 +47,7 @@ const cardMessage = (id: string, sourceTable = 1) =>
   }) as any;
 
 const cardPath = (id: string, sourceTable = 1) =>
-  getGeneratedCardPath(makeCard(id, sourceTable));
+  Urls.generatedCard(makeCard(id, sourceTable));
 
 /**
  * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,

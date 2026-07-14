@@ -4,7 +4,7 @@ import type { GeneratedDashboard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Anchor, Flex, Icon } from "metabase/ui";
 
-export function InlineDashboardLink({
+export function MetabotInlineDashboardLink({
   value: { title, url },
 }: {
   value: GeneratedDashboard;

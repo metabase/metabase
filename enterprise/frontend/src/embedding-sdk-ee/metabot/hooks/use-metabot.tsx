@@ -14,12 +14,12 @@ import type {
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
-import { getGeneratedCardPath } from "metabase/api/ai-streaming/schemas";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { getFinalChartMessageIdsPerTurn } from "metabase/metabot/state";
 import type { MetabotChatMessage } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 /**
  * Public-facing hook for interacting with Metabot in the SDK.
@@ -197,7 +197,7 @@ const mapMessage = (
         part: { type: "data-generated_entity", data: { type: "card" } },
       },
       ({ id, part }) => {
-        const questionPath = getGeneratedCardPath(part.data);
+        const questionPath = Urls.generatedCard(part.data);
         const Chart = authConfig
           ? getCachedChartComponent(questionPath, cache, authConfig)
           : FallbackChartComponent;
