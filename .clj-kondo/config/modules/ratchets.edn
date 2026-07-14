@@ -1,1 +1,1 @@
-{:api-any 1, :cross-subtree-cycle-pairs 45, :driver-test-exempt-modules 66, :friend-edges 1, :friend-reaches 14, :legacy-rest-modules 14, :top-level-modules 167, :uses-any 4}
+{:api-any 1, :cross-subtree-cycle-pairs 45, :driver-test-exempt-modules 66, :friend-edges 1, :friend-reaches 13, :legacy-rest-modules 14, :top-level-modules 167, :uses-any 4}
