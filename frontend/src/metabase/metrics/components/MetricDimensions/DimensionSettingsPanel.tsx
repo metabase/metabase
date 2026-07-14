@@ -5,8 +5,7 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
   Group,
@@ -40,20 +39,25 @@ type DimensionChanges = Omit<
 interface DimensionSettingsPanelProps {
   metricId: MetricId;
   dimension: MetricDimension;
+  isFetching: boolean;
 }
 
 export function DimensionSettingsPanel({
   metricId,
   dimension,
+  isFetching,
 }: DimensionSettingsPanelProps) {
-  const dispatch = useDispatch();
   const [updateDimension] = useUpdateMetricDimensionMutation();
-  const [setDefaultDimension] = useSetDefaultMetricDimensionMutation();
+  const [setDefaultDimension, { isLoading: isSettingDefault }] =
+    useSetDefaultMetricDimensionMutation();
 
   const [displayName, setDisplayName] = useState(dimension.display_name);
   const [description, setDescription] = useState(dimension.description ?? "");
 
+  const { sendErrorToast } = useMetadataToasts();
+
   const sourceColumnLabel = getSourceColumnLabel(dimension);
+  const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
 
   const persist = async (changes: DimensionChanges) => {
     try {
@@ -63,9 +67,7 @@ export function DimensionSettingsPanel({
         ...changes,
       }).unwrap();
     } catch {
-      dispatch(
-        addUndo({ message: t`Couldn't update ${dimension.display_name}` }),
-      );
+      sendErrorToast(t`Couldn't update ${dimension.display_name}`);
     }
   };
 
@@ -88,17 +90,35 @@ export function DimensionSettingsPanel({
         dimension_id: dimension.id,
       }).unwrap();
     } catch {
-      dispatch(
-        addUndo({
-          message: t`Couldn't make ${dimension.display_name} the default`,
-        }),
-      );
+      sendErrorToast(t`Couldn't make ${dimension.display_name} the default`);
     }
   };
 
   return (
-    <Stack gap="lg" className={S.column} data-testid="dimension-settings-panel">
-      <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
+    <Stack
+      className={S.column}
+      data-testid="dimension-settings-panel"
+      gap="lg"
+      pt="lg"
+    >
+      <Group
+        align="center"
+        flex="0 0 2.25rem"
+        justify="space-between"
+        wrap="nowrap"
+      >
+        <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
+        {showSetAsDefaultButton && (
+          <Button
+            loading={isSettingDefault || isFetching}
+            onClick={handleSetDefault}
+            size="sm"
+            variant="default"
+          >
+            {t`Set as default`}
+          </Button>
+        )}
+      </Group>
 
       <TextInput
         label={t`Display name`}
@@ -130,17 +150,11 @@ export function DimensionSettingsPanel({
         </Input.Wrapper>
       )}
 
-      {dimension.default ? (
+      {dimension.default && (
         <Group gap="xs">
           <Icon name="star_filled" c="brand" />
           <Text fw="bold">{t`Default dimension`}</Text>
         </Group>
-      ) : (
-        !isOrphaned(dimension) && (
-          <Button variant="default" onClick={handleSetDefault}>
-            {t`Set as default dimension`}
-          </Button>
-        )
       )}
     </Stack>
   );

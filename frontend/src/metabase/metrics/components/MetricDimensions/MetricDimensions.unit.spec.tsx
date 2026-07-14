@@ -1,4 +1,3 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -11,7 +10,6 @@ import {
   within,
 } from "__support__/ui";
 import { metricApi } from "metabase/api/metric";
-import type { State } from "metabase/redux/store";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
   createMockAddableDimensionGroup,
@@ -114,11 +112,7 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
   const { store } = renderWithProviders(
     <MetricDimensions metricId={METRIC_ID} />,
   );
-  return {
-    store: store as Omit<typeof store, "dispatch"> & {
-      dispatch: ThunkDispatch<State, void, AnyAction>;
-    },
-  };
+  return { store };
 }
 
 function getListPanel() {
@@ -279,7 +273,7 @@ describe("MetricDimensions", () => {
 
     const settings = within(await openSettings(/Country/));
     await userEvent.click(
-      settings.getByRole("button", { name: "Set as default dimension" }),
+      settings.getByRole("button", { name: "Set as default" }),
     );
 
     await waitFor(async () => {
@@ -298,7 +292,7 @@ describe("MetricDimensions", () => {
     const settings = within(await openSettings(/Created At/));
     expect(settings.getByText("Default dimension")).toBeInTheDocument();
     expect(
-      settings.queryByRole("button", { name: "Set as default dimension" }),
+      settings.queryByRole("button", { name: "Set as default" }),
     ).not.toBeInTheDocument();
   });
 
@@ -308,8 +302,66 @@ describe("MetricDimensions", () => {
 
     const settings = within(await openSettings(/Suspend At/));
     expect(
-      settings.queryByRole("button", { name: "Set as default dimension" }),
+      settings.queryByRole("button", { name: "Set as default" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a loading state while setting a default dimension", async () => {
+    let resolveSetDefault: (dimensions: (typeof COUNTRY)[]) => void = () => {};
+    setup();
+    fetchMock.modifyRoute(`metric-${METRIC_ID}-dimensions-set-default`, {
+      response: () =>
+        new Promise((resolve) => {
+          resolveSetDefault = resolve;
+        }),
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Country/));
+    const button = settings.getByRole("button", { name: "Set as default" });
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(button).toHaveAttribute("data-loading", "true");
+    });
+    expect(button).toBeDisabled();
+
+    resolveSetDefault([COUNTRY]);
+    await waitFor(() => {
+      expect(button).not.toHaveAttribute("data-loading", "true");
+    });
+  });
+
+  it("shows a loading state while dimensions are being fetched", async () => {
+    let resolveDimensions: (
+      response: ListMetricDimensionsResponse,
+    ) => void = () => {};
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Country/));
+    const button = settings.getByRole("button", { name: "Set as default" });
+    fetchMock.modifyRoute(`metric-${METRIC_ID}-dimensions-list`, {
+      response: () =>
+        new Promise((resolve) => {
+          resolveDimensions = resolve;
+        }),
+    });
+
+    await userEvent.type(
+      getListPanel().getByPlaceholderText("Search…"),
+      "Country",
+    );
+
+    await waitFor(() => {
+      expect(button).toHaveAttribute("data-loading", "true");
+    });
+    expect(button).toBeDisabled();
+
+    resolveDimensions({ added: [COUNTRY], addable: [] });
+    await waitFor(() => {
+      expect(button).not.toHaveAttribute("data-loading", "true");
+    });
   });
 
   it("displays the dimension type", async () => {

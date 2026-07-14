@@ -35,7 +35,7 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
   const [mode, setMode] = useState<DetailMode>({ type: "idle" });
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
-  const { data, isLoading, error } = useListMetricDimensionsQuery({
+  const { data, isLoading, error, isFetching } = useListMetricDimensionsQuery({
     metricId,
     query: debouncedSearch || undefined,
   });
@@ -123,9 +123,10 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
             );
             return dimension ? (
               <DimensionSettingsPanel
+                dimension={dimension}
+                isFetching={isFetching}
                 key={dimension.id}
                 metricId={metricId}
-                dimension={dimension}
               />
             ) : (
               <Box className={S.column} />
