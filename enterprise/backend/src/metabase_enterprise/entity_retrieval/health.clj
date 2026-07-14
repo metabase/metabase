@@ -70,9 +70,8 @@
   ;; one -- this namespace requires that one.
   (health-inspector/run-and-save-check! :nlq-retrieval))
 
-;; defonce so a reload doesn't append a second hook; conj the var, not the fn, so redefining the fn above
-;; from the REPL updates the live hook.
-(defonce ^:private nlq-retrieval-embedder-hook
+;; defonce (no duplicate on reload); conj the var so redefining the fn above takes effect live.
+(defonce ^:private _nlq-retrieval-embedder-hook
   (swap! semantic.embedding/embedder-circuit-state-change-hooks conj
          #'persist-nlq-check-on-breaker-change!))
 

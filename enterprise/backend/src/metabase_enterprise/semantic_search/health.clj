@@ -131,9 +131,8 @@
   (memoize/memo-clear! embedding-service-reachable?)
   (health-inspector/run-and-save-check! :semantic-search-index))
 
-;; defonce so a reload doesn't append a second hook; conj the var, not the fn, so redefining the fn above
-;; from the REPL updates the live hook.
-(defonce ^:private semantic-search-embedder-hook
+;; defonce (no duplicate on reload); conj the var so redefining the fn above takes effect live.
+(defonce ^:private _semantic-search-embedder-hook
   (swap! semantic.embedding/embedder-circuit-state-change-hooks conj
          #'persist-index-check-on-breaker-change!))
 
