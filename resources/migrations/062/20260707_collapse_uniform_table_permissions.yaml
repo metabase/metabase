@@ -36,36 +36,45 @@ databaseChangeLog:
   # and the per-db active-table counts to every table-level row BEFORE aggregating. On the ballooned tables
   # this migration exists to fix, Postgres misestimates the NOT EXISTS anti-join at one row and puts nested
   # loops above it, making the statement O(rows x databases); on a Cloud instance with 9M rows it exceeded
-  # the appDB's 5-minute socketTimeout and blocked the upgrade. v62.2026-07-14T00:00:01 below is the
-  # row-for-row equivalent replacement that aggregates the table-level rows down to (group_id, db_id) first
-  # and applies the joins and the NOT EXISTS to the aggregate, so a misestimate can only ever nest loops
-  # over thousands of rows, not millions. This changeSet retires the original's changelog entry so that
-  # instances that already ran it pick up the replacement (re-collapsing already-collapsed data is a cheap
-  # no-op); on instances where the original timed out, or that have never seen it, this DELETE is a no-op.
-  # DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual case on postgres (lowercase)
-  # and h2 (uppercase), and matches it exactly on mysql/mariadb.
+  # the appDB's 5-minute socketTimeout and blocked the upgrade. The replacement changeSets below aggregate
+  # the table-level rows down to (group_id, db_id) first and apply the joins and the NOT EXISTS to the
+  # aggregate, so a misestimate can only ever nest loops over thousands of rows, not millions. This
+  # changeSet retires the original's changelog entry so that instances that already ran it pick up the
+  # replacement (re-collapsing already-collapsed data is a cheap no-op); on instances where the original
+  # timed out, or that have never seen it, this DELETE is a no-op. DATABASECHANGELOG is unquoted on
+  # purpose: it folds to the table's actual case on postgres (lowercase) and h2 (uppercase), and matches
+  # it exactly on mysql/mariadb.
+  #
+  # The replacement differs from the original in how it detects that a (group_id, db_id)'s rows cover every
+  # active table: it counts ROWS on active tables (all rows minus rows on inactive tables — table_id has a
+  # foreign key to metabase_table, so every covered table is one or the other) where the original counted
+  # DISTINCT tables. Dropping DISTINCT is what allows Postgres to run the pass fully parallel. The two only
+  # differ when a (group_id, db_id, table_id) has duplicate rows, which the app never writes:
+  #   - duplicates alongside full coverage make the row count exceed the active-table count, so the combo is
+  #     conservatively left uncollapsed (the original collapsed it);
+  #   - duplicates that exactly offset MISSING table rows make the counts match, so the combo is collapsed
+  #     (the original left it). This is still lossless at read time: a table with no row in a group with no
+  #     db-level row already reads as the least permissive value — blocked — which is exactly what the
+  #     inserted db-level row says.
+  # MIN = MAX = 'blocked' replaces the original's COUNT(DISTINCT perm_value) = 1 AND MIN = 'blocked'.
   - changeSet:
       id: v62.2026-07-14T00:00:00
       author: ranquild
-      comment: Retire the timeout-prone original of v62.2026-07-14T00:00:01 (#76077)
+      comment: Retire the timeout-prone original of the collapse changeSets below (#76077)
       changes:
         - sql:
             sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v62.2026-07-07T00:00:00';
-      rollback: # not necessary; the replacement changeSet is a superset of the original
+      rollback: # not necessary; the replacement changeSets are a superset of the original
 
-  # The aggregate subquery reads each table-level view-data row once, in (group_id, db_id) index order.
-  # MIN = MAX = 'blocked' is the original's COUNT(DISTINCT perm_value) = 1 AND MIN(perm_value) = 'blocked'.
-  # Coverage of every active table is counted as distinct tables covered minus distinct INACTIVE tables
-  # covered: data_permissions.table_id has a foreign key to metabase_table, so every covered table is one or
-  # the other, and joining only the inactive side keeps the lookup's working set tiny. The db-level-row
-  # exclusion and the comparison against each database's active-table count then run against the ~one row
-  # per (group_id, db_id) that leaves the aggregate.
+  # Single-statement replacement for engines whose planners handle it well; postgres runs the staged,
+  # parallelizable equivalent in the changeSets after it.
   - changeSet:
       id: v62.2026-07-14T00:00:01
       author: ranquild
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
         - sql:
+            dbms: mysql,mariadb,h2
             sql: >-
               INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
               SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
@@ -73,8 +82,8 @@ databaseChangeLog:
                 SELECT dp.group_id, dp.db_id,
                        MIN(dp.perm_value) AS min_value,
                        MAX(dp.perm_value) AS max_value,
-                       COUNT(DISTINCT dp.table_id) AS tables_covered,
-                       COUNT(DISTINCT CASE WHEN it.id IS NOT NULL THEN dp.table_id END) AS inactive_covered
+                       COUNT(*) AS covered_rows,
+                       COUNT(it.id) AS inactive_rows
                 FROM data_permissions dp
                 LEFT JOIN metabase_table it ON it.id = dp.table_id AND it.active = FALSE
                 WHERE dp.perm_type = 'perms/view-data'
@@ -85,7 +94,7 @@ databaseChangeLog:
                 ON tc.db_id = agg.db_id
               WHERE agg.min_value = 'blocked'
                 AND agg.max_value = 'blocked'
-                AND agg.tables_covered - agg.inactive_covered = tc.n
+                AND agg.covered_rows - agg.inactive_rows = tc.n
                 AND NOT EXISTS (
                   SELECT 1 FROM data_permissions dbp
                   WHERE dbp.group_id = agg.group_id
@@ -93,6 +102,79 @@ databaseChangeLog:
                     AND dbp.perm_type = 'perms/view-data'
                     AND dbp.table_id IS NULL);
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  # Postgres path: INSERT ... SELECT never gets a parallel plan and DISTINCT aggregates cannot be partially
+  # aggregated, but CREATE TABLE AS with a plain COUNT/MIN/MAX aggregate runs as a parallel seq scan +
+  # partial aggregate — one pass over the table at full I/O speed. The aggregate is staged into a transient
+  # table and the actual INSERT then works on ~one row per (group_id, db_id). SET LOCAL is scoped to this
+  # changeSet's transaction; migrations run while the instance is down, so taking all available workers is
+  # free (the planner still caps workers by table size and max_worker_processes).
+  - changeSet:
+      id: v62.2026-07-14T00:00:02
+      author: ranquild
+      comment: Stage per group-and-database aggregates of table-level view-data permissions (#76077)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              SET LOCAL max_parallel_workers_per_gather = 8;
+              CREATE TABLE data_permissions_collapse_agg AS
+              SELECT dp.group_id, dp.db_id,
+                     COUNT(*) AS covered_rows,
+                     COUNT(it.id) AS inactive_rows,
+                     MIN(dp.perm_value) AS min_value,
+                     MAX(dp.perm_value) AS max_value
+              FROM data_permissions dp
+              LEFT JOIN metabase_table it ON it.id = dp.table_id AND it.active = FALSE
+              WHERE dp.perm_type = 'perms/view-data'
+                AND dp.table_id IS NOT NULL
+              GROUP BY dp.group_id, dp.db_id;
+      rollback: # not necessary; the staging table is dropped at the end of this migration
+
+  # Without stats on the fresh staging table the planner falls back to guesses for the INSERT below.
+  - changeSet:
+      id: v62.2026-07-14T00:00:03
+      author: ranquild
+      comment: Analyze the staged collapse aggregates (#76077)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ANALYZE data_permissions_collapse_agg;
+      rollback: # not necessary; the staging table is dropped at the end of this migration
+
+  # The db-level-row exclusion is a NOT IN rather than a correlated NOT EXISTS so Postgres evaluates it as
+  # a single hashed subplan (both sides' columns are NOT NULL) instead of one index probe per staged row.
+  - changeSet:
+      id: v62.2026-07-14T00:00:04
+      author: ranquild
+      comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
+              SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
+              FROM data_permissions_collapse_agg agg
+              JOIN (SELECT db_id, COUNT(*) AS n FROM metabase_table WHERE active = TRUE GROUP BY db_id) tc
+                ON tc.db_id = agg.db_id
+              WHERE agg.min_value = 'blocked'
+                AND agg.max_value = 'blocked'
+                AND agg.covered_rows - agg.inactive_rows = tc.n
+                AND (agg.group_id, agg.db_id) NOT IN (
+                  SELECT dbp.group_id, dbp.db_id FROM data_permissions dbp
+                  WHERE dbp.perm_type = 'perms/view-data'
+                    AND dbp.table_id IS NULL);
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-14T00:00:05
+      author: ranquild
+      comment: Drop the staged collapse aggregates (#76077)
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: DROP TABLE data_permissions_collapse_agg;
+      rollback: # not necessary
 
   # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a db-level
   # row of the same (group, db, value) has made redundant — the anti-join below. Deleting the redundant rows
