@@ -23,7 +23,7 @@
   "The dim snapshot stores `effective_type`/`semantic_type` as JSON strings (`\"type/Date\"`),
    but every reader (the variant planner, the LLM context, `dim-type-isa?`) needs them as
    fully-qualified keywords. Normalize at the model boundary so downstream code can trust the
-   shape — mirrors the old per-column `transform-keyword` on `ExplorationThreadDimension`."
+   shape."
   [dimensions]
   (when dimensions
     (mapv (fn [dim]

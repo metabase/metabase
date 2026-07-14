@@ -6,7 +6,7 @@
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -67,12 +67,12 @@
     (t2/select-one :model/StoredResult :id sr-id)))
 
 (defn- deserialize-stored-result
-  "Inverse of [[cache.impl/do-with-serialization]] for a stored_result's
+  "Inverse of [[qp/do-with-serialization]] for a stored_result's
   single-frame nippy+gzip blob. Returns nil for missing/unreadable bytes."
   [^bytes result-bytes]
   (when result-bytes
     (with-open [is (ByteArrayInputStream. result-bytes)]
-      (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
+      (qp/with-reducible-deserialized-results [[qp-result _] is]
         qp-result))))
 
 (defn- pick-display+viz-settings
@@ -114,13 +114,13 @@
                     :stored_result_id stored-result-id))
 
 (defn- serialize-qp-result
-  "Run `cache.impl/do-with-serialization` on a single in-memory qp-result and return the
+  "Run `qp/do-with-serialization` on a single in-memory qp-result and return the
   gzipped+nippy byte array. The qp-result here comes from `composite/combine`, which
   builds on top of already-deserialised source snapshots — the `prepare-for-serialization`
   step the task runner does on a fresh QP result isn't needed (no metadata-provider atoms
   to strip), since whatever was strippable was already stripped at write time."
   ^bytes [qp-result]
-  (cache.impl/do-with-serialization
+  (qp/do-with-serialization
    (fn [in result-fn]
      (in qp-result)
      (result-fn))))
