@@ -961,6 +961,24 @@
                (driver/compile-transform
                 :sqlserver
                 {:query        {:query "SELECT * FROM products WHERE a = 1 OR b = 2"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a derived table (subquery in FROM) is left untouched; the base table inside it is wrapped"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products) AS x" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM (SELECT * FROM products) x"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a table-valued function is left untouched"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM dbo.SOME_FUNC(1, 2) AS f" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM dbo.some_func(1, 2) AS f"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a subquery in WHERE also has its base table wrapped"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products WHERE id IN (SELECT product_id FROM (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS orders)" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM products WHERE id IN (SELECT product_id FROM orders)"}
                  :output-table "PRODUCTS_COPY"})))))
     (testing "positional params appear exactly once (only bare table references are wrapped, not filters)"
       (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products WHERE id = ?" [42]]
@@ -973,6 +991,12 @@
              (driver/compile-transform
               :sqlserver
               {:query        {:query "SELECT dbo.products.id FROM dbo.products"}
+               :output-table "PRODUCTS_COPY"}))))
+    (testing "a catalog-qualified column reference is rewritten to the derived-table alias"
+      (is (= ["SELECT products.id INTO [PRODUCTS_COPY] FROM (SELECT * FROM mydb.dbo.products UNION ALL SELECT * FROM mydb.dbo.products WHERE 1 = 0) AS products" nil]
+             (driver/compile-transform
+              :sqlserver
+              {:query        {:query "SELECT mydb.dbo.products.id FROM mydb.dbo.products"}
                :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
