@@ -24,7 +24,7 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   ];
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <MonitorHeaderTitle>{t`Dependency diagnostics`}</MonitorHeaderTitle>
       <MonitorHeaderTabs tabs={tabs} />
     </Stack>

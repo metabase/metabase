@@ -71,7 +71,7 @@ const LogsBase = ({
     <>
       <Flex h="100%" wrap="nowrap">
         <Stack className={S.main} flex={1} gap="md">
-          <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
+          <MonitorHeaderTitle mb="sm">{t`Logs`}</MonitorHeaderTitle>
 
           {!loaded || error != null ? (
             <Center flex={1}>

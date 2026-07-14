@@ -139,7 +139,7 @@ export function ModelCachePage({ children }: { children?: ReactNode }) {
   return (
     <Flex h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} gap="md">
-        <MonitorHeaderTitle>{t`Model cache log`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle mb="sm">{t`Model cache log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
       </Stack>
       {children /* refresh modal */}

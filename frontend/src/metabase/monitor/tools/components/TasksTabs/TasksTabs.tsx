@@ -24,7 +24,7 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
   return (
     <Flex h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} gap="md">
-        <Stack gap="md">
+        <Stack gap="lg">
           <Flex align="center" gap="xs">
             <MonitorHeaderTitle>{t`Troubleshooting logs`}</MonitorHeaderTitle>
             <Tooltip
