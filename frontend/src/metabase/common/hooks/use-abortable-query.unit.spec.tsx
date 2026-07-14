@@ -244,6 +244,38 @@ describe("useAbortableQuery", () => {
     await waitFor(() => expect(getTaskCalls()).toHaveLength(2));
   });
 
+  it("does not refetch a superseded arg when its tag is invalidated", async () => {
+    fetchMock.get(
+      { url: "path:/api/task", query: { offset: "0" }, name: "page-0" },
+      makeResponse(PAGE_0_TASK_ID),
+    );
+    fetchMock.get(
+      { url: "path:/api/task", query: { offset: "50" }, name: "page-1" },
+      makeResponse(PAGE_1_TASK_ID),
+    );
+
+    const { result, store, rerender } = setup({
+      arg: { limit: 50, offset: 0 },
+    });
+    await waitFor(() =>
+      expect(result.current.data?.data[0].id).toBe(PAGE_0_TASK_ID),
+    );
+
+    rerender({ arg: { limit: 50, offset: 50 }, skip: false });
+    await waitFor(() =>
+      expect(result.current.data?.data[0].id).toBe(PAGE_1_TASK_ID),
+    );
+
+    act(() => {
+      store.dispatch(Api.util.invalidateTags([listTag("task")]));
+    });
+
+    const getCallsFor = (offset: string) =>
+      getTaskCalls().filter((call) => call.url.includes(`offset=${offset}`));
+    await waitFor(() => expect(getCallsFor("50")).toHaveLength(2));
+    expect(getCallsFor("0")).toHaveLength(1);
+  });
+
   it("does not refetch a skipped query when its tag is invalidated", async () => {
     fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
 
