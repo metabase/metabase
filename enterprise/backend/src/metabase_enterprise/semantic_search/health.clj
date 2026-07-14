@@ -24,7 +24,7 @@
 
 (defn healthy
   "A healthy (100) check result with `message`."
-  [message] {:health 100 :message message})
+  [message] {:health 100, :message message})
 (defn warning
   "A partially-healthy check result. `health` defaults to 50 and must be strictly between 0 and 100 --
   use `healthy`/`degraded` for the endpoints."
@@ -34,7 +34,7 @@
    {:health health, :message message}))
 (defn degraded
   "A degraded (0) check result with `message`."
-  [message] {:health 0 :message message})
+  [message] {:health 0, :message message})
 
 (defn- probe-embedding-service
   "Raw embedding-service probe; see [[embedding-service-reachable?]] for the memoized entry point."
@@ -45,11 +45,11 @@
     (binding [semantic.embedding/*bypass-circuit-breaker* true]
       (semantic.embedding/get-embedding (semantic.embedding/get-configured-model)
                                         "health check"
-                                        {:type :query :record-tokens? false :snowplow? false}))
-    {:reachable? true :error nil}
+                                        {:type :query, :record-tokens? false, :snowplow? false}))
+    {:reachable? true, :error nil}
     (catch Throwable e
       (log/debug e "Embedding service health probe failed")
-      {:reachable? false :error (ex-message e)})))
+      {:reachable? false, :error (ex-message e)})))
 
 (def embedding-service-reachable?
   "Probe the embedding service by embedding a trivial string; returns `{:reachable? <bool> :error <msg>}`.
@@ -173,9 +173,9 @@
      :message (format "%d of %d expected items indexed (%d%%)." indexed expected (pct ratio))}))
 
 (defn garbage-result
-  "Uniform result for a garbage measure. `orphans` is the ABSOLUTE number of indexed items that should not be
-  (an absolute count, not a fraction of the index -- a raw orphan count is what's actionable). Health
-  thresholds on the count via `warn`/`crit`; the count itself feeds the Prometheus gauge."
+  "Uniform result for a garbage measure. `orphans` is a raw count of indexed items that shouldn't be
+  (a count, not a fraction -- that's what's actionable). `health` thresholds it via `warn`/`crit`; the
+  count feeds the Prometheus gauge."
   [orphans warn crit]
   {:value   orphans
    :health  (threshold-health orphans warn crit)
@@ -241,7 +241,7 @@
             (log/error e "AI index metric collector errored" {:check check-name})
             nil))]
     (set-index-gauge! gauge-key engine value)
-    (when health {:health health :message message})))
+    (when health {:health health, :message message})))
 
 (defn register-index-check!
   "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,
@@ -296,7 +296,7 @@
     (try
       (let [pgvector (semantic.env/get-pgvector-datasource!)
             state    (semantic.index-metadata/get-active-index-state pgvector (semantic.env/get-index-metadata))]
-        (when state {:pgvector pgvector :state state}))
+        (when state {:pgvector pgvector, :state state}))
       (catch Throwable e
         (log/debug e "semantic active-index lookup failed for a metric collector")
         nil))))
