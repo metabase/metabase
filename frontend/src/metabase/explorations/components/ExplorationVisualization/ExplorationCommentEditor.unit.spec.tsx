@@ -50,7 +50,7 @@ describe("ExplorationCommentEditor", () => {
         commentDrafts={{}}
         setCommentDrafts={setCommentDrafts}
         pageId="page-1"
-        handleAddComment={jest.fn()}
+        onAddComment={jest.fn()}
       />,
     );
 
@@ -67,7 +67,7 @@ describe("ExplorationCommentEditor", () => {
         commentDrafts={{ "page-1": mockCommentContent }}
         setCommentDrafts={jest.fn()}
         pageId="page-1"
-        handleAddComment={jest.fn()}
+        onAddComment={jest.fn()}
       />,
     );
 
@@ -84,7 +84,7 @@ describe("ExplorationCommentEditor", () => {
         commentDrafts={{}}
         setCommentDrafts={jest.fn()}
         pageId="page-1"
-        handleAddComment={handleAddComment}
+        onAddComment={handleAddComment}
         placeholder="Comment on this…"
       />,
     );
@@ -106,7 +106,7 @@ describe("ExplorationCommentEditor", () => {
           commentDrafts={{}}
           setCommentDrafts={jest.fn()}
           pageId="page-1"
-          handleAddComment={jest.fn()}
+          onAddComment={jest.fn()}
         />
       </div>,
     );

@@ -159,7 +159,8 @@ function CartesianChartInner(props: VisualizationProps) {
     chartModel,
     option,
     renderingContext,
-    { ...props, hovered },
+    hovered,
+    props,
     chartInstance,
   );
 

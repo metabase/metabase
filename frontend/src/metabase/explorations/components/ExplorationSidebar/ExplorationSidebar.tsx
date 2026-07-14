@@ -652,10 +652,6 @@ function ExplorationGroupMenu({
     [restartExploration, sendToast],
   );
 
-  if (!item.data?.explorationId || !item.data?.thread) {
-    return null;
-  }
-
   const thread = item.data?.thread;
   const canStop = canWrite && thread != null && thread.completed_at == null;
   const canRestart = canWrite && thread != null && thread.canceled_at != null;
@@ -693,7 +689,7 @@ function ExplorationGroupMenu({
           </Menu.Item>
         )}
         {canRestart && (
-          <Menu.Item onClick={() => handleRestart(explorationId)}>
+          <Menu.Item onClick={() => handleRestart(explorationId, thread.id)}>
             {t`Restart`}
           </Menu.Item>
         )}

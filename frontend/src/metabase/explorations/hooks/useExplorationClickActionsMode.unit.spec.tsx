@@ -35,17 +35,17 @@ jest.mock(
   "../components/ExplorationVisualization/ExplorationCommentEditor",
   () => ({
     ExplorationCommentEditor: ({
-      handleAddComment,
+      onAddComment,
       placeholder,
     }: {
-      handleAddComment: (content: unknown) => void;
+      onAddComment: (content: unknown) => void;
       placeholder?: string;
     }) => (
       <div>
         {placeholder && <span>{placeholder}</span>}
         <button
           type="button"
-          onClick={() => handleAddComment(createMockDocumentContent())}
+          onClick={() => onAddComment(createMockDocumentContent())}
         >
           Submit comment
         </button>

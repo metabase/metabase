@@ -1610,8 +1610,11 @@ describe("ExplorationSidebar", () => {
               getSelectedEntityIdUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
+              readPageIds={new Set<string>()}
               showHidden={false}
               onToggleShowHidden={jest.fn()}
+              sortOrder={DEFAULT_SORT_ORDER}
+              onChangeSortOrder={jest.fn()}
             />
           )}
         />,
@@ -1682,8 +1685,11 @@ describe("ExplorationSidebar", () => {
                 getSelectedEntityIdUrl={() => Urls.exploration(1)}
                 shouldScrollSelectionRef={shouldScrollSelectionRef}
                 isOpen
+                readPageIds={new Set<string>()}
                 showHidden={false}
                 onToggleShowHidden={jest.fn()}
+                sortOrder={DEFAULT_SORT_ORDER}
+                onChangeSortOrder={jest.fn()}
               />
             );
           }}

@@ -417,39 +417,38 @@ export function ExplorationPage({
     [dispatch, location.search, params.id],
   );
 
-  // Detect turns (threads) added since we last saw the exploration. A turn started from a filtered
-  // tab (Stars/Discussions) is hidden by that filter, so flag the "All" tab with a dot and offer a
-  // toast that jumps there. On the "All" tab it's already visible — no dot, no toast.
-  const seenThreadIdsRef = useRef<Set<number> | null>(null);
+  const threadIdsRef = useRef<Set<number> | null>(null);
   useEffect(() => {
     const threads = exploration?.threads;
     if (!threads) {
       return;
     }
-    if (seenThreadIdsRef.current == null) {
-      // First load: remember existing threads so we don't announce them as new.
-      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
+    if (threadIdsRef.current == null) {
+      threadIdsRef.current = new Set(threads.map((thread) => thread.id));
       return;
     }
-    const seen = seenThreadIdsRef.current;
-    const newThreads = threads.filter((thread) => !seen.has(thread.id));
-    if (newThreads.length === 0) {
+    const prevThreadIds = threadIdsRef.current;
+    const readyNewThreads = threads.filter(
+      (thread) =>
+        !prevThreadIds.has(thread.id) && getFirstThreadPageId(thread) != null,
+    );
+    if (readyNewThreads.length === 0) {
       return;
     }
-    newThreads.forEach((thread) => seen.add(thread.id));
-    if (selectedSidebarTab === "all") {
-      return;
+    readyNewThreads.forEach((thread) => prevThreadIds.add(thread.id));
+    if (selectedSidebarTab !== "all") {
+      setHasUnviewedTurnInAll(true);
     }
-    setHasUnviewedTurnInAll(true);
-    const newestTurn = newThreads[newThreads.length - 1];
-    sendToast({
-      icon: "bolt",
-      message: newestTurn.name
-        ? c("{0} is the name of a new research thread")
-            .t`${newestTurn.name} added to All`
-        : t`New research added to All`,
-      actionLabel: t`View`,
-      action: () => goToTurnInAll(newestTurn),
+    readyNewThreads.forEach((thread) => {
+      sendToast({
+        icon: "bolt",
+        message: thread.name
+          ? c("{0} is the name of a new research thread")
+              .t`Added ${thread.name}`
+          : t`Added new research`,
+        actionLabel: t`View`,
+        action: () => goToTurnInAll(thread),
+      });
     });
   }, [exploration, selectedSidebarTab, sendToast, goToTurnInAll]);
 
