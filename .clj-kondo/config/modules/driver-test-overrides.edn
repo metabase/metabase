@@ -83,7 +83,7 @@
    util
    version
    view-log
-   warehouse-schema
+   warehouses.schema
    enterprise/api
    enterprise/scim
    enterprise/serialization
