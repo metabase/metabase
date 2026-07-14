@@ -54,7 +54,9 @@
         "Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent "
         "compressing results during a burst of cache misses."))
   :type       :integer
-  :default    16
+  ;; worst case per write is a buffered compressed result (query-caching-max-kb, ~2 MB) plus growth transients, so 32
+  ;; concurrent writes bound the burst cost to ~200 MB -- affordable on a 2 GB heap, invisible on bigger ones
+  :default    32
   :visibility :internal
   :export?    false
   :setter     :none)
