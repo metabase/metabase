@@ -15,9 +15,9 @@ export const DATA_APP_BUILD_SCRIPT = path.join(
   "e2e/support/helpers/build-data-app-fixture.mjs",
 );
 
-export const SDK_DATA_APP_DEV_SOURCE = path.join(
+export const SDK_DATA_APP_DEV_CONFIG_SOURCE = path.join(
   REPO_ROOT,
-  "enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts",
+  "enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.ts",
 );
 
 export const BUILD_CONFIGS_DIR = path.join(REPO_ROOT, "frontend/build");
