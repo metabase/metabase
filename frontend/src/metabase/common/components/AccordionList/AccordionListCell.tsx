@@ -230,7 +230,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
-              <Loader size="xs" data-testid="loading-indicator" />
+              <Loader size="xs" />
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
@@ -298,7 +298,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         )}
         {showSpinner(section) && (
           <Box ml="0.5rem">
-            <Loader size="xs" data-testid="loading-indicator" />
+            <Loader size="xs" />
           </Box>
         )}
         <IconWrapper>
@@ -315,7 +315,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
-        <Loader size="lg" data-testid="loading-indicator" />
+        <Loader size="lg" />
       </div>
     );
   } else if (type === "search") {
@@ -401,7 +401,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           </div>
           {showSpinner(item) && (
             <Box ml="0.5rem">
-              <Loader size="xs" data-testid="loading-indicator" />
+              <Loader size="xs" />
             </Box>
           )}
         </Content>

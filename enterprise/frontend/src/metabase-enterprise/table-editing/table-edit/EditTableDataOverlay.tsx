@@ -17,7 +17,7 @@ export function EditTableDataOverlay({
 
   return (
     <Flex className={S.overlay}>
-      <Loader data-testid="loading-indicator" size="lg" />
+      <Loader size="lg" />
       {message && <Text className={S.message}>{message}</Text>}
     </Flex>
   );

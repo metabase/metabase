@@ -5,13 +5,7 @@ import { t } from "ttag";
 import { Box, Center, Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
-  <Flex
-    align="center"
-    justify="center"
-    h="100%"
-    data-testid="loading-indicator"
-    gap="md"
-  >
+  <Flex align="center" justify="center" h="100%" gap="md">
     <Loader size="lg" />
     {!!text && <Text color="text-secondary">{text}</Text>}
   </Flex>

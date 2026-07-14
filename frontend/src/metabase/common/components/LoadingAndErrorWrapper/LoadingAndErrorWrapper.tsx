@@ -133,7 +133,7 @@ export const LoadingAndErrorWrapper = forwardRef<
         renderError(contentClassName)
       ) : loading ? (
         <div className={contentClassName}>
-          {showSpinner && <Loader size="lg" data-testid="loading-indicator" />}
+          {showSpinner && <Loader size="lg" />}
           <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
             {getLoadingMessages()[messageIndex]}
           </h2>

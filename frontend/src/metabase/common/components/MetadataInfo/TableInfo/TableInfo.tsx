@@ -100,11 +100,7 @@ export function TableInfoInner({
       <MetadataContainer>
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
-            <Loader
-              size="md"
-              color="core-brand"
-              data-testid="loading-indicator"
-            />
+            <Loader size="md" color="core-brand" />
           </AbsoluteContainer>
         </Fade>
         <Fade visible={hasFetchedMetadata}>

@@ -88,7 +88,7 @@ export function BulkTableVisibilityToggle({
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader data-testid="loading-indicator" size="xs" />
+        <Loader size="xs" />
       </ActionIcon>
     );
   }

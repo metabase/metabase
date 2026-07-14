@@ -117,13 +117,7 @@ const StatusCard = ({
           </StatusCardTitle>
           <StatusCardDescription>{description}</StatusCardDescription>
         </StatusCardBody>
-        {isInProgress && (
-          <Loader
-            size="md"
-            color="core-brand"
-            data-testid="loading-indicator"
-          />
-        )}
+        {isInProgress && <Loader size="md" color="core-brand" />}
         {isCompleted && (
           <StatusCardIconContainer>
             <Icon name="check" size={12} />

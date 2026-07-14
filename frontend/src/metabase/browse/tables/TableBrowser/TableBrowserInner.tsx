@@ -119,7 +119,7 @@ const TableBrowserItem = ({
       onClick={() => trackTableClick(table.id as ConcreteTableId)}
     >
       <>
-        {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
+        {isLoading && <Loader size="xs" />}
         {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
             // Unjustified type cast. FIXME

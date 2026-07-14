@@ -347,7 +347,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   if (!geoJson) {
     return (
       <div className={cx(className, CS.flex, CS.layoutCentered)}>
-        <Loader data-testid="loading-indicator" size="lg" />
+        <Loader size="lg" />
       </div>
     );
   }

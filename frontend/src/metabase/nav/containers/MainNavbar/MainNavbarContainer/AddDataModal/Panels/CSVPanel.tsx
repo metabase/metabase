@@ -49,7 +49,7 @@ export const CSVPanel = ({
     if (isLoadingStorageAddOn) {
       return (
         <Center h="100%">
-          <Loader data-testid="loading-indicator" />
+          <Loader />
         </Center>
       );
     }

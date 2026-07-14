@@ -559,7 +559,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <Loader data-testid="loading-indicator" size="xs" />
+    <Loader size="xs" />
   </div>
 );
 

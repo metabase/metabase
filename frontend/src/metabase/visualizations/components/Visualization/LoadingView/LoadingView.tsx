@@ -43,11 +43,7 @@ function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
       {isSlow ? (
         <SlowQueryView expectedDuration={expectedDuration} isSlow={isSlow} />
       ) : (
-        <Loader
-          size="lg"
-          color="text-secondary"
-          data-testid="loading-indicator"
-        />
+        <Loader size="lg" color="text-secondary" />
       )}
     </Root>
   );

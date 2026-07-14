@@ -328,7 +328,7 @@ export function ObjectDetailPanel({
       <ObjectDetailContainer wide={hasRelationships} className={className}>
         {maybeLoading ? (
           <ErrorWrapper>
-            <Loader data-testid="loading-indicator" />
+            <Loader />
           </ErrorWrapper>
         ) : hasNotFoundError ? (
           <ErrorWrapper>

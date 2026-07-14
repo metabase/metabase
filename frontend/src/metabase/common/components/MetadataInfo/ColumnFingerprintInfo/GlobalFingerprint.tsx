@@ -116,11 +116,7 @@ function ShortenedFieldValuesList({
     <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
       <Fade visible={isLoading}>
         <Flex justify="center">
-          <Loader
-            size={18}
-            color="core-brand"
-            data-testid="loading-indicator"
-          />
+          <Loader size={18} color="core-brand" />
         </Flex>
       </Fade>
       <FadeAndSlide visible={!isLoading}>

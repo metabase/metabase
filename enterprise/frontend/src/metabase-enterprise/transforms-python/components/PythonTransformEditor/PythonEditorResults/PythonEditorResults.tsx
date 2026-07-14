@@ -105,7 +105,7 @@ function getRunQueryShortcut() {
 function LoadingState() {
   return (
     <Flex p="md" align="center" justify="center" className={S.loading}>
-      <Loader size="lg" color="core-brand" data-testid="loading-indicator" />
+      <Loader size="lg" color="core-brand" />
     </Flex>
   );
 }

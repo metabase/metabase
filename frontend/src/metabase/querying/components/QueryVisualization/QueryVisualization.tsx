@@ -134,7 +134,7 @@ export function VisualizationRunningState({
       justify="center"
       align="center"
     >
-      <Loader data-testid="loading-indicator" size="lg" />
+      <Loader size="lg" />
       <Title c="core-brand" order={3} mt="lg">
         {message}
       </Title>
