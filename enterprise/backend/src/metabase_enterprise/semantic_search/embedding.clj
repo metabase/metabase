@@ -210,6 +210,13 @@
   embedder-circuit-state-change-hooks
   (atom []))
 
+(defn register-embedder-circuit-state-change-hook!
+  "Register `hook-var` (pass a var, so a REPL redef of the fn takes effect live) to run on every breaker
+  state change. Idempotent by var identity: re-running it on namespace reload is a no-op, not a duplicate."
+  [hook-var]
+  (swap! embedder-circuit-state-change-hooks
+         (fn [hooks] (if (some #{hook-var} hooks) hooks (conj hooks hook-var)))))
+
 (defn- on-embedder-circuit-state-change!
   "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread, in
   registration order, each isolated so one failing hook doesn't starve the rest."

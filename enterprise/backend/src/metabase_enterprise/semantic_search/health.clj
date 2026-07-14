@@ -131,10 +131,7 @@
   (memoize/memo-clear! embedding-service-reachable?)
   (health-inspector/run-and-save-check! :semantic-search-index))
 
-;; defonce (no duplicate on reload); conj the var so redefining the fn above takes effect live.
-(defonce ^:private _semantic-search-embedder-hook
-  (swap! semantic.embedding/embedder-circuit-state-change-hooks conj
-         #'persist-index-check-on-breaker-change!))
+(semantic.embedding/register-embedder-circuit-state-change-hook! #'persist-index-check-on-breaker-change!)
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
