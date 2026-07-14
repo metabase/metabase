@@ -1,6 +1,6 @@
 import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   ClickObject,
   HighlightedObject,

@@ -33,9 +33,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 

@@ -17,9 +17,14 @@
   (mi/instances-with-hydrated-data
    join-rows k
    #(let [timeline-ids (into #{} (map :timeline_id) join-rows)
+          ;; Timeline ids are read-checked when attached (POST /api/exploration), which is the
+          ;; primary permission boundary. The `mi/can-read?` filter here (collection perms)
+          ;; additionally hides the full timeline + events from viewers when a timeline has since
+          ;; moved into a collection they can't read — those rows hydrate with a nil `:timeline`.
           timelines    (when (seq timeline-ids)
                          (timeline/include-events
-                          (t2/select :model/Timeline :id [:in timeline-ids])
+                          (filterv mi/can-read?
+                                   (t2/select :model/Timeline :id [:in timeline-ids]))
                           {:events/all? false}))]
       (into {} (map (juxt :id identity)) timelines))
    :timeline_id))
@@ -68,6 +73,8 @@
                    {:timeline-id          (:timeline_id head)
                     :timeline-name        (:timeline_name head)
                     :timeline-description (:timeline_description head)
+                    ;; Rows arrive timestamp-ascending from the SQL ORDER BY; `group-by` preserves
+                    ;; encounter order within each timeline, so no re-sort is needed here.
                     :events (->> tl-rows
                                  (keep (fn [r]
                                          (when (:event_id r)
@@ -76,5 +83,4 @@
                                             :description (:event_description r)
                                             :timestamp   (u.date/format (:event_timestamp r))
                                             :icon        (:event_icon r)})))
-                                 (sort-by :timestamp)
                                  vec)}))))))

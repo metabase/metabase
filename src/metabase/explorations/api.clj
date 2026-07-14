@@ -18,7 +18,7 @@
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.queries.core :as queries]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -235,11 +235,15 @@
                 (positional-rows thread-id
                                  (map #(select-keys % [:type :metrics :dimensions]) blocks)))))
 
-(defn- insert-thread-timelines! [thread-id timeline-ids]
+(defn- insert-thread-timelines!
+  "Attach `timeline-ids` to the thread, in payload order. Deduped (`distinct`, keeping first
+   occurrence) — a repeated id would otherwise violate the table's unique
+   `(exploration_thread_id, timeline_id)` constraint and 500 the create."
+  [thread-id timeline-ids]
   (when (seq timeline-ids)
     (t2/insert! :model/ExplorationThreadTimeline
                 (positional-rows thread-id
-                                 (map (fn [tl-id] {:timeline_id tl-id}) timeline-ids)))))
+                                 (map (fn [tl-id] {:timeline_id tl-id}) (distinct timeline-ids))))))
 
 (defn- reset-ai-summary-doc!
   [thread-id]
@@ -568,29 +572,39 @@
    _query-params
    {:keys [name description prompt collection_id blocks timeline_ids]} :- CreateExploration]
   (api/create-check :model/Exploration {:collection_id collection_id})
-  (t2/with-transaction [_]
-    (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                             {:name          name
-                                                              :description   description
-                                                              :collection_id collection_id
-                                                              :creator_id    api/*current-user-id*}))
-          coll-id     (:collection_id exploration)
-          thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                             {:exploration_id (:id exploration)
-                                                              :prompt         prompt
-                                                              :position       0}))
-          tid         (:id thread)]
-      (insert-thread-default-documents! tid coll-id)
-      (insert-blocks! tid blocks)
-      (insert-thread-timelines! tid timeline_ids)
-      ;; Setting `started_at` is the signal to the background planning worker that this
-      ;; thread is ready to plan + execute. The worker's claim predicate matches threads
-      ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
-      (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
-      (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
-        (events/publish-event! :event/exploration-create
-                               {:object persisted :user-id api/*current-user-id*})
-        (hydrate-exploration persisted)))))
+  ;; Block metric-card and timeline references are persisted verbatim and read back unfiltered
+  ;; (planning context, AI-summary name/event lookups, thread hydration), so attach time is the
+  ;; permission boundary: every referenced id must exist (404) and be readable (403) by the creator.
+  (doseq [card-id (distinct (mapcat #(map :card_id (:metrics %)) blocks))]
+    (api/read-check :model/Card card-id))
+  (doseq [timeline-id (distinct timeline_ids)]
+    (api/read-check :model/Timeline timeline-id))
+  (let [persisted
+        (t2/with-transaction [_]
+          (let [exploration (first (t2/insert-returning-instances! :model/Exploration
+                                                                   {:name          name
+                                                                    :description   description
+                                                                    :collection_id collection_id
+                                                                    :creator_id    api/*current-user-id*}))
+                coll-id     (:collection_id exploration)
+                thread      (first (t2/insert-returning-instances! :model/ExplorationThread
+                                                                   {:exploration_id (:id exploration)
+                                                                    :prompt         prompt
+                                                                    :position       0}))
+                tid         (:id thread)]
+            (insert-thread-default-documents! tid coll-id)
+            (insert-blocks! tid blocks)
+            (insert-thread-timelines! tid timeline_ids)
+            ;; Setting `started_at` is the signal to the background planning worker that this
+            ;; thread is ready to plan + execute. The worker's claim predicate matches threads
+            ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
+            (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+            (t2/select-one :model/Exploration :id (:id exploration))))]
+    ;; Published after the transaction commits (matching PUT) so listeners can never observe an
+    ;; exploration that isn't visible to other connections yet.
+    (events/publish-event! :event/exploration-create
+                           {:object persisted :user-id api/*current-user-id*})
+    (hydrate-exploration persisted)))
 
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
@@ -805,7 +819,7 @@
   [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
 
 (defn- get-thread-or-404
-  "Fetch the thread and its parent exploration, or 404."
+  "Fetch the thread, or 404."
   [thread-id]
   (api/check-404 (t2/select-one :model/ExplorationThread :id thread-id)))
 
@@ -824,13 +838,13 @@
   queries, resets its AI Summary doc to the placeholder, and clears the terminal-state gates so the
   background planner re-claims it. Returns the parent exploration."
   [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
-  (let [thread (write-check-thread thread-id)]
+  (let [thread      (get-thread-or-404 thread-id)
+        exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
     (t2/with-transaction [_]
       (reset-thread-for-rerun! thread-id)
-      (let [updated (t2/select-one :model/Exploration :id (:exploration_id thread))]
-        (events/publish-event! :event/exploration-update
-                               {:object updated :user-id api/*current-user-id*})
-        (hydrate-exploration updated)))))
+      (events/publish-event! :event/exploration-update
+                             {:object exploration :user-id api/*current-user-id*})
+      (hydrate-exploration exploration))))
 
 (mr/def ::CanceledThread
   "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to
@@ -1035,11 +1049,11 @@
   "Replay a worker-serialized QP result (gzipped+nippy bytes from `:model/StoredResult.result_data`)
   through the streaming pipeline so the response is shaped like a normal `/api/dataset` response.
   Reuses
-  `cache.impl/with-reducible-deserialized-results` — the same machinery the cache middleware
+  `qp/with-reducible-deserialized-results` — the same machinery the cache middleware
   uses to replay cached results."
   [export-format ^bytes result-bytes]
   (qp.streaming/streaming-response [rff export-format]
-    (cache.impl/with-reducible-deserialized-results
+    (qp/with-reducible-deserialized-results
       [[qp-result _] (ByteArrayInputStream. result-bytes)]
       (when qp-result
         (let [data (:data qp-result)]

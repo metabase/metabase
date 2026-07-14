@@ -1,8 +1,11 @@
 (ns metabase.sync.analyze.interestingness-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.interestingness.core :as interestingness]
-   [metabase.interestingness.dimension :as dim]))
+   [metabase.interestingness.dimension :as dim]
+   [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 ;;; Smoke tests for the canonical weight profiles. The sync step itself is verified
 ;;; end-to-end via `automagic_dashboards` integration tests (which fingerprint + score
@@ -28,3 +31,16 @@
                                :type {:type/DateTime {:earliest "2022-01-01"
                                                       :latest "2024-12-31"}}}})]
     (is (>= result 0.7))))
+
+(deftest score-missing-leftovers-backfills-null-scores-test
+  (testing "the leftovers pass scores fields whose dimension_interestingness is still NULL"
+    (mt/with-temp [:model/Database database {}
+                   :model/Table    table    {:db_id (:id database)}
+                   :model/Field    field    {:table_id (:id table)}]
+      (is (nil? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
+      (is (= {:fields-scored 1 :fields-failed 0}
+             (#'sync.interestingness/score-missing-leftovers! database)))
+      (is (some? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
+      (testing "once scored, the field is no longer selected"
+        (is (= {:fields-scored 0 :fields-failed 0}
+               (#'sync.interestingness/score-missing-leftovers! database)))))))

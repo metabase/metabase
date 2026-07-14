@@ -25,6 +25,12 @@
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
 
+    <!-- Eval-trace sink (metabase.ai-tracing): additivity=false with no appender keeps the JSONL
+         spans out of the shared test log. Tests that assert on emitted spans attach their own
+         appender via metabase.util.log.capture, so this does not hide them. Mirrors the prod
+         resources/log4j2.xml, minus the per-session RoutingAppender (tests don't read the files). -->
+    <Logger name="metabase.ai-tracing.log" level="info" additivity="false"/>
+
     <Logger name="metabase.test.gentest" level="INFO" additivity="false">
       <AppenderRef ref="ConsoleInfoLevel"/>
       <AppenderRef ref="Console"/>

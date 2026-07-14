@@ -225,6 +225,14 @@
         (is (nil? (llm.settings/assert-llm-host-allowed! "http://localhost:6123")))
         (is (nil? (llm.settings/assert-llm-host-allowed! "http://127.0.0.1:6123")))
         (is (nil? (llm.settings/assert-llm-host-allowed! "http://LOCALHOST:6123/v1/messages"))))
+      (testing "allows IPv6 loopback URLs"
+        ;; `java.net.URL.getHost` returns IPv6 hosts wrapped in brackets, so the
+        ;; whitelist's `[::1]` entry is the one a URL can actually hit; the bare
+        ;; `::1` entry is belt-and-braces for hosts arriving without brackets.
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://[::1]:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://[::1]:6123/v1/messages")))
+        (is (contains? @#'llm.settings/loopback-hosts "::1")
+            "the bracket-less IPv6 loopback form stays whitelisted"))
       (testing "throws for any non-localhost URL so we never hit a real provider"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -234,6 +242,16 @@
              clojure.lang.ExceptionInfo
              #"non-localhost"
              (llm.settings/assert-llm-host-allowed! "http://host.docker.internal:6123"))))
+      (testing "fails closed with the friendly message for malformed URLs instead of throwing raw"
+        (doseq [url ["not-a-url" "example.com/v1"]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Refusing to send an LLM request"
+               (llm.settings/assert-llm-host-allowed! url))
+              url)
+          (is (= {:status-code 400 :llm-url url}
+                 (try (llm.settings/assert-llm-host-allowed! url)
+                      (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
       (testing "is a no-op for blank / nil URLs (lets normal not-configured handling run)"
         (is (nil? (llm.settings/assert-llm-host-allowed! nil)))
         (is (nil? (llm.settings/assert-llm-host-allowed! "")))))))

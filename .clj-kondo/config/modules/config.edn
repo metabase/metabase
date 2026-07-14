@@ -159,7 +159,8 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{ai-tracing
+              api
               auth-identity
               channel
               collections
@@ -192,6 +193,15 @@
            metabase.agent-lib.representations.resolve}
    :uses #{lib
            models
+           util}}
+
+  ai-tracing
+  {:team "Metabot"
+   :api  #{metabase.ai-tracing.api
+           metabase.ai-tracing.core
+           metabase.ai-tracing.init}
+   :uses #{api
+           settings
            util}}
 
   analytics
@@ -1180,6 +1190,7 @@
            metabase.lib.metadata
            metabase.lib.metadata.protocols
            metabase.lib.options
+           metabase.lib.pivot
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1309,6 +1320,7 @@
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
+           ai-tracing
            api
            app-db
            config
@@ -1354,6 +1366,7 @@
               slackbot}
    :uses    #{activity-feed
               agent-lib
+              ai-tracing
               analytics
               analytics-interface
               api
@@ -1922,7 +1935,6 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
-              metabase.query-processor.middleware.cache.impl
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
@@ -1932,6 +1944,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2406,6 +2419,7 @@
            permissions
            premium-features
            search
+           session
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card

@@ -32,7 +32,6 @@ export const loadMetadataForDocumentCard = createAsyncThunk(
 
 export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
-  sidebarMode: null,
   cardEmbeds: [],
   currentDocument: null,
   draftCards: {},
@@ -56,14 +55,6 @@ const documentsSlice = createSlice({
       action: PayloadAction<{ embedIndex: number }>,
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
-      state.sidebarMode = "viz-settings";
-    },
-    openTimelineEventsSidebar: (
-      state,
-      action: PayloadAction<{ embedIndex: number }>,
-    ) => {
-      state.selectedEmbedIndex = action.payload.embedIndex;
-      state.sidebarMode = "timeline-events";
     },
     updateVizSettings: (
       state,
@@ -91,7 +82,6 @@ const documentsSlice = createSlice({
     },
     closeSidebar: (state) => {
       state.selectedEmbedIndex = null;
-      state.sidebarMode = null;
     },
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
@@ -153,7 +143,6 @@ const documentsSlice = createSlice({
 export const {
   updateSelectedEmbedIndex,
   openVizSettingsSidebar,
-  openTimelineEventsSidebar,
   updateVizSettings,
   updateVisualizationType,
   closeSidebar,

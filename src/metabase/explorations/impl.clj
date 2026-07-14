@@ -65,12 +65,6 @@
            :name)
       (catch Exception _ nil))))
 
-(defn- metric-matches-search? [metric q-lower]
-  (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
-      (some (fn [d]
-              (str/includes? (u/lower-case-en (or (:display_name d) "")) q-lower))
-            (:dimensions metric))))
-
 (defn- dimension-display-name
   "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
    when the dimension has a group, otherwise just the dimension's display name."
@@ -80,6 +74,17 @@
     (if (str/blank? group-dn)
       dn
       (str group-dn " - " dn))))
+
+(defn- metric-matches-search?
+  "Case-insensitive match of `q-lower` against the metric's name or any of its dimensions'
+   *displayed* names — the `<group> - <dimension>` combination the picker shows (see
+   [[dimension-display-name]]), so searching a group name, a dimension name, or the combined
+   string all match what the user sees."
+  [metric q-lower]
+  (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
+      (some (fn [d]
+              (str/includes? (u/lower-case-en (dimension-display-name d)) q-lower))
+            (:dimensions metric))))
 
 (defn- group-dimensions
   "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
@@ -110,12 +115,12 @@
          vec)))
 
 (defn- accessible-metric-ids
-  "Card ids the current user can read, ordered with library-metrics collections first
-   then alphabetically by name. Optionally restricted to `metric-ids` (when non-nil),
-   preserving access checks but filtering to that subset."
-  [metric-ids]
-  (let [library-ids (library-metrics-collection-ids)
-        base-where  (card/visible-metric-cards-where-clause)
+  "Card ids the current user can read, ordered with `library-ids` collections (see
+   [[library-metrics-collection-ids]], computed once by the caller) first then alphabetically by
+   name. Optionally restricted to `metric-ids` (when non-nil), preserving access checks but
+   filtering to that subset."
+  [metric-ids library-ids]
+  (let [base-where  (card/visible-metric-cards-where-clause)
         where       (if (seq metric-ids)
                       [:and base-where [:in :id (vec metric-ids)]]
                       base-where)]
@@ -230,7 +235,7 @@
   [{:keys [metric-ids q]}]
   (lib-be/with-metadata-provider-cache
     (let [library-ids (or (library-metrics-collection-ids) #{})
-          card-ids   (accessible-metric-ids metric-ids)
+          card-ids   (accessible-metric-ids metric-ids library-ids)
           cards      (load-metric-cards card-ids)
           ;; Filter dimensions by user permissions for all metrics at once (one set of queries
           ;; for the whole batch, rather than per metric).
@@ -256,21 +261,6 @@
         (let [q-lower (u/lower-case-en q)]
           (filterv #(metric-matches-search? % q-lower) hydrated))))))
 
-(defn exploration-data
-  "Returns the data shape used by `GET /api/exploration/dimensions` and any other caller that
-   needs the modal-ready hydrated metrics + grouped dimensions.
-
-   - `:metric-ids` (optional) — when non-nil, restricts the result to those metric Card
-     ids the user can read. When nil, returns all visible metric Cards.
-   - `:q` (optional) — case-insensitive search across metric name and dimension display-name.
-
-   The returned shape is `{:metrics [...] :dimension_groups [...]}` exactly matching the
-   `::DimensionsResponse` schema in `metabase.explorations.api`."
-  [opts]
-  (let [filtered (hydrated-metrics opts)]
-    {:metrics          (mapv slim-metric filtered)
-     :dimension_groups (group-dimensions filtered)}))
-
 (defn- candidate-dimension?
   "Whether a dimension is surfaced as a research candidate: it scored at or above
    [[min-interestingness]], or it didn't score (nil). Mirrors the filter [[group-dimensions]]
@@ -285,6 +275,25 @@
    dimension groups (and thus the FE) would drop."
   [m]
   (update m :dimensions #(filterv candidate-dimension? %)))
+
+(defn exploration-data
+  "Returns the data shape used by `GET /api/exploration/dimensions` and any other caller that
+   needs the modal-ready hydrated metrics + grouped dimensions.
+
+   - `:metric-ids` (optional) — when non-nil, restricts the result to those metric Card
+     ids the user can read. When nil, returns all visible metric Cards.
+   - `:q` (optional) — case-insensitive search across metric name and dimension display-name.
+
+   Metrics carry only their candidate dimensions (see [[with-candidate-dimensions]]) so each
+   metric's `:dimension_ids` reference dimensions that actually appear in `:dimension_groups` —
+   no dangling ids for sub-threshold dimensions the groups drop.
+
+   The returned shape is `{:metrics [...] :dimension_groups [...]}` exactly matching the
+   `::DimensionsResponse` schema in `metabase.explorations.api`."
+  [opts]
+  (let [filtered (mapv with-candidate-dimensions (hydrated-metrics opts))]
+    {:metrics          (mapv slim-metric filtered)
+     :dimension_groups (group-dimensions filtered)}))
 
 (defn- dimension-id->metric-ids
   "Map of dimension id -> set of metric ids exposing that dimension, across `metrics` (each

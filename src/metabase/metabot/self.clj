@@ -122,8 +122,9 @@
   (boolean
    (or (retryable-status? (:status (ex-data e)))
        ;; Connection errors (e.g. under load, connection refused/reset), possibly
-       ;; wrapped one or more levels deep by a provider adapter.
-       (some connection-error? (take-while some? (iterate #(some-> ^Throwable % .getCause) e))))))
+       ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
+       ;; levels to guard against a cyclic getCause chain.
+       (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.

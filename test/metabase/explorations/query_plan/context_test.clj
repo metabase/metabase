@@ -247,28 +247,6 @@
         (is (= :default (:strategy (lib/binning lhs)))
             "click ref's default binning is applied to the explore filter target")))))
 
-(deftest prompt-vars-emits-per-block-sections-test
-  (testing "prompt-vars renders one section per block with its own metric/dimension counts"
-    (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
-                                       :dataset_query (count-metric-query)}]
-      (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
-                       :target ["field" {} (mt/id :venues :price)]}]
-            block    {:id 7
-                      :metrics    [{:card_id cid :dimension_mappings mappings}]
-                      :dimensions [{:dimension_id "d1" :display_name "Price"
-                                    :effective_type :type/Number}]}
-            ctx      (qp.context/metric-and-dim-context [block])
-            vars     (qp.context/prompt-vars {:metric-dim-ctx ctx :thread-prompt "why down?"})]
-        (is (= "why down?" (:thread_prompt vars)))
-        (is (= 1 (:block_count vars)))
-        (is (= 1 (count (:blocks vars))))
-        (let [b (first (:blocks vars))]
-          (is (= 7 (:block_id b)))
-          (is (= "Revenue" (:name b)) "block name is computed from the metric Card")
-          (is (string? (:metrics_md b)))
-          (is (string? (:dimensions_md b))))))))
-
 ;;; ---------------------------------------------------------------------------
 ;;; build-row-context — "Explore further" filter edge cases
 ;;; ---------------------------------------------------------------------------

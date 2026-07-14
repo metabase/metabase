@@ -4,10 +4,7 @@ import {
   getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import {
-  GRAPH_COLORS_SETTINGS,
-  GRAPH_DATA_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
+import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import {
   getBreakoutCardinality,
   validateBreakoutSeriesCount,
@@ -62,7 +59,6 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
         return t`Y-axis`;
       },
     },
-    ...GRAPH_COLORS_SETTINGS,
   },
   isSensible: ({ cols, rows }: DatasetData) => {
     return (

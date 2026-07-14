@@ -918,7 +918,12 @@
     ;;
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
-    :parameters/table-reference})
+    :parameters/table-reference
+    ;;
+    ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
+    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql-mbql5` (which provides the
+    ;; `:pivot` clause compiler).
+    :native-pivot-tables})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

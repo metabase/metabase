@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]
-   [metabase.revisions.impl.exploration :as impl.exploration]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -15,7 +14,9 @@
     (let [instance   (t2/select-one :model/Exploration :id expl-id)
           serialized (revision/serialize-instance :model/Exploration expl-id instance)]
       (testing "bookkeeping/identity columns are excluded from the snapshot"
-        (doseq [k @#'impl.exploration/excluded-columns-for-exploration-revision]
+        ;; Hardcoded on purpose (rather than derefing the impl's own exclusion set) so that an
+        ;; accidental change to `excluded-columns-for-exploration-revision` fails this test.
+        (doseq [k [:id :entity_id :creator_id :created_at :updated_at :archived_directly]]
           (testing k
             (is (not (contains? serialized k))))))
       (testing "user-meaningful columns are preserved"

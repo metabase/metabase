@@ -94,11 +94,13 @@
         request    {:model    model
                     :system   system
                     :messages messages}
-        start-time (u/start-timer)]
+        start-time (u/start-timer)
+        url        (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")]
+    ;; Outside the try so the e2e guard fails loudly instead of being routed
+    ;; through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
+    (llm.settings/assert-llm-host-allowed! url)
     (try
-      (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
-            _        (llm.settings/assert-llm-host-allowed! url)
-            response (http/post url
+      (let [response (http/post url
                                 {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))
                                  :as                 :json

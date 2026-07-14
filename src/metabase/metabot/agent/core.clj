@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
@@ -260,6 +261,10 @@
                    :system    (:content system-msg)
                    :parts     input-parts
                    :tools     (vec tools)}))
+    (when (ait/capture-active?)
+      (ait/record! {:ai/system      (:content system-msg)
+                    :ai/input-parts input-parts
+                    :ai/tool-count  (count tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {})
                                          link-registry-atom)
@@ -527,14 +532,24 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'            (reduce (xf rf) result llm-call)
+          ;; `call-llm` runs inside the eval span so the request attrs it records attach here.
+          result'            (ait/with-llm-call {:ai/iteration iteration
+                                                 :ai/model     (:model profile)}
+                               (let [llm-call       (call-llm memory context profile tools iteration
+                                                              tracking-opts link-registry-atom)
+                                     reduced-result (reduce (xf rf) result llm-call)]
+                                 (when (ait/capture-active?)
+                                   (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
+                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
+                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
+                                 reduced-result))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
@@ -547,25 +562,28 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+        ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
+        (assoc loop-state :status :done :finish-reason :empty-response
+               :result (rf result (final-state-part @memory-atom)))
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
           (cond
             (reduced? result')
-            (assoc loop-state :status :reduced :result @result')
+            ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+            (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
             (should-continue? iteration max-iter terminal-tools parts)
             (assoc loop-state :result result' :iteration (inc iteration))
 
             :else
-            (do (log/info "Agent loop complete"
-                          {:iterations iteration
-                           ;; TODO: decide if we want this reason to float up to frontend
-                           :reason     (finish-reason iteration max-iter terminal-tools parts)})
-                (assoc loop-state
-                       :status :done
-                       :result (rf result' (final-state-part @memory-atom))))))))))
+            (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+              (log/info "Agent loop complete" {:iterations iteration :reason reason})
+              (assoc loop-state
+                     :status :done
+                     ;; surfaced so run-agent-loop can record it on the turn span
+                     :finish-reason reason
+                     :result (rf result' (final-state-part @memory-atom))))))))))
 
 ;;; Public API
 
@@ -595,6 +613,16 @@
    :version   1
    :data      debug-log})
 
+(defn- eval-session-part
+  "Create a data part carrying just the eval session id. Emitted at the end of the stream when
+  `MB_AI_EVAL_CAPTURE` is enabled, so the benchmark/eval harness can locate the per-session
+  `<session-id>.jsonl` trace file written by `metabase.ai-tracing.log`."
+  [session-id]
+  {:type      :data
+   :data-type "eval_session"
+   :version   1
+   :data      {:session-id session-id}})
+
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
 
@@ -613,6 +641,13 @@
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
+            ;; eval-only: when supplied (e.g. by the benchmark harness), names the per-session
+            ;; trace file so the caller can read it back without parsing the stream. Length + charset
+            ;; are enforced here (rather than only deep in `ait/checked-session-id`) so a bad id 400s
+            ;; at the boundary instead of surfacing as a generic agent error. `ait/max-session-id-length`
+            ;; and `ait/safe-session-id-re` are the single source of truth for the cap and the charset.
+            [:eval-session-id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
@@ -638,17 +673,51 @@
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})]
               (try
-                (let [agent              (init-agent opts)
-                      {result    :result
-                       iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
-                                                  (iterate loop-step)
-                                                  (drop-while #(= :continue (:status %)))
-                                                  first)]
-                  (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
-                  ;; Emit debug log as a data part if debug mode was active
-                  (if (and debug? (seq @*debug-log*))
-                    (rf result (debug-log-part @*debug-log*))
-                    result))
+                ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
+                ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
+                ;; to the per-session JSONL file as they finish.
+                (ait/with-eval-session (:eval-session-id opts)
+                  (let [turn-result
+                        (ait/with-agent-turn {:ai/profile-id (name profile-id)
+                                              :ai/msg-count  (count (:messages opts))
+                                              ;; the user's latest question — trace-level input for evals
+                                              :ai/user-input (some->> (:messages opts)
+                                                                      (filter #(= "user" (some-> % :role name)))
+                                                                      last :content)
+                                              ;; full request — makes the trace a self-contained record
+                                              :ai/messages   (:messages opts)
+                                              :ai/context    (:context opts)
+                                              :ai/state      (:state opts)}
+                          (let [agent      (init-agent opts)
+                                usage-atom (atom {})
+                                {result        :result
+                                 iteration     :iteration
+                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
+                                                                    (iterate loop-step)
+                                                                    (drop-while #(= :continue (:status %)))
+                                                                    first)]
+                            (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                            ;; Materialized turn-level outputs for evals: token usage, why the loop
+                            ;; stopped, and the final agent state (link registry / generated entities).
+                            (when (ait/capture-active?)
+                              (ait/record! {:ai/finish-reason finish-reason
+                                            :ai/usage         @usage-atom
+                                            :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
+                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
+                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; Append trailing parts only on a normal finish: the debug log, and the
+                            ;; eval-session pointer that lets the harness locate the per-session
+                            ;; `<session-id>.jsonl` (it reads that file, not the stream, so a skipped
+                            ;; pointer on disconnect costs nothing). Gate the pointer on a non-nil
+                            ;; `*session-id*` too: the in-process `capture-reducible`/`capturing` path is
+                            ;; capture-active but deliberately file-less (session id nil, read `:trace`),
+                            ;; so emitting a pointer there would name a `<nil>.jsonl` that never exists.
+                            (if (= :reduced finish-reason)
+                              result
+                              (cond-> result
+                                (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*))))))]
+                    turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
                   (let [{:keys [api-error status provider body]} (ex-data e)

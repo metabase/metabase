@@ -597,12 +597,15 @@
 
 (defn- removal-condition-clauses
   "Converts a spec's removal-conditions map into HoneySQL where-fragments: an :entity_id entry whose value is
-   an [op value] pair becomes [op :entity_id value]; any other entry becomes [:= key value]."
+   an [op value] pair becomes [op :entity_id value]; any other entry with a vector value becomes
+   [:in key value]; a scalar value becomes [:= key value]. (A scalar-only [:= key [...]] rendering would
+   silently produce a broken condition for vector values.)"
   [removal-conds]
   (for [[k v] removal-conds]
-    (if (and (= k :entity_id) (vector? v))
-      (let [[op value] v] [op :entity_id value])
-      [:= k v])))
+    (cond
+      (and (= k :entity_id) (vector? v)) (let [[op value] v] [op :entity_id value])
+      (vector? v)                        [:in k v]
+      :else                              [:= k v])))
 
 (defn removal-where-clauses
   "The AND-clauses selecting the rows an import reconcile removes for one entity-id `spec`: rows scoped to
@@ -754,11 +757,17 @@
 
 (defn- object-matches-conditions?
   "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).
+   A key MISSING from `object` does not match, even against a nil condition value — eligibility needs
+   positive evidence the condition holds (e.g. the Document spec's `{:exploration_thread_id nil}` must
+   see an explicit nil, not an absent key), so a partial payload can't sneak conditioned rows into
+   sync scope.
    NOTE: only handles scalar values — non-scalar `:conditions` (e.g. `[:not= ...]`) are not supported here.
    Such forms belong in `:export-conditions`/`:removal-conditions`, which feed query-builders, not this helper."
   [conditions object]
   (or (empty? conditions)
-      (every? (fn [[k v]] (= v (get object k))) conditions)))
+      (every? (fn [[k v]]
+                (= (find object k) [k v]))
+              conditions)))
 
 (defmulti ^:private check-eligibility-by-type
   "Type-specific eligibility check, dispatched on `(get-in spec [:eligibility :type])`.

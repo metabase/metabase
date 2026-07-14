@@ -204,6 +204,7 @@ export function ActionToolbar({
   return (
     <Group
       gap="xs"
+      bg="background-primary"
       bd="1px solid border"
       bdrs="lg"
       px="sm"
