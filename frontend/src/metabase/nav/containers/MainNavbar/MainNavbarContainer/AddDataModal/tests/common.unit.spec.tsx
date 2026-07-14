@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen, within } from "__support__/ui";
+import { fireEvent, screen, waitFor, within } from "__support__/ui";
+import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { setup } from "./setup";
+import { setup, setupHostedInstance } from "./setup";
 
 const csvFile = new File(["test,data"], "bank-statement.csv", {
   type: "text/csv",
@@ -156,29 +157,71 @@ describe("AddDataModal", () => {
       setup({ isAdmin: true, uploadsEnabled: false });
 
       await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
-      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Upload CSV files" }),
+        await screen.findByRole("heading", { name: "Upload CSV files" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText(/^To work with CSVs, enable file uploads/),
       ).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
+      // The uploads settings link only shows once uploads are enabled.
+      expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       // Upsell banner should not show for self-hosted instances.
       expect(
         screen.queryByText("Add Metabase Storage"),
       ).not.toBeInTheDocument();
     });
 
-    it("should prompt the admin to enable uploads with an upsell on a hosted instance", async () => {
-      setup({ isAdmin: true, uploadsEnabled: false, isHosted: true });
+    it("should offer the admin to either enable uploads or add storage on a hosted instance", async () => {
+      setupHostedInstance({
+        isAdmin: true,
+        uploadsEnabled: false,
+        addOns: [mockStorageCloudAddOn],
+      });
 
       await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
-      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
       expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
+      expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
+
+      const storageButton = await screen.findByRole("button", {
+        name: /Add Metabase Storage/,
+      });
       expect(
-        await screen.findByText("Add Metabase Storage"),
+        screen.getByText(/either enable file uploads in/),
       ).toBeInTheDocument();
+
+      await userEvent.click(storageButton);
+      const purchaseModal = await screen.findByRole("dialog", {
+        name: "Add Metabase Storage",
+      });
+
+      // The confirmation replaces the Add data modal instead of stacking on it.
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", { name: "Add data" }),
+        ).not.toBeInTheDocument();
+      });
+
+      // Cancelling brings the Add data modal back on the same tab.
+      await userEvent.click(
+        within(purchaseModal).getByRole("button", { name: "Cancel" }),
+      );
+      expect(
+        await screen.findByRole("dialog", { name: "Add data" }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
+    });
+
+    it("falls back to a store link on a hosted instance without a purchasable add-on", async () => {
+      setupHostedInstance({ isAdmin: true, uploadsEnabled: false });
+
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+      expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
+      // The in-app purchase isn't available, but storage is still offered as a
+      // link out to the store.
+      expect(
+        await screen.findByRole("link", { name: /Add Metabase Storage/ }),
+      ).toHaveAttribute("href", expect.stringContaining("/account/storage"));
     });
 
     it("regular user should be instructed to contact their admin in order to enable uploads", async () => {
@@ -206,29 +249,15 @@ describe("AddDataModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("regular user should be instructed to contact their admin in order to gain upload permissions", async () => {
+    it("does not offer the CSV tab to a regular user who cannot upload to any database", async () => {
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: false });
 
-      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
-      expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       expect(
-        await screen.findByRole("heading", { name: "Upload CSV files" }),
+        await screen.findByRole("tab", { name: /Database$/ }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          "Work with CSVs, just like with any other data source.",
-        ),
-      ).toBeInTheDocument();
-
-      const alert = screen.getByRole("alert");
-      expect(
-        within(alert).getByText(
-          /^You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at/,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        within(alert).getByText("admin@metabase.test"),
-      ).toBeInTheDocument();
+        screen.queryByRole("tab", { name: /CSV$/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("should show CSV panel for a regular user with sufficient permissions", async () => {
