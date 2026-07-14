@@ -37,7 +37,7 @@
   (edn/read-string (slurp driver-test-overrides-path)))
 
 (declare kondo-config module-parent module-ancestor-chain external-usages module-dependencies
-         dependencies build-prefix->module)
+         dependencies build-prefix->module default-ns-prefix)
 
 (defn friend-reach-count
   "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
@@ -99,7 +99,13 @@
 
   `:api-any-namespaces` is the hidden surface of `:api :any` modules: every one of their namespaces is
   effectively public, so it is counted here namespace-weighted (the `:api-any` module count itself is a
-  ratchet)."
+  ratchet).
+
+  `:ns-prefix-overrides` counts modules whose `:ns-prefix` differs from their name-derived default —
+  each is a module name that lies about where its namespaces live, usually a config-only nesting whose
+  source rename hasn't happened yet. An explicit prefix equal to the default is documentation, not a
+  mismatch, and does not count. Expected to grow with config-only carves; a candidate ratchet once the
+  source renames catch up."
   ([]
    (let [config (kondo-config)]
      (module-boundary-stats (dependencies (build-prefix->module config)) config)))
@@ -114,6 +120,10 @@
       :largest-api        (reduce max 0 api-sizes)
       :module-count       (count config)
       :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
+      :ns-prefix-overrides (count (filter (fn [[m {:keys [ns-prefix]}]]
+                                            (and ns-prefix
+                                                 (not= ns-prefix (default-ns-prefix m))))
+                                          config))
       :total-api          (reduce + 0 api-sizes)})))
 
 (defn module-boundary-ratchets
