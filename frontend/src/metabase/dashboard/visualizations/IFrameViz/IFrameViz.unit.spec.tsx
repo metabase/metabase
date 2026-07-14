@@ -5,7 +5,7 @@ import {
   createMockDashboardState,
   createMockSettingsState,
 } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Parameter } from "metabase-types/api";
 import {
   createMockDashboard,

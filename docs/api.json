@@ -3745,11 +3745,17 @@
             "type" : "string",
             "minLength" : 1
           },
+          "tabs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.dashboard-tab"
+            }
+          },
           "url" : {
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids", "tabs" ]
       },
       "metabase.agent-api.api.create-metric-request" : {
         "type" : "object",
@@ -3921,8 +3927,22 @@
         },
         "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
       },
+      "metabase.agent-api.api.dashboard-tab" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
       "metabase.agent-api.api.dashcard-mutation" : {
-        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
+        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").\n   - `add_heading` : requires `text`. Adds a full-width section heading.\n   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`\n                     (\"wide\", \"tall\", or \"full\").\n   - `update_text` : requires `dashcard_id` and `text`. Replaces a heading or text card's text\n                     in place, keeping its position and size.\n   - `remove`      : requires `dashcard_id`.\n   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").\n\n   The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on\n   the dashboard's first tab.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -3941,9 +3961,89 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
             }
           },
-          "required" : [ "action", "card_id" ]
+          "required" : [ "action", "card_id" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "add_heading"
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "text" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "add_text"
+            },
+            "display_size" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "wide", "tall", "full" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "text" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "update_text"
+            },
+            "dashcard_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "dashcard_id", "text" ],
+          "additionalProperties" : false
         }, {
           "type" : "object",
           "properties" : {
@@ -3956,7 +4056,8 @@
               "minimum" : 1
             }
           },
-          "required" : [ "action", "dashcard_id" ]
+          "required" : [ "action", "dashcard_id" ],
+          "additionalProperties" : false
         }, {
           "type" : "object",
           "properties" : {
@@ -3973,7 +4074,8 @@
               "enum" : [ "top", "bottom" ]
             }
           },
-          "required" : [ "action", "dashcard_id", "position" ]
+          "required" : [ "action", "dashcard_id", "position" ],
+          "additionalProperties" : false
         } ]
       },
       "metabase.agent-api.api.execute-query-request" : {
@@ -4268,7 +4370,7 @@
         "required" : [ "id", "type", "name" ]
       },
       "metabase.agent-api.api.update-dashboard-request" : {
-        "description" : "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of\n   add/remove/move mutations applied in order.",
+        "description" : "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of\n   add/add_heading/add_text/update_text/remove/move mutations applied in order.",
         "type" : "object",
         "properties" : {
           "archived" : {
@@ -4315,7 +4417,7 @@
         }
       },
       "metabase.agent-api.api.update-dashboard-response" : {
-        "description" : "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard\n  ids in row/col order so the LLM can confirm what landed on the dashboard.",
+        "description" : "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard\n  ids in row/col order so the LLM can confirm what landed on the dashboard. `:tabs` lists\n  the dashboard's tabs in display order — the ids a mutation's `tab_id` accepts.",
         "type" : "object",
         "properties" : {
           "archived" : {
@@ -4356,9 +4458,15 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "tabs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.dashboard-tab"
+            }
           }
         },
-        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
+        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids", "tabs" ]
       },
       "metabase.agent-api.api.update-metric-request" : {
         "description" : "Patch shape for `update_metric`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer) and must still describe a valid metric.",
@@ -8661,7 +8769,7 @@
               } ]
             },
             "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag-map"
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tags"
             }
           },
           "required" : [ "lib/type" ]
@@ -11421,6 +11529,7 @@
         "required" : [ "name", "display-name" ]
       },
       "metabase.lib.schema.template-tag.disallow-dimension" : { },
+      "metabase.lib.schema.template-tag.distinct-template-tags" : { },
       "metabase.lib.schema.template-tag.field-filter" : {
         "type" : "object",
         "properties" : {
@@ -11626,14 +11735,15 @@
           } ]
         } ]
       },
-      "metabase.lib.schema.template-tag.template-tag-map" : {
+      "metabase.lib.schema.template-tag.template-tags" : {
+        "description" : "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.\n\n  Each tag must have a distinct `:name`.",
         "allOf" : [ {
-          "type" : "object",
-          "additionalProperties" : {
+          "type" : "array",
+          "items" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag"
           }
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.distinct-template-tags"
         } ]
       },
       "metabase.lib.schema.template-tag.temporal-unit" : {
@@ -15329,7 +15439,7 @@
       "put" : {
         "operationId" : "put-api-agent-v1-dashboard-id",
         "summary" : "PUT /api/agent/v1/dashboard/{id}",
-        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations\n  are submitted under `dashcards` as a list of `{action: add|remove|move, ...}`\n  entries applied in order. `add` requires `card_id`; `remove` and `move` require\n  `dashcard_id`.",
+        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations\n  are submitted under `dashcards` as a list of\n  `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in\n  order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown\n  for text cards); `update_text`, `remove`, and `move` require `dashcard_id`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28708,6 +28818,327 @@
         "tags" : [ "/api/ee/metabot" ]
       }
     },
+    "/api/ee/mfa/admin/overview" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-overview",
+        "summary" : "GET /api/ee/mfa/admin/overview",
+        "description" : "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and\n  whether the instance encrypts secrets at rest.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "encryption_key_set" : {
+                      "type" : "boolean"
+                    },
+                    "enrolled_count" : {
+                      "type" : "integer"
+                    },
+                    "unenrolled_count" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "encryption_key_set", "enrolled_count", "unenrolled_count" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/admin/remove" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-admin-remove",
+        "summary" : "POST /api/ee/mfa/admin/remove",
+        "description" : "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost\n  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —\n  there is nothing to \"reset\", the secret lives on their device.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "user_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/disable" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-disable",
+        "summary" : "POST /api/ee/mfa/disable",
+        "description" : "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a\n  TOTP code or an unused recovery code — never just the password.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll",
+        "summary" : "POST /api/ee/mfa/enroll",
+        "description" : "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind\n  against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an\n  `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "otpauth_uri" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "secret" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "secret", "otpauth_uri" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "password" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "password" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll/confirm" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll-confirm",
+        "summary" : "POST /api/ee/mfa/enroll/confirm",
+        "description" : "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second\n  factor and returns the single-use recovery codes — the only time they exist in plaintext.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/recovery-codes" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-recovery-codes",
+        "summary" : "POST /api/ee/mfa/recovery-codes",
+        "description" : "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a\n  fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can\n  never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/status" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-status",
+        "summary" : "GET /api/ee/mfa/status",
+        "description" : "The current user's MFA status, for the account-settings UI.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enrolled" : {
+                      "type" : "boolean"
+                    },
+                    "method" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "mfa_enabled" : {
+                      "type" : "boolean"
+                    },
+                    "pending" : {
+                      "type" : "boolean"
+                    },
+                    "recovery_codes_remaining" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "mfa_enabled", "enrolled", "pending", "method", "recovery_codes_remaining" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
     "/api/ee/permission_debug" : {
       "get" : {
         "operationId" : "get-api-ee-permission_debug",
@@ -31074,7 +31505,7 @@
       "get" : {
         "operationId" : "get-api-ee-semantic-search-status",
         "summary" : "GET /api/ee/semantic-search/status",
-        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, returns an empty map.",
+        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, or no pgvector database is configured, returns an empty map.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33617,7 +34048,7 @@
       "post" : {
         "operationId" : "post-api-embed-mcp-feedback",
         "summary" : "POST /api/embed-mcp/feedback",
-        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "description" : "Persist MCP Apps visualization feedback.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33690,20 +34121,17 @@
                       },
                       "issue_type" : {
                         "oneOf" : [ {
-                          "type" : "string"
+                          "type" : "string",
+                          "maxLength" : 64
                         }, {
                           "type" : "null"
                         } ]
-                      },
-                      "message_id" : {
-                        "type" : "string",
-                        "minLength" : 1
                       },
                       "positive" : {
                         "type" : "boolean"
                       }
                     },
-                    "required" : [ "message_id", "positive" ]
+                    "required" : [ "positive" ]
                   }
                 },
                 "required" : [ "feedback", "conversation_data" ]
@@ -44978,6 +45406,98 @@
                   }
                 },
                 "required" : [ "token" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/mfa/send-email-otp" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-send-email-otp",
+        "summary" : "POST /api/session/mfa/send-email-otp",
+        "description" : "Email a one-time code as a fallback second factor (for a user who lost their authenticator but\n  still has recovery codes disabled or unavailable). Requires a valid challenge token from\n  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by\n  `POST /mfa/verify` like any other code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "challenge_token" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/mfa/verify" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-verify",
+        "summary" : "POST /api/session/mfa/verify",
+        "description" : "Complete a two-step login by verifying a one-time code. Takes the `challenge_token` returned by\n  `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of\n  their single-use recovery codes, or an emailed one-time code; on success sets the session cookie.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "remember" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "challenge_token", "code" ]
               }
             }
           }
