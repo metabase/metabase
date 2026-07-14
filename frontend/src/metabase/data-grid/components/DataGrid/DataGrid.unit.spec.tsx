@@ -54,6 +54,7 @@ interface TestDataGridProps {
   sortableColumns?: boolean;
   wrapableColumns?: string[];
   enableSelection?: boolean;
+  striped?: boolean;
   pinnedTopRowsCount?: number;
   pinnedLeftColumnsCount?: number;
 }
@@ -70,6 +71,7 @@ const TestDataGrid = ({
   sortableColumns = false,
   wrapableColumns = [],
   enableSelection = false,
+  striped = false,
   pinnedTopRowsCount,
   pinnedLeftColumnsCount,
 }: TestDataGridProps) => {
@@ -149,6 +151,7 @@ const TestDataGrid = ({
   return (
     <DataGrid
       {...tableProps}
+      striped={striped}
       onHeaderCellClick={onHeaderCellClick}
       onBodyCellClick={onBodyCellClick}
       onAddColumnClick={onAddColumnClick}
@@ -453,6 +456,30 @@ describe("DataGrid", () => {
     bodyRows.forEach((row) => {
       const cells = within(row).getAllByRole("gridcell");
       expect(cells.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("applies striped class to alternating rows when enabled", () => {
+    renderWithProviders(<TestDataGrid striped={true} />);
+
+    const bodyRows = screen
+      .getByTestId("table-body")
+      .querySelectorAll('[role="row"]');
+
+    expect(bodyRows[0]).not.toHaveAttribute("data-row-striped", "true");
+    expect(bodyRows[1]).toHaveAttribute("data-row-striped", "true");
+    expect(bodyRows[2]).not.toHaveAttribute("data-row-striped", "true");
+  });
+
+  it("does not apply striped class when disabled", () => {
+    renderWithProviders(<TestDataGrid striped={false} />);
+
+    const bodyRows = screen
+      .getByTestId("table-body")
+      .querySelectorAll('[role="row"]');
+
+    bodyRows.forEach((row) => {
+      expect(row).not.toHaveAttribute("data-row-striped", "true");
     });
   });
 });
