@@ -1275,37 +1275,6 @@
            sql-tools
            util}}
 
-  llm
-  {:team "Metabot"
-   :api  #{metabase.llm.api
-           metabase.llm.init
-           metabase.llm.provider
-           metabase.llm.settings
-           metabase.llm.startup}
-   :uses #{analytics
-           api
-           config
-           driver
-           lib
-           lib.be
-           lib.metadata
-           metabot
-           models
-           parameters
-           permissions
-           premium-features
-           request
-           settings
-           setup
-           sql-tools
-           sync
-           util
-           warehouse-schema}
-   :model-imports #{:model/Card
-                    :model/Database
-                    :model/Field
-                    :model/Table}}
-
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
@@ -1346,10 +1315,10 @@
            api
            app-db
            config
-           llm
            mcp.oauth-server
            metabot
            metabot.agent-api
+           metabot.llm
            premium-features
            request
            server
@@ -1407,6 +1376,7 @@
               metabase.metabot.tools
               metabase.metabot.tools.entity-details}
    :module-exports #{metabot.agent-api
+                     metabot.llm
                      metabot.slackbot}
    :uses    #{activity-feed
               ai-tracing
@@ -1430,7 +1400,7 @@
               lib.be
               lib.metadata
               lib.schema
-              llm
+              metabot.llm
               metabot.slackbot
               metrics
               models
@@ -1492,8 +1462,8 @@
               lib
               lib.be
               lib.schema
-              llm
               metabot
+              metabot.llm
               premium-features
               queries
               query-permissions
@@ -1512,6 +1482,38 @@
                     :model/User}
    :model-exports #{:model/AgentApiCallLog}}
 
+  metabot.llm
+  {:team "Metabot"
+   :ns-prefix "metabase.llm"
+   :api #{metabase.llm.api
+          metabase.llm.init
+          metabase.llm.provider
+          metabase.llm.settings
+          metabase.llm.startup}
+   :uses #{analytics
+           api
+           config
+           driver
+           lib
+           lib.be
+           lib.metadata
+           metabot
+           models
+           parameters
+           permissions
+           premium-features
+           request
+           settings
+           setup
+           sql-tools
+           sync
+           util
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
+
   metabot.slackbot
   {:team    "Metabot"
    :ns-prefix "metabase.slackbot"
@@ -1525,8 +1527,8 @@
               formatter
               lib
               lib.schema
-              llm
               metabot
+              metabot.llm
               permissions
               query-processor
               request
@@ -1821,7 +1823,7 @@
            config
            events
            internal-stats
-           llm
+           metabot.llm
            settings
            startup
            task
@@ -3622,8 +3624,8 @@
               metabase-enterprise.metabot.init}
    :uses           #{api
                      lib.be
-                     llm
                      metabot
+                     metabot.llm
                      models
                      permissions
                      premium-features
@@ -3859,8 +3861,8 @@
            events
            health-inspector
            lib.be
-           llm
            metabot
+           metabot.llm
            models
            permissions
            premium-features
