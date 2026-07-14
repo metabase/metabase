@@ -783,7 +783,7 @@ function(bin) {
                       {"$divide" [accum head]}
                       head))
                   nil
-                  (map ->rvalue args))
+                  (map (partial ->rvalue query stage-number) args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue query stage-number divisor) 0]}) (remove number? divisors))]
     (cond
