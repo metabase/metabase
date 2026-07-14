@@ -68,14 +68,16 @@ export function filter(
   };
 }
 
-export function breakout<TDimension>(dimension: TDimension): TDimension;
+export function breakout<TDimension extends object>(
+  dimension: TDimension,
+): TDimension;
 
-export function breakout<TDimension>(
+export function breakout<TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
 ): TDimension & BreakoutOptionsArgument<TDimension>;
 
-export function breakout<TDimension>(
+export function breakout<TDimension extends object>(
   dimension: TDimension,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
