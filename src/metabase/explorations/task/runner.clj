@@ -688,10 +688,9 @@
                 {:status "canceled"})))
 
 (defn- run-one-plan-iteration!
-  "Try to claim one unplanned thread and run the configured planner (see
-  `metabase.explorations.query-plan/pick-planner!` — mechanical by default, LLM when
-  configured and selected) against it. Returns truthy when work was done so the worker
-  loop knows whether to sleep."
+  "Try to claim one unplanned thread and run the query planner (see
+  `metabase.explorations.query-plan/pick-planner!`) against it. Returns truthy when work
+  was done so the worker loop knows whether to sleep."
   []
   (when-let [thread-id (claim-unplanned-thread!)]
     (try
