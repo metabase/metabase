@@ -44,4 +44,4 @@
     ((-> 'metabase.driver.sql.query-processor/->honeysql
          requiring-resolve
          var-get
-         (get-method [:sql :relative-datetime])) driver [:relative-datetime amount unit])))
+         (get-method [:sql :relative-datetime])) driver [:relative-datetime {} amount unit])))

@@ -593,7 +593,7 @@
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
       (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}]
         (letfn [(expression-ref [expression-name]
-                  [:sqlserver {} :expression expression-name])
+                  [:expression {} expression-name])
                 (orders-query [{:keys [expressions fields filters]
                                 :or {expressions [["MyTrue" [:value opts true]] ["MyFalse" [:value opts false]]]
                                      fields ["MyTrue"]}}]
@@ -603,15 +603,15 @@
                         mp    (mt/metadata-provider)
                         query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         query (reduce (fn [query [expression-name expression]]
-                                        (lib/expression query expression-name expression))
+                                        (lib/expression query expression-name (lib/normalize expression)))
                                       query
                                       returned-exprs)
                         query (lib/with-fields query (mapv #(lib/expression-ref query %) fields))
                         query (reduce (fn [query [expr-name expr]]
-                                        (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
+                                        (lib.expression/expression query -1 expr-name (lib/normalize expr) {:add-to-fields? false}))
                                       query
                                       hidden-exprs)]
-                    (-> (reduce lib/filter query filters) (lib/limit 1))))]
+                    (-> (reduce #(lib/filter %1 (lib/normalize %2)) query filters) (lib/limit 1))))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
@@ -881,16 +881,19 @@
   (driver/with-driver :sqlserver
     (qp.store/with-metadata-provider (mt/id)
       (binding [sql.qp/*inner-query* {:expressions
-                                      [[:= {:lib/expression-name "NameEquals"}
+                                      [[:= {:lib/expression-name "NameEquals"
+                                            :lib/uuid            "00000000-0000-0000-0000-000000000000"}
                                         [:field
                                          {:base-type                      :type/Text
                                           :join-alias                     "JoinedCategories"
+                                          :lib/uuid                       "00000000-0000-0000-0000-000000000001"
                                           driver-api/qp.add.source-table  "JoinedCategories"
                                           driver-api/qp.add.source-alias  "LiteralString"
                                           driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}
                                          "LiteralString"]
                                         [:field
-                                         {driver-api/qp.add.source-table  (mt/id :venues)
+                                         {:lib/uuid                       "00000000-0000-0000-0000-000000000002"
+                                          driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}
                                          (mt/id :venues :name)]]]}]

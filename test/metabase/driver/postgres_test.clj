@@ -541,7 +541,7 @@
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
-        (let [field-ordinary [:field nil 1]
+        (let [field-ordinary [:field {} 1]
               only-order (maybe-convert-and-compile
                           driver/*driver*
                           {:database 1
@@ -927,7 +927,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql driver/*driver* [:value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan"]))))))
+             (sql.qp/->honeysql driver/*driver* [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres

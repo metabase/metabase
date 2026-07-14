@@ -614,7 +614,7 @@
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver [_ {:keys [base-type database-type]} raw-value]]
+  [driver [_ {:keys [base-type database-type] :as opts} raw-value]]
   (when (some? raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
@@ -623,7 +623,7 @@
                            (h2x/cast database-type raw-value)
                            (h2x/quoted-cast database-type raw-value))
       ((get-method sql.qp/->honeysql [:sql :value])
-       driver [:value {:base_type base-type :database_type database-type} raw-value]))))
+       driver [:value opts raw-value]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ _opts arg]]
