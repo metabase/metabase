@@ -274,6 +274,12 @@
   (testing "query with different Table -- don't return Measures"
     (is (nil? (lib.measure/available-measures (lib/query measure-metadata-provider (meta/table-metadata :orders)))))))
 
+(deftest ^:parallel available-measures-source-card-test
+  (testing "query with a source card -- don't return Measures"
+    (let [query (assoc (lib.tu/query-with-source-card)
+                       :lib/metadata measure-metadata-provider)]
+      (is (nil? (lib.measure/available-measures query))))))
+
 (deftest ^:parallel available-measures-subsequent-stages-test
   (testing "for subsequent stages -- don't return Measures"
     (let [query (lib/append-stage (lib/query measure-metadata-provider (meta/table-metadata :venues)))]

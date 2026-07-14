@@ -359,7 +359,12 @@
       (mbql-aggregation->node (first (lib/aggregations mbql5-query 0))))))
 
 (defn- additional-measure-aggregation-nodes
-  [metadata-provider source-table-id measure-ids]
+  [metadata-provider {:keys [source-card-id source-table-id]} measure-ids]
+  (when source-card-id
+    ;; Saved measures are defined against a source table, not a source card.
+    (throw (ex-info "Saved measures are only supported for metrics with table sources"
+                    {:source-card-id source-card-id
+                     :measure-ids    measure-ids})))
   (into []
         (keep #(measure-metadata->aggregation-node metadata-provider source-table-id %))
         measure-ids))
@@ -413,10 +418,14 @@
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
         mbql5-query        (ensure-mbql5 metadata-provider raw-query)
+        source-card-id     (lib.util/source-card-id mbql5-query)
         source-table-id    (or (lib.util/source-table-id mbql5-query)
                                (:table-id metadata))
         extra-aggregations (when (seq measures)
-                             (additional-measure-aggregation-nodes metadata-provider source-table-id measures))
+                             (additional-measure-aggregation-nodes metadata-provider
+                                                                   {:source-card-id  source-card-id
+                                                                    :source-table-id source-table-id}
+                                                                   measures))
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))

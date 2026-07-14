@@ -38,6 +38,17 @@
    :dimension-mappings (sample-mappings)
    :dataset-query      (sample-metric-query)})
 
+(defn- sample-source-card-metric-metadata []
+  {:lib/type           :metadata/metric
+   :id                 42
+   :name               "Model Count"
+   :dimensions         (sample-dimensions)
+   :dimension-mappings (sample-mappings)
+   :dataset-query      {:database (meta/id)
+                        :type     :query
+                        :query    {:source-table "card__123"
+                                   :aggregation  [[:count]]}}})
+
 (defn- sample-measure-query []
   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
       (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))))
@@ -169,6 +180,19 @@
       (is (= :source/measure (get-in ast [:expression :ast :source :node/type]))))
     (testing "extracts sum aggregation"
       (is (= :aggregation/sum (get-in ast [:expression :ast :source :aggregation :node/type]))))))
+
+(deftest ^:parallel from-definition-source-card-with-measures-test
+  (testing "saved Measures cannot be added to a source-card metric"
+    (let [provider   (make-test-provider (sample-source-card-metric-metadata) (sample-measure-metadata))
+          definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid expr-uuid} 42]
+                      :filters           []
+                      :projections       []
+                      :measures          [99]
+                      :metadata-provider provider}]
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
+                            #"Saved measures are only supported for metrics with table sources"
+                            (ast.build/from-definition definition))))))
 
 ;;; -------------------------------------------------- Dimension Reference Conversion --------------------------------------------------
 
