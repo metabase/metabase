@@ -1,4 +1,8 @@
 .toolbar {
+  /* float above the charts, pinned to the bottom of the chart canvas */
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   align-self: center;
   box-shadow: var(--mantine-shadow-xs);
 }
