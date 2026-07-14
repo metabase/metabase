@@ -315,6 +315,27 @@
         (is (= :not-cached
                (run-query)))))))
 
+(deftest concurrent-write-limit-test
+  (testing "when no cache-write permits are available, the query still runs but its results are not cached"
+    (with-mock-cache! [save-chan]
+      (binding [cache/*write-permits* (java.util.concurrent.Semaphore. 0)]
+        (is (= :not-cached
+               (run-query)))
+        (is (= :metabase.test.util.async/timed-out
+               (mt/wait-for-result save-chan 100))
+            "nothing should have been written to the cache backend")
+        ;; the second run also runs uncached: nothing was stored the first time
+        (is (= :not-cached
+               (run-query))))))
+  (testing "permits are released after each run, so sequential queries all get cached"
+    (with-mock-cache! [save-chan]
+      (binding [cache/*write-permits* (java.util.concurrent.Semaphore. 1)]
+        (run-query)
+        (mt/wait-for-result save-chan)
+        (is (= :cached
+               (run-query)))
+        (is (= 1 (.availablePermits cache/*write-permits*)))))))
+
 (deftest ignore-cached-results-test
   (testing "check that :ignore-cached-results? in middleware is respected when returning results..."
     (with-mock-cache! [save-chan]

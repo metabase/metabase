@@ -494,6 +494,13 @@ Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
 
+### `MB_QP_CACHE_MAX_CONCURRENT_WRITES`
+
+Type: integer<br>
+Default: twice the number of CPU cores, with a minimum of 8
+
+Maximum number of queries that may serialize their results into the query cache at the same time. When the limit is reached, additional queries still run and return results normally; their results just aren't cached that time. Bounding concurrent cache writes prevents a burst of cache misses (for example, many uniquely parameterized embedded dashboard requests) from causing a CPU and memory spike while every query compresses its results for the cache.
+
 ### `MB_SETUP_TOKEN`
 
 Type: string<br>
