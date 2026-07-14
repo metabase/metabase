@@ -689,6 +689,117 @@ Request:
 
 Response: the card's concise projection, exactly as `question_write` returns it.
 
+### POST /v2/dashboard-write
+
+The `dashboard_write` tool: create or update a dashboard — its cards, its
+tabs, and its layout. `method` is the only required argument. `create` needs a
+`name`; `update` needs an `id` and changes only the fields it names.
+
+**Why ops.** `PUT /api/dashboard/:id` is a full-set replace: the body carries
+the dashboard's whole layout, and a dashcard it omits is deleted. Handing that
+contract to a model means making it echo back state it did not author, and the
+dashcard it forgets to repeat is the dashcard it deletes. So the server holds
+the current state and the call sends `ops` — an ordered list, each op naming
+only the change it wants. An op list cannot delete a card it does not mention.
+
+| Card op | Args |
+| --- | --- |
+| `add_card` | `card_id`, and optionally `series` (card ids, plotted together) and `inline_parameters` |
+| `add_text` / `add_heading` | `markdown` / `text` |
+| `add_link` | `url`, or `entity: {type, id}` — exactly one |
+| `add_iframe` | `src` |
+| `add_action` | `action_id`, and optionally `label` and `display` (`"button"` or `"form"`) |
+| `duplicate_card` | `dashcard_id`. Copies what the card shows; the filter widgets attached to it are parameters, and a copy of one is a new parameter. |
+| `replace_card` | `dashcard_id`, `card_id`. Keeps the slot, resets the series, the wiring, and the settings that named the old card's columns. |
+| `move` | `dashcard_id`, and a `tab`, a `position`, or both. A move to another tab re-places the card there. |
+| `resize` | `dashcard_id`, `size` |
+| `remove` | `dashcard_id` |
+| `set_series` | `dashcard_id`, `card_ids` — the whole series, in order. `[]` clears it. |
+| `patch_dashcard` | `dashcard_id`, `patch` — merged into the dashcard's `visualization_settings`, which is where a card's *content* lives: the chart's settings, `column_settings`, `click_behavior`, a link's target, a visualizer's definition. The layout keys (`row`, `col`, `size_x`, `size_y`, `dashboard_tab_id`, `card_id`) are refused with the op that owns each. |
+
+| Tab op | Args |
+| --- | --- |
+| `add_tab` | `name`. The first tab a dashboard gets adopts the cards it already had — a dashboard with tabs has no cards outside them. |
+| `rename_tab` | `tab_id`, `name` |
+| `move_tab` | `tab_id`, `index` — a tab's position is its place in the row of tabs |
+| `duplicate_tab` | `tab_id`, and optionally a `name`. Copies the tab's cards with it. |
+| `remove_tab` | `tab_id`. **Deletes the cards on the tab**, and the response says which are left. |
+
+Every add takes an optional `tab` (a tab's id, or its *name* — a tab an earlier
+op created has no id until the call is saved), `position` (`{row, col}`), and
+`size` (`{size_x, size_y}`). Omit the position and the card lands in the first
+free slot on its tab; the grid is 24 columns wide, and a card that runs past it
+is a 400 naming the fix.
+
+**The compile is all-or-nothing.** Ops validate in order against a state the
+compiler carries — so a call can add a tab and put a card on it — and then
+compile into the one `PUT` the app makes. An op that fails aborts the whole
+call, naming its index, and **nothing is written**: there is no half-applied
+layout, and a list that failed is safe to fix and send again, because it cannot
+double-add the ops that were fine. `validate_only: true` stops after the
+compile and returns the layout the ops would have produced.
+
+| Parameter | Meaning |
+| --- | --- |
+| `name`, `description` | |
+| `ops` | The changes, in order. |
+| `collection_id` | Where it lands, or where it moves to. **Omitted on a create, it is saved to the caller's personal collection.** |
+| `collection_position` | Pin it, at this position. |
+| `width` | `"fixed"` (default) or `"full"`. |
+| `auto_apply_filters` | Whether changing a filter re-runs the cards at once. |
+| `cache_ttl` | Hours to cache results for. |
+| `archived` | Update only: `true` trashes, `false` restores. |
+| `validate_only` | Compile the ops and return the would-be layout, saving nothing. |
+
+Request:
+
+```json
+{
+  "method": "create",
+  "name": "Revenue",
+  "collection_id": 7,
+  "ops": [
+    {"op": "add_tab", "name": "Overview"},
+    {"op": "add_heading", "text": "This quarter", "tab": "Overview"},
+    {"op": "add_card", "card_id": 42, "tab": "Overview"},
+    {"op": "add_card", "card_id": 43, "size": {"size_x": 12, "size_y": 6}}
+  ]
+}
+```
+
+Response — the dashboard's **editing skeleton**, the same shape `/v2/content`
+returns for a dashboard: its tabs, its filters, and one summary row per dashcard
+rather than the raw `dashcards` array, whose every element nests the card's whole
+query. The next op is authorable from it, so a build never needs a read between
+its steps.
+
+```json
+{
+  "id": 9,
+  "name": "Revenue",
+  "description": null,
+  "collection_id": 7,
+  "archived": false,
+  "tabs": [{"id": 3, "name": "Overview"}],
+  "parameters": [],
+  "dashcards": [
+    {"id": 20, "kind": "heading", "dashboard_tab_id": 3, "row": 0, "col": 0, "size_x": 24, "size_y": 1},
+    {"id": 21, "kind": "card", "dashboard_tab_id": 3, "row": 1, "col": 0, "size_x": 12, "size_y": 9,
+     "card_id": 42, "card_name": "Orders by month"}
+  ]
+}
+```
+
+Every check the app's own save runs, this runs, because it calls the same
+functions `POST /api/dashboard` and `PUT /api/dashboard/:id` call
+(`metabase.dashboards.write`): write permission on the dashboard, curate
+permission on the collection it lands in and the one it leaves, read permission
+on every card being placed, data permission on the tables a parameter mapping
+reaches, and the dashboard-question cascade.
+
+A question saved *inside* a dashboard is `question_write` with a `dashboard_id`,
+not an op here.
+
 ### POST /v2/execute-query
 
 The `execute_query` tool: one call for a query you hold. It validates, runs, and

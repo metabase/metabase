@@ -19,6 +19,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
    [metabase.dashboards.read :as dashboards.read]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -4635,11 +4636,11 @@
                                       :type  "string/="
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
-                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
+                    (#'dashboards.write/broken-pulses dash-id {param-id param}))))
           (testing "We can gather all needed data regarding broken params"
             (let [bad-pulses    (mapv
                                  #(update % :affected-users (partial sort-by :email))
-                                 (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
+                                 (#'dashboards.write/broken-subscription-data dash-id {param-id param}))
                   bad-pulse-ids (set (map :pulse-id bad-pulses))]
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))

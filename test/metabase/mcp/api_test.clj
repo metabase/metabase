@@ -493,6 +493,7 @@
     "create_dashboard"
     "create_metric"
     "create_question"
+    "dashboard_write"
     "execute_query"
     "execute_question"
     "execute_sql"
@@ -839,7 +840,7 @@
     "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "run_saved_question" "read_resource" "create_question" "execute_question" "create_metric"
     "create_dashboard" "update_question" "update_metric" "update_dashboard" "create_collection"
-    "question_write" "metric_write"})
+    "question_write" "metric_write" "dashboard_write"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -884,7 +885,8 @@
                 dash-id      (atom nil)
                 coll-id      (atom nil)
                 v2-question-id (atom nil)
-                v2-metric-id   (atom nil)]
+                v2-metric-id   (atom nil)
+                v2-dash-id     (atom nil)]
             (try
               (let [_              (call-tool "search" {:term_queries ["orders"]})
                     _              (call-tool "browse_data" {:action "list_tables"
@@ -955,6 +957,16 @@
                     _              (call-tool "metric_write" {:method      "update"
                                                               :id          (:id v2-metric)
                                                               :description "Smoke v2 updated"})
+                    v2-dash        (call-tool "dashboard_write"
+                                              {:method "create"
+                                               :name   "Smoke v2 Dashboard"
+                                               :ops    [{:op "add_heading" :text "Smoke"}
+                                                        {:op "add_card" :card_id (:id v2-question)}]})
+                    _              (reset! v2-dash-id (:id v2-dash))
+                    _              (is (= 2 (count (:dashcards v2-dash))))
+                    _              (call-tool "dashboard_write" {:method      "update"
+                                                                 :id          (:id v2-dash)
+                                                                 :description "Smoke v2 updated"})
                     coll-data      (call-tool "create_collection" {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))
               (finally
@@ -963,6 +975,7 @@
                 (when-let [qid @v2-question-id] (t2/delete! :model/Card :id qid))
                 (when-let [mid @v2-metric-id]   (t2/delete! :model/Card :id mid))
                 (when-let [did @dash-id]        (t2/delete! :model/Dashboard :id did))
+                (when-let [did @v2-dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]        (t2/delete! :model/Collection :id cid))))))))))
 
 (deftest tools-call-execute-query-test

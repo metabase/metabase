@@ -128,58 +128,6 @@
 ;;; The two projections that are more than a field set
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- dashcard-kind
-  "What a dashcard *is*: a saved card, or one of the virtual cards the editor places — text, heading, link,
-   iframe, action. The kind lives in the virtual card's `display`; a dashcard without one shows a card."
-  [dashcard]
-  (or (some-> (get-in dashcard [:visualization_settings :virtual_card :display]) name)
-      "card"))
-
-(defn- dashcard-row
-  "One dashcard, summarized to what `dashboard_write`'s ops take: which card, where, on which tab, with what
-   series and inline parameters. Everything the summary drops — the nested card, its query, its
-   visualization settings — is what `include: [\"layout\"]` is for."
-  [{:keys [id card_id dashboard_tab_id row col size_x size_y series inline_parameters] :as dashcard}]
-  (cond-> {:id               id
-           :kind             (dashcard-kind dashcard)
-           :dashboard_tab_id dashboard_tab_id
-           :row              row
-           :col              col
-           :size_x           size_x
-           :size_y           size_y}
-    card_id                 (assoc :card_id card_id :card_name (get-in dashcard [:card :name]))
-    (seq series)            (assoc :series_card_ids (mapv :id series))
-    (seq inline_parameters) (assoc :inline_parameter_ids (vec inline_parameters))))
-
-(defn- parameter-row
-  "One dashboard parameter, and the dashcards it filters. A parameter wired to nothing is a widget that does
-   nothing, and that is exactly what an agent asked to fix the dashboard needs to see."
-  [wired {:keys [id] :as parameter}]
-  (assoc (select-keys parameter [:id :name :type])
-         :dashcard_ids (vec (wired id))))
-
-(defn- wired-dashcard-ids
-  "Parameter id → the ids of the dashcards its mappings reach."
-  [dashcards]
-  (reduce (fn [wired {dashcard-id :id :keys [parameter_mappings]}]
-            (reduce (fn [wired {:keys [parameter_id]}]
-                      (update wired parameter_id (fnil conj []) dashcard-id))
-                    wired
-                    parameter_mappings))
-          {}
-          dashcards))
-
-(defn- dashboard-skeleton
-  "The concise dashboard: what a dashboard *is* structurally, and every input `dashboard_write`'s op grammar
-   takes. `dashboard_write` returns this same shape on success, so a build is authorable from the write's
-   own response as well as from a read."
-  [{:keys [dashcards tabs parameters]} projected]
-  (let [wired (wired-dashcard-ids dashcards)]
-    (assoc projected
-           :tabs       (mapv #(select-keys % [:id :name]) tabs)
-           :parameters (mapv #(parameter-row wired %) parameters)
-           :dashcards  (mapv dashcard-row dashcards))))
-
 (defn- timeline-events
   "A timeline's events, projected. Their ids are the only handle `timeline_event_write` has on an event, so
    a timeline that listed its events without them would be a list of things nobody can edit."
@@ -227,7 +175,7 @@
                    :model :model/NativeQuerySnippet
                    :spec  :snippet}
    "dashboard"    {:read    read-dashboard         :model :model/Dashboard  :spec :dashboard
-                   :concise dashboard-skeleton}
+                   :concise projections/dashboard-skeleton}
    "timeline"     {:read    read-timeline          :model :model/Timeline   :spec :timeline
                    :concise timeline-events}
    "document"     {:read     documents/get-document :model :model/Document  :spec :document

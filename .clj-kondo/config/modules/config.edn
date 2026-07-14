@@ -199,7 +199,8 @@
               util
               warehouse-schema
               warehouses}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
@@ -740,10 +741,13 @@
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
            metabase.dashboards.read
-           metabase.dashboards.schema}
-   :uses #{api
+           metabase.dashboards.schema
+           metabase.dashboards.write}
+   :uses #{analytics
+           api
            app-db
            audit-app
+           channel
            collections
            config
            embedding
@@ -754,8 +758,11 @@
            parameters
            permissions
            public-sharing
+           pulse
            queries
+           query-permissions
            query-processor
+           revisions
            search
            settings
            staleness
@@ -769,11 +776,15 @@
                     :model/Card
                     :model/Collection
                     :model/DashboardBookmark
+                    :model/Field
                     :model/ModerationReview
                     :model/Pulse
                     :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
                     :model/Query
                     :model/Revision
+                    :model/Table
                     :model/User}}
 
   dashboards-rest
@@ -795,9 +806,7 @@
            parameters
            permissions
            public-sharing
-           pulse
            queries
-           query-permissions
            query-processor
            request
            revisions
@@ -808,12 +817,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
-                    :model/Field
-                    :model/Pulse
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/Table
-                    :model/User}}
+                    :model/Field}}
 
   data-studio
   {:team "Gadget"

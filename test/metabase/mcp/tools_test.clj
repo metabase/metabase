@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.agent-api.dashboard-write :as agent-api.dashboard-write]
    [metabase.api.macros.scope :as api.scope]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.toolsets :as mcp.toolsets]
@@ -201,18 +202,23 @@
 
 (def ^:private not-tool-names
   "The snake_case words a tool description uses that are not tools: wire property names, action and mode
-   enums, and the Metabot prompt document the construct tools point at."
-  #{"query_handle" "collection_path" "collection_id" "database_id" "table_id" "source_card_id"
-    "parameter_id" "source_table" "source_card" "content_markdown" "template_tags" "has_more_values"
-    "template_tag_values"
-    "row_limit" "row_count" "response_format" "sort_column" "sort_direction" "display_size"
-    "question_ids" "dashcard_id" "card_id" "include_hidden" "term_queries" "semantic_queries"
-    "created_by" "validate_only" "parent_collection_id" "visualization_settings" "dataset_query"
-    "truncation_message" "skipped_includes" "parameter_mappings" "continuation_token" "last_edited_at"
-    "construct_notebook_query" "query_metadata" "entity_id" "table_ids" "field_id" "has_field_values"
-    "list_databases" "list_schemas" "list_tables" "list_models" "get_fields" "download_url"
-    "card_type" "column_metadata" "collection_position" "display_name" "semantic_type" "visibility_type"
-    "widget_type" "dashboard_id"})
+   enums, the ops of `dashboard_write` (which are named like tools because they are named like the gestures
+   they perform), and the Metabot prompt document the construct tools point at."
+  (into
+   (set agent-api.dashboard-write/ops)
+   #{"query_handle" "collection_path" "collection_id" "database_id" "table_id" "source_card_id"
+     "parameter_id" "source_table" "source_card" "content_markdown" "template_tags" "has_more_values"
+     "template_tag_values"
+     "row_limit" "row_count" "response_format" "sort_column" "sort_direction" "display_size"
+     "question_ids" "dashcard_id" "card_id" "include_hidden" "term_queries" "semantic_queries"
+     "created_by" "validate_only" "parent_collection_id" "visualization_settings" "dataset_query"
+     "truncation_message" "skipped_includes" "parameter_mappings" "continuation_token" "last_edited_at"
+     "construct_notebook_query" "query_metadata" "entity_id" "table_ids" "field_id" "has_field_values"
+     "list_databases" "list_schemas" "list_tables" "list_models" "get_fields" "download_url"
+     "card_type" "column_metadata" "collection_position" "display_name" "semantic_type" "visibility_type"
+     "widget_type" "dashboard_id"
+     "card_ids" "tab_id" "inline_parameters" "auto_apply_filters" "size_x" "size_y" "action_id"
+     "column_settings" "click_behavior" "dashboard_tab_id"}))
 
 (defn- named-tools
   "Every tool name `text` mentions."

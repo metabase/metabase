@@ -13,6 +13,7 @@
    [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
    [metabase.agent-api.card-write :as agent-api.card-write]
+   [metabase.agent-api.dashboard-write :as agent-api.dashboard-write]
    [metabase.agent-api.execute-query :as agent-api.execute-query]
    [metabase.agent-api.execute-sql :as agent-api.execute-sql]
    [metabase.agent-api.exports :as agent-api.exports]
@@ -1185,6 +1186,269 @@
    _query-params
    body :- ::metric-write-request]
   (agent-api.card-write/metric-write body))
+
+;;; ------------------------------------------------ Dashboard Write -------------------------------------------------
+
+(mr/def ::dashboard-write-response
+  "The dashboard a write saved, as its editing skeleton — the same shape `get_content` returns for a dashboard. A
+  write answers the question the next read would have asked, so the next op is authorable from the response."
+  [:map {:closed true}
+   [:id            {:optional true} [:maybe ms/PositiveInt]]
+   [:name          {:optional true} [:maybe :string]]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe :int]]
+   [:archived      {:optional true} [:maybe :boolean]]
+   [:validated     {:optional true} :boolean]
+   [:tabs          [:sequential :map]]
+   [:parameters    [:sequential :map]]
+   [:dashcards     [:sequential :map]]])
+
+(mr/def ::dashboard-write-structured-output
+  "The `structuredContent` of a dashboard write: what the dashboard now is, and what a next call addresses it by."
+  [:map
+   [:id        {:optional true
+                :tool/description "The dashboard's id. Absent on a `validate_only` create — nothing was saved."}
+    [:maybe :int]]
+   [:name      {:optional true :tool/description "The name it was saved under."} [:maybe :string]]
+   [:validated {:optional true
+                :tool/description "Present, and true, only on a `validate_only` call: the ops are valid, and
+                                   nothing was written."}
+    [:maybe :boolean]]])
+
+(mr/def ::dashboard-position
+  "Where a card sits on the 24-column grid."
+  [:map
+   [:row {:optional true :tool/description "Rows from the top of the tab. 0 is the top."}
+    [:maybe [:int {:min 0}]]]
+   [:col {:optional true :tool/description "Columns from the left. 0 is the left edge, 23 the right."}
+    [:maybe [:int {:min 0 :max 23}]]]])
+
+(mr/def ::dashboard-size
+  "How big a card is, in grid cells."
+  [:map
+   [:size_x {:optional true :tool/description "Width in columns, 1 to 24."} [:maybe [:int {:min 1 :max 24}]]]
+   [:size_y {:optional true :tool/description "Height in rows."} [:maybe [:int {:min 1}]]]])
+
+(mr/def ::dashboard-op
+  "One op of a `dashboard_write` call. Flat, with `op` the only field every op takes: which of the other fields an
+  op needs is the op's own contract, stated in `op`'s description and enforced at runtime with an error naming the
+  op's index."
+  [:map
+   [:op
+    {:tool/description
+     (str "What this op does. Cards: `add_card` (`card_id`, and optionally `series`, `inline_parameters`); "
+          "`add_text` (`markdown`); `add_heading` (`text`); `add_link` (`url` or `entity`); `add_iframe` "
+          "(`src`); `add_action` (`action_id`, and optionally `label`, `display`); `duplicate_card` "
+          "(`dashcard_id`); `replace_card` (`dashcard_id`, `card_id`); `move` (`dashcard_id`, and a `tab` or a "
+          "`position`); `resize` (`dashcard_id`, `size`); `remove` (`dashcard_id`); `set_series` "
+          "(`dashcard_id`, `card_ids`); `patch_dashcard` (`dashcard_id`, `patch`). Every add takes an optional "
+          "`tab`, `position`, and `size`. Tabs: `add_tab` (`name`); `rename_tab` (`tab_id`, `name`); `move_tab` "
+          "(`tab_id`, `index`); `duplicate_tab` (`tab_id`); `remove_tab` (`tab_id`, which deletes the cards on "
+          "it).")}
+    (into [:enum] agent-api.dashboard-write/ops)]
+   [:card_id
+    {:optional true :tool/description "The card to place, or to replace a dashcard's card with."}
+    [:maybe agent-api.tools/IdRef]]
+   [:dashcard_id
+    {:optional true
+     :tool/description (str "The dashcard to act on — a card already on the dashboard. `get_content` and this "
+                            "tool's own response list them with their ids.")}
+    [:maybe :int]]
+   [:tab
+    {:optional true
+     :tool/description (str "The tab to put the card on: its id, or its name. A tab an earlier op in this same "
+                            "list added has no id yet, so name it. Omitted, the card goes on the first tab.")}
+    [:maybe [:or :int ms/NonBlankString]]]
+   [:position
+    {:optional true
+     :tool/description (str "Where to put it. Omit it and the card is placed in the first free slot, which is "
+                            "what you want unless you are laying out a grid deliberately.")}
+    [:maybe ::dashboard-position]]
+   [:size
+    {:optional true
+     :tool/description "How big to make it. Omitted, a card gets the size the app gives its visualization."}
+    [:maybe ::dashboard-size]]
+   [:series
+    {:optional true
+     :tool/description "Extra cards to plot on this one, in order — a combined chart. Card ids."}
+    [:maybe [:sequential agent-api.tools/IdRef]]]
+   [:card_ids
+    {:optional true
+     :tool/description "`set_series`: the dashcard's whole series, in order. `[]` clears it."}
+    [:maybe [:sequential agent-api.tools/IdRef]]]
+   [:inline_parameters
+    {:optional true
+     :tool/description (str "Ids of the dashboard's filters to show on this card instead of at the top of the "
+                            "page. They have to be filters the dashboard already has.")}
+    [:maybe [:sequential ms/NonBlankString]]]
+   [:markdown
+    {:optional true :tool/description "`add_text`: the text of the card, as Markdown."}
+    [:maybe ms/NonBlankString]]
+   [:text
+    {:optional true :tool/description "`add_heading`: the heading."}
+    [:maybe ms/NonBlankString]]
+   [:url
+    {:optional true :tool/description "`add_link`: the URL to link to."}
+    [:maybe ms/NonBlankString]]
+   [:entity
+    {:optional true
+     :tool/description (str "`add_link`: something in this Metabase to link to, as `{type, id}` — a \"card\", "
+                            "\"dashboard\", \"collection\", \"table\", or \"database\".")}
+    [:maybe [:map
+             [:type {:optional true} [:maybe ms/NonBlankString]]
+             [:id   {:optional true} [:maybe :int]]]]]
+   [:src
+    {:optional true :tool/description "`add_iframe`: the URL to embed."}
+    [:maybe ms/NonBlankString]]
+   [:action_id
+    {:optional true :tool/description "`add_action`: the action the button runs."}
+    [:maybe agent-api.tools/IdRef]]
+   [:label
+    {:optional true :tool/description "`add_action`: what the button says."}
+    [:maybe ms/NonBlankString]]
+   [:display
+    {:optional true
+     :tool/description (str "`add_action`: \"button\" (default) shows a button that opens the action's form; "
+                            "\"form\" lays the form out on the dashboard.")}
+    [:maybe (into [:enum] agent-api.dashboard-write/action-displays)]]
+   [:patch
+    {:optional true
+     :tool/description (str "`patch_dashcard`: settings to merge into the dashcard's `visualization_settings` — "
+                            "the chart's settings, `column_settings`, `click_behavior`, a link's target. Layout "
+                            "keys (`row`, `col`, `size_x`, `size_y`, `dashboard_tab_id`, `card_id`) are refused: "
+                            "`move`, `resize`, and `replace_card` own those.")}
+    [:maybe :map]]
+   [:tab_id
+    {:optional true
+     :tool/description "The tab to rename, move, duplicate, or remove: its id, or its name."}
+    [:maybe [:or :int ms/NonBlankString]]]
+   [:name
+    {:optional true :tool/description "`add_tab` and `rename_tab`: the tab's name."}
+    [:maybe ms/NonBlankString]]
+   [:index
+    {:optional true :tool/description "`move_tab`: the tab's new place in the row of tabs. 0 is the first."}
+    [:maybe [:int {:min 0}]]]])
+
+(mr/def ::dashboard-write-request
+  "Arguments to the `dashboard_write` tool. Only `method` is schema-required; the per-method requirements are
+  runtime-enforced with teaching errors."
+  [:map
+   [:method
+    {:tool/description "\"create\" builds a new dashboard; \"update\" changes an existing one."}
+    agent-api.tools/MethodField]
+   [:id
+    {:optional true
+     :tool/description (str "The dashboard to change — required for `update`, and never given on `create`. A "
+                            "numeric id or a 21-character entity_id.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:name
+    {:optional true :tool/description "The name it is saved under — required for `create`."}
+    [:maybe ms/NonBlankString]]
+   [:description
+    {:optional true :tool/description "What the dashboard is for, in a sentence."}
+    [:maybe :string]]
+   [:ops
+    {:optional true
+     :tool/description (str "The changes to make, in order: the cards and tabs of the dashboard. Each op names "
+                            "only what it changes — the server holds the rest — so an op list can never delete a "
+                            "card it does not mention. An op that fails aborts the whole call naming its index, "
+                            "and nothing is written.")}
+    [:maybe [:sequential ::dashboard-op]]]
+   [:collection_id
+    {:optional true
+     :tool/description (str "The collection to save it in, or to move it to. A numeric id, a 21-character "
+                            "entity_id, or \"root\" for the top level (\"Our analytics\"). Omit it on `create` "
+                            "and it is saved to your personal collection.")}
+    [:maybe agent-api.tools/CollectionRef]]
+   [:collection_position
+    {:optional true :tool/description "Pin it in its collection, at this position. 1 is the first pin."}
+    [:maybe [:int {:min 1}]]]
+   [:width
+    {:optional true
+     :tool/description "\"fixed\" (default) centers the dashboard; \"full\" lets it fill the browser window."}
+    [:maybe [:enum "fixed" "full"]]]
+   [:auto_apply_filters
+    {:optional true
+     :tool/description (str "Whether changing a filter re-runs the cards at once (the default), or waits for the "
+                            "reader to hit Apply. Turn it off on a dashboard whose cards are slow.")}
+    [:maybe :boolean]]
+   [:cache_ttl
+    {:optional true :tool/description "How many hours to cache its results for."}
+    [:maybe [:int {:min 1}]]]
+   [:archived
+    {:optional true
+     :tool/description (str "`update` only: `true` moves it to the trash — the soft delete, and the only delete "
+                            "there is — and `false` restores it.")}
+    [:maybe :boolean]]
+   [:validate_only
+    {:optional true
+     :tool/description (str "Compile the ops and return the layout they would produce, without saving anything. "
+                            "The dry run, for checking a build before committing to it.")}
+    [:maybe :boolean]]])
+
+(api.macros/defendpoint :post "/v2/dashboard-write" :- ::dashboard-write-response
+  "Create or update a dashboard — its cards, its tabs, and its layout — through an ordered list of ops.
+
+  The ops compile into the one save the app makes, so an op list either lands whole or does not land: a bad op names
+  its index and nothing is written. The server holds the dashboard's current state, so a call names only what it is
+  changing and can never delete a card it did not mention."
+  {:scope "agent:author:write"
+   :tool  {:name  "dashboard_write"
+           :title "Create or Update a Dashboard"
+           :description
+           (str "Build a dashboard in Metabase, or edit one: its cards, its tabs, and how they are laid out.\n"
+                "\n"
+                "`method: \"create\"` needs a `name`. `method: \"update\"` needs the dashboard's `id`.\n"
+                "\n"
+                "**Ops.** `ops` is an ordered list of changes, and each op names only what it changes — never the "
+                "rest of the dashboard. You do not have to read the dashboard, echo its cards back, or track their "
+                "positions: the server holds all of that, and an op list cannot delete a card it does not "
+                "mention.\n"
+                "\n"
+                "Cards: `add_card` (a saved question or model), `add_text`, `add_heading`, `add_link`, "
+                "`add_iframe`, `add_action`, `duplicate_card`, `replace_card`, `move`, `resize`, `remove`, "
+                "`set_series` (plot several cards on one chart), and `patch_dashcard` (the escape hatch for a "
+                "card's *content* — its visualization settings, column settings, click behavior).\n"
+                "\n"
+                "Tabs: `add_tab`, `rename_tab`, `move_tab`, `duplicate_tab`, `remove_tab` — which deletes the "
+                "cards on the tab along with it. `move` with a `tab` moves a card between tabs. Name a tab an "
+                "earlier op created by its `name`: it has no id until the call is saved.\n"
+                "\n"
+                "**Position.** Omit `position` and the card lands in the first free slot on its tab, which is "
+                "almost always what you want. The grid is 24 columns wide; pass `{row, col}` and `{size_x, "
+                "size_y}` to place a card exactly.\n"
+                "\n"
+                "**All or nothing.** Ops are validated in order. A card you cannot read, a tab that is not there, "
+                "a card that runs off the grid — any of them aborts the call, naming the op's index, and nothing "
+                "is written. So a call that failed is safe to fix and send again: it cannot double-add the ops "
+                "that were fine. `validate_only: true` compiles the ops and shows you the layout they would "
+                "produce, without saving.\n"
+                "\n"
+                "**What it returns** is the dashboard's structure — its tabs, its filters, and one row per card "
+                "with its `id`, position, and size. That is exactly what the next op needs, so a build never needs "
+                "a read in between.\n"
+                "\n"
+                "A question saved *inside* a dashboard is `question_write` with a `dashboard_id`, not an op here. "
+                "Filters are the other half of this tool; `archived: true` trashes the dashboard.")
+           :annotations       {:idempotent? false}
+           :structured-output ::dashboard-write-structured-output
+           :input-examples
+           [{:method "create" :name "Revenue" :collection_id 7
+             :ops    [{:op "add_heading" :text "This quarter"}
+                      {:op "add_card" :card_id 42}
+                      {:op "add_card" :card_id 43 :size {:size_x 12 :size_y 6}}]}
+            {:method "update" :id 9
+             :ops    [{:op "add_tab" :name "Detail"}
+                      {:op "move" :dashcard_id 101 :tab "Detail"}
+                      {:op "remove" :dashcard_id 102}]}
+            {:method "update" :id 9
+             :ops    [{:op "patch_dashcard" :dashcard_id 101
+                       :patch {:graph.dimensions ["CREATED_AT"] :graph.metrics ["count"]}}]}
+            {:method "update" :id 9 :archived true}]}}
+  [_route-params
+   _query-params
+   body :- ::dashboard-write-request]
+  (agent-api.dashboard-write/dashboard-write body))
 
 ;;; ------------------------------------------------ Export Download -------------------------------------------------
 

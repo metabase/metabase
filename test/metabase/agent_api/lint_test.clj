@@ -56,6 +56,7 @@
                      metabase.agent-api.browse-collection
                      metabase.agent-api.get-content
                      metabase.agent-api.card-write
+                     metabase.agent-api.dashboard-write
                      metabase.agent-api.execute-query
                      metabase.agent-api.parameter-values
                      metabase.mcp.tools

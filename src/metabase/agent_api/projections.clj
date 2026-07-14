@@ -24,8 +24,8 @@
   "Entity → `{:concise [ks…]}`, the argument [[metabase.agent-api.tools/project]] takes.
 
    A field name here is not always a `select-keys` away: a dashboard's `dashcards`, `tabs`, and
-   `parameters` are summary rows built by `get_content`, and a document's `content_markdown` is its stored
-   ProseMirror tree rendered. The names are what this registry pins."
+   `parameters` are the summary rows [[dashboard-skeleton]] builds, and a document's `content_markdown` is
+   its stored ProseMirror tree rendered. The names are what this registry pins."
   {:alert            {:concise [:id :name :alert_condition :alert_above_goal :alert_first_only :card
                                 :channels :archived]}
    ;; `table_id` and `source_card_id` are FK columns on the card row itself — nothing to fetch, nothing to
@@ -97,3 +97,64 @@
   (or (specs entity)
       (throw (ex-info (str "No projection registered for " entity)
                       {:entity entity :registered (sort (keys specs))}))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; The dashboard skeleton
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; A dashboard's concise projection is the one that is more than a field set, and it lives here rather than in
+;; the tool that returns it because two tools return it: `get_content` reads it and `dashboard_write` answers
+;; with it. They have to be the same shape or the loop breaks — the test of the shape is that every structural
+;; op is authorable from it, so an agent that just wrote a dashboard can write the next op against the response
+;; instead of reading the dashboard back.
+
+(defn- dashcard-kind
+  "What a dashcard *is*: a saved card, or one of the virtual cards the editor places — text, heading, link,
+   iframe, action. The kind lives in the virtual card's `display`; a dashcard without one shows a card."
+  [dashcard]
+  (or (some-> (get-in dashcard [:visualization_settings :virtual_card :display]) name)
+      "card"))
+
+(defn- dashcard-row
+  "One dashcard, summarized to what `dashboard_write`'s ops take: which card, where, on which tab, with what
+   series and inline parameters. Everything the summary drops — the nested card, its query, its
+   visualization settings — is what `include: [\"layout\"]` is for."
+  [{:keys [id card_id dashboard_tab_id row col size_x size_y series inline_parameters] :as dashcard}]
+  (cond-> {:id               id
+           :kind             (dashcard-kind dashcard)
+           :dashboard_tab_id dashboard_tab_id
+           :row              row
+           :col              col
+           :size_x           size_x
+           :size_y           size_y}
+    card_id                 (assoc :card_id card_id :card_name (get-in dashcard [:card :name]))
+    (seq series)            (assoc :series_card_ids (mapv :id series))
+    (seq inline_parameters) (assoc :inline_parameter_ids (vec inline_parameters))))
+
+(defn- parameter-row
+  "One dashboard parameter, and the dashcards it filters. A parameter wired to nothing is a widget that does
+   nothing, and that is exactly what an agent asked to fix the dashboard needs to see."
+  [wired {:keys [id] :as parameter}]
+  (assoc (select-keys parameter [:id :name :type])
+         :dashcard_ids (vec (wired id))))
+
+(defn- wired-dashcard-ids
+  "Parameter id → the ids of the dashcards its mappings reach."
+  [dashcards]
+  (reduce (fn [wired {dashcard-id :id :keys [parameter_mappings]}]
+            (reduce (fn [wired {:keys [parameter_id]}]
+                      (update wired parameter_id (fnil conj []) dashcard-id))
+                    wired
+                    parameter_mappings))
+          {}
+          dashcards))
+
+(defn dashboard-skeleton
+  "The concise dashboard: what a dashboard *is* structurally, and every input `dashboard_write`'s op grammar
+   takes. `record` is the REST dashboard, `projected` its field set."
+  [{:keys [dashcards tabs parameters]} projected]
+  (let [wired (wired-dashcard-ids dashcards)]
+    (assoc projected
+           :tabs       (mapv #(select-keys % [:id :name]) tabs)
+           :parameters (mapv #(parameter-row wired %) parameters)
+           :dashcards  (mapv dashcard-row dashcards))))

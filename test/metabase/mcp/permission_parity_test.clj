@@ -1164,3 +1164,52 @@
         :expect   :allowed
         :tool     ["metric_write" {:method "update" :id (:id card) :description "Parity"}]
         :rest     [:put (str "card/" (:id card)) {:description "Parity"}]}))))
+
+;;; ----------------------------------------------- dashboard_write ------------------------------------------------
+;;
+;; A dashboard write's REST counterpart is `POST /api/dashboard` and `PUT /api/dashboard/:id` — literally, since the
+;; tool compiles its ops into the body those endpoints take and calls the same functions they call. The rows below
+;; are the three refusals a dashboard write has that a card write does not: a dashboard the user may read but not
+;; edit, a *card* the user may not read being placed on a dashboard they may edit, and a dashboard in the trash.
+
+(deftest dashboard-write-read-only-dashboard-parity-test
+  (testing "a dashboard the user can read but not curate is refused as a write target by both surfaces"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Dashboard  dash {:collection_id (:id coll)}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        (check-parity!
+         {:scenario :read-only-collection
+          :user     :rasta
+          :expect   :denied
+          :tool     ["dashboard_write" {:method "update" :id (:id dash) :description "Parity"}]
+          :rest     [:put (str "dashboard/" (:id dash)) {:description "Parity"}]})))))
+
+(deftest dashboard-write-unreadable-card-parity-test
+  (testing "placing a card on a dashboard is showing it, so a card the user cannot read is refused by both
+            surfaces — even on a dashboard they may edit"
+    (mt/with-temp [:model/Collection    coll {}
+                   :model/Card          card {:collection_id (:id coll)
+                                              :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Dashboard     dash {}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (check-parity!
+         {:scenario :no-collection-access
+          :user     :rasta
+          :expect   :denied
+          :tool     ["dashboard_write" {:method "update"
+                                        :id     (:id dash)
+                                        :ops    [{:op "add_card" :card_id (:id card)}]}]
+          :rest     [:put (str "dashboard/" (:id dash))
+                     {:tabs      []
+                      :dashcards [{:id -1 :card_id (:id card) :row 0 :col 0 :size_x 4 :size_y 4}]}]})))))
+
+(deftest dashboard-write-archived-target-parity-test
+  (testing "archiving is not a permission: a writable archived dashboard is still editable, on both surfaces"
+    (mt/with-temp [:model/Dashboard dash {:archived true}]
+      (check-parity!
+       {:scenario :archived-target
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["dashboard_write" {:method "update" :id (:id dash) :description "Parity"}]
+        :rest     [:put (str "dashboard/" (:id dash)) {:description "Parity"}]}))))
