@@ -5,15 +5,11 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { type Editor, EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
-import {
-  type ChartClipboardPayload,
-  parseChartClipboard,
-} from "metabase/common/utils/chart-clipboard";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { useSelector } from "metabase/redux";
 import {
@@ -28,29 +24,12 @@ import { getSetting } from "metabase/selectors/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 
-import { ChartMention } from "./ChartMention";
 import S from "./MetabotPromptInput.module.css";
 import {
   parseClipboardTextAsParagraphs,
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
-
-function insertChartMention(editor: Editor, payload: ChartClipboardPayload) {
-  editor
-    .chain()
-    .focus()
-    .insertContent({
-      type: "chartMention",
-      attrs: {
-        chartId: payload.chart_id,
-        label: payload.name,
-        display: payload.display,
-      },
-    })
-    .insertContent(" ")
-    .run();
-}
 
 export interface MetabotPromptInputProps {
   value: string;
@@ -60,7 +39,6 @@ export interface MetabotPromptInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
-  onPasteChart?: (payload: ChartClipboardPayload) => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
     onlyDatabaseId?: DatabaseId;
@@ -80,7 +58,6 @@ export const MetabotPromptInput = forwardRef<
       onChange,
       onSubmit,
       onStop,
-      onPasteChart,
       ...props
     },
     ref,
@@ -95,9 +72,6 @@ export const MetabotPromptInput = forwardRef<
     onSubmitRef.current = onSubmit;
     const onStopRef = useRef(onStop);
     onStopRef.current = onStop;
-    const onPasteChartRef = useRef<
-      ((payload: ChartClipboardPayload) => void) | null
-    >(null);
 
     const extensions = [
       Document,
@@ -119,7 +93,6 @@ export const MetabotPromptInput = forwardRef<
           ),
         },
       }),
-      ChartMention,
     ];
 
     const editor = useEditor(
@@ -163,21 +136,6 @@ export const MetabotPromptInput = forwardRef<
               tr.setSelection(TextSelection.create(tr.doc, from));
               view.dispatch(tr);
 
-              return true;
-            },
-            paste: (_view: EditorView, e: ClipboardEvent) => {
-              const handlePasteChart = onPasteChartRef.current;
-              if (!handlePasteChart) {
-                return false;
-              }
-              const payload = parseChartClipboard(
-                e.clipboardData?.getData("text/plain"),
-              );
-              if (!payload) {
-                return false;
-              }
-              e.preventDefault();
-              handlePasteChart(payload);
               return true;
             },
           },
@@ -236,15 +194,6 @@ export const MetabotPromptInput = forwardRef<
         siteUrl,
       ],
     );
-
-    onPasteChartRef.current = onPasteChart
-      ? (payload: ChartClipboardPayload) => {
-          if (editor) {
-            insertChartMention(editor, payload);
-          }
-          onPasteChart(payload);
-        }
-      : null;
 
     useImperativeHandle(ref, () => {
       if (!editor) {

@@ -19,7 +19,6 @@ type MetabotChatEditorProps = Pick<
   | "onChange"
   | "onSubmit"
   | "onStop"
-  | "onPasteChart"
   | "suggestionConfig"
 > & { isResponding?: boolean };
 

@@ -4,15 +4,14 @@ import { match } from "ts-pattern";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { getConversationChart } from "metabase/metabot/state";
-import {
-  type MetabaseProtocolEntityModel,
-  type ParsedMetabaseProtocolLink,
-  conversationChartUrl,
+import type {
+  MetabaseProtocolEntityModel,
+  ParsedMetabaseProtocolLink,
 } from "metabase/metabot/utils/links";
 import { useSelector } from "metabase/redux";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
-import { modelToUrl } from "metabase/urls";
+import { conversationChartUrl, modelToUrl } from "metabase/urls";
 
 import S from "../AIMarkdown.module.css";
 
