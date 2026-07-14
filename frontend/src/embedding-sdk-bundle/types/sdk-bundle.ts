@@ -12,6 +12,7 @@ import type { StaticQuestion } from "embedding-sdk-bundle/components/public/Stat
 import type { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard/EditableDashboard";
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
+import type { ResolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";
 import type {
   DataAppLink,
   DataAppRouter,
@@ -35,7 +36,6 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
-import type { ResolveDatasetQuery } from "metabase/embedding-sdk/lib/create-metabase-query";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =

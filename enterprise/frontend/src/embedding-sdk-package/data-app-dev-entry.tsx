@@ -13,13 +13,13 @@ import {
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
 
-import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox";
+import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
 import { DevToolbar } from "./components/public/debug/DevToolbar/DevToolbar";
 import { installDevDiagnostics } from "./components/public/debug/DevToolbar/diagnostics";
 
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
-import "metabase-enterprise/data_apps/iframe-baseline.css";
+import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
 
 // The data-app dev entry. rspack bundles this file into the SDK dist as
 // `data-app-dev-entry.js` (see `rspack.embedding-sdk-package.config.js`),
