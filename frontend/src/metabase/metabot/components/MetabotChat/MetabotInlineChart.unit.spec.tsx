@@ -242,8 +242,6 @@ describe("MetabotInlineChart", () => {
       expect(payload?.name).toBe("Orders by month");
       expect(payload?.description).toBe("Monthly count of orders.");
       expect(payload?.dataset_query).toEqual(datasetQuery);
-      expect(payload?.chart_id).toBe("card-1");
-      expect(payload?.query_id).toBe("q-1");
     });
   });
 });

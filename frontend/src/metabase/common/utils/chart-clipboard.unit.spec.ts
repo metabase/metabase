@@ -17,8 +17,6 @@ describe("chart-clipboard", () => {
         display: "bar",
         dataset_query: datasetQuery,
         visualization_settings: {},
-        chart_id: "chart-1",
-        query_id: "query-1",
       },
       SITE_URL,
     );
@@ -31,8 +29,6 @@ describe("chart-clipboard", () => {
       dataset_query: datasetQuery,
       visualization_settings: {},
       displayIsLocked: true,
-      chart_id: "chart-1",
-      query_id: "query-1",
     });
   });
 
@@ -44,8 +40,6 @@ describe("chart-clipboard", () => {
         display: "bar",
         dataset_query: datasetQuery,
         visualization_settings: {},
-        chart_id: "chart-1",
-        query_id: "query-1",
       },
       SITE_URL,
     );
@@ -56,8 +50,6 @@ describe("chart-clipboard", () => {
       display: "bar",
       dataset_query: datasetQuery,
       visualization_settings: {},
-      chart_id: "chart-1",
-      query_id: "query-1",
     });
   });
 
@@ -68,8 +60,6 @@ describe("chart-clipboard", () => {
         display: "bar",
         dataset_query: datasetQuery,
         visualization_settings: {},
-        chart_id: "chart-1",
-        query_id: "query-1",
       },
       `${SITE_URL}/`,
     );
@@ -77,7 +67,7 @@ describe("chart-clipboard", () => {
     expect(text.startsWith(`${SITE_URL}/question#`)).toBe(true);
   });
 
-  it("returns null for an ad-hoc question link without the chart clipboard markers", () => {
+  it("parses any ad-hoc question link produced by the QB serializer", () => {
     const hash = serializeCardForUrl(
       {
         name: "Orders by month",
@@ -90,7 +80,13 @@ describe("chart-clipboard", () => {
       { includeDisplayIsLocked: true },
     );
 
-    expect(parseChartClipboard(`${SITE_URL}/question#${hash}`)).toBeNull();
+    expect(parseChartClipboard(`${SITE_URL}/question#${hash}`)).toEqual({
+      name: "Orders by month",
+      description: undefined,
+      display: "bar",
+      dataset_query: datasetQuery,
+      visualization_settings: {},
+    });
   });
 
   it("returns null for clipboard content that is not a chart link", () => {
