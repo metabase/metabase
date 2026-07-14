@@ -106,6 +106,7 @@
      (def dimensions-for-table "See [[lib-metric.dimension/dimensions-for-table]]." lib-metric.dimension/dimensions-for-table)
      (def get-persisted-dimensions "See [[lib-metric.dimension/get-persisted-dimensions]]." lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
+     (def group-by-source "See [[lib-metric.dimension/group-by-source]]." lib-metric.dimension/group-by-source)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
      (def same-source? "See [[lib-metric.dimension/same-source?]]." lib-metric.dimension/same-source?)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)

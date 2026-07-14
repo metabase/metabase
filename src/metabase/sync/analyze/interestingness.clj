@@ -4,7 +4,10 @@
 
    Runs after fingerprinting and classification so that scorers have both the statistical
    fingerprint and the inferred semantic type available. Scores are recomputed whenever a
-   field is re-fingerprinted; there is no separate version tracking."
+   field is re-fingerprinted; there is no separate version tracking. Independently of
+   fingerprint state, a per-database leftovers pass ([[score-missing-leftovers!]]) also
+   attempts any active field whose persisted score is still `NULL` (initial backfill, tables
+   outside the normal sync sweep, or scores null'ed to force a recompute)."
   (:require
    [metabase.interestingness.core :as interestingness]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
@@ -13,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,6 +53,7 @@
               fields))
     {:fields-scored 0 :fields-failed 0}))
 
+
 (mu/defn- score-missing-leftovers!
   "Backup pass after the per-table sweep: any Field in `database` whose persisted
   `dimension_interestingness` is still `NULL` gets one more compute attempt. This catches Fields
@@ -56,21 +61,22 @@
   (initial backfill, prior compute failure, null'ed interestingness to force a recompute).
   Independent of fingerprint state; doesn't touch `last_analyzed`."
   [database :- i/DatabaseInstance]
-  (let [fields (t2/select :model/Field
-                          {:where [:and
-                                   [:= :active true]
-                                   [:= :dimension_interestingness nil]
-                                   [:not-in :visibility_type ["sensitive" "retired"]]
-                                   [:in :table_id {:select [:id]
-                                                   :from   [(t2/table-name :model/Table)]
-                                                   :where  [:= :db_id (u/the-id database)]}]]})]
-    (reduce (fn [stats field]
-              (let [result (score-and-save! field)]
-                (if (instance? Exception result)
-                  (update stats :fields-failed inc)
-                  (update stats :fields-scored inc))))
-            {:fields-scored 0 :fields-failed 0}
-            fields)))
+  (transduce (map t2.realize/realize)
+             (completing
+              (fn [stats field]
+                (let [result (score-and-save! field)]
+                  (if (instance? Exception result)
+                    (update stats :fields-failed inc)
+                    (update stats :fields-scored inc)))))
+             {:fields-scored 0 :fields-failed 0}
+             (t2/reducible-select :model/Field
+                                  {:where [:and
+                                           [:= :active true]
+                                           [:= :dimension_interestingness nil]
+                                           [:not-in :visibility_type ["sensitive" "retired"]]
+                                           [:in :table_id {:select [:id]
+                                                           :from   [(t2/table-name :model/Table)]
+                                                           :where  [:= :db_id (u/the-id database)]}]]})))
 
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."
