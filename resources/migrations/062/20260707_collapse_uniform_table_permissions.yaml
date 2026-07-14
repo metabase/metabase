@@ -11,8 +11,9 @@ databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
   # Step 1 originally shipped as v62.2026-07-07T00:00:00, which timed out on large instances (its plan
-  # was O(rows x databases) on postgres). Deleting its changelog entry makes every instance run the
-  # replacements below; re-collapsing already-collapsed data is a cheap no-op.
+  # was O(rows x databases) on postgres). The changeSets below replace it under new ids; this DELETE just
+  # removes the retired changeSet's stale changelog entry from instances that already ran it. For them the
+  # replacements re-collapse already-collapsed data, which is a cheap no-op.
   - changeSet:
       id: v62.2026-07-14T00:00:00
       author: ranquild
