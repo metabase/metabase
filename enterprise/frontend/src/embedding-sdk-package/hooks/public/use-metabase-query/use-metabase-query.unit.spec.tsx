@@ -1,8 +1,13 @@
 import { renderHook, waitFor } from "@testing-library/react";
 
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
+import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import type { QueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
@@ -27,7 +32,7 @@ import {
   useMetabaseQueryObject,
 } from ".";
 
-jest.mock("embedding-sdk-shared/hooks/use-lazy-selector", () => ({
+jest.mock("embedding-sdk-package/hooks/private/use-lazy-selector", () => ({
   useLazySelector: jest.fn(() => ({ status: "success" })),
 }));
 
@@ -522,17 +527,54 @@ const TEST_METADATA = {
   },
 };
 
-const createMockStore = () =>
+const createMockStore = (): SdkStore =>
+  // A real `getSdkStore()` pulls in reducers this spec's `metabase/api` mock can't
+  // satisfy; only `dispatch` and `getState` are reached, and both land in mocks.
   ({
     dispatch: jest.fn((action) => Promise.resolve(action)),
     getState: jest.fn(() => ({})),
-  }) as any;
+  }) as unknown as SdkStore;
 
-const TEST_DATASET_QUERY = {
-  "lib/type": "mbql/query",
-  database: 1,
-  stages: [{ "source-table": 1 }],
-} as unknown as DatasetQuery;
+type MbqlStage = Record<string, unknown>;
+
+const mbqlQuery = (stages: MbqlStage[]): DatasetQuery =>
+  // `DatasetQuery` is opaque, so one can't be written as a literal.
+  ({
+    "lib/type": "mbql/query",
+    database: 1,
+    stages,
+  }) as unknown as DatasetQuery;
+
+const stagesOf = (query: DatasetQuery): MbqlStage[] =>
+  // ...nor its stages read.
+  (query as unknown as { stages: MbqlStage[] }).stages;
+
+const TEST_DATASET_QUERY = mbqlQuery([{ "source-table": 1 }]);
+
+const mockPropsStore = (reduxStore: SdkStore) =>
+  mockUseMetabaseProviderPropsStore.mockReturnValue({
+    state: { internalProps: { reduxStore }, props: null },
+    store: ensureMetabaseProviderPropsStore(),
+  });
+
+const stubSdkBundle = (
+  exports: Partial<MetabaseEmbeddingSdkBundleExports>,
+): void => {
+  window.METABASE_EMBEDDING_SDK_BUNDLE =
+    // The global is typed as the whole bundle; a test needs one or two functions.
+    exports as MetabaseEmbeddingSdkBundleExports;
+};
+
+const LOADED_SDK_STATE: ReturnType<typeof useSdkLoadingState> = {
+  loadingState: SdkLoadingState.Loaded,
+  loadingError: null,
+  isInitial: false,
+  isLoading: false,
+  isLoaded: true,
+  isInitialized: false,
+  isError: false,
+  isNotStartedLoading: false,
+};
 
 function createDeferred<TValue>() {
   let resolve!: (value: TValue) => void;
@@ -643,6 +685,7 @@ const _validCardQuery = {
   },
 } satisfies MetabaseCard;
 
+// Only this value's *type* is used: the fixtures below typecheck, they never run.
 const hookResult = {} as UseMetabaseQueryObjectResult;
 const _validHookResultCard = {
   query: hookResult.query,
@@ -751,7 +794,7 @@ function TypeFixtures() {
   // @ts-expect-error result row keys use returned column names, not schema object keys
   void groupedMetricResult.data?.rows[0]?.createdAt;
 
-  const sortKey = "createdAt" as "amount" | "createdAt";
+  const sortKey: "amount" | "createdAt" = "createdAt";
 
   type OrdersField =
     (typeof TEST_SCHEMA.tables.orders.fields)[keyof typeof TEST_SCHEMA.tables.orders.fields];
@@ -783,17 +826,14 @@ describe("resolveDatasetQuery", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRunRtkEndpoint.mockResolvedValue(undefined);
-    mockGetMetadataUnfiltered.mockReturnValue(TEST_METADATA as any);
+    mockGetMetadataUnfiltered.mockReturnValue(
+      // `Metadata` is a class; the fixture is the plain shape read out of it.
+      TEST_METADATA as unknown as ReturnType<typeof getMetadataUnfiltered>,
+    );
     mockUseLazySelector.mockReturnValue({ status: "success" });
-    mockUseSdkLoadingState.mockReturnValue({ loadingState: "loaded" } as any);
-    mockUseMetabaseProviderPropsStore.mockReturnValue({
-      state: {
-        internalProps: {
-          reduxStore: createMockStore(),
-        },
-      },
-    } as any);
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = undefined;
+    mockUseSdkLoadingState.mockReturnValue(LOADED_SDK_STATE);
+    mockPropsStore(createMockStore());
+    window.METABASE_EMBEDDING_SDK_BUNDLE = undefined;
   });
 
   it("exports the table query DSL from the data-app entrypoint", () => {
@@ -901,9 +941,9 @@ describe("resolveDatasetQuery", () => {
       aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
     });
 
-    expect(
-      (datasetQuery as DatasetQuery & { stages: any[] }).stages[0].aggregation,
-    ).toEqual([["measure", expect.anything(), 21]]);
+    expect(stagesOf(datasetQuery)[0].aggregation).toEqual([
+      ["measure", expect.anything(), 21],
+    ]);
   });
 
   it("accepts id-only table source references", async () => {
@@ -1301,7 +1341,7 @@ describe("resolveDatasetQuery", () => {
       resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         aggregations: [{ type: "metric", id: 31 }],
-      } as any),
+      }),
     ).rejects.toThrow(
       "Table query metric aggregations must include source table metadata.",
     );
@@ -1350,8 +1390,9 @@ describe("resolveDatasetQuery", () => {
   it("rejects metric sources with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
+        // @ts-expect-error a metric is not a valid query source
         source: TEST_SCHEMA.metrics.revenue,
-      } as any),
+      }),
     ).rejects.toThrow(
       'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
     );
@@ -1367,9 +1408,7 @@ describe("useMetabaseQueryObject", () => {
   it("returns a loading state until async query creation resolves", async () => {
     const deferred = createDeferred<DatasetQuery>();
     const resolveDatasetQuery = jest.fn(() => jest.fn(() => deferred.promise));
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      resolveDatasetQuery,
-    };
+    stubSdkBundle({ resolveDatasetQuery });
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
 
@@ -1395,9 +1434,7 @@ describe("useMetabaseQueryObject", () => {
     const resolveDatasetQuery = jest.fn(() =>
       jest.fn(() => Promise.reject(error)),
     );
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      resolveDatasetQuery,
-    };
+    stubSdkBundle({ resolveDatasetQuery });
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
 
@@ -1414,9 +1451,7 @@ describe("useMetabaseQueryObject", () => {
     const resolveDatasetQuery = jest.fn(() =>
       jest.fn(() => Promise.resolve(TEST_DATASET_QUERY)),
     );
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      resolveDatasetQuery,
-    };
+    stubSdkBundle({ resolveDatasetQuery });
     mockUseLazySelector.mockReturnValue({ status: "loading" });
 
     const { result, rerender } = renderHook(() =>
@@ -1454,17 +1489,15 @@ describe("useMetabaseQueryObject", () => {
       source: TEST_SCHEMA.tables.orders,
       limit: 20,
     };
-    const secondDatasetQuery = {
-      ...TEST_DATASET_QUERY,
-      stages: [{ "source-table": 1, limit: 20 }],
-    } as unknown as DatasetQuery;
+    const secondDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 20 }]);
+    // Which deferred a call gets is decided by the only field that differs.
     const resolveDatasetQuery = jest.fn(
-      () => (input: typeof firstQuery | typeof secondQuery) =>
-        input.limit === 10 ? firstDeferred.promise : secondDeferred.promise,
+      () => (input: QueryInput) =>
+        "limit" in input && input.limit === 10
+          ? firstDeferred.promise
+          : secondDeferred.promise,
     );
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      resolveDatasetQuery,
-    };
+    stubSdkBundle({ resolveDatasetQuery });
 
     const { result, rerender } = renderHook(
       ({ currentQuery }) => useMetabaseQueryObject(currentQuery),
@@ -1503,10 +1536,10 @@ describe("useMetabaseQuery", () => {
         rows: [],
       }),
     );
-    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
+    stubSdkBundle({
       resolveDatasetQuery: jest.fn(() => jest.fn(() => deferred.promise)),
       queryDataset: jest.fn(() => queryDataset),
-    };
+    });
 
     renderHook(() =>
       useMetabaseQuery({

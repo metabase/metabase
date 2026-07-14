@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
@@ -56,7 +56,12 @@ export function useMetabaseQueryObject(
 
       const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
 
-      return { query: result as MetabaseQueryObject, queryKey };
+      return {
+        // The bundle returns the opaque `DatasetQuery`; the public API publishes
+        // the structural `MetabaseQueryObject` instead (see its own docs for why).
+        query: result as MetabaseQueryObject,
+        queryKey,
+      };
     }, [queryKey, reduxStore]);
 
   useEffect(() => {
