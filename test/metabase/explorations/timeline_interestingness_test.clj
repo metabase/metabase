@@ -8,7 +8,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -36,7 +36,7 @@
   link it from the ExplorationQueryResult via `stored_result_id` (the result bytes live on
   `stored_result`, not on `exploration_query_result`)."
   [query-id qp-result]
-  (let [bytes (cache.impl/do-with-serialization
+  (let [bytes (qp/do-with-serialization
                (fn [in result-fn]
                  (in qp-result)
                  (result-fn)))

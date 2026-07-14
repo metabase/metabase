@@ -60,18 +60,15 @@
   - Numeric dims with default binning → `default-binning-max-bins`. The real
     count is usually lower, but the upper bound is what gates eligibility
     decisions (chart-width, series-count budgets).
-  - Numeric dims with explicit `:num-bins` → that exact bin count.
   - Temporal dims → `nil`. Cardinality isn't the right axis to reason about
     them on; callers should use the temporal unit.
   - All other dims → raw `:fingerprint.global.distinct-count`, or `nil` if
     the fingerprint is missing."
   [dim]
-  (let [[kind v] (default-bucket-for-dim dim)]
+  (let [[kind] (default-bucket-for-dim dim)]
     (case kind
       :temporal nil
-      :binning  (or (when (and (map? v) (= :num-bins (:strategy v)))
-                      (:num-bins v))
-                    default-binning-max-bins)
+      :binning  default-binning-max-bins
       nil       (get-in dim [:fingerprint :global :distinct-count]))))
 
 (defn binnable-ref?

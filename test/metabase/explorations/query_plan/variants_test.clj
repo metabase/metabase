@@ -46,7 +46,7 @@
          (mapv (fn [[label cnt]] [label (long cnt)])))))
 
 ;; ---------------------------------------------------------------------------
-;; Temporal-axis variants: order by date desc + not-null filter + row cap
+;; Temporal-axis variants: order by date desc + row cap (no filters added)
 ;; ---------------------------------------------------------------------------
 
 (defn- orders-count-card

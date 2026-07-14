@@ -142,27 +142,6 @@
    :max-tokens      32000
    :thinking-config {:type "adaptive" :effort "high"}})
 
-(defn slim-block
-  "Awareness-tier rendering: title + (optional) chart description + (optional) metric
-  description + metric/dim column detail + summary line + key-points. No stats Markdown, no
-  verbatim data points dump. The model knows the chart exists and the gist, but won't cite
-  values from it."
-  [{:keys [stored-result-id name summary-line dim-detail metric-detail
-           metric-description chart-description cfg stats]}]
-  (let [key-pts (render-key-points-section cfg stats)]
-    (str "### stored_result_id " stored-result-id " — " name "\n\n"
-         (when chart-description
-           (str "- **chart**: " chart-description "\n"))
-         (when metric-description
-           (str "- **metric description**: " metric-description "\n"))
-         "- **metric**: " (or metric-detail "(unknown)") "\n"
-         "- **dim**: " (or dim-detail "(unknown)") "\n"
-         "- **summary**: " summary-line "\n\n"
-         (when key-pts (str key-pts "\n\n"))
-         "_Awareness-tier chart — you know it exists, but full data points are not provided. "
-         "If you need to cite values from this chart, mention it in `Suggestions for further "
-         "exploration` instead._")))
-
 (defn x-axis-kind
   "Classify a chart-config's x-axis type for sort-attribute purposes. Returns one of
   `:categorical`, `:temporal`, `:numeric`, or `:unknown`. Drives the per-chart sort
@@ -189,6 +168,29 @@
     :temporal    "- **sort attribute**: OMIT — rows are already in chronological order."
     :numeric     "- **sort attribute**: OMIT — rows are already in binned order."
     :unknown     "- **sort attribute**: OMIT."))
+
+(defn slim-block
+  "Awareness-tier rendering: title + (optional) chart description + (optional) metric
+  description + metric/dim column detail + summary line + key-points. No stats Markdown, no
+  verbatim data points dump. The model knows the chart exists and the gist, but won't cite
+  values from it. Carries the same per-chart sort directive as [[full-block]] — the model may
+  still embed an awareness chart, and categorical embeds are sort-validated regardless of tier."
+  [{:keys [stored-result-id name summary-line dim-detail metric-detail
+           metric-description chart-description cfg stats]}]
+  (let [key-pts (render-key-points-section cfg stats)]
+    (str "### stored_result_id " stored-result-id " — " name "\n\n"
+         (when chart-description
+           (str "- **chart**: " chart-description "\n"))
+         (when metric-description
+           (str "- **metric description**: " metric-description "\n"))
+         "- **metric**: " (or metric-detail "(unknown)") "\n"
+         "- **dim**: " (or dim-detail "(unknown)") "\n"
+         (sort-instruction-line cfg) "\n"
+         "- **summary**: " summary-line "\n\n"
+         (when key-pts (str key-pts "\n\n"))
+         "_Awareness-tier chart — you know it exists, but full data points are not provided. "
+         "If you need to cite values from this chart, mention it in `Suggestions for further "
+         "exploration` instead._")))
 
 (defn full-block
   "Top-tier rendering: title + (optional) chart description + (optional) metric description +

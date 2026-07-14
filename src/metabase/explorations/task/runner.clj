@@ -37,7 +37,6 @@
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
    [metabase.startup.core :as startup]
    [metabase.util :as u]
@@ -135,7 +134,7 @@
   mp the moment we hand it a qp-result whose input query is a pMBQL value
   with `:lib/metadata` still attached."
   ^bytes [qp-result]
-  (cache.impl/do-with-serialization
+  (qp/do-with-serialization
    (fn [in result-fn]
      (in (cond-> qp-result
            (map? qp-result) (-> (m/update-existing :json_query lib/prepare-for-serialization)
@@ -336,17 +335,17 @@
       (str/join "; " parts))))
 
 (defn- build-score-context
-  "Resolve the inputs the contextual scorer needs from `exploration-query`: the thread prompt,
-  the (trimmed, non-blank) source Card description, and the compiled SQL of the dataset_query.
-  Returns nil when the row has no thread."
+  "Resolve the *expensive* inputs the contextual scorer needs from `exploration-query`: the
+  (trimmed, non-blank) source Card description and the compiled SQL of the dataset_query.
+  Called only after the cheap gates in [[safe-score+describe]] (chart-config present, creator
+  known, non-blank thread prompt) have passed, so the Card select and SQL compile never run for
+  charts that won't be scored."
   [exploration-query]
-  (when-let [thread-id (:exploration_thread_id exploration-query)]
-    {:prompt           (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id)
-     :card-description (when-let [card-id (:card_id exploration-query)]
-                         (some-> (t2/select-one-fn :description :model/Card :id card-id)
-                                 str/trim
-                                 not-empty))
-     :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))}))
+  {:card-description (when-let [card-id (:card_id exploration-query)]
+                       (some-> (t2/select-one-fn :description :model/Card :id card-id)
+                               str/trim
+                               not-empty))
+   :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))})
 
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
@@ -364,36 +363,39 @@
   (`metabase.metabot.self/call-llm-structured-with-trace`, reached via
   `score-and-describe-chart`) sees the right user context and gets billed/limited
   per-creator. The permission gate (`:permission/metabot-other-tools`) and the
-  AI usage-limit check both live in `metabot.self`; on either failure
-  `score-and-describe-chart`'s internal try/catch swallows the thrown ex-info
-  and returns nil, leaving the EQR row's contextual fields nil — same fail-soft
+  AI usage-limit check sit in `score-and-describe-chart`'s own pre-flight `cond`
+  (via `metabot/llm-call-available?`); a closed gate makes it return nil rather
+  than throw, leaving the EQR row's contextual fields nil — same fail-soft
   contract as `safe-score`.
 
-  Returns nil-map (all three nil) whenever scoring isn't applicable (no prompt, no
-  chart-config) or anything throws — so a scoring failure can never break the query
-  lifecycle."
+  Returns nil whenever scoring isn't applicable (no prompt, no chart-config, no
+  creator) or anything throws — so a scoring failure can never break the query
+  lifecycle. The cheap gates run before [[build-score-context]]'s DB reads and
+  SQL compile, so non-applicable charts cost nothing here."
   [exploration-query chart-config creator-id]
   (try
-    (let [{:keys [prompt card-description sql]} (build-score-context exploration-query)]
-      (when (and chart-config (not (str/blank? prompt)))
-        (if (nil? creator-id)
-          (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
-                     (:id exploration-query))
-          (request/with-current-user creator-id
-            (when-let [result (some-> (contextual-interestingness/score-and-describe-chart
-                                       {:chart-config     chart-config
-                                        :card-description card-description
-                                        :chart-slicing    (slicing-note exploration-query)
-                                        :sql              sql
-                                        :context-string   prompt})
-                                      (update :metric-description #(or card-description %)))]
-              (log/debugf "Contextual interestingness for ExplorationQuery %d (thread %d): score=%s reasoning=%s chart-description=%s"
-                          (:id exploration-query)
-                          (:exploration_thread_id exploration-query)
-                          (:score result)
-                          (pr-str (:reasoning result))
-                          (pr-str (:chart-description result)))
-              result)))))
+    (when-let [thread-id (and chart-config (:exploration_thread_id exploration-query))]
+      (if (nil? creator-id)
+        (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
+                   (:id exploration-query))
+        (let [prompt (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id)]
+          (when-not (str/blank? prompt)
+            (let [{:keys [card-description sql]} (build-score-context exploration-query)]
+              (request/with-current-user creator-id
+                (when-let [result (some-> (contextual-interestingness/score-and-describe-chart
+                                           {:chart-config     chart-config
+                                            :card-description card-description
+                                            :chart-slicing    (slicing-note exploration-query)
+                                            :sql              sql
+                                            :context-string   prompt})
+                                          (update :metric-description #(or card-description %)))]
+                  (log/debugf "Contextual interestingness for ExplorationQuery %d (thread %d): score=%s reasoning=%s chart-description=%s"
+                              (:id exploration-query)
+                              (:exploration_thread_id exploration-query)
+                              (:score result)
+                              (pr-str (:reasoning result))
+                              (pr-str (:chart-description result)))
+                  result)))))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))
@@ -686,8 +688,10 @@
                 {:status "canceled"})))
 
 (defn- run-one-plan-iteration!
-  "Try to claim one unplanned thread and run the LLM planner against it. Returns
-  truthy when work was done so the worker loop knows whether to sleep."
+  "Try to claim one unplanned thread and run the configured planner (see
+  `metabase.explorations.query-plan/pick-planner!` — mechanical by default, LLM when
+  configured and selected) against it. Returns truthy when work was done so the worker
+  loop knows whether to sleep."
   []
   (when-let [thread-id (claim-unplanned-thread!)]
     (try

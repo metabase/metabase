@@ -18,7 +18,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.timeline.core :as timeline]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -28,12 +28,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- deserialize-result
-  "Inverse of `cache.impl/do-with-serialization` for a single object — the
+  "Inverse of `qp/do-with-serialization` for a single object — the
   runner serializes one full QP result as a single nippy frame, so we read
   one frame from the gzipped stream and return it."
   [^bytes result-bytes]
   (with-open [is (ByteArrayInputStream. result-bytes)]
-    (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
+    (qp/with-reducible-deserialized-results [[qp-result _] is]
       qp-result)))
 
 (defn- event->timeline-event
