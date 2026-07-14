@@ -1,3 +1,4 @@
+import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -150,7 +151,7 @@ export const ListField = ({
     }
   };
 
-  const handleFilterChange: React.ChangeEventHandler<HTMLInputElement> = (e) =>
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (e) =>
     setFilter(e.target.value);
 
   const handleToggleAll = () => {

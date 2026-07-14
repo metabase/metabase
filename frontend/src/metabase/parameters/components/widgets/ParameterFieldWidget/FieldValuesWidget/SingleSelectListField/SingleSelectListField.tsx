@@ -1,3 +1,4 @@
+import type { ChangeEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -145,9 +146,7 @@ const SingleSelectListField = ({
     }
   };
 
-  const handleFilterChange: React.ChangeEventHandler<HTMLInputElement> = (
-    evt,
-  ) => {
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
     const value = evt.target.value;
     setFilter(value);
     onChange([]);

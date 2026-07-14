@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ChangeEventHandler } from "react";
 import { useMemo, useRef } from "react";
 
 import { SelectList } from "metabase/common/components/SelectList";
@@ -78,7 +79,7 @@ export const AutocompleteInput = ({
     }
   };
 
-  const handleChange: TextInputProps["onChange"] = (e) => {
+  const handleChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     onChange(e.target.value);
   };
 
