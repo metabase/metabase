@@ -25,7 +25,8 @@
 (mr/def ::affected-version
   [:map {:closed true}
    [:min ::security-center.schema/semver]
-   [:fixed ::security-center.schema/semver]])
+   [:fixed ::security-center.schema/semver]
+   [:download_jar_url {:optional true} [:maybe :string]]])
 
 (mr/def ::driver
   [:enum :default :postgres :mysql :h2])

@@ -160,6 +160,45 @@ describe("SecurityCenterPage", () => {
     expect(advisoryLink).toHaveAttribute("target", "_blank");
   });
 
+  it("renders a download link when a fix version has a download_jar_url", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        affected_versions: [
+          {
+            min: "0.58.0",
+            fixed: "0.58.11",
+            download_jar_url: "https://downloads.example.com/metabase.jar",
+          },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    const downloadLink = screen.getByText("Download 0.58.11");
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "https://downloads.example.com/metabase.jar",
+    );
+    expect(downloadLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("does not render a download link when download_jar_url is null", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        affected_versions: [
+          { min: "0.58.0", fixed: "0.58.11", download_jar_url: null },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download 0.58.11")).not.toBeInTheDocument();
+  });
+
   it("calls acknowledgeAdvisory when dismiss button is clicked", async () => {
     const advisories = [
       createAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),

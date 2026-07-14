@@ -74,9 +74,21 @@ export function AdvisoryCard({
             <Text fw={700} mb="xs">{t`Affected versions`}</Text>
             <List size="sm">
               {advisory.affected_versions.map((v) => (
-                <List.Item
-                  key={`${v.min}-${v.fixed}`}
-                >{`${v.min} - ${v.fixed}`}</List.Item>
+                <List.Item key={`${v.min}-${v.fixed}`}>
+                  <Group gap="xs">
+                    <Text span>{`${v.min} - ${v.fixed}`}</Text>
+                    {v.download_jar_url && (
+                      <Anchor
+                        href={v.download_jar_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="sm"
+                      >
+                        {t`Download ${v.fixed}`}
+                      </Anchor>
+                    )}
+                  </Group>
+                </List.Item>
               ))}
             </List>
           </Box>

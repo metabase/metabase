@@ -9,6 +9,7 @@ export type AdvisoryMatchStatus =
 export type AdvisoryVersionRange = {
   min: string;
   fixed: string;
+  download_jar_url?: string | null;
 };
 
 export type AdvisorySeverity = "critical" | "high" | "medium" | "low";

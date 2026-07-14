@@ -19,7 +19,8 @@
   "A single affected version range with inclusive min and exclusive fixed."
   [:map
    [:min   ::semver]
-   [:fixed ::semver]])
+   [:fixed ::semver]
+   [:download_jar_url {:optional true} [:maybe :string]]])
 
 (mr/def ::affected-versions
   [:sequential ::version-range])
