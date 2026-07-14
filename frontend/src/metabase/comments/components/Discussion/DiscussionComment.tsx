@@ -159,7 +159,9 @@ export function DiscussionComment({
           onEscape={editingHandler.close}
         />
         {renderExtra && (
-          <CommentExtra renderExtra={renderExtra} comment={comment} />
+          <ErrorBoundary errorComponent={() => null}>
+            <CommentExtra renderExtra={renderExtra} comment={comment} />
+          </ErrorBoundary>
         )}
 
         {comment.reactions.length > 0 && (
@@ -174,19 +176,14 @@ export function DiscussionComment({
   );
 }
 
-type CommentExtraProps = {
+// A component (rather than calling renderExtra inline) so a throwing renderer
+// is caught by the surrounding ErrorBoundary instead of crashing the comment.
+function CommentExtra({
+  renderExtra,
+  comment,
+}: {
   renderExtra: CommentExtraRenderer;
   comment: Comment;
-};
-
-function CommentExtra({ renderExtra, comment }: CommentExtraProps) {
-  return (
-    <ErrorBoundary errorComponent={() => null}>
-      <CommentExtraContent renderExtra={renderExtra} comment={comment} />
-    </ErrorBoundary>
-  );
-}
-
-function CommentExtraContent({ renderExtra, comment }: CommentExtraProps) {
+}) {
   return <>{renderExtra(comment)}</>;
 }

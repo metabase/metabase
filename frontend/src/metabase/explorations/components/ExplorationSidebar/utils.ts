@@ -127,7 +127,10 @@ export function getExplorationSidebarTree(
       ? pageThreadIds.get(thread.source_page_id)
       : undefined;
 
-  const nodeByThreadId = new Map<string, ITreeNodeItem<ExplorationTreeNode>>();
+  const nodeByThreadId = new Map<
+    ExplorationThreadId,
+    ITreeNodeItem<ExplorationTreeNode>
+  >();
   threads.forEach((thread, index) => {
     const parentThreadId = getParentThreadId(thread);
     const isFollowUp = parentThreadId != null;
@@ -158,7 +161,7 @@ export function getExplorationSidebarTree(
     ) {
       children.push(aiSummaryDocumentNode);
     }
-    nodeByThreadId.set(String(thread.id), {
+    nodeByThreadId.set(thread.id, {
       id: thread.id,
       name: getExplorationThreadName(thread, index, metricName),
       icon: "empty" as const,
@@ -180,20 +183,18 @@ export function getExplorationSidebarTree(
     });
   });
 
-  const getNestingParentId = (thread: ExplorationThread): string | null => {
+  // Drills off the initial investigation stay top-level; deeper drills nest
+  // under the thread that owns their source page.
+  const getNestingParentId = (
+    thread: ExplorationThread,
+  ): ExplorationThreadId | null => {
     const parentId = getParentThreadId(thread);
-    if (parentId == null) {
-      return null;
-    }
-    if (initialThreadId != null && parentId === initialThreadId) {
-      return null;
-    }
-    return String(parentId);
+    return parentId == null || parentId === initialThreadId ? null : parentId;
   };
 
   const topLevel: ITreeNodeItem<ExplorationTreeNode>[] = [];
   threads.forEach((thread) => {
-    const node = nodeByThreadId.get(String(thread.id));
+    const node = nodeByThreadId.get(thread.id);
     if (node == null) {
       return;
     }

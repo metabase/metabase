@@ -122,12 +122,8 @@ interface SelectedPageId {
 export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
 
 function getFirstThreadPageId(thread: ExplorationThread): string | null {
-  for (const block of thread.blocks ?? []) {
-    for (const page of block.pages ?? []) {
-      return String(page.id);
-    }
-  }
-  return null;
+  const firstPage = (thread.blocks ?? []).flatMap((block) => block.pages)[0];
+  return firstPage != null ? String(firstPage.id) : null;
 }
 
 export function ExplorationPage({

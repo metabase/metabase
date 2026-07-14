@@ -49,8 +49,8 @@ export const LegacyChoropleth = ({
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
             {geoJson.features.map((feature, index) => {
-              const highlighted = isFeatureHighlighted?.(feature);
-              const opacity = highlighted == null ? 1 : highlighted ? 1 : 0.3;
+              const opacity =
+                isFeatureHighlighted?.(feature) === false ? 0.3 : 1;
 
               return (
                 <path

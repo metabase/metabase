@@ -13,7 +13,6 @@ import {
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
-import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
@@ -21,7 +20,15 @@ import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
 } from "metabase/explorations/utils";
-import { ActionIcon, Group, Icon, Menu, Popover, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  type IconProps,
+  Menu,
+  Popover,
+  Tooltip,
+} from "metabase/ui";
 import type {
   DocumentContent,
   ExplorationId,
@@ -30,9 +37,11 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 
+import { useCopyLink } from "../../hooks/useCopyLink";
 import type { CommentDrafts } from "../../types";
 
 import S from "./ActionToolbar.module.css";
+import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
 
 const TRIAGE_TOOLTIP_OPEN_DELAY = 500;
 
@@ -135,10 +144,7 @@ export function ActionToolbar({
     }
   }, [page.hidden, page.name, setHidden, sendToast, onNextPage]);
 
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
-    sendToast({ icon: "check", message: t`Copied link` });
-  }, [sendToast]);
+  const copyLink = useCopyLink();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -191,10 +197,6 @@ export function ActionToolbar({
 
   const pageId = String(page.id);
 
-  const handleChangeCommentDraft = (content: DocumentContent) => {
-    setCommentDrafts((prev) => ({ ...prev, [pageId]: content }));
-  };
-
   const handleAddComment = async (content: DocumentContent) => {
     const { error } = await createComment({
       target_id: explorationId,
@@ -220,18 +222,11 @@ export function ActionToolbar({
 
   return (
     <Group gap="md" align="center" wrap="nowrap" className={S.toolbarRow}>
-      <Tooltip label={t`Previous`} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
-        <ActionIcon
-          className={S.triageButton}
-          aria-label={t`Previous`}
-          radius="xl"
-          size="2rem"
-          disabled={!onPreviousPage}
-          onClick={onPreviousPage}
-        >
-          <Icon name="chevronleft" />
-        </ActionIcon>
-      </Tooltip>
+      <TriageNavButton
+        label={t`Previous`}
+        icon="chevronleft"
+        onClick={onPreviousPage}
+      />
 
       <Group
         gap="xs"
@@ -314,20 +309,12 @@ export function ActionToolbar({
             />
           </Popover.Target>
           <Popover.Dropdown className={S.commentDropdown}>
-            <div
-              // prevent clicks in mention menu from closing the popover
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-            >
-              <CommentEditor
-                className={S.commentEditor}
-                placeholder={t`Add a comment…`}
-                initialContent={commentDrafts[pageId]}
-                onChange={handleChangeCommentDraft}
-                onSubmit={handleAddComment}
-                autoFocus={"end"}
-              />
-            </div>
+            <ExplorationCommentEditor
+              commentDrafts={commentDrafts}
+              setCommentDrafts={setCommentDrafts}
+              pageId={pageId}
+              onAddComment={handleAddComment}
+            />
           </Popover.Dropdown>
         </Popover>
         <Menu
@@ -352,7 +339,7 @@ export function ActionToolbar({
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="link" />}
-              onClick={handleCopyLink}
+              onClick={() => copyLink(window.location.href)}
             >
               {t`Copy link`}
             </Menu.Item>
@@ -368,18 +355,36 @@ export function ActionToolbar({
         </Menu>
       </Group>
 
-      <Tooltip label={t`Next`} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
-        <ActionIcon
-          className={S.triageButton}
-          aria-label={t`Next`}
-          radius="xl"
-          size="2rem"
-          disabled={!onNextPage}
-          onClick={onNextPage}
-        >
-          <Icon name="chevronright" />
-        </ActionIcon>
-      </Tooltip>
+      <TriageNavButton
+        label={t`Next`}
+        icon="chevronright"
+        onClick={onNextPage}
+      />
     </Group>
+  );
+}
+
+function TriageNavButton({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: IconProps["name"];
+  onClick?: () => void;
+}) {
+  return (
+    <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
+      <ActionIcon
+        className={S.triageButton}
+        aria-label={label}
+        radius="xl"
+        size="2rem"
+        disabled={!onClick}
+        onClick={onClick}
+      >
+        <Icon name={icon} />
+      </ActionIcon>
+    </Tooltip>
   );
 }

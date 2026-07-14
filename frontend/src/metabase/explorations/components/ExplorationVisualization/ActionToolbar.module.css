@@ -31,17 +31,6 @@
   box-shadow: var(--mantine-shadow-xs);
 }
 
-/*
-disable comment editor styles - we apply styles on the popover dropdown instead
-selecting the same class twice is a specificity hack to ensure the override takes effect
-*/
-/* todo: check if this used */
-.commentEditor.commentEditor {
-  border: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-
 .timelineMenuTarget {
   cursor: pointer;
   background-color: var(--mb-color-background-secondary);

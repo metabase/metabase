@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.query-plan.variants :as variants]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -121,12 +122,6 @@
           (tru "By {0} {1}" dim qualifier)
           (by-dimension dim))))))
 
-(defn- capitalize-first
-  [s]
-  (if (str/blank? s)
-    s
-    (str (str/upper-case (subs s 0 1)) (subs s 1))))
-
 (defn- block-explore-filter-value
   "For an \"Explore further\" block (its metric selections carry `:explore_filters`), the clicked
    segment values as a display string, capitalized and joined — e.g. `Texas / 2024`. Prefixed onto
@@ -134,7 +129,7 @@
   [block]
   (when-let [filters (seq (:explore_filters (first (:metrics block))))]
     (->> filters
-         (map #(capitalize-first (str (:value %))))
+         (map #(u/capitalize-first-char (str (:value %))))
          (str/join " / "))))
 
 ;;; ------------------------------------------ scoring ------------------------------------------

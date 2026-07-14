@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -231,9 +231,11 @@ function ExplorationGroupVisualizationChart({
 
       // comment context is an untyped JSON blob; `highlighted` is written by
       // us as a HighlightedObject when the comment captures a chart point
-      const highlighted = context?.highlighted as HighlightedObject | undefined;
+      const commentHighlight = context?.highlighted as
+        | HighlightedObject
+        | undefined;
       const commentLabel = getCommentLabel(
-        highlighted,
+        commentHighlight,
         seriesGroup,
         computedSettings,
       );
@@ -259,8 +261,8 @@ function ExplorationGroupVisualizationChart({
               iconName="filter"
               buttonProps={{
                 onMouseEnter: () => {
-                  if (highlighted) {
-                    setHighlighted(highlighted);
+                  if (commentHighlight) {
+                    setHighlighted(commentHighlight);
                   }
                 },
                 onMouseLeave: () => setHighlighted(null),
@@ -521,10 +523,9 @@ export function ExplorationVisualization({
   highlighted,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Box w="100%" h="100%" pos="relative" ref={containerRef}>
+    <Box w="100%" h="100%" pos="relative">
       <Warnings warnings={warnings} className={S.warnings} size={18} />
       <Visualization
         rawSeries={rawSeries}
@@ -582,7 +583,7 @@ function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
       {...buttonProps}
     >
       <Group gap={4} wrap="nowrap">
-        <Icon name={iconName} size={12} />
+        <Icon name={iconName} size={12} aria-hidden />
         {label}
       </Group>
     </UnstyledButton>

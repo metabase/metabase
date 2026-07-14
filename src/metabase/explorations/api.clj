@@ -272,9 +272,8 @@
   (let [v (some-> value str str/trim)]
     (if (str/blank? v)
       card-name
-      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")
-            head (str (str/upper-case (subs v 0 1)) (subs v 1))]
-        (str/trim (str head " " noun))))))
+      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")]
+        (str/trim (str (u/capitalize-first-char v) " " noun))))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
@@ -587,6 +586,33 @@
                                {:object updated :user-id api/*current-user-id*})
         (hydrate-exploration updated)))))
 
+(defn- insert-explore-further-thread!
+  "Copy the drilled page's `block` into a brand-new thread on exploration `id`; `metrics` is the
+  block's metric selections with the explore filters already appended. Returns the new thread's id."
+  [id {:keys [page-id block card-name filter-value metrics timeline-ids coll-id]}]
+  (let [next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
+                                                 :exploration_id id
+                                                 {:order-by [[:position :desc] [:id :desc]]})
+                               0))
+        thread        (first (t2/insert-returning-instances!
+                              :model/ExplorationThread
+                              {:exploration_id id
+                               :name           (explore-further-thread-name card-name filter-value)
+                               :position       next-position
+                               :source_page_id page-id}))
+        tid           (:id thread)]
+    (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
+    (t2/insert! :model/ExplorationBlock
+                {:exploration_thread_id tid
+                 :type                  (:type block)
+                 :metrics               metrics
+                 :dimensions            (stringify-dim-types (:dimensions block))
+                 :position              0})
+    (insert-thread-timelines! tid timeline-ids)
+    ;; Stamp `started_at` last — it's the signal the planning worker claims on.
+    (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+    tid))
+
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
 
@@ -601,45 +627,28 @@
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
-    (let [page          (api/check-404 (t2/select-one :model/ExplorationPage :id page_id))
-          block         (api/check-404 (t2/select-one :model/ExplorationBlock
-                                                      :id (:exploration_block_id page)))
-          src-thread-id (:exploration_thread_id block)
-          card-id       (:card_id (first (:metrics block)))
-          card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
-          filter-value  (:value (last explore_filters))
-          metrics'      (mapv #(update % :explore_filters (fnil into []) explore_filters)
-                              (:metrics block))
-          timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
-                                          :exploration_thread_id src-thread-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
-          next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
-                                                   :exploration_id id
-                                                   {:order-by [[:position :desc] [:id :desc]]})
-                                 0))
-          coll-id       (:collection_id exploration)]
+    (let [page         (api/check-404 (t2/select-one :model/ExplorationPage :id page_id))
+          block        (api/check-404 (t2/select-one :model/ExplorationBlock
+                                                     :id (:exploration_block_id page)))
+          card-id      (:card_id (first (:metrics block)))
+          timeline-ids (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
+                                         :exploration_thread_id (:exploration_thread_id block)
+                                         {:order-by [[:position :asc] [:id :asc]]})]
       (t2/with-transaction [_]
-        (let [thread (first (t2/insert-returning-instances!
-                             :model/ExplorationThread
-                             {:exploration_id id
-                              :name           (explore-further-thread-name card-name filter-value)
-                              :position       next-position
-                              :source_page_id page_id}))
-              tid    (:id thread)]
-          (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
-          (t2/insert! :model/ExplorationBlock
-                      {:exploration_thread_id tid
-                       :type                  (:type block)
-                       :metrics               metrics'
-                       :dimensions            (stringify-dim-types (:dimensions block))
-                       :position              0})
-          (insert-thread-timelines! tid timeline-ids)
-          ;; Stamp `started_at` last — it's the signal the planning worker claims on.
-          (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
-          (let [persisted (t2/select-one :model/Exploration :id id)]
-            (events/publish-event! :event/exploration-update
-                                   {:object persisted :user-id api/*current-user-id*})
-            (hydrate-exploration persisted)))))))
+        (insert-explore-further-thread!
+         id
+         {:page-id      page_id
+          :block        block
+          :card-name    (when card-id (t2/select-one-fn :name :model/Card :id card-id))
+          :filter-value (:value (last explore_filters))
+          :metrics      (mapv #(update % :explore_filters (fnil into []) explore_filters)
+                              (:metrics block))
+          :timeline-ids timeline-ids
+          :coll-id      (:collection_id exploration)})
+        (let [persisted (t2/select-one :model/Exploration :id id)]
+          (events/publish-event! :event/exploration-update
+                                 {:object persisted :user-id api/*current-user-id*})
+          (hydrate-exploration persisted))))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
   "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.

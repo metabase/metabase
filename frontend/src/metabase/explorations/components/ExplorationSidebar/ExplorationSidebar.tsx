@@ -50,6 +50,7 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { useCopyLink } from "../../hooks/useCopyLink";
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
@@ -245,12 +246,8 @@ export function ExplorationSidebar({
     ],
   );
 
-  const isEmptyDueToHidden = useMemo(() => {
-    if (showHidden || (tree[0]?.children?.length || 0) > 0) {
-      return false;
-    }
-    return (tree[0]?.children?.length || 0) === 0;
-  }, [showHidden, tree]);
+  const isEmptyDueToHidden =
+    !showHidden && tree.every((node) => !node.children?.length);
 
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
@@ -334,6 +331,11 @@ function NewContentDot() {
   );
 }
 
+const TAB_ICON: Partial<Record<ExplorationSidebarTab, IconProps["name"]>> = {
+  stars: "star_filled",
+  discussions: "comment",
+};
+
 function SidebarTabLabel({
   tab,
   label,
@@ -343,24 +345,16 @@ function SidebarTabLabel({
   label: string;
   hasNewContent: boolean;
 }) {
-  let content: React.ReactNode = label;
-  if (tab === "stars") {
-    content = (
-      <Tooltip label={t`Stars`}>
-        <Center component="span" aria-label={t`Stars`}>
-          <Icon name="star_filled" />
-        </Center>
-      </Tooltip>
-    );
-  } else if (tab === "discussions") {
-    content = (
-      <Tooltip label={t`Discussions`}>
-        <Center component="span" aria-label={t`Discussions`}>
-          <Icon name="comment" />
-        </Center>
-      </Tooltip>
-    );
-  }
+  const iconName = TAB_ICON[tab];
+  const content: React.ReactNode = iconName ? (
+    <Tooltip label={label}>
+      <Center component="span" aria-label={label}>
+        <Icon name={iconName} />
+      </Center>
+    </Tooltip>
+  ) : (
+    label
+  );
 
   if (!hasNewContent) {
     return content;
@@ -562,6 +556,7 @@ function ExplorationGroupMenu({
   const [restartExploration] = useRestartExplorationMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
   const [sendToast] = useToast();
+  const copyLink = useCopyLink();
 
   const groupName = item.name;
   const itemPageIds = item.data?.pageIds;
@@ -604,10 +599,8 @@ function ExplorationGroupMenu({
     if (entity == null) {
       return;
     }
-    const url = getSelectedEntityIdUrl(entity);
-    navigator.clipboard.writeText(`${window.location.origin}${url}`);
-    sendToast({ icon: "check", message: t`Copied link` });
-  }, [item.children, getSelectedEntityIdUrl, sendToast]);
+    copyLink(`${window.location.origin}${getSelectedEntityIdUrl(entity)}`);
+  }, [item.children, getSelectedEntityIdUrl, copyLink]);
 
   const handleCancelThread = useCallback(
     async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
