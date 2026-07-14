@@ -15,7 +15,7 @@ export const DataAppStatusBadge = ({ app }: Props) => {
   return (
     <Badge
       size="md"
-      color="text-primary"
+      c="text-secondary"
       bg="background-secondary"
       bdrs="sm"
       tt="none"
