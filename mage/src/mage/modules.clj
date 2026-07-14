@@ -323,6 +323,84 @@
         (shell/sh* "clojure" "-X:dev" "dev.deps-graph/print-expanded-kondo-config")]
     (u/exit exit)))
 
+;;;; =============================================================================
+;;;; Module tree
+;;;; =============================================================================
+
+(defn- module->tree-path
+  "Path segments a module occupies in the display tree. The `enterprise/` prefix nests as a trailing
+  segment — `enterprise/transforms` sits under `transforms` as `transforms.enterprise` — so enterprise
+  extensions group with the module they extend."
+  [module]
+  (cond-> (str/split (name module) #"\.")
+    (= (namespace module) "enterprise") (conj "enterprise")))
+
+(defn- explicit-ns-prefix
+  "The module's `:ns-prefix` when it differs from the default derived from the module name, i.e. when the
+  namespaces have not (yet) been physically moved to match the module name. The implicit
+  `metabase-enterprise.` prefix of `enterprise/` modules is canonical and does not count."
+  [modules-config module]
+  (let [prefix (get-in modules-config [module :ns-prefix])]
+    (when (and prefix (not= prefix (default-ns-prefix-for module)))
+      prefix)))
+
+(defn- module-display-tree
+  "Nest all module names into `{:children {segment {:module sym, :children {...}}}}`. Intermediate nodes
+  that are not themselves modules have no `:module`."
+  [modules-config]
+  (reduce (fn [tree module]
+            (update-in tree
+                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path module))
+                       assoc :module module))
+          {}
+          (keys modules-config)))
+
+(defn- sorted-children
+  "Child entries of a tree node, alphabetical except `enterprise` always sorts last among its siblings."
+  [node]
+  (sort-by (fn [[segment _]] [(if (= segment "enterprise") 1 0) segment])
+           (:children node)))
+
+(defn- tree-node-lines
+  "Render a tree node and its descendants as display lines. Depth 1 gets `- `, each further level one
+  more dash. Nodes that only group children (not modules themselves) print dark; a yellow `*`
+  marks modules whose namespaces still live at an explicit `:ns-prefix`, shown when `show-prefixes?`."
+  [modules-config show-prefixes? path node]
+  (let [depth   (dec (count path))
+        module  (:module node)
+        display (str/join "." path)
+        line    (str (when (pos? depth)
+                       (str (apply str (repeat depth "-")) " "))
+                     (if module display (c/dark display))
+                     (when-let [prefix (and module (explicit-ns-prefix modules-config module))]
+                       (str " " (c/yellow "*")
+                            (when show-prefixes?
+                              (str " " (c/dark (str "(" prefix ")")))))))]
+    (into [line]
+          (mapcat (fn [[segment child]]
+                    (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
+          (sorted-children node))))
+
+(defn cli-print-module-tree
+  "Print the module hierarchy as an indented tree, with enterprise extensions nested under the module
+  they extend and ns-prefixed (not yet moved) modules starred."
+  [{:keys [options] :as _parsed}]
+  (let [modules-config (read-modules-config)
+        tree           (module-display-tree modules-config)
+        roots          (cond->> (sorted-children tree)
+                         (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
+        starred        (count (keep #(explicit-ns-prefix modules-config %) (keys modules-config)))]
+    (doseq [[segment node] roots
+            line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
+      (println line))
+    (println)
+    (println (c/dark (str (count modules-config) " modules, "
+                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                          " enterprise"
+                          (when (pos? starred)
+                            (str ", " starred " ns-prefixed (* = namespaces not moved to match the module name)")))))
+    (u/exit 0)))
+
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
   `deps.edn`."

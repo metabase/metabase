@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [mage.color]
    [mage.modules]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
@@ -469,6 +470,41 @@
                                                #{})]
       (is (true? (:should-run result)))
       (is (= "master/release branch" (:reason result))))))
+
+(deftest module-tree-lines-test
+  (let [config '{lib                  {}
+                 lib.be               {:ns-prefix "metabase.lib-be"}
+                 transforms           {}
+                 transforms.base      {:ns-prefix "metabase.transforms-base"}
+                 transforms.base.deep {}
+                 transforms.python    {:ns-prefix "metabase.transforms-python"}
+                 enterprise/transforms {}
+                 enterprise/billing   {}}
+        tree   (#'mage.modules/module-display-tree config)
+        lines  (binding [mage.color/*disable-colors* true]
+                 (into []
+                       (mapcat (fn [[segment node]]
+                                 (#'mage.modules/tree-node-lines config false [segment] node)))
+                       (#'mage.modules/sorted-children tree)))]
+    (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
+      (is (= ["billing"
+              "- billing.enterprise"
+              "lib"
+              "- lib.be *"
+              "transforms"
+              "- transforms.base *"
+              "-- transforms.base.deep"
+              "- transforms.python *"
+              "- transforms.enterprise"]
+             lines)))))
+
+(deftest module-tree-enterprise-default-prefix-not-starred-test
+  (testing "the implicit metabase-enterprise. prefix is canonical, and so is an explicit :ns-prefix equal to the default"
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {}} 'enterprise/billing)))
+    (is (nil? (#'mage.modules/explicit-ns-prefix '{enterprise/billing {:ns-prefix "metabase-enterprise.billing"}}
+                                                 'enterprise/billing)))
+    (is (= "metabase.lib-be"
+           (#'mage.modules/explicit-ns-prefix '{lib.be {:ns-prefix "metabase.lib-be"}} 'lib.be)))))
 
 (deftest dotted-module-exact-test-files-mark-correct-module-changes
   (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
