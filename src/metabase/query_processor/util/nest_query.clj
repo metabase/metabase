@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -91,7 +92,10 @@
                     lib/update-keys-for-col-from-previous-stage
                     (lib/with-binning (lib/binning col))
                     (lib/with-temporal-bucket (lib/raw-temporal-bucket col))
-                    lib/ref)))]
+                    lib/ref
+                    ;; Preserve the pre-nest ref's `:lib/uuid`. Downstream systems (notably the SQL-MBQL5 pivot
+                    ;; compiler's `:pivot :rows`/`:columns` uuid lookups) track refs by uuid.
+                    (lib.options/update-options assoc :lib/uuid (lib.options/uuid a-ref)))))]
       ;; temporarily disable enforcement since this stage will be invalid while we're messing with it... it will look
       ;; pretty nice when we're done tho.
       (binding [lib.schema/*HACK-disable-ref-validation* true]
