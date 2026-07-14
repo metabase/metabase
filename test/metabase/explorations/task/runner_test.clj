@@ -11,7 +11,7 @@
    [metabase.metabot.scope]
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -303,7 +303,7 @@
 
 (defn- store-fake-result!
   [query-id qp-result]
-  (let [bytes (cache.impl/do-with-serialization
+  (let [bytes (qp/do-with-serialization
                (fn [in result-fn]
                  (in qp-result)
                  (result-fn)))

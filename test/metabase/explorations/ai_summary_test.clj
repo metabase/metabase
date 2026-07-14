@@ -17,7 +17,7 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,6 +69,33 @@
                        ":something-else")
         "Unknown phases fall back to (str phase)")))
 
+;;; ---------------------------------------------- resizeNode wrapping ----------------------------------------------
+
+(deftest wrap-card-embeds-in-resize-nodes-test
+  (let [wrap    #'ai-summary/wrap-card-embeds-in-resize-nodes
+        embed   (fn [sr-id] {:type "cardEmbed" :attrs {:stored_result_id sr-id}})
+        wrapped (fn [sr-id] {:type "resizeNode" :attrs {:height 400} :content [(embed sr-id)]})]
+    (testing "top-level cardEmbeds get wrapped in a resizeNode"
+      (is (= {:type "doc" :content [(wrapped 1)]}
+             (wrap {:type "doc" :content [(embed 1)]}))))
+    (testing "nested cardEmbeds (e.g. inside a blockquote) get wrapped too"
+      (is (= {:type    "doc"
+              :content [{:type    "blockquote"
+                         :content [{:type "paragraph" :content [{:type "text" :text "quote"}]}
+                                   (wrapped 2)]}
+                        (wrapped 3)]}
+             (wrap {:type    "doc"
+                    :content [{:type    "blockquote"
+                               :content [{:type "paragraph" :content [{:type "text" :text "quote"}]}
+                                         (embed 2)]}
+                              (embed 3)]}))))
+    (testing "an already-wrapped cardEmbed is not double-wrapped"
+      (is (= {:type "doc" :content [(wrapped 4)]}
+             (wrap {:type "doc" :content [(wrapped 4)]}))))
+    (testing "docs without embeds pass through unchanged"
+      (let [doc {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "hi"}]}]}]
+        (is (= doc (wrap doc)))))))
+
 ;;; ----------------------------------------- _id attributes (comment targets) -----------------------------------------
 
 (defn- every-commentable-node-has-id?
@@ -111,7 +138,7 @@
    :row_count 5})
 
 (defn- serialize-result [qp-result]
-  (cache.impl/do-with-serialization
+  (qp/do-with-serialization
    (fn [in result-fn] (in qp-result) (result-fn))))
 
 ;; ----- skip-no-permission / skip-usage-limit (UXW-4126) -----
