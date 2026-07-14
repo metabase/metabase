@@ -3,7 +3,7 @@
 /* eslint-disable import/order */
 const fs = require("fs");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawn } = require("child_process");
 const glob = require("glob");
 
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
@@ -144,7 +144,7 @@ const removeUnresolvedReexports = (filePath) => {
   }
 };
 
-const fixupTypesAfterCompilation = ({ isWatchMode }) => {
+const fixupTypesAfterCompilation = async ({ isWatchMode }) => {
   log("Fixing SDK d.ts files...");
 
   const dtsFilePaths = glob.sync(`${SDK_DIST_DIR_PATH}/**/*.d.ts`);
@@ -157,11 +157,11 @@ const fixupTypesAfterCompilation = ({ isWatchMode }) => {
   console.log("[dts fixup] Done!");
 
   if (!isWatchMode) {
-    generateDtsRollup();
+    await generateDtsRollup();
   }
 };
 
-const generateDtsRollup = () => {
+const generateDtsRollup = async () => {
   // Dts rollup logger
   const { log, error } = getLogger("dts rollup");
 
@@ -192,33 +192,54 @@ const generateDtsRollup = () => {
 
   let hasExtractorFailure = false;
 
-  for (const { configPath, entryPointPath, name } of DTS_ROLLUPS) {
-    const resolvedEntryPointPath = path.resolve(entryPointPath);
-    if (!fs.existsSync(resolvedEntryPointPath)) {
-      error(
-        `Dts rollup entry point for ${name} does not exist: ${resolvedEntryPointPath}`,
+  // The extractors are independent (each reads the shared compiled d.ts tree
+  // and writes its own rollup), so run them concurrently. Output is buffered
+  // per extractor and printed on completion so parallel runs don't interleave.
+  const runApiExtractor = ({ configPath, name }) =>
+    new Promise((resolve) => {
+      const child = spawn(
+        process.execPath,
+        [
+          API_EXTRACTOR_BIN_PATH,
+          "run",
+          "--local",
+          "--verbose",
+          "--config",
+          path.resolve(configPath),
+        ],
+        { stdio: ["ignore", "pipe", "pipe"] },
       );
-      hasExtractorFailure = true;
-      continue;
-    }
 
-    const extractorResult = spawnSync(process.execPath, [
-      API_EXTRACTOR_BIN_PATH,
-      "run",
-      "--local",
-      "--verbose",
-      "--config",
-      path.resolve(configPath),
-    ], {
-      stdio: "inherit",
+      let output = "";
+      child.stdout.on("data", (chunk) => (output += chunk));
+      child.stderr.on("data", (chunk) => (output += chunk));
+      child.on("close", (status, signal) =>
+        resolve({ name, status, signal, output }),
+      );
     });
 
-    if (extractorResult.status !== 0 || extractorResult.signal) {
+  const results = await Promise.all(
+    DTS_ROLLUPS.filter(({ entryPointPath, name }) => {
+      if (fs.existsSync(path.resolve(entryPointPath))) {
+        return true;
+      }
+
+      error(
+        `Dts rollup entry point for ${name} does not exist: ${path.resolve(entryPointPath)}`,
+      );
+      hasExtractorFailure = true;
+      return false;
+    }).map(runApiExtractor),
+  );
+
+  for (const { name, status, signal, output } of results) {
+    log(`--- api-extractor: ${name} ---`);
+    process.stdout.write(output);
+
+    if (status !== 0 || signal) {
       error(
         `API Extractor failed for ${name}` +
-          (extractorResult.signal
-            ? ` with signal ${extractorResult.signal}`
-            : ""),
+          (signal ? ` with signal ${signal}` : ""),
       );
       hasExtractorFailure = true;
     }
@@ -285,7 +306,7 @@ const isWatchMode = process.argv.includes("--watch");
 const run = async () => {
   // when running on a clean state and with --watch, the folder might not exist yet
   await waitForFolder(SDK_DIST_DIR_PATH);
-  fixupTypesAfterCompilation({ isWatchMode });
+  await fixupTypesAfterCompilation({ isWatchMode });
 
   if (isWatchMode) {
     console.log("\n\n\n");
