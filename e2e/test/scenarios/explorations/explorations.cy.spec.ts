@@ -38,6 +38,9 @@ const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
 function seedMetrics() {
   for (const metric of [ORDERS_COUNT_METRIC, ORDERS_TIMESERIES_METRIC]) {
     H.createQuestion(metric).then(({ body }) => {
+      // The response is unused, but `GET /api/metric/:id` calls
+      // `sync-dimensions!` server-side, persisting the metric's dimensions
+      // and dimension_mappings — which `/api/exploration/dimensions` needs.
       cy.request("GET", `/api/metric/${body.id}`);
     });
   }
@@ -422,23 +425,28 @@ describe("scenarios > explorations > detail page", () => {
 
       selectedRows().should("have.length.at.least", 1);
 
-      const readSelectedText = () =>
-        selectedRows()
-          .first()
-          .invoke("text")
-          .then((s: string) => s.trim());
+      // `findAllByRole` → `filter` → `first` → `invoke` are all Cypress
+      // queries, so a `.should` chained onto this re-runs the whole lookup
+      // until the assertion passes. Trimming happens inside the `.should`
+      // callbacks below — a `.then` here would freeze the subject and break
+      // retryability.
+      const selectedText = () => selectedRows().first().invoke("text");
 
-      readSelectedText().then((initialText) => {
-        cy.wrap(initialText).as("initialText");
+      selectedText().then((initial: string) => {
+        const initialText = initial.trim();
 
         // The keyboard handler attaches to `window` (see
         // `ExplorationSidebar.tsx`), so we fire the event on the
         // body.
         cy.get("body").type("{rightarrow}");
-        readSelectedText().should("not.eq", initialText);
+        selectedText().should((text: string) => {
+          expect(text.trim()).not.to.eq(initialText);
+        });
 
         cy.get("body").type("{leftarrow}");
-        readSelectedText().should("eq", initialText);
+        selectedText().should((text: string) => {
+          expect(text.trim()).to.eq(initialText);
+        });
 
         // ArrowRight onto the next page, ArrowLeft back onto the
         // initial one — and `expectUnstructuredSnowplowEvent` asserts
@@ -828,11 +836,10 @@ describe("scenarios > explorations > collection placement + archive", () => {
             expect(response?.statusCode).to.eq(200);
           });
 
-          // After archive, the row disappears from the active
-          // listing in the personal collection.
-          cy.findByText("This collection is empty")
-            .findByText(explorationName)
-            .should("not.exist");
+          // After archive, the collection shows its empty state and
+          // the exploration row is gone from the page.
+          cy.findByText("This collection is empty").should("be.visible");
+          cy.findByText(explorationName).should("not.exist");
 
           // BE state agrees: a subsequent GET reports
           // `archived: true`.
