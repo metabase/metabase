@@ -1,4 +1,4 @@
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -15,9 +15,9 @@ type setupOpts = {
 
 const renderBrowseDatabases = (modelCount: number, config?: setupOpts) => {
   const databases = mockDatabases.slice(0, modelCount);
-  setupDatabasesEndpoints(databases);
+  setupDatabaseListEndpoint(databases);
 
-  const user = createMockUser({ is_superuser: config?.isAdmin });
+  const user = createMockUser({ is_superuser: config?.isAdmin ?? false });
   const state = createMockState({ currentUser: user });
   return renderWithProviders(<BrowseDatabases />, { storeInitialState: state });
 };
@@ -41,31 +41,18 @@ describe("BrowseDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  describe("Add database card", () => {
-    it("should not render for regular users", async () => {
-      const modelCount = 2;
+  it("shows Add data in the header for admins", async () => {
+    renderBrowseDatabases(2, { isAdmin: true });
+    await waitForLoaderToBeRemoved();
 
-      renderBrowseDatabases(modelCount, { isAdmin: false });
-      await waitForLoaderToBeRemoved();
+    expect(await screen.findByText("Add data")).toBeInTheDocument();
+    expect(screen.queryByText("Add a database")).not.toBeInTheDocument();
+  });
 
-      for (let i = 0; i < modelCount; i++) {
-        expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
-      }
-      expect(screen.queryByText("Add a database")).not.toBeInTheDocument();
-    });
+  it("does not show Add data in the header for regular users", async () => {
+    renderBrowseDatabases(2, { isAdmin: false });
+    await waitForLoaderToBeRemoved();
 
-    it("should render for admins", async () => {
-      renderBrowseDatabases(2, { isAdmin: true });
-      await waitForLoaderToBeRemoved();
-
-      expect(screen.getByText("Add a database")).toBeInTheDocument();
-    });
-
-    it("should render when no databases exist", async () => {
-      renderBrowseDatabases(0, { isAdmin: true });
-      await waitForLoaderToBeRemoved();
-
-      expect(screen.getByText("Add a database")).toBeInTheDocument();
-    });
+    expect(screen.queryByText("Add data")).not.toBeInTheDocument();
   });
 });

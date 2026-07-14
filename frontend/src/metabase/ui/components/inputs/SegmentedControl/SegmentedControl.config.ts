@@ -1,8 +1,6 @@
 import {
-  type MantineTheme,
   type MantineThemeOverride,
   SegmentedControl,
-  type SegmentedControlProps,
   rem,
 } from "@mantine/core";
 
@@ -12,15 +10,17 @@ export const segmentedControlOverrides: MantineThemeOverride["components"] = {
   SegmentedControl: SegmentedControl.extend({
     defaultProps: {
       size: "md",
-      radius: rem(4),
+      radius: rem(10),
+      withItemsBorders: false,
     },
     classNames: {
       root: S.SegmentedControl,
       label: S.SegmentedControlLabel,
       control: S.SegmentedControl_Control,
       input: S.SegmentedControlInput,
+      indicator: S.SegmentedControlIndicator,
     },
-    vars: (theme, props) => ({
+    vars: (_theme, props) => ({
       root: {
         "--sc-active-text-color": props.c ?? "var(--mb-color-text-primary)",
         "--sc-background-color":
@@ -28,28 +28,13 @@ export const segmentedControlOverrides: MantineThemeOverride["components"] = {
         ...(!props.color && {
           "--sc-color": "var(--mb-color-background_page-primary)",
         }),
-        "--sc-padding": getPadding(theme, props),
-        "--sc-font-size": theme.fontSizes.md,
+        // Figma: label padding 4px 12px, medium 14/16
+        "--sc-padding": `${rem(4)} ${rem(12)}`,
+        "--sc-font-size": rem(14),
+        // Figma Elevation/Light/xs_outline
+        "--sc-shadow":
+          "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
       },
     }),
   }),
 };
-
-function getPadding(
-  theme: MantineTheme,
-  { fullWidth, size }: SegmentedControlProps,
-): string {
-  if (fullWidth) {
-    if (size === "sm") {
-      return `${theme.spacing.xs} ${theme.spacing.sm}`;
-    }
-
-    return `${theme.spacing.sm} ${theme.spacing.md}`;
-  }
-
-  if (size === "sm") {
-    return theme.spacing.xs;
-  }
-
-  return theme.spacing.sm;
-}

@@ -7,6 +7,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
@@ -60,6 +61,16 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     ],
     [isNavbarOpened],
   );
+
+  // The prototype nav provides Data Studio navigation (Library + Data
+  // sections), so Data Studio's own left nav is suppressed.
+  if (PROTO_NAV_ENABLED) {
+    return (
+      <Box h="100%" w="100%" miw={0}>
+        {children}
+      </Box>
+    );
+  }
 
   return isLoadingNavbarKey ? (
     <Center h="100%">

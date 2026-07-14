@@ -88,15 +88,15 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
 
   const handleExpandedChange = useCallback(
     (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
-      const newValue =
-        typeof updater === "function" ? updater(expanded) : updater;
       if (onExpandedChange) {
-        onExpandedChange(newValue);
+        // Forward the updater so controlled callers can apply it with setState
+        // without this callback changing identity on every expanded change.
+        onExpandedChange(updater);
       } else {
-        setInternalExpanded(newValue);
+        setInternalExpanded(updater);
       }
     },
-    [expanded, onExpandedChange],
+    [onExpandedChange],
   );
 
   useEffect(() => {

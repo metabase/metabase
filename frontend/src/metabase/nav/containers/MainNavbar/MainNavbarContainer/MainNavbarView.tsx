@@ -5,10 +5,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
+  isInstanceAnalyticsCollection,
   isLibraryCollection,
+  isRootCollection,
+  isRootPersonalCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
@@ -17,6 +21,12 @@ import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import PN from "metabase/nav/containers/ProtoNavbar/ProtoNavbar.module.css";
+import {
+  SubNavHeading,
+  SubNavSection,
+} from "metabase/nav/containers/ProtoNavbar/SubNav";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -137,9 +147,23 @@ export function MainNavbarView({
       const examplesCollection = collections.find(isExamplesCollection);
 
       const regularCollections = collections.filter((c) => {
-        const isNormalCollection =
-          !isRootTrashCollection(c) && !isExamplesCollection(c);
-        return isNormalCollection && !isLibraryCollection(c);
+        if (isRootTrashCollection(c) || isLibraryCollection(c)) {
+          return false;
+        }
+        // Usage analytics moves to the Monitor section in the prototype nav.
+        if (PROTO_NAV_ENABLED && isInstanceAnalyticsCollection(c)) {
+          return false;
+        }
+        // The personal collection is hidden from the prototype collections tree.
+        if (PROTO_NAV_ENABLED && isRootPersonalCollection(c)) {
+          return false;
+        }
+        // Examples lives under Our analytics in proto nav; legacy nav shows it
+        // in Getting Started instead.
+        if (!PROTO_NAV_ENABLED && isExamplesCollection(c)) {
+          return false;
+        }
+        return true;
       });
 
       const collectionsByCategory = {
@@ -172,26 +196,106 @@ export function MainNavbarView({
 
   const showOtherUsersCollections = useShowOtherUsersCollections();
 
+  const {
+    protoCollectionsTree,
+    protoInitialExpandedIds,
+    protoPinnedExpandedIds,
+  } = useMemo(() => {
+    if (!PROTO_NAV_ENABLED) {
+      return {
+        protoCollectionsTree: regularCollections,
+        protoInitialExpandedIds: undefined,
+        protoPinnedExpandedIds: undefined,
+      };
+    }
+
+    const root = regularCollections.find(isRootCollection);
+    const children = regularCollections.filter(
+      (collection) => !isRootCollection(collection),
+    );
+
+    if (!root) {
+      return {
+        protoCollectionsTree: regularCollections,
+        protoInitialExpandedIds: undefined,
+        protoPinnedExpandedIds: undefined,
+      };
+    }
+
+    const rootId = root.id ?? ROOT_COLLECTION.id;
+
+    return {
+      protoCollectionsTree: [{ ...root, id: rootId, children }],
+      protoInitialExpandedIds: [rootId],
+      protoPinnedExpandedIds: [rootId],
+    };
+  }, [regularCollections]);
+
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`
     : t`Collections`;
+
+  // The drilled-in section's back header already names this section, so the
+  // heading is only rendered when tenants split it into "Internal Collections".
+  const protoCollectionsBlock = (
+    <SubNavSection>
+      <ErrorBoundary>
+        <div className={PN.collectionsBlock}>
+          {showExternalCollectionsSection && (
+            <div className={PN.collectionsHeadingRow}>
+              <SubNavHeading>{t`Internal Collections`}</SubNavHeading>
+            </div>
+          )}
+          {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+            <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+              collections={protoCollectionsTree}
+              selectedId={collectionItem?.id}
+              onSelect={onItemSelect}
+              initialExpandedIds={protoInitialExpandedIds}
+              pinnedExpandedIds={protoPinnedExpandedIds}
+            />
+          ) : (
+            <Tree
+              data={protoCollectionsTree}
+              selectedId={collectionItem?.id}
+              initialExpandedIds={protoInitialExpandedIds}
+              pinnedExpandedIds={protoPinnedExpandedIds}
+              onSelect={onItemSelect}
+              TreeNode={SidebarCollectionLink}
+              role="tree"
+              aria-label="collection-tree"
+            />
+          )}
+          {showOtherUsersCollections && (
+            <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
+              {t`Other users' personal collections`}
+            </PaddedSidebarLink>
+          )}
+        </div>
+      </ErrorBoundary>
+    </SubNavSection>
+  );
 
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
-          <SidebarSection>
-            <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
-              onClick={handleHomeClick}
-              url="/"
-            >
-              {t`Home`}
-            </PaddedSidebarLink>
-          </SidebarSection>
+          {PROTO_NAV_ENABLED && protoCollectionsBlock}
 
-          {shouldDisplayGettingStarted && (
+          {!PROTO_NAV_ENABLED && (
+            <SidebarSection>
+              <PaddedSidebarLink
+                isSelected={nonEntityItem?.url === "/"}
+                icon="home"
+                onClick={handleHomeClick}
+                url="/"
+              >
+                {t`Home`}
+              </PaddedSidebarLink>
+            </SidebarSection>
+          )}
+
+          {!PROTO_NAV_ENABLED && shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>
                 <GettingStartedSection
@@ -242,79 +346,85 @@ export function MainNavbarView({
             />
           )}
 
-          <NavbarLibrarySection
-            collections={collections}
-            selectedId={collectionItem?.id}
-            onItemSelect={onItemSelect}
-          />
+          {!PROTO_NAV_ENABLED && (
+            <NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <CollapseSection
-                header={<SidebarHeading>{collectionsHeading}</SidebarHeading>}
-                initialState={expandCollections ? "expanded" : "collapsed"}
-                iconPosition="right"
-                iconSize={8}
-                onToggle={setExpandCollections}
-                rightAction={
-                  canWriteToCollections && !isTenantUser ? (
-                    <Tooltip label={t`Create a new collection`}>
-                      <ActionIcon
-                        aria-label={t`Create a new collection`}
-                        color="text-secondary"
-                        onClick={() => {
-                          trackNewCollectionFromNavInitiated();
-                          handleCreateNewCollection();
-                        }}
-                      >
-                        <Icon name="add" />
-                      </ActionIcon>
-                    </Tooltip>
-                  ) : null
-                }
-                role="section"
-                aria-label={t`Collections`}
-              >
-                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                    collections={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                  />
-                ) : (
-                  <Tree
-                    data={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                    TreeNode={SidebarCollectionLink}
-                    role="tree"
-                    aria-label="collection-tree"
-                  />
-                )}
-                {showOtherUsersCollections && (
-                  <PaddedSidebarLink
-                    icon="group"
-                    url={OTHER_USERS_COLLECTIONS_URL}
-                  >
-                    {t`Other users' personal collections`}
-                  </PaddedSidebarLink>
-                )}
-              </CollapseSection>
-            </ErrorBoundary>
-          </SidebarSection>
+          {!PROTO_NAV_ENABLED && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <CollapseSection
+                  header={<SidebarHeading>{collectionsHeading}</SidebarHeading>}
+                  initialState={expandCollections ? "expanded" : "collapsed"}
+                  iconPosition="right"
+                  iconSize={8}
+                  onToggle={setExpandCollections}
+                  rightAction={
+                    canWriteToCollections && !isTenantUser ? (
+                      <Tooltip label={t`Create a new collection`}>
+                        <ActionIcon
+                          aria-label={t`Create a new collection`}
+                          color="text-secondary"
+                          onClick={() => {
+                            trackNewCollectionFromNavInitiated();
+                            handleCreateNewCollection();
+                          }}
+                        >
+                          <Icon name="add" />
+                        </ActionIcon>
+                      </Tooltip>
+                    ) : null
+                  }
+                  role="section"
+                  aria-label={t`Collections`}
+                >
+                  {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+                    <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+                      collections={regularCollections}
+                      selectedId={collectionItem?.id}
+                      onSelect={onItemSelect}
+                    />
+                  ) : (
+                    <Tree
+                      data={regularCollections}
+                      selectedId={collectionItem?.id}
+                      onSelect={onItemSelect}
+                      TreeNode={SidebarCollectionLink}
+                      role="tree"
+                      aria-label="collection-tree"
+                    />
+                  )}
+                  {showOtherUsersCollections && (
+                    <PaddedSidebarLink
+                      icon="group"
+                      url={OTHER_USERS_COLLECTIONS_URL}
+                    >
+                      {t`Other users' personal collections`}
+                    </PaddedSidebarLink>
+                  )}
+                </CollapseSection>
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-                onAddDataModalOpen={openAddDataModal}
-              />
-            </ErrorBoundary>
-          </SidebarSection>
+          {!PROTO_NAV_ENABLED && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <BrowseNavSection
+                  nonEntityItem={nonEntityItem}
+                  onItemSelect={onItemSelect}
+                  hasDataAccess={hasDataAccess}
+                  onAddDataModalOpen={openAddDataModal}
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
-          {trashCollection && (
+          {!PROTO_NAV_ENABLED && trashCollection && (
             <TrashSidebarSection>
               <ErrorBoundary>
                 <Tree

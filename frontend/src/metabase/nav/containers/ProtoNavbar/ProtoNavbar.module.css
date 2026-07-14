@@ -1,0 +1,247 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Shared shell for all proto nav tabs (Home, Library, Data, Monitor). */
+.section {
+  padding-inline: 16px;
+  margin-top: 0;
+}
+
+/* Space between sections matches space below Create / New query. */
+.section + .section {
+  margin-top: 32px;
+}
+
+.collectionsHeadingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.collectionsHeadingRow .subNavHeading {
+  margin-bottom: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0;
+  padding-inline-start: 1rem;
+  margin-bottom: 32px;
+  flex-shrink: 0;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.headerIconActions {
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Top-level section list (shown when no section is drilled into). */
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-inline: 16px;
+}
+
+.navListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.navListItem:hover {
+  background-color: var(--mb-color-background_surface-hover);
+  color: var(--mb-color-core-brand);
+}
+
+.navListItemIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-brand);
+}
+
+.navListItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Clickable heading at the top of a drilled-in section; returns to the list. */
+.backHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  padding-inline-start: 12px;
+  margin-bottom: 24px;
+  border: none;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 150ms ease;
+}
+
+.backHeader:hover {
+  color: var(--mb-color-core-brand);
+}
+
+.backHeaderChevron {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.backHeader:hover .backHeaderChevron {
+  color: var(--mb-color-core-brand);
+}
+
+.backHeaderLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.subNavHeading {
+  margin: 0 0 8px;
+  padding-inline-start: 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.sectionContent :global(h4) {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.sectionContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 4px;
+}
+
+.root .sectionContent :global(a),
+.root .sectionContent :global(button),
+.root .sectionContent :global(li) {
+  font-weight: 400;
+}
+
+.root .sectionContent :global(a *),
+.root .sectionContent :global(button *),
+.root .sectionContent :global(li *) {
+  font-weight: 400;
+}
+
+.root .sectionContent :global(li) {
+  border-radius: var(--mantine-radius-md);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.root .sectionContent :global(li:hover) {
+  background-color: var(--mb-color-background_surface-hover);
+  color: var(--mb-color-core-brand);
+}
+
+.root .sectionContent :global(li[aria-selected="true"]:hover) {
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.75rem;
+  padding-inline-start: 1rem;
+}
+
+.libraryNestedItems {
+  padding-inline-start: calc(1rem + 8px);
+}
+
+.publishedTablesRow > a,
+.publishedTablesRow > button {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.publishedTablesExpandBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+  cursor: pointer;
+}
+
+.publishedTablesExpandBtn:hover {
+  color: var(--mb-color-core-brand);
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  background-color: transparent;
+}
+
+.sidebarResizing {
+  border-inline-end-color: var(--mb-color-border-strong) !important;
+}
