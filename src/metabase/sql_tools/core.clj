@@ -187,11 +187,6 @@
   [driver :- :keyword
    sql :- :string
    table-name :- :string]
-  ;; Wrapping each base table in a self-UNION strips the inherited IDENTITY property under SQL Server's
-  ;; SELECT INTO, and SQL Server elides the empty branch so the table is still scanned once. Other
-  ;; engines may not optimize the subquery the same way -- e.g. MySQL may fully materialize the inner
-  ;; subquery before applying the outer WHERE, turning a filtered read of a large table into a full
-  ;; scan. Gated to :sqlserver so a future driver can't silently inherit that performance cliff.
   (when-not (= driver :sqlserver)
     (throw (ex-info (str "add-into-clause is only supported for :sqlserver. It wraps each base table in a "
                          "self-UNION subquery to strip inherited IDENTITY columns. Before enabling another "
