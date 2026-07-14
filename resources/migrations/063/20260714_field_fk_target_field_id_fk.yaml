@@ -151,14 +151,31 @@ databaseChangeLog:
             constraintName: fk_oauth_refresh_token_user_id
 
   ## pulse_channel.channel_id has had an FK since v51 but never an explicit index; it was
-  ## grandfathered into the excluded-fks set of fks-are-indexed-test. Postgres-only: MySQL/MariaDB
-  ## and H2 auto-create a backing index for every FK, and on MySQL a new explicit index would be
-  ## adopted as the FK's backing index, making the rollback (DROP INDEX) fail with errno 1553.
+  ## grandfathered into the excluded-fks set of fks-are-indexed-test. The FK is dropped and
+  ## re-added around the index creation so the explicit index becomes the FK's backing index on
+  ## every database: adding the index while the FK exists would make MySQL adopt it in place of
+  ## its auto-generated one, and the rollback's DROP INDEX would then fail with errno 1553.
   - changeSet:
       id: v63.2026-07-14T00:00:09
       author: ranquild
-      comment: Index pulse_channel.channel_id (postgres only; other DBs auto-index FKs)
-      dbms: postgresql
+      comment: Drop FK on pulse_channel.channel_id ahead of indexing the column
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_channel
+            constraintName: fk_pulse_channel_channel_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:10
+      author: ranquild
+      comment: Index pulse_channel.channel_id
       changes:
         - createIndex:
             tableName: pulse_channel
@@ -167,11 +184,24 @@ databaseChangeLog:
               - column:
                   name: channel_id
 
+  - changeSet:
+      id: v63.2026-07-14T00:00:11
+      author: ranquild
+      comment: Re-add FK on pulse_channel.channel_id, backed by the new index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            onDelete: CASCADE
+
   ## Polymorphic references (type + id column pairs) can't have FK constraints, but every other
   ## polymorphic pair in the schema (comment, dependency, cache_config, task_run, ...) carries a
   ## composite (type, id) index. These four were missing theirs.
   - changeSet:
-      id: v63.2026-07-14T00:00:10
+      id: v63.2026-07-14T00:00:12
       author: ranquild
       comment: Index audit_log (model, model_id)
       changes:
@@ -185,7 +215,7 @@ databaseChangeLog:
                   name: model_id
 
   - changeSet:
-      id: v63.2026-07-14T00:00:11
+      id: v63.2026-07-14T00:00:13
       author: ranquild
       comment: Index recent_views (model, model_id)
       changes:
@@ -199,7 +229,7 @@ databaseChangeLog:
                   name: model_id
 
   - changeSet:
-      id: v63.2026-07-14T00:00:12
+      id: v63.2026-07-14T00:00:14
       author: ranquild
       comment: Index notification (payload_type, payload_id)
       changes:
@@ -213,7 +243,7 @@ databaseChangeLog:
                   name: payload_id
 
   - changeSet:
-      id: v63.2026-07-14T00:00:13
+      id: v63.2026-07-14T00:00:15
       author: ranquild
       comment: Index source_replacement_run (source_entity_type, source_entity_id)
       changes:
@@ -227,7 +257,7 @@ databaseChangeLog:
                   name: source_entity_id
 
   - changeSet:
-      id: v63.2026-07-14T00:00:14
+      id: v63.2026-07-14T00:00:16
       author: ranquild
       comment: Index source_replacement_run (target_entity_type, target_entity_id)
       changes:
