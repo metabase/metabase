@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { act, screen, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -118,12 +118,9 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    await waitFor(() =>
-      expect(
-        screen.getByTestId("strategy-form-submit-button"),
-      ).toHaveTextContent(/Saved/i),
-    );
-
+    // The transient "Saved" button label is cleared as soon as the post-save
+    // refetch of cache configs reinitializes the form, so don't assert on it —
+    // the updated launcher label below is the real signal that the save landed.
     expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
       "aria-label",
       "Edit default policy (currently: No caching)",
@@ -180,12 +177,10 @@ describe("StrategyEditorForDatabases", () => {
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
     );
-    await waitFor(() =>
-      expect(
-        screen.getByTestId("strategy-form-submit-button"),
-      ).toHaveTextContent(/Saved/i),
-    );
 
+    // The transient "Saved" button label is cleared as soon as the post-save
+    // refetch of cache configs reinitializes the form, so don't assert on it —
+    // the updated launcher label below is the real signal that the save landed.
     expect(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     ).toHaveAttribute(

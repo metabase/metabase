@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import {
   useCreateCloudMigrationMutation,
   useGetCloudMigrationQuery,
+  useLazyGetSettingsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
 import { type Plan, getPlan } from "metabase/common/utils/plan";
-import { useDispatch, useSelector } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
@@ -39,7 +39,7 @@ export const CloudPanel = ({
   getPollingInterval = defaultGetPollingInterval,
   onMigrationStart = openCheckoutInNewTab,
 }: CloudPanelProps) => {
-  const dispatch = useDispatch();
+  const [refetchSiteSettings] = useLazyGetSettingsQuery();
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
     undefined,
   );
@@ -65,13 +65,16 @@ export const CloudPanel = ({
     [migration, getPollingInterval],
   );
 
+  // The migration progresses server-side while we poll, flipping settings
+  // (e.g. read-only mode) without any client mutation to invalidate them —
+  // so refetch settings whenever the polled migration state changes.
   useEffect(
     function syncSiteSettings() {
       if (migrationState) {
-        dispatch(refreshSiteSettings());
+        refetchSiteSettings();
       }
     },
-    [dispatch, migrationState],
+    [refetchSiteSettings, migrationState],
   );
 
   const [createCloudMigration, createCloudMigrationResult] =
@@ -83,8 +86,9 @@ export const CloudPanel = ({
   );
 
   const handleCreateMigration = async () => {
+    // createCloudMigration invalidates session-properties, which refetches
+    // settings.
     const newMigration = await createCloudMigration().unwrap();
-    await dispatch(refreshSiteSettings());
     onMigrationStart(storeUrl, plan, newMigration);
   };
 

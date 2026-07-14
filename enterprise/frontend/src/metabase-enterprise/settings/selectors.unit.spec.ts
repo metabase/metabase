@@ -1,15 +1,20 @@
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { EnterpriseSettings } from "metabase-types/api";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { getIsWhiteLabeling, getLoadingMessage, getLogoUrl } from "./selectors";
 
+// These selectors read settings via `getSettings`, which resolves from the RTK
+// Query cache or `window.MetabaseBootstrap`. With no store/render here, seed the
+// bootstrap directly (the prod fallback). It's reset in jest-setup-env afterEach.
+const stateWithSettings = (settings?: Partial<EnterpriseSettings>) => {
+  window.MetabaseBootstrap = createMockSettings(settings);
+  return createMockState();
+};
+
 describe("getLogoUrl", () => {
   it('should return default logo url if "application-logo-url" is not set', () => {
-    const states = createMockState({
-      settings: createMockSettingsState(),
-    });
+    const states = stateWithSettings();
 
     const expectedDefaultLogoUrl = "app/assets/img/logo.svg";
 
@@ -17,10 +22,8 @@ describe("getLogoUrl", () => {
   });
 
   it('should return default logo url if "application-logo-url" has no values', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-logo-url": undefined,
-      }),
+    const states = stateWithSettings({
+      "application-logo-url": undefined,
     });
 
     const expectedDefaultLogoUrl = "app/assets/img/logo.svg";
@@ -30,10 +33,8 @@ describe("getLogoUrl", () => {
 
   it('should return custom logo url if "application-logo-url" is set', () => {
     const customLogoDataUrl = "data:image/png;base64,aaaaaaaaaaaaaaaaaaaaaa";
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-logo-url": customLogoDataUrl,
-      }),
+    const states = stateWithSettings({
+      "application-logo-url": customLogoDataUrl,
     });
 
     expect(getLogoUrl(states)).toBe(customLogoDataUrl);
@@ -42,10 +43,8 @@ describe("getLogoUrl", () => {
 
 describe("getLoadingMessage", () => {
   it('should show correct loading message when "loading-message" is set to "doing-science"', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "loading-message": "doing-science",
-      }),
+    const states = stateWithSettings({
+      "loading-message": "doing-science",
     });
 
     const expectedLoadingMessage = "Doing science...";
@@ -54,10 +53,8 @@ describe("getLoadingMessage", () => {
   });
 
   it('should show correct loading message when "loading-message" is set to "running-query"', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "loading-message": "loading-results",
-      }),
+    const states = stateWithSettings({
+      "loading-message": "loading-results",
     });
 
     const expectedLoadingMessage = "Loading results...";
@@ -66,10 +63,8 @@ describe("getLoadingMessage", () => {
   });
 
   it('should show correct loading message when "loading-message" is set to "loading-results"', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "loading-message": "running-query",
-      }),
+    const states = stateWithSettings({
+      "loading-message": "running-query",
     });
 
     const expectedLoadingMessage = "Running query...";
@@ -78,11 +73,9 @@ describe("getLoadingMessage", () => {
   });
 
   it('should show no loading message when "loading-message" is set to an invalid enum value', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        // Unjustified type cast. FIXME
-        "loading-message": "bad-enum-bad" as any,
-      }),
+    const states = stateWithSettings({
+      // Unjustified type cast. FIXME
+      "loading-message": "bad-enum-bad" as any,
     });
 
     const expectedLoadingMessage = "";
@@ -93,20 +86,16 @@ describe("getLoadingMessage", () => {
 
 describe("getIsWhiteLabeling", () => {
   it('should return `false` if "application-name" is not changed', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-name": "Metabase",
-      }),
+    const states = stateWithSettings({
+      "application-name": "Metabase",
     });
 
     expect(getIsWhiteLabeling(states)).toBe(false);
   });
 
   it('should return `true` if "application-name" is changed', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-name": "Acme Corp.",
-      }),
+    const states = stateWithSettings({
+      "application-name": "Acme Corp.",
     });
 
     expect(getIsWhiteLabeling(states)).toBe(true);

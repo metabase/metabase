@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 
 import {
+  sessionApi,
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
+  useUpdateSettingMutation,
 } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import type { Settings } from "metabase-types/api/settings";
@@ -22,6 +23,7 @@ type GroupMappingsWidgetProps = {
 
 export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
   const { data } = useListPermissionsGroupsQuery({});
   const allGroups = data ?? EMPTY_GROUP_LIST;
   const mappings = useSelector(
@@ -45,9 +47,23 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
   );
   const handleUpdateSetting = useCallback(
     async (args: { key: string; value: Record<string, GroupId[]> }) => {
-      await dispatch(updateSetting(args));
+      // Unjustified type cast. FIXME
+      await updateSetting(args as Parameters<typeof updateSetting>[0]).unwrap();
+      // The table reads mappings from the session-properties cache. Patch the
+      // just-saved value in optimistically so it doesn't blink out between the
+      // PUT and the background invalidation refetch (which then confirms it).
+      dispatch(
+        sessionApi.util.updateQueryData(
+          "getSessionProperties",
+          undefined,
+          (draft) => {
+            // Unjustified type cast. FIXME
+            (draft as Record<string, unknown>)[args.key] = args.value;
+          },
+        ),
+      );
     },
-    [dispatch],
+    [updateSetting, dispatch],
   );
 
   return (

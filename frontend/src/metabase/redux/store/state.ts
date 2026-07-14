@@ -17,7 +17,6 @@ import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
-import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
@@ -39,7 +38,9 @@ export interface State {
   pulse: PulseState;
   qb: QueryBuilderState;
   routing: RouterState;
-  settings: SettingsState;
+  // NOTE: there is deliberately no `settings` key — settings are not redux
+  // state. They live in the `getSessionProperties` RTK Query cache; read them
+  // via `getSettings`/`getSetting`. Tests seed them through `StoreSeedState`.
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;

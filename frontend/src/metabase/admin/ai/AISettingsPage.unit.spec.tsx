@@ -142,10 +142,26 @@ const setup = async ({
     },
   });
 
+  // Wait for the settings queries to settle before returning. These toggles
+  // render immediately but `disabled` while loading, so waiting for the label
+  // isn't enough. Wait for the switch to become enabled. When AI features are
+  // off the MCP toggles stay disabled by design, so there we just await render.
   if (page === "mcp") {
-    await screen.findByRole("switch", { name: "MCP server" });
+    if (aiFeaturesEnabled) {
+      await waitFor(() =>
+        expect(
+          screen.getByRole("switch", { name: "MCP server" }),
+        ).toBeEnabled(),
+      );
+    } else {
+      await screen.findByRole("switch", { name: "MCP server" });
+    }
   } else {
-    await screen.findByText("Disable all AI features");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Disable all AI features" }),
+      ).toBeEnabled(),
+    );
   }
 
   return view;

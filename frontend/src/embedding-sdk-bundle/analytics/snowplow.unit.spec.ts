@@ -1,36 +1,51 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
-import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
 import { createMockState } from "metabase/redux/store/mocks/state";
 import type { EnterpriseSettings } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
 const mockTrackMetaplowEvent = jest.fn();
 
+// The factories reference the shared jest.fn()s lazily (via wrappers): the
+// top-level `metabase/redux/store/mocks/api` import transitively imports
+// `@snowplow/browser-tracker`, so the hoisted factories execute before the
+// consts above initialize — a direct reference would hit the TDZ.
 jest.mock("@snowplow/browser-tracker", () => ({
-  newTracker: mockNewTracker,
-  trackSelfDescribingEvent: mockTrackSelfDescribingEvent,
+  newTracker: (...args: unknown[]) => mockNewTracker(...args),
+  trackSelfDescribingEvent: (...args: unknown[]) =>
+    mockTrackSelfDescribingEvent(...args),
 }));
 
 jest.mock("metabase/utils/metaplow", () => ({
-  trackMetaplowEvent: mockTrackMetaplowEvent,
+  trackMetaplowEvent: (...args: unknown[]) => mockTrackMetaplowEvent(...args),
 }));
 
 // Re-import the module under test so its module-scoped init guard resets per test.
 const loadModule = () => import("./snowplow");
 
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
+  // Settings live in the `getSessionProperties` RTK Query cache (read via
+  // `getSettings`), so seed that cache entry rather than a `settings` slice.
+  const state = createMockState({ sdk: createMockSdkState() });
+  const stateWithSettings = {
+    ...state,
+    "metabase-api": seedApiQueryCache(state["metabase-api"], [
+      {
+        endpointName: "getSessionProperties",
+        value: createMockSettings({
+          "anon-tracking-enabled": true,
+          ...overrides,
+        }),
+      },
+    ]),
+  };
   return {
-    getState: (): SdkStoreState => ({
-      ...createMockState(),
-      sdk: createMockSdkState(),
-      settings: createMockSettingsState({
-        "anon-tracking-enabled": true,
-        ...overrides,
-      }),
-    }),
+    getState: () => stateWithSettings,
   };
 }
 

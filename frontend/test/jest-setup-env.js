@@ -19,6 +19,11 @@ beforeEach(() => {
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+
+  // The render harness seeds `window.MetabaseBootstrap` (the settings fallback,
+  // see `getSettings`) per test; reset it so a seeded value can't leak into the
+  // next test.
+  delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 

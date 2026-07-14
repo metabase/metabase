@@ -7,6 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -19,16 +20,21 @@ const setup = async (
     settings?: Partial<EnterpriseSettings>;
   } = { settings: {} },
 ) => {
-  const settings = createMockSettings({
-    "help-link": "metabase",
+  const settingValues = {
+    "help-link": "metabase" as const,
     "help-link-custom-destination": undefined,
     ...settingOverrides,
-  });
-  setupPropertiesEndpoints(settings);
+  };
+  setupPropertiesEndpoints(createMockSettings(settingValues));
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<HelpLinkSettings />);
+  // Seed the bootstrap so `help-link` is readable on the first render; the
+  // custom-destination textbox renders conditionally on it, and some assertions
+  // read it synchronously.
+  renderWithProviders(<HelpLinkSettings />, {
+    storeInitialState: { settings: createMockSettingsState(settingValues) },
+  });
 
   await screen.findByText("Help link");
 };

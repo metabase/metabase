@@ -665,7 +665,12 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    await screen.findByLabelText("API key");
+    // Wait for the saved (masked) key to hydrate from the setting-details
+    // fetch before editing — clearing the still-empty input is a no-op, and
+    // the mask would then land on top of the typed value.
+    await waitFor(() =>
+      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
+    );
 
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
@@ -752,7 +757,13 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // The env-backed state comes from the setting-details fetch, which lands
+    // after the field first renders (settings resolve early via the
+    // bootstrap), so wait for the disabling rather than asserting it
+    // synchronously.
+    await waitFor(async () => {
+      expect(await screen.findByLabelText("API key")).toBeDisabled();
+    });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
     ).toBeInTheDocument();
@@ -2065,11 +2076,17 @@ describe("AIProviderSettingsSection", () => {
         apiKeyValues: { azure: "**********ey" },
       });
 
-      expect(await screen.findByLabelText("Model provider")).toHaveValue(
-        "Anthropic",
+      // The saved values hydrate from the async setting-details fetch, so
+      // wait for them rather than asserting synchronously.
+      await waitFor(() =>
+        expect(screen.getByLabelText("Model provider")).toHaveValue(
+          "Anthropic",
+        ),
       );
-      expect(screen.getByLabelText("Base URL")).toHaveValue(
-        "https://my-resource.services.ai.azure.com/anthropic",
+      await waitFor(() =>
+        expect(screen.getByLabelText("Base URL")).toHaveValue(
+          "https://my-resource.services.ai.azure.com/anthropic",
+        ),
       );
       expect(screen.getByLabelText("Deployment name")).toHaveValue(
         "claude-sonnet-4-5",
@@ -2091,6 +2108,11 @@ describe("AIProviderSettingsSection", () => {
       });
 
       const deploymentInput = await screen.findByLabelText("Deployment name");
+      // Wait for the saved deployment to hydrate before editing it — clearing
+      // the still-empty input is a no-op the arriving value then overwrites.
+      await waitFor(() =>
+        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
+      );
       await userEvent.clear(deploymentInput);
       await userEvent.type(deploymentInput, "renamed-deployment");
 

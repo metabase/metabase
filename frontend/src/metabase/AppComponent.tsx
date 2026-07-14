@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useGetSettingsQuery } from "metabase/api";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -112,6 +113,11 @@ function App({
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
+  // App-wide subscription that keeps the settings cache alive for the whole
+  // session and makes `session-properties` invalidations (e.g. from
+  // `useTokenRefresh`) refetch. `getSettings` reads come from this cache; this
+  // is the deliberate subscriber that owns its lifetime (App wraps every route).
+  useGetSettingsQuery();
 
   useEffect(() => {
     initializeIframeResizer();

@@ -31,7 +31,10 @@ import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider, useDispatch } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import {
   type Action,
   type History,
@@ -72,7 +75,7 @@ export interface RenderWithProvidersOptions {
   // public or sdk-specific tests
   mode?: "default" | "public";
   initialRoute?: string;
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   withRouter?: boolean;
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
@@ -186,8 +189,15 @@ export function getTestStoreAndWrapper({
   customReducers,
   theme,
 }: GetTestStoreAndWrapperOptions) {
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
+  // There's no `settings` reducer — settings come from the `getSessionProperties`
+  // cache / `window.MetabaseBootstrap`. Pull any seeded settings out of the
+  // preloaded state (so combineReducers doesn't warn about the unknown key) and
+  // seed the bootstrap below.
+  let {
+    routing,
+    settings: seededSettings,
+    ...initialState
+  }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -215,6 +225,14 @@ export function getTestStoreAndWrapper({
   }
   if (customReducers) {
     reducers = { ...reducers, ...customReducers };
+  }
+
+  // Seed `window.MetabaseBootstrap` so `getSettings` resolves the test's
+  // settings synchronously (it's the fallback before the on-mount fetch).
+  // Seeding the bootstrap leaves the on-mount fetch intact, so components fetch
+  // as they do in the app. Reset between tests in jest-setup-env.
+  if (seededSettings?.values) {
+    window.MetabaseBootstrap = seededSettings.values;
   }
 
   const routerNavigator = withRouter ? createV7Navigator() : undefined;

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -81,9 +80,11 @@ const setup = async (enablePublicSharing = false) => {
 
 describe("PublicSharingSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
-    await act(() => setup(false));
+    await setup(false);
 
-    expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enable Public Sharing"),
+    ).toBeInTheDocument();
 
     [
       "Shared dashboards",
@@ -100,19 +101,24 @@ describe("PublicSharingSettingsPage", () => {
   });
 
   it("should render the PublicSharingSettingsPage with public sharing enabled", async () => {
-    await act(() => setup(true));
-    [
-      "Enable Public Sharing",
-      "Shared dashboards",
-      "Shared questions",
-      "Shared action forms",
-      "Shared documents",
-      "Test Action",
-      "Test Dashboard",
-      "Test Question",
-      "Test Document",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
+    await setup(true);
+    // `AdminSettingInput` renders null until the settings queries settle, and
+    // the "Test …" entries come from separate public-list endpoints — so the
+    // page fills in asynchronously. waitFor retries the whole set until done.
+    await waitFor(() => {
+      [
+        "Enable Public Sharing",
+        "Shared dashboards",
+        "Shared questions",
+        "Shared action forms",
+        "Shared documents",
+        "Test Action",
+        "Test Dashboard",
+        "Test Question",
+        "Test Document",
+      ].forEach((text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      });
     });
   });
 
