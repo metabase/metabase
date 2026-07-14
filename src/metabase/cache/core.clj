@@ -16,5 +16,6 @@
   root-strategy]
  [metabase.cache.settings
   enable-query-caching
+  query-caching-max-concurrent-writes
   query-caching-max-kb
   query-caching-max-ttl])
