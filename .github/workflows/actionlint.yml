@@ -1,0 +1,38 @@
+name: Actionlint
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+    paths:
+      - '.github/workflows/**'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - '.github/workflows/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    name: Lint Github Actions Workflows
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get changed Github actions
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+          list-files: shell
+      - name: Cache actionlint binary
+        uses: actions/cache@v5
+        with:
+          path: .actionlint
+          key: actionlint-${{ runner.os }}-${{ hashFiles('mage/src/mage/actionlint.clj') }}
+      - name: Run actionlint
+        run: ./bin/mage actionlint ${{ steps.changes.outputs.actionlint_files }}
