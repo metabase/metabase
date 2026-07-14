@@ -240,7 +240,7 @@
           (is (seq (:dimension_mappings updated-measure))))))))
 
 (deftest fetch-measure-dimensions-have-has-field-values-test
-  (testing "GET /api/measure/:id returns dimensions with has-field-values populated"
+  (testing "GET /api/measure/:id returns dimensions with has_field_values populated"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                 :table_id   (mt/id :venues)
                                                 :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]

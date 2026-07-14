@@ -484,9 +484,13 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
       (let [spec       (spec/spec-for-model-key :model/Document)
             plain-doc  {:id 1 :collection_id coll-id :exploration_thread_id nil}
-            explo-doc  {:id 2 :collection_id coll-id :exploration_thread_id 42}]
+            explo-doc  {:id 2 :collection_id coll-id :exploration_thread_id 42}
+            partial-doc {:id 3 :collection_id coll-id}]
         (is (true? (spec/check-eligibility spec plain-doc)))
-        (is (false? (spec/check-eligibility spec explo-doc)))))))
+        (is (false? (spec/check-eligibility spec explo-doc)))
+        (testing "a payload MISSING the conditioned key does not match the nil condition (fail closed)"
+          (is (false? (spec/check-eligibility spec partial-doc))
+              "eligibility needs an explicit nil, not an absent key — a partial payload must not sneak an exploration scratch doc into sync scope"))))))
 
 (deftest transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
@@ -498,6 +502,18 @@
           "export-conditions falls back to :conditions for TransformTag")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
+
+(deftest removal-condition-clauses-value-shapes-test
+  (testing "removal conditions render each value shape into a well-formed HoneySQL fragment"
+    (testing "a scalar value renders as [:= k v]"
+      (is (= [[:= :built_in_type nil]]
+             (spec/removal-where-clauses {:removal-conditions {:built_in_type nil}} #{} []))))
+    (testing "an :entity_id [op value] pair keeps its operator"
+      (is (= [[:not= :entity_id "builtin-eid"]]
+             (spec/removal-where-clauses {:removal-conditions {:entity_id [:not= "builtin-eid"]}} #{} []))))
+    (testing "a vector value on any other key renders as [:in k v], not a broken scalar [:= k v]"
+      (is (= [[:in :status ["removed" "delete"]]]
+             (spec/removal-where-clauses {:removal-conditions {:status ["removed" "delete"]}} #{} []))))))
 
 (deftest check-eligibility-applies-conditions-uniformly-test
   (testing ":conditions are enforced for non-:collection eligibility types"
