@@ -176,18 +176,19 @@
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
-  (try
-    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                        (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
-          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-          mbql5-query (add-types-to-fields mbql5-query mp)]
-      (merge
-       mbql5-query
-       (query-with-stages mp (:stages mbql5-query))))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
-                      {:legacy-query legacy-query}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                         (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+           mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+           mbql5-query (add-types-to-fields mbql5-query mp)]
+       (merge
+        mbql5-query
+        (query-with-stages mp (:stages mbql5-query)))))
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                     {:legacy-query legacy-query}
+                     e)))))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
