@@ -8,7 +8,6 @@ on:
     paths:
       - '.github/workflows/**'
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - '.github/workflows/**'
 
@@ -29,10 +28,15 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
           list-files: shell
-      - name: Cache actionlint binary
-        uses: actions/cache@v5
-        with:
-          path: .actionlint
-          key: actionlint-${{ runner.os }}-${{ hashFiles('mage/src/mage/actionlint.clj') }}
+      - name: Setup actionlint
+        id: download
+        shell: bash
+        run: |
+          if command -v actionlint; then
+            echo "executable=actionlint" >> "$GITHUB_OUTPUT"
+          else
+            # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
+            bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
+          fi
       - name: Run actionlint
-        run: ./bin/mage actionlint --color --verbose ${{ steps.changes.outputs.actionlint_files }}
+        run: ${{ steps.download.outputs.executable }} --color --verbose ${{ steps.changes.outputs.actionlint_files }}
