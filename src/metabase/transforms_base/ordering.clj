@@ -154,12 +154,9 @@
 
       {:dependencies {transform-id -> #{transform-ids it depends on}}
        :not-found    #{ids in start-ids that don't refer to any transform in all-transforms}
-       :failed       #{ids whose table-dependencies threw}
-       :uncached     {transform-id -> raw-deps} for visited transforms whose `:table_dependencies`
-                     column was absent, computed live, and safe to cache}
+       :failed       #{ids whose table-dependencies threw}}
 
-  `:dependencies` is restricted to the transitive closure reachable from `start-ids`. `:uncached`
-  lets the caller persist freshly computed deps so later reads hit the cache instead.
+  `:dependencies` is restricted to the transitive closure reachable from `start-ids`.
   Diagnostics in `:not-found` and `:failed` let the caller decide how to surface them
   (logging, metrics, error responses)."
   [start-ids all-transforms]
@@ -170,19 +167,17 @@
     (loop [visited   {}
            not-found #{}
            failed    #{}
-           uncached  {}
            queue     (vec start-ids)]
       (if-let [id (first queue)]
         (cond
           (contains? visited id)
-          (recur visited not-found failed uncached (rest queue))
+          (recur visited not-found failed (rest queue))
 
           (not (id->xf id))
-          (recur visited (conj not-found id) failed uncached (rest queue))
+          (recur visited (conj not-found id) failed (rest queue))
 
           :else
           (let [transform        (id->xf id)
-                miss?            (nil? (:table_dependencies transform))
                 [raw-deps fail?] (try
                                    [(stored-or-live-deps transform) false]
                                    (catch Throwable _ [#{} true]))
@@ -193,24 +188,10 @@
             (recur (assoc visited id resolved-ids)
                    not-found
                    (cond-> failed fail? (conj id))
-                   ;; Only cache transforms that don't read through a card/snippet; those pass through
-                   ;; since their deps can change without the transform doing.
-                   (cond-> uncached (and miss? (not fail?) (not (references-card-or-snippet? transform)))
-                           (assoc id raw-deps))
                    (into (rest queue) resolved-ids))))
         {:dependencies visited
          :not-found    not-found
-         :failed       failed
-         :uncached     uncached}))))
-
-(defenterprise persist-table-dependencies!
-  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
-  `transform.table_dependencies` column, keyed by transform id.
-
-  OSS fallback: a no-op. Caching transform dependencies is an EE-only optimization."
-  metabase-enterprise.transforms.core
-  [_id->raw-deps]
-  nil)
+         :failed       failed}))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
