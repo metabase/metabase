@@ -30,6 +30,12 @@ import { trackVisualizerDataChanged } from "../../analytics";
 import { DatasetsListItem, type Item } from "./DatasetsListItem";
 import { getIsCompatible } from "./getIsCompatible";
 
+const SEARCH_LIMIT = 50;
+// Without a text query, incompatible results are filtered out client-side
+// rather than marked as not recommended, so fetch a wider window to avoid
+// showing an empty list when compatible datasets rank below the limit.
+const NO_QUERY_SEARCH_LIMIT = 200;
+
 function shouldIncludeDashboardQuestion(
   searchItem: SearchResult,
   dashboardId: DashboardId | undefined,
@@ -114,7 +120,7 @@ export function DatasetsList({
     useSearchQuery(
       {
         q: search.length > 0 ? search : undefined,
-        limit: 50,
+        limit: search.length > 0 ? SEARCH_LIMIT : NO_QUERY_SEARCH_LIMIT,
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
