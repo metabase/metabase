@@ -1,7 +1,29 @@
-import { compareVersions } from "metabase/utils/version";
-import type { Advisory, AdvisorySeverity } from "metabase-types/api";
+import {
+  compareVersions,
+  versionToNumericComponents,
+} from "metabase/utils/version";
+import type {
+  Advisory,
+  AdvisoryAffectedVersion,
+  AdvisorySeverity,
+} from "metabase-types/api";
 
 import type { AdvisoryFilter } from "./types";
+
+export const getAffectedVersionForInstance = (
+  advisory: Advisory,
+  currentVersion: string,
+): AdvisoryAffectedVersion | null => {
+  const currentMajor = versionToNumericComponents(currentVersion)?.[1];
+  if (currentMajor == null) {
+    return null;
+  }
+  const match = advisory.affected_versions.find(
+    (affectedVersion) =>
+      versionToNumericComponents(affectedVersion.fixed)?.[1] === currentMajor,
+  );
+  return match ?? null;
+};
 
 const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
   critical: 0,

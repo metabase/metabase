@@ -160,15 +160,21 @@ describe("SecurityCenterPage", () => {
     expect(advisoryLink).toHaveAttribute("target", "_blank");
   });
 
-  it("renders a download link when a fix version has a download_jar_url", async () => {
+  it("renders a single download button for the fix matching the instance's major version", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
+        match_status: "active",
         affected_versions: [
           {
             min: "0.58.0",
             fixed: "0.58.11",
-            download_jar_url: "https://downloads.example.com/metabase.jar",
+            download_jar_url: "https://downloads.example.com/58.jar",
+          },
+          {
+            min: "0.59.0",
+            fixed: "0.59.11",
+            download_jar_url: "https://downloads.example.com/59.jar",
           },
         ],
       }),
@@ -176,27 +182,51 @@ describe("SecurityCenterPage", () => {
 
     setup(advisories);
 
-    const downloadLink = screen.getByText("Download 0.58.11");
-    expect(downloadLink).toHaveAttribute(
+    expect(screen.queryByText("Download v0.58.11")).not.toBeInTheDocument();
+    const downloadButton = screen.getByRole("link", {
+      name: /Download v0.59.11/,
+    });
+    expect(downloadButton).toHaveAttribute(
       "href",
-      "https://downloads.example.com/metabase.jar",
+      "https://downloads.example.com/59.jar",
     );
-    expect(downloadLink).toHaveAttribute("target", "_blank");
+    expect(downloadButton).toHaveAttribute("target", "_blank");
   });
 
-  it("does not render a download link when download_jar_url is null", async () => {
+  it("does not render a download button when download_jar_url is null", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
+        match_status: "active",
         affected_versions: [
-          { min: "0.58.0", fixed: "0.58.11", download_jar_url: null },
+          { min: "0.59.0", fixed: "0.59.11", download_jar_url: null },
         ],
       }),
     ];
 
     setup(advisories);
 
-    expect(screen.queryByText("Download 0.58.11")).not.toBeInTheDocument();
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
+  });
+
+  it("does not render a download button when the instance is not affected", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "not_affected",
+        affected_versions: [
+          {
+            min: "0.59.0",
+            fixed: "0.59.11",
+            download_jar_url: "https://downloads.example.com/59.jar",
+          },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
   });
 
   it("calls acknowledgeAdvisory when dismiss button is clicked", async () => {

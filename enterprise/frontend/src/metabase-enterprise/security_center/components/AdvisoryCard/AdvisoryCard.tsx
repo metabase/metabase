@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   Anchor,
   Badge,
@@ -22,7 +23,7 @@ import type {
   AdvisorySeverity,
 } from "metabase-types/api";
 
-import { isAcknowledged } from "../../utils";
+import { getAffectedVersionForInstance, isAcknowledged } from "../../utils";
 
 interface AdvisoryCardProps {
   advisory: Advisory;
@@ -35,7 +36,11 @@ export function AdvisoryCard({
   isAffecting,
   onAcknowledge,
 }: AdvisoryCardProps) {
+  const currentVersion = useSetting("version")?.tag ?? "";
   const acknowledged = isAcknowledged(advisory);
+  const affectedVersion = isAffecting
+    ? getAffectedVersionForInstance(advisory, currentVersion)
+    : null;
 
   return (
     <Card p="xl" withBorder data-testid="advisory-card">
@@ -75,19 +80,7 @@ export function AdvisoryCard({
             <List size="sm">
               {advisory.affected_versions.map((v) => (
                 <List.Item key={`${v.min}-${v.fixed}`}>
-                  <Group gap="xs" align="baseline">
-                    <Text span>{`${v.min} - ${v.fixed}`}</Text>
-                    {v.download_jar_url && (
-                      <Anchor
-                        href={v.download_jar_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="sm"
-                      >
-                        {t`Download ${v.fixed}`}
-                      </Anchor>
-                    )}
-                  </Group>
+                  <Text span>{`${v.min} - ${v.fixed}`}</Text>
                 </List.Item>
               ))}
             </List>
@@ -100,6 +93,18 @@ export function AdvisoryCard({
         </Box>
 
         <Group gap="md" mt="sm">
+          {affectedVersion?.download_jar_url && (
+            <Button
+              variant="outline"
+              component="a"
+              href={affectedVersion.download_jar_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              leftSection={<Icon name="download" />}
+            >
+              {t`Download v${affectedVersion.fixed}`}
+            </Button>
+          )}
           {!acknowledged && onAcknowledge && (
             <Tooltip
               label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
