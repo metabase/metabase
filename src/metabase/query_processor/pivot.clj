@@ -12,24 +12,33 @@
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.nest-for-pivot :as qp.nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
+   [metabase.util.experiment :as experiment]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -67,7 +76,7 @@
     #(or (empty? %)
          (apply distinct? %))]])
 
-(mu/defn- breakout-combinations :- ::pivot.common/breakout-combinations
+(mu/defn breakout-combinations :- ::pivot.common/breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
     (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
@@ -142,20 +151,6 @@
          (assoc :qp.pivot/remapped-breakout-combination breakout-indexes-to-keep))
      breakout-indexes-to-keep)))
 
-(mu/defn- remove-non-aggregation-order-bys :- ::lib.schema/query
-  "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
-  `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
-  `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
-  [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [_tag _opts expr :as order-by]]
-     ;; keep any order bys on :aggregation references. Remove all other clauses.
-     (cond-> query
-       (not (lib/clause-of-type? expr :aggregation))
-       (lib/remove-clause order-by)))
-   query
-   (lib/order-bys query)))
-
 (mu/defn- generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query :- ::lib.schema/query
@@ -170,7 +165,7 @@
                                                  (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
                           (-> query
                               (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
-                              remove-non-aggregation-order-bys
+                              qp.nest-for-pivot/remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)))]
       (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
             (->
@@ -429,6 +424,112 @@
          (field-ref-pivot-options query viz-settings))
        {:column-sort-order (column-sort-order query viz-settings)}))))
 
+(defn- resolve-refs-to-uuids
+  "Resolve `refs` to breakout `:lib/uuid` values from the last stage of `query`.
+
+  `refs` is a sequence of pivot column references, either column-name strings (modern viz-settings) or legacy
+  field-ref vectors. Refs that don't resolve (including ones that throw during resolution) are silently dropped.
+  Returns nil when `refs` is empty."
+  [query refs]
+  (when (seq refs)
+    (let [breakout-cols (filter :lib/breakout? (lib/returned-columns query))
+          resolver      (if (every? string? refs)
+                          (into {} (map (juxt :name :lib/source-uuid)) breakout-cols)
+                          (fn ref-resolver [a-ref]
+                            (try
+                              (:lib/source-uuid (lib.equality/find-column-for-legacy-ref query -1 a-ref breakout-cols))
+                              (catch Throwable _ nil))))]
+      (into [] (keep resolver) refs))))
+
+(mu/defn- build-pivot-clause :- [:maybe [:ref :metabase.lib.schema/pivot]]
+  "Build the MBQL5 `:pivot` clause that expresses the pivot intent in `viz-settings`, with row/column refs resolved
+  against the last stage's breakouts in `query`. Returns nil when there is no `:pivot_table.column_split` or when
+  neither rows nor columns resolve."
+  [query        :- :metabase.lib.schema/query
+   viz-settings :- [:maybe :map]]
+  (when-let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+    (let [row-uuids (resolve-refs-to-uuids query rows)
+          col-uuids (resolve-refs-to-uuids query columns)]
+      (when (or (seq row-uuids) (seq col-uuids))
+        {:rows               (or row-uuids [])
+         :columns            (or col-uuids [])
+         :show-row-totals    (lib.pivot/read-show-flag viz-settings :pivot.show_row_totals    "pivot.show_row_totals")
+         :show-column-totals (lib.pivot/read-show-flag viz-settings :pivot.show_column_totals "pivot.show_column_totals")}))))
+
+(mu/defn apply-pivot-viz-settings :- ::lib.schema/query
+  "Attach a `:pivot` clause to the last stage of `query`, derived from `viz-settings` (see [[build-pivot-clause]]
+  for the clause shape and resolution rules).
+
+  Returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or when no refs
+  resolve."
+  [query        :- ::lib.schema/query
+   viz-settings :- [:maybe :map]]
+  (let [clause (when (and (not (lib.pivot/has-pivot? query))
+                          (seq viz-settings))
+                 (build-pivot-clause query viz-settings))]
+    (cond-> query
+      clause (lib.pivot/with-pivot clause))))
+
+(def ^:private legacy-pivot-keys
+  [:pivot-rows :pivot_rows
+   :pivot-cols :pivot_cols
+   :pivot-measures :pivot_measures
+   :show-row-totals :show_row_totals
+   :show-column-totals :show_column_totals])
+
+(mu/defn apply-legacy-pivot-keys :- ::lib.schema/query
+  "Translate MBQL4 top-level pivot keys on `query` into an MBQL5 `:pivot` clause on the last stage, then strip the
+  legacy keys.
+
+  Reads positional-index keys (`:pivot-rows` / `:pivot_rows`, `:pivot-cols` / `:pivot_cols`) and the
+  `show-*-totals` flags. Indices that fall outside the last stage's breakout vector are silently dropped.
+  `:pivot-measures` is presentation-only and is discarded.
+
+  If `query` already has a `:pivot` clause, only strips the legacy keys."
+  [query :- ::lib.schema/query]
+  (let [rows-idxs (or (:pivot-rows query) (:pivot_rows query))
+        cols-idxs (or (:pivot-cols query) (:pivot_cols query))
+        stripped  (reduce dissoc query legacy-pivot-keys)]
+    (if (or (lib.pivot/has-pivot? query)
+            (and (nil? rows-idxs) (nil? cols-idxs)))
+      stripped
+      (let [breakouts   (vec (:breakout (lib.util/query-stage query -1)))
+            n           (count breakouts)
+            index->uuid (fn [i]
+                          (when (and (nat-int? i) (< i n))
+                            (lib.options/uuid (nth breakouts i))))
+            row-uuids   (into [] (keep index->uuid) (or rows-idxs []))
+            col-uuids   (into [] (keep index->uuid) (or cols-idxs []))]
+        (if (and (empty? row-uuids) (empty? col-uuids))
+          stripped
+          (lib.pivot/with-pivot stripped
+            {:rows               row-uuids
+             :columns            col-uuids
+             :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
+             :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
+
+(defn- has-window-fn-aggregation?
+  "True iff any aggregation in the last stage of `query` contains a window-function aggregation clause at any depth."
+  [query]
+  (boolean (some lib.schema.aggregation/window-aggregation-expression?
+                 (lib/aggregations query))))
+
+(defn native-pivot-compatible?
+  "True iff the native MBQL5 pivot path can handle `query` end-to-end.
+
+  Preprocesses the query first so the check sees the fully-expanded form — after metric/measure/segment
+  expansion and source-card inlining — and then rejects only when a known incompatibility remains."
+  [query]
+  ;; The set of incompatibility reasons is intentionally small: each entry must point at a specific demonstrated
+  ;; problem, never "just in case." Add new conditions by combining the existing predicates with `or` inside the
+  ;; `not`.
+  ;;
+  ;; Window-function aggregations: a running total over `GROUPING SETS` results would span detail rows AND
+  ;; subtotal rows, which is meaningless. The multi-query path runs one query per breakout combination, where
+  ;; these aggregations behave as expected. Importantly, this check has to see the EXPANDED query — a metric
+  ;; that resolves to `:cum-sum` is just as problematic as a `:cum-sum` written inline.
+  (not (has-window-fn-aggregation? (qp.preprocess/preprocess query))))
+
 (defn- remapped-field
   [breakout]
   (when (and (vector? breakout)
@@ -495,9 +596,102 @@
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
 
+(defn- pivot-opts-from-query
+  "Return `query`'s pivot-options map — as downstream export middleware and streaming writers read it from
+  `[:middleware :pivot-options]` — or `nil` when `query` carries no pivot intent."
+  [query]
+  (or
+   (pivot-options query (get query :viz-settings))
+   (pivot-options query (get-in query [:info :visualization-settings]))
+   (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))))
+
+(mu/defn- run-pivot-query-multi
+  "Generate one subquery per breakout combination implied by `query`'s pivot intent (viz-settings or legacy keys),
+  run each, and merge the results through `rff` into a single output."
+  [query :- ::lib.schema/query
+   rff   :- [:maybe ::qp.schema/rff]]
+  (let [rff         (or rff qp.reducible/default-rff)
+        pivot-opts  (pivot-opts-from-query query)
+        pivot-limit (pivot-query-max-rows query)
+        query       (-> query
+                        (assoc-in [:middleware :pivot-options] pivot-opts)
+                        (assoc-in [:constraints :max-results] pivot-limit)
+                        (cond-> (get-in query [:constraints :max-results-bare-rows])
+                          (update-in [:constraints :max-results-bare-rows] min pivot-limit))
+                        add-canonical-col-info)
+        all-queries (generate-queries query pivot-opts)]
+    (process-multiple-queries all-queries rff pivot-limit)))
+
+(defn- query-database
+  "Return the Lib-style Database metadata for `query`, using its attached `:lib/metadata` provider or, failing that,
+  one constructed from its `:database` id."
+  [query]
+  (lib.metadata/database
+   (or (:lib/metadata query)
+       (lib-be/application-database-metadata-provider (:database query)))))
+
+(def ^:private ^:const float-compare-decimals
+  "Decimal scale used when quantising fractional numbers for cross-path pivot row comparison. 6 is well below
+  meaningful precision for pivot aggregates (SUM/AVG typically report 2–4 decimals) but well above the noise
+  produced by different summation orders on doubles (order-of `10⁻¹⁴`)."
+  6)
+
+(defn- round-numeric
+  "If `x` is fractional (Double / Float / BigDecimal), quantise it to a `BigDecimal` at
+  [[float-compare-decimals]] scale. Integral numbers and non-numbers pass through unchanged. Normalising
+  both floats and BigDecimals to `BigDecimal` at the same scale lets `=` succeed regardless of which type
+  each path returned."
+  [x]
+  (cond
+    (float? x)   (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
+    (decimal? x) (.setScale ^java.math.BigDecimal x          (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
+    :else        x))
+
+(defn- pivot-rows-equivalent?
+  "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
+  `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
+
+  When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
+  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`."
+  [r1 r2]
+  (cond
+    (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+                           (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+    (:row_count r1)     (= (:row_count r1) (:row_count r2))
+    :else               true))
+
+(defn- ensure-pivot-clause
+  "Return `query` unchanged when its last stage already carries `:pivot`; otherwise attach a default `:pivot`
+  clause so the SQL compiler emits every subset of breakouts as its own grouping set (the powerset)."
+  [query]
+  (cond-> query
+    (not (lib.pivot/has-pivot? query))
+    (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
+
+(defn- run-native-pivot-query
+  "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
+  on the last stage and submit to the standard QP through `rff`."
+  [query rff]
+  (let [viz-settings (or (:viz-settings query)
+                         (get-in query [:info :visualization-settings]))
+        pivot-opts   (pivot-opts-from-query query)]
+    (-> query
+        apply-legacy-pivot-keys
+        (apply-pivot-viz-settings viz-settings)
+        ensure-pivot-clause
+        (assoc-in [:middleware :pivot-options] pivot-opts)
+        (cond-> (seq (:info query)) qp/userland-query)
+        (qp/process-query rff))))
+
 (mu/defn run-pivot-query
-  "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
-  yourself."
+  "Run the pivot `query` through `rff` via the multi-query path (one query per breakout combination, results
+  concatenated).
+
+  Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself.
+
+  Experimental candidate: the native MBQL5 pivot path (single `GROUPING SETS` query), chosen when the target
+  driver supports `:native-pivot-tables` and `query` is [[native-pivot-compatible?]]; otherwise falls back to
+  the multi-query path."
   ([query]
    (run-pivot-query query nil))
 
@@ -509,18 +703,14 @@
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
-           rff         (or rff qp.reducible/default-rff)
-           pivot-opts  (or
-                        (pivot-options query (get query :viz-settings))
-                        (pivot-options query (get-in query [:info :visualization-settings]))
-                        (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-           pivot-limit (pivot-query-max-rows query)
-           query       (-> query
-                           (assoc-in [:middleware :pivot-options] pivot-opts)
-                           (assoc-in [:constraints :max-results] pivot-limit)
-                           (cond-> (get-in query [:constraints :max-results-bare-rows])
-                             (update-in [:constraints :max-results-bare-rows] min pivot-limit))
-                           add-canonical-col-info)
-           all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+     (let [query (qp.middleware.normalize/normalize-preprocessing-middleware query)
+           db    (query-database query)]
+       (experiment/experiment {:name           :pivot-native-vs-multi
+                               :comparator-fn  pivot-rows-equivalent?}
+                              (run-pivot-query-multi query rff)
+                              (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+                                (let [candidate-rff qp.reducible/default-rff]
+                                  (if (and (driver.u/supports? (:engine db) :native-pivot-tables db)
+                                           (native-pivot-compatible? query))
+                                    (run-native-pivot-query query candidate-rff)
+                                    (run-pivot-query-multi  query candidate-rff)))))))))

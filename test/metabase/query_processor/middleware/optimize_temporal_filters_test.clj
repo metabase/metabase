@@ -16,7 +16,10 @@
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
