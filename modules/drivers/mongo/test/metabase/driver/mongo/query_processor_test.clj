@@ -51,25 +51,26 @@
            [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
             {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
 
-(deftest ^:parallel relative-datetime-test
+(deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
-        (mt/dataset attempted-murders
-          (is (= {:projections ["count"]
-                  :query       [{"$match"
-                                 {"$and"
-                                  [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                   {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                {"$sort" {"_id" 1}}
-                                {"$project" {"_id" false, "count" true}}]
-                  :collection  "attempts"
-                  :mbql?       true}
-                 (qp.compile/compile
-                  (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $datetime :last :month]})))))))))
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
+          (mt/dataset attempted-murders
+            (is (= {:projections ["count"]
+                    :query       [{"$match"
+                                   {"$and"
+                                    [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                     {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                  {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                  {"$sort" {"_id" 1}}
+                                  {"$project" {"_id" false, "count" true}}]
+                    :collection  "attempts"
+                    :mbql?       true}
+                   (qp.compile/compile
+                    (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
 (deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo

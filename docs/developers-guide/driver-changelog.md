@@ -4,6 +4,19 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.0
+
+- Conversion from MBQL 5 to Legacy MBQL (MBQL 4) is officially deprecated, and
+  `metabase.driver-api.core/->legacy-MBQL`/`metabase.lib.core/->legacy-MBQL` have been marked as such; please update
+  your drivers to handle MBQL 5 directly (see notes in for 0.61.0).
+
+- `metabase.driver-api.core/metadata-provider`/`metabase.query-processor.store/metadata-provider` has been marked
+  deprecated; when updating your drivers to use MBQL 5 you can instead pass the query itself as a "metadata
+  providerable" instead.
+
+- `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+  `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
 ## Metabase 0.63.0
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,

@@ -34,7 +34,7 @@
   "Returns a map of column name in result row -> unescaped column name to return in metadata e.g.
 
     {\"date_field~~~month\" \"date_field\"}"
-  [projections :- mongo.qp/Projections]
+  [projections :- ::mongo.qp/projections]
   (into
    {}
    (for [k     projections

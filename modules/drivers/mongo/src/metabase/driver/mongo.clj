@@ -23,7 +23,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [some mapv empty? get-in]]
-   [taoensso.nippy :as nippy])
+   [taoensso.nippy :as nippy]
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema :as lib.schema])
   (:import
    (com.mongodb MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
@@ -517,8 +519,9 @@
   [_driver _feature _db]
   false)
 
-(defmethod driver/mbql->native :mongo
-  [_ query]
+(mu/defmethod driver/mbql->native :mongo :- :metabase.query-processor.compile/compiled
+  [_driver :- :keyword
+   query   :- ::lib.schema/query]
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo

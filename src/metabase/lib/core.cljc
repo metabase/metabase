@@ -338,6 +338,11 @@
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
 
+;; TODO (Cam 2026-07-13) Give this a wrapper like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression])
+
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
 ;; arguments and returns an expression clause.
@@ -557,7 +562,8 @@
 (shared.ns/import-fns
  [lib.aggregation
   aggregation-clause
-  aggregations-metadata])
+  aggregations-metadata
+  resolve-aggregation])
 
 ;;; ## Breakouts
 ;;; Breakouts (equivalent to SQL `GROUP BY`) divide the rows into 1 or more subsets of rows, where each set has the

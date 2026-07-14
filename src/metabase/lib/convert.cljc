@@ -466,7 +466,7 @@
 (defmulti ->legacy-MBQL
   "Coerce something to legacy MBQL (the version of MBQL understood by the query processor and Metabase Lib v1) if it's
   not already legacy MBQL."
-  {:arglists '([x])}
+  {:arglists '([x]), :deprecated "0.54.0"}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 

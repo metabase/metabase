@@ -47,6 +47,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.add-alias-info.helpers]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -73,6 +74,7 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ metabase.query-processor.util.add-alias-info.helpers/mbql-5-aggregation-name
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
@@ -276,31 +278,31 @@
   "::lib.schema.validate/error"
   ::lib.schema.validate/error)
 
-(def mbql.schema.DateTimeValue
+(def ^{:deprecated "0.63.0"} mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
   ::mbql.s/DateTimeValue)
 
-(def mbql.schema.Aggregation
+(def ^{:deprecated "0.63.0"} mbql.schema.Aggregation
   "::mbql.s/Aggregation"
   ::mbql.s/Aggregation)
 
-(def mbql.schema.OrderBy
+(def ^{:deprecated "0.63.0"} mbql.schema.OrderBy
   "::mbql.s/OrderBy"
   ::mbql.s/OrderBy)
 
-(def mbql.schema.Query
+(def ^{:deprecated "0.63.0"} mbql.schema.Query
   "::mbql.s/Query"
   ::mbql.s/Query)
 
-(def mbql.schema.value
+(def ^{:deprecated "0.63.0"} mbql.schema.value
   "mbql.s/value"
   ::mbql.s/value)
 
-(def mbql.schema.field
+(def ^{:deprecated "0.63.0"} mbql.schema.field
   "mbql.s/field"
   ::mbql.s/field)
 
-(def mbql.schema.FieldOrExpressionDef
+(def ^{:deprecated "0.63.0"} mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
   ::mbql.s/FieldOrExpressionDef)
 
@@ -340,10 +342,10 @@
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
 
-(def MBQLQuery
+(def ^{:deprecated "0.63.0"} MBQLQuery
   "Schema for a legacy MBQL inner query."
   ::mbql.s/MBQLInnerQuery)
 
-(def Join
+(def ^{:deprecated "0.63.0"} Join
   "Schema for a legacy MBQL join."
   ::mbql.s/Join)

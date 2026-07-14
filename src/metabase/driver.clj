@@ -1020,8 +1020,9 @@
   (first messages))
 
 (defmulti mbql->native
-  "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  [[metabase.legacy-mbql.schema/Query]]; this function should return a native query that conforms to that schema.
+  "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL 5 query in
+  `:metabase.lib.schema/query`; this function should return a compiled query that matches the
+  `:metabase.query-processor.compile/compiled` schema.
 
   If the underlying query language supports remarks or comments, the driver should
   use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
