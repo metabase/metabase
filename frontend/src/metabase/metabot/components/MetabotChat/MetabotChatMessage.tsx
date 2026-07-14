@@ -44,6 +44,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
     .with({ type: "data-todo_list" }, () => true)
     .with({ type: "data-transform_suggestion" }, () => true)
+    .with({ type: "data-navigate_to" }, () => true)
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
     .with({ type: "data-entity_saved" }, () => true)
