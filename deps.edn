@@ -477,7 +477,7 @@
              :main-opts ["-m" "antq.core" "--skip=github-action"]}
 
   :cljs
-  {:extra-paths ["test"]
+  {:extra-paths ["cljs/src" "test"]
    :jvm-opts    ["-Dmb.run.mode=dev"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
