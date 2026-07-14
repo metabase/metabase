@@ -171,7 +171,7 @@ export function formatValueRaw(
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,
-      getDataFromClicked(options.clicked) as any,
+      getDataFromClicked(options.clicked),
     );
   } else if (
     (isURL(column) && options.view_as == null) ||

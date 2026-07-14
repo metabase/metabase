@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
+import { GroupsMultiSelect } from "metabase/admin/people/components/GroupsMultiSelect";
+import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -22,7 +22,7 @@ import {
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { GroupId, Member, User, UserId } from "metabase-types/api";
+import type { GroupId, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -57,81 +57,58 @@ const FormGroupsWidget = ({
     return null;
   }
 
-  const adminGroup = _.find(groups, isAdminGroup);
   const defaultGroup = _.find(
     groups,
     external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
   );
 
-  const value = formValue ?? [
-    { id: defaultGroup?.id, is_group_manager: false },
-  ];
+  const memberships =
+    formValue ??
+    (defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : []);
 
-  const memberships = value.reduce((acc, { id, ...membershipData }) => {
-    if (id != null) {
-      acc.set(id, membershipData);
-    }
-    return acc;
-  }, new Map());
+  // Preserve each group's manager flag across selection changes.
+  const managerFlagByGroupId = new Map(
+    memberships.map((membership) => [
+      membership.id,
+      membership.is_group_manager ?? false,
+    ]),
+  );
 
-  const isUserAdmin = memberships.has(adminGroup?.id);
+  const handleChange = (groupIds: GroupId[]) => {
+    const ids = defaultGroup
+      ? Array.from(new Set([defaultGroup.id, ...groupIds]))
+      : groupIds;
 
-  const handleAdd = (groupId: GroupId, membershipData: Partial<Member>) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
-        return {
-          id,
-          ...membershipData,
-        };
-      },
+    setValue(
+      ids.map((id) => ({
+        id,
+        is_group_manager: managerFlagByGroupId.get(id) ?? false,
+      })),
     );
-
-    updatedValue.push({ id: groupId, ...membershipData });
-    setValue(updatedValue);
   };
 
-  const handleRemove = (groupId: GroupId) => {
-    const updatedValue = Array.from(memberships.entries())
-      .map(([id, membershipData]) => {
-        if (id === groupId) {
-          return null;
-        }
+  const managerGroupIds = memberships
+    .filter((membership) => membership.is_group_manager)
+    .map((membership) => membership.id);
 
-        return {
-          id,
-          ...membershipData,
-        };
-      })
-      .filter(Boolean);
-
-    setValue(updatedValue);
-  };
-  const handleChange = (
-    groupId: GroupId,
-    newMembershipData: Partial<Member>,
-  ) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
-        const data = groupId === id ? newMembershipData : membershipData;
-        return {
-          id,
-          ...data,
-        };
-      },
+  const handleToggleManager = (groupId: GroupId) => {
+    setValue(
+      memberships.map((membership) =>
+        membership.id === groupId
+          ? { ...membership, is_group_manager: !membership.is_group_manager }
+          : membership,
+      ),
     );
-
-    setValue(updatedValue);
   };
 
   return (
     <FormField className={className} style={style} title={title}>
-      <MembershipSelect
+      <GroupsMultiSelect
         groups={groups}
-        memberships={memberships}
-        onAdd={handleAdd}
-        onRemove={handleRemove}
+        value={memberships.map((membership) => membership.id)}
         onChange={handleChange}
-        isUserAdmin={isUserAdmin}
+        managerGroupIds={managerGroupIds}
+        onToggleManager={handleToggleManager}
       />
     </FormField>
   );
@@ -145,6 +122,8 @@ interface UserFormProps {
   external?: boolean;
   edit?: boolean;
   userId?: UserId | null;
+  hideNameFields?: boolean;
+  hideAttributes?: boolean;
 }
 
 export const UserForm = ({
@@ -155,6 +134,8 @@ export const UserForm = ({
   external = false,
   edit = false,
   userId,
+  hideNameFields = false,
+  hideAttributes = false,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -165,22 +146,26 @@ export const UserForm = ({
     >
       {({ dirty }: { dirty: boolean }) => (
         <Form disabled={!dirty}>
-          <FormTextInput
-            name="first_name"
-            title={t`First name`}
-            placeholder={t`Johnny`}
-            label={t`First name`}
-            mb="md"
-            nullable
-          />
-          <FormTextInput
-            name="last_name"
-            title={t`Last name`}
-            placeholder={t`Appleseed`}
-            label={t`Last name`}
-            mb="md"
-            nullable
-          />
+          {!hideNameFields && (
+            <>
+              <FormTextInput
+                name="first_name"
+                title={t`First name`}
+                placeholder={t`Johnny`}
+                label={t`First name`}
+                mb="md"
+                nullable
+              />
+              <FormTextInput
+                name="last_name"
+                title={t`Last name`}
+                placeholder={t`Appleseed`}
+                label={t`Last name`}
+                mb="md"
+                nullable
+              />
+            </>
+          )}
           <FormTextInput
             name="email"
             type="email"
@@ -203,7 +188,11 @@ export const UserForm = ({
               disabled={edit}
             />
           )}
-          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
+          {!hideAttributes && (
+            <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
+              userId={userId}
+            />
+          )}
           <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

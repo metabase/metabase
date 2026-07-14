@@ -69,6 +69,32 @@ const elements = [
     name: "embed",
     pattern: "frontend/src/embed/**",
   }),
+  // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
+  // shared/embedding: their patterns are subfolders of
+  // frontend/src/metabase/embedding/, and the first matching element wins.
+  createElement({
+    type: "shared",
+    name: "embedding-iframe-sdk",
+    pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/**",
+    enforceOutgoing: false,
+  }),
+  createElement({
+    type: "app",
+    name: "embedding-iframe-sdk-setup",
+    pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/**",
+  }),
+  createElement({
+    type: "app",
+    name: "mcp-app",
+    pattern: "frontend/src/metabase/embedding/mcp/**",
+  }),
+  ...[
+    "frontend/src/metabase/app-embed-mcp.tsx",
+    "frontend/src/metabase/app-embed-mcp-public-path.ts",
+    "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
+  ].map((pattern) =>
+    createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
+  ),
   createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
   createElement({
     type: "shared",
@@ -87,13 +113,12 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding/**",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
-    enforceOutgoing: false,
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-package",
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
@@ -156,6 +181,38 @@ const elements = [
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "feature", name: "documents" }),
+  // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
+  // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
+  // product they belong to. Must precede the feature/enterprise element below
+  // (first match wins).
+  // TODO: physically move these into the embedding-sdk-ee / embedding-iframe-sdk-ee
+  // folders so module == folder, instead of tagging files in metabase-enterprise.
+  ...[
+    "enterprise/frontend/src/metabase-enterprise/sdk-plugins.ts",
+    "enterprise/frontend/src/metabase-enterprise/whitelabel/sdk-overrides.ts",
+    "enterprise/frontend/src/metabase-enterprise/whitelabel/sdk-overrides.unit.spec.ts",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-sdk-ee",
+      pattern,
+      mode: "full",
+    }),
+  ),
+  ...[
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/AuthManager.ts",
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/handle-link.ts",
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/sdk-iframe-embedding-script-ee-plugins.ts",
+    "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-plugins.ts",
+    "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-script-plugins.ts",
+  ].map((pattern) =>
+    createElement({
+      type: "app",
+      name: "embedding-iframe-sdk-ee",
+      pattern,
+      mode: "full",
+    }),
+  ),
   createElement({
     type: "feature",
     name: "enterprise",
@@ -175,10 +232,9 @@ const elements = [
     "frontend/src/metabase/app-embed-sdk.tsx",
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
-    "frontend/src/metabase/app-embed-mcp.tsx",
-    "frontend/src/metabase/app-embed-mcp-public-path.ts",
-    "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/app-static-viz.ts",
+    "frontend/src/metabase/app-static-viz-cli.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
@@ -189,11 +245,15 @@ const elements = [
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
-    "frontend/src/metabase/route-guards.tsx",
-    "frontend/src/metabase/route-guards.unit.spec.tsx",
+    "frontend/src/metabase/LoadCurrentUser.tsx",
+    "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    // NewModals is used very high in the hierarchy and imports the EAJS wizard that uses EAJS (app level)
+    "frontend/src/metabase/new/components/NewModals/NewModals.tsx",
+    // Its spec mounts NewModals to assert menu clicks open modals, so the test is app-tier too.
+    "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
     "frontend/src/metabase/static-viz/index.tsx",
@@ -347,4 +407,8 @@ function buildEnforcedRules(elements, rules) {
 
 const enforcedRules = buildEnforcedRules(elements, rules);
 
-export { elements, rules, enforcedRules };
+function getFeatureModules(els = elements) {
+  return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
+}
+
+export { elements, rules, enforcedRules, getFeatureModules };

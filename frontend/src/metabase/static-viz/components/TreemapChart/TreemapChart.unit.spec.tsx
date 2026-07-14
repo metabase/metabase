@@ -96,4 +96,48 @@ describe("static TreemapChart", () => {
     expect(legendNames).toEqual(["Legumes", "Soy", "Total"]);
     expect(screen.queryByTestId("legend-dot")).not.toBeInTheDocument();
   });
+
+  it("uses the fixed intrinsic size when no output box is provided", () => {
+    render(
+      <TreemapChart
+        rawSeries={makeRawSeries([
+          ["Legumes", "Chickpeas", 60],
+          ["Soy", "Tempeh", 20],
+        ])}
+        settings={settings}
+        renderingContext={getRenderingContext()}
+        isStorybook
+      />,
+    );
+
+    const svg = screen.getByTestId("treemap-root");
+    // CHART_WIDTH(965) + LEGEND_GAP(48) + LEGEND_WIDTH(363)
+    expect(svg).toHaveAttribute("width", "1376");
+    expect(svg).toHaveAttribute("height", "764");
+  });
+
+  it("fills the provided output box with no legend so the tiles span the full width", () => {
+    render(
+      <TreemapChart
+        rawSeries={makeRawSeries([
+          ["Legumes", "Chickpeas", 60],
+          ["Soy", "Tempeh", 20],
+        ])}
+        settings={settings}
+        renderingContext={getRenderingContext()}
+        width={1200}
+        height={320}
+        fitWithinBounds
+        isStorybook
+      />,
+    );
+
+    const svg = screen.getByTestId("treemap-root");
+    expect(svg).toHaveAttribute("width", "1200");
+    expect(svg).toHaveAttribute("height", "320");
+
+    // The grid/PDF render drops the side legend entirely so the treemap spans the full width.
+    expect(screen.queryByTestId("legend-name")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("legend-dot")).not.toBeInTheDocument();
+  });
 });

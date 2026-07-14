@@ -4,7 +4,6 @@ import {
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import { loadLocalization } from "metabase/api/localization";
 import { sessionApi } from "metabase/api/session";
@@ -12,6 +11,7 @@ import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";

@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

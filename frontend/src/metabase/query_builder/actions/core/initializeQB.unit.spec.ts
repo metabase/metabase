@@ -291,7 +291,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("does not run question query in notebook mode", async () => {
           const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          const baseUrl = Urls.card(card as Card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });
@@ -326,7 +326,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("sets QB mode to notebook if opening /notebook route", async () => {
-          const baseUrl = Urls.card(card as Card);
+          const baseUrl = Urls.card(card);
           const location = getLocationForCard(card, {
             pathname: `${baseUrl}/notebook`,
           });
@@ -721,20 +721,16 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
       // First init: hangs on loadCard
-      const firstInit = startInitializeDB(
-        firstCard as Card,
-        dispatch,
-        getState,
-      );
+      const firstInit = startInitializeDB(firstCard, dispatch, getState);
       await Promise.resolve();
 
       // Second init runs to completion, superseding the first
-      await startInitializeDB(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard, dispatch, getState);
       jest.runAllTimers();
 
       // Unblock the first init; it should bail out once it sees the version
       // has been superseded.
-      resolveFirstLoad(firstCard as Card);
+      resolveFirstLoad(firstCard);
       await firstInit;
       jest.runAllTimers();
 
@@ -776,17 +772,13 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${firstCard.id}`, firstCard);
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
-      const firstInit = startInitializeDB(
-        firstCard as Card,
-        dispatch,
-        getState,
-      );
+      const firstInit = startInitializeDB(firstCard, dispatch, getState);
       await Promise.resolve();
 
-      await startInitializeDB(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard, dispatch, getState);
       jest.runAllTimers();
 
-      resolveFirstLoad(firstCard as Card);
+      resolveFirstLoad(firstCard);
       await firstInit;
       jest.runAllTimers();
 

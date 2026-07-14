@@ -41,7 +41,10 @@
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
    [:query ::qp.compile/compiled]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
+   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]
+   ;; Declared target indexes. `compile-transform` inlines the ones it can into the CTAS (e.g. Redshift SORTKEY,
+   ;; ClickHouse ORDER BY); the rest are created standalone.
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform-opts
   [:map
@@ -128,7 +131,8 @@
                              ;; the CTAS table name. See
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
+                             :output-table (transforms-base.u/qualified-table-name driver target)
+                             :indexes (:indexes target)}
           opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)

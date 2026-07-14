@@ -1,10 +1,10 @@
 import { parse as parseUrl } from "url";
 
 import type { LocationDescriptor } from "history";
-import { push, replace } from "react-router-redux";
 
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
+import { push, replace } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

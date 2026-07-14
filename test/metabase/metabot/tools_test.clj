@@ -79,7 +79,7 @@
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
         (is (not (contains? tools "retrieve_library_entities")))))
-    ;; Entity retrieval available (pgvector configured + semantic-search licensed): the curated library tool
+    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
     ;; replaces general search. Exactly one discovery tool survives capability filtering.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
       (let [tools (tools-for-profile :nlq)]

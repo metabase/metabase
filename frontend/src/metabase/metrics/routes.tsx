@@ -1,6 +1,5 @@
-import { IndexRoute, Route } from "react-router";
-
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/router";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";

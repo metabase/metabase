@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +20,7 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
@@ -35,10 +35,7 @@ import {
 } from "metabase/visualizations/components/legend/LegendCaption";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type {
-  CardSlownessStatus,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -423,9 +420,7 @@ export function DashCardVisualization({
   );
 
   const cardTitle = useMemo(() => {
-    const settings = getComputedSettingsForSeries(
-      sanitizeSeriesData(series),
-    ) as ComputedVisualizationSettings;
+    const settings = getComputedSettingsForSeries(sanitizeSeriesData(series));
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 

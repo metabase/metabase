@@ -48,7 +48,7 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
-  bgColor = "white",
+  bgColor = "core-white",
   theme,
   hasDevWatermark,
 }: {

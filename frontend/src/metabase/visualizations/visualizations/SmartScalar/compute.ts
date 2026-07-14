@@ -796,12 +796,12 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
       };
 
   return arrowIconColorNames[changeArrowIconName];

@@ -27,8 +27,6 @@ import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { useRouterHistory } from "react-router";
-import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
@@ -40,6 +38,7 @@ import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { syncHistoryWithStore, useRouterHistory } from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
@@ -72,10 +71,7 @@ function _init(reducers, getRoutes, callback) {
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
-    beforeSend: (_type, payload) => ({
-      ...payload,
-      data: { ...payload.data, user_id: getUserId(store.getState()) },
-    }),
+    getUserId: () => getUserId(store.getState()),
   });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.

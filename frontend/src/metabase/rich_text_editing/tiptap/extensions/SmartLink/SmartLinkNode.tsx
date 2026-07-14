@@ -36,7 +36,6 @@ import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
 import type {
   Card,
-  CardDisplayType,
   Collection,
   Dashboard,
   Database,
@@ -558,7 +557,7 @@ function entityToObjectWithModel(
 ): ObjectWithModel {
   return {
     model: ((entity as Dashboard).model || model || "") as IconModel,
-    display: (entity as Card).display as CardDisplayType,
+    display: (entity as Card).display,
     is_personal: (entity as Collection).is_personal,
   };
 }

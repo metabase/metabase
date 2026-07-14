@@ -37,6 +37,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
   getIsGuestEmbed,
+  getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -325,8 +326,15 @@ const SdkDashboardInner = ({
     dashboardId,
   });
 
+  // `dashboardCardMenu` can be supplied either directly on the dashboard via
+  // `plugins`, or globally through `MetabaseProvider` (stored in the SDK Redux
+  // state). The local prop takes precedence, then the global plugin, and
+  // finally the component's built-in default menu.
+  const globalPlugins = useSdkSelector(getPlugins);
   const finalDashcardMenu =
-    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
+    plugins?.dashboard?.dashboardCardMenu ??
+    globalPlugins?.dashboard?.dashboardCardMenu ??
+    dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
@@ -436,6 +444,23 @@ const SdkDashboardInner = ({
       sdkNavigation,
       onNavigateBackToDashboard,
     ],
+  );
+
+  // "Edit question" opens the card via adhocQuestionUrl without going through
+  // onNavigateToNewCardFromDashboard, so it never pushes to the navigation stack
+  // and the back button stays hidden. Push a virtual entry here so the question
+  // view renders a back button to the dashboard, matching the drill-in flow.
+  const onEditQuestionWithNav = useCallback(
+    (question: Parameters<typeof onEditQuestion>[0]) => {
+      sdkNavigation?.push({
+        type: "open-card",
+        virtual: true,
+        name: question.displayName() ?? t`Question`,
+        onPop: () => onNavigateBackToDashboard(),
+      });
+      onEditQuestion(question);
+    },
+    [onEditQuestion, sdkNavigation, onNavigateBackToDashboard],
   );
 
   if (isLocaleLoading) {
@@ -598,7 +623,7 @@ const SdkDashboardInner = ({
           .with({ finalRenderMode: "dashboard" }, () => (
             <SdkDashboardProvider
               plugins={plugins}
-              onEditQuestion={onEditQuestion}
+              onEditQuestion={onEditQuestionWithNav}
             >
               {children ?? (
                 <MaybeStyledWrapper

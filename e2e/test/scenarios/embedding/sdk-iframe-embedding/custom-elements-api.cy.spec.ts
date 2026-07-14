@@ -528,9 +528,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         }),
       )}`;
 
-      const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-      const metabotResponseWithNavigateTo = `${metabotResponse}
-    2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+      const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
+        H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+        H.metabotDataPart("navigate_to", adHocQuestionPath),
+      );
 
       it("should allow to save a new question", () => {
         H.mockMetabotResponse({

@@ -1302,22 +1302,11 @@
     (empty? metadata)
     ::serdes/skip
 
-    (model? card)
-    (let [native?   (lib/native? (:dataset_query card))
-          keep-keys (into #{:name}
-                          (map u/->snake_case_en)
-                          (lib/model-preserved-keys native?))]
-      (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (m/update-existing :id serdes/*export-field-fk*)))
-            metadata))
-
-    ;; Native non-model cards keep their result_metadata. Unlike MBQL cards, their columns can't be re-derived
-    ;; from the query at import time without executing the SQL, and downstream questions that join them depend
-    ;; on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
+    ;; Native cards — models included — keep their result_metadata. Unlike MBQL cards, their columns can't be
+    ;; re-derived from the query at import time without executing the SQL, and downstream questions that join them
+    ;; depend on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
     ;; `:fingerprint`, etc.) rather than the model soft-key set, since native columns also need their structural
-    ;; type info preserved.
+    ;; type info preserved. This must precede the model branch, whose soft-key set omits type info.
     (lib/native? (:dataset_query card))
     (let [keep-keys #{:name :base_type :effective_type :field_ref :database_type
                       :display_name :semantic_type :description :visibility_type :settings
@@ -1328,6 +1317,16 @@
                   (m/update-existing :id                 serdes/*export-field-fk*)
                   (m/update-existing :field_ref          serdes/export-mbql)
                   (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))
+            metadata))
+
+    (model? card)
+    (let [keep-keys (into #{:name}
+                          (map u/->snake_case_en)
+                          (lib/model-preserved-keys false))]
+      (mapv (fn [m]
+              (-> (select-keys m keep-keys)
+                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
+                  (m/update-existing :id serdes/*export-field-fk*)))
             metadata))
 
     :else
@@ -1343,10 +1342,10 @@
           ;; FIXME: remove that `if` after v52
           (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
-(defn- result-metadata-deps [metadata]
+(defn- result-metadata-deps [allow-int-ids? metadata]
   (when (seq metadata)
     (-> (reduce into #{} (for [m metadata]
-                           (serdes/mbql-deps (:field_ref m))))
+                           (serdes/mbql-deps allow-int-ids? (:field_ref m))))
         (disj nil))))
 
 (defmethod serdes/storage-path "Card" [card ctx]
@@ -1418,24 +1417,28 @@
               :collection_preview  true
               :enable_embedding    false}})
 
-(defmethod serdes/dependencies "Card"
-  [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata source_card_id visualization_settings
-           dashboard_id document_id]}]
+(defn- card-deps
+  "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for
+  the mbql walkers. Shared by [[serdes/deserialization-dependencies]] (allow-int-ids? false) and
+  [[serdes/serialization-dependencies]] (allow-int-ids? true)."
+  [allow-int-ids? {:keys [collection_id database_id dataset_query parameters parameter_mappings
+                          result_metadata source_card_id visualization_settings
+                          dashboard_id document_id]}]
   (set
    (concat
-    (mapcat serdes/mbql-deps parameter_mappings)
-    (serdes/parameters-deps parameters)
+    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
+    (serdes/parameters-deps allow-int-ids? parameters)
     (when database_id [[{:model "Database" :id database_id}]])
-    ;; Note: `table_id` is intentionally not a dependency — the Database (above) is, and a missing Table is
-    ;; synthesized as an inactive row on import.
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
     (when document_id #{[{:model "Document" :id document_id}]})
-    (result-metadata-deps result_metadata)
-    (serdes/mbql-deps dataset_query)
-    (serdes/visualization-settings-deps visualization_settings))))
+    (result-metadata-deps allow-int-ids? result_metadata)
+    (serdes/mbql-deps allow-int-ids? dataset_query)
+    (serdes/visualization-settings-deps allow-int-ids? visualization_settings))))
+
+(defmethod serdes/deserialization-dependencies "Card" [card]
+  (card-deps false card))
 
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
@@ -1454,6 +1457,9 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(defmethod serdes/serialization-dependencies "Card" [_model-name card]
+  (card-deps true card))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

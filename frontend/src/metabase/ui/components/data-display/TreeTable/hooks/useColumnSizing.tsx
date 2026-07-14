@@ -324,7 +324,14 @@ function MeasureContent<TData extends TreeNodeData>({
           >
             {typeof column.header === "string" && (
               <div data-measure-header style={{ whiteSpace: "nowrap" }}>
-                <SortableHeaderPill name={column.header} />
+                <SortableHeaderPill
+                  name={column.header}
+                  sort={
+                    table.getColumn(column.id)?.getCanSort()
+                      ? "desc"
+                      : undefined
+                  }
+                />
               </div>
             )}
             {rowsToMeasure.map((row) => {

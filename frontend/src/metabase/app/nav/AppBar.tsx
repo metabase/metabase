@@ -1,6 +1,3 @@
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   getCollectionId,
@@ -32,6 +29,7 @@ import {
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
+import { push, withRouter } from "metabase/router";
 import type { RouterProps } from "metabase/selectors/app";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";

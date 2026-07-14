@@ -89,22 +89,6 @@ export const AddEditEmailSidebar = ({
     (card) => card.download_perms !== DataPermissionValue.NONE,
   );
 
-  // Whether to attach a server-rendered PDF of the whole dashboard. Stored per-channel in
-  // `details.include_pdf` (the same place as `attachment_only`); the BE reads it on the email path.
-  const includePdf =
-    allowDownload &&
-    pulse.channels.some((channel) => !!channel.details?.include_pdf);
-
-  const handleToggleIncludePdf = (checked: boolean) => {
-    setPulse({
-      ...pulse,
-      channels: pulse.channels.map((channel) => ({
-        ...channel,
-        details: { ...channel.details, include_pdf: checked },
-      })),
-    });
-  };
-
   useEffect(() => {
     if (isEmbeddingSdk()) {
       onChannelPropertyChange("recipients", [currentUser]);
@@ -198,17 +182,6 @@ export const AddEditEmailSidebar = ({
             classNames={{
               body: S.SwitchBody,
             }}
-          />
-          <Switch
-            checked={includePdf}
-            onChange={(e) => handleToggleIncludePdf(e.target.checked)}
-            disabled={!allowDownload}
-            classNames={{
-              body: S.SwitchBody,
-              input: S.SwitchInput,
-            }}
-            label={<Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>}
-            labelPosition="left"
           />
           <EmailAttachmentPicker
             cards={pulse.cards}

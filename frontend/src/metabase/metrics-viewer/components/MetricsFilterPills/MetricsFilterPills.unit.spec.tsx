@@ -110,7 +110,7 @@ describe("MetricsFilterPills", () => {
     mockLibMetric.segmentMetadataForFilter.mockReturnValue(segmentMetadata);
     mockLibMetric.displayInfo.mockReturnValue({
       displayName: "Active customers",
-    } as ReturnType<typeof LibMetric.displayInfo>);
+    });
 
     renderWithProviders(
       <MetricsFilterPills
@@ -146,7 +146,7 @@ describe("MetricsFilterPills", () => {
     mockLibMetric.segmentMetadataForFilter.mockReturnValue(segmentMetadata);
     mockLibMetric.displayInfo.mockReturnValue({
       displayName: "Active customers",
-    } as ReturnType<typeof LibMetric.displayInfo>);
+    });
     mockLibMetric.removeClause.mockReturnValue(newDefinition);
 
     const handleChange = jest.fn();

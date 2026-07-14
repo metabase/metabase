@@ -107,7 +107,7 @@ describe("remote_sync utils", () => {
         description: "Child description",
         archived: false,
         // Set some existing effective_ancestors that should be overridden
-        effective_ancestors: [{ id: 99, name: "Old Ancestor" }] as any,
+        effective_ancestors: [{ id: 99, name: "Old Ancestor" }],
       });
       parent.children = [child];
 
@@ -144,7 +144,7 @@ describe("remote_sync utils", () => {
       const child = createMockCollection({
         id: 2,
         name: "Child",
-        effective_ancestors: [{ id: 1, name: "Parent" }] as any,
+        effective_ancestors: [{ id: 1, name: "Parent" }],
       });
 
       const map = new Map([
