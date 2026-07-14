@@ -17,7 +17,6 @@ import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/E
 import type { FormattingOptions } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/types";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
-import { EmojiSuggestionExtension } from "metabase/rich_text_editing/tiptap/extensions/Emoji/EmojiSuggestionExtension";
 import { MentionExtension } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
@@ -29,6 +28,7 @@ import { METAKEY } from "metabase/utils/browser";
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
+import { EmojiSuggestionExtension } from "./EmojiSuggestionExtension";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [SmartLink.name];
 
@@ -128,11 +128,13 @@ export const CommentEditor = ({
         const doc = editor.getText();
         setContent(doc);
         if (onChange) {
+          // Unjustified type cast. FIXME
           onChange(editor.getJSON() as DocumentContent);
         }
       },
       onBlur: ({ editor }) => {
         if (onBlur) {
+          // Unjustified type cast. FIXME
           onBlur(editor.getJSON() as DocumentContent, editor);
         }
       },
@@ -151,6 +153,7 @@ export const CommentEditor = ({
   }
 
   const submitDoc = () => {
+    // Unjustified type cast. FIXME
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
 

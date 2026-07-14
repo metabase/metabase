@@ -36,6 +36,7 @@ function mockMyExplorationsQuery({
   isSuccess?: boolean;
   data?: GetMyExplorationsResponse;
 } = {}) {
+  // Unjustified type cast. FIXME
   jest.mocked(useGetMyExplorationsQuery).mockReturnValue({
     isSuccess,
     data,
@@ -51,11 +52,13 @@ function setup({
   myExplorations?: GetMyExplorationsResponse;
   dismissedBanner?: boolean;
 } = {}) {
+  // Unjustified type cast. FIXME
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
     hasNlqAccess: true,
     canUseNlq: true,
   } as any);
 
+  // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt: "",
     setPrompt: jest.fn(),
@@ -86,6 +89,7 @@ describe("NewExplorationEntry", () => {
 
   describe("banner and past projects list", () => {
     it("shows neither while my explorations are loading", () => {
+      // Unjustified type cast. FIXME
       setup({ isSuccess: false, myExplorations: undefined as any });
 
       expect(

@@ -23,6 +23,7 @@ type IssueTypesRequiringFreeform =
 const isFreeformRequired = (
   value: string,
 ): value is IssueTypesRequiringFreeform =>
+  // Unjustified type cast. FIXME
   ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as IssueTypesRequiringFreeform);
 
 const FEEDBACK_SCHEMA = Yup.object({

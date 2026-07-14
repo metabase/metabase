@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { initialState as documentsInitialState } from "metabase/documents/documents.slice";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { CommentsSidesheet } from "./CommentsSidesheet";

@@ -67,7 +67,7 @@ export const LogLevelsForm = ({ presets }: Props) => {
       </Box>
 
       {error && (
-        <Text aria-label={error} c="error" mt="md" role="alert">
+        <Text aria-label={error} c="feedback-negative" mt="md" role="alert">
           {error}
         </Text>
       )}

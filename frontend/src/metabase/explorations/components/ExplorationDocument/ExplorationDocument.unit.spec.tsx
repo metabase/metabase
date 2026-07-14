@@ -1,10 +1,11 @@
 import type { JSONContent } from "@tiptap/core";
-import type { Route } from "react-router";
+
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Editor } from "metabase/documents/components/Editor";
 import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
+import type { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import {
@@ -64,6 +65,7 @@ function setup(
   editorState: Partial<ReturnType<typeof useDocumentEditor>> = {},
   documentOverrides: Partial<ExplorationDocumentWithIsAiSummary> = {},
 ): void {
+  // Unjustified type cast. FIXME
   jest.mocked(useDocumentEditor).mockReturnValue({
     isDocumentLoading: false,
     error: null,
@@ -76,6 +78,7 @@ function setup(
       explorationId={1}
       document={{ ...mockDocument, ...documentOverrides }}
       isCommentsSidesheetOpen={false}
+      // Unjustified type cast. FIXME
       route={{} as Route}
       locationSearch="?timeline=1"
     />,

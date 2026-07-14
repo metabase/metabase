@@ -1,9 +1,7 @@
 import cx from "classnames";
-import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import type {
   EmbedResourceParameter,
@@ -12,12 +10,9 @@ import type {
 } from "metabase/embedding/types";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
+import { Box, Divider, Icon, Select, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  EmbeddingParameterVisibility,
-  EmbeddingParameters,
-} from "metabase-types/api";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 import type { EmbedResourceParameterWithValue } from "./types";
@@ -54,6 +49,7 @@ export const ParametersSettings = ({
 }: ParametersSettingsProps): JSX.Element => {
   const valuePopulatedEditableParameters = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getValuePopulatedParameters({
         parameters: resourceParameters,
         values: parameterValues,
@@ -66,6 +62,7 @@ export const ParametersSettings = ({
   );
   const valuePopulatedLockedParameters = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getValuePopulatedParameters({
         parameters: lockedParameters,
         values: parameterValues,
@@ -99,21 +96,26 @@ export const ParametersSettings = ({
                 <h3>
                   {parameter.name}
                   {parameter.required && (
-                    <Text color="error" component="span">
+                    <Text color="feedback-negative" component="span">
                       &nbsp;*
                     </Text>
                   )}
                 </h3>
                 <Select
-                  buttonProps={{
-                    "aria-label": parameter.name,
-                  }}
-                  className={cx(CS.mlAuto, CS.bgWhite)}
+                  aria-label={parameter.name}
+                  ml="auto"
                   value={visibility}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    const nextVisibility = e.target
-                      .value as EmbeddingParameterVisibility;
-
+                  data={[
+                    {
+                      value: "disabled",
+                      label: t`Disabled`,
+                      icon: "close",
+                      disabled: parameter.required,
+                    },
+                    { value: "locked", label: t`Locked`, icon: "lock" },
+                    { value: "enabled", label: t`Editable`, icon: "pencil" },
+                  ]}
+                  onChange={(nextVisibility) => {
                     onChangeEmbeddingParameters({
                       ...embeddingParams,
                       [parameter.slug]: nextVisibility,
@@ -126,15 +128,7 @@ export const ParametersSettings = ({
                       });
                     }
                   }}
-                >
-                  <Option
-                    icon="close"
-                    value="disabled"
-                    disabled={parameter.required}
-                  >{t`Disabled`}</Option>
-                  <Option icon="lock" value="locked">{t`Locked`}</Option>
-                  <Option icon="pencil" value="enabled">{t`Editable`}</Option>
-                </Select>
+                />
               </div>
             );
           })}
@@ -174,6 +168,7 @@ export const ParametersSettings = ({
                     onChangeParameterValue({
                       id: parameter.id,
                       slug: parameter.slug,
+                      // Unjustified type cast. FIXME
                       value: parameter.default as any,
                     });
                   }}
@@ -216,6 +211,7 @@ export const ParametersSettings = ({
                     onChangeParameterValue({
                       id: parameter.id,
                       slug: parameter.slug,
+                      // Unjustified type cast. FIXME
                       value: parameter.default as any,
                     });
                   }}

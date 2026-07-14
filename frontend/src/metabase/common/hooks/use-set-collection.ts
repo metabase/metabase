@@ -9,12 +9,16 @@ import {
   dashboardApi,
   documentApi,
   explorationApi,
+  snippetApi,
+  tableApi,
   timelineApi,
   useUpdateCardMutation,
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
   useUpdateExplorationMutation,
+  useUpdateSnippetMutation,
+  useUpdateTableMutation,
   useUpdateTimelineMutation,
 } from "metabase/api";
 import {
@@ -32,9 +36,10 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
-  DashboardId,
   Document,
   Exploration,
+  NativeQuerySnippet,
+  Table,
   Timeline,
 } from "metabase-types/api";
 
@@ -54,8 +59,10 @@ export type MovableItem =
   | Movable<"dashboard", Dashboard>
   | Movable<"collection", Collection>
   | Movable<"snippet-collection", Collection>
+  | Movable<"snippet", NativeQuerySnippet>
   | Movable<"document", Document>
   | Movable<"exploration", Exploration>
+  | Movable<"table", Table>
   | Movable<"timeline", Timeline, "name">;
 
 export type MovableModel = MovableItem["model"];
@@ -67,6 +74,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
   "dashboard",
   "collection",
   "snippet-collection",
+  "snippet",
   "document",
   "exploration",
   "timeline",
@@ -75,6 +83,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
 export function isMovable<T extends { model: string }>(
   item: T,
 ): item is T & { model: MovableModel } {
+  // Unjustified type cast. FIXME
   return MOVABLE_MODELS.has(item.model as MovableModel);
 }
 
@@ -90,8 +99,10 @@ const LABELS = {
   dashboard: () => t`dashboard`,
   collection: () => t`collection`,
   "snippet-collection": () => t`folder`,
+  snippet: () => t`snippet`,
   document: () => t`document`,
   exploration: () => t`exploration`,
+  table: () => t`table`,
   timeline: () => t`timeline`,
 } as const satisfies Record<MovableModel, () => string>;
 
@@ -114,6 +125,8 @@ export function useSetCollection() {
   const [updateCollection] = useUpdateCollectionMutation();
   const [updateDocument] = useUpdateDocumentMutation();
   const [updateExploration] = useUpdateExplorationMutation();
+  const [updateSnippet] = useUpdateSnippetMutation();
+  const [updateTable] = useUpdateTableMutation();
   const [updateTimeline] = useUpdateTimelineMutation();
 
   const setCollection = useCallback(
@@ -135,7 +148,7 @@ export function useSetCollection() {
                   archived,
                 }
               : {
-                  dashboard_id: destination.id as DashboardId,
+                  dashboard_id: destination.id,
                   archived: false,
                   delete_old_dashcards: true,
                 };
@@ -191,6 +204,28 @@ export function useSetCollection() {
             parent_id: canonicalCollectionId(destination.id),
           }).unwrap();
         })
+        .with({ model: "snippet" }, ({ id }) => {
+          if (!isCollectionDestination(destination)) {
+            throw new Error("Cannot move a snippet into a dashboard");
+          }
+          return updateSnippet({
+            id,
+            collection_id: canonicalCollectionId(destination.id),
+            archived,
+          }).unwrap();
+        })
+        .with({ model: "table" }, ({ id }) => {
+          if (!isCollectionDestination(destination)) {
+            throw new Error("Cannot move a table into a dashboard");
+          }
+          if (archived) {
+            throw new Error("Cannot move a table to the trash");
+          }
+          return updateTable({
+            id,
+            collection_id: canonicalCollectionId(destination.id),
+          }).unwrap();
+        })
         .with({ model: "timeline" }, ({ id, name }) => {
           if (!isCollectionDestination(destination)) {
             throw new Error("Cannot move a timeline into a dashboard");
@@ -210,6 +245,8 @@ export function useSetCollection() {
       updateCollection,
       updateDocument,
       updateExploration,
+      updateSnippet,
+      updateTable,
       updateTimeline,
     ],
   );
@@ -282,6 +319,27 @@ export function useSetCollection() {
               });
           },
         )
+        .with({ model: "snippet" }, async ({ id }) => {
+          const snippet = await dispatch(
+            snippetApi.endpoints.getSnippet.initiate(id),
+          ).unwrap();
+          return () =>
+            updateSnippet({
+              id,
+              collection_id: snippet.collection_id,
+              archived: snippet.archived,
+            });
+        })
+        .with({ model: "table" }, async ({ id }) => {
+          const table = await dispatch(
+            tableApi.endpoints.getTable.initiate({ id }),
+          ).unwrap();
+          return () =>
+            updateTable({
+              id,
+              collection_id: table.collection_id,
+            });
+        })
         .with({ model: "timeline" }, async ({ id }) => {
           const timeline = await dispatch(
             timelineApi.endpoints.getTimeline.initiate({ id }),
@@ -302,6 +360,8 @@ export function useSetCollection() {
       updateCollection,
       updateDocument,
       updateExploration,
+      updateSnippet,
+      updateTable,
       updateTimeline,
     ],
   );
@@ -339,6 +399,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     isMovable(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    // Unjustified type cast. FIXME
     !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }

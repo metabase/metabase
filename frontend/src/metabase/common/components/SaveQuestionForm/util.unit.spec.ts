@@ -111,6 +111,7 @@ describe("SaveQuestionForm utils", () => {
         ...baseCreateOptions,
         details: {
           ...baseCreateOptions.details,
+          // Unjustified type cast. FIXME
           description: null as unknown as string, // testing invalid type
         },
         onCreate: onCreateSpy,

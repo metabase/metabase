@@ -2,6 +2,8 @@ import { type ReactNode, useId } from "react";
 
 import { Badge, Stack, Text } from "metabase/ui";
 
+import S from "./LabeledValue.module.css";
+
 interface Props {
   children?: ReactNode;
   label: string;
@@ -18,15 +20,9 @@ export const LabeledValue = ({ children, label }: Props) => {
 
       <Badge
         aria-labelledby={id}
-        bg="accent-gray-light"
-        c="text-primary"
-        fw="normal"
-        h={32}
-        p="sm"
-        radius="md"
-        size="lg"
-        tt="none"
-        variant="default"
+        classNames={{ root: S.badge, label: S.badgeLabel }}
+        size="sm"
+        variant="light"
       >
         {children}
       </Badge>

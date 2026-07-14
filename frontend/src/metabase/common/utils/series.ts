@@ -11,6 +11,7 @@ export function createSeriesCard(
   vizSettings: VisualizationSettings,
   datasetQuery?: DatasetQuery,
 ): Card {
+  // Unjustified type cast. FIXME
   return {
     id,
     name,

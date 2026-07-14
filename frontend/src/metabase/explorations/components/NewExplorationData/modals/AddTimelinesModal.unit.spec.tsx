@@ -50,6 +50,7 @@ function lastSetTimelinesUpdater(
   selection: ReturnType<typeof setup>["selection"],
 ) {
   const calls = jest.mocked(selection.setTimelines).mock.calls;
+  // Unjustified type cast. FIXME
   const updater = calls[calls.length - 1][0] as (
     prev: Timeline[],
   ) => Timeline[];

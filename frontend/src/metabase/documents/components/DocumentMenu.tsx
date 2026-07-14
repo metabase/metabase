@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -7,6 +6,7 @@ import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next
 import CS from "metabase/css/core/index.css";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
 import type { Document } from "metabase-types/api";

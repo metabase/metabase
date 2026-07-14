@@ -2,7 +2,6 @@ import type { StoryFn } from "@storybook/react";
 import type { JSONContent } from "@tiptap/react";
 import { HttpResponse, http } from "msw";
 import { type ReactNode, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
@@ -20,6 +19,7 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { WithRouterProps } from "metabase/router";
 import { RouterContext } from "metabase/router";
 import {
   createMockCard,
@@ -81,6 +81,7 @@ function DocumentProviders({
       entities: createMockEntitiesState({}),
     });
     const commonReducerNames = Object.keys(commonReducers);
+    // Unjustified type cast. FIXME
     const initialState = _.pick(
       storeInitialState,
       ...commonReducerNames,
@@ -88,6 +89,7 @@ function DocumentProviders({
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);
 
+  // Unjustified type cast. FIXME
   const mockRouterContext = {
     location: { pathname: "/document/1", query: {} },
   } as WithRouterProps;

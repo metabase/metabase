@@ -28,6 +28,7 @@ export async function startSampleAppContainers(
   testSuite: SampleAppTestSuiteName,
 ) {
   const embeddingSdkVersion =
+    // Unjustified type cast. FIXME
     userOptions.EMBEDDING_SDK_VERSION as EmbeddingSdkVersion;
   const setupConfig = SAMPLE_APP_SETUP_CONFIGS[testSuite];
 

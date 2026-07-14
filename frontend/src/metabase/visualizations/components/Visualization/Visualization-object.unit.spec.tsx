@@ -4,7 +4,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { FieldVisibilityType } from "metabase-types/api";
 import {
   createMockColumn,

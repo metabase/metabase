@@ -1,5 +1,3 @@
-import type { WithRouterProps } from "react-router";
-
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -10,6 +8,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { WithRouterProps } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";

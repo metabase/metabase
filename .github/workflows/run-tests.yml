@@ -62,6 +62,7 @@ jobs:
           be-changed-files: ${{ steps.changes.outputs.backend_sources_files }}
           unit-infra-touched: ${{ steps.changes.outputs.frontend_unit_infra }}
           loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
+          e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
           shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
 
   upload-affected-tests-stats:

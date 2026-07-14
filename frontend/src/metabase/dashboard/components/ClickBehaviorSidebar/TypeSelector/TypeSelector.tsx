@@ -87,7 +87,8 @@ export function TypeSelector({
         updateSettings(
           value === "actionMenu"
             ? undefined
-            : ({ type: value } as ClickBehavior),
+            : // Unjustified type cast. FIXME
+              ({ type: value } as ClickBehavior),
         );
       } else if (value !== "actionMenu") {
         moveToNextPage();

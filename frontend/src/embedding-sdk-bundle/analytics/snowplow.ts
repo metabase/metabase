@@ -5,6 +5,30 @@ import {
 } from "@snowplow/browser-tracker";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { trackMetaplowEvent } from "metabase/utils/metaplow";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
+
+const SIMPLE_EVENT_SCHEMA_URI =
+  "iglu:com.metabase/simple_event/jsonschema/1-0-0";
+
+type ValidateEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+> = T;
+
+type EmbeddingSdkInitializedEvent = ValidateEvent<{
+  event: "embedding_sdk_initialized";
+  event_detail: string;
+}>;
+
+type EmbeddingSdkComponentRenderedEvent = ValidateEvent<{
+  event: "embedding_sdk_component_rendered";
+  event_detail: string;
+}>;
+
+type EmbeddingSdkEvent =
+  | EmbeddingSdkInitializedEvent
+  | EmbeddingSdkComponentRenderedEvent;
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
 // collector (`sp.metabase.com`) is cross-origin and blocked by a strict
@@ -24,6 +48,7 @@ type WasJustInitialized = boolean;
 let trackerInitialized = false;
 let sdkAuthMethod: SdkAuthMethod;
 let sdkLocaleUsed: boolean = false;
+let sdkMetaplowEnabled: boolean = false;
 
 // Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
 export function initSdkTracker({
@@ -43,6 +68,9 @@ export function initSdkTracker({
   trackerInitialized = true;
   sdkAuthMethod = authMethod;
   sdkLocaleUsed = localeUsed;
+
+  const settingValues = store.getState().settings?.values;
+  sdkMetaplowEnabled = !!settingValues?.["metaplow-tracking-enabled"];
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
     appId: "metabase",
@@ -94,7 +122,7 @@ function createSdkInstanceContextPlugin(store: {
           data: {
             id: settings?.["analytics-uuid"],
             version: {
-              tag: (version as { tag?: string }).tag,
+              tag: version.tag,
             },
             created_at: settings?.["instance-creation"],
             token_features: settings?.["token-features"],
@@ -107,6 +135,17 @@ function createSdkInstanceContextPlugin(store: {
 
 // Send a self-describing event through the SDK tracker. Schema-agnostic: the caller
 // supplies the Iglu schema + data, so the transport stays decoupled from the event shape.
-export function trackSdkEvent(event: SelfDescribingJson): void {
+function trackSdkEvent(event: SelfDescribingJson): void {
   trackSelfDescribingEvent({ event }, [SDK_TRACKER_NAME]);
+}
+
+// Use instead of trackSimpleEvent in the SDK: the main-app "sp" tracker is not
+// initialized in the customer's page, so trackSimpleEvent's Snowplow leg is a no-op.
+export function trackSdkSimpleEvent(event: EmbeddingSdkEvent): void {
+  trackSdkEvent({ schema: SIMPLE_EVENT_SCHEMA_URI, data: event });
+
+  if (sdkMetaplowEnabled) {
+    const { event: name, ...data } = event;
+    trackMetaplowEvent(name, data);
+  }
 }

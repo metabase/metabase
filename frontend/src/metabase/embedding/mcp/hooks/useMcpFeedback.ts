@@ -62,7 +62,6 @@ export function useMcpFeedback({
     const payload: McpAppsFeedback = {
       feedback: {
         positive,
-        message_id: crypto.randomUUID(),
         issue_type: values.issue_type || undefined,
         freeform_feedback: values.freeform_feedback || undefined,
       },

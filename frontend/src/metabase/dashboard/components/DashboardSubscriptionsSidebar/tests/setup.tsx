@@ -70,6 +70,7 @@ function createDashboardState(
         acc[card.id] = card;
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<number, DashboardCard>,
     ),
     dashboards: {
@@ -159,6 +160,7 @@ export function setup({
     };
   }
 
+  // Unjustified type cast. FIXME
   (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
   setupNotificationChannelsEndpoints(channelData.channels);
@@ -177,7 +179,9 @@ export function setup({
 
   // Mock POST that updates the GET response
   fetchMock.post("path:/api/pulse", ({ options }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(options.body as string);
+    // Unjustified type cast. FIXME
     const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
     pulses.push(newPulse);
     return newPulse;

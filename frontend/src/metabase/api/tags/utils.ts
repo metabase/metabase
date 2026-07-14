@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import {
   ACTIVITY_MODELS,
   type Alert,
@@ -49,6 +50,8 @@ import {
   type SearchResult,
   type Segment,
   type Table,
+  type TableIndexEntry,
+  type TableIndexRequest,
   type TableRemapping,
   type Task,
   type TaskRun,
@@ -666,6 +669,27 @@ export function provideSubscriptionTags(
   subscription: DashboardSubscription,
 ): TagDescription<TagType>[] {
   return [idTag("subscription", subscription.id)];
+}
+
+export function provideTableIndexTags(
+  index: TableIndexRequest,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-index", index.id),
+    idTag("transform", index.transform_id),
+  ];
+}
+
+export function provideTableIndexListTags(
+  indexes: TableIndexEntry[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-index"),
+    ...indexes
+      .map((index) => index.request)
+      .filter(isNotNull)
+      .flatMap(provideTableIndexTags),
+  ];
 }
 
 export function provideTableListTags(

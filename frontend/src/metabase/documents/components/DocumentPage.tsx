@@ -7,8 +7,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 
@@ -30,6 +28,8 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";

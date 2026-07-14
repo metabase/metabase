@@ -197,6 +197,7 @@ export const MetabotComponent = memo(
       const card: Card = {
         ...data.draft_card,
         id: newCardId,
+        // Unjustified type cast. FIXME
         entity_id: "entity_id" as Card["entity_id"],
         created_at: "",
         updated_at: "",

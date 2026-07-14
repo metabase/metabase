@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
+import { Route } from "metabase/router";
 import registerVisualizations from "metabase/visualizations/register";
 import type { ClickObject } from "metabase/visualizations/types";
 import type {

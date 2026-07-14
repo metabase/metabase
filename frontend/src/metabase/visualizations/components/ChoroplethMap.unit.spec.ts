@@ -2,7 +2,7 @@ import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { getMapUrl } from "metabase/visualizations/components/ChoroplethMap";
 import { buildFeatureClickObject } from "metabase/visualizations/components/ChoroplethMap.utils";
 import { getLegendTitles } from "metabase/visualizations/lib/choropleth";
-import type { ColumnSettings } from "metabase/visualizations/types";
+import type { ColumnSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 const currencyColumnSettings: ColumnSettings = {
@@ -49,6 +49,7 @@ describe("buildFeatureClickObject", () => {
     expect(
       buildFeatureClickObject(
         undefined,
+        // Unjustified type cast. FIXME
         { type: "Feature" } as any,
         clickContext,
       ),

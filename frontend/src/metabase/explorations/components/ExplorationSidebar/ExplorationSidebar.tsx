@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -22,17 +23,22 @@ import {
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
-import type { ExplorationSidebarTab } from "metabase/explorations/types";
+import {
+  type ExplorationSidebarTab,
+  isExplorationSidebarTab,
+} from "metabase/explorations/types";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
   Center,
   Ellipsified,
+  Group,
   Icon,
   type IconProps,
   Menu,
+  SegmentedControl,
   Stack,
-  Tabs,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -41,6 +47,7 @@ import type {
   ExplorationId,
   ExplorationQueryStatus,
   ExplorationThreadId,
+  IconName,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
@@ -88,6 +95,7 @@ export function ExplorationSidebar({
   showHidden,
   onToggleShowHidden,
 }: ExplorationSidebarProps) {
+  const dispatch = useDispatch();
   const treeController = useTree({
     data: tree,
     selectedId: selectedEntityId?.id,
@@ -279,52 +287,59 @@ export function ExplorationSidebar({
   }
 
   return (
-    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Tabs
-        pl="0.5rem"
-        pr="1rem"
-        classNames={{ tab: S.tab }}
-        value={selectedSidebarTab}
-      >
-        <Tabs.List>
-          {Object.values(explorationSidebarTabsInfo).map(({ value, label }) => (
-            <Tabs.Tab
-              key={value}
-              value={value}
-              renderRoot={(props) => (
-                <ForwardRefLink
-                  {...props}
-                  to={getSelectedSidebarTabUrl(value)}
-                />
-              )}
-            >
-              {label}
-            </Tabs.Tab>
-          ))}
-          <Tooltip
-            label={
-              showHidden
-                ? t`Don't display hidden pages`
-                : t`Display hidden pages`
-            }
+    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="1rem">
+      <Group pl="0.5rem" pr="1rem" gap="md" wrap="nowrap" align="center">
+        <Box flex={1} miw={0}>
+          <SegmentedControl
+            fullWidth
+            radius="xl"
+            bg="background-tertiary"
+            value={selectedSidebarTab}
+            onChange={(value) => {
+              if (isExplorationSidebarTab(value)) {
+                dispatch(push(getSelectedSidebarTabUrl(value)));
+              }
+            }}
+            data={Object.values(explorationSidebarTabsInfo).map(
+              ({ value, label, icon }) => ({
+                value,
+                label: <SidebarTabLabel icon={icon} label={label} />,
+              }),
+            )}
+          />
+        </Box>
+        <Tooltip
+          label={
+            showHidden ? t`Don't display hidden pages` : t`Display hidden pages`
+          }
+        >
+          <ActionIcon
+            variant={showHidden ? "filled" : "subtle"}
+            c={showHidden ? undefined : "icon-secondary"}
+            aria-label={t`Display hidden pages`}
+            aria-pressed={showHidden}
+            data-testid="exploration-show-hidden-toggle"
+            onClick={onToggleShowHidden}
           >
-            <ActionIcon
-              ml="auto"
-              my="auto"
-              variant={showHidden ? "filled" : "subtle"}
-              c={showHidden ? undefined : "icon-secondary"}
-              aria-label={t`Display hidden pages`}
-              aria-pressed={showHidden}
-              data-testid="exploration-show-hidden-toggle"
-              onClick={onToggleShowHidden}
-            >
-              <Icon name="filter" />
-            </ActionIcon>
-          </Tooltip>
-        </Tabs.List>
-      </Tabs>
+            <Icon name="filter" />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
       {treeContent}
     </Stack>
+  );
+}
+
+function SidebarTabLabel({ icon, label }: { icon?: IconName; label: string }) {
+  if (icon == null) {
+    return label;
+  }
+  return (
+    <Tooltip label={label}>
+      <Center component="span" role="img" aria-label={label}>
+        <Icon name={icon} aria-hidden />
+      </Center>
+    </Tooltip>
   );
 }
 

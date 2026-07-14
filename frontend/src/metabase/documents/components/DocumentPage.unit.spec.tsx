@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
@@ -8,6 +7,7 @@ import {
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";

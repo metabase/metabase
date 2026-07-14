@@ -43,6 +43,7 @@ const createMockLibraryCollection = (
 
 const setupEndpoints = ({
   collections = [createMockTopLevelCollectionItem()],
+  // Unjustified type cast. FIXME
   libraryCollection = null as ReturnType<
     typeof createMockCollectionItem
   > | null,

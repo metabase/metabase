@@ -34,6 +34,7 @@ const createMockExpandedCollection = (
 
 function setupHook({
   useTenants = false,
+  // Unjustified type cast. FIXME
   sharedCollections = [] as Collection[],
 } = {}) {
   setupCollectionTreeEndpoint(sharedCollections);
@@ -43,6 +44,7 @@ function setupHook({
     path: [],
   });
 
+  // Unjustified type cast. FIXME
   const collectionsById = {
     [ROOT_COLLECTION.id]: baseRoot,
   } as Record<CollectionId, Collection>;
@@ -95,10 +97,11 @@ describe("useCollectionsWithTenants", () => {
 
   it("should merge shared collections when tenants are enabled", async () => {
     const tenantCollection = createMockCollection({
+      // Unjustified type cast. FIXME
       id: 100 as CollectionId,
       name: "Tenant A",
       location: "/",
-      namespace: "shared-tenant-collection" as any,
+      namespace: "shared-tenant-collection",
     });
 
     const { result } = setupHook({
@@ -123,17 +126,17 @@ function setup() {
   });
 
   const ourAnalyticsSubCollection = createMockExpandedCollection({
-    id: 200 as CollectionId,
+    id: 200,
     name: "Our Analytics Sub",
     location: "/",
-    path: ["root" as CollectionId],
+    path: ["root"],
   });
 
   const ourAnalyticsNestedCollection = createMockExpandedCollection({
-    id: 201 as CollectionId,
+    id: 201,
     name: "Nested Sub",
     location: "/200/",
-    path: ["root" as CollectionId, 200 as CollectionId],
+    path: ["root", 200],
   });
 
   baseRoot.children = [ourAnalyticsSubCollection];
@@ -141,9 +144,12 @@ function setup() {
   ourAnalyticsSubCollection.children = [ourAnalyticsNestedCollection];
   ourAnalyticsNestedCollection.parent = ourAnalyticsSubCollection;
 
+  // Unjustified type cast. FIXME
   const baseCollectionsById = {
     [ROOT_COLLECTION.id]: baseRoot,
+    // Unjustified type cast. FIXME
     [200 as CollectionId]: ourAnalyticsSubCollection,
+    // Unjustified type cast. FIXME
     [201 as CollectionId]: ourAnalyticsNestedCollection,
   } as Record<CollectionId, Collection>;
 
@@ -153,17 +159,17 @@ function setup() {
   });
 
   const tenantA = createMockExpandedCollection({
-    id: 100 as CollectionId,
+    id: 100,
     name: "Tenant A",
     location: "/",
-    path: ["root" as CollectionId],
+    path: ["root"],
   });
 
   const subCollection = createMockExpandedCollection({
-    id: 300 as CollectionId,
+    id: 300,
     name: "Subcollection",
     location: "/100/",
-    path: ["root" as CollectionId, 100 as CollectionId],
+    path: ["root", 100],
   });
 
   sharedRoot.children = [tenantA];
@@ -175,7 +181,9 @@ function setup() {
     baseCollectionsById,
     {
       [ROOT_COLLECTION.id]: sharedRoot,
+      // Unjustified type cast. FIXME
       [100 as CollectionId]: tenantA,
+      // Unjustified type cast. FIXME
       [300 as CollectionId]: subCollection,
     },
     "Shared collections",
@@ -193,6 +201,7 @@ function setup() {
 describe("mergeSharedCollections", () => {
   it("should create a top-level Collections node with Our analytics and Shared collections as siblings", () => {
     const { collectionsById } = setup();
+    // Unjustified type cast. FIXME
     const expanded = collectionsById as Record<
       CollectionId,
       ExpandedCollectionNode
@@ -236,6 +245,7 @@ describe("mergeSharedCollections", () => {
 
   it("should re-parent children and rewrite paths through the top-level and synthetic root", () => {
     const { collectionsById, tenantA, subCollection } = setup();
+    // Unjustified type cast. FIXME
     const expanded = collectionsById as Record<
       CollectionId,
       ExpandedCollectionNode

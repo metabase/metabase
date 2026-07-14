@@ -126,6 +126,7 @@ describe("ModelPersistenceConfiguration", () => {
         expect(fetchMock.callHistory.called(SET_SCHEDULE_URL)).toBe(true);
       });
       const lastCall = fetchMock.callHistory.lastCall(SET_SCHEDULE_URL);
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
         cron: "0 0 0/6 * * ? *",
       });
