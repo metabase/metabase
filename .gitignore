@@ -179,6 +179,9 @@ llm-payloads
 
 /bin/bb
 
+# actionlint: downloaded-on-demand binary (see mage/src/mage/actionlint.clj)
+/.actionlint/
+
 .aider*
 /config.yml
 CLAUDE.local.md

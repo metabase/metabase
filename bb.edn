@@ -35,6 +35,13 @@
                  [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
    :task (task! (alias/instructions parsed))}
 
+  actionlint
+  {:doc "Lint GitHub Actions files with actionlint."
+   :examples [["./bin/mage actionlint" "Lints every workflow under .github/workflows"]
+              ["./bin/mage actionlint .github/workflows/backend.yml" "Lints a single workflow"]]
+   :requires [[mage.actionlint]]
+   :task (task! (mage.actionlint/actionlint (:arguments parsed)))}
+
   cljfmt-staged
   {:doc "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
