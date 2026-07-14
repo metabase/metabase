@@ -27,10 +27,37 @@ You can change your password here. Note that if your Metabase uses Single Sign-O
 
 If you're having trouble logging in, see our [People can't log into Metabase](../troubleshooting-guide/cant-log-in.md).
 
+## Two-factor authentication
+
+If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Security** tab in your account. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
+
+### Set up two-factor authentication
+
+1. On the **Security** tab, click **Set up two-factor authentication**.
+2. Confirm your password.
+3. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
+4. Enter the six-digit code from the app.
+5. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-rcover-codes), the old codes will no longer work.
+
+### Logging in with two-factor authentication
+
+After you enter your email and password, Metabase asks for a code:
+
+- Enter the six-digit code from your authenticator app.
+- Lost your app? Click **Use a recovery code instead** and enter one of your saved codes.
+- If your admin set up email, click **Email me a code** to get a one-time code in your inbox.
+
+### Regenerate recovery codes
+
+Recovery codes are single-use, so it's worth generating a fresh set if you're running low or think someone else has seen them. On the **Security** tab, click **Generate recovery codes** and confirm with a current authenticator or recovery code. Generating new codes invalidates the old ones.
+
+### Turn off two-factor authentication
+
+On the **Security** tab, click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
+
 ## Account login history
 
-The login history lists each login, along with some location information (if available), and some client information (like Browser (Firefox/Windows)).
-If you see any suspicious login attempts, change your password and notify your administrator.
+The login history lists each login, along with some location information (if available), and some client information (like Browser (Firefox/Windows)). If you see any suspicious login attempts, change your password and notify your administrator.
 
 ### A note about new login emails
 
