@@ -379,6 +379,10 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
+      cy.wait("@updateTransform");
+      // Saving returns to read-only view mode; the "Run" tab only exists there,
+      // so wait for the navigation off /edit before clicking it.
+      cy.url().should("not.include", "/edit");
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
