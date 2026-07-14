@@ -66,6 +66,29 @@
             (testing "returns 404 for a non-existent DAG run"
               (mt/user-http-request :lucky :get 404 "transform-dag-run/999999/transform-runs"))))))))
 
+(deftest get-dag-run-transform-runs-deleted-seed-test
+  (testing "GET /api/transform-dag-run/:run-id/transform-runs still lists member runs after the seed transform is deleted"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-premium-features #{:transforms-basic}
+          ;; source_transform_id nil as the SET NULL FK leaves it after the seed transform is deleted
+          (mt/with-temp [:model/Transform {t1-id :id} {:name "TR1"}
+                         :model/TransformDagRun {run-id :id} {:source_transform_id   nil
+                                                              :source_transform_name "Deleted Seed"
+                                                              :direction             "upstream"
+                                                              :status                "succeeded"
+                                                              :start_time            (parse-instant "2025-09-01T10:00:00")}
+                         :model/TransformRun {tr1-id :id} {:transform_id   t1-id
+                                                           :dag_run_id     run-id
+                                                           :status         "succeeded"
+                                                           :run_method     "manual"
+                                                           :transform_name "TR1"
+                                                           :start_time     (parse-instant "2025-09-01T10:00:00")}]
+            (let [response (mt/user-http-request :lucky :get 200 (str "transform-dag-run/" run-id "/transform-runs"))]
+              (is (= [tr1-id] (map :id response))))
+            (testing "non-data-analysts are still denied"
+              (mt/user-http-request :rasta :get 403 (str "transform-dag-run/" run-id "/transform-runs")))))))))
+
 (deftest get-dag-run-transform-runs-requires-read-permission-test
   (testing "GET /api/transform-dag-run/:run-id/transform-runs requires read permission on the seed transform"
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
@@ -121,6 +144,20 @@
                     "a finished run is never resurrected into a canceled state")))
             (testing "returns 404 for a non-existent DAG run"
               (mt/user-http-request :lucky :post 404 "transform-dag-run/999999/cancel"))))))))
+
+(deftest cancel-dag-run-deleted-seed-test
+  (testing "POST /api/transform-dag-run/:run-id/cancel still works after the seed transform is deleted"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-premium-features #{:transforms-basic}
+          (mt/with-temp [:model/TransformDagRun {run-id :id} {:source_transform_id   nil
+                                                              :source_transform_name "Deleted Seed"
+                                                              :direction             "upstream"
+                                                              :status                "started"
+                                                              :is_active             true
+                                                              :start_time            (parse-instant "2025-09-01T10:00:00")}]
+            (mt/user-http-request :lucky :post 204 (str "transform-dag-run/" run-id "/cancel"))
+            (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))))))))
 
 (deftest cancel-dag-run-requires-write-permission-test
   (testing "POST /api/transform-dag-run/:run-id/cancel requires write permission on the seed transform"
