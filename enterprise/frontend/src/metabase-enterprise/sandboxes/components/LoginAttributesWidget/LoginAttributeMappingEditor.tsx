@@ -103,6 +103,7 @@ export const LoginAttributeMappingEditor = ({
   const [entries, setEntries] = useState<MappingEditorEntry[]>(
     structuredAttributes ? [] : buildEntries(simpleAttributes),
   );
+  const [autoFocusIndex, setAutoFocusIndex] = useState<number | null>(null);
 
   useEffect(() => {
     // structuredAttributes can change if a different tenant is selected
@@ -143,6 +144,7 @@ export const LoginAttributeMappingEditor = ({
                 }}
                 keyOpts={keyOpts}
                 error={entryError(entries, key)}
+                autoFocus={index === autoFocusIndex}
               />
             </Flex>
             <Flex gap="sm" w="50%">
@@ -175,7 +177,10 @@ export const LoginAttributeMappingEditor = ({
         variant="light"
         size="xs"
         leftSection={<Icon name="add" />}
-        onClick={() => handleChange(addEntry(entries))}
+        onClick={() => {
+          setAutoFocusIndex(entries.length);
+          handleChange(addEntry(entries));
+        }}
         mt="md"
         disabled={_.some(
           entries,
@@ -193,11 +198,13 @@ const KeyInput = ({
   value,
   onChange,
   error,
+  autoFocus,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   keyOpts: MappingEditorEntry["keyOpts"];
   error?: string | boolean;
+  autoFocus?: boolean;
 }) => {
   if (keyOpts?.disabled) {
     return (
@@ -215,6 +222,7 @@ const KeyInput = ({
       w="100%"
       onChange={onChange}
       error={error}
+      autoFocus={autoFocus}
     />
   );
 };
