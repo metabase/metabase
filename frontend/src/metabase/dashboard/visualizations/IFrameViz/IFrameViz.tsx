@@ -6,6 +6,7 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
@@ -13,7 +14,6 @@ import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
 } from "metabase/visualizations/lib/iframe";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   VirtualDashboardCard,

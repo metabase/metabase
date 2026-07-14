@@ -2,10 +2,13 @@
   (:require
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase.app-db.core :as mdb]
    [metabase.connection-pool :as connection-pool]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [next.jdbc.quoted :as quoted]
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
@@ -15,12 +18,29 @@
 (set! *warn-on-reflection* true)
 
 (def data-source
-  "Atom to hold the pooled JDBC data source for the semantic search database."
+  "Atom to hold the pooled JDBC data source for the semantic search database.
+  Only ever holds a dedicated (MB_PGVECTOR_DB_URL) pool; in app-db mode the shared application pool is
+  returned by [[ensure-initialized-data-source!]] without being stored here, so [[shutdown-db!]] can never
+  close it."
   (atom nil))
 
 (def db-url
   "The database URL used to connect to pgvector"
   (env :mb-pgvector-db-url))
+
+(defn dedicated-url-configured?
+  "True when MB_PGVECTOR_DB_URL is set to a non-blank value.
+  Canonical check for \"a dedicated pgvector store is configured\"; using it everywhere stops a
+  whitespace-only URL from reading as configured in one subsystem and unset in another."
+  []
+  (not (str/blank? db-url)))
+
+(def app-db-schema
+  "The Postgres schema holding all semantic-search tables when sharing the application database.
+  Isolating by schema makes destructive maintenance (see
+  [[metabase-enterprise.semantic-search.db.migration.impl]]) structurally incapable of touching
+  application tables."
+  "semantic_search")
 
 ;; All pgvector config — connection *and* connection-pool parameters — rides MB_PGVECTOR_DB_URL, so a
 ;; deployment sets everything in one place (the DB secret) with no env-var-vs-URL precedence to reason
@@ -177,7 +197,151 @@
   (init-db!)
   (test-connection!))
 
-(defn ensure-initialized-data-source!
-  "Return datasource. Initialize if necessary."
+(def app-db-pgvector-support
+  "Latches `true` once the app db is confirmed to support pgvector; nil until then.
+  A confirmed extension doesn't vanish under a running instance, so `true` is permanent. A negative result
+  is NOT latched — it opens a [[probe-cooldown-timer]] and is re-probed, so installing pgvector on a
+  running instance is picked up without a restart. Tests reset it."
+  (atom nil))
+
+(def probe-cooldown-timer
+  "A [[u/start-timer]] taken when the last app-db pgvector probe came back unsupported or errored, or nil
+  when a probe is due. Bounds re-probing to once per [[probe-cooldown-ms]] so an absent extension doesn't
+  re-query the catalog on every search and 20s indexer tick. Tests reset it."
+  (atom nil))
+
+(def ^:private probe-cooldown-ms
+  "How long an unsupported or failed app-db pgvector probe is trusted before re-probing.
+  Long enough that a never-provisioned instance isn't running a rolled-back CREATE probe into its DDL audit
+  log every few seconds, short enough to pick up a runtime `CREATE EXTENSION` / privilege grant without a
+  restart."
+  (.toMillis (java.time.Duration/ofMinutes 5)))
+
+(defonce ^{:doc "Log-once latch for the \"no pgvector\" operator hint; the negative probe recurs each
+  cooldown, so without it the hint would repeat. Tests reset it."}
+  logged-pgvector-absent?
+  (atom false))
+
+(defn- probe-due?
+  "True when no app-db pgvector probe cooldown is active."
   []
-  (or @data-source (init-db!)))
+  (let [timer @probe-cooldown-timer]
+    (or (nil? timer) (>= (u/since-ms timer) probe-cooldown-ms))))
+
+(defn- app-db-can-provision-pgvector?
+  "Whether the app-db user can create whichever store pieces are still missing, checked without persisting
+  them: the CREATEs run in a transaction that always rolls back.
+  Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
+  an already-installed extension or existing schema needs no create privilege.
+  A privilege error reads as false."
+  [app-datasource create-extension? create-schema?]
+  (try
+    (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
+      (when create-extension?
+        (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
+      (when create-schema?
+        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
+    true
+    (catch Exception e
+      (log/debug e "Semantic search: the application database user cannot provision the pgvector store")
+      false)))
+
+(defn check-app-db-pgvector-support
+  "Can the application database act as the pgvector store?
+  True when the `vector` extension and the [[app-db-schema]] schema are present, or the app-db user can
+  create whichever is missing.
+  Provisioning is verified in a rolled-back transaction (CREATE EXTENSION / CREATE SCHEMA), not read from
+  pg_available_extensions: managed Postgres often lists the extension as available while denying the DDL.
+  The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
+  here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
+  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
+  []
+  (let [app-datasource (mdb/data-source)
+        ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
+        ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
+        ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
+        ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
+        {:keys [installed available schema-exists]}
+        (jdbc/execute-one! app-datasource
+                           [(str "SELECT"
+                                 " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
+                                 " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
+                                 " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
+                            app-db-schema]
+                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps})]
+    (cond
+      (not (or installed available)) false
+      (and installed schema-exists)  true
+      :else                          (app-db-can-provision-pgvector? app-datasource
+                                                                     (not installed)
+                                                                     (not schema-exists)))))
+
+(defn- app-db-pgvector-supported?
+  "Whether the application database can act as the pgvector store, via a cached probe.
+  A confirmed `true` latches for the JVM lifetime (see [[app-db-pgvector-support]]); an unsupported or
+  errored probe is trusted only for [[probe-cooldown-ms]] before re-probing, so a runtime `CREATE
+  EXTENSION` / package install is picked up without a restart while a persistent negative doesn't re-query
+  and re-warn on every call. Returns false while the app db is not yet set up."
+  []
+  (if (true? @app-db-pgvector-support)
+    true
+    (boolean
+     (when (and (mdb/db-is-set-up?) (probe-due?))
+       (locking app-db-pgvector-support
+         (cond
+           (true? @app-db-pgvector-support) true
+           ;; a racing thread probed first and opened the cooldown
+           (not (probe-due?))               false
+           :else
+           (try
+             (if (check-app-db-pgvector-support)
+               (do
+                 (log/info (str "Semantic search: using the application database as the pgvector store"
+                                " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
+                                " dedicated pgvector database."))
+                 (reset! app-db-pgvector-support true)
+                 (reset! probe-cooldown-timer nil)
+                 true)
+               (do
+                 (when (compare-and-set! logged-pgvector-absent? false true)
+                   (log/info (str "Semantic search: the application database cannot host pgvector (the"
+                                  " app-db user cannot create the vector extension or the semantic_search"
+                                  " schema). Install pgvector and grant CREATE, or set MB_PGVECTOR_DB_URL;"
+                                  " it is picked up automatically, no restart needed.")))
+                 (reset! probe-cooldown-timer (u/start-timer))
+                 false))
+             (catch Exception e
+               (reset! probe-cooldown-timer (u/start-timer))
+               (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
+                                " will retry after the cooldown."))
+               false))))))))
+
+(defn pgvector-mode
+  "How this instance reaches its pgvector database:
+    :dedicated   MB_PGVECTOR_DB_URL is set (always wins)
+    :app-db      no URL, but the Postgres application database supports the vector extension
+    :unavailable no pgvector anywhere — semantic search cannot run."
+  []
+  (cond
+    (dedicated-url-configured?)          :dedicated
+    (and (= :postgres (mdb/db-type))
+         (app-db-pgvector-supported?))   :app-db
+    :else                                :unavailable))
+
+(defn pgvector-configured?
+  "Canonical availability predicate: does this instance have a pgvector database to work with?"
+  []
+  (not= :unavailable (pgvector-mode)))
+
+(defn ensure-initialized-data-source!
+  "Return datasource. Initialize if necessary.
+  In app-db mode this is the application database's own shared pool."
+  []
+  (or @data-source
+      (case (pgvector-mode)
+        :dedicated   (init-db!)
+        :app-db      (mdb/data-source)
+        :unavailable (throw (ex-info (str "Semantic search requires a pgvector database: set MB_PGVECTOR_DB_URL,"
+                                          " or use a Postgres application database with the pgvector extension"
+                                          " available.")
+                                     {:mode :unavailable})))))

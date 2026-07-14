@@ -3745,11 +3745,17 @@
             "type" : "string",
             "minLength" : 1
           },
+          "tabs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.dashboard-tab"
+            }
+          },
           "url" : {
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids", "tabs" ]
       },
       "metabase.agent-api.api.create-metric-request" : {
         "type" : "object",
@@ -3921,8 +3927,22 @@
         },
         "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
       },
+      "metabase.agent-api.api.dashboard-tab" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name" ]
+      },
       "metabase.agent-api.api.dashcard-mutation" : {
-        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
+        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").\n   - `add_heading` : requires `text`. Adds a full-width section heading.\n   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`\n                     (\"wide\", \"tall\", or \"full\").\n   - `update_text` : requires `dashcard_id` and `text`. Replaces a heading or text card's text\n                     in place, keeping its position and size.\n   - `remove`      : requires `dashcard_id`.\n   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").\n\n   The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on\n   the dashboard's first tab.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -3941,9 +3961,89 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
             }
           },
-          "required" : [ "action", "card_id" ]
+          "required" : [ "action", "card_id" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "add_heading"
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "text" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "add_text"
+            },
+            "display_size" : {
+              "oneOf" : [ {
+                "type" : "string",
+                "enum" : [ "wide", "tall", "full" ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "tab_id" : {
+              "oneOf" : [ {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "text" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "action" : {
+              "const" : "update_text"
+            },
+            "dashcard_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "text" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "action", "dashcard_id", "text" ],
+          "additionalProperties" : false
         }, {
           "type" : "object",
           "properties" : {
@@ -3956,7 +4056,8 @@
               "minimum" : 1
             }
           },
-          "required" : [ "action", "dashcard_id" ]
+          "required" : [ "action", "dashcard_id" ],
+          "additionalProperties" : false
         }, {
           "type" : "object",
           "properties" : {
@@ -3973,7 +4074,8 @@
               "enum" : [ "top", "bottom" ]
             }
           },
-          "required" : [ "action", "dashcard_id", "position" ]
+          "required" : [ "action", "dashcard_id", "position" ],
+          "additionalProperties" : false
         } ]
       },
       "metabase.agent-api.api.execute-query-request" : {
@@ -4268,7 +4370,7 @@
         "required" : [ "id", "type", "name" ]
       },
       "metabase.agent-api.api.update-dashboard-request" : {
-        "description" : "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of\n   add/remove/move mutations applied in order.",
+        "description" : "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of\n   add/add_heading/add_text/update_text/remove/move mutations applied in order.",
         "type" : "object",
         "properties" : {
           "archived" : {
@@ -4315,7 +4417,7 @@
         }
       },
       "metabase.agent-api.api.update-dashboard-response" : {
-        "description" : "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard\n  ids in row/col order so the LLM can confirm what landed on the dashboard.",
+        "description" : "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard\n  ids in row/col order so the LLM can confirm what landed on the dashboard. `:tabs` lists\n  the dashboard's tabs in display order — the ids a mutation's `tab_id` accepts.",
         "type" : "object",
         "properties" : {
           "archived" : {
@@ -4356,9 +4458,15 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "tabs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.dashboard-tab"
+            }
           }
         },
-        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
+        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids", "tabs" ]
       },
       "metabase.agent-api.api.update-metric-request" : {
         "description" : "Patch shape for `update_metric`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer) and must still describe a valid metric.",
@@ -5501,6 +5609,67 @@
         "type" : "string",
         "enum" : [ "default", "write-data", "admin", "transform" ]
       },
+      "metabase.driver.index-field" : {
+        "description" : "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a\n  `:columns` type for the indexed columns.",
+        "type" : "object",
+        "properties" : {
+          "description" : { },
+          "directions" : {
+            "type" : "boolean"
+          },
+          "display-name" : { },
+          "name" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "name" : { },
+                "value" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "name", "value" ]
+            }
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "string", "boolean", "select", "integer", "columns" ]
+          }
+        },
+        "required" : [ "name", "display-name", "type" ]
+      },
+      "metabase.driver.index-method" : {
+        "description" : "Metadata for one index kind a driver supports.",
+        "type" : "object",
+        "properties" : {
+          "description" : { },
+          "display-name" : { },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.driver.index-field"
+            }
+          },
+          "lifecycle" : {
+            "type" : "string",
+            "enum" : [ "standalone", "inline" ]
+          }
+        },
+        "required" : [ "display-name", "lifecycle", "fields" ]
+      },
+      "metabase.driver.supported-index-methods" : {
+        "description" : "Return shape of [[supported-index-methods]]: index-kind -> metadata.",
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.driver.index-method"
+        }
+      },
       "metabase.embedding-rest.api.theme.EmbeddingTheme" : {
         "type" : "object",
         "properties" : {
@@ -5548,6 +5717,204 @@
           }
         },
         "required" : [ "check_name", "health", "message", "run_at" ]
+      },
+      "metabase.indexes.schema.classical-index" : {
+        "description" : "Postgres / MySQL / SQL Server secondary index.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1
+          },
+          "include" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column-name"
+            }
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "btree", "hash", "gin", "gist", "brin", "spgist", "fulltext", "spatial", "clustered", "nonclustered", "columnstore" ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.indexes.schema.index-name"
+          },
+          "unique" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "kind", "name", "columns" ]
+      },
+      "metabase.indexes.schema.clustering" : {
+        "description" : "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1
+          },
+          "kind" : {
+            "const" : "clustering"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.indexes.schema.index-name"
+          }
+        },
+        "required" : [ "kind", "columns" ]
+      },
+      "metabase.indexes.schema.column" : {
+        "type" : "object",
+        "properties" : {
+          "direction" : {
+            "type" : "string",
+            "enum" : [ "asc", "desc" ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.indexes.schema.column-name"
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "metabase.indexes.schema.column-name" : {
+        "type" : "string",
+        "minLength" : 1,
+        "maxLength" : 255
+      },
+      "metabase.indexes.schema.distkey" : {
+        "description" : "Redshift distribution, inline. Only `:key` uses a column (the one DISTKEY column); `:all`/`:even` take none.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1,
+            "maxItems" : 1
+          },
+          "kind" : {
+            "const" : "distkey"
+          },
+          "style" : {
+            "type" : "string",
+            "enum" : [ "key", "all", "even" ]
+          }
+        },
+        "required" : [ "kind", "style" ]
+      },
+      "metabase.indexes.schema.index-name" : {
+        "description" : "Free-form user input, inlined (quoted and escaped) into DDL. 63 is the Postgres identifier limit, the tightest\n  engine we support.",
+        "type" : "string",
+        "minLength" : 1,
+        "maxLength" : 63
+      },
+      "metabase.indexes.schema.index-structured" : {
+        "description" : "A single structured index definition, dispatched on `:kind`. The shape stored in\n  `metabase_table_indexes.structured` and handed to the driver index multimethods.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.sortkey"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.distkey"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.clustering"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.order-by"
+        }, {
+          "$ref" : "#/components/schemas/metabase.indexes.schema.skip-index"
+        } ]
+      },
+      "metabase.indexes.schema.order-by" : {
+        "description" : "ClickHouse ORDER BY, inline.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1
+          },
+          "kind" : {
+            "const" : "order-by"
+          }
+        },
+        "required" : [ "kind", "columns" ]
+      },
+      "metabase.indexes.schema.skip-index" : {
+        "description" : "ClickHouse data-skipping index, standalone. Only arg-free types; the parameterized ones need type-args the form\n  can't supply yet.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1
+          },
+          "granularity" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "kind" : {
+            "const" : "skip-index"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.indexes.schema.index-name"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "minmax", "bloom_filter" ]
+          }
+        },
+        "required" : [ "kind", "name", "columns", "type" ]
+      },
+      "metabase.indexes.schema.sortkey" : {
+        "description" : "Redshift sort key, inline.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.indexes.schema.column"
+            },
+            "minItems" : 1
+          },
+          "kind" : {
+            "const" : "sortkey"
+          },
+          "style" : {
+            "type" : "string",
+            "enum" : [ "compound", "interleaved" ]
+          }
+        },
+        "required" : [ "kind", "style", "columns" ]
       },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
@@ -8402,7 +8769,7 @@
               } ]
             },
             "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag-map"
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tags"
             }
           },
           "required" : [ "lib/type" ]
@@ -11162,6 +11529,7 @@
         "required" : [ "name", "display-name" ]
       },
       "metabase.lib.schema.template-tag.disallow-dimension" : { },
+      "metabase.lib.schema.template-tag.distinct-template-tags" : { },
       "metabase.lib.schema.template-tag.field-filter" : {
         "type" : "object",
         "properties" : {
@@ -11367,14 +11735,15 @@
           } ]
         } ]
       },
-      "metabase.lib.schema.template-tag.template-tag-map" : {
+      "metabase.lib.schema.template-tag.template-tags" : {
+        "description" : "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.\n\n  Each tag must have a distinct `:name`.",
         "allOf" : [ {
-          "type" : "object",
-          "additionalProperties" : {
+          "type" : "array",
+          "items" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag"
           }
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.distinct-template-tags"
         } ]
       },
       "metabase.lib.schema.template-tag.temporal-unit" : {
@@ -15070,7 +15439,7 @@
       "put" : {
         "operationId" : "put-api-agent-v1-dashboard-id",
         "summary" : "PUT /api/agent/v1/dashboard/{id}",
-        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations\n  are submitted under `dashcards` as a list of `{action: add|remove|move, ...}`\n  entries applied in order. `add` requires `card_id`; `remove` and `move` require\n  `dashcard_id`.",
+        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations\n  are submitted under `dashcards` as a list of\n  `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in\n  order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown\n  for text cards); `update_text`, `remove`, and `move` require `dashcard_id`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -15223,7 +15592,7 @@
       "put" : {
         "operationId" : "put-api-agent-v1-metric-id",
         "summary" : "PUT /api/agent/v1/metric/{id}",
-        "description" : "Update a saved metric. Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.\n  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying\n  query; the replacement must still be a valid metric (exactly one aggregation, at most one\n  date/datetime grouping). The target card must be a metric — use `update_question` for questions.",
+        "description" : "Update a saved metric. Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.\n  Archiving is a soft delete - there is no delete endpoint. It can be reversed by setting\n  `archived: false`.\n  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying\n  query; the replacement must still be a valid metric (exactly one aggregation, at most one\n  date/datetime grouping). The target card must be a metric — use `update_question` for questions.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -28449,6 +28818,327 @@
         "tags" : [ "/api/ee/metabot" ]
       }
     },
+    "/api/ee/mfa/admin/overview" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-overview",
+        "summary" : "GET /api/ee/mfa/admin/overview",
+        "description" : "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and\n  whether the instance encrypts secrets at rest.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "encryption_key_set" : {
+                      "type" : "boolean"
+                    },
+                    "enrolled_count" : {
+                      "type" : "integer"
+                    },
+                    "unenrolled_count" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "encryption_key_set", "enrolled_count", "unenrolled_count" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/admin/remove" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-admin-remove",
+        "summary" : "POST /api/ee/mfa/admin/remove",
+        "description" : "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost\n  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —\n  there is nothing to \"reset\", the secret lives on their device.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "user_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/disable" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-disable",
+        "summary" : "POST /api/ee/mfa/disable",
+        "description" : "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a\n  TOTP code or an unused recovery code — never just the password.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll",
+        "summary" : "POST /api/ee/mfa/enroll",
+        "description" : "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind\n  against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an\n  `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "otpauth_uri" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "secret" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "secret", "otpauth_uri" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "password" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "password" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll/confirm" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll-confirm",
+        "summary" : "POST /api/ee/mfa/enroll/confirm",
+        "description" : "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second\n  factor and returns the single-use recovery codes — the only time they exist in plaintext.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/recovery-codes" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-recovery-codes",
+        "summary" : "POST /api/ee/mfa/recovery-codes",
+        "description" : "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a\n  fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can\n  never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/status" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-status",
+        "summary" : "GET /api/ee/mfa/status",
+        "description" : "The current user's MFA status, for the account-settings UI.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enrolled" : {
+                      "type" : "boolean"
+                    },
+                    "method" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "mfa_enabled" : {
+                      "type" : "boolean"
+                    },
+                    "pending" : {
+                      "type" : "boolean"
+                    },
+                    "recovery_codes_remaining" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "mfa_enabled", "enrolled", "pending", "method", "recovery_codes_remaining" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
     "/api/ee/permission_debug" : {
       "get" : {
         "operationId" : "get-api-ee-permission_debug",
@@ -30815,7 +31505,7 @@
       "get" : {
         "operationId" : "get-api-ee-semantic-search-status",
         "summary" : "GET /api/ee/semantic-search/status",
-        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, returns an empty map.",
+        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, or no pgvector database is configured, returns an empty map.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33358,7 +34048,7 @@
       "post" : {
         "operationId" : "post-api-embed-mcp-feedback",
         "summary" : "POST /api/embed-mcp/feedback",
-        "description" : "Proxy MCP Apps visualization feedback to Harbormaster.",
+        "description" : "Persist MCP Apps visualization feedback.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -33431,20 +34121,17 @@
                       },
                       "issue_type" : {
                         "oneOf" : [ {
-                          "type" : "string"
+                          "type" : "string",
+                          "maxLength" : 64
                         }, {
                           "type" : "null"
                         } ]
-                      },
-                      "message_id" : {
-                        "type" : "string",
-                        "minLength" : 1
                       },
                       "positive" : {
                         "type" : "boolean"
                       }
                     },
-                    "required" : [ "message_id", "positive" ]
+                    "required" : [ "positive" ]
                   }
                 },
                 "required" : [ "feedback", "conversation_data" ]
@@ -35377,6 +36064,464 @@
           }
         },
         "tags" : [ "/api/health-inspector" ]
+      }
+    },
+    "/api/index" : {
+      "get" : {
+        "operationId" : "get-api-index",
+        "summary" : "GET /api/index",
+        "description" : "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged\n  `:metabase_managed`; managed ones also carry `:request` (status + definition).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "transform-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "is_valid" : {
+                            "type" : "boolean"
+                          },
+                          "key_columns" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "access_method" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "metabase_managed" : {
+                            "type" : "boolean"
+                          },
+                          "name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_unique" : {
+                            "type" : "boolean"
+                          },
+                          "present_in_warehouse" : {
+                            "type" : "boolean"
+                          },
+                          "is_primary" : {
+                            "type" : "boolean"
+                          },
+                          "request" : {
+                            "type" : "object",
+                            "properties" : {
+                              "index_name" : {
+                                "type" : "string",
+                                "minLength" : 1
+                              },
+                              "structured" : {
+                                "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                              },
+                              "transform_id" : {
+                                "description" : "value must be an integer greater than zero.",
+                                "type" : "integer",
+                                "minimum" : 1
+                              },
+                              "id" : {
+                                "description" : "value must be an integer greater than zero.",
+                                "type" : "integer",
+                                "minimum" : 1
+                              },
+                              "created_by" : {
+                                "oneOf" : [ {
+                                  "description" : "value must be an integer greater than zero.",
+                                  "type" : "integer",
+                                  "minimum" : 1
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "updated_at" : { },
+                              "status" : {
+                                "type" : "string",
+                                "enum" : [ "create-pending", "update-pending", "delete-pending", "running", "succeeded", "failed" ]
+                              },
+                              "error_message" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "created_at" : { },
+                              "last_executed_at" : {
+                                "oneOf" : [ { }, {
+                                  "type" : "null"
+                                } ]
+                              }
+                            },
+                            "required" : [ "id", "transform_id", "index_name", "structured", "status", "error_message", "created_by", "created_at", "updated_at", "last_executed_at" ],
+                            "additionalProperties" : false
+                          },
+                          "kind" : {
+                            "type" : "string"
+                          },
+                          "partial_predicate" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "include_columns" : {
+                            "type" : "array",
+                            "items" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          }
+                        },
+                        "required" : [ "metabase_managed", "present_in_warehouse", "name", "kind", "key_columns", "include_columns", "is_unique", "is_primary", "is_valid", "partial_predicate", "access_method" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/index" ]
+      }
+    },
+    "/api/index/request" : {
+      "post" : {
+        "operationId" : "post-api-index-request",
+        "summary" : "POST /api/index/request",
+        "description" : "Create an index request on a transform's target table. Requires write access to the transform. Listed via `GET /`,\n  not under `/request`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "index_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "structured" : {
+                      "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                    },
+                    "transform_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_by" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "create-pending", "update-pending", "delete-pending", "running", "succeeded", "failed" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "last_executed_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "transform_id", "index_name", "structured", "status", "error_message", "created_by", "created_at", "updated_at", "last_executed_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "structured" : {
+                    "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                  },
+                  "transform_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "transform_id", "structured" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/index" ]
+      }
+    },
+    "/api/index/request/{id}" : {
+      "get" : {
+        "operationId" : "get-api-index-request-id",
+        "summary" : "GET /api/index/request/{id}",
+        "description" : "Fetch a single index request (e.g. to poll its status).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "index_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "structured" : {
+                      "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                    },
+                    "transform_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_by" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "create-pending", "update-pending", "delete-pending", "running", "succeeded", "failed" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "last_executed_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "transform_id", "index_name", "structured", "status", "error_message", "created_by", "created_at", "updated_at", "last_executed_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/index" ]
+      },
+      "put" : {
+        "operationId" : "put-api-index-request-id",
+        "summary" : "PUT /api/index/request/{id}",
+        "description" : "Replace the structured definition of an index request, marking it update-pending.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "index_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "structured" : {
+                      "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                    },
+                    "transform_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_by" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "updated_at" : { },
+                    "status" : {
+                      "type" : "string",
+                      "enum" : [ "create-pending", "update-pending", "delete-pending", "running", "succeeded", "failed" ]
+                    },
+                    "error_message" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "created_at" : { },
+                    "last_executed_at" : {
+                      "oneOf" : [ { }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "transform_id", "index_name", "structured", "status", "error_message", "created_by", "created_at", "updated_at", "last_executed_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "structured" : {
+                    "$ref" : "#/components/schemas/metabase.indexes.schema.index-structured"
+                  }
+                },
+                "required" : [ "structured" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/index" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-index-request-id",
+        "summary" : "DELETE /api/index/request/{id}",
+        "description" : "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt\n  (pending changes force a full run), so the row stays visible in this state until that rebuild removes it.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/index" ]
       }
     },
     "/api/ldap/settings" : {
@@ -44268,6 +45413,98 @@
         "tags" : [ "/api/session" ]
       }
     },
+    "/api/session/mfa/send-email-otp" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-send-email-otp",
+        "summary" : "POST /api/session/mfa/send-email-otp",
+        "description" : "Email a one-time code as a fallback second factor (for a user who lost their authenticator but\n  still has recovery codes disabled or unavailable). Requires a valid challenge token from\n  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by\n  `POST /mfa/verify` like any other code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "challenge_token" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/mfa/verify" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-verify",
+        "summary" : "POST /api/session/mfa/verify",
+        "description" : "Complete a two-step login by verifying a one-time code. Takes the `challenge_token` returned by\n  `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of\n  their single-use recovery codes, or an emailed one-time code; on success sets the session cookie.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "remember" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "challenge_token", "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
     "/api/session/password-check" : {
       "post" : {
         "operationId" : "post-api-session-password-check",
@@ -47281,6 +48518,13 @@
                         "type" : "boolean"
                       },
                       "source" : { },
+                      "requestable_indexes" : {
+                        "oneOf" : [ {
+                          "$ref" : "#/components/schemas/metabase.driver.supported-index-methods"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "last_checkpoint_value" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -47645,6 +48889,13 @@
                       "type" : "boolean"
                     },
                     "source" : { },
+                    "requestable_indexes" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.driver.supported-index-methods"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_checkpoint_value" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -50177,6 +51428,13 @@
                       "type" : "boolean"
                     },
                     "source" : { },
+                    "requestable_indexes" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.driver.supported-index-methods"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_checkpoint_value" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -50549,6 +51807,13 @@
                       "type" : "boolean"
                     },
                     "source" : { },
+                    "requestable_indexes" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.driver.supported-index-methods"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "last_checkpoint_value" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -51058,6 +52323,13 @@
                         "type" : "boolean"
                       },
                       "source" : { },
+                      "requestable_indexes" : {
+                        "oneOf" : [ {
+                          "$ref" : "#/components/schemas/metabase.driver.supported-index-methods"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "last_checkpoint_value" : {
                         "oneOf" : [ {
                           "type" : "string"
