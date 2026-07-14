@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { render, renderWithProviders, screen, within } from "__support__/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -114,8 +114,7 @@ describe("Scalar", () => {
 
 describe("scalar viz settings", () => {
   beforeAll(() => {
-    // @ts-expect-error: incompatible prop types with registerVisualization
-    registerVisualization(Scalar);
+    registerVisualizations();
   });
 
   it("should render the field to show input in the formatting section if there are 2 or more columns", async () => {

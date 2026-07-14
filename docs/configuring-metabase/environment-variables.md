@@ -1301,7 +1301,7 @@ The Anthropic API Key.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -2241,6 +2241,15 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 - [Configuration file name](./config-file.md): `start-of-week`
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
+
+### `MB_STATIC_VIZ_MODE`
+
+- Type: keyword
+- Default: `graalvm`
+
+How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
+  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
+  pool of external Node.js child processes (requires a `node` binary on the host's PATH).
 
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 

@@ -1,4 +1,4 @@
-import type { CardStats } from "metabase/transforms/lib/transforms-inspector";
+import type { CardStats } from "metabase-enterprise/transforms-inspector/lib/transforms-inspector";
 import type {
   InspectorAlertTrigger,
   InspectorCard,
