@@ -1,16 +1,18 @@
 (ns metabase-enterprise.entity-retrieval.health
   "Health-inspector check for NLQ (natural-language-query) curated retrieval.
 
-  The `:nlq` Metabot profile normally discovers data through the curated `retrieve_library_entities` tool,
-  but when the library index can't serve, `get-profile` silently swaps in the `:nlq-fallback` profile
-  (general keyword/fulltext search) -- answers keep coming, so the degradation is invisible; this check
-  makes it visible.
-  Health is status-style: 100 = curated tool serving, 0 = enabled but on the fallback (the `:message`
-  names why).
-  A not-enabled instance returns nil, so the check is omitted rather than reported as a misleading 100.
+  The `:nlq` Metabot profile uses this tool, but if the tool is unavailable we swap this profile out with
+  the `:nlq-fallback` profile instead, which uses the regular search tool.
 
-  Reuses the embedding-service probe and circuit-breaker state from
-  [[metabase-enterprise.semantic-search.health]] / [[metabase-enterprise.semantic-search.embedding]]."
+  Because this failure mode is subtle, this health check is important to catch incidents.
+
+  :health can take the following values:
+  -     nil = not enabled
+  -       0 = enabled, but not available (`:message` tells why)
+  - 0<h<100 = partially available (e.g. a built but empty index)
+  -     100 = fully operational
+
+  Shares the embedding-service probe and circuit-breaker with semantic-search. "
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -31,35 +33,19 @@
 
 (defn nlq-retrieval-health-check
   "Health-inspector check for NLQ curated retrieval, registered as `:nlq-retrieval`.
-  Returns nil when the feature isn't enabled (so the check is omitted), otherwise a `{:health :message}`
-  map: healthy when the curated index can serve queries and the embedding service is reachable; degraded
-  (naming the cause) whenever the agent would silently fall back to general search."
+  Returns nil when a dependency is unmet (the feature is off, so the check is omitted), otherwise a
+  `{:health :message}` map describing the index's own state and the embedding service it depends on."
   []
-  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible? populated? probe-error]}
-        (entity-retrieval/retrieval-status)]
-    (cond
-      (not (and pgvector? licensed? embedder-configured?))
-      nil ;; not enabled — nothing to check (omitted rather than reported as healthy)
-
-      ;; A thrown probe is a pgvector-connectivity fault, not a model mismatch: report it as such rather than
-      ;; misdirecting the operator to a rebuild (mirrors the semantic-search check's "pgvector unreachable").
-      probe-error
-      (semantic.health/degraded
-       (str "pgvector store unreachable: " probe-error " — NLQ curated retrieval unavailable."))
-
-      (not index-compatible?)
-      (semantic.health/degraded
-       (str "NLQ curated index not built for the current embedding model (rebuild pending) — "
-            "agent on general-search fallback."))
-
-      (not populated?)
-      (semantic.health/degraded
-       "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
-
-      :else
-      (if-let [problem (semantic.health/embedding-problem)]
-        (semantic.health/degraded (str (u/capitalize-first-char problem) " — NLQ curated retrieval unavailable."))
-        (semantic.health/healthy "NLQ curated retrieval available and serving.")))))
+  (let [status (entity-retrieval/retrieval-status)]
+    (when (entity-retrieval/all-dependencies-met? status)
+      (case (get-in status [:index :status])
+        :unreachable  (semantic.health/degraded "Index unreachable")
+        :missing      (semantic.health/degraded "Index not found")
+        :incompatible (semantic.health/degraded "Index not compatible")
+        :empty        (semantic.health/warning  "Index empty")
+        :populated    (if-let [problem (semantic.health/embedding-problem)]
+                        (semantic.health/degraded (u/capitalize-first-char problem))
+                        (semantic.health/healthy "Healthy"))))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
@@ -73,10 +59,10 @@
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
-;;; Coverage / garbage / staleness for the library entity index, at the distinct-entity grain (rows are per
-;;; (entity, doc)). Both sides are normalised through entity-class so a metric<->model relabel doesn't read
-;;; as both missing and garbage. Registered through the shared framework in semantic-search.health, which
-;;; owns the threshold/message/gauge shaping.
+;;; Coverage / garbage / staleness for the index, at the distinct-entity grain (rows are per (entity, doc)).
+;;; Both sides are normalised through entity-class so a metric<->model relabel doesn't read as both missing
+;;; and garbage. Registered through the shared framework in semantic-search.health, which owns the
+;;; threshold/message/gauge shaping.
 
 (def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- one missed ~15m full-reconcile cycle
 (def ^:private staleness-critical-seconds (* 60 60))   ; 60m -- reconcile clearly stalled
@@ -92,11 +78,10 @@
   compatibility, not population -- and passes `probe-populated? false` so it doesn't run the population
   query it would discard."
   []
-  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible?]}
-        (entity-retrieval/retrieval-status false)]
-    (when (and pgvector? licensed? embedder-configured? index-compatible?)
-      (try (semantic.datasource/ensure-initialized-data-source!)
-           (catch Throwable _ nil)))))
+  (when (contains? #{:compatible :empty :populated}
+                   (get-in (entity-retrieval/retrieval-status false) [:index :status]))
+    (try (semantic.datasource/ensure-initialized-data-source!)
+         (catch Throwable _ nil))))
 
 (def ^:private library-datasource
   "TTL-memoized so coverage, garbage, and staleness share one retrieval-status probe + datasource resolve per

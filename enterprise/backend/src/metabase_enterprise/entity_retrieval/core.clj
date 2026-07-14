@@ -42,95 +42,99 @@
   (semantic.db.datasource/dedicated-url-configured?))
 
 (defn- licensed?
-  "Both features retrieval needs: `:library-retrieval` entitles the tool; `:library` gives the index
-  something to hold (a token granting `:library-retrieval` alone degrades to \"unavailable\" explicitly,
-  not silently via an empty index)."
+  "Without a library, there is nothing one is entitled to retrieve."
   []
   (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)))
 
 (defn- embedder-configured?
-  "Whether an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
-  reconcile and query embedding would throw, so callers gate rather than fail mid-run."
+  "Whether an embedding backend is configured: without one we can neither index nor retrieve."
   []
   (embedding/embedding-supported? (embedding/get-configured-model)))
 
 (defn available?
-  "Whether the entity-retrieval mirror can run right now: a pgvector store is configured (somewhere to hold
-  the index), the license includes `:library` and `:library-retrieval` ([[licensed?]]), and an embedding
-  backend is configured ([[embedder-configured?]]).
-  The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
-  re-evaluate per use."
+  "Whether the entity-retrieval mirror can run right now:
+  - We have this feature
+  - We have somewhere to store embedding vectors
+  - We have some way to compute embedding vectors
+
+  Re-evaluate this per use, as this configuration is dynamic."
   []
   (and (pgvector-configured?)
        (licensed?)
        (embedder-configured?)))
 
 (defn- missing-table-error?
-  "Whether `e` (or one of its causes) is Postgres undefined_table (42P01), i.e. the index tables don't exist
-  yet -- expected before the first build or after a manual drop awaiting heal. The store answered, so this is
-  index absence, not a connectivity fault."
+  "Whether we threw due to a Postgres undefined_table error (42P01), i.e. the indexes don't exist yet.
+  Expected before the first build or after a manual drop awaiting heal.
+  This would have to have been return from the database itself, so it will not be a connectivity fault."
   [e]
   (boolean (some #(and (instance? SQLException %)
                        (= "42P01" (.getSQLState ^SQLException %)))
                  (u/full-exception-chain e))))
 
+(defn- dependencies
+  "Entity retrieval's necessary conditions, as a `{:store, :embedder, :licenses}` map of booleans."
+  []
+  {:store    (pgvector-configured?)
+   :embedder (embedder-configured?)
+   :licenses (licensed?)})
+
+(defn- deps-met? [deps]
+  (reduce-kv (fn [_ _ met?] (if met? true (reduced false))) true deps))
+
+(defn all-dependencies-met?
+  "True when every dependency in a `retrieval-status` map holds (equivalently, when `:index` is present)."
+  [status]
+  (deps-met? (:dependencies status)))
+
+(defn- index-populated? [ds]
+  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
+
+(defn- probe-index
+  "The `:index` map — `{:status <enum>}`, plus `:error` on `:unreachable`. Population is probed only for a
+  compatible index, and only when `probe-populated?`."
+  [probe-populated?]
+  (try
+    (let [ds     (semantic.db.datasource/ensure-initialized-data-source!)
+          status (index-table/index-status ds (embedding/get-configured-model))]
+      {:status (if (and (= :compatible status) probe-populated?)
+                 (if (index-populated? ds) :populated :empty)
+                 status)})
+    (catch Throwable e
+      ;; A missing table is the ordinary absent-index state, not a store fault.
+      (if (missing-table-error? e)
+        {:status :missing}
+        (do (log/warn e "entity-retrieval index probe failed")
+            {:status :unreachable, :error (ex-message e)})))))
+
 (defn retrieval-status
-  "Decomposed availability of the library entity index -- the single source of truth behind
-  [[entity-retrieval-available?]] and the health check.
-  Returns `{:pgvector? :licensed? :embedder-configured? :index-compatible? :populated? :probe-error}`:
-  `:pgvector?` / `:licensed?` / `:embedder-configured?` are the enablement conditions ([[available?]] is
-  their conjunction); `:index-compatible?` (meta row matches the configured model + schema version) and
-  `:populated?` (>= 1 document) are the readiness conditions, probed against pgvector only when enabled.
-  `:probe-error` is the message of a pgvector failure during that probe (else nil) -- it distinguishes a
-  store that is unreachable (probe threw) from an index that is genuinely absent/incompatible (probe
-  succeeded, answer negative), so a health check can name connectivity vs a pending rebuild. A missing
-  index table (42P01: first build pending, or a manual drop) counts as absence, not a probe error.
-  `probe-populated?` false skips the `:populated?` query for callers that only need compatibility (it then
-  reads nil); a probe error still surfaces via `:probe-error`."
+  "Entity-retrieval health, decomposed into dependencies and index state:
+
+    {:dependencies {:store <bool>, :embedder <bool>, :licenses <bool>}
+     :index        {:status <enum>}}   ; present only when every dependency holds
+
+  `:status` is one of:
+  - `:missing`      nothing built yet
+  - `:incompatible` built for a different model/schema — rebuild pending
+  - `:compatible`   matches the current model; population not probed
+  - `:empty`        compatible, holds no vectors
+  - `:populated`    compatible, holds ≥1 vector
+  - `:unreachable`  the store threw while probing; carries `:error`
+
+  Pass `probe-populated?` false to stop at `:compatible` and skip the population query."
   ([] (retrieval-status true))
   ([probe-populated?]
-   (let [pgvector? (pgvector-configured?)
-         licensed? (licensed?)
-         embedder? (embedder-configured?)]
-     (if-not (and pgvector? licensed? embedder?)
-       {:pgvector? pgvector? :licensed? licensed? :embedder-configured? embedder?
-        :index-compatible? false :populated? false :probe-error nil}
-       ;; An incompatible meta row is a model/dimension/format change whose rebuild hasn't run; the vectors
-       ;; table would answer with nothing (or error), so such an index must not be offered. A thrown probe is
-       ;; kept distinct (:probe-error) from a negative-but-successful one so pgvector-down isn't mislabelled.
-       (let [{:keys [compatible? populated? probe-error]}
-             (try
-               (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
-                 {:compatible? (boolean (index-table/index-compatible? ds (embedding/get-configured-model)))
-                  :populated?  (when probe-populated?
-                                 (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1"
-                                                                          index-table/*vectors-table*)]))))})
-               (catch Throwable e
-                 ;; Missing index tables are the ordinary absent-index state, not a store fault: report
-                 ;; incompatible with no :probe-error so the health check says "rebuild pending" rather
-                 ;; than "pgvector unreachable".
-                 (if (missing-table-error? e)
-                   {:compatible? false :populated? false :probe-error nil}
-                   {:compatible? false :populated? false :probe-error (ex-message e)})))]
-         {:pgvector? true :licensed? true :embedder-configured? true
-          :index-compatible? compatible? :populated? populated? :probe-error probe-error})))))
+   (let [deps (dependencies)]
+     (cond-> {:dependencies deps}
+       (deps-met? deps) (assoc :index (probe-index probe-populated?))))))
 
-;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
-;; be able to actually answer, so beyond config + license the index has to be built for the current model and
-;; populated. (The write/reconcile path gates on the looser [[available?]] instead, so an empty or stale
-;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
-;; `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + library-retrieval licensed + embedder configured AND the index is ready
-  (built for the current model and populated) AND the embedder circuit isn't open, so the tool is offered
-  only when it can serve a query -- otherwise the agent gets the general-search fallback rather than
-  fast-failing on every `retrieve_library_entities` call while the embedder is down."
-  :feature :none
+  "Is there a non-empty compatible index, and are we able to use it?"
+  :feature :library-retrieval
   []
-  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible? populated?]} (retrieval-status)]
-    (and pgvector? licensed? embedder-configured? index-compatible? populated?
-         (not (embedding/embedder-circuit-open?)))))
+  (and (not (embedding/embedder-circuit-open?))
+       (= :populated (get-in (retrieval-status) [:index :status]))))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;

@@ -11,39 +11,45 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ready-status
-  {:pgvector? true :licensed? true :embedder-configured? true :index-compatible? true :populated? true})
+  {:dependencies {:store true, :embedder true, :licenses true}
+   :index        {:status :populated}})
 
 (defn- check [status & {:keys [circuit-untrusted? reachable]
-                        :or   {circuit-untrusted? false reachable {:reachable? true :error nil}}}]
+                        :or   {circuit-untrusted? false, reachable {:reachable? true, :error nil}}}]
   (mt/with-dynamic-fn-redefs
     [entity-retrieval.core/retrieval-status         (constantly status)
      semantic.embedding/embedder-circuit-untrusted? (constantly circuit-untrusted?)
      semantic.health/embedding-service-reachable?   (constantly reachable)]
     (entity-retrieval.health/nlq-retrieval-health-check)))
 
+(defn- with-index-status [status]
+  (assoc ready-status :index {:status status}))
+
 (deftest not-enabled-is-omitted-test
-  (testing "unlicensed or unconfigured (pgvector or embedder) -> nil (omitted, not a misleading 100)"
-    (is (nil? (check (assoc ready-status :pgvector? false :index-compatible? false :populated? false))))
-    (is (nil? (check (assoc ready-status :licensed? false :index-compatible? false :populated? false))))
-    (is (nil? (check (assoc ready-status :embedder-configured? false :index-compatible? false :populated? false))))))
+  (testing "any unmet dependency (store, embedder, or licenses) -> nil (omitted, not a misleading 100)"
+    (is (nil? (check {:dependencies {:store false, :embedder true, :licenses true}})))
+    (is (nil? (check {:dependencies {:store true, :embedder false, :licenses true}})))
+    (is (nil? (check {:dependencies {:store true, :embedder true, :licenses false}})))))
+
+(deftest missing-index-is-degraded-test
+  (testing "no index built yet -> degraded"
+    (is (=? {:health 0, :message #"Index not found"}
+            (check (with-index-status :missing))))))
 
 (deftest incompatible-index-is-degraded-test
-  (testing "enabled but the index isn't built for the current model -> degraded, names the rebuild"
-    (is (=? {:health 0 :message #".*not built for the current embedding model.*fallback\."}
-            (check (assoc ready-status :index-compatible? false))))))
+  (testing "the index isn't built for the current model -> degraded"
+    (is (=? {:health 0, :message #"Index not compatible"}
+            (check (with-index-status :incompatible))))))
 
-(deftest pgvector-unreachable-is-degraded-test
-  (testing "a thrown probe (pgvector down) -> degraded naming connectivity, not a misleading rebuild"
-    ;; a store outage sets :probe-error and leaves compatible?/populated? false; the probe-error branch must
-    ;; win so the operator isn't told to rebuild a model when the real fault is pgvector connectivity.
-    (is (=? {:health 0 :message #"pgvector store unreachable: connection refused.*unavailable\."}
-            (check (assoc ready-status :index-compatible? false :populated? false
-                          :probe-error "connection refused"))))))
+(deftest unreachable-index-is-degraded-test
+  (testing "a thrown probe (store down) -> degraded, reported as its own state (not a misleading rebuild)"
+    (is (=? {:health 0, :message #"Index unreachable"}
+            (check (assoc ready-status :index {:status :unreachable, :error "connection refused"}))))))
 
-(deftest empty-index-is-degraded-test
-  (testing "compatible but empty -> degraded, names the pending first reconcile"
-    (is (=? {:health 0 :message #".*index empty.*fallback\."}
-            (check (assoc ready-status :populated? false))))))
+(deftest empty-index-is-partially-healthy-test
+  (testing "compatible but empty -> partial health (50): built, but serving nothing"
+    (is (=? {:health 50, :message #"Index empty"}
+            (check (with-index-status :empty))))))
 
 (deftest untrusted-circuit-is-degraded-test
   (testing "a non-closed breaker (open or half-open) degrades but still probes (so a recovered-but-idle
@@ -53,31 +59,29 @@
         [entity-retrieval.core/retrieval-status         (constantly ready-status)
          semantic.embedding/embedder-circuit-untrusted? (constantly true)
          semantic.health/embedding-service-reachable?   (fn [] (reset! probed? true) {:reachable? true})]
-        (is (=? {:health 0 :message #".*circuit open \(probe reachable.*"}
+        (is (=? {:health 0, :message #".*circuit open \(probe reachable.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))
         (is (true? @probed?) "a non-closed breaker still probes so recovery is detectable"))))
   (testing "an untrusted breaker with an unreachable probe reads the same as unreachable with a closed one --
            state-independent wording, so a flapping breaker's re-persisted rows dedup instead of flooding"
-    (is (=? {:health 0 :message #"Embedding service unreachable: boom.*"}
-            (check ready-status :circuit-untrusted? true :reachable {:reachable? false :error "boom"})))))
+    (is (=? {:health 0, :message #"Embedding service unreachable: boom.*"}
+            (check ready-status :circuit-untrusted? true :reachable {:reachable? false, :error "boom"})))))
 
 (deftest unreachable-embedder-is-degraded-test
   (testing "ready index but unreachable embedder -> degraded, names the error"
-    (is (=? {:health 0 :message #".*Embedding service unreachable: boom.*"}
-            (check ready-status :reachable {:reachable? false :error "boom"})))))
+    (is (=? {:health 0, :message #".*Embedding service unreachable: boom.*"}
+            (check ready-status :reachable {:reachable? false, :error "boom"})))))
 
 (deftest healthy-test
   (testing "ready index + reachable embedder -> healthy 100"
-    (is (=? {:health 100 :message #"NLQ curated retrieval available and serving\."}
+    (is (=? {:health 100 :message #"Healthy"}
             (check ready-status)))))
 
 (deftest nlq-metrics-omitted-when-unavailable-test
-  (testing "coverage/garbage/staleness skip (nil, so omitted) when unlicensed or the index is incompatible"
+  (testing "coverage/garbage/staleness skip (nil, so omitted) when a dependency is unmet"
     (mt/with-dynamic-fn-redefs
-      [entity-retrieval.core/retrieval-status (constantly (assoc ready-status
-                                                                 :licensed? false
-                                                                 :index-compatible? false
-                                                                 :populated? false))]
+      [entity-retrieval.core/retrieval-status
+       (constantly {:dependencies {:store true, :embedder true, :licenses false}})]
       (is (nil? (#'entity-retrieval.health/nlq-coverage)))
       (is (nil? (#'entity-retrieval.health/nlq-garbage)))
       (is (nil? (#'entity-retrieval.health/nlq-staleness))))))

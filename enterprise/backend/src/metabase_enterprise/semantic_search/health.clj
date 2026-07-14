@@ -25,6 +25,13 @@
 (defn healthy
   "A healthy (100) check result with `message`."
   [message] {:health 100 :message message})
+(defn warning
+  "A partially-healthy check result. `health` defaults to 50 and must be strictly between 0 and 100 --
+  use `healthy`/`degraded` for the endpoints."
+  ([message] (warning 50 message))
+  ([health message]
+   {:pre [(< 0 health 100)]}
+   {:health health, :message message}))
 (defn degraded
   "A degraded (0) check result with `message`."
   [message] {:health 0 :message message})

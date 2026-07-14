@@ -30,6 +30,8 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Chris 2026-07-14) -- these names carry no version, so an on-disk upgrade has nothing to key off.
+;; Revisit when the semantic-search indexing mechanism is reworked, sharing its scheme.
 (def ^:dynamic *vectors-table*
   "Vectors table name. Dynamic so tests can rebind it to an isolated table."
   "library_entity_index")
@@ -149,16 +151,18 @@
                                      " WHERE attrelid = to_regclass(?) AND attname = ? AND NOT attisdropped")
                                 *meta-table* column])))
 
-(defn index-compatible?
-  "Whether the meta row matches `embedding-model` and the current [[schema-version]] — i.e. the vectors
-  table holds embeddings the configured model can be queried against.
-  False when the meta row is missing or describes a different provider/model/dimensions/format, meaning the
-  index is stale and a rebuild is still pending; the same comparison [[ensure-tables!]] uses to decide a
-  rebuild.
-  Reads the meta table directly, so a caller must guard against the table not existing yet (it throws a SQL
-  error before the first [[ensure-tables!]] of the process)."
+(defn index-status
+  "Compatibility of the built index against `embedding-model` and [[schema-version]]:
+  - `:missing`      no meta row — nothing built
+  - `:incompatible` meta row for a different model/schema — rebuild pending
+  - `:compatible`   meta row matches — queryable with the configured model
+  Reads the meta table directly, so throws (undefined-table) before the first [[ensure-tables!]]; guard for it."
   [pgvector embedding-model]
-  (= (read-meta pgvector) (model-identity embedding-model)))
+  (let [meta (read-meta pgvector)]
+    (cond
+      (nil? meta)                               :missing
+      (= meta (model-identity embedding-model)) :compatible
+      :else                                     :incompatible)))
 
 (defn ensure-tables!
   "Idempotently create the vectors + meta tables for `embedding-model`, rebuilding on model change.

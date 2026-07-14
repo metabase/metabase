@@ -160,25 +160,24 @@
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
          semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)]
-        (let [enabled {:pgvector? true :licensed? true :embedder-configured? true}
+        (let [deps {:store true, :embedder true, :licenses true}
               status-when-probe-throws
               (fn [e]
-                (mt/with-dynamic-fn-redefs [index-table/index-compatible? (fn [& _] (throw e))]
+                (mt/with-dynamic-fn-redefs [index-table/index-status (fn [& _] (throw e))]
                   (entity-retrieval.core/retrieval-status)))]
-          (testing "42P01 (first build pending / manual drop) is index absence, with no :probe-error"
-            (is (= (assoc enabled :index-compatible? false :populated? false :probe-error nil)
-                   (status-when-probe-throws
-                    (java.sql.SQLException. "relation \"library_entity_index_meta\" does not exist" "42P01")))))
+          (testing "42P01 (first build pending / manual drop) reads as a missing index, not a store fault"
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "relation \"library_entity_index_meta\" does not exist" "42P01")))))
           (testing "a wrapped 42P01 is found through the cause chain"
-            (is (= (assoc enabled :index-compatible? false :populated? false :probe-error nil)
-                   (status-when-probe-throws
-                    (ex-info "probe failed" {}
-                             (java.sql.SQLException. "relation does not exist" "42P01"))))))
-          (testing "any other probe failure (a real connectivity fault) still surfaces as :probe-error"
-            (is (= (assoc enabled :index-compatible? false :populated? false
-                          :probe-error "connection refused")
-                   (status-when-probe-throws
-                    (java.sql.SQLException. "connection refused" "08001"))))))))))
+            (is (=? {:dependencies deps, :index {:status :missing}}
+                    (status-when-probe-throws
+                     (ex-info "probe failed" {}
+                              (java.sql.SQLException. "relation does not exist" "42P01"))))))
+          (testing "any other probe failure (a real connectivity fault) reads as :unreachable, carrying :error"
+            (is (=? {:dependencies deps, :index {:status :unreachable, :error "connection refused"}}
+                    (status-when-probe-throws
+                     (java.sql.SQLException. "connection refused" "08001"))))))))))
 
 (deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
