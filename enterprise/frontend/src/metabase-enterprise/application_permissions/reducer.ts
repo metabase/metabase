@@ -80,6 +80,8 @@ const SAVE_APPLICATION_PERMISSIONS =
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
   () => async (dispatch, getState) => {
+    // `plugins` is populated by the enterprise plugin system at runtime, so it is absent
+    // from the base `State` that `getState` is typed to return.
     const { applicationPermissions, applicationPermissionsRevision } = (
       getState() as ApplicationPermissionsState
     ).plugins.applicationPermissionsPlugin;
