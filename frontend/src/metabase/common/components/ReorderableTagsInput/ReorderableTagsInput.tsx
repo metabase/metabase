@@ -86,6 +86,7 @@ export function SortablePill({
 
   return (
     <Pill
+      size="md"
       ref={setNodeRef}
       className={cx(S.pill, { [S.dragging]: isDragging })}
       withRemoveButton
@@ -95,7 +96,6 @@ export function SortablePill({
       {...attributes}
       {...listeners}
       style={combinedStyle}
-      radius="xl"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", id);

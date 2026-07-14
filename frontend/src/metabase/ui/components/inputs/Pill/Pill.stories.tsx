@@ -6,6 +6,7 @@ import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
 
 const argTypes = {
   children: { control: { type: "text" } },
+  size: { control: { type: "inline-radio" }, options: ["sm", "md"] },
   withRemoveButton: { control: { type: "boolean" } },
   disabled: { control: { type: "boolean" } },
 };
@@ -26,8 +27,18 @@ export const Default = {
 };
 
 const COLUMNS = [
-  { withRemoveButton: false, jsx: "<Pill />" },
-  { withRemoveButton: true, jsx: "<Pill withRemoveButton />" },
+  { size: "sm", withRemoveButton: false, jsx: '<Pill size="sm" />' },
+  {
+    size: "sm",
+    withRemoveButton: true,
+    jsx: '<Pill size="sm" withRemoveButton />',
+  },
+  { size: "md", withRemoveButton: false, jsx: '<Pill size="md" />' },
+  {
+    size: "md",
+    withRemoveButton: true,
+    jsx: '<Pill size="md" withRemoveButton />',
+  },
 ] as const;
 
 const STATES = [
@@ -56,13 +67,14 @@ const Overview: StoryFn<PillProps> = ({ children }) => (
           <Text size="sm" c="text-secondary">
             {state.label}
           </Text>
-          {COLUMNS.map(({ withRemoveButton }) => (
+          {COLUMNS.map(({ size, withRemoveButton }) => (
             <Box
-              key={String(withRemoveButton)}
+              key={`${size}-${String(withRemoveButton)}`}
               style={{ width: "max-content" }}
             >
               <Pill
                 data-state-row={state.id}
+                size={size}
                 withRemoveButton={withRemoveButton}
                 disabled={state.disabled ?? false}
                 onRemove={() => {}}
