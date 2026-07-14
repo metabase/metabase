@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { ScalarSegment } from "metabase-types/api";
 
 import {
@@ -86,9 +87,9 @@ describe("ChartSettingSegmentsEditor", () => {
     const { onChange } = setup();
 
     await userEvent.click(
-      (await screen.findAllByRole("img", { name: /trash/ })).at(
-        0,
-      ) as HTMLElement,
+      checkNotNull(
+        (await screen.findAllByRole("img", { name: /trash/ })).at(0),
+      ),
     );
 
     expect(onChange).toHaveBeenCalledWith([
@@ -116,9 +117,9 @@ describe("ChartSettingSegmentsEditor", () => {
     );
 
     await userEvent.click(
-      (await screen.findAllByRole("img", { name: /trash/ })).at(
-        0,
-      ) as HTMLElement,
+      checkNotNull(
+        (await screen.findAllByRole("img", { name: /trash/ })).at(0),
+      ),
     );
 
     expect(onChange).toHaveBeenCalledWith([]);

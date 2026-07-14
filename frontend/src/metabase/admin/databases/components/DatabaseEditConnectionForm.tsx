@@ -83,10 +83,12 @@ export const DatabaseEditConnectionForm = withRouter(
           onSubmitted(savedDB);
         });
       } catch (error) {
+        // Unjustified type cast. FIXME
         throw getSubmitError(error as DatabaseEditErrorType);
       }
     };
 
+    // Unjustified type cast. FIXME
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <LoadingAndErrorWrapper

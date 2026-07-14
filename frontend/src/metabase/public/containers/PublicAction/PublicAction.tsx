@@ -41,6 +41,7 @@ function PublicAction({ action, publicId, onError }: Props) {
         );
         setSubmitted(true);
       } catch (error) {
+        // Unjustified type cast. FIXME
         onError(error as AppErrorDescriptor);
       }
     },

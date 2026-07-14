@@ -90,6 +90,7 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
+  // Unjustified type cast. FIXME
   return (question.legacyNativeQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);

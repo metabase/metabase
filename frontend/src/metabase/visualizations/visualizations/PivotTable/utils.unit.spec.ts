@@ -247,6 +247,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should return the wider of the column header or data width", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "x".repeat(150) },
         { depth: 0, value: "foo2" },
@@ -273,6 +274,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should factor in the toggle icon width for columns with subtotals", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "x".repeat(100), hasSubtotal: true },
         { depth: 0, value: "foo2" },
@@ -309,6 +311,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rows: [],
         pivot_rows_truncated: 100000,
       };
+      // Unjustified type cast. FIXME
       expect(() => checkRenderable([{ data }] as any, {} as any)).toThrow(
         /Too many rows/,
       );
@@ -322,12 +325,14 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         ],
         rows: [],
       };
+      // Unjustified type cast. FIXME
       expect(() => checkRenderable([{ data }] as any, {} as any)).not.toThrow();
     });
   });
 
   describe("getColumnValues", () => {
     it("can collect column values from left header data", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1" },
         { depth: 0, value: "foo2" },
@@ -349,6 +354,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("detects columns with subtotals", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1", hasSubtotal: false },
         { depth: 0, value: "foo2", hasSubtotal: true },
@@ -367,6 +373,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("handles null values", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1", hasSubtotal: false },
         { depth: 0, value: null, hasSubtotal: true },
@@ -388,6 +395,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
   describe("leftHeaderCellSizeAndPositionGetter", () => {
     it("should return the correct width for a subtotal", () => {
       const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
         { depth: 1, maxDepthBelow: 0, isSubtotal: true } as HeaderItem,
         [100, 100, 100],
         [0, 1, 2],
@@ -397,6 +405,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
 
     it("should return the correct width for a non-subtotal", () => {
       const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
         { depth: 1, maxDepthBelow: 1, isSubtotal: false } as HeaderItem,
         [100, 100, 100],
         [0, 1, 2],
@@ -406,6 +415,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
 
     it("non-subtotal widths should not increase when columns are collapsed", () => {
       const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
         { depth: 1, maxDepthBelow: 0, isSubtotal: false } as HeaderItem,
         [100, 100, 100],
         [0, 1, 2],

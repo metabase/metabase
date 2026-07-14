@@ -138,6 +138,7 @@ describe("impersonation modal", () => {
     await userEvent.click(screen.getByText(/save/i));
 
     expect(
+      // Unjustified type cast. FIXME
       getImpersonations(store.getState() as AdvancedPermissionsStoreState),
     ).toHaveLength(0);
   });
@@ -155,6 +156,7 @@ describe("impersonation modal", () => {
 
     await waitFor(() => {
       expect(
+        // Unjustified type cast. FIXME
         getImpersonations(store.getState() as AdvancedPermissionsStoreState),
       ).toStrictEqual([
         {
@@ -179,6 +181,7 @@ describe("impersonation modal", () => {
 
     await waitFor(() => {
       expect(
+        // Unjustified type cast. FIXME
         getImpersonations(store.getState() as AdvancedPermissionsStoreState),
       ).toStrictEqual([
         {

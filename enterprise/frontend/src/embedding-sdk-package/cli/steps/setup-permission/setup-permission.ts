@@ -53,6 +53,7 @@ export const setupPermissions: CliStepMethod = async (state) => {
 
       await propagateErrorResponse(res);
 
+      // Unjustified type cast. FIXME
       const { id: groupId } = (await res.json()) as { id: number };
 
       jwtGroupMappings[groupName] = [groupId];

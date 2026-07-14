@@ -107,6 +107,7 @@ export default withRouteProps(
     mapStateToProps,
     mapDispatchToProps,
   )(
+    // Unjustified type cast. FIXME
     TableQuestionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
   ),
 );

@@ -47,6 +47,7 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
     settings: createMockSettingsState({
       "active-users-count": setupOpts.activeUsersCount,
       "embedding-homepage":
+        // Unjustified type cast. FIXME
         setupOpts.embeddingHomepage as EmbeddingHomepageStatus,
       "setup-embedding-autoenabled": setupOpts.setupEmbeddingAutoenabled,
       "use-tenants": setupOpts.useTenants,
@@ -198,5 +199,6 @@ async function assertNavLink(linkText: string, linkHref: string) {
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute("href", linkHref);
 
+  // Unjustified type cast. FIXME
   return link as HTMLElement;
 }

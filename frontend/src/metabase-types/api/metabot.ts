@@ -302,16 +302,13 @@ export type MetabotSourceFeedback = {
 /**
  * Feedback payload for MCP Apps visualization results.
  *
- * Sends the prompt and query context needed for Harbormaster
- * to understand the generated visualization.
+ * Sends the prompt and query context needed to understand
+ * the generated visualization.
  */
 export type McpAppsFeedback = {
   /** User's rating and optional comments about the generated visualization. */
   feedback: {
     positive: boolean;
-
-    /** Client-generated id for feedback submission. */
-    message_id: string;
 
     /** Optional category for negative feedback. */
     issue_type?: string;
@@ -320,7 +317,7 @@ export type McpAppsFeedback = {
     freeform_feedback?: string;
   };
 
-  /** MCP-specific context that Harbormaster needs to evaluate the result. */
+  /** MCP-specific context stored alongside the rating. */
   conversation_data: {
     /** Identifies this submission as coming from the MCP Apps flow. */
     source: "mcp";

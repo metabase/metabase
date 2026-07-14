@@ -95,6 +95,7 @@ export default withRouteProps(
     mapStateToProps,
     mapDispatchToProps,
   )(
+    // Unjustified type cast. FIXME
     SegmentFieldDetailContainer as unknown as React.ComponentType<InjectedRouteProps>,
   ),
 );

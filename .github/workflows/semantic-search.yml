@@ -301,12 +301,79 @@ jobs:
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
+  # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
+  # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
+  # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
+  semantic-search-tests-appdb-mode:
+    if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: pgvector pg17 as app db, no dedicated pgvector
+            junit-name: semantic-search-tests-appdb-mode-pg17
+            appdb-image: pgvector/pgvector:pg17
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
+            exclude-tag: ':mb/driver-tests'
+
+    services:
+      postgres:
+        image: ${{ matrix.version.appdb-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    env:
+      CI: 'true'
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      # opts this job into the destructive appdb-pgvector-mode round trip, which then FAILS (rather
+      # than silently skipping) if the app db can't actually host pgvector
+      MB_APPDB_PGVECTOR_MODE_TEST: 'true'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test ${{ matrix.version.name }}
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+
   semantic-search-tests-result:
     needs:
       - semantic-search-tests-h2
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
       - semantic-search-tests-postgres
+      - semantic-search-tests-appdb-mode
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result

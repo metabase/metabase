@@ -9,6 +9,7 @@ import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getGroupsDataPermissionEditor } from ".";
 
+// Unjustified type cast. FIXME
 const stateWithoutLegacyValues = mockState as unknown as State;
 
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor

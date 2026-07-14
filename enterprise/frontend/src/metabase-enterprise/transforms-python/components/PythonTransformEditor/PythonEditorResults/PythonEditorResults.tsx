@@ -83,6 +83,7 @@ function ExecutionResultTabs({
           value={tab}
           onChange={(value) => {
             if (value) {
+              // Unjustified type cast. FIXME
               onTabChange(value as ResultsTab);
             }
           }}

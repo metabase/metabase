@@ -7,6 +7,7 @@ import {
 import MetabaseSettings from "metabase/utils/settings";
 import type {
   EnterpriseSettings,
+  MfaMethod,
   PasswordResetTokenStatus,
 } from "metabase-types/api";
 
@@ -18,6 +19,19 @@ export const sessionPropertiesPath = "/api/session/properties";
 export interface SessionResponse {
   id: string;
 }
+
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  methods: MfaMethod[];
+  challenge_token: string;
+}
+
+export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+
+export const isMfaChallenge = (
+  response: CreateSessionResponse,
+): response is MfaChallengeResponse =>
+  "mfa_required" in response && response.mfa_required === true;
 
 export interface GoogleAuthData {
   token: string;
@@ -35,7 +49,7 @@ export interface SsoLogoutResponse {
 
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    createSession: builder.mutation<SessionResponse, LoginData>({
+    createSession: builder.mutation<CreateSessionResponse, LoginData>({
       query: (body) => ({
         method: "POST",
         url: "/api/session",

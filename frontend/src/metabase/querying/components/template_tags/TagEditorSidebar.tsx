@@ -74,6 +74,7 @@ export function TagEditorSidebar({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       setSection(tab as TabId);
     }
   };
@@ -93,6 +94,7 @@ export function TagEditorSidebar({
             tags={tags}
             parametersById={parametersById}
             database={database}
+            // Unjustified type cast. FIXME
             databases={databases as Database[]}
             originalQuestion={originalQuestion}
             setTemplateTag={setTemplateTag}

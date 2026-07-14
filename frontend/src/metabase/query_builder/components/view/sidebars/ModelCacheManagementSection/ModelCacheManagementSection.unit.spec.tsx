@@ -47,6 +47,7 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
+    // Unjustified type cast. FIXME
     card_name: model.displayName() as string,
   });
 

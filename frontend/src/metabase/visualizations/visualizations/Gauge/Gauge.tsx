@@ -14,7 +14,6 @@ import { GaugeArc } from "./GaugeArc";
 import { GaugeNeedle } from "./GaugeNeedle";
 import { GaugeSegmentLabel } from "./GaugeSegmentLabel";
 import { HideIfOverflowingSVG } from "./HideIfOverflowingSVG";
-import { GAUGE_CHART_DEFINITION } from "./chart-definition";
 import {
   ARC_DEGREES,
   FONT_SIZE_CENTER_LABEL_MAX,
@@ -29,6 +28,7 @@ import {
   getCenterLabelColor,
   getSegmentLabelColor,
 } from "./constants";
+import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
 import { getValue, radians } from "./utils";
 

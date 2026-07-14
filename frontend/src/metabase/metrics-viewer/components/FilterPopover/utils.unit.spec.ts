@@ -21,6 +21,7 @@ jest.mock("metabase/metrics-viewer/utils/definition-sources", () => ({
   getDefinitionSourceName: jest.fn(() => "Revenue"),
 }));
 
+// Unjustified type cast. FIXME
 const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
 
 type TestItem = { name: string };
@@ -46,10 +47,13 @@ function makeDefinitionSource(
 ): DefinitionSource {
   return {
     index,
+    // Unjustified type cast. FIXME
     id: `src-${index}` as DefinitionSource["id"],
+    // Unjustified type cast. FIXME
     definition: {
       __fakeDefinition: index,
     } as unknown as LibMetric.MetricDefinition,
+    // Unjustified type cast. FIXME
     entity: {} as DefinitionSource["entity"],
     entityIndex: index,
     token: undefined,
@@ -61,6 +65,7 @@ function getSourceTableDimensionInfo(
   displayName: string,
   id = "main",
 ): DimensionDisplayInfo {
+  // Unjustified type cast. FIXME
   return {
     displayName,
     group: { id, displayName: "Orders", type: "main" },
@@ -71,6 +76,7 @@ function getJoinedTabledDimensionInfo(
   displayName: string,
   id = "conn",
 ): DimensionDisplayInfo {
+  // Unjustified type cast. FIXME
   return {
     displayName,
     group: { id, displayName: "Products", type: "connection" },
@@ -189,9 +195,11 @@ describe("filterDisplayGroupsBySearch", () => {
 describe("getMetricGroups", () => {
   it("places segments above dimensions in the single source-table section", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const dim = {
       __dim: "createdAt",
     } as unknown as LibMetric.DimensionMetadata;
+    // Unjustified type cast. FIXME
     const seg = {
       __seg: "active",
     } as unknown as LibMetric.SegmentMetadata;
@@ -233,6 +241,7 @@ describe("getMetricGroups", () => {
 
   it("synthesizes a source-table section when there are segments but no filterable dimensions", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const seg = { __seg: "big" } as unknown as LibMetric.SegmentMetadata;
 
     mockLibMetric.filterableDimensions.mockReturnValue([]);
@@ -250,12 +259,15 @@ describe("getMetricGroups", () => {
 
   it("only attaches segments to the main section when joined groups exist", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const mainDimMeta = {
       __dim: "createdAt",
     } as unknown as LibMetric.DimensionMetadata;
+    // Unjustified type cast. FIXME
     const connDimMeta = {
       __dim: "productCategory",
     } as unknown as LibMetric.DimensionMetadata;
+    // Unjustified type cast. FIXME
     const seg = {
       __seg: "active",
     } as unknown as LibMetric.SegmentMetadata;
@@ -296,6 +308,7 @@ describe("getMetricGroups", () => {
     // Segments MUST NOT leak into the joined-table section.
     expect(
       connSection?.items?.some(
+        // Unjustified type cast. FIXME
         (item) => (item as { segment?: unknown }).segment != null,
       ),
     ).toBe(false);
@@ -303,12 +316,15 @@ describe("getMetricGroups", () => {
 
   it("falls back to a synthesized source-table section if no group reports as main", () => {
     const source = makeDefinitionSource(0);
+    // Unjustified type cast. FIXME
     const connDimMeta = {
       __dim: "productCategory",
     } as unknown as LibMetric.DimensionMetadata;
+    // Unjustified type cast. FIXME
     const otherDimMeta = {
       __dim: "other",
     } as unknown as LibMetric.DimensionMetadata;
+    // Unjustified type cast. FIXME
     const seg = { __seg: "x" } as unknown as LibMetric.SegmentMetadata;
 
     mockLibMetric.filterableDimensions.mockReturnValue([
@@ -346,11 +362,14 @@ describe("getMetricGroups", () => {
   it("scopes segments per definition source index", () => {
     const source0 = makeDefinitionSource(0);
     const source1 = makeDefinitionSource(1);
+    // Unjustified type cast. FIXME
     const segA = { __seg: "a" } as unknown as LibMetric.SegmentMetadata;
+    // Unjustified type cast. FIXME
     const segB = { __seg: "b" } as unknown as LibMetric.SegmentMetadata;
 
     mockLibMetric.filterableDimensions.mockReturnValue([]);
     mockLibMetric.availableSegments.mockImplementation((def: unknown) => {
+      // Unjustified type cast. FIXME
       if ((def as { __fakeDefinition: number }).__fakeDefinition === 0) {
         return [segA];
       }

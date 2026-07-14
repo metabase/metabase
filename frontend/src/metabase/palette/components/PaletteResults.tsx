@@ -101,6 +101,7 @@ export const PaletteResults = ({
   const processedResults = useMemo(
     () =>
       processResults(
+        // Unjustified type cast. FIXME
         results as (PaletteActionImpl | string)[],
         liveSearchTerm.length !== 0,
       ),

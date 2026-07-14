@@ -20,6 +20,7 @@ const getDefaultDisplayOption = <
   Key extends SYNCED_KEY,
 >(
   key: Key,
+  // Unjustified type cast. FIXME
 ): Value => DEFAULT_SYNCED_DASHBOARD_OPTIONS[key] as Value;
 
 const isEmptyOrDefault = <
@@ -47,6 +48,7 @@ export const useLocationSync = <
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
+  // Unjustified type cast. FIXME
   const hashValue = (hashOptions[key] ?? null) as Value | null;
 
   const defaultValue = getDefaultDisplayOption<Value, Key>(key);
