@@ -52,11 +52,15 @@
   (deferred-tru
    (str "Maximum number of queries that can write their results to the query cache at the same time. "
         "Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent "
-        "compressing results during a burst of cache misses."))
+        "storing results during a burst of cache misses. Each concurrent write buffers a result capped by "
+        "query-caching-max-kb (2 MB by default), so the default of 32 bounds the worst-case burst cost at "
+        "roughly 200 MB including growth transients -- affordable on a 2 GB heap, invisible on bigger ones."))
   :type       :integer
-  ;; worst case per write is a buffered compressed result (query-caching-max-kb, ~2 MB) plus growth transients, so 32
-  ;; concurrent writes bound the burst cost to ~200 MB -- affordable on a 2 GB heap, invisible on bigger ones
   :default    32
   :visibility :internal
   :export?    false
-  :setter     :none)
+  :setter     :none
+  :doc        (str "Maximum number of queries that can write their results to the query cache at the same time. "
+                   "Queries over the limit run normally but skip caching that run, bounding the CPU and memory "
+                   "spent storing results during a burst of cache misses. The default of 32 bounds the worst-case "
+                   "burst cost at roughly 200 MB."))
