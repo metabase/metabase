@@ -166,9 +166,12 @@
           (integer? version)
           {:extended true :payload {:ui false}})))))
 
-(defn- session-parts
+(defn session-parts
   "Parse an `Mcp-Session-Id` into its UUID correlator plus the client-capability hint, or nil if
-   it is not one we minted. The id has the form `<uuid>.<base64url-json>`, payload `{\"v\":1,\"ui\":true}`."
+   it is not one we minted. The id has the form `<uuid>.<base64url-json>`, payload `{\"v\":1,\"ui\":true}`.
+
+   The header is client-controlled, so anything that reaches a store or a log column goes through
+   here first: an id that does not parse is not one this server handed out."
   [session-id]
   (when (and (string? session-id)
              (<= (count session-id) max-session-id-length))

@@ -148,21 +148,29 @@
            (assoc :domain url))}))
 
 (def ^:private CachePolicy
-  "How long a `resources/read` result may be reused, and by whom. Emitted as the RC's
-   `ttlMs`/`cacheScope` so clients can hold the payload across turns instead of re-reading it —
-   the whole point of the protocol's cache metadata is prompt-cache hits.
+  "How long a `resources/read` result may be reused, and by whom. Emitted as `ttlMs`/`cacheScope` so
+   clients can hold the payload across turns instead of re-reading it — the whole point of the
+   protocol's cache metadata is prompt-cache hits.
 
-   `\"global\"` means every caller gets byte-identical content. A resource whose body varies by
-   caller — notably the MCP Apps iframe, which embeds the caller's live embedding session key —
-   declares no policy at all and is never advertised as cacheable."
+   `\"public\"` says the content is identical for every caller, so a shared gateway may serve one
+   caller's copy to another. `\"private\"` says it is settled by the caller's identity and must never
+   cross an authorization context. Every resource declares a policy: the way to say \"never reuse
+   this\" is a zero TTL, not an absent one."
   [:map
-   [:ttl-ms pos-int?]
-   [:scope  [:enum "global"]]])
+   [:ttl-ms [:int {:min 0}]]
+   [:scope  [:enum "public" "private"]]])
 
 (def ^:private static-doc-cache
   "Reference docs are read off the classpath and only change when the instance is upgraded."
   {:ttl-ms (* 24 60 60 1000)
-   :scope  "global"})
+   :scope  "public"})
+
+(def ^:private ui-resource-cache
+  "The MCP Apps iframe embeds the caller's live embedding session key, so it belongs to exactly one
+   caller and is stale the moment it is read: `private` keeps it out of any shared cache, and a zero
+   TTL keeps the caller from replaying it."
+  {:ttl-ms 0
+   :scope  "private"})
 
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
@@ -187,7 +195,7 @@
                 [:description :string]
                 [:render-fn fn?]
                 [:prefersBorder {:optional true} :boolean]]]
-  (let [resource (-> (assoc resource :uri uri :scope scope :ui? true)
+  (let [resource (-> (assoc resource :uri uri :scope scope :ui? true :cache ui-resource-cache)
                      (update :mimeType #(or % "text/html;profile=mcp-app")))]
     (swap! registry #(-> %
                          (assoc-in [:key->uri key] uri)
@@ -358,7 +366,7 @@
                    :description "Base64-encoded MBQL query (use query_handle instead when available)"}
     [:maybe ms/NonBlankString]]
    [:query_handle {:optional true
-                   :description "Handle returned by construct_query; preferred over raw query"}
+                   :description "Handle returned by execute_query; preferred over raw query"}
     [:maybe ms/UUIDString]]]
   :outputSchema
   [:map

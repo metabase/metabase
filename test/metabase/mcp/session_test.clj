@@ -61,6 +61,25 @@
                             #"MCP session id is too long"
                             (mcp.session/create! {:supports-mcp-ui? true}))))))
 
+(deftest session-parts-rejects-ids-we-never-minted-test
+  (testing "an id this server minted parses back to its correlator"
+    (let [session-id (mcp.session/create! {:supports-mcp-ui? true})]
+      (is (=? {:uuid uuid?} (mcp.session/session-parts session-id)))))
+  (testing "anything else does not parse. The header carrying it is client-controlled and its value
+            reaches a log column, so parsing is what keeps a client from writing strings of its choosing
+            into the analytics tables"
+    (doseq [session-id [nil
+                        ""
+                        "not-a-session-id"
+                        "../../etc/passwd"
+                        "'; DROP TABLE mcp_tool_call_log; --"
+                        (str (random-uuid) "." (random-uuid) "." (random-uuid))
+                        (apply str (repeat 500 "x"))]]
+      (testing (pr-str session-id)
+        (is (nil? (mcp.session/session-parts session-id))))))
+  (testing "an id longer than a header or log column should hold is refused even when it is well-formed"
+    (is (nil? (mcp.session/session-parts (extended-session-id {:v 1 :ui true :pad (apply str (repeat 300 "x"))}))))))
+
 (deftest supports-mcp-ui-without-a-hint-test
   (testing "an id carrying no capability hint tells us nothing, and neither does no id at all — the
             caller decides what an absent hint means"

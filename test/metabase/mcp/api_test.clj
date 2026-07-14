@@ -51,7 +51,7 @@
   "Add the per-request `_meta` capabilities a client sends on the stateless protocol to advertise that
    it can render MCP Apps."
   [params]
-  (assoc params :_meta {:io.modelcontextprotocol/capabilities mcp-app-ui-capabilities}))
+  (assoc params :_meta {:io.modelcontextprotocol/clientCapabilities mcp-app-ui-capabilities}))
 
 (defn- jsonrpc-request
   "Build a JSON-RPC 2.0 request map."
@@ -213,20 +213,59 @@
 ;;; ------------------------------------------------ Stateless core -------------------------------------------------
 
 (deftest server-discover-test
-  (testing "server/discover reports the protocol, capabilities, and server info without establishing anything"
+  (testing "server/discover names every revision the server speaks, so a client can select one up-front
+            rather than guessing and being refused"
     (let [response (mcp-request (jsonrpc-request "server/discover"))]
       (is (= 200 (:status response)))
       (is (=? {:jsonrpc "2.0"
                :id      1
-               :result  {:protocolVersion "2026-07-28"
-                         :capabilities    {:tools     {:listChanged true}
-                                           :resources {}
-                                           :prompts   {:listChanged false}}
-                         :serverInfo      {:name "metabase" :version "0.1.0"}
-                         :instructions    (mcp.instructions/instructions)}}
-              (:body response))))
+               :result  {:resultType        "complete"
+                         :supportedVersions ["2026-07-28" "2025-11-25" "2025-06-18" "2025-03-26"]
+                         :capabilities      {:tools     {:listChanged true}
+                                             :resources {}
+                                             :prompts   {:listChanged false}}
+                         :serverInfo        {:name "metabase" :version "0.1.0"}
+                         :instructions      (mcp.instructions/instructions)
+                         :ttlMs             pos-int?
+                         :cacheScope        "public"}}
+              (:body response)))
+      (is (not (contains? (get-in response [:body :result]) :protocolVersion))
+          "the stateless discovery result advertises a list, never a single negotiated version"))
     (testing "and it does not hand back a session"
       (is (nil? (get-in (mcp-request (jsonrpc-request "server/discover")) [:headers "Mcp-Session-Id"]))))))
+
+(deftest results-declare-their-type-test
+  (testing "every result says what kind of result it is — a client reads `resultType` before it reads
+            anything else in the result"
+    (doseq [method ["ping" "server/discover" "tools/list" "resources/list" "prompts/list"]]
+      (testing method
+        (is (= "complete"
+               (get-in (mcp-request (jsonrpc-request method)) [:body :result :resultType])))))
+    (testing "tools/call — a tool that reports its own failure still completed the request"
+      (is (=? {:resultType "complete"
+               :isError    true}
+              (get-in (mcp-request (jsonrpc-request "tools/call" {:name "nonexistent_tool" :arguments {}}))
+                      [:body :result]))))))
+
+(deftest unsupported-protocol-version-test
+  (testing "a request declaring a revision the server does not implement is refused with the list it does,
+            so the client can pick one and retry rather than being served under a version it never asked for"
+    (let [response (mcp-request (jsonrpc-request "tools/list"
+                                                 {:_meta {:io.modelcontextprotocol/protocolVersion "1999-01-01"}}))]
+      (is (= 400 (:status response)))
+      (is (=? {:error {:code    -32022
+                       :message #(str/includes? % "1999-01-01")
+                       :data    {:supported ["2026-07-28" "2025-11-25" "2025-06-18" "2025-03-26"]
+                                 :requested "1999-01-01"}}}
+              (:body response)))))
+  (testing "every revision the server advertises is one it actually serves"
+    (doseq [version ["2026-07-28" "2025-11-25" "2025-06-18" "2025-03-26"]]
+      (testing version
+        (is (= 200 (:status (mcp-request (jsonrpc-request
+                                          "ping"
+                                          {:_meta {:io.modelcontextprotocol/protocolVersion version}}))))))))
+  (testing "a request that declares no version at all is served — only a stateless client carries one"
+    (is (= 200 (:status (mcp-request (jsonrpc-request "ping")))))))
 
 (deftest initialize-carries-the-instructions-test
   (testing "a client that predates the stateless core gets the instructions from its handshake, which is
@@ -241,7 +280,7 @@
   (testing "the playbooks are advertised with their arguments, and are cacheable like the other listings"
     (let [result (get-in (mcp-request (jsonrpc-request "prompts/list")) [:body :result])]
       (is (=? {:ttlMs      pos-int?
-               :cacheScope "session"
+               :cacheScope "private"
                :prompts    [{:name      "explore_database"
                              :arguments [{:name "database" :required true}]}
                             {:name "build_dashboard"}]}
@@ -277,7 +316,7 @@
       (testing name
         (let [result (get-in (mcp-request (jsonrpc-request "resources/read" {:uri uri})) [:body :result])]
           (is (=? {:ttlMs      pos-int?
-                   :cacheScope "global"
+                   :cacheScope "public"
                    :contents   [{:uri uri :mimeType "text/markdown"}]}
                   result))
           (is (str/includes? (-> result :contents first :text) (str "name: " name))))))))
@@ -334,6 +373,25 @@
   (testing "GET without auth returns 401 rather than opening a stream"
     (is (= 401 (:status (client/client-full-response :get 401 "mcp"))))))
 
+(deftest get-opens-a-notification-stream-test
+  ;; Driven through the handler rather than the HTTP client: the stream stays open for the life of the
+  ;; connection, so a request against it would never return a body to assert on.
+  (testing "GET opens the SSE stream older clients hold for `tools/list_changed`, unbuffered so a proxy
+            cannot hold a notification back"
+    (let [responded (promise)]
+      (#'mcp.api/handle-get {:request-method :get
+                             :headers        {}
+                             :token-scopes   #{::scope/unrestricted}}
+                            #(deliver responded %)
+                            #(deliver responded {:raised %}))
+      (is (=? {:status  200
+               :headers {"Content-Type"  "text/event-stream"
+                         "Cache-Control" "no-cache"}}
+              (deref responded 5000 :timed-out)))))
+  (testing "a tool set that changed under a held stream is announced as the notification the client refetches on"
+    (is (= "event: message\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/tools/list_changed\"}\n\n"
+           (#'mcp.api/sse-body [@#'mcp.api/tools-list-changed-notification])))))
+
 ;;; --------------------------------------------- Routing headers ---------------------------------------------------
 
 (deftest routing-headers-test
@@ -344,49 +402,85 @@
                                                       {:name "search" :arguments {:term_queries ["orders"]}})
                                      {"mcp-method" "tools/call"
                                       "mcp-name"   "search"})))))
-  (testing "a routing header that disagrees with the body is refused, not silently overridden — otherwise
-            an intermediary routes one request and we run another"
+  (testing "a routing header that disagrees with the body is refused as a header mismatch, not silently
+            overridden — otherwise an intermediary routes one request and we run another"
     (is (=? {:status 400
-             :body   {:error {:code    -32600
+             :body   {:error {:code    -32020
                               :message #(str/includes? % "Mcp-Method header")}}}
             (mcp-request (jsonrpc-request "ping") {"mcp-method" "tools/call"})))
     (is (=? {:status 400
-             :body   {:error {:code    -32600
+             :body   {:error {:code    -32020
                               :message #(str/includes? % "Mcp-Name header")}}}
             (mcp-request (jsonrpc-request "tools/call" {:name "search" :arguments {}})
                          {"mcp-method" "tools/call"
                           "mcp-name"   "execute_sql"}))))
+  (testing "Mcp-Name mirrors whatever the method names — the tool, the prompt, or the resource URI — so
+            each of them is checked against the body a gateway did not read"
+    (let [doc-uri "metabase://docs/construct-query.md"]
+      (is (= 200 (:status (mcp-request (jsonrpc-request "resources/read" {:uri doc-uri})
+                                       {"mcp-method" "resources/read"
+                                        "mcp-name"   doc-uri}))))
+      (is (=? {:status 400
+               :body   {:error {:code -32020 :message #(str/includes? % "Mcp-Name header")}}}
+              (mcp-request (jsonrpc-request "resources/read" {:uri doc-uri})
+                           {"mcp-method" "resources/read"
+                            "mcp-name"   "metabase://docs/something-else.md"})))
+      (is (=? {:status 400
+               :body   {:error {:code -32020 :message #(str/includes? % "Mcp-Name header")}}}
+              (mcp-request (jsonrpc-request "prompts/get" {:name "explore_database"})
+                           {"mcp-method" "prompts/get"
+                            "mcp-name"   "build_dashboard"})))
+      (testing "a name the client could not send as plain ASCII arrives base64-wrapped, and is decoded
+                before it is compared — an encoded name must not read as a mismatched one"
+        (let [encode (fn [s] (str "=?base64?" (u/encode-base64 s) "?="))]
+          (is (= 200 (:status (mcp-request (jsonrpc-request "resources/read" {:uri doc-uri})
+                                           {"mcp-method" "resources/read"
+                                            "mcp-name"   (encode doc-uri)}))))
+          (is (=? {:status 400
+                   :body   {:error {:code -32020 :message #(str/includes? % "Mcp-Name header")}}}
+                  (mcp-request (jsonrpc-request "resources/read" {:uri doc-uri})
+                               {"mcp-method" "resources/read"
+                                "mcp-name"   (encode "metabase://docs/something-else.md")})))
+          (testing "and a sentinel wrapping something that is not base64 is a malformed header"
+            (is (=? {:status 400
+                     :body   {:error {:code -32020 :message #(str/includes? % "does not decode")}}}
+                    (mcp-request (jsonrpc-request "resources/read" {:uri doc-uri})
+                                 {"mcp-method" "resources/read"
+                                  "mcp-name"   "=?base64?not!valid!base64?="}))))))))
   (testing "the headers are optional"
     (is (= 200 (:status (mcp-request (jsonrpc-request "ping")))))))
 
 ;;; ------------------------------------------- Cacheable results ---------------------------------------------------
 
 (deftest tools-list-is-cacheable-test
-  (testing "tools/list carries the cache metadata that lets a client keep it in its prompt prefix"
+  (testing "tools/list carries the cache metadata that lets a client keep it in its prompt prefix. The
+            listing is filtered by the caller's scopes, so it is private — a shared gateway must not hand
+            one caller's tools to another"
     (is (=? {:ttlMs      pos-int?
-             :cacheScope "session"}
+             :cacheScope "private"}
             (get-in (mcp-request (jsonrpc-request "tools/list")) [:body :result])))))
 
 (deftest resources-list-is-cacheable-test
-  (testing "resources/list carries cache metadata"
+  (testing "resources/list carries cache metadata, private for the same reason tools/list is"
     (is (=? {:ttlMs      pos-int?
-             :cacheScope "session"}
+             :cacheScope "private"}
             (get-in (mcp-request (jsonrpc-request "resources/list")) [:body :result])))))
 
 (deftest resources-read-cache-metadata-test
-  (testing "a static reference doc is identical for every caller and cacheable for a long time"
+  (testing "a static reference doc is identical for every caller, so any cache may share it"
     (is (=? {:ttlMs      pos-int?
-             :cacheScope "global"}
+             :cacheScope "public"}
             (get-in (mcp-request (jsonrpc-request "resources/read"
                                                   {:uri "metabase://docs/construct-query.md"}))
                     [:body :result]))))
-  (testing "the MCP Apps iframe embeds the caller's live session key, so it is never advertised as cacheable"
-    (let [result (get-in (mcp-request (jsonrpc-request "resources/read"
-                                                       {:uri "ui://metabase/visualize-query.html"}))
-                         [:body :result])]
-      (is (some? (:contents result)))
-      (is (not (contains? result :ttlMs)))
-      (is (not (contains? result :cacheScope))))))
+  (testing "the MCP Apps iframe embeds the caller's live session key. Saying so takes a `private` scope and
+            a zero TTL — omitting the metadata would leave a client free to apply its own heuristics"
+    (is (=? {:contents   seq
+             :ttlMs      0
+             :cacheScope "private"}
+            (get-in (mcp-request (jsonrpc-request "resources/read"
+                                                  {:uri "ui://metabase/visualize-query.html"}))
+                    [:body :result])))))
 
 ;;; ----------------------------------------------- Tools listing ---------------------------------------------------
 
@@ -448,7 +542,7 @@
     (let [tool-names (set (map :name (tools-list)))]
       (is (= (apply disj all-tool-names ui-tool-names) tool-names))))
   (testing "an unrelated nested MCP Apps mimeType does not enable UI-only tools"
-    (let [params     {:_meta {:io.modelcontextprotocol/capabilities
+    (let [params     {:_meta {:io.modelcontextprotocol/clientCapabilities
                               {:experimental {:mimeTypes ["text/html;profile=mcp-app"]}}}}
           tool-names (set (map :name (tools-list params)))]
       (is (empty? (set/intersection ui-tool-names tool-names))))))
@@ -546,19 +640,59 @@
 ;;; ------------------------------------------- Protocol back-compat ------------------------------------------------
 
 (deftest initialize-back-compat-test
-  (testing "a pre-RC client's handshake still works and negotiates a version both sides know"
-    (let [response (mcp-request (jsonrpc-request "initialize" {:protocolVersion "2025-03-26"}))]
-      (is (= 200 (:status response)))
-      (is (=? {:result {:protocolVersion "2025-03-26"
-                        :capabilities    {:tools {:listChanged true} :resources {}}
-                        :serverInfo      {:name "metabase" :version "0.1.0"}}}
-              (:body response)))))
+  (testing "a handshake-era client's initialize still works and is echoed back the version it asked for,
+            for every revision the server advertises"
+    (doseq [version ["2025-11-25" "2025-06-18" "2025-03-26"]]
+      (testing version
+        (let [response (mcp-request (jsonrpc-request "initialize" {:protocolVersion version}))]
+          (is (= 200 (:status response)))
+          (is (=? {:result {:protocolVersion version
+                            :capabilities    {:tools {:listChanged true} :resources {}}
+                            :serverInfo      {:name "metabase" :version "0.1.0"}}}
+                  (:body response)))
+          (is (not (contains? (get-in response [:body :result]) :supportedVersions))
+              "the handshake result names the one negotiated version, not the whole list")))))
   (testing "a client asking for a version we don't know is answered with the one we implement"
     (is (= "2026-07-28"
            (get-in (mcp-request (jsonrpc-request "initialize" {:protocolVersion "1999-01-01"}))
                    [:body :result :protocolVersion]))))
   (testing "notifications/initialized is still accepted as a no-op"
     (is (= 202 (:status (mcp-request (jsonrpc-notification "notifications/initialized")))))))
+
+(deftest initialize-over-sse-test
+  (testing "a client that asks for a stream gets its handshake as an SSE frame, and the session id it will
+            echo back rides on the response either way"
+    (let [response (mcp-request (jsonrpc-request "initialize" {:protocolVersion "2025-06-18"})
+                                {"accept" "text/event-stream"})]
+      (is (= 200 (:status response)))
+      (is (= "text/event-stream" (get-in response [:headers "Content-Type"])))
+      (is (some? (mcp.session/session-parts (get-in response [:headers "Mcp-Session-Id"])))
+          "the minted id must be one the server can parse back")
+      (is (str/includes? (:body response) "event: message"))
+      (is (=? {:jsonrpc "2.0"
+               :id      1
+               :result  {:protocolVersion "2025-06-18"
+                         :serverInfo      {:name "metabase"}}}
+              (-> (:body response)
+                  (str/replace #"(?s)^.*?data: " "")
+                  str/trim
+                  json/decode+kw))))))
+
+(deftest garbage-session-id-header-is-ignored-test
+  (testing "the session header is client-controlled and nothing is looked up by it, so a value the server
+            never minted is dropped rather than being an error the client cannot recover from"
+    (doseq [session-id ["../../etc/passwd"
+                        "'; DROP TABLE mcp_tool_call_log; --"
+                        (apply str (repeat 500 "x"))
+                        ""]]
+      (testing (pr-str session-id)
+        (is (nil? (mcp.session/session-parts session-id))
+            "precondition: not an id this server would mint")
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id}))))
+        (is (= 200 (:status (client/client-full-response
+                             (test.users/username->token :crowberto)
+                             :delete "mcp"
+                             {:request-options {:headers {"mcp-session-id" session-id}}}))))))))
 
 (deftest initialize-capability-hint-round-trips-test
   (testing "a pre-RC client advertises MCP Apps support once, at initialize, so the id it gets back
@@ -597,10 +731,10 @@
 ;;; --------------------------------------------------- Errors ------------------------------------------------------
 
 (deftest ping-test
-  (testing "ping returns empty result"
+  (testing "ping returns an empty result, carrying nothing but the type every result carries"
     (let [response (mcp-request (jsonrpc-request "ping"))]
       (is (= 200 (:status response)))
-      (is (= {} (get-in response [:body :result]))))))
+      (is (= {:resultType "complete"} (get-in response [:body :result]))))))
 
 (deftest method-not-found-test
   (testing "unknown method returns -32601 error"
@@ -985,12 +1119,19 @@
               result)))))
 
 (deftest tools-call-rejects-ui-tools-without-ui-capability-test
-  (testing "a client that never advertised MCP Apps support cannot call a UI tool"
-    (is (=? {:status 200
-             :body   {:result {:isError true
-                               :content [{:text #(str/includes? % "requires a client that supports MCP Apps UI")}]}}}
-            (mcp-request (jsonrpc-request "tools/call"
-                                          {:name "visualize_query" :arguments {:query "card__1"}}))))))
+  (testing "a client that never advertised MCP Apps support cannot call a UI tool. The refusal is a
+            protocol error naming the capability the client is missing — not a tool result the model
+            would try to recover from — so the client knows what to reconnect with"
+    (let [response (mcp-request (jsonrpc-request "tools/call"
+                                                 {:name "visualize_query" :arguments {:query "card__1"}}))]
+      (is (= 400 (:status response)))
+      (is (=? {:error {:code -32021
+                       :data {:requiredCapabilities
+                              {:extensions
+                               {:io.modelcontextprotocol/ui
+                                {:mimeTypes ["text/html;profile=mcp-app"]}}}}}}
+              (:body response)))
+      (is (nil? (get-in response [:body :result]))))))
 
 (deftest tools-call-visualize-query-test
   (testing "visualize_query echoes the inline query"
@@ -1092,9 +1233,9 @@
 
 (deftest endpoint-alias-bearer-token-test
   (testing "bearer-token handling is identical on the legacy path — same invalid_token 401 as canonical"
-    ;; Bearer validation (validate-bearer-token) has no path logic, so reaching it via the legacy
-    ;; alias must behave exactly like the canonical path. We assert the invalid-token branch since
-    ;; it's deterministic and doesn't depend on minting a live token.
+    ;; Bearer validation has no path logic, so reaching it via the legacy alias must behave exactly like
+    ;; the canonical path. We assert the invalid-token branch since it's deterministic and doesn't depend
+    ;; on minting a live token.
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server/reset-provider!)
       (try
