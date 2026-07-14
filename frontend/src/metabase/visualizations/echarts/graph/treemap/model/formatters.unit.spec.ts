@@ -27,27 +27,31 @@ function makeTree(...values: number[]): TreemapTree {
   }));
 }
 
-function setup(tree: TreemapTree) {
+type SetupOpts = {
+  tree: TreemapTree;
+};
+
+function setup({ tree }: SetupOpts) {
   return getTreemapFormatters(columns, { column: () => ({}) }, tree);
 }
 
 describe("getTreemapFormatters percent", () => {
   it("keeps a dominant share honest instead of rounding it to 100%", () => {
     const total = 100001;
-    const { percent } = setup(makeTree(100000, 1));
+    const { percent } = setup({ tree: makeTree(100000, 1) });
 
     expect(percent(100000 / total)).toBe("99.999%");
     expect(percent(1 / total)).toBe("0.001%");
   });
 
   it("uses two decimals by default for evenly split values", () => {
-    const { percent } = setup(makeTree(1, 1, 1));
+    const { percent } = setup({ tree: makeTree(1, 1, 1) });
 
     expect(percent(1 / 3)).toBe("33.33%");
   });
 
   it("renders an exact whole share without decimals", () => {
-    const { percent } = setup(makeTree(10));
+    const { percent } = setup({ tree: makeTree(10) });
 
     expect(percent(1)).toBe("100%");
   });
@@ -63,7 +67,7 @@ describe("getTreemapFormatters percent", () => {
         children: makeTree(100000, 1),
       },
     ];
-    const { percent } = setup(tree);
+    const { percent } = setup({ tree });
 
     expect(percent(100000 / total)).toBe("99.999%");
   });
