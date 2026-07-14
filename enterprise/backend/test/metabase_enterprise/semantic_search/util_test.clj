@@ -16,6 +16,13 @@
     (is (= "\"semantic_search\"" (semantic.util/quote-ident "semantic_search")))
     (is (= "\"weird\"\"name\"" (semantic.util/quote-ident "weird\"name")))))
 
+(deftest ^:parallel quote-table-test
+  (testing "a schema-qualified name quotes each part separately, not the whole thing as one identifier"
+    (is (= "\"semantic_search\".\"index_table_1\""
+           (semantic.util/quote-table "semantic_search.index_table_1"))))
+  (testing "an unqualified name is a single quoted identifier"
+    (is (= "\"index_table_1\"" (semantic.util/quote-table "index_table_1")))))
+
 (deftest ^:parallel column-keyword-test
   (testing "a dotted-name keyword (renders as separate identifiers), never a namespaced one"
     (is (= :index_table_1.model (semantic.util/column-keyword "index_table_1" "model")))

@@ -26,6 +26,15 @@
   [table-name]
   (second (qualified-table-parts table-name)))
 
+(defn quote-table
+  "Quote a possibly schema-qualified `table-name` for a raw-SQL FROM/JOIN, quoting the schema and table parts
+  separately so a dotted name renders as \"schema\".\"table\", not one identifier with a literal dot."
+  [table-name]
+  (let [[schema table] (qualified-table-parts table-name)]
+    (if schema
+      (str (quote-ident schema) "." (quote-ident table))
+      (quote-ident table))))
+
 (defn column-keyword
   "A `table.column` reference as a dotted-name keyword, not a namespaced one.
   HoneySQL quotes a keyword's namespace as one identifier, so a schema-qualified table there renders as a

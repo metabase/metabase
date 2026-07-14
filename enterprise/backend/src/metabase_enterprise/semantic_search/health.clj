@@ -70,7 +70,7 @@
   reachable and the table exists and is queryable."
   [pgvector table-name]
   (try
-    (jdbc/execute-one! pgvector [(format "SELECT 1 FROM \"%s\" LIMIT 1" table-name)])
+    (jdbc/execute-one! pgvector [(format "SELECT 1 FROM %s LIMIT 1" (semantic.util/quote-table table-name))])
     true
     (catch Throwable _ false)))
 
@@ -306,15 +306,15 @@
 
 (defn- semantic-coverage []
   (when-let [{:keys [pgvector state]} (active-index)]
-    (let [table    (-> state :index :table-name)
-          gate     (:gate-table-name (semantic.env/get-index-metadata))
+    (let [table    (semantic.util/quote-table (-> state :index :table-name))
+          gate     (semantic.util/quote-table (:gate-table-name (semantic.env/get-index-metadata)))
           ;; Numerator: index rows that are *expected* -- present in the live gate. Counting raw index rows
           ;; instead would let orphans (garbage) inflate the numerator and mask missing docs (M missing + G>=M
           ;; orphans reads 100%); coverage must measure the should-be-indexed set only. Garbage is its own
           ;; measure. Same (model,model_id) grain on both sides.
           indexed  (row-count pgvector
-                              [(format (str "SELECT count(*) AS n FROM \"%s\" i "
-                                            "WHERE EXISTS (SELECT 1 FROM \"%s\" g "
+                              [(format (str "SELECT count(*) AS n FROM %s i "
+                                            "WHERE EXISTS (SELECT 1 FROM %s g "
                                             "WHERE g.model = i.model AND g.model_id = i.model_id "
                                             "AND g.document_hash IS NOT NULL)")
                                        table gate)])
@@ -322,12 +322,12 @@
           ;; the indexer's own deduped candidate set, sharing the index's (model,model_id) grain -- unlike
           ;; search.ingestion/search-items-count, whose per-spec COUNT(*) double-counts join fan-out (a card
           ;; with several revisions, etc.) and so never reaches 100% on a fully-indexed instance.
-          expected (row-count pgvector [(format "SELECT count(*) AS n FROM \"%s\" WHERE document_hash IS NOT NULL" gate)])]
+          expected (row-count pgvector [(format "SELECT count(*) AS n FROM %s WHERE document_hash IS NOT NULL" gate)])]
       (coverage-result indexed expected))))
 
 (defn- semantic-staleness []
   (when-let [{:keys [pgvector state]} (active-index)]
-    (let [gate      (:gate-table-name (semantic.env/get-index-metadata))
+    (let [gate      (semantic.util/quote-table (:gate-table-name (semantic.env/get-index-metadata)))
           watermark (-> state :metadata-row :indexer_last_seen)
           ;; Oldest gate change past the indexer watermark. Content-hash-based: the gate suppresses no-op
           ;; updated_at bumps, so this is real pending work, not spurious timestamp drift. Age is computed on
@@ -335,7 +335,7 @@
           row       (scalar-row pgvector
                                 [(format "SELECT count(*) AS pending,
                                                  EXTRACT(EPOCH FROM (now() - min(gated_at))) AS age
-                                          FROM \"%s\"
+                                          FROM %s
                                           WHERE gated_at > COALESCE(?, '-infinity'::timestamptz)" gate)
                                  watermark])
           pending   (or (:pending row) 0)
