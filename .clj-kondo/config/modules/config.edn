@@ -159,17 +159,6 @@
                     :model/QueryExecution
                     :model/Table}}
 
-  agent-lib
-  {:team "Metabot"
-   :api  #{metabase.agent-lib.representations
-           metabase.agent-lib.representations.repair
-           metabase.agent-lib.representations.resolve}
-   :uses #{lib
-           lib.metadata
-           lib.schema
-           models
-           util}}
-
   ai-tracing
   {:team "Metabot"
    :api #{metabase.ai-tracing.api metabase.ai-tracing.core metabase.ai-tracing.init}
@@ -1134,7 +1123,8 @@
 
   lib
   {:team "Querying Platform"
-   :module-exports #{lib.be
+   :module-exports #{lib.agent-lib
+                     lib.be
                      lib.metadata
                      lib.schema
                      lib.source-swap}
@@ -1171,6 +1161,16 @@
            types
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
+
+  lib.agent-lib
+  {:team "Metabot"
+   :ns-prefix "metabase.agent-lib"
+   :api #{metabase.agent-lib.representations metabase.agent-lib.representations.repair metabase.agent-lib.representations.resolve}
+   :uses #{lib
+           lib.metadata
+           lib.schema
+           models
+           util}}
 
   lib.be
   {:team "Querying Platform"
@@ -1376,7 +1376,6 @@
    :module-exports #{metabot.agent-api
                      metabot.slackbot}
    :uses    #{activity-feed
-              agent-lib
               ai-tracing
               analytics
               analytics-interface
@@ -1394,6 +1393,7 @@
               explorations
               interestingness
               lib
+              lib.agent-lib
               lib.be
               lib.metadata
               lib.schema
