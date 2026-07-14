@@ -30,11 +30,21 @@
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
-  "Build a source-table-entry for the first active table in the current test database."
+  "Build a source-table-entry for an active, field-synced table in the current test database.
+  Deterministic: orders by id and requires a synced field."
   ([]
    (default-source-table-entry "test"))
   ([alias]
-   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+   ;; Requiring a field skips field-less leftovers (un-synced transform targets, or Snowflake tables whose
+   ;; columns haven't propagated yet) that would make the QP throw "Table has no Fields associated with it".
+   (source-table-entry alias
+                       (t2/select-one-pk :model/Table
+                                         :db_id  (mt/id)
+                                         :active true
+                                         :id     [:in {:select [:table_id]
+                                                       :from   [(t2/table-name :model/Field)]
+                                                       :where  [:= :active true]}]
+                                         {:order-by [[:id :asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
