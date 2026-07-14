@@ -15,7 +15,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
 } from "metabase/visualizations/types";
-import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
+import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 

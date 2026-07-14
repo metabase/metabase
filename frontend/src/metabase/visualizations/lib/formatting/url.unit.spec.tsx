@@ -7,6 +7,7 @@ import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
@@ -15,6 +16,8 @@ import {
 
 import { formatUrl, slugify } from "./url";
 import { formatValue } from "./value";
+
+registerJsxFormatting();
 
 const SITE_URL = "http://localhost:3000";
 

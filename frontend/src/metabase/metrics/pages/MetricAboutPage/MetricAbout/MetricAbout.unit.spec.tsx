@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field } from "metabase-types/api";
 import {
   createMockCard,

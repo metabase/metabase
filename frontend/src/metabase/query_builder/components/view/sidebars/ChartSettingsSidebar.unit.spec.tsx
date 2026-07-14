@@ -6,7 +6,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,

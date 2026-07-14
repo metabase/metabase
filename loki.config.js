@@ -19,7 +19,6 @@ module.exports = {
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^App/Palette",
-    "^EmbeddingSDK/SdkQuestion/ChartTypeDropdownInner",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
   ].join("|"),
