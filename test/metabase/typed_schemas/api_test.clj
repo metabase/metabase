@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]
+   [metabase.typed-schemas.api.render :as typed-schemas.api.render]
    [metabase.typed-schemas.api.scope :as typed-schemas.api.scope]
    [toucan2.core :as t2]))
 
@@ -320,7 +321,7 @@
     (is (str/ends-with? (:body response) "export default schema;\n"))))
 
 (deftest typescript-renderer-compacts-runtime-objects-test
-  (let [body (#'typed-schemas.api/render-typescript
+  (let [body (typed-schemas.api.render/render-typescript
               {:schemaVersion 2
                :questions     {"ordersQuestion" {:type        "card"
                                                  :key         "ordersQuestion"
