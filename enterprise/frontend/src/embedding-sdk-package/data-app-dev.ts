@@ -2,4 +2,4 @@
 // The Node Vite config preset lives at `/data-app-dev/config` (data-app-dev.config.ts).
 export { DevToolbar } from "./components/public/debug/DevToolbar/DevToolbar";
 export { installDevDiagnostics } from "./components/public/debug/DevToolbar/diagnostics";
-export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox";
+export { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
