@@ -43,8 +43,9 @@
 (defonce ^:private checks (atom {:validate-queries validate-queries}))
 
 (defn register-check!
-  "Register a new check function with a given name.
-  Check functions take no args and return a map with a :health ratio and :description string."
+  "Register check `check-fn` under `name`.
+  A check takes no args and returns `{:health <int 0-100>, :message <string>}`, or nil when it doesn't
+  apply on this instance."
   [name check-fn]
   (swap! checks assoc name check-fn))
 
@@ -61,7 +62,7 @@
     (f)
     (catch Throwable e
       (log/error e "Health check errored" {:check check-name})
-      {:health 0 :message (str "Health check errored: " (ex-message e))})))
+      {:health 0, :message (str "Health check errored: " (ex-message e))})))
 
 (defn report
   "Run all registered checks and produce a report describing potential problems.
