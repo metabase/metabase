@@ -1292,11 +1292,8 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
-              metabase.metabot.persistence
-              metabase.metabot.schema.v2
               metabase.metabot.self
-              metabase.metabot.settings
-              metabase.metabot.tools}
+              metabase.metabot.settings}
    :module-exports #{metabot.agent-api
                      metabot.slackbot}
    :uses    #{activity-feed
@@ -3409,6 +3406,7 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
+   :module-exports #{enterprise/metabot.analytics}
    :uses    #{api
               lib.be
               metabot
@@ -3426,8 +3424,9 @@
                     :model/PermissionsGroupMembership
                     :model/Transform}}
 
-  enterprise/metabot-analytics
+  enterprise/metabot.analytics
   {:team "Metabot"
+   :ns-prefix "metabase-enterprise.metabot-analytics"
    :api  #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
            driver
