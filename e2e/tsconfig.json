@@ -15,6 +15,9 @@
       "@metabase/embedding-sdk-react": [
         "../enterprise/frontend/src/embedding-sdk-package/index.ts"
       ],
+      "@metabase/embedding-sdk-react/data-app": [
+        "../enterprise/frontend/src/embedding-sdk-package/data-app.ts"
+      ],
       "*": ["../frontend/src/*"]
     }
   },

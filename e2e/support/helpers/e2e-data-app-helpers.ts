@@ -1,7 +1,45 @@
-import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
 import * as Urls from "metabase/urls/data-apps";
+import type { DataApp } from "metabase-types/api";
 
+import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
+
+/**
+ * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
+ * name and its `/apps/<slug>` URL segment. One bundle with a page per surface it
+ * exercises (questions, query hooks, actions, clipboard, sandbox, isolation), so
+ * the specs share a single build.
+ */
+export const DATA_APP_NAME = "kitchen-sink";
+export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
+
+/**
+ * Visit a nested route inside the fixture data app. `openDataApp` encodes the
+ * slug, so it can't carry a sub-path — deep-links go through a raw `cy.visit`.
+ */
+export const visitDataAppRoute = (route: string) =>
+  cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
+
+/**
+ * A minimal `DataApp`-shaped row. Admin-list state tests use it directly (they
+ * only assert how the management UI renders the list, no real bundle needed);
+ * `mockDataApp` uses it for the intercepted metadata of the built fixture.
+ */
+export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
+  id: 1,
+  name: DATA_APP_NAME,
+  display_name: DATA_APP_DISPLAY_NAME,
+  bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
+  enabled: true,
+  allowed_hosts: [],
+  bundle_hash: "e2e-bundle-hash",
+  last_synced_sha: "e2e0000",
+  last_synced_at: "2024-01-01T00:00:00Z",
+  sync_error: null,
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
+  ...overrides,
+});
 
 type MockDataAppOptions<TestEnv> = {
   /** Display name (iframe title + admin list); defaults to the fixture dir name. */
@@ -13,32 +51,11 @@ type MockDataAppOptions<TestEnv> = {
    * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
    * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
    * bundle is evaluated as one script in the sandbox realm, the app reads it as a
-   * plain global. Typed by the fixture's `test-env.ts` (`DataAppTestEnv` by
-   * default); pass another fixture's type as `TestEnv` if it differs.
+   * plain global. Typed by `DataAppTestEnv` by default; pass another fixture's
+   * type as `TestEnv` if it differs.
    */
   testEnv?: TestEnv;
 };
-
-function dataAppMeta(
-  slug: string,
-  displayName: string,
-  allowedHosts: string[],
-) {
-  return {
-    id: 1,
-    name: slug,
-    display_name: displayName,
-    bundle_path: `data_apps/${slug}/dist/index.js`,
-    enabled: true,
-    allowed_hosts: allowedHosts,
-    bundle_hash: "e2e-bundle-hash",
-    last_synced_sha: "e2e0000",
-    last_synced_at: "2024-01-01T00:00:00Z",
-    sync_error: null,
-    created_at: "2024-01-01T00:00:00Z",
-    updated_at: "2024-01-01T00:00:00Z",
-  };
-}
 
 /**
  * Set up a data app for the current test
@@ -59,7 +76,11 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       : "";
 
   return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
-    const app = dataAppMeta(slug, displayName, allowedHosts);
+    const app = fakeDataApp({
+      name: slug,
+      display_name: displayName,
+      allowed_hosts: allowedHosts,
+    });
 
     cy.intercept("GET", "/api/apps/repo-status", {
       configured: true,

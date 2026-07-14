@@ -63,7 +63,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
 
         <Menu.Dropdown>
           <Menu.Item onClick={handleToggleEnabled}>
-            {app.enabled ? t`Disable` : t`Reenable`}
+            {app.enabled ? t`Disable` : t`Re-enable`}
           </Menu.Item>
 
           {canRemove && (
