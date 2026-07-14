@@ -7,7 +7,7 @@
 ;; or no longer upstream of a driver-triggering module).
 {:exempt-modules
  #{analytics
-   analytics-interface
+   analytics.interface
    api
    api-keys
    api-scope
@@ -37,11 +37,11 @@
    llm
    login-history
    mcp
+   mcp.oauth-server
    metabot
    metabot.agent-api
    metabot.slackbot
    notification
-   oauth-server
    permissions
    premium-features
    public-sharing
@@ -59,7 +59,7 @@
    startup
    system
    task
-   task-history
+   task.history
    tiles
    timeline
    tracing
