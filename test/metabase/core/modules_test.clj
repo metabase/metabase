@@ -391,7 +391,7 @@
             ":ns-prefix must be a string when present")))))
 
 (deftest ^:parallel module-boundary-debt-matches-ratchets-test
-  (testing "Module boundary escape hatches and public surface match their exact ratchets"
+  (testing "Module boundary anti-pattern counts match their exact ratchets"
     (let [actual   (dev.deps-graph/module-boundary-debt)
           ratchets (dev.deps-graph/module-boundary-ratchets)]
       (is (= (set (keys actual)) (set (keys ratchets)))
@@ -408,6 +408,32 @@
                              "Reduce the new boundary debt; the updater will not bless increases.")
                         metric ratchet value))))))))
 
+(deftest ^:parallel module-boundary-stats-match-committed-test
+  (testing (str "Module surface stats match module-stats.edn. Unlike the ratchets these move in both\n"
+                "directions by design — run `./bin/mage fix-modules-config` (or `modules-validate\n"
+                "--update-ratchets`) and commit the new values; the PR diff is the review signal.")
+    (is (= (dev.deps-graph/module-boundary-stats)
+           (dev.deps-graph/committed-module-boundary-stats)))))
+
+(deftest ^:parallel driver-test-overrides-not-stale-test
+  (testing (str "Every driver-test exemption in driver-test-overrides.edn must still be justified by the\n"
+                "graph: a declared module that a driver-triggering module transitively depends on. An entry\n"
+                "that goes stale (renamed, removed, or no longer upstream of a trigger) does nothing and\n"
+                "must be dropped — the set is a ratchet (:driver-test-exempt-modules) and may only shrink.")
+    (let [config    (dev.deps-graph/kondo-config)
+          declared  (set (keys config))
+          deps      (dev.deps-graph/dependencies (dev.deps-graph/build-prefix->module config))
+          full      (dev.deps-graph/full-dependencies deps)
+          ;; mirrors mage.modules/default-modules-which-trigger-drivers
+          upstream  (set/union (get full 'driver) (get full 'transforms))
+          overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
+      (doseq [m (sort overrides)]
+        (testing (format "\n%s" m)
+          (is (contains? declared m)
+              "exempts a module that is not declared in config.edn — rename or drop the entry")
+          (is (contains? upstream m)
+              "exempts a module no drivers-triggering module depends on — the entry is a no-op, drop it"))))))
+
 (deftest ^:parallel module-boundary-ratchets-can-only-be-lowered-test
   (is (= {:debt 2}
          (dev.deps-graph/lowered-module-boundary-ratchets {:debt 3} {:debt 2})))
@@ -423,6 +449,7 @@
     (is (= 2
            (:legacy-rest-modules
             (dev.deps-graph/module-boundary-debt
+             []
              {'actions-rest          {}
               'actions.rest          {:ns-prefix "metabase.actions-rest"}
               'enterprise/users-rest {}}))))))

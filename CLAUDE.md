@@ -75,7 +75,24 @@ a no-op (exits `unchanged`) when nothing drifted.
 
 It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is running (~15s). It only edits
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
-modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
+modules need reordering) are printed as `WARNING:` lines for you to resolve by hand. It also syncs
+`module-stats.edn` (see below).
+
+Two committed tracking files sit next to the config:
+
+- `ratchets.edn` — anti-pattern counts that may only go down (friend edges and reaches, `:any` escapes,
+  top-level module count, cross-subtree cycle pairs, driver-test exemptions, legacy `-rest` modules).
+  `./bin/mage modules-validate --update-ratchets` blesses decreases; an increase needs a hand edit
+  justified in the commit message.
+- `module-stats.edn` — surface sizes expected to move in both directions (total/largest `:api`,
+  module counts, `:module-exports`, `:api :any` namespace exposure). `fix-modules-config` rewrites it;
+  the PR diff is the review signal.
+
+`driver-test-overrides.edn` holds the CI driver-test exemption set (consumed by `mage`'s
+affected-modules logic); `metabase.core.modules-test` fails entries the dependency graph no longer
+justifies. When a module in the set is split or renamed, carry its children/new name into the set to
+preserve CI behavior — removing entries whose driver-test runs we actually want back is a deliberate,
+manual act.
 
 ## Tool Preferences
 

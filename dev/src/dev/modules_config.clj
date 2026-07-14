@@ -285,23 +285,36 @@
     {:text     (n/string edited)
      :warnings (structural-warnings file-modules desired)}))
 
+(defn- sync-stats!
+  "Sync `module-stats.edn` to the (possibly just-rewritten) config. Stats move in both directions by
+  design; keeping them exact here means a `fix-modules-config` run leaves the tree test-clean without a
+  separate updater step. Ratchet violations still fail the test — those need a real fix or a hand edit."
+  []
+  (when-not (= (deps-graph/committed-module-boundary-stats) (deps-graph/module-boundary-stats))
+    (deps-graph/write-module-boundary-stats!)
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "Synced module-stats.edn")))
+
 (defn update-config!
-  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted.
-  Idempotent: a clean config is left byte-for-byte unchanged. Returns `:updated` or `:unchanged`."
+  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted, then
+  sync `module-stats.edn`. Idempotent: a clean config is left byte-for-byte unchanged. Returns
+  `:updated` or `:unchanged` (for the config file; the stats file may sync on either result)."
   []
   (let [original                (slurp config-path)
         {:keys [text warnings]} (rewrite-config original (compute-desired))]
     #_{:clj-kondo/ignore [:discouraged-var]}
     (doseq [w warnings]
       (println (str "WARNING: " w)))
-    (if (= text original)
-      (do #_{:clj-kondo/ignore [:discouraged-var]}
-       (println "config.edn already up to date.")
-          :unchanged)
-      (do (spit config-path text)
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "Updated" config-path)
-          :updated))))
+    (let [result (if (= text original)
+                   (do #_{:clj-kondo/ignore [:discouraged-var]}
+                    (println "config.edn already up to date.")
+                       :unchanged)
+                   (do (spit config-path text)
+                       #_{:clj-kondo/ignore [:discouraged-var]}
+                       (println "Updated" config-path)
+                       :updated))]
+      (sync-stats!)
+      result)))
 
 (defn fix-config!
   "Cold-JVM entry point for `clojure -X:dev dev.modules-config/fix-config!`. Takes (and ignores) the

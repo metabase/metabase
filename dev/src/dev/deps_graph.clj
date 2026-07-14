@@ -21,30 +21,117 @@
 (def ^:private module-boundary-ratchets-path
   ".clj-kondo/config/modules/ratchets.edn")
 
-(declare kondo-config)
+(def ^:private module-boundary-stats-path
+  ".clj-kondo/config/modules/module-stats.edn")
+
+(def ^:private driver-test-overrides-path
+  ".clj-kondo/config/modules/driver-test-overrides.edn")
+
+(defn driver-test-overrides
+  "Committed CI override config: `{:exempt-modules #{...}}`, the modules that do NOT trigger driver
+  tests when changed even though the dependency graph says `driver`/`transforms` depend on them (see
+  `mage.modules`, which consumes this file). Every entry is an unverified bet that the coupling is not
+  real; the set should only shrink, and the modules-test staleness check fails entries the graph no
+  longer even justifies."
+  []
+  (edn/read-string (slurp driver-test-overrides-path)))
+
+(declare kondo-config module-parent module-ancestor-chain external-usages module-dependencies
+         dependencies build-prefix->module)
+
+(defn friend-reach-count
+  "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
+  only legal because of a `:friends` grant. Unlike the grant-surface product in
+  `dev.module-metrics/repo-metrics` (friends × internal namespaces, which grows when the grantor adds
+  any internal namespace), this only moves when a friend adds or removes a require into the grantor's
+  internals — the act the ratchet exists to catch."
+  [deps config]
+  (reduce
+   + 0
+   (for [[grantor cfg] config
+         :when (set? (:friends cfg))
+         :let [api     (let [a (:api cfg)] (if (set? a) a #{}))
+               friends (:friends cfg)]]
+     (count (filter (fn [{:keys [module depends-on-namespace]}]
+                      (and (contains? friends module)
+                           (not (contains? api depends-on-namespace))))
+                    (external-usages deps grantor))))))
+
+(defn cross-subtree-cycle-pair-count
+  "Number of mutually-dependent module pairs whose top-level ancestors differ. A cycle inside one
+  top-level subtree (a parent and its nested child requiring each other) is internal organization and
+  does not count; a mutual dependency between two different top-level subtrees does. Modules are NOT
+  collapsed to their subtree roots first — collapsing unions every child's dependencies into the root
+  and manufactures pairs no actual requires form, which would punish natural nesting."
+  [deps config]
+  (let [declared (set (keys config))
+        root     (fn [m] (or (last (module-ancestor-chain declared m)) m))
+        graph    (module-dependencies deps)]
+    (count (for [[m ds] graph
+                 d ds
+                 :when (and (neg? (compare m d)) ; count each unordered pair once
+                            (contains? (get graph d #{}) m)
+                            (not= (root m) (root d)))]
+             [m d]))))
 
 (defn module-boundary-debt
-  "Current module-boundary escape-hatch and public-surface counts."
+  "Current module-boundary anti-pattern counts. One-way ratchets: each may only go down.
+  Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit."
   ([]
-   (module-boundary-debt (kondo-config)))
-  ([config]
-   (let [values    (vals config)
-         api-sizes (keep (fn [{:keys [api]}]
-                           (when (set? api)
-                             (count api)))
-                         values)]
-     {:api-any             (count (filter #(= :any (:api %)) values))
-      :friend-edges        (transduce (map (comp count :friends)) + 0 values)
-      :largest-api         (reduce max 0 api-sizes)
-      :legacy-rest-modules (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
-      :module-exports      (transduce (map (comp count :module-exports)) + 0 values)
-      :total-api           (reduce + 0 api-sizes)
-      :uses-any            (count (filter #(= :any (:uses %)) values))})))
+   (let [config (kondo-config)]
+     (module-boundary-debt (dependencies (build-prefix->module config)) config)))
+  ([deps config]
+   (let [values   (vals config)
+         declared (set (keys config))]
+     {:api-any               (count (filter #(= :any (:api %)) values))
+      :friend-edges          (transduce (map (comp count :friends)) + 0 values)
+      :friend-reaches        (friend-reach-count deps config)
+      :cross-subtree-cycle-pairs (cross-subtree-cycle-pair-count deps config)
+      :driver-test-exempt-modules (count (:exempt-modules (driver-test-overrides)))
+      :legacy-rest-modules   (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
+      :top-level-modules     (count (remove #(module-parent declared %) (keys config)))
+      :uses-any              (count (filter #(= :any (:uses %)) values))})))
+
+(defn module-boundary-stats
+  "Public-surface size stats. Expected to move in both directions — carving a child module grows
+  `:total-api` and `:module-exports` while shrinking `:largest-api`, and none of those directions is
+  good or bad on its own. Committed to `module-stats.edn` so PR diffs surface the movement for review.
+
+  `:api-any-namespaces` is the hidden surface of `:api :any` modules: every one of their namespaces is
+  effectively public, so it is counted here namespace-weighted (the `:api-any` module count itself is a
+  ratchet)."
+  ([]
+   (let [config (kondo-config)]
+     (module-boundary-stats (dependencies (build-prefix->module config)) config)))
+  ([deps config]
+   (let [values      (vals config)
+         api-sizes   (keep (fn [{:keys [api]}]
+                             (when (set? api)
+                               (count api)))
+                           values)
+         any-modules (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)]
+     {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
+      :largest-api        (reduce max 0 api-sizes)
+      :module-count       (count config)
+      :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
+      :total-api          (reduce + 0 api-sizes)})))
 
 (defn module-boundary-ratchets
   "Committed exact ratchets for [[module-boundary-debt]]."
   []
   (edn/read-string (slurp module-boundary-ratchets-path)))
+
+(defn committed-module-boundary-stats
+  "Committed values of [[module-boundary-stats]]."
+  []
+  (edn/read-string (slurp module-boundary-stats-path)))
+
+(defn write-module-boundary-stats!
+  "Sync `module-stats.edn` to the current config. Unlike the ratchets, stats move freely in both
+  directions; the committed file exists so the movement shows up in PR diffs."
+  []
+  (spit module-boundary-stats-path
+        (str (pr-str (into (sorted-map) (module-boundary-stats))) \newline)))
 
 (defn lowered-module-boundary-ratchets
   "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
@@ -65,7 +152,8 @@
     actual))
 
 (defn update-module-boundary-ratchets!
-  "Lower committed module-boundary ratchets to current values. Refuses increases."
+  "Lower committed module-boundary ratchets to current values (refuses increases) and sync
+  `module-stats.edn` in whichever direction it moved."
   [_]
   (let [ratchets (module-boundary-ratchets)
         actual   (module-boundary-debt)
@@ -77,7 +165,11 @@
         (spit module-boundary-ratchets-path
               (str (pr-str (into (sorted-map) updated)) \newline))
         #_{:clj-kondo/ignore [:discouraged-var]}
-        (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))))
+        (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))
+    (when-not (= (committed-module-boundary-stats) (module-boundary-stats))
+      (write-module-boundary-stats!)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Synced module-boundary stats in" module-boundary-stats-path))))
 
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
@@ -591,13 +683,15 @@
   "Like [[dependencies]] but also includes transient dependencies."
   [deps]
   (let [deps-graph  (module-dependencies deps)
+        ;; grow monotonically: dropping the seed set each round loses members whose own deps don't
+        ;; re-reach them, which oscillates forever on cyclic graphs (StackOverflowError).
         expand-deps (fn expand-deps [deps]
-                      (let [deps' (into (sorted-set)
+                      (let [deps' (into (into (sorted-set) deps)
                                         (mapcat deps-graph)
                                         deps)]
                         (if (= deps deps')
                           deps
-                          (expand-deps deps'))))]
+                          (recur deps'))))]
     (into (sorted-map)
           (map (fn [[k v]]
                  [k (expand-deps v)]))

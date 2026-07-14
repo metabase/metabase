@@ -245,78 +245,10 @@
       new-deps))))
 
 (def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{agent-api
-     analytics
-     analytics-interface
-     api
-     api-scope
-     api-keys
-     appearance
-     audit-app
-     auth-identity
-     auth-provider
-     batch-processing
-     channel
-     classloader
-     collections
-     config
-     content-verification
-     custom-viz-plugin
-     dashboards
-     documents
-     eid-translation
-     embedding
-     enterprise/api
-     enterprise/scim
-     enterprise/serialization
-     enterprise/sso
-     enterprise/transforms
-     enterprise/transforms-inspector
-     entity-retrieval
-     events
-     formatter
-     geojson
-     initialization-status
-     interestingness
-     internal-stats
-     llm
-     login-history
-     mcp
-     metabot
-     mq
-     notification
-     oauth-server
-     permissions
-     premium-features
-     public-sharing
-     pulse
-     remote-sync
-     request
-     sample-data
-     search
-     secrets
-     server
-     session
-     settings
-     setup
-     slackbot
-     sso
-     staleness
-     startup
-     system
-     task
-     task-history
-     tiles
-     timeline
-     tracing
-     types
-     users
-     util
-     version
-     view-log
-     warehouse-schema
-     workspaces})
+  "Modules that do NOT trigger driver tests when changed, even though the dependency graph says they
+  affect drivers. Read from a committed config file so the set is ratcheted and staleness-checked by
+  `metabase.core.modules-test`."
+  (:exempt-modules (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn"))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

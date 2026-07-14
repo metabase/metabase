@@ -1,1 +1,1 @@
-{:api-any 1, :friend-edges 28, :largest-api 30, :legacy-rest-modules 14, :module-exports 0, :total-api 537, :uses-any 4}
+{:api-any 1, :cross-subtree-cycle-pairs 46, :driver-test-exempt-modules 66, :friend-edges 28, :friend-reaches 129, :legacy-rest-modules 14, :top-level-modules 172, :uses-any 4}
