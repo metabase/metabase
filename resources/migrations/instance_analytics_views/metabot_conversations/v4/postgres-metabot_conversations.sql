@@ -6,7 +6,7 @@ SELECT
     c.created_at,
     c.user_id,
     c.summary,
-    COALESCE(CONCAT(u.first_name, ' ', u.last_name), u.email)         AS user_display_name,
+    COALESCE(u.first_name || ' ' || u.last_name, u.email)            AS user_display_name,
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
@@ -19,7 +19,7 @@ SELECT
      WHERE mm.conversation_id = c.id
        AND mm.role = 'assistant'
        AND mm.deleted_at IS NULL
-     ORDER BY mm.created_at
+     ORDER BY mm.created_at, mm.id
      LIMIT 1)                                                         AS profile_id,
     (SELECT CASE mm.profile_id
                 WHEN 'internal'                  THEN 'Internal'
@@ -36,7 +36,7 @@ SELECT
      WHERE mm.conversation_id = c.id
        AND mm.role = 'assistant'
        AND mm.deleted_at IS NULL
-     ORDER BY mm.created_at
+     ORDER BY mm.created_at, mm.id
      LIMIT 1)                                                         AS profile_name,
     (SELECT pg.name
      FROM permissions_group_membership pgm
@@ -70,6 +70,10 @@ SELECT
      ORDER BY aul.created_at
      LIMIT 1)                                                         AS source_name,
     c.ip_address                                                      AS ip_address,
+    c.embedding_hostname                                              AS embedding_hostname,
+    c.embedding_path                                                  AS embedding_path,
+    c.user_agent                                                      AS user_agent,
+    c.sanitized_user_agent                                            AS sanitized_user_agent,
     MAX(a.tenant_id)                                                  AS tenant_id,
     MAX(t.name)                                                       AS tenant_name,
     (SELECT aul.model

@@ -1,0 +1,71 @@
+## Update v_ai_usage_log and v_metabot_conversations to v4 — add CASE branches for the
+## new explorations LLM usage sources (contextual_interestingness, timeline_interestingness,
+## exploration) and the explorations profile, so they display friendly names instead of raw
+## machine identifiers in AI usage analytics.
+##
+## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-07-13T00:00:00
+      author: johnswanson
+      runOnChange: true
+      comment: Update v_ai_usage_log to v4 - add explorations usage sources to source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v4/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v4/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v4/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v3/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v3/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v3/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+  - changeSet:
+      id: v63.2026-07-13T00:00:01
+      author: johnswanson
+      runOnChange: true
+      comment: Update v_metabot_conversations to v4 - add explorations usage sources and profile to CASE mappings
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v4/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v4/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v4/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v3/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v3/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v3/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
