@@ -150,12 +150,15 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_oauth_refresh_token_user_id
 
-  ## pulse_channel.channel_id has had an FK since v51 but never an index; it was grandfathered
-  ## into the excluded-fks set of fks-are-indexed-test. Index it and drop the exclusion.
+  ## pulse_channel.channel_id has had an FK since v51 but never an explicit index; it was
+  ## grandfathered into the excluded-fks set of fks-are-indexed-test. Postgres-only: MySQL/MariaDB
+  ## and H2 auto-create a backing index for every FK, and on MySQL a new explicit index would be
+  ## adopted as the FK's backing index, making the rollback (DROP INDEX) fail with errno 1553.
   - changeSet:
       id: v63.2026-07-14T00:00:09
       author: ranquild
-      comment: Index pulse_channel.channel_id
+      comment: Index pulse_channel.channel_id (postgres only; other DBs auto-index FKs)
+      dbms: postgresql
       changes:
         - createIndex:
             tableName: pulse_channel
