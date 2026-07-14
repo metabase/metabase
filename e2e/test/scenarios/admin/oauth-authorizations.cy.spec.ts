@@ -88,13 +88,16 @@ function registerClient(
   clientName: string,
   extra: Record<string, unknown> = {},
 ) {
-  return cy
-    .request("POST", "/oauth/register", {
-      client_name: clientName,
-      redirect_uris: [REDIRECT_URI],
-      ...extra,
-    })
-    .then(({ body }) => body as RegisteredClient);
+  return (
+    cy
+      .request("POST", "/oauth/register", {
+        client_name: clientName,
+        redirect_uris: [REDIRECT_URI],
+        ...extra,
+      })
+      // Unjustified type cast. FIXME
+      .then(({ body }) => body as RegisteredClient)
+  );
 }
 
 function approveClient(client: RegisteredClient) {

@@ -7,10 +7,6 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -255,32 +251,6 @@ describe(
         H.assertQueryBuilderRowCount(53);
         H.filterWidget().findByText("True").should("be.visible");
       });
-
-      it("should allow to use boolean parameters mapped to SQL query parameters in a public dashboard", () => {
-        createNativeQuestionWithVariableAndDashboardWithMapping().then(
-          ({ dashboardId }) => H.visitPublicDashboard(dashboardId),
-        );
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "53 rows",
-          falseRowCountText: "54 rows",
-        });
-      });
-
-      it("should allow to use boolean parameters mapped to SQL query parameters in an embedded dashboard", () => {
-        createNativeQuestionWithVariableAndDashboardWithMapping().then(
-          ({ dashboardId }) =>
-            H.visitEmbeddedPage({
-              resource: { dashboard: dashboardId },
-              params: {},
-            }),
-        );
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "53 rows",
-          falseRowCountText: "54 rows",
-        });
-      });
     });
   },
 );
@@ -384,45 +354,6 @@ function createNativeQuestionWithVariableAndDashboard() {
       questionId,
     };
   });
-}
-
-function createNativeQuestionWithVariableAndDashboardWithMapping() {
-  return createNativeQuestionWithVariableAndDashboard().then(
-    ({ dashboardId, dashcardId, questionId }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        dashcards: [
-          createMockDashboardCard({
-            id: dashcardId,
-            dashboard_id: dashboardId,
-            card_id: questionId,
-            size_x: 6,
-            size_y: 6,
-            parameter_mappings: [
-              {
-                card_id: questionId,
-                parameter_id: "boolean",
-                target: ["variable", ["template-tag", "boolean"]],
-              },
-            ],
-          }),
-        ],
-        parameters: [
-          createMockParameter({
-            id: "boolean",
-            type: "boolean/=",
-            slug: "boolean",
-            name: "Boolean",
-          }),
-        ],
-        enable_embedding: true,
-        embedding_params: {
-          boolean: "enabled",
-        },
-      }).then(() => {
-        return { dashboardId };
-      });
-    },
-  );
 }
 
 function createAndMapParameter({

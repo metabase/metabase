@@ -5,7 +5,6 @@ import {
   current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
 import { assocIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { isBoolean } from "underscore";
 
 import {
@@ -30,6 +29,7 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/redux";
+import { push } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

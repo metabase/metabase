@@ -4,6 +4,7 @@ import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 const getDefaultPluginModelPersistence = () => ({
   isModelLevelPersistenceEnabled: () => false,
+  // Unjustified type cast. FIXME
   ModelCacheToggle: PluginPlaceholder as ({
     persistedModel,
     model,

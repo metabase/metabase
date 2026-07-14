@@ -951,6 +951,7 @@ export const setParameterTemporalUnits = createThunkAction(
         temporal_units: temporalUnits,
         default:
           parameter.default &&
+          // Unjustified type cast. FIXME
           temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,

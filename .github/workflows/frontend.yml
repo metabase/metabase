@@ -110,29 +110,25 @@ jobs:
       - name: Run frontend unit tests
         id: fe-tests
         run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
-        # Positioned between the test run and "Upload Test Results" so it reads
-        # pristine JUnit (before Trunk quarantine processing). Gated to non-clean
-        # runs + continue-on-error so it can never change the job outcome — Trunk
-        # Quarantine remains the sole arbiter. See DEV-2224 / DEV-2235.
-        if: ${{ always() && steps.fe-tests.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:
           test-suite: fe-tests-unit
           adapter: frontend
-      - name: Quarantine gate (dry run)
-        if: ${{ always() && steps.fe-tests.outcome != 'success' }}
-        continue-on-error: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
         with:
           adapter: frontend
           test-suite: fe-tests-unit
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && github.event_name != 'workflow_dispatch'
@@ -144,6 +140,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.fe-tests.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}

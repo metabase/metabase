@@ -39,6 +39,7 @@ export async function createModelFromTable(options: Options) {
 
   await propagateErrorResponse(res);
 
+  // Unjustified type cast. FIXME
   const { id: modelId } = (await res.json()) as { id: number };
 
   return {

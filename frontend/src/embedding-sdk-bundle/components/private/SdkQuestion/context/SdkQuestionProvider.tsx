@@ -226,6 +226,7 @@ export const SdkQuestionProvider = ({
         getEmbeddingMode({
           question,
           queryMode: EmbeddingSdkMode,
+          // Unjustified type cast. FIXME
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );

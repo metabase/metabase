@@ -163,7 +163,8 @@ const serializeSourceType = (sourceType: ValuesSourceType): string =>
 const deserializeSourceType = (value: string): ValuesSourceType =>
   value === CONNECTED_FIELDS_SENTINEL_VALUE
     ? null
-    : (value as ValuesSourceType);
+    : // Unjustified type cast. FIXME
+      (value as ValuesSourceType);
 
 const SourceTypeOptions = ({
   parameter,

@@ -31,6 +31,7 @@ export const CopyTextInput = forwardRef(function CopyTextInput(
       })}
       classNames={{
         ...classNames,
+        // Unjustified type cast. FIXME
         input: cx(S.input, (classNames as Record<string, string>)?.input),
       }}
     />

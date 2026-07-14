@@ -40,6 +40,11 @@ import type {
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+export type CardCreationType =
+  | "simple_question"
+  | "custom_question"
+  | "native_question";
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -124,7 +129,7 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   displayIsLocked?: boolean;
 
   // Not part of the card API contract, a transient marker for how the card was created
-  creationType?: string;
+  creationType?: CardCreationType;
 }
 
 export type LineSize = "S" | "M" | "L";

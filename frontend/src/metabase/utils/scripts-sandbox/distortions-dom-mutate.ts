@@ -128,6 +128,7 @@ export function createElementNSDistortion(errorPrefix: string) {
       this,
       namespaceURI,
       qualifiedName,
+      // Unjustified type cast. FIXME
       options as ElementCreationOptions,
     );
   };

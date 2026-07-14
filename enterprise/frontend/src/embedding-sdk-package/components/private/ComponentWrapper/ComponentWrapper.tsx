@@ -183,6 +183,7 @@ const ComponentWrapperInner = <TComponentProps,>({
   const adjustedTheme = useMemo(() => applyThemePreset(theme), [theme]);
 
   const { height, width } =
+    // Unjustified type cast. FIXME
     (componentProps as {
       height?: CSSProperties["height"];
       width?: CSSProperties["width"];
@@ -245,6 +246,7 @@ const ComponentWrapperInner = <TComponentProps,>({
       reduxStore={metabaseProviderInternalProps.reduxStore}
     >
       <RenderComponentWithValidation
+        // Unjustified type cast. FIXME
         $component={Component as InternalComponent<JSXElementConstructor<any>>}
         {...componentProps}
       />
@@ -266,6 +268,7 @@ export const createComponent = <
     | null
     | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
+  // Unjustified type cast. FIXME
   return function ComponentWrapper(props: TComponentProps) {
     const ensureSingleInstanceId = useId();
 

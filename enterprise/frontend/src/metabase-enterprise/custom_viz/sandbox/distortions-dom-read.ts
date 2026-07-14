@@ -46,6 +46,7 @@ export function getSafeSandboxDomNode(
 
 function getOwnerElement(node: Node): Element | null {
   if (node.nodeType === Node.ELEMENT_NODE) {
+    // Unjustified type cast. FIXME
     return node as Element;
   }
 
@@ -65,6 +66,7 @@ function getOwnerElement(node: Node): Element | null {
 // element.
 export function activeElementDistortion(pluginId: CustomVizPluginId) {
   return function activeElement(this: Document): Element | null {
+    // Unjustified type cast. FIXME
     const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
     if (!el) {
       return null;

@@ -1,11 +1,6 @@
-import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/utils/types";
-import type { ChartNestedSettingColumnsProps } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
-import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {
   ComputedVisualizationSettings,
   SeriesSettingDefinition,
@@ -15,7 +10,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
-import { getComputedSettings, getSettingsWidgets } from "../settings";
+import { getComputedSettings } from "../settings";
 
 export type NestedSettingsOptions<
   T,
@@ -39,9 +34,6 @@ export type NestedSettingsOptions<
     object: T,
   ) => VisualizationSettingsDefinitions;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
-  component?:
-    | React.ComponentType<ChartNestedSettingSeriesProps>
-    | React.ComponentType<ChartNestedSettingColumnsProps>;
   getExtraProps?: (
     series: Series,
     settings: VisualizationSettings,
@@ -67,8 +59,7 @@ export function nestedSettings<
     getObjectSettings = () => ({}),
     getSettingDefinitionsForObject = () => ({}),
     getInheritedSettingsForObject = () => ({}),
-    component,
-    widget: widgetProp,
+    widget,
     ...def
   }: NestedSettingsOptions<T, TValue, TProps>,
 ): VisualizationSettingsDefinitions {
@@ -112,53 +103,9 @@ export function nestedSettings<
     return allComputedSettings;
   }
 
-  function getSettingsWidgetsForObject(
-    series: Series,
-    object: T,
-    storedSettings: VisualizationSettings,
-    onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
-    extra: SettingsExtra,
-  ) {
-    const settingsDefs = getSettingDefinitionsForObject(series, object);
-    const computedSettings = getComputedSettingsForObject(
-      series,
-      object,
-      storedSettings,
-      extra,
-    );
-    const widgets = getSettingsWidgets(
-      settingsDefs,
-      storedSettings,
-      computedSettings,
-      object,
-      onChangeSettings,
-      extra,
-    );
-
-    return widgets.map((widget) => ({
-      ...widget,
-      style: {
-        ...widget.style,
-        marginLeft: 0,
-        marginRight: 0,
-      },
-    }));
-  }
-
-  // decorate with nested settings HOC
-  const defaultWidget: ComponentType<TProps & { id: string }> | undefined =
-    component
-      ? chartSettingNestedSettings({
-          getObjectKey,
-          getObjectSettings,
-          getSettingsWidgetsForObject,
-        })(component)
-      : undefined;
-  // either "component" or "widget" prop needs to be passed
-  const widget = checkNotNull(widgetProp ?? defaultWidget);
-
   type Value = VisualizationSettingsDefinitions[Key];
 
+  // Unjustified type cast. FIXME
   const idDef: SeriesSettingDefinition<Value, TProps & { id: string }> = {
     getSection: () => t`Display`,
     getDefault: () => ({}),
@@ -175,6 +122,10 @@ export function nestedSettings<
         settings,
         objects,
         allComputedSettings,
+        getObjectKey,
+        getObjectSettings,
+        getSettingDefinitionsForObject,
+        getComputedSettingsForObject,
         extra: { series, settings },
         ...(def.getExtraProps?.(series, settings, onChange, extra) ?? {}),
         ...extra,

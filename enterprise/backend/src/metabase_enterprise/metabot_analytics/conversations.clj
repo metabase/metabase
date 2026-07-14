@@ -155,7 +155,7 @@
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
-                           (->> (t2/select [:model/MetabotMessage :conversation_id :data]
+                           (->> (t2/select [:model/MetabotMessage :conversation_id :data :data_version]
                                            :conversation_id [:in conversation-ids]
                                            {:where [:= :deleted_at nil]})
                                 (group-by :conversation_id)))]

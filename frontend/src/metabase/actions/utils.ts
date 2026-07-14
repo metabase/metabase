@@ -253,6 +253,7 @@ export const getForm = (
     sortActionParams({ fields: fieldSettings }),
   );
   return {
+    // Unjustified type cast. FIXME
     fields: sortedParams
       .map((param) => getFormField(param, fieldSettings[param.id] ?? {}))
       .filter(Boolean) as ActionFormFieldProps[],

@@ -127,6 +127,7 @@ export const setup = async ({
   if (hasTokenFeatures) {
     // all or nothing token features
     Object.keys(tokenFeatures).forEach((feature) => {
+      // Unjustified type cast. FIXME
       tokenFeatures[feature as TokenFeature] = true;
     });
   }

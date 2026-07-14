@@ -40,6 +40,7 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
       opened={clipboard.copied}
     >
       <Button
+        // Unjustified type cast. FIXME
         {...(props as ButtonProps)}
         aria-label={t`Copy link`}
         bd={0}

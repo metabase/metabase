@@ -205,3 +205,4 @@ __pycache__/
 
 # dependency-cruiser output
 dependency-graph.json
+.playwright-cli/
