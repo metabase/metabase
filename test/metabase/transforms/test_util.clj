@@ -43,7 +43,13 @@
                                          :active true
                                          :id     [:in {:select [:table_id]
                                                        :from   [(t2/table-name :model/Field)]
-                                                       :where  [:= :active true]}]
+                                                       ;; Mirror the QP's queryable-column filter (active-column-pred):
+                                                       ;; active, and visibility not sensitive/retired, else the picked
+                                                       ;; table still yields no implicit fields.
+                                                       :where  [:and
+                                                                [:= :active true]
+                                                                [:or [:= :visibility_type nil]
+                                                                 [:not-in :visibility_type ["sensitive" "retired"]]]]}]
                                          {:order-by [[:id :asc]]}))))
 
 (defn drop-target!
