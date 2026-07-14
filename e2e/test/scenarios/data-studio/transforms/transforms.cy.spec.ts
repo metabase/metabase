@@ -4073,8 +4073,9 @@ function createMbqlTransform(
     sourceTable: SOURCE_TABLE,
     // "Animals" exists in every schema of the many_schemas fixture, so pin the
     // source schema to keep the resolved source table (and its compiled SQL)
-    // deterministic — otherwise getTableId picks an arbitrary schema's table.
-    sourceSchema: TARGET_SCHEMA,
+    // deterministic. Only for the default table: custom source tables (e.g.
+    // composite_pk_table, mysql ORDERS) don't live in "Schema A".
+    sourceSchema: opts.sourceTable == null ? TARGET_SCHEMA : undefined,
     targetTable: TARGET_TABLE,
     targetSchema: TARGET_SCHEMA,
     name: "MBQL transform",
