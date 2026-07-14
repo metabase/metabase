@@ -73,7 +73,9 @@ export function ConversationHeader({
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
           <Flex align="baseline">
-            <Title order={2}>{t`Conversation with ${userName}`}</Title>
+            <Title order={2}>
+              {conversation.title || t`Conversation with ${userName}`}
+            </Title>
             {conversation.user && (
               <Menu shadow="md" position="bottom-start" withinPortal>
                 <Menu.Target>

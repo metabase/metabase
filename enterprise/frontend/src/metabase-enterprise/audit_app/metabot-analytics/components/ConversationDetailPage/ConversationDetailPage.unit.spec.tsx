@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupMetabotConversationEndpoint } from "__support__/server-mocks";
+import {
+  setupGroupsEndpoint,
+  setupMetabotConversationEndpoint,
+  setupPermissionMembershipEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -11,11 +15,6 @@ import { ConversationDetailPage } from "./ConversationDetailPage";
 
 jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-// Avoid unrelated permission and tenant requests.
-jest.mock("./ConversationHeader", () => ({
-  ConversationHeader: () => null,
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
@@ -87,6 +86,8 @@ function createConversation(
 
 function setup(conversation: ConversationDetail) {
   setupMetabotConversationEndpoint(conversation);
+  setupGroupsEndpoint([]);
+  setupPermissionMembershipEndpoint({});
   return renderWithProviders(
     <Route path="/conversations/:convoId" component={ConversationDetailPage} />,
     {
@@ -100,6 +101,19 @@ function setup(conversation: ConversationDetail) {
 }
 
 describe("ConversationDetailPage", () => {
+  it("shows the conversation title in the header", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "A conversation" }),
+    ).toBeInTheDocument();
+  });
+
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
     setup(
       createConversation([
