@@ -157,17 +157,6 @@
                     :model/QueryExecution
                     :model/Table}}
 
-  agent-lib
-  {:team "Metabot"
-   :api  #{metabase.agent-lib.representations
-           metabase.agent-lib.representations.repair
-           metabase.agent-lib.representations.resolve}
-   :uses #{lib
-           lib.metadata
-           lib.schema
-           models
-           util}}
-
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
@@ -1065,13 +1054,13 @@
 
   lib
   {:team "Querying Platform"
-   :module-exports #{lib.be
+   :module-exports #{lib.agent-lib
+                     lib.be
                      lib.metadata
                      lib.schema
                      lib.source-swap}
    :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.expression
            metabase.lib.field.util
            metabase.lib.hierarchy
            metabase.lib.init
@@ -1101,6 +1090,18 @@
            types
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
+
+  lib.agent-lib
+  {:team "Metabot"
+   :ns-prefix "metabase.agent-lib"
+   :api  #{metabase.agent-lib.representations
+           metabase.agent-lib.representations.repair
+           metabase.agent-lib.representations.resolve}
+   :uses #{lib
+           lib.metadata
+           lib.schema
+           models
+           util}}
 
   lib.be
   {:team "Querying Platform"
@@ -1299,7 +1300,6 @@
    :module-exports #{metabot.agent-api
                      metabot.slackbot}
    :uses    #{activity-feed
-              agent-lib
               analytics
               analytics-interface
               api
@@ -1315,6 +1315,7 @@
               interestingness
               legacy-mbql
               lib
+              lib.agent-lib
               lib.be
               lib.metadata
               lib.schema
