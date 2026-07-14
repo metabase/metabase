@@ -15,7 +15,8 @@
   Two node types have no Markdown projection: the metabot prompt block, which is transient by design,
   and any node the schema gains without a token here. Both are dropped from the Markdown, which means
   a full re-parse loses them — but an [[apply-edits]] splice does not, because it only re-parses the
-  blocks an edit lands on.
+  blocks an edit lands on. A link mark's `target`, `rel`, and `class` attrs are lost on any re-parse,
+  full or partial: CommonMark link syntax has room for nothing but the href.
 
   Block identity is what makes that distinction matter. Blocks carry a stable `_id` attr and comment
   threads anchor to it (`child_target_id`, a plain string with no FK), so a re-created node silently
@@ -28,7 +29,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock HardLineBreak Heading
@@ -95,6 +95,7 @@
     "italic"    (str "*" s "*")
     "strike"    (str "~~" s "~~")
     "underline" (str "<u>" s "</u>")
+    ;; CommonMark link syntax carries only the href; `target`, `rel`, and `class` don't survive a re-parse
     "link"      (str "[" s "](" (:href attrs) ")")
     s))
 
@@ -473,12 +474,35 @@
 
 (declare segments->blocks)
 
-(defn- column->node
+(defn- nested-columns-error
+  []
+  (ex-info (str "A {% column %} can't nest another {% columns %} block. Move the nested layout out to "
+                "a top-level {% columns %} block instead.")
+           {:status-code 400}))
+
+(defn- mixed-column-content-error
   [segments]
-  (if (= [:card] (map :kind segments))
+  (ex-info (str "A {% column %} holds either prose or a single {% card %} token, never both. Give the "
+                "card its own column, and keep this one to prose.")
+           {:status-code 400 :kinds (mapv :kind segments)}))
+
+(defn- column->node
+  "A column's Markdown becomes one flexContainer child: a lone `{% card %}` token is a cardEmbed, prose
+  is a supportingText. The schema allows a column to hold nothing else, so a card mixed with prose or a
+  nested `{% columns %}` block throws rather than silently dropping content."
+  [segments]
+  (cond
+    (= [:card] (map :kind segments))
     (card-embed (:attrs (first segments)))
-    ;; supportingText holds prose only, so a card or a nested container inside a column is dropped
-    (let [blocks (vec (segments->blocks (filter (comp #{:markdown} :kind) segments)))]
+
+    (some (comp #{:columns} :kind) segments)
+    (throw (nested-columns-error))
+
+    (some (comp #{:card} :kind) segments)
+    (throw (mixed-column-content-error segments))
+
+    :else
+    (let [blocks (vec (segments->blocks segments))]
       (with-id {:type "supportingText"
                 :content (if (seq blocks) blocks [(with-id {:type "paragraph" :content []})])}))))
 
@@ -496,7 +520,8 @@
 
 (defn markdown->ast
   "Parse Metabase-flavored Markdown into a document's ProseMirror AST. Every block that anchors comments
-  gets a fresh `_id`."
+  gets a fresh `_id`. Throws when a `{% column %}` mixes prose with a `{% card %}` token or nests
+  another `{% columns %}` block — the schema allows a column to hold only one or the other."
   [markdown]
   {:type "doc"
    :content (vec (segments->blocks (first (scan (str/split-lines (or markdown "")) []))))})
@@ -542,46 +567,42 @@
 
 (defn- no-match-error
   [old-str]
-  (ex-info (tru (str "No match for old_str in the document. It must match the Markdown projection exactly — "
-                     "read the document and copy the snippet from what it returned."))
+  (ex-info (str "No match for old_str in the document. It must match the Markdown projection exactly — "
+                "read the document and copy the snippet from what it returned.")
            {:status-code 400 :old_str old-str :matches 0}))
 
 (defn- ambiguous-match-error
   [old-str matches]
-  (ex-info (tru (str "old_str matched {0} times but must match exactly once. Extend it with surrounding "
-                     "context until it is unique, or pass replace_all to replace every occurrence.")
-                matches)
+  (ex-info (str "old_str matched " matches " times but must match exactly once. Extend it with "
+                "surrounding context until it is unique, or pass replace_all to replace every occurrence.")
            {:status-code 400 :old_str old-str :matches matches}))
 
-(defn- splice-range
-  "Replace the blocks `[first-block last-block]` with what their Markdown re-parses to once the edit is
-  applied to it, and collect the `_id`s they took with them."
-  [{:keys [blocks orphans markdown spans edit]} [first-block last-block]]
-  (let [{:keys [old_str new_str]} edit
-        region  (subs markdown (first (spans first-block)) (second (spans last-block)))
-        spliced (:content (markdown->ast (str/replace region old_str (str new_str))))]
-    {:blocks  (into (into (subvec blocks 0 first-block) spliced)
-                    (subvec blocks (inc last-block)))
-     :orphans (into orphans (block-ids (subvec blocks first-block (inc last-block))))}))
-
 (defn- apply-edit
-  [{:keys [ast orphaned-block-ids]} {:keys [old_str replace_all] :as edit}]
-  (let [blocks   (vec (:content ast))
+  [{:keys [ast orphaned-block-ids]} {:keys [old_str new_str replace_all]}]
+  (let [blocks  (vec (:content ast))
         {:keys [markdown spans]} (source-map blocks)
-        offsets  (match-offsets markdown old_str)
-        ranges   (->> offsets
-                      (keep #(touched-range spans [% (+ % (count old_str))]))
-                      merge-ranges)]
+        offsets (match-offsets markdown old_str)
+        ranges  (->> offsets
+                     (keep #(touched-range spans [% (+ % (count old_str))]))
+                     merge-ranges)]
     (when (empty? ranges)
       (throw (no-match-error old_str)))
     (when (and (> (count offsets) 1) (not replace_all))
       (throw (ambiguous-match-error old_str (count offsets))))
-    ;; back to front, so a splice doesn't shift the block indexes of the ones still to come
-    (let [{:keys [blocks orphans]} (reduce #(splice-range (assoc %1 :markdown markdown :spans spans :edit edit) %2)
-                                           {:blocks blocks :orphans orphaned-block-ids}
-                                           (reverse ranges))]
-      {:ast (assoc ast :content blocks)
-       :orphaned-block-ids orphans})))
+    (letfn [;; Replace the blocks `[first-block last-block]` with what their Markdown re-parses to once
+            ;; the edit is applied to it, and collect the `_id`s they took with them.
+            (splice-range [{:keys [blocks orphans]} [first-block last-block]]
+              (let [region  (subs markdown (first (spans first-block)) (second (spans last-block)))
+                    spliced (:content (markdown->ast (str/replace region old_str (str new_str))))]
+                {:blocks  (into (into (subvec blocks 0 first-block) spliced)
+                                (subvec blocks (inc last-block)))
+                 :orphans (into orphans (block-ids (subvec blocks first-block (inc last-block))))}))]
+      ;; back to front, so a splice doesn't shift the block indexes of the ones still to come
+      (let [{:keys [blocks orphans]} (reduce splice-range
+                                             {:blocks blocks :orphans orphaned-block-ids}
+                                             (reverse ranges))]
+        {:ast (assoc ast :content blocks)
+         :orphaned-block-ids orphans}))))
 
 (defn apply-edits
   "Apply `edits` — `[{:old_str :new_str :replace_all}]` — to a document's ProseMirror AST as string

@@ -190,6 +190,34 @@
   (testing "every parsed block that anchors comments gets an _id"
     (is (every? some? (ids (pmm/markdown->ast "# Title\n\nBody\n\n- item"))))))
 
+(deftest ^:parallel column-content-test
+  (testing "a column mixing prose with a card token throws instead of dropping the card"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"holds either prose or a single .*card.* token, never both"
+         (pmm/markdown->ast (str "{% columns %}\n"
+                                 "{% column %}\nSome intro text.\n{% card id=5 %}\n{% /column %}\n"
+                                 "{% column %}\nMore text\n{% /column %}\n"
+                                 "{% /columns %}")))))
+  (testing "a column holding two cards throws instead of dropping the second"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"holds either prose or a single .*card.* token, never both"
+         (pmm/markdown->ast (str "{% columns %}\n"
+                                 "{% column %}\n{% card id=1 %}\n{% card id=2 %}\n{% /column %}\n"
+                                 "{% column %}\nMore text\n{% /column %}\n"
+                                 "{% /columns %}")))))
+  (testing "a column nesting another {% columns %} block throws instead of dropping it"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"can't nest another"
+         (pmm/markdown->ast (str "{% columns %}\n"
+                                 "{% column %}\n"
+                                 "{% columns widths=[50,50] %}\n"
+                                 "{% column %}\nA\n{% /column %}\n"
+                                 "{% column %}\nB\n{% /column %}\n"
+                                 "{% /columns %}\n"
+                                 "{% /column %}\n"
+                                 "{% column %}\nMore text\n{% /column %}\n"
+                                 "{% /columns %}"))))))
+
 ;;; ---------------------------------------------- edit splice ---------------------------------------------------
 
 (def ^:private edit-doc
@@ -275,7 +303,7 @@
       (is (= "Revenue was up 14% on strong APAC demand."
              (get-in ast [:content 1 :content 0 :text]))))))
 
-;;; ----------------------------------------- span isolation property ---------------------------------------------
+;;; ------------------------------------------- edit splice property ----------------------------------------------
 
 (defn- nth-block
   "The i-th block of a document, made unique so its Markdown chunk can only match itself."
@@ -290,10 +318,17 @@
                            :content [{:type "text" :text (str "quoted " i)}]}]}
     :card      {:type "resizeNode" :attrs {:height 442 :minHeight 280}
                 :content [{:type "cardEmbed" :attrs {:_id (str "id-" i) :id (inc i) :name (str "Card " i)}}]}
+    :columns   {:type "resizeNode" :attrs {:height 442 :minHeight 280}
+                :content [{:type "flexContainer" :attrs {:columnWidths [50 50]}
+                           :content [{:type "supportingText" :attrs {:_id (str "id-" i)}
+                                      :content [{:type "paragraph" :attrs {:_id (str "cp-" i)}
+                                                 :content [{:type "text" :text (str "col text " i)}]}]}
+                                     {:type "cardEmbed" :attrs {:_id (str "cc-" i) :id (+ 100 i)
+                                                                :name (str "Col card " i)}}]}]}
     :metabot   {:type "metabot" :content [{:type "text" :text (str "prompt " i)}]}))
 
-(defspec splice-never-touches-blocks-outside-the-match 200
-  (prop/for-all [kinds   (gen/vector (gen/elements [:paragraph :heading :quote :card :metabot]) 1 6)
+(defspec splice-matches-a-direct-parse-and-leaves-the-rest-untouched 200
+  (prop/for-all [kinds   (gen/vector (gen/elements [:paragraph :heading :quote :card :columns :metabot]) 1 6)
                  target  gen/nat
                  new-str (gen/elements ["rewritten" "" "one\n\ntwo" "# a heading"])]
     (let [blocks   (vec (map-indexed #(nth-block %2 %1) kinds))
@@ -302,14 +337,23 @@
           chunks   (remove str/blank? (str/split markdown #"\n\n"))]
       ;; a document of nothing but dropped (metabot) blocks has no projection and so nothing to edit
       (or (empty? chunks)
-          (let [old-str  (nth chunks (mod target (count chunks)))
-                touched  (first (keep-indexed (fn [i block]
-                                                (when (= old-str (pmm/ast->markdown (doc* [block])))
-                                                  i))
-                                              blocks))
-                edited   (:ast (pmm/apply-edits ast [{:old_str old-str :new_str new-str}]))
-                trailing (subvec blocks (inc touched))]
+          (let [old-str    (nth chunks (mod target (count chunks)))
+                touched    (first (keep-indexed (fn [i block]
+                                                  (when (= old-str (pmm/ast->markdown (doc* [block])))
+                                                    i))
+                                                blocks))
+                {:keys [ast orphaned-block-ids]}
+                (pmm/apply-edits ast [{:old_str old-str :new_str new-str}])
+                edited     (:content ast)
+                trailing   (subvec blocks (inc touched))
+                middle     (subvec edited touched (- (count edited) (count trailing)))]
             (and (= (subvec blocks 0 touched)
-                    (subvec (:content edited) 0 touched))
+                    (subvec edited 0 touched))
                  (= trailing
-                    (vec (take-last (count trailing) (:content edited))))))))))
+                    (vec (take-last (count trailing) edited)))
+                 ;; the spliced region is exactly what parsing new-str on its own produces
+                 (= (strip-ids (:content (pmm/markdown->ast new-str)))
+                    (strip-ids middle))
+                 ;; the touched block's own ids, and only they, are reported orphaned
+                 (= (set (ids (nth blocks touched)))
+                    orphaned-block-ids)))))))
