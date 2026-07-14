@@ -19,7 +19,7 @@
 
 (deftest table-metadata-survives-deleted-transform-test
   (testing "a table whose creating transform has since been deleted (metabase#69904)"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Transform transform {}
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
         (t2/delete! :model/Transform (:id transform))

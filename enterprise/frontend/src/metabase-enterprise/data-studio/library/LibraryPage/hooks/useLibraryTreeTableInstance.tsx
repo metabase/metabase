@@ -52,6 +52,7 @@ export function useLibraryTreeTableInstance({
     }
 
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    // Unjustified type cast. FIXME
     return _.object(
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
@@ -181,6 +182,7 @@ export function useLibraryTreeTableInstance({
           if (row.original.model === "empty-state") {
             return null;
           }
+          // Unjustified type cast. FIXME
           const dateValue = getValue() as string | undefined;
           return dateValue ? <DateTime value={dateValue} /> : null;
         },
@@ -276,6 +278,7 @@ export function useLibraryTreeTableInstance({
       }
       // Not loaded yet — check here/below from the API to know if expandable
       if (!isEmptyStateData(data) && "here" in data) {
+        // Unjustified type cast. FIXME
         const item = data as { here?: string[]; below?: string[] };
         return (
           (item.here != null && item.here.length > 0) ||

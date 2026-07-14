@@ -144,6 +144,7 @@ const getDefaultColor = (
     } else {
       return selection;
     }
+    // Unjustified type cast. FIXME
   }, "" as string);
 };
 

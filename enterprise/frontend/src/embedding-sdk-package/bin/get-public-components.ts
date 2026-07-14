@@ -18,6 +18,7 @@ export function getPublicComponents() {
   sdkPublicIndexSourceFile.forEachDescendant((node) => {
     switch (node.getKind()) {
       case SyntaxKind.ExportSpecifier: {
+        // Unjustified type cast. FIXME
         if (!isType(node as ExportSpecifier) && isReactComponent(node)) {
           const componentForNextJsCompat: ComponentDefinition = {
             mainComponent: node.getText(),

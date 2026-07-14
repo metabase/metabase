@@ -6,6 +6,7 @@ const nodes = {
 function getPrototype(
   node: string,
 ): (typeof nodes)[keyof typeof nodes] | undefined {
+  // Unjustified type cast. FIXME
   return nodes[node as keyof typeof nodes];
 }
 

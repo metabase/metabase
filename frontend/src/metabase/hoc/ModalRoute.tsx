@@ -1,9 +1,8 @@
 import type { Location, LocationDescriptor } from "history";
 import { Component, cloneElement } from "react";
-import { push } from "react-router-redux";
 
 import { connect } from "metabase/redux";
-import { Route } from "metabase/router";
+import { Route, push } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 
@@ -132,4 +131,5 @@ class _ModalRoute extends Route {
 // ModalRoute extends react-router's Route which is not generic,
 // so it's impossible to extend Route's props.
 export const ModalRoute =
+  // Unjustified type cast. FIXME
   _ModalRoute as unknown as React.ComponentType<ModalRouteProps>;

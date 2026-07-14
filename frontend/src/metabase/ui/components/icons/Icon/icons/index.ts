@@ -528,6 +528,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import table_index_component from "./table_index.svg?component";
+import table_index_source from "./table_index.svg?source";
 import test_tube_component from "./test_tube.svg?component";
 import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";
@@ -1633,6 +1635,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
+    table_index: {
+      component: table_index_component,
+      source: table_index_source,
+    },
     text_bold: {
       component: text_bold_component,
       source: text_bold_source,
@@ -1809,7 +1815,9 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     eye_filled: { component: eye_component, source: eye_source },
   };
 
+// Unjustified type cast. FIXME
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
 
 export const isValidIconName = (name: unknown): name is IconName =>
+  // Unjustified type cast. FIXME
   iconNames.includes(name as IconName);

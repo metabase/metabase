@@ -96,11 +96,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     ],
   },
   openrouter: {
-    value: "openrouter/openai/gpt-4.1-mini",
+    value: "openrouter/openai/gpt-5.4-mini",
     models: [
       {
-        id: "openai/gpt-4.1-mini",
-        display_name: "OpenAI GPT-4.1 mini",
+        id: "openai/gpt-5.4-mini",
+        display_name: "OpenAI: GPT-5.4 Mini",
         group: "OpenAI",
       },
     ],
@@ -341,6 +341,7 @@ async function setup({
   const settings = mockSettings(sessionProperties);
   setupEnterpriseOnlyPlugin("metabot");
 
+  // Unjustified type cast. FIXME
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
 
@@ -370,6 +371,7 @@ async function setup({
   });
 
   const handleMetabotSettingsUpdate = (call: { options?: RequestInit }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
@@ -456,16 +458,21 @@ async function setup({
       return settingUpdateResponse;
     }
 
+    // Unjustified type cast. FIXME
     const body = JSON.parse(String(call.options?.body ?? "{}")) as Partial<
       Record<MetabotSettingKey, string | null>
     >;
 
     Object.entries(body).forEach(([key, nextValue]) => {
       if (key in settingsDefinitions) {
+        // Unjustified type cast. FIXME
         settingsDefinitions[key as keyof typeof settingsDefinitions] =
           createMockSettingDefinition({
+            // Unjustified type cast. FIXME
             ...settingsDefinitions[key as keyof typeof settingsDefinitions],
+            // Unjustified type cast. FIXME
             key: key as keyof typeof settingsDefinitions,
+            // Unjustified type cast. FIXME
             value: (nextValue ??
               undefined) as MetabotSettingDefinition["value"],
           });
@@ -586,7 +593,7 @@ describe("AIProviderSettingsSection", () => {
     expect(openaiOption).not.toHaveAttribute("data-combobox-disabled");
   });
 
-  it("shows Coming soon for unsupported providers and disables them", async () => {
+  it("shows OpenRouter as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
@@ -594,9 +601,10 @@ describe("AIProviderSettingsSection", () => {
     const openrouterOption = await screen.findByRole("option", {
       name: /OpenRouter/,
     });
-    expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
+    expect(openrouterOption).toBeInTheDocument();
+    expect(openrouterOption).not.toHaveAttribute("data-combobox-disabled");
 
-    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
@@ -1601,6 +1609,98 @@ describe("AIProviderSettingsSection", () => {
           body: {
             "llm-metabot-provider": null,
             "llm-openai-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to OpenRouter by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { openrouter: null },
+      updateResponse: {
+        value: "openrouter/anthropic/claude-sonnet-4.6",
+        models: DEFAULT_RESPONSES.openrouter.models,
+      },
+    });
+
+    await selectProvider("OpenRouter");
+    await userEvent.type(
+      screen.getByLabelText("API key"),
+      "sk-or-v1-openrouter-test",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "openrouter",
+          "api-key": "sk-or-v1-openrouter-test",
+        },
+      }),
+    ).toBeDefined();
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("OpenAI: GPT-5.4 Mini"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "openrouter",
+          model: "openai/gpt-5.4-mini",
+        },
+      }),
+    ).toBeDefined();
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects OpenRouter by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "openrouter/openai/gpt-5.4-mini",
+      isConfigured: true,
+      apiKeyValues: { openrouter: "**********st" },
+    });
+
+    await screen.findByText("Connected to OpenRouter");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-openrouter-api-key": null,
           },
         }),
       ).toBe(true);

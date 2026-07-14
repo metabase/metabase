@@ -10,6 +10,7 @@ export const MenuItem = forwardRef(
     props: PolymorphicComponentProps<C, MenuItemProps>,
     ref: React.Ref<HTMLButtonElement>,
   ) => {
+    // Unjustified type cast. FIXME
     const typeCastedProps = props as MenuItemProps;
 
     const handleMouseDownCapture = (event: MouseEvent) => {

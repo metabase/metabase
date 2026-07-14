@@ -7,6 +7,7 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
   typeof hasPremiumFeature
 >;
@@ -81,6 +82,7 @@ describe("SDK Plugin Initialization", () => {
         getNoDataIllustration: jest.fn().mockReturnValue(mockSdkIllustration),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,
@@ -100,6 +102,7 @@ describe("SDK Plugin Initialization", () => {
           getNoDataIllustration: jest.fn().mockReturnValue(pluginReturnValue),
         };
 
+        // Unjustified type cast. FIXME
         const mockState = {
           sdk: {
             plugins: mockSdkPlugins,
@@ -120,6 +123,7 @@ describe("SDK Plugin Initialization", () => {
     );
 
     it("should handle missing SDK plugins gracefully", () => {
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: null,
@@ -139,6 +143,7 @@ describe("SDK Plugin Initialization", () => {
         }),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,
@@ -170,6 +175,7 @@ describe("SDK Plugin Initialization", () => {
         getNoObjectIllustration: jest.fn().mockReturnValue(mockSdkIllustration),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,
@@ -187,6 +193,7 @@ describe("SDK Plugin Initialization", () => {
         getNoObjectIllustration: jest.fn().mockReturnValue(null),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,
@@ -208,6 +215,7 @@ describe("SDK Plugin Initialization", () => {
         getNoObjectIllustration: jest.fn().mockReturnValue(undefined),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,
@@ -221,6 +229,7 @@ describe("SDK Plugin Initialization", () => {
     });
 
     it("should handle missing SDK getNoObjectIllustration plugin gracefully", () => {
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: null,
@@ -240,6 +249,7 @@ describe("SDK Plugin Initialization", () => {
         }),
       };
 
+      // Unjustified type cast. FIXME
       const mockState = {
         sdk: {
           plugins: mockSdkPlugins,

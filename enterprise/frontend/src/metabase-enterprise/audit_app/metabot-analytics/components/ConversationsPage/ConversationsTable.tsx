@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -9,6 +8,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
@@ -127,7 +127,7 @@ export function ConversationsTable({
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
                   {convo.profile_id && (
-                    <Badge size="sm" variant="light">
+                    <Badge color="brand" variant="filled">
                       {renderMetabotProfileLabel(convo.profile_id)}
                     </Badge>
                   )}

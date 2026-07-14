@@ -106,6 +106,7 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
           <IconButtonWrapper
             className={S.ColumnPickerButton}
             style={
+              // Unjustified type cast. FIXME
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
               } as CSSProperties

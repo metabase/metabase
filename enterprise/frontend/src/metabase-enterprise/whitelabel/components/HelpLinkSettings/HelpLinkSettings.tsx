@@ -93,6 +93,7 @@ export const HelpLinkSettings = () => {
             { label: t`Go to a custom destination...`, value: "custom" },
           ]}
           onChange={(newValue) =>
+            // Unjustified type cast. FIXME
             handleRadioChange(newValue as HelpLinkSetting)
           }
         />

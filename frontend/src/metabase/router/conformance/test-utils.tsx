@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, PropsWithChildren, ReactElement } from "react";
 import { Route } from "react-router";
 import {
   MemoryRouter,
@@ -146,6 +146,93 @@ export async function runBoth(
   const v7 = await renderAndCollect(
     () => renderV7(Probe, renderOptions),
     interact,
+  );
+
+  return { facade, v7 };
+}
+
+/**
+ * The three moving parts of a dynamic/plugin route setup. `featureEnabled`
+ * drives the `isEnabled ? real : upsell` conditional; `pluginLoaded` drives the
+ * `{PLUGIN_*_ROUTES}` array interpolation (false models an OSS build where the
+ * enterprise bundle contributes nothing).
+ */
+export type DynamicRouteScenario = {
+  featureEnabled: boolean;
+  pluginLoaded: boolean;
+};
+
+/**
+ * Constructs one leaf route for a given engine. The facade builds a v3
+ * `component=` route, real v7 builds an `element=` route; both render a `Page`
+ * emitting the same `rr-page` readout so the harness can compare outcomes.
+ */
+type LeafRoute = (key: string, path: string, page: string) => ReactElement;
+
+const Passthrough = ({ children }: PropsWithChildren) => <>{children}</>;
+
+const Page = ({ name }: { name: string }) => (
+  <span data-testid="rr-page">{name}</span>
+);
+
+/**
+ * Assembles the sibling routes for a scenario from whichever engine's leaf
+ * constructor is supplied, so both engines route the exact same declarative
+ * shape: a feature-gated route, an array-interpolated plugin route, and a
+ * trailing catch-all.
+ */
+function dynamicSiblings(route: LeafRoute, scenario: DynamicRouteScenario) {
+  const gated = scenario.featureEnabled
+    ? route("feature", "feature", "feature")
+    : route("feature", "feature", "upsell");
+  const pluginRoutes = scenario.pluginLoaded
+    ? [route("ee", "ee/reports", "ee-reports")]
+    : [];
+  const catchAll = route("catch-all", "*", "not-found");
+  return [gated, ...pluginRoutes, catchAll];
+}
+
+function renderDynamicFacade(
+  scenario: DynamicRouteScenario,
+  initialRoute: string,
+) {
+  const leaf: LeafRoute = (key, path, page) => (
+    <Route key={key} path={path} component={() => <Page name={page} />} />
+  );
+  renderWithProviders(
+    <Route component={Passthrough}>{dynamicSiblings(leaf, scenario)}</Route>,
+    { withRouter: true, initialRoute },
+  );
+}
+
+function renderDynamicV7(scenario: DynamicRouteScenario, initialRoute: string) {
+  const leaf: LeafRoute = (key, path, page) => (
+    <V7Route key={key} path={path} element={<Page name={page} />} />
+  );
+  renderWithProviders(
+    <MemoryRouter initialEntries={[initialRoute]}>
+      <V7Routes>{dynamicSiblings(leaf, scenario)}</V7Routes>
+    </MemoryRouter>,
+  );
+}
+
+/**
+ * Render the same dynamic/plugin route scenario against the facade and against
+ * real v7, deep-linking each to `initialRoute`, and return the `rr-` readouts
+ * from both so a spec can assert the mechanism resolves identically.
+ */
+export async function runDynamicBoth(
+  scenario: DynamicRouteScenario,
+  initialRoute: string,
+): Promise<{
+  facade: Record<string, string | null>;
+  v7: Record<string, string | null>;
+}> {
+  const facade = await renderAndCollect(() =>
+    renderDynamicFacade(scenario, initialRoute),
+  );
+  const v7 = await renderAndCollect(() =>
+    renderDynamicV7(scenario, initialRoute),
   );
 
   return { facade, v7 };

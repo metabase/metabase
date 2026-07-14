@@ -470,7 +470,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.type(screen.getByLabelText("Parameter 2"), "5");
       await waitFor(() =>
-        expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
+        expect(screen.getByLabelText("Parameter 2")).toHaveValue("5"),
       );
 
       await userEvent.click(screen.getByRole("button", { name: ACTION.name }));

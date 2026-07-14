@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { push } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,

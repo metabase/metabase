@@ -536,6 +536,7 @@ describe("metabase-lib/metric/core", () => {
       // New format uses expression instead of source-metric
       const jsObj = jsDefinition as Record<string, unknown>;
       expect(jsObj["expression"]).toBeDefined();
+      // Unjustified type cast. FIXME
       const expression = jsObj["expression"] as unknown[];
       expect(expression[0]).toBe("metric");
       expect(expression[2]).toBe(SAMPLE_METRIC.id);
@@ -1606,6 +1607,7 @@ describe("metabase-lib/metric/core", () => {
       expect(parts).not.toBeNull();
       // StringFilterParts has an options property
       expect(parts).toHaveProperty("options");
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
     });
 
@@ -1622,6 +1624,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("is-null");
     });
 
@@ -1645,7 +1648,9 @@ describe("metabase-lib/metric/core", () => {
       // RelativeDateFilterParts has unit and value properties
       expect(parts).toHaveProperty("unit");
       expect(parts).toHaveProperty("value");
+      // Unjustified type cast. FIXME
       expect((parts as { unit: string }).unit).toBe("day");
+      // Unjustified type cast. FIXME
       expect((parts as { value: number }).value).toBe(-30);
     });
 
@@ -1663,7 +1668,9 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("between");
+      // Unjustified type cast. FIXME
       expect((parts as { values: number[] }).values).toEqual([10, 100]);
     });
 
@@ -1681,7 +1688,9 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
+      // Unjustified type cast. FIXME
       expect((parts as { values: boolean[] }).values).toEqual([true]);
     });
 
@@ -1700,6 +1709,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
       // CoordinateFilterParts has longitudeDimension property
       expect(parts).toHaveProperty("longitudeDimension");
@@ -1720,9 +1730,11 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("=");
       // SpecificDateFilterParts has hasTime property
       expect(parts).toHaveProperty("hasTime");
+      // Unjustified type cast. FIXME
       expect((parts as { hasTime: boolean }).hasTime).toBe(false);
     });
 
@@ -1740,6 +1752,7 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe(">");
     });
 
@@ -1758,9 +1771,11 @@ describe("metabase-lib/metric/core", () => {
       const parts = LibMetric.filterParts(updatedDef, clause);
 
       expect(parts).not.toBeNull();
+      // Unjustified type cast. FIXME
       expect((parts as { operator: string }).operator).toBe("!=");
       // ExcludeDateFilterParts has unit property
       expect(parts).toHaveProperty("unit");
+      // Unjustified type cast. FIXME
       expect((parts as { unit: string }).unit).toBe("day-of-week");
     });
   });

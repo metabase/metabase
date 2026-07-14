@@ -348,6 +348,7 @@ const decodeMetricsViewerUrlHash = (
     char.charCodeAt(0),
   );
 
+  // Unjustified type cast. FIXME
   return JSON.parse(
     new TextDecoder().decode(bytes),
   ) as CompactMetricsViewerUrlState;
@@ -505,6 +506,7 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     H.restore(SNAPSHOT_NAME as any);
     cy.signInAsAdmin();
 

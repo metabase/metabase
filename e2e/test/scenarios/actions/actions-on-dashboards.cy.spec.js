@@ -618,14 +618,14 @@ const MODEL_NAME = "Test Action Model";
 
               changeValue({
                 fieldName: "Integer",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.integer,
                 newValue: 123,
               });
 
               changeValue({
                 fieldName: "Float",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.float,
                 newValue: 2.2,
               });
@@ -1119,10 +1119,8 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("not.exist");
-        cy.findByLabelText(
-          "Team Name: This Team_name value already exists.",
-        ).should("exist");
+        cy.findByLabelText("Team Name").should("exist");
+        cy.findByText("This Team_name value already exists.").should("exist");
 
         cy.findByText("Team_name already exists.").should("exist");
       });

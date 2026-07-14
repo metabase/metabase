@@ -34,6 +34,7 @@ export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];
 
 export function isMathOperator(key: string): key is MathOperator {
+  // Unjustified type cast. FIXME
   return (MATH_OPERATORS as readonly string[]).includes(key);
 }
 
@@ -48,6 +49,7 @@ export type MathExpressionOperator = (typeof MATH_OPERATORS)[number];
 export function isMathExpressionOperator(
   key: string,
 ): key is MathExpressionOperator {
+  // Unjustified type cast. FIXME
   return (MATH_EXPRESSION_OPERATORS as readonly string[]).includes(key);
 }
 

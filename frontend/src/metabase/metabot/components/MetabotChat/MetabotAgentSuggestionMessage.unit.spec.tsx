@@ -56,9 +56,8 @@ const createMockTransformSuggestionMessage = (overrides: {
     role: "agent",
     type: "data_part",
     part: {
-      type: "transform_suggestion",
-      version: 1,
-      value: value,
+      type: "data-transform_suggestion",
+      data: value,
     },
     metadata: {
       editorTransform: overrides.payload.editorTransform,

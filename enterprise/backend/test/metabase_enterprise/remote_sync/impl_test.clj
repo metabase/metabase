@@ -104,15 +104,104 @@
                       :model "Database"
                       :id    "clickhouse"
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
-      (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
+      (is (= "Import failed: Database (`clickhouse`) does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
              (impl/source-error-message e)))))
-  (testing "source-error-message produces helpful message for FK database-not-found errors"
+  (testing "source-error-message names the entity holding the dangling reference when known (GHY-3992)"
+    (let [e (ex-info "Collection 'xyz789' was not found"
+                     {:path     "Collection xyz789"
+                      :model    "Collection"
+                      :id       "xyz789"
+                      :referrer {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error    :metabase-enterprise.serialization.v2.load/not-found})]
+      (is (= (str "Import failed: Card `Orders by Month` (`abc123`) references Collection (`xyz789`), which does not "
+                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
+                  "before importing.")
+             (impl/source-error-message e)))))
+  (testing "surrounding whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
+    (doseq [db-name ["My Database " " My Database" "My Database"]]
+      (let [e (ex-info (format "Database '%s' was not found" db-name)
+                       {:path  (str "Database " db-name)
+                        :model "Database"
+                        :id    db-name
+                        :error :metabase-enterprise.serialization.v2.load/not-found})]
+        (is (str/includes? (impl/source-error-message e)
+                           (format "Database (`%s`)" db-name))
+            (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
+
+(deftest source-error-message-database-not-found-test
+  (testing "source-error-message names the card and the missing database for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
-                         {:table-id ["clickhouse" nil "some_table"]})
+                         {:table-id ["clickhouse" nil "some_table"]
+                          :db-name  "clickhouse"
+                          :error    :metabase.models.serialization.resolve.db/database-not-found})
           e     (ex-info "Failed to load into database for Card abc123"
-                         {:path "Card abc123"}
+                         {:path   "Card abc123"
+                          :entity {:model "Card" :id "abc123" :name "Some card"}}
                          cause)]
-      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance"))))
+      (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
+                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
+                  "before importing.")
+             (impl/source-error-message e)))))
+  (testing "database-not-found is found anywhere in the cause chain, not only at the immediate cause"
+    (let [root   (ex-info "table id present, but database not found: [clickhouse nil t]"
+                          {:db-name "clickhouse"
+                           :error   :metabase.models.serialization.resolve.db/database-not-found})
+          middle (ex-info "wrapped by an intervening helper" {} root)
+          e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
+      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
+
+(deftest source-error-message-load-failure-test
+  (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
+    (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
+          e     (ex-info "Failed to load into database for Card abc123"
+                         {:path   "Card abc123"
+                          :entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (= (str "Import failed: could not save Card `Orders by Month` (`abc123`). "
+                  "NOT NULL constraint failed: report_card.display.")
+             (impl/source-error-message e)))))
+  (testing "a reason that already ends in a period is not double-punctuated"
+    (let [e (ex-info "Failed to load into database for Card abc123"
+                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                     (ex-info "Something went wrong." {}))]
+      (is (str/ends-with? (impl/source-error-message e) "went wrong."))))
+  (testing "a load-failure with no cause omits the reason clause"
+    (let [e (ex-info "Failed to load into database for Card abc123"
+                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error  :metabase-enterprise.serialization.v2.load/load-failure})]
+      (is (= "Import failed: could not save Card `Orders by Month` (`abc123`)."
+             (impl/source-error-message e)))))
+  (testing "stripped keys are reported, since a partial row may have been committed (GHY-3992)"
+    (let [cause (ex-info "some db error" {})
+          e     (ex-info "Failed to load into database for Dashboard xyz"
+                         {:path          "Dashboard xyz"
+                          :entity        {:model "Dashboard" :id "xyz" :name "Sales"}
+                          :stripped-keys #{:parameters :dashcards}
+                          :error         :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
+                  "It may have been saved without: `dashcards`, `parameters`.")
+             (impl/source-error-message e)))))
+  (testing "a database-not-found cause still wins over the generic load-failure branch"
+    (let [cause (ex-info "table id present, but database not found: [ch nil t]"
+                         {:db-name "ch"
+                          :error   :metabase.models.serialization.resolve.db/database-not-found})
+          e     (ex-info "Failed to load into database for Card abc123"
+                         {:entity {:model "Card" :id "abc123" :name "Some card"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (str/includes? (impl/source-error-message e) "references Database (`ch`)"))))
+  (testing "a tenant-collection cause still wins over the generic load-failure branch"
+    (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
+          e     (ex-info "Failed to load into database for Collection abc"
+                         {:entity {:model "Collection" :id "abc"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (str/includes? (impl/source-error-message e) "tenants feature is disabled")))))
+
+(deftest source-error-message-ingest-errors-test
   (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"
     (let [ingest-err (ex-info "Failed to parse file: collections/transforms/a.yaml"
                               {:file "collections/transforms/a.yaml"
@@ -123,8 +212,23 @@
                               ingest-err)
           msg        (impl/source-error-message e)]
       (is (str/includes? msg "Failed to read 1 file(s)"))
-      (is (str/includes? msg "collections/transforms/a.yaml"))
-      (is (str/includes? msg "found character '@'")))))
+      (is (str/includes? msg "`collections/transforms/a.yaml`"))
+      (is (str/includes? msg "found character '@'"))))
+  (testing "file paths are backtick-quoted so surrounding whitespace is visible (GHY-3992)"
+    (let [ingest-err (ex-info "Failed to read file: collections/bar .yaml"
+                              {:file   "collections/bar .yaml"
+                               :reason "IOException"})
+          e          (ex-info "Failed to read 1 file(s) during ingestion: collections/bar .yaml"
+                              {:ingest-errors [ingest-err]}
+                              ingest-err)]
+      (is (= "Failed to read 1 file(s) from the repository: `collections/bar .yaml`: IOException"
+             (impl/source-error-message e)))))
+  (testing "each unreadable file is quoted independently when several fail"
+    (let [errs [(ex-info "a" {:file "a.yaml" :reason "bad"})
+                (ex-info "b" {:file "b.yaml" :reason "worse"})]
+          e    (ex-info "Failed to read 2 file(s) during ingestion" {:ingest-errors errs} (first errs))]
+      (is (= "Failed to read 2 file(s) from the repository: `a.yaml`: bad; `b.yaml`: worse"
+             (impl/source-error-message e))))))
 
 ;; We need to make sure the task-id we use to track the Remote Sync is not bound to a transactions because of the behavior of
 ;; update-sync-progress. So the follow two tests cannot use with-temp to create models
@@ -291,22 +395,31 @@
               (is (= coll-id (:collection_id card))))))))))
 
 (deftest collection-cleanup-during-import-test
-  (testing "collection cleanup during import (tests clean-synced! private function)"
-    (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
-                     :model/Card {card1-id :id} {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
-                     :model/Card {card2-id :id} {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}]
-        (let [test-files {"test-branch" {"collections/main/test_collection_1/test_collection_1.yaml"
-                                         (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
-                                         "collections/main/test_collection_1/test_card_1.yaml"
-                                         (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
-              mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
-              result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
-          (is (= :success (:status result)))
-          (is (t2/exists? :model/Card :id card1-id))
-          (is (not (t2/exists? :model/Collection :id coll2-id)))
-          (is (not (t2/exists? :model/Card :id card2-id))))))))
+  (testing "collection cleanup during import (remove-unsynced!)"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                   :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                   :model/Card {card1-id :id} {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
+                   :model/Card {card2-id :id} {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}]
+      (let [test-files {"test-branch" {"collections/main/test_collection_1/test_collection_1.yaml"
+                                       (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                                       "collections/main/test_collection_1/test_card_1.yaml"
+                                       (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
+            mock-main  (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
+            new-task!  #(t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (testing "GHY-4019: by default the import blocks with a conflict rather than deleting unsynced local content (Card 2)"
+          (let [task   (new-task!)
+                result (impl/import! (source.p/snapshot mock-main) (:id task))]
+            (is (= :conflict (:status result)))
+            (is (t2/exists? :model/Card :id card2-id) "the unsynced local card is preserved")
+            (is (t2/exists? :model/Collection :id coll2-id))
+            ;; free the running-task guard so the next import can start
+            (remote-sync.task/complete-sync-task! (:id task))))
+        (testing "with force-deletion? the cleanup proceeds and removes content not present in the import"
+          (let [result (impl/import! (source.p/snapshot mock-main) (:id (new-task!)) :force-deletion? true)]
+            (is (= :success (:status result)))
+            (is (t2/exists? :model/Card :id card1-id))
+            (is (not (t2/exists? :model/Collection :id coll2-id)))
+            (is (not (t2/exists? :model/Card :id card2-id)))))))))
 
 (deftest import!-records-file-path-test
   (testing "import! records each entity's actual repo file_path on its RemoteSyncObject row, so later
