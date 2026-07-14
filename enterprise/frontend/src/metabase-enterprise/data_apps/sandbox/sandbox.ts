@@ -1,36 +1,8 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
-import type * as React from "react";
 
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import { DATA_APP_GLOBAL_NAMES } from "embedding-sdk-package/data-app-dev/bundle";
-
-import { makeDistortionCallback } from "./sandbox/distortions";
-
-// The MetabaseProvider props a data app may customize.
-export const DATA_APP_PROVIDER_PROP_KEYS = [
-  "theme",
-  "allowedCustomVisualizations",
-  "errorComponent",
-] as const;
-
-export type DataAppMetabaseProviderProps = Pick<
-  MetabaseProviderProps,
-  (typeof DATA_APP_PROVIDER_PROP_KEYS)[number]
->;
-
-/**
- * The bundle's factory returns:
- *   - `component` — the React tree the host will mount inside its
- *     `DataAppProvider`. Should be pure content; no `<MetabaseProvider>`
- *     inside — the host owns the provider wrap so the SDK store/theme/
- *     portal context live in host realm.
- *   - `providerProps` — the `MetabaseProvider` props the data app wants to
- *     customize (theme, allowedCustomVisualizations, errorComponent).
- */
-export type DataAppFactory = () => {
-  component: React.ComponentType<Record<string, unknown>>;
-  providerProps?: DataAppMetabaseProviderProps;
-};
+import { makeDistortionCallback } from "./distortions";
+import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import type { DataAppFactory } from "./types";
 
 /**
  * The realm objects the sandbox exposes to the bundle as globals.
