@@ -16,6 +16,17 @@
  * sandboxed browser realm — so keep the two in sync if either changes.
  */
 
+/**
+ * The slice of the sandbox's realm the network wrappers touch: the native
+ * `fetch`/`XMLHttpRequest` they wrap, and the location a relative request URL
+ * resolves against. A real `Window & typeof globalThis` satisfies it.
+ */
+export interface SandboxRealm {
+  fetch: typeof fetch;
+  XMLHttpRequest: typeof XMLHttpRequest;
+  location: { href: string; origin: string };
+}
+
 interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
   wildcard: boolean; // entry was "*.host"
@@ -135,7 +146,7 @@ function blockedReason(
  * the caller keeps the sandbox's default hard block.
  */
 export function makeSandboxFetch(
-  targetWindow: Window & typeof globalThis,
+  targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
 ): typeof fetch | null {
@@ -162,7 +173,7 @@ export function makeSandboxFetch(
  * (keeps the default hard block).
  */
 export function makeSandboxXhr(
-  targetWindow: Window & typeof globalThis,
+  targetWindow: SandboxRealm,
   allowedHosts: string[],
   label: string,
 ): typeof XMLHttpRequest | null {

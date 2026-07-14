@@ -110,7 +110,7 @@ export const fetchDataAppBundleCode = async (
 export const instantiateDataAppBundle = (
   code: string,
   label: string,
-  targetWindow: Window,
+  targetWindow: Window & typeof globalThis,
   allowedHosts: string[] = [],
 ): LoadedDataApp => {
   const sandbox = createDataAppSandbox({

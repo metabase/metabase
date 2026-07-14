@@ -20,6 +20,8 @@ export type QueryDatasetResult = {
 export const queryDataset =
   () =>
   async ({ datasetQuery }: QueryDatasetParams): Promise<QueryDatasetResult> => {
+    // `api.request` resolves to `unknown` (it does not take a response type
+    // parameter), so the /api/dataset body has to be named here.
     const response = (await api.request({
       method: "POST",
       url: "/api/dataset",

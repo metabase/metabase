@@ -18,6 +18,9 @@ function setup() {
     Api.middleware,
   ]);
   activeStore = store;
+  // The test store is built from the main-app `State`, so it does not carry the
+  // SDK-only slices of `SdkStoreState`. `executeAction` only ever touches
+  // `dispatch`, which is compatible.
   return store as unknown as SdkStore;
 }
 
@@ -44,7 +47,7 @@ describe("executeAction", () => {
       `path:/api/action/${NUMERIC_ID}/execute`,
     );
     expect(calls).toHaveLength(1);
-    const body = JSON.parse(calls[0].options.body as string);
+    const body = JSON.parse(String(calls[0].options.body));
     expect(body).toEqual({ parameters: { id: 1, name: "European" } });
   });
 
@@ -60,7 +63,7 @@ describe("executeAction", () => {
       `path:/api/action/${NUMERIC_ID}/execute`,
     );
     expect(calls).toHaveLength(1);
-    expect(JSON.parse(calls[0].options.body as string)).toEqual({
+    expect(JSON.parse(String(calls[0].options.body))).toEqual({
       parameters: {},
     });
   });

@@ -60,32 +60,30 @@ describe("dev diagnostics store", () => {
   });
 
   it("captures uncaught window errors", () => {
-    const event = new Event("error") as Event & { message: string };
-    event.message = "window blew up";
+    const event = Object.assign(new Event("error"), {
+      message: "window blew up",
+    });
     window.dispatchEvent(event);
 
     expect(last(getDevDiagnostics()).message).toContain("window blew up");
   });
 
   it("captures unhandled promise rejections", () => {
-    const event = new Event("unhandledrejection") as Event & {
-      reason: unknown;
-    };
-    event.reason = "nope";
+    const event = Object.assign(new Event("unhandledrejection"), {
+      reason: "nope",
+    });
     window.dispatchEvent(event);
 
     expect(last(getDevDiagnostics()).message).toBe("Unhandled rejection: nope");
   });
 
   it("captures CSP form-action violations (e.g. a blocked native form submit)", () => {
-    const event = new Event("securitypolicyviolation") as Event &
-      Partial<SecurityPolicyViolationEvent>;
-    Object.assign(event, {
+    const event = Object.assign(new Event("securitypolicyviolation"), {
       effectiveDirective: "form-action",
       violatedDirective: "form-action",
       blockedURI: "https://example.com/",
       originalPolicy: "connect-src 'self'; form-action 'none'",
-    });
+    } satisfies Partial<SecurityPolicyViolationEvent>);
     window.dispatchEvent(event);
 
     expect(last(getDevDiagnostics()).message).toBe(
@@ -94,14 +92,12 @@ describe("dev diagnostics store", () => {
   });
 
   it("formats other CSP violations generically (e.g. connect-src)", () => {
-    const event = new Event("securitypolicyviolation") as Event &
-      Partial<SecurityPolicyViolationEvent>;
-    Object.assign(event, {
+    const event = Object.assign(new Event("securitypolicyviolation"), {
       effectiveDirective: "connect-src",
       violatedDirective: "connect-src",
       blockedURI: "https://evil.test/",
       originalPolicy: "connect-src 'self'; form-action 'none'",
-    });
+    } satisfies Partial<SecurityPolicyViolationEvent>);
     window.dispatchEvent(event);
 
     expect(last(getDevDiagnostics()).message).toBe(

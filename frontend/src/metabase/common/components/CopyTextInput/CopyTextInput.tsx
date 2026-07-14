@@ -5,18 +5,19 @@ import { forwardRef } from "react";
 import type { TextInputProps } from "metabase/ui";
 import { TextInput } from "metabase/ui";
 
+import type { CopyTextFieldClassNames } from "../CopyTextField/copy-text-field-props";
 import { getCopyTextFieldProps } from "../CopyTextField/copy-text-field-props";
 
 import S from "./CopyTextInput.module.css";
 
+export type CopyTextInputProps = Omit<TextInputProps, "classNames"> & {
+  value: string;
+  onCopied?: () => void;
+  classNames?: CopyTextFieldClassNames<TextInputProps>;
+};
+
 export const CopyTextInput = forwardRef(function CopyTextInput(
-  {
-    classNames,
-    onClick,
-    onCopied,
-    readOnly,
-    ...props
-  }: TextInputProps & { value: string; onCopied?: () => void },
+  { classNames, onClick, onCopied, readOnly, ...props }: CopyTextInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   return (
@@ -31,8 +32,7 @@ export const CopyTextInput = forwardRef(function CopyTextInput(
       })}
       classNames={{
         ...classNames,
-        // Unjustified type cast. FIXME
-        input: cx(S.input, (classNames as Record<string, string>)?.input),
+        input: cx(S.input, classNames?.input),
       }}
     />
   );

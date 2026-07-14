@@ -3,9 +3,6 @@ import { t } from "ttag";
 /** The actual error message + stack pulled out of a thrown value. */
 export type ErrorDetail = { message: string; stack?: string };
 
-/** Loose shape we defensively read off a thrown value (or membrane proxy). */
-type MaybeError = { message?: unknown; stack?: unknown };
-
 /**
  * Pull a human-readable message + stack out of a thrown value.
  *
@@ -22,17 +19,16 @@ export function describeError(
   const fallback = fallbackMessage || t`An unexpected error occurred.`;
 
   try {
-    const normalizedValue = value as MaybeError | null;
+    const errorLike =
+      typeof value === "object" && value !== null ? value : null;
+    const rawMessage =
+      errorLike && "message" in errorLike ? errorLike.message : undefined;
+    const rawStack =
+      errorLike && "stack" in errorLike ? errorLike.stack : undefined;
+
     const message =
-      normalizedValue &&
-      typeof normalizedValue.message === "string" &&
-      normalizedValue.message
-        ? normalizedValue.message
-        : fallback;
-    const stack =
-      normalizedValue && typeof normalizedValue.stack === "string"
-        ? normalizedValue.stack
-        : undefined;
+      typeof rawMessage === "string" && rawMessage ? rawMessage : fallback;
+    const stack = typeof rawStack === "string" ? rawStack : undefined;
 
     return { message, stack };
   } catch {

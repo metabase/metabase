@@ -25,7 +25,7 @@ export function dataAppLibBuild(fileName: string) {
     assetsInlineLimit: () => true,
     lib: {
       entry: DATA_APP_ENTRY,
-      formats: ["iife"] as LibraryFormats[],
+      formats: ["iife"] satisfies LibraryFormats[],
       name: DATA_APP_FACTORY_GLOBAL,
       fileName: () => fileName,
     },

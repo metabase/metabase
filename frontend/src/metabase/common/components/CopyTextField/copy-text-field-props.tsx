@@ -5,6 +5,14 @@ import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 type CopyableElement = HTMLInputElement | HTMLTextAreaElement;
 
+/**
+ * The record form of a Mantine field's `classNames`. `CopyText*` fields merge
+ * their own module classes into the caller's, which the function form (the
+ * other half of Mantine's union) cannot express.
+ */
+export type CopyTextFieldClassNames<Props extends { classNames?: unknown }> =
+  Exclude<Props["classNames"], (...args: never[]) => unknown>;
+
 export type CopyTextFieldOptions<E extends CopyableElement> = {
   value: string;
   readOnly?: boolean;

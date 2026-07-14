@@ -26,7 +26,7 @@ describe("fetchDataAppBundleCode", () => {
           : Promise.resolve(response),
     );
 
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
 
     return { fetchMock };
   };
@@ -102,8 +102,10 @@ describe("fetchDataAppBundleCode", () => {
 describe("instantiateDataAppBundle", () => {
   const setup = (factoryResult: unknown) => {
     mockedCreateSandbox.mockReturnValue({
+      // @ts-expect-error - the factory result is deliberately untyped: these tests
+      // feed the loader malformed values (`null`, a non-function `component`).
       evaluate: () => () => factoryResult,
-    } as unknown as ReturnType<typeof createDataAppSandbox>);
+    });
 
     return {
       instantiate: () => instantiateDataAppBundle("code", "demo", window, []),

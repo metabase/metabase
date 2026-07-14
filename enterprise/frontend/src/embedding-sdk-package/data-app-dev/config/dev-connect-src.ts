@@ -25,8 +25,8 @@ export function readAllowedHosts(appRoot: string): string[] {
   }
 
   const hosts =
-    typeof parsed === "object" && parsed !== null
-      ? (parsed as { allowed_hosts?: unknown }).allowed_hosts
+    typeof parsed === "object" && parsed !== null && "allowed_hosts" in parsed
+      ? parsed.allowed_hosts
       : undefined;
 
   if (hosts == null) {
@@ -37,9 +37,9 @@ export function readAllowedHosts(appRoot: string): string[] {
     throw new Error(`${manifestPath}: "allowed_hosts" must be a list.`);
   }
 
-  const nonString = hosts.filter((host) => typeof host !== "string");
+  if (!hosts.every(isString)) {
+    const nonString = hosts.filter((host) => !isString(host));
 
-  if (nonString.length > 0) {
     throw new Error(
       `${manifestPath}: every "allowed_hosts" entry must be a string, got ${JSON.stringify(
         nonString[0],
@@ -47,8 +47,10 @@ export function readAllowedHosts(appRoot: string): string[] {
     );
   }
 
-  return hosts as string[];
+  return hosts;
 }
+
+const isString = (value: unknown): value is string => typeof value === "string";
 
 function toOrigin(url: string | undefined): string | undefined {
   try {

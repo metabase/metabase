@@ -13,11 +13,28 @@ function isStyleQualifiedName(qualifiedName: string) {
   return isStyleTag(localName);
 }
 
+/** The shared sandbox distortion callback, as the membrane types it. */
+type SharedDistortion = (value: object) => object;
+
+export function makeCreateElementDistortion(
+  value: typeof CREATE_ELEMENT,
+  shared: SharedDistortion,
+): typeof CREATE_ELEMENT;
+export function makeCreateElementDistortion(
+  value: typeof CREATE_ELEMENT_NS,
+  shared: SharedDistortion,
+): typeof CREATE_ELEMENT_NS;
 export function makeCreateElementDistortion(
   value: object,
-  shared: (value: object) => object,
-) {
+  shared: SharedDistortion,
+): object | null;
+export function makeCreateElementDistortion(
+  value: object,
+  shared: SharedDistortion,
+): object | null {
   if (value === CREATE_ELEMENT) {
+    // A distortion callback is typed `object -> object` (the membrane erases the
+    // call signature), so restore the signature of the ref it stands in for.
     const sharedCreateElement = shared(value) as typeof CREATE_ELEMENT;
 
     return function createElement(
@@ -38,6 +55,8 @@ export function makeCreateElementDistortion(
   }
 
   if (value === CREATE_ELEMENT_NS) {
+    // Same signature restoration as above: `shared` hands back a drop-in
+    // replacement for `createElementNS`, typed only as `object`.
     const sharedCreateElementNS = shared(value) as typeof CREATE_ELEMENT_NS;
 
     return function createElementNS(
@@ -53,7 +72,7 @@ export function makeCreateElementDistortion(
           this,
           namespaceURI,
           qualifiedName,
-          options as ElementCreationOptions,
+          options,
         );
       }
 
@@ -61,7 +80,7 @@ export function makeCreateElementDistortion(
         this,
         namespaceURI,
         qualifiedName,
-        options as ElementCreationOptions,
+        options,
       );
     };
   }

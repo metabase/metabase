@@ -1,6 +1,10 @@
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
-import { makeSandboxFetch, makeSandboxXhr } from "./allowed-hosts";
+import {
+  type SandboxRealm,
+  makeSandboxFetch,
+  makeSandboxXhr,
+} from "./allowed-hosts";
 import { makeCreateElementDistortion } from "./create-element";
 
 /**
@@ -21,7 +25,7 @@ import { makeCreateElementDistortion } from "./create-element";
  */
 export function makeDistortionCallback(
   label: string,
-  targetWindow: Window & typeof globalThis,
+  targetWindow: SandboxRealm,
   allowedHosts: string[],
 ) {
   const shared = makeSandboxDistortionCallback(

@@ -33,7 +33,9 @@ function setup({ overrides, runBundle = () => {} }: SetupOpts = {}) {
 
   mockedCreateEnv.mockReset();
   mockedCreateEnv.mockImplementation((_targetWindow, options) => {
-    endowments = (options as { endowments: EnvEndowments }).endowments;
+    endowments = options?.endowments;
+    // `VirtualEnvironment` is a class with a large internal surface (link,
+    // remap, lazyRemapProperties, …); the sandbox only ever calls `evaluate`.
     return {
       evaluate: () => runBundle(),
     } as unknown as ReturnType<typeof createVirtualEnvironment>;
@@ -43,9 +45,12 @@ function setup({ overrides, runBundle = () => {} }: SetupOpts = {}) {
     endowments: baseEndowments(overrides),
   });
 
-  const descriptors = endowments as EnvEndowments;
+  if (!endowments) {
+    throw new Error("createVirtualEnvironment was called without endowments");
+  }
+
   const endowed = Object.fromEntries(
-    Object.entries(descriptors).map(([name, descriptor]) => [
+    Object.entries(endowments).map(([name, descriptor]) => [
       name,
       descriptor.value,
     ]),
