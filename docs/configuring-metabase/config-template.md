@@ -311,7 +311,6 @@ config:
     sql-tools-parser-backend: sqlglot
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
-    static-viz-mode: graalvm
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
