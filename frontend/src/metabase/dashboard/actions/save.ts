@@ -11,7 +11,7 @@ import type {
   StoreDashcard,
 } from "metabase/redux/store";
 import { CardApi } from "metabase/services";
-import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { clickBehaviorIsValid } from "metabase/utils/formatting/click-data";
 import type { DashCardId, ParameterId } from "metabase-types/api";
 
 import { trackDashboardSaved } from "../analytics";

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type {
   ClickActionPopoverProps,
   LegacyDrill,

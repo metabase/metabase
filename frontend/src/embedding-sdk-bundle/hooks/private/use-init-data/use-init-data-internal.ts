@@ -23,7 +23,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import api from "metabase/utils/api";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler = async (
   config: OnBeforeRequestHandlerConfig,

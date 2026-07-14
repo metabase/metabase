@@ -1,5 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   MaybeTranslatedSeries,
   Series,

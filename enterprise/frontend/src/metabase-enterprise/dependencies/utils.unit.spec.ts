@@ -1,5 +1,5 @@
 import type { IconName } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,

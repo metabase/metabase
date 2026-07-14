@@ -1,5 +1,4 @@
-import _ from "underscore";
-
+import { clickBehaviorIsValid } from "metabase/utils/formatting/click-data";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
@@ -7,7 +6,6 @@ import {
 import type { ValueAndColumnForColumnNameDate } from "metabase/utils/formatting/link";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNotNull } from "metabase/utils/types";
-import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -18,7 +16,6 @@ import {
 } from "metabase-lib/v1/parameters/utils/filters";
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -31,11 +28,8 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterValueOrArray,
   QuestionDashboardCard,
-  UserAttributeMap,
 } from "metabase-types/api";
-import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
 import { parseParameterValue } from "./parameter-parsing";
 
@@ -56,79 +50,6 @@ interface ExtraData {
   dashboard?: Dashboard;
   parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
-}
-
-export function getDataFromClicked({
-  extraData: { dashboard, parameterValuesBySlug = {}, userAttributes } = {},
-  dimensions = [],
-  data = [],
-}: {
-  extraData?: {
-    dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: UserAttributeMap | null;
-  };
-  dimensions?: DimensionType[];
-  data?: (ClickObjectDataRow & {
-    clickBehaviorValue?: ClickObjectDataRow["value"];
-  })[];
-}): ValueAndColumnForColumnNameDate {
-  const column = [
-    ...dimensions,
-    ...data.map((d) => ({
-      column: d.col,
-      // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
-      value: d.clickBehaviorValue || d.value,
-    })),
-  ]
-    .filter((d) => d.column != null)
-    .reduce<ValueAndColumnForColumnNameDate["column"]>(
-      (acc, { column, value }) => {
-        if (!column) {
-          return acc;
-        }
-
-        const name = column.name.toLowerCase();
-
-        if (acc[name] === undefined) {
-          return { ...acc, [name]: { value, column } };
-        }
-
-        return acc;
-      },
-      {},
-    );
-
-  const dashboardParameters = (dashboard?.parameters || []).filter(
-    ({ slug }) => parameterValuesBySlug[slug] != null,
-  );
-
-  const parameterByName = Object.fromEntries(
-    dashboardParameters.map(({ name, slug }) => [
-      name.toLowerCase(),
-      { value: parameterValuesBySlug[slug] },
-    ]),
-  );
-
-  const parameterBySlug = _.mapObject(parameterValuesBySlug, (value) => ({
-    value,
-  }));
-
-  const parameter = Object.fromEntries(
-    dashboardParameters.map(({ id, slug }) => [
-      id,
-      { value: parameterValuesBySlug[slug] },
-    ]),
-  );
-
-  const userAttribute = Object.fromEntries(
-    Object.entries(userAttributes || {}).map(([key, value]) => [
-      key,
-      { value },
-    ]),
-  );
-
-  return { column, parameter, parameterByName, parameterBySlug, userAttribute };
 }
 
 function notRelativeDateOrRange({ type }: Parameter) {
@@ -316,38 +237,6 @@ function baseTypeFilterForParameterType(parameterType: string) {
     }
     return allowedTypes.some((allowedType) => isa(baseType, allowedType));
   };
-}
-
-export function clickBehaviorIsValid(
-  clickBehavior: ClickBehavior | undefined | null,
-): boolean {
-  // opens drill-through menu
-  if (clickBehavior == null) {
-    return true;
-  }
-
-  if (clickBehavior.type === "crossfilter") {
-    return Object.keys(clickBehavior.parameterMapping || {}).length > 0;
-  }
-
-  if (clickBehavior.type === "action") {
-    return isImplicitActionClickBehavior(clickBehavior);
-  }
-
-  if (clickBehavior.type === "link") {
-    const { linkType } = clickBehavior;
-
-    if (linkType === "url") {
-      return (clickBehavior.linkTemplate || "").length > 0;
-    }
-
-    if (linkType === "dashboard" || linkType === "question") {
-      return clickBehavior.targetId != null;
-    }
-  }
-
-  // we've picked "link" without picking a link type
-  return false;
 }
 
 export function canSaveClickBehavior(
