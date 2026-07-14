@@ -93,7 +93,6 @@ export interface EditorProps {
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
-  contentClassName?: string;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -106,7 +105,6 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
-    contentClassName,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -273,11 +271,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
               }
             }}
           >
-            <EditorContent
-              className={contentClassName}
-              data-testid="document-content"
-              editor={editor}
-            />
+            <EditorContent data-testid="document-content" editor={editor} />
 
             {editable && (
               <EditorBubbleMenu

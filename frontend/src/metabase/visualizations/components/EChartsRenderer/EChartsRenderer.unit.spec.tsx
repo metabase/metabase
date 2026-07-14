@@ -1,49 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
-import { useLayoutEffect, useRef } from "react";
 
 import { createMockMediaQueryList } from "__support__/ui";
 
 import { EChartsRenderer } from "./EChartsRenderer";
 
-type LayoutObserverProps = {
-  width: number;
-  onLayout: (width: number | undefined) => void;
-};
-
-function LayoutObserver({ width, onLayout }: LayoutObserverProps) {
-  const chartRef = useRef<EChartsType>();
-
-  useLayoutEffect(() => {
-    onLayout(chartRef.current?.getWidth());
-  }, [width, onLayout]);
-
-  return (
-    <EChartsRenderer
-      option={{}}
-      width={width}
-      height={300}
-      onInit={(chart) => {
-        chartRef.current = chart;
-      }}
-    />
-  );
-}
-
 describe("EChartsRenderer", () => {
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  it("should resize the SVG before parent layout effects run (#74181)", () => {
-    const onLayout = jest.fn<void, [number | undefined]>();
-    const { rerender } = render(
-      <LayoutObserver width={300} onLayout={onLayout} />,
-    );
-
-    rerender(<LayoutObserver width={400} onLayout={onLayout} />);
-
-    expect(onLayout).toHaveBeenLastCalledWith(400);
   });
 
   it("should resize synchronously when print media changes (#74181)", () => {

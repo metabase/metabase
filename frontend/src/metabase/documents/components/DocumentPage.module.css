@@ -67,11 +67,6 @@
       break-inside: avoid;
     }
 
-    .editorContent > :global([role="textbox"]) {
-      margin-inline: 0;
-      max-width: none;
-    }
-
     [data-hide-on-print] {
       visibility: hidden;
     }
