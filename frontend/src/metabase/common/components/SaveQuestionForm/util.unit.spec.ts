@@ -151,6 +151,27 @@ describe("SaveQuestionForm utils", () => {
       });
     });
 
+    // Witness for metabase#55631: while a new ad-hoc question is being saved,
+    // the in-flight question carries the name the user typed as its display name.
+    // getInitialValues must keep that display name instead of falling back to the
+    // auto-generated query description, otherwise the default title flashes in the
+    // input before the modal closes.
+    it("should keep the display name over the query description for a new ad-hoc question (metabase#55631)", () => {
+      const savedCard = createMockCard({
+        id: undefined as unknown as number,
+        name: "Custom",
+        type: "question",
+      });
+      const savedQuestion = new Question(savedCard);
+
+      // sanity check: the auto-generated description differs from the typed name
+      expect(savedQuestion.generateQueryDescription()).not.toBe("Custom");
+
+      const result = getInitialValues(null, savedQuestion, 1, null);
+
+      expect(result.name).toBe("Custom");
+    });
+
     it("should return modified name for existing question", () => {
       const result = getInitialValues(
         mockOriginalQuestion,

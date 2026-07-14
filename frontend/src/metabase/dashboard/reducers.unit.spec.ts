@@ -1,6 +1,7 @@
+import { CARD_UPDATED } from "metabase/redux/cards";
 import { INITIALIZE } from "metabase/redux/dashboard";
 import { createMockStoreDashboard } from "metabase/redux/store/mocks";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
@@ -182,6 +183,53 @@ describe("dashboard reducers", () => {
           payload: null,
         }),
       ).toEqual({ ...initState, editingDashboard: null });
+    });
+
+    it("should not overwrite the editing dashboard with a newer version of the same dashboard (metabase#53132)", () => {
+      jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      const originalDashboard = createMockDashboard({
+        id: 1,
+        name: "Original",
+      });
+      const dirtyDashboardSameId = createMockDashboard({
+        id: 1,
+        name: "Edited",
+      });
+
+      const state = {
+        ...initState,
+        editingDashboard: originalDashboard,
+      } satisfies ReturnType<typeof reducer>;
+
+      const result = reducer(state, {
+        type: SET_EDITING_DASHBOARD,
+        payload: dirtyDashboardSameId,
+      });
+
+      // The duplicate dispatch for the same dashboard id must be ignored so the
+      // save flow's diff logic keeps seeing the pristine editing snapshot.
+      expect(result.editingDashboard).toBe(originalDashboard);
+    });
+
+    it("should replace the editing dashboard when a different dashboard is set", () => {
+      const originalDashboard = createMockDashboard({
+        id: 1,
+        name: "Original",
+      });
+      const otherDashboard = createMockDashboard({ id: 2, name: "Other" });
+
+      const state = {
+        ...initState,
+        editingDashboard: originalDashboard,
+      } satisfies ReturnType<typeof reducer>;
+
+      const result = reducer(state, {
+        type: SET_EDITING_DASHBOARD,
+        payload: otherDashboard,
+      });
+
+      expect(result.editingDashboard).toBe(otherDashboard);
     });
   });
 
@@ -424,6 +472,36 @@ describe("dashboard reducers", () => {
         },
       });
       expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
+    });
+  });
+
+  describe("CARD_UPDATED", () => {
+    it("should drop cached dashcardData for the updated card", () => {
+      const state = {
+        ...initState,
+        dashcardData: { 10: { 1: { data: [] }, 2: { data: [] } } },
+      };
+      expect(
+        reducer(state, {
+          type: CARD_UPDATED,
+          payload: { object: createMockCard({ id: 1 }) },
+        }).dashcardData,
+      ).toEqual({ 10: { 2: { data: [] } } });
+    });
+
+    it("should not throw when the update payload has no card object (metabase#53404)", () => {
+      const state = {
+        ...initState,
+        dashcardData: { 10: { 1: { data: [] } } },
+      };
+      let result: ReturnType<typeof reducer> | undefined;
+      expect(() => {
+        result = reducer(state, {
+          type: CARD_UPDATED,
+          payload: { object: undefined },
+        });
+      }).not.toThrow();
+      expect(result?.dashcardData).toEqual({ 10: { 1: { data: [] } } });
     });
   });
 });
