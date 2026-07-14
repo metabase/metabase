@@ -479,9 +479,9 @@
            notification
            parameters
            permissions
-           pivot
            premium-features
            query-processor
+           query-processor.pivot
            request
            settings
            system
@@ -773,7 +773,7 @@
            request
            sync
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Dimension
                     :model/Field
@@ -860,8 +860,8 @@
            system
            tracing
            util
-           warehouse-schema
-           warehouses}
+           warehouses
+           warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   eid-translation
@@ -1508,7 +1508,7 @@
            sql-tools
            sync
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -1732,7 +1732,7 @@
            models
            query-processor
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1797,12 +1797,7 @@
                     :model/Table
                     :model/User}}
 
-  pivot
-  {:team "UX West"
-   :api  #{metabase.pivot.core
-           metabase.pivot.postprocess}
-   :uses #{models
-           util}}
+
 
   plugins
   {:team "DevEx"
@@ -1970,7 +1965,7 @@
            sync
            util
            view-log
-           warehouse-schema}
+           warehouses.schema}
    :model-exports #{:model/Card
                     :model/ParameterCard
                     :model/Query
@@ -2044,7 +2039,8 @@
   query-processor
   {:team    "Querying Platform"
    :module-exports #{query-processor.cache-backend
-                     query-processor.driver-api}
+                     query-processor.driver-api
+                     query-processor.pivot}
    :api     #{metabase.query-processor
               metabase.query-processor.api
               metabase.query-processor.card
@@ -2102,11 +2098,11 @@
            models
            parameters
            permissions
-           pivot
            premium-features
            queries
            query-permissions
            query-processor.cache-backend
+           query-processor.pivot
            request
            server
            settings
@@ -2157,7 +2153,13 @@
            system
            upload
            util
-           warehouse-schema}}
+           warehouses.schema}}
+
+  query-processor.pivot
+  {:team "UX West"
+   :ns-prefix "metabase.pivot"
+   :api #{metabase.pivot.core metabase.pivot.postprocess}
+   :uses #{models util}}
 
   remote-sync
   {:team "UX West"
@@ -2506,8 +2508,8 @@
            task.history
            tracing
            util
-           warehouse-schema
-           warehouses}
+           warehouses
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2785,7 +2787,7 @@
            settings
            sync
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2908,86 +2910,14 @@
    :model-exports #{:model/ViewLog}
    :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
-  warehouse-schema
-  {:team "UX West"
-   :module-exports #{warehouse-schema.rest}
-   :api  #{metabase.warehouse-schema.field
-           metabase.warehouse-schema.field-values.distinct-batch
-           metabase.warehouse-schema.metadata-from-qp
-           metabase.warehouse-schema.metadata-queries
-           metabase.warehouse-schema.models.field
-           metabase.warehouse-schema.models.field-user-settings
-           metabase.warehouse-schema.models.field-values
-           metabase.warehouse-schema.models.table
-           metabase.warehouse-schema.table}
-   :uses #{analyze
-           api
-           app-db
-           audit-app
-           collections
-           driver
-           lib
-           lib.be
-           lib.metadata
-           lib.schema
-           models
-           parameters
-           permissions
-           premium-features
-           query-processor
-           remote-sync
-           search
-           util
-           warehouses}
-   :model-exports #{:model/Dimension
-                    :model/Field
-                    :model/FieldUserSettings
-                    :model/FieldValues
-                    :model/Table}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Database
-                    :model/Measure
-                    :model/Segment
-                    :model/Transform
-                    :model/User}}
 
-  warehouse-schema.rest
-  {:team "UX West"
-   :ns-prefix "metabase.warehouse-schema-rest"
-   :api  #{metabase.warehouse-schema-rest.api}
-   :uses #{analytics
-           api
-           app-db
-           collections
-           database-routing
-           driver
-           events
-           lib
-           lib.metadata
-           lib.schema
-           models
-           parameters
-           permissions
-           premium-features
-           query-processor
-           request
-           sync
-           types
-           upload
-           util
-           warehouse-schema
-           xrays}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Dimension
-                    :model/Field
-                    :model/FieldValues
-                    :model/Table}}
+
+
 
   warehouses
   {:team "UX West"
-   :module-exports #{warehouses.rest}
+   :module-exports #{warehouses.rest
+                     warehouses.schema}
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
@@ -3039,13 +2969,91 @@
            sync
            upload
            util
-           warehouse-schema
            warehouses
+           warehouses.schema
            enterprise/permissions}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
                     :model/Field
+                    :model/Table}}
+
+  warehouses.schema
+  {:team "UX West"
+   :ns-prefix "metabase.warehouse-schema"
+   :module-exports #{warehouses.schema.rest}
+   :api #{metabase.warehouse-schema.field
+          metabase.warehouse-schema.field-values.distinct-batch
+          metabase.warehouse-schema.metadata-from-qp
+          metabase.warehouse-schema.metadata-queries
+          metabase.warehouse-schema.models.field
+          metabase.warehouse-schema.models.field-user-settings
+          metabase.warehouse-schema.models.field-values
+          metabase.warehouse-schema.models.table
+          metabase.warehouse-schema.table}
+   :uses #{analyze
+           api
+           app-db
+           audit-app
+           collections
+           driver
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           remote-sync
+           search
+           util
+           warehouses}
+   :model-exports #{:model/Dimension
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Table}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Segment
+                    :model/Transform
+                    :model/User}}
+
+  warehouses.schema.rest
+  {:team "UX West"
+   :ns-prefix "metabase.warehouse-schema-rest"
+   :api #{metabase.warehouse-schema-rest.api}
+   :uses #{analytics
+           api
+           app-db
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib.metadata
+           lib.schema
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
+           sync
+           types
+           upload
+           util
+           warehouses.schema
+           xrays}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
                     :model/Table}}
 
   xrays
@@ -3072,7 +3080,7 @@
            segments
            settings
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3393,8 +3401,8 @@
            query-processor
            settings
            util
-           warehouse-schema
-           warehouses}
+           warehouses
+           warehouses.schema}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -3510,7 +3518,7 @@
            models
            permissions
            util
-           warehouse-schema}
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table}}
@@ -3571,8 +3579,8 @@
            driver
            models
            util
-           warehouse-schema
            warehouses
+           warehouses.schema
            enterprise/serialization}}
 
   enterprise/metabot
@@ -3679,7 +3687,7 @@
            premium-features
            query-processor
            util
-           warehouse-schema
+           warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
    :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
@@ -3706,8 +3714,8 @@
            tenants
            users
            util
-           warehouse-schema
            warehouses
+           warehouses.schema
            enterprise/api}
    :model-exports #{:model/Sandbox}
    :model-imports #{:model/Card
@@ -3780,7 +3788,7 @@
            task
            transforms
            util
-           warehouse-schema
+           warehouses.schema
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard
