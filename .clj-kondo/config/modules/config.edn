@@ -101,6 +101,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            model-persistence
            models
            parameters
@@ -129,7 +130,7 @@
            api
            collections
            eid-translation
-           lib
+           lib.schema
            permissions
            public-sharing
            queries
@@ -161,6 +162,7 @@
            metabase.agent-lib.representations.repair
            metabase.agent-lib.representations.resolve}
    :uses #{lib
+           lib.schema
            models
            util}}
 
@@ -224,7 +226,7 @@
   {:team "Graphy"
    :api  #{metabase.analyze.core}
    :uses #{config
-           lib
+           lib.schema
            models
            query-processor
            sync
@@ -468,6 +470,7 @@
            geojson
            lib
            lib.be
+           lib.schema
            metabot.slackbot
            models
            notification
@@ -675,6 +678,7 @@
            embedding
            events
            lib
+           lib.schema
            models
            parameters
            permissions
@@ -714,8 +718,8 @@
            eid-translation
            embedding
            events
-           lib
            lib.be
+           lib.schema
            models
            parameters
            permissions
@@ -827,6 +831,7 @@
            events
            lib
            lib.be
+           lib.schema
            premium-features
            query-processor
            query-processor.driver-api
@@ -977,8 +982,8 @@
    :api #{metabase.health-inspector.api
           metabase.health-inspector.init}
    :uses #{api
-           lib
            lib.be
+           lib.schema
            settings
            task
            util}}
@@ -991,7 +996,7 @@
            api
            driver
            legacy-mbql
-           lib
+           lib.schema
            models
            permissions
            query-processor
@@ -1051,12 +1056,14 @@
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
+           lib.schema
            types
            util}}
 
   lib
   {:team "Querying Platform"
    :module-exports #{lib.be
+                     lib.schema
                      lib.source-swap}
    :api  #{metabase.lib.core
            metabase.lib.equality
@@ -1069,39 +1076,13 @@
            metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.schema
-           metabase.lib.schema.actions
-           metabase.lib.schema.aggregation
-           metabase.lib.schema.binning
-           metabase.lib.schema.common
-           metabase.lib.schema.constraints
-           metabase.lib.schema.expression
-           metabase.lib.schema.expression.temporal
-           metabase.lib.schema.expression.window
-           metabase.lib.schema.filter
-           metabase.lib.schema.id
-           metabase.lib.schema.info
-           metabase.lib.schema.join
-           metabase.lib.schema.literal
-           metabase.lib.schema.mbql-clause
-           metabase.lib.schema.measure
-           metabase.lib.schema.metadata
-           metabase.lib.schema.metadata.fingerprint
-           metabase.lib.schema.middleware-options
-           metabase.lib.schema.parameter
-           metabase.lib.schema.ref
-           metabase.lib.schema.settings
-           metabase.lib.schema.template-tag
-           metabase.lib.schema.temporal-bucketing
-           metabase.lib.schema.test-spec
-           metabase.lib.schema.util
-           metabase.lib.schema.validate
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.walk}
    :uses #{config
            graph
            legacy-mbql
+           lib.schema
            types
            util}
    :friends #{query-processor}}     ;; Necessarily manipulates MBQL; the one irreducible friend edge -- lib and the QP are one MBQL subsystem.
@@ -1112,6 +1093,7 @@
            metabase.lib-metric.schema}
    :uses #{lib
            lib.be
+           lib.schema
            settings
            types
            util}
@@ -1123,6 +1105,7 @@
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
+           lib.schema
            models
            settings
            util}
@@ -1138,6 +1121,42 @@
                     :model/Table
                     :model/Transform}}
 
+  lib.schema
+  {:team "Querying Platform"
+   :ns-prefix "metabase.lib.schema"
+   :api  #{metabase.lib.schema
+           metabase.lib.schema.actions
+           metabase.lib.schema.aggregation
+           metabase.lib.schema.binning
+           metabase.lib.schema.common
+           metabase.lib.schema.constraints
+           metabase.lib.schema.drill-thru
+           metabase.lib.schema.expression
+           metabase.lib.schema.expression.conditional
+           metabase.lib.schema.expression.temporal
+           metabase.lib.schema.expression.window
+           metabase.lib.schema.extraction
+           metabase.lib.schema.filter
+           metabase.lib.schema.id
+           metabase.lib.schema.info
+           metabase.lib.schema.join
+           metabase.lib.schema.literal
+           metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
+           metabase.lib.schema.metadata
+           metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
+           metabase.lib.schema.order-by
+           metabase.lib.schema.parameter
+           metabase.lib.schema.ref
+           metabase.lib.schema.settings
+           metabase.lib.schema.template-tag
+           metabase.lib.schema.temporal-bucketing
+           metabase.lib.schema.test-spec
+           metabase.lib.schema.util
+           metabase.lib.schema.validate}
+   :uses #{lib types util}}
+
   lib.source-swap
   {:team "Graphy"
    :ns-prefix "metabase.source-swap"
@@ -1146,6 +1165,7 @@
            metabase.source-swap.util}
    :uses #{driver
            lib
+           lib.schema
            sql-tools
            util}}
 
@@ -1230,6 +1250,7 @@
            events
            lib
            lib.be
+           lib.schema
            metrics
            models
            permissions
@@ -1271,6 +1292,7 @@
               legacy-mbql
               lib
               lib.be
+              lib.schema
               llm
               metabot.slackbot
               models
@@ -1401,7 +1423,7 @@
            app-db
            driver
            events
-           lib
+           lib.schema
            models
            permissions
            premium-features
@@ -1434,6 +1456,7 @@
            classloader
            legacy-mbql
            lib
+           lib.schema
            settings
            util}
    :model-imports #{:model/Card
@@ -1456,6 +1479,7 @@
            collections
            events
            lib
+           lib.schema
            models
            permissions
            premium-features
@@ -1559,6 +1583,7 @@
            classloader
            lib
            lib.be
+           lib.schema
            models
            query-processor
            util
@@ -1580,7 +1605,7 @@
            collections
            config
            events
-           lib
+           lib.schema
            models
            premium-features
            remote-sync
@@ -1689,7 +1714,7 @@
            dashboards
            dashboards-rest
            events
-           lib
+           lib.schema
            models
            parameters
            public-sharing
@@ -1766,6 +1791,7 @@
            graph
            lib
            lib.be
+           lib.schema
            metrics
            models
            parameters
@@ -1813,6 +1839,7 @@
            events
            lib
            lib.be
+           lib.schema
            models
            parameters
            permissions
@@ -1838,6 +1865,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            models
            permissions
            query-processor
@@ -1898,6 +1926,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            model-persistence
            models
            parameters
@@ -1945,6 +1974,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            logger
            models
            premium-features
@@ -1994,7 +2024,7 @@
            config
            dashboards
            events
-           lib
+           lib.schema
            models
            queries
            query-permissions
@@ -2084,6 +2114,7 @@
            events
            lib
            lib.be
+           lib.schema
            models
            permissions
            remote-sync
@@ -2210,6 +2241,7 @@
            analytics-interface
            driver
            lib
+           lib.schema
            settings
            sql-parsing
            util}}
@@ -2271,6 +2303,7 @@
            interestingness
            lib
            lib.be
+           lib.schema
            models
            premium-features
            query-processor
@@ -2338,6 +2371,7 @@
            config
            lib
            lib.be
+           lib.schema
            mcp
            permissions
            premium-features
@@ -2362,6 +2396,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            parameters
            query-processor
            settings
@@ -2411,6 +2446,7 @@
            indexes
            lib
            lib.be
+           lib.schema
            models
            permissions
            premium-features
@@ -2461,6 +2497,7 @@
            indexes
            lib
            lib.be
+           lib.schema
            premium-features
            query-processor
            sync
@@ -2535,6 +2572,7 @@
    :uses #{app-db
            lib
            lib.be
+           lib.schema
            models
            settings
            task
@@ -2546,7 +2584,7 @@
            metabase.user-key-value.init}
    :uses #{api
            config
-           lib
+           lib.schema
            util}}
 
   users
@@ -2661,6 +2699,7 @@
            driver
            lib
            lib.be
+           lib.schema
            models
            parameters
            permissions
@@ -2692,6 +2731,7 @@
            driver
            events
            lib
+           lib.schema
            models
            parameters
            permissions
@@ -2720,7 +2760,7 @@
            app-db
            audit-app
            driver
-           lib
+           lib.schema
            models
            permissions
            premium-features
@@ -2749,6 +2789,7 @@
            events
            lib
            lib.be
+           lib.schema
            models
            permissions
            premium-features
@@ -2790,6 +2831,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.schema
            models
            queries
            query-permissions
@@ -2861,6 +2903,7 @@
    :uses #{api
            audit-app
            lib
+           lib.schema
            permissions
            premium-features
            query-permissions
@@ -2982,6 +3025,7 @@
    :api  #{}
    :uses #{classloader
            lib
+           lib.schema
            models
            plugins
            query-processor
@@ -3150,6 +3194,7 @@
            graph
            lib
            lib.be
+           lib.schema
            models
            permissions
            premium-features
@@ -3414,6 +3459,7 @@
            events
            lib
            lib.be
+           lib.schema
            lib.source-swap
            model-persistence
            models
@@ -3445,6 +3491,7 @@
            events
            legacy-mbql
            lib
+           lib.schema
            models
            permissions
            premium-features
@@ -3561,6 +3608,7 @@
            collections
            events
            lib
+           lib.schema
            logger
            models
            plugins
@@ -3667,6 +3715,7 @@
            events
            lib
            lib.be
+           lib.schema
            query-processor
            server
            sql-tools
@@ -3726,6 +3775,7 @@
            cache
            driver
            lib
+           lib.schema
            models
            permissions
            premium-features
