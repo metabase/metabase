@@ -39,7 +39,7 @@ databaseChangeLog:
               - column:
                   name: collection_id
                   type: int
-                  remarks: Collection this exploration lives in. NULL means the root collection ("Our Analytics"). New explorations default to their creator's Personal Collection.
+                  remarks: Collection this exploration lives in. NULL means the root collection ("Our Analytics"). The API stores whatever collection_id the caller supplies (the frontend pre-selects the creator's Personal Collection when creating a new exploration).
                   constraints:
                     nullable: true
               - column:
@@ -358,6 +358,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: page_id
+                  type: int
+                  remarks: The exploration_page this query is reconciled under. The reconciler stamps it on every query, so it's required from the start.
+                  constraints:
+                    nullable: false
+              - column:
                   name: name
                   type: ${text.type}
                   remarks: Optional display name for the chart
@@ -391,7 +397,7 @@ databaseChangeLog:
                   name: query_type
                   type: varchar(32)
                   defaultValue: default
-                  remarks: Generator variant — one of default, day-of-week, month-of-year, hour-of-day, time-facet
+                  remarks: Generator variant — one of default, temporal-pattern-day, temporal-pattern-hour, time-facet, top-n-other, per-value-time-series, filtered-subset
                   constraints:
                     nullable: false
               - column:
@@ -409,9 +415,15 @@ databaseChangeLog:
               - column:
                   name: dataset_query
                   type: ${text.type}
-                  remarks: Snapshot MBQL produced at "Start" time
+                  remarks: Snapshot MBQL produced at "Start" time; null until the runner lazily builds it at execution time
                   constraints:
-                    nullable: false
+                    nullable: true
+              - column:
+                  name: params
+                  type: ${text.type}
+                  remarks: JSON-encoded variant params consumed by the runner when finalizing the chart MBQL just before execution. Shape depends on variant — top-n-other carries a k; filtered-subset carries filter_values; per-value-time-series carries k plus value_index plus optional temporal_dimension_id.
+                  constraints:
+                    nullable: true
               - column:
                   name: position
                   type: int
@@ -447,9 +459,9 @@ databaseChangeLog:
               - column:
                   name: entity_id
                   type: char(21)
-                  remarks: NanoID for serdes
+                  remarks: NanoID for serdes; nullable so serdes drop-entity-ids! can NULL it
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: created_at
@@ -595,6 +607,18 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: EDN-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: row_count
+                  type: int
+                  remarks: Number of rows in the snapshot
+                  constraints:
+                    nullable: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
@@ -680,6 +704,24 @@ databaseChangeLog:
                   name: contextual_interestingness_score
                   type: double
                   remarks: LLM-backed relevance score in [0.0, 1.0] for the chart vs. the thread prompt; null when the LLM is unconfigured, the prompt is blank, or the call failed.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chart_stats
+                  type: ${text.type}
+                  remarks: EDN-encoded raw stats on the chart
+                  constraints:
+                    nullable: true
+              - column:
+                  name: metric_description
+                  type: ${text.type}
+                  remarks: Description of the underlying metric in business terms
+                  constraints:
+                    nullable: true
+              - column:
+                  name: chart_description
+                  type: ${text.type}
+                  remarks: Description of the metric+dimension combination
                   constraints:
                     nullable: true
 
@@ -821,12 +863,12 @@ databaseChangeLog:
   - changeSet:
       id: v63.7gjeaasdg
       author: nvoxland
-      comment: Backfill an empty Findings document per exploration_thread
+      comment: Backfill an empty Scratchpad document per exploration_thread (matches the runtime default document name)
       changes:
         - sql:
             sql: >-
               INSERT INTO document (name, document, content_type, creator_id, exploration_thread_id)
-              SELECT 'Findings', '{"type":"doc","content":[]}', 'application/json+vnd.prose-mirror', e.creator_id, t.id
+              SELECT 'Scratchpad', '{"type":"doc","content":[]}', 'application/json+vnd.prose-mirror', e.creator_id, t.id
               FROM exploration_thread t
               JOIN exploration e ON e.id = t.exploration_id
               WHERE NOT EXISTS (SELECT 1 FROM document d WHERE d.exploration_thread_id = t.id)
@@ -899,18 +941,6 @@ databaseChangeLog:
             constraintName: uq_eqti_query_timeline
 
   - changeSet:
-      id: v63.qtinterestidx
-      author: jdswanson
-      comment: Index exploration_query_timeline_interestingness.exploration_query_id for hydration
-      changes:
-        - createIndex:
-            tableName: exploration_query_timeline_interestingness
-            indexName: idx_eqti_query_id
-            columns:
-              - column:
-                  name: exploration_query_id
-
-  - changeSet:
       id: v63.qtinterestfkq
       author: jdswanson
       comment: FK exploration_query_timeline_interestingness.exploration_query_id -> exploration_query.id
@@ -964,20 +994,6 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.7438dfsed
-      author: nvoxland
-      comment: Backfill exploration_thread.completed_at for pre-existing threads
-      changes:
-        - update:
-            tableName: exploration_thread
-            columns:
-              - column:
-                  name: completed_at
-                  valueComputed: current_timestamp
-            where: completed_at IS NULL
-      rollback:
-
-  - changeSet:
       id: v63.startedat
       author: nvoxland
       comment: Add exploration_thread.analysis_started_at
@@ -989,35 +1005,6 @@ databaseChangeLog:
                   name: analysis_started_at
                   type: ${timestamp_type}
                   remarks: Set once when every query in the thread has reached a terminal status AND every (query, timeline) pair has been scored. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.startedatbf
-      author: nvoxland
-      comment: Backfill exploration_thread.analysis_started_at for pre-existing threads
-      changes:
-        - update:
-            tableName: exploration_thread
-            columns:
-              - column:
-                  name: analysis_started_at
-                  valueComputed: current_timestamp
-            where: analysis_started_at IS NULL
-      rollback:
-
-  - changeSet:
-      id: v63.gr324asd
-      author: nvoxland
-      comment: Add exploration_query_result.chart_stats
-      changes:
-        - addColumn:
-            tableName: exploration_query_result
-            columns:
-              - column:
-                  name: chart_stats
-                  type: ${text.type}
-                  remarks: JSON-encoded raw stats on the chart
                   constraints:
                     nullable: true
 
@@ -1080,36 +1067,6 @@ databaseChangeLog:
               )
               WHERE ai_summary_document_id IS NULL
       rollback:
-
-  - changeSet:
-      id: v63.qresdesc
-      author: nvoxland
-      comment: Add metric_description column to exploration_query_result
-      changes:
-        - addColumn:
-            tableName: exploration_query_result
-            columns:
-              - column:
-                  name: metric_description
-                  type: ${text.type}
-                  remarks: Description of the underlying metric in business terms
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.87hjhh
-      author: nvoxland
-      comment: Add chart_description column to exploration_query_result
-      changes:
-        - addColumn:
-            tableName: exploration_query_result
-            columns:
-              - column:
-                  name: chart_description
-                  type: ${text.type}
-                  remarks: Description of the metric+dimension combination
-                  constraints:
-                    nullable: true
 
   - changeSet:
       id: v63.sruse
@@ -1267,31 +1224,6 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.qparams
-      author: johnswanson
-      comment: Add params JSON column to exploration_query (deferred MBQL recipe)
-      changes:
-        - addColumn:
-            tableName: exploration_query
-            columns:
-              - column:
-                  name: params
-                  type: ${text.type}
-                  remarks: JSON-encoded variant params consumed by the runner when finalizing the chart MBQL just before execution. Shape depends on variant — top-n-other carries a k; filtered-subset carries filter_values; per-value-time-series carries k plus value_index plus optional temporal_dimension_id.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.qdsetqnull
-      author: johnswanson
-      comment: Make exploration_query.dataset_query nullable (lazy build at execution)
-      changes:
-        - dropNotNullConstraint:
-            tableName: exploration_query
-            columnName: dataset_query
-            columnDataType: ${text.type}
-
-  - changeSet:
       id: v63.expeidnull
       author: nvoxland
       comment: Make exploration.entity_id nullable so serdes drop-entity-ids! can NULL it
@@ -1308,16 +1240,6 @@ databaseChangeLog:
       changes:
         - dropNotNullConstraint:
             tableName: exploration_thread
-            columnName: entity_id
-            columnDataType: char(21)
-
-  - changeSet:
-      id: v63.expqueryeidnull
-      author: nvoxland
-      comment: Make exploration_query.entity_id nullable so serdes drop-entity-ids! can NULL it
-      changes:
-        - dropNotNullConstraint:
-            tableName: exploration_query
             columnName: entity_id
             columnDataType: char(21)
 
@@ -1560,21 +1482,6 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.expqpagecol
-      author: johnswanson
-      comment: Add exploration_query.page_id (NOT NULL) — the page each query is reconciled under. The reconciler stamps it on every query, so it's required from the start.
-      changes:
-        - addColumn:
-            tableName: exploration_query
-            columns:
-              - column:
-                  name: page_id
-                  type: int
-                  remarks: The exploration_page this query belongs to
-                  constraints:
-                    nullable: false
-
-  - changeSet:
       id: v63.expqpageidx
       author: johnswanson
       comment: Index exploration_query.page_id for read-side grouping
@@ -1598,50 +1505,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_query_page_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v63.storedresultdataaccesstoken
-      author: johnswanson
-      comment: Add stored_result.data_access_token for per-lens cached-read gating
-      changes:
-        - addColumn:
-            tableName: stored_result
-            columns:
-              - column:
-                  name: data_access_token
-                  type: ${text.type}
-                  remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.srrowcount
-      author: johnswanson
-      comment: Add stored_result.row_count
-      changes:
-        - addColumn:
-            tableName: stored_result
-            columns:
-              - column:
-                  name: row_count
-                  type: int
-                  remarks: Number of rows in the snapshot
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.storedresultdataaccesstokenbf
-      author: johnswanson
-      comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).
-      changes:
-        - update:
-            tableName: stored_result
-            columns:
-              - column:
-                  name: data_access_token
-                  value: "{}"
-            where: data_access_token IS NULL
-      rollback:
 
   - changeSet:
       id: v63.guiswezd
