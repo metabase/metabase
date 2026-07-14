@@ -29,7 +29,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";
-import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
+import { TREEMAP_CHART_DEFINITION } from "./definition";
 import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 import { type TreemapHoverOverlay, hideTreemapHoverOverlay } from "./overlay";
 import { getTreemapTooltipOption } from "./tooltip";
@@ -86,7 +86,11 @@ export const TreemapChart = ({
   const formatters = useMemo(
     () =>
       chartData
-        ? getTreemapFormatters(chartData.treemapColumns, settings)
+        ? getTreemapFormatters(
+            chartData.treemapColumns,
+            settings,
+            chartData.tree,
+          )
         : null,
     [chartData, settings],
   );

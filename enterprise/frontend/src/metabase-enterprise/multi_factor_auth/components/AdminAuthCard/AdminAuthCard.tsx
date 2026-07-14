@@ -31,7 +31,7 @@ export function AdminAuthCard() {
   };
 
   return (
-    <SettingsSection>
+    <SettingsSection data-testid="mfa-setting">
       <SettingHeader
         id="mfa-enforcement"
         title={t`Two-factor authentication`}

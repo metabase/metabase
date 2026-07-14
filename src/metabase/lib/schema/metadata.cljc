@@ -70,7 +70,10 @@
    ;; Introduced by `:expressions` IN THE CURRENT STAGE; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
-   :source/implicitly-joinable])
+   :source/implicitly-joinable
+   ;; The synthetic `pivot-grouping` column emitted by the SQL compiler from `GROUPING(...)` when the query carries a
+   ;; top-level `:pivot` clause. Treated like an aggregation/native column for alias-info purposes.
+   :source/pivot-grouping])
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
@@ -277,6 +280,7 @@
 (mr/def ::column.validate-for-source-joins               (column-validate-for-source-schema :source/joins))
 (mr/def ::column.validate-for-source-expressions         (column-validate-for-source-schema :source/expressions))
 (mr/def ::column.validate-for-source-implicitly-joinable (column-validate-for-source-schema :source/implicitly-joinable))
+(mr/def ::column.validate-for-source-pivot-grouping      (column-validate-for-source-schema :source/pivot-grouping))
 
 (mr/def ::column.validate-for-source
   "Do additional validation for column metadata based on `:lib/source`."
@@ -290,6 +294,7 @@
    [:source/joins               [:ref ::column.validate-for-source-joins]]
    [:source/expressions         [:ref ::column.validate-for-source-expressions]]
    [:source/implicitly-joinable [:ref ::column.validate-for-source-implicitly-joinable]]
+   [:source/pivot-grouping      [:ref ::column.validate-for-source-pivot-grouping]]
    [nil                         :any]])
 
 (def column-visibility-types

@@ -93,6 +93,12 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
   const [isInviteOpen, { open: openInvite, close: closeInvite }] =
     useDisclosure();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  // Creating a public link is a write, so hide that action when the question is
+  // not writable (e.g. a remote-synced entity on a read-only instance). An
+  // existing public link stays visible either way — viewing and copying it are
+  // reads. Embedding stays available; its Publish button is disabled instead.
+  const canWrite = question.canWrite();
+  const hasPublicLink = Boolean(question.publicUUID?.());
   const shareUrl = useQuestionAppUrl(question);
 
   return (
@@ -100,9 +106,9 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
       <SharingMenu>
         <InviteToViewMenuItem onClick={openInvite} />
         <CopyQuestionLinkMenuItem question={question} />
-        {isPublicSharingEnabled && (
+        {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
-            hasPublicLink={Boolean(question.publicUUID?.())}
+            hasPublicLink={hasPublicLink}
             onClick={() => setModalType("question-public-link")}
           />
         )}

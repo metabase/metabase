@@ -59,6 +59,8 @@
 
 (use-fixtures :once (fixtures/initialize :test-users :db :web-server))
 
+(use-fixtures :each (fn [thunk] (api.pivots/do-with-pivot-parity-check thunk)))
+
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
     (let [id->new-card {123 {:id 456}

@@ -45,6 +45,8 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
+
 (defn- format-response [m]
   (when-not (map? m)
     (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))

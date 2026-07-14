@@ -26,6 +26,7 @@
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
@@ -72,6 +73,7 @@
    #'metrics/adjust
    #'measures/adjust
    #'expand-macros/expand-macros
+   #'nest-for-pivot/nest-for-pivot
    #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters
    #'qp.resolve-source-table/resolve-source-tables

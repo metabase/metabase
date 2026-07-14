@@ -8,6 +8,8 @@
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -92,6 +94,25 @@
                                            :agent-api-enabled?   "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest eval-tracing-wraps-agent-api-requests-test
+  (testing "with capture on, the routes wrapper opens a span recording status/response/user-id"
+    (let [nodes (atom [])]
+      ;; Force capture on and collect the emitted spans in-memory (redef the sink so no file is
+      ;; written). The wrapper mints a fresh session per direct HTTP request.
+      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)
+                                  ait.log/emit!                       (fn [node _session-id]
+                                                                        (swap! nodes conj node)
+                                                                        nil)]
+        (is (= {:message "pong"} (mt/user-http-request :rasta :get 200 "agent/v1/ping")))
+        (let [span (first (filter #(str/starts-with? (str (:name %)) "agent-api.") @nodes))]
+          (is (some? span) "an agent-api.* span was emitted for the request")
+          (is (= "agent-api.get /api/agent/v1/ping" (:name span)))
+          (is (= 200 (get-in span [:attributes :http/status])))
+          ;; the plain-data body is recorded (a streaming body would be omitted, not stringified)
+          (is (= {:message "pong"} (get-in span [:attributes :http/response])))
+          ;; +auth binds *current-user-id* inside the handler, so the respond-time record! sees rasta
+          (is (= (mt/user->id :rasta) (get-in span [:attributes :http/user-id]))))))))
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
@@ -1161,7 +1182,13 @@
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
@@ -1309,17 +1336,6 @@
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
       ;; cards on the dashboard should follow
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
-  (testing "Archiving a dashboard cascades to its cards"
-    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
-                   :model/Card      {card-id :id} {:name          "Cascading Card"
-                                                   :dataset_query (orders-count-query)
-                                                   :display       :table
-                                                   :dashboard_id  dash-id}]
-      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
-                                       {:archived true})]
-        (is (true? (:archived resp))))
-      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
@@ -1340,6 +1356,25 @@
          (perms-group/all-users) writable-id)
         (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                               {:collection_id locked-id})))))
+
+(deftest update-dashboard-archive-test
+  (testing "Archiving a dashboard cascades to its cards"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dash To Archive"}
+                   :model/Card      {card-id :id} {:name          "Cascading Card"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table
+                                                   :dashboard_id  dash-id}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it, cards included"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))
 
 (deftest update-dashboard-dashcards-add-test
   (testing "Add a card to the dashboard (autoplaced)"

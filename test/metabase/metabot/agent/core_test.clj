@@ -1,6 +1,9 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.ai-tracing.core :as ait]
+   [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
@@ -18,6 +21,15 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
+
+;; Pin eval-capture OFF for the whole namespace so the exact stream-shape assertions below are
+;; deterministic regardless of the ambient MB_AI_EVAL_CAPTURE — a dedicated eval instance sets it,
+;; which would otherwise append an extra `eval_session` data part to every agent stream and break
+;; every `=?` on `run-agent-loop` output. The capture-ON path is covered by `eval-tracing-nesting-test`,
+;; which forces capture via `capture-reducible` (independent of this gate) and is unaffected here.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
+                        (thunk))))
 
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results.
@@ -370,6 +382,78 @@
               (testing "should complete 3 LLM iterations"
                 (is (= 3 @llm-call-count)
                     "Should have exactly 3 LLM calls (search, construct, final text)")))))))))
+
+(deftest eval-tracing-nesting-test
+  (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
+    ;; This exercises the cross-module wiring the ai-tracing docstrings promise: the turn/llm spans
+    ;; are opened in metabase.metabot.agent.core, the tool span in metabase.metabot.self.core, and
+    ;; the tool runs on the virtual-thread executor — so this also proves *parent* is conveyed across
+    ;; `bound-fn*` into the tool thread. Only the LLM + search backend are mocked; everything else is
+    ;; real. `capture-reducible` binds the capture unconditionally (ignores MB_AI_EVAL_CAPTURE), and
+    ;; we redef `emit!` to a no-op so the test never writes a per-session JSONL file.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+        (let [llm-call-count (atom 0)
+              llm-responses  [;; Iteration 1: call the search tool (produces a real tool span)
+                              [{:type :start :id "msg-1"}
+                               {:type      :tool-input
+                                :id        "call-search-1"
+                                :function  "search"
+                                :arguments {:semantic_queries ["orders table"]
+                                            :keyword_queries  ["orders"]
+                                            :entity_types     ["table"]}}
+                               {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                :model "test" :id "msg-1"}]
+                              ;; Iteration 2: final text (no tool)
+                              [{:type :start :id "msg-2"}
+                               {:type :text :text "Here are your orders."}
+                               {:type :usage :usage {:promptTokens 200 :completionTokens 10}
+                                :model "test" :id "msg-2"}]]]
+          (mt/with-dynamic-fn-redefs [ait.log/emit!         (fn [& _] nil)
+                                      openrouter/openrouter (fn [_opts]
+                                                              (let [n (swap! llm-call-count inc)]
+                                                                (mut/mock-llm-response (get llm-responses (dec n) []))))
+                                      metabot-search/search (fn [_args]
+                                                              [{:id           (mt/id :orders)
+                                                                :type         "table"
+                                                                :name         "orders"
+                                                                :display_name "Orders"
+                                                                :description  "Confirmed orders."
+                                                                :database_id  (mt/id)}])]
+            (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
+                                           (ait/capture-reducible
+                                            (agent/run-agent-loop
+                                             {:messages   [{:role :user :content "Show me orders"}]
+                                              :state      {}
+                                              :profile-id :internal
+                                              :context    {}})))]
+              (is (= 2 @llm-call-count) "search iteration + final text iteration")
+              (is (= 1 (count trace)) "single root span")
+              (testing "the in-process (file-less) path emits no eval_session pointer into the stream"
+                ;; capture-reducible leaves *session-id* nil (trace comes back as :trace, no file), so
+                ;; a pointer here would name a <nil>.jsonl that never exists.
+                (is (empty? (filter #(= "eval_session" (:data-type %)) result))))
+              (let [turn       (first trace)
+                    llms       (:children turn)
+                    tool-spans (mapcat :children llms)
+                    search     (first (filter #(= "tool.search" (:name %)) tool-spans))]
+                (testing "root is the agent turn"
+                  (is (= :turn (:type turn)))
+                  (is (= "agent.turn" (:name turn)))
+                  (is (nil? (:parent-id turn))))
+                (testing "each iteration is an llm.call child of the turn"
+                  (is (= 2 (count llms)))
+                  (is (every? #(= :llm (:type %)) llms))
+                  (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "the search tool span nests under the llm.call it ran in"
+                  (is (= :tool (:type search)))
+                  ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)
+                  (is (= {:semantic_queries ["orders table"]
+                          :keyword_queries  ["orders"]
+                          :entity_types     ["table"]}
+                         (get-in search [:attributes :ai/tool-args])))
+                  (let [parent-llm (first (filter #(= (:parent-id search) (:id %)) llms))]
+                    (is (some? parent-llm) "tool's parent-id resolves to an llm.call in the tree")))))))))))
 
 (deftest cumulative-usage-test
   (mt/as-admin

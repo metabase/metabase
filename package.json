@@ -367,6 +367,7 @@
     "open": "^10.1.0",
     "open-cli": "^8.0.0",
     "openapi-typescript": "^7.10.0",
+    "otpauth": "^9.5.1",
     "oxfmt": "^0.38.0",
     "patch-package": "^8.0.1",
     "pg": "^8.8.0",

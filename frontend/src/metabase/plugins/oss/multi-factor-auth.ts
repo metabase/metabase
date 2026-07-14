@@ -1,7 +1,4 @@
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { MfaMethod } from "metabase-types/api";
 
 export type AuthChallengeFormProps = {
@@ -13,7 +10,7 @@ export type AuthChallengeFormProps = {
 
 const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
-  AccountSecurityPanel: NotFoundPlaceholder,
+  AccountSecurityPanel: PluginPlaceholder,
   AdminAuthCard: PluginPlaceholder,
 });
 

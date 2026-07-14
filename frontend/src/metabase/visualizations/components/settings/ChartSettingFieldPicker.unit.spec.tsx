@@ -1,7 +1,7 @@
 // these tests use QuestionChartSettings directly, but logic we're testing lives in ChartSettingFieldPicker
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
