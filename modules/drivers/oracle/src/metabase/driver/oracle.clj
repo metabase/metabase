@@ -545,8 +545,8 @@
 
 ;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
 ;; drop these boolean->comparison conversions.
-(defn- boolean->comparison [driver clause]
-  (sql.qp.boolean-to-comparison/boolean->comparison driver clause boolean-field-types))
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form query]

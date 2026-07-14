@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- The `:sql-mbql5` abstract driver has been removed, and the `:sql` driver now compiles MBQL 5 directly. SQL drivers
+  must handle MBQL 5 clause shapes (options map as the second element) in their `sql.qp/->honeysql` implementations.
+  The transitional multimethods added in 0.61.0 to support both MBQL formats (e.g. `sql.qp/mbql-clause-with-opts`,
+  `sql.qp/compile-mbql`) have been removed along with the legacy `:sql` implementations they dispatched to.
+
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
 

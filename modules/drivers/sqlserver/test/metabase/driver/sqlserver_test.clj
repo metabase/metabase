@@ -671,10 +671,9 @@
                     :query (orders-query
                             {:expressions [["MyTrue" [:value opts true]]
                                            ["MyFalse" [:value opts false]]
-                                           ["MyCase" (sql.qp/mbql
-                                                      :sqlserver :case
+                                           ["MyCase" [:case {}
                                                       [[(expression-ref "MyFalse") [:value opts false]]
-                                                       [(expression-ref "MyTrue") [:value opts true]]])]]
+                                                       [(expression-ref "MyTrue") [:value opts true]]]]]]
                              :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"

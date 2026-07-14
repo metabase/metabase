@@ -641,18 +641,18 @@
   where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
   For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
   and then cast it to a :bit. See #53805 for more details."
-  [driver clause]
+  [clause]
   (cond-> clause
-    (sql.qp.boolean-to-comparison/predicate-expression-clause? driver clause)
+    (sql.qp.boolean-to-comparison/predicate-expression-clause? clause)
     (lib.options/update-options assoc ::sql.qp/add-cast :bit ::sql.qp/wrap-in-case true)
 
-    (sql.qp.boolean-to-comparison/boolean-expression-clause? driver clause)
+    (sql.qp.boolean-to-comparison/boolean-expression-clause? clause)
     (lib.options/update-options assoc ::sql.qp/add-cast :bit)))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
   [driver _ honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :fields])]
-    (->> (update query :fields #(mapv (partial maybe-add-cast driver) %))
+    (->> (update query :fields #(mapv maybe-add-cast %))
          (parent-method driver :fields honeysql-form))))
 
 (defn- optimize-order-by-subclauses
