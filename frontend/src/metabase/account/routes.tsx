@@ -1,5 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 
+import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { IndexRedirect, Route, type RouteComponent } from "metabase/router";
 
@@ -19,6 +20,10 @@ export const getAccountRoutes = (
         <IndexRedirect to="profile" />
         <Route path="profile" component={UserProfileApp} />
         <Route path="password" component={UserPasswordApp} />
+        <Route
+          path="security"
+          component={PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel}
+        />
         <Route path="login-history" component={LoginHistoryApp} />
         {getNotificationRoutes()}
       </Route>

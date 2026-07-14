@@ -1,9 +1,9 @@
 import { Fragment } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { ActionIcon, Divider, Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";

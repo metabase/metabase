@@ -51,6 +51,7 @@ type DashboardAwareCard = Card & {
 
 function createMockSavedQuestion(card?: Partial<DashboardAwareCard>) {
   const savedCard = createMockCard({ dataset_query: MOCK_QUERY, ...card });
+  // Unjustified type cast. FIXME
   return createMockMetadata(savedCard).question(savedCard.id) as Question;
 }
 
@@ -214,6 +215,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       // non-pivot card, otherwise the query never reaches `/api/dataset` (the
       // audit "Erroring Questions" table renders nothing).
       const question = createMockAdHocQuestion({
+        // Unjustified type cast. FIXME
         dataset_query: {
           type: "internal",
           fn: "metabase-enterprise.audit-app.pages.queries/bad-table",

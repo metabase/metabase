@@ -9,6 +9,7 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn(),
 }));
 
+// jest.mock replaces the module factory; retype the import as its mock
 const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
   typeof hasPremiumFeature
 >;

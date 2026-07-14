@@ -2,8 +2,9 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -50,6 +51,15 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
 
+  const isTransformsSetupComplete = useSetting("transforms-setup-complete");
+  const areTransformsEnabled = useSetting("transforms-enabled");
+
+  const canUseTransforms = canAccessTransforms && areTransformsEnabled;
+  // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
+  const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
+
+  const settings = useDataStudioSettings();
+
   const currentTab = getCurrentTab(pathname);
 
   const upperNav = (
@@ -92,7 +102,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         showLabel={isNavbarOpened}
         isGated={!hasDependenciesFeature}
       />
-      {canAccessTransforms && (
+      {shouldShowTransforms && (
         <AreaTab
           label={t`Transforms`}
           icon="transform"
@@ -149,7 +159,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           showLabel={isNavbarOpened}
         />
       )}
-      {canAccessTransforms && (
+      {canUseTransforms && (
         <AreaTab
           label={t`Jobs`}
           icon="clock"
@@ -158,12 +168,21 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           showLabel={isNavbarOpened}
         />
       )}
-      {canAccessTransforms && (
+      {canUseTransforms && (
         <AreaTab
           label={t`Runs`}
           icon="play_outlined"
           to={Urls.transformRunList()}
           isSelected={currentTab === "runs"}
+          showLabel={isNavbarOpened}
+        />
+      )}
+      {settings.length > 0 && (
+        <AreaTab
+          label={t`Settings`}
+          icon="gear"
+          to={Urls.dataStudioSettings()}
+          isSelected={currentTab === "settings"}
           showLabel={isNavbarOpened}
         />
       )}

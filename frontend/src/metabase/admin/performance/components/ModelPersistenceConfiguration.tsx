@@ -84,6 +84,7 @@ export const ModelPersistenceConfiguration = () => {
       icon: "info",
       message: t`Loading...`,
     });
+    // Unjustified type cast. FIXME
     return result?.payload?.id as number;
   };
 

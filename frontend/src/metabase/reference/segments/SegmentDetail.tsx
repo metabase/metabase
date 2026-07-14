@@ -303,4 +303,5 @@ const SegmentDetail = (props: SegmentDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentDetail as unknown as React.ComponentType);

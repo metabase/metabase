@@ -18,6 +18,7 @@ jest.mock("metabase/utils/dom", () => ({
   openSaveDialog: jest.fn(),
 }));
 
+// jest.mock replaces the module factory; retype the import as its mock
 const mockOpenSaveDialog = openSaveDialog as jest.Mock;
 
 const PATHNAME = "/monitor/logs";
@@ -243,6 +244,7 @@ describe("Logs", () => {
       expect(mockOpenSaveDialog).toHaveBeenCalledTimes(1);
       const [filename, blob] = mockOpenSaveDialog.mock.calls[0];
       expect(filename).toBe("logs.txt");
+      // mock.calls args are untyped; the dialog is always called with a Blob
       const text = await readBlobText(blob as Blob);
       expect(text).toContain("[uuid-1]");
       expect(text).toContain("alpha-message");

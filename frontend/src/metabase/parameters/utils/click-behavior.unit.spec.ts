@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import * as dateFormatUtils from "metabase/visualizations/lib/formatting/date";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -32,7 +33,6 @@ import {
 
 import {
   formatSourceForTarget,
-  getDataFromClicked,
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "./click-behavior";
@@ -236,6 +236,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         userAttribute: ["attr"],
       };
 
+      // Unjustified type cast. FIXME
       for (const [targetParameterType, expectedSources] of [
         [
           "id",
@@ -331,6 +332,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         });
       }
 
+      // Unjustified type cast. FIXME
       for (const [targetVariableType, expectedSources] of [
         [
           "text",
@@ -408,6 +410,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         });
       }
 
+      // Unjustified type cast. FIXME
       for (const [field, expectedSources] of [
         [
           productTitle,
@@ -467,6 +470,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
                   "template-tags": {
                     my_field_filter: {
                       default: null,
+                      // Unjustified type cast. FIXME
                       dimension: ["field", field.id as FieldId, null],
                       "display-name": "My Field Filter",
                       id: "foo123",

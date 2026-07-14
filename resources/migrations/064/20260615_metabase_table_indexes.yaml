@@ -1,0 +1,128 @@
+## Index/clustering hints declared on a transform target table, reapplied on each full transform run.
+## Each request binds to a transform; the target table is read off the transform's target_table_id.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.ixrq01
+      author: Ngoc Khuat
+      comment: Create metabase_table_indexes table for transform target index/clustering hints
+      changes:
+        - createTable:
+            tableName: metabase_table_indexes
+            remarks: Index/clustering hints declared on a transform target, reapplied on each full transform run
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: FK to the transform that owns this index request
+                  constraints:
+                    nullable: false
+              - column:
+                  name: index_name
+                  type: varchar(255)
+                  remarks: Physical index name, rendered verbatim into DDL
+                  constraints:
+                    nullable: false
+              - column:
+                  name: structured
+                  type: ${text.type}
+                  remarks: JSON structured index definition (kind, columns, ...)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: create-pending
+                  remarks: "Lifecycle status: create-pending, update-pending, delete-pending, running, succeeded, or failed"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Error from the last failed apply, if any
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_by
+                  type: int
+                  remarks: FK to core_user.id who created this request
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this request was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this request was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_executed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last apply attempt
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.ixrq02
+      author: Ngoc Khuat
+      comment: Add unique constraint on metabase_table_indexes (transform_id, index_name)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table_indexes
+            columnNames: transform_id, index_name
+            constraintName: uq_table_indexes_transform_id_index_name
+
+  ## Indexes are created before the FK constraints below: MySQL/MariaDB require an
+  ## index to back every FK and reuse an existing one, so this keeps rollback working
+  ## (the FK is dropped before the index it would otherwise still need). Postgres
+  ## doesn't auto-index FKs, which is what fks-are-indexed-test checks for.
+  - changeSet:
+      id: v64.ixrq04
+      author: Ngoc Khuat
+      comment: Index metabase_table_indexes.created_by
+      changes:
+        - createIndex:
+            tableName: metabase_table_indexes
+            indexName: idx_table_indexes_created_by
+            columns:
+              - column:
+                  name: created_by
+
+  - changeSet:
+      id: v64.ixrq05
+      author: Ngoc Khuat
+      comment: Add FK on metabase_table_indexes.transform_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_indexes
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_table_indexes_transform_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.ixrq07
+      author: Ngoc Khuat
+      comment: Add FK on metabase_table_indexes.created_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_indexes
+            baseColumnNames: created_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_table_indexes_created_by
+            onDelete: SET NULL

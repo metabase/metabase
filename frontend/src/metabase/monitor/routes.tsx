@@ -1,5 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
-
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -18,9 +16,11 @@ import {
   getTasksRoutes,
 } from "metabase/monitor/tools/routes";
 import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
   IndexRoute,
+  Navigate,
   Redirect,
   Route,
   type RouteComponent,
@@ -29,8 +29,13 @@ import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";
 
+/** Lands on the first Monitor section the user can access. */
+function MonitorIndexRedirect() {
+  const indexPath = useSelector(getMonitorIndexPath);
+  return <Navigate to={indexPath} replace />;
+}
+
 export function getMonitorRoutes(
-  store: Store<State>,
   CanAccessMonitor: RouteComponent,
   CanAccessMonitorDiagnostics: RouteComponent,
   CanAccessMonitoringTools: RouteComponent,
@@ -39,12 +44,7 @@ export function getMonitorRoutes(
   return (
     <Route component={CanAccessMonitor}>
       <Route path="monitor" component={MonitorLayout}>
-        {/* Land on the first section the user can access. */}
-        <IndexRoute
-          onEnter={(_state, replace) => {
-            replace(getMonitorIndexPath(store.getState()));
-          }}
-        />
+        <IndexRoute component={MonitorIndexRedirect} />
         <Route component={CanAccessMonitorDiagnostics}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route

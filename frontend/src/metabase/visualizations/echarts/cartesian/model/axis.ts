@@ -279,6 +279,7 @@ const getYAxisSplit = (
         seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, string | undefined>,
   );
 
@@ -820,6 +821,7 @@ function getNumericXAxisModel(
 export const isNumeric = (
   scale: ComputedVisualizationSettings["graph.x_axis.scale"],
 ): scale is NumericScale => {
+  // Unjustified type cast. FIXME
   return numericScale.includes(scale as NumericScale);
 };
 
@@ -1008,7 +1010,9 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
+  // Unjustified type cast. FIXME
   const customMin = min != null ? (toEChartsAxisValue(min) as number) : null;
+  // Unjustified type cast. FIXME
   const customMax = max != null ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };

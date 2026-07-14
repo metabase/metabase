@@ -154,6 +154,7 @@ describe("SearchBar", () => {
         await userEvent.tab();
 
         expect(
+          // Unjustified type cast. FIXME
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
       }

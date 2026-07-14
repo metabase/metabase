@@ -147,6 +147,7 @@ async function setup({
 
   jest
     .spyOn(cardActions, "loadCard")
+    // Unjustified type cast. FIXME
     .mockReturnValue(Promise.resolve({ ...card } as Card));
 
   return baseSetup({ location, params, ...opts });
@@ -317,6 +318,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("sets original card id on the card", async () => {
           const { result } = await setup({ card });
+          // Unjustified type cast. FIXME
           expect(result.card.original_card_id).toBe((card as Card).id);
         });
 
@@ -435,6 +437,7 @@ describe("QB Actions > initializeQB", () => {
       const ORIGINAL_CARD_ID = 321;
 
       function getOriginalQuestionCard(opts?: Partial<Card>): Card {
+        // Unjustified type cast. FIXME
         return {
           ...card,
           ...opts,
@@ -456,6 +459,7 @@ describe("QB Actions > initializeQB", () => {
 
         jest
           .spyOn(cardActions, "loadCard")
+          // Unjustified type cast. FIXME
           .mockReturnValueOnce(Promise.resolve({ ...originalCard } as Card));
 
         return setup({ card: q, ...opts });
@@ -628,6 +632,7 @@ describe("QB Actions > initializeQB", () => {
 
         const initiateSpy = jest
           .spyOn(snippetApi.endpoints.listSnippets, "initiate")
+          // Unjustified type cast. FIXME
           .mockReturnValue({
             unwrap: () => Promise.resolve(snippet ? [snippet] : []),
             unsubscribe: jest.fn(),
@@ -661,11 +666,13 @@ describe("QB Actions > initializeQB", () => {
         it("replaces snippet names with fresh ones from the backend", async () => {
           const { result, metadata } = await setupSnippets({
             snippet: {
+              // Unjustified type cast. FIXME
               id: SNIPPET["snippet-id"] as number,
               name: "bar",
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
+          // Unjustified type cast. FIXME
           const query = formattedQuestion.legacyNativeQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
@@ -715,6 +722,7 @@ describe("QB Actions > initializeQB", () => {
       jest
         .spyOn(cardActions, "loadCard")
         .mockReturnValueOnce(firstLoadPromise)
+        // Unjustified type cast. FIXME
         .mockReturnValueOnce(Promise.resolve(secondCard as Card));
 
       fetchMock.get(`path:/api/card/${firstCard.id}`, firstCard);
@@ -767,6 +775,7 @@ describe("QB Actions > initializeQB", () => {
       jest
         .spyOn(cardActions, "loadCard")
         .mockReturnValueOnce(firstLoadPromise)
+        // Unjustified type cast. FIXME
         .mockReturnValueOnce(Promise.resolve(secondCard as Card));
 
       fetchMock.get(`path:/api/card/${firstCard.id}`, firstCard);

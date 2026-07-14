@@ -41,6 +41,7 @@ const setup = async ({
     state.entities = {
       ...state.entities,
       tables: {
+        // Unjustified type cast. FIXME
         ...(state.entities.tables as Record<number, NormalizedTable>),
         [virtualTable.id]: virtualTable,
       },

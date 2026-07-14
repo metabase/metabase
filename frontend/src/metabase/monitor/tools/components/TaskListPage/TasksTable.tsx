@@ -1,12 +1,12 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,

@@ -16,7 +16,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SettingsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -139,6 +139,7 @@ const setup = ({
   renderWithProviders(
     <TestWrapper
       command={command}
+      // Unjustified type cast. FIXME
       editor={editor as unknown as Editor}
       query={query}
       items={[]}
@@ -370,6 +371,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}
@@ -411,6 +413,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}

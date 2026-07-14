@@ -39,6 +39,7 @@ describe("SidebarResizableBox", () => {
     expect(screen.getByTestId("resizable-box")).toBeInTheDocument();
     act(() => {
       latestResizableBoxProps?.onResize?.(
+        // react-resizable's callbacks require an event; the component ignores it
         {} as React.SyntheticEvent,
         RESIZE_CALLBACK_DATA,
       );
@@ -93,6 +94,7 @@ describe("SidebarResizableBox", () => {
 
     act(() => {
       latestResizableBoxProps?.onResizeStart?.(
+        // react-resizable's callbacks require an event; the component ignores it
         {} as React.SyntheticEvent,
         RESIZE_CALLBACK_DATA,
       );
@@ -103,6 +105,7 @@ describe("SidebarResizableBox", () => {
 
     act(() => {
       latestResizableBoxProps?.onResizeStop?.(
+        // react-resizable's callbacks require an event; the component ignores it
         {} as React.SyntheticEvent,
         RESIZE_CALLBACK_DATA,
       );

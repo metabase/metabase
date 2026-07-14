@@ -1,9 +1,9 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,

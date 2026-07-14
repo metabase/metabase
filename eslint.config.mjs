@@ -375,6 +375,7 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
       "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
@@ -543,6 +544,13 @@ const configs = [
   },
   {
     files: ["release/**/*.ts", "release/**/*.js"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
     rules: {
       "no-console": "off",
     },

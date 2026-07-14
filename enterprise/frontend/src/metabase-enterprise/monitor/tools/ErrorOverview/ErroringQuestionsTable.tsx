@@ -6,11 +6,11 @@ import type {
   Updater,
 } from "@tanstack/react-table";
 import { type MouseEvent, useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,

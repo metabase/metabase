@@ -35,6 +35,7 @@ import { initializePlugin as initializeModelPersistence } from "./model_persiste
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
 import { initializePlugin as initializeTools } from "./monitor/tools";
+import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
@@ -88,6 +89,7 @@ export function initializePlugins() {
   initializeModelPersistence();
   initializeModeration();
   initializeMonitorDependencyDiagnostics();
+  initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();
   initializeResourceDownloads();

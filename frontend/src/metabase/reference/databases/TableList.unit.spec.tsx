@@ -9,8 +9,6 @@ import TableList from "./TableList";
 
 const databaseId = getNextId();
 
-const disabledStyle = "pointer-events: none; opacity: 0.4;";
-
 const incompleteTable = createMockTable({
   id: getNextId(),
   db_id: databaseId,
@@ -76,7 +74,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).toHaveStyle(disabledStyle);
+    expect(tableItem).toHaveAttribute("data-disabled", "true");
     expect(link).not.toBeInTheDocument();
   });
 
@@ -89,7 +87,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).toHaveStyle(disabledStyle);
+    expect(tableItem).toHaveAttribute("data-disabled", "true");
     expect(link).not.toBeInTheDocument();
   });
 
@@ -102,7 +100,7 @@ describe("TableList", () => {
     const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
     const link = within(tableItem).queryByRole("link");
 
-    expect(tableItem).not.toHaveStyle(disabledStyle);
+    expect(tableItem).not.toHaveAttribute("data-disabled");
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute(
       "href",

@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
 
 import {
   skipToken,
@@ -11,6 +10,7 @@ import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";

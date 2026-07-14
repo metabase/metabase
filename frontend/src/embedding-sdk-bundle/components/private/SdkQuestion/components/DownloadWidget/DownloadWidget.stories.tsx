@@ -4,6 +4,7 @@ import { Box, type PopoverProps } from "metabase/ui";
 
 import { DownloadWidget, type DownloadWidgetProps } from "./DownloadWidget";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

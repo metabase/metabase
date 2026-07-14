@@ -264,6 +264,7 @@ export const getRoutes = (
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />

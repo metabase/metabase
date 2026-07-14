@@ -64,6 +64,7 @@ describe("DownloadsStatus", () => {
 
   it("should show and update downloads status", async () => {
     const { store } = setup();
+    // Unjustified type cast. FIXME
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(
@@ -102,6 +103,7 @@ describe("DownloadsStatus", () => {
 
   it("should show and update downloads status when errored", async () => {
     const { store } = setup();
+    // Unjustified type cast. FIXME
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(
@@ -150,6 +152,7 @@ describe("DownloadsStatus", () => {
 
   it("should collapse and expand", async () => {
     const { store } = setup();
+    // Unjustified type cast. FIXME
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(

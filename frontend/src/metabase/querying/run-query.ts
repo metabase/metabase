@@ -10,7 +10,7 @@ import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
+import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
   Card,
   CardQueryRequest,
@@ -67,11 +67,13 @@ async function handleQueryApiError(
       // plain-text body. Normalize so callers can rely on a `{ error, ... }`
       // shape and don't fall through to the empty state (EMB-1659).
       if (typeof error.data === "string") {
+        // Unjustified type cast. FIXME
         return {
           error: error.data,
           status: error.status,
         } as unknown as Dataset;
       }
+      // Unjustified type cast. FIXME
       return error.data as Dataset;
     }
     // For 5xx and other errors, re-throw
@@ -156,6 +158,7 @@ function runSavedCardQuery(
       dashboardApi.endpoints.getDashboardCardQuery,
       card,
       metadata,
+      // Unjustified type cast. FIXME
       {
         dashboardId,
         dashcardId,
@@ -168,6 +171,7 @@ function runSavedCardQuery(
     cardApi.endpoints.getCardQuery,
     card,
     metadata,
+    // Unjustified type cast. FIXME
     body as CardQueryRequest,
   );
 }

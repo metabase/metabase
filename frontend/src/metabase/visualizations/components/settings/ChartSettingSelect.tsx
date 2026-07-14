@@ -132,6 +132,7 @@ export const ChartSettingSelect = ({
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={(v) => {
         onChange(
+          // Unjustified type cast. FIXME
           v == null ? null : (decodeWidgetValue(v) as ChartSettingSelectValue),
         );
       }}

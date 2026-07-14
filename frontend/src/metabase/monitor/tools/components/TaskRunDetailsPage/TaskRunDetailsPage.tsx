@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetTaskRunQuery } from "metabase/api";
@@ -11,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
-import { Link } from "metabase/router";
+import { Link, push } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";

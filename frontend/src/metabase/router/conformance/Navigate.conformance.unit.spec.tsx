@@ -42,6 +42,7 @@ const RICH_STATE = { when: new Date(0), n: NaN };
 function StateProbe({ api }: { api: RouterApi }) {
   const { Navigate } = api;
   const location = api.useLocation();
+  // Unjustified type cast. FIXME
   const state = location.state as typeof RICH_STATE | null;
   return (
     <div>

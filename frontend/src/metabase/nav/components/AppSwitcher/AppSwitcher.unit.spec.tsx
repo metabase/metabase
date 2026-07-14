@@ -23,6 +23,7 @@ import type { CurrentApp } from "./useGetCurrentApp";
 const USER = createMockUser();
 
 const REGULAR_ITEMS = [
+  // Unjustified type cast. FIXME
   USER.first_name as string,
   USER.email,
   "Help",
@@ -101,6 +102,7 @@ describe("ProfileLink", () => {
 
     // Should always render a profile link
     expect(
+      // Unjustified type cast. FIXME
       await screen.findByText(USER.first_name as string),
     ).toBeInTheDocument();
     expect(await screen.findByText(USER.email)).toBeInTheDocument();

@@ -160,6 +160,7 @@ export const EditApiKeyModal = ({
                     input: {
                       // override the disabled-gray so the masked key stays readable in both themes
                       color: "var(--mb-color-text-primary) !important",
+                      // Unjustified type cast. FIXME
                       fontFamily: fontFamilyMonospace as string,
                     },
                   }}

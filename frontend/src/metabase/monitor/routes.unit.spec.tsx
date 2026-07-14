@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { getStore, mainReducers } from "__support__/entities-store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -114,20 +113,21 @@ const setup = ({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
 }: SetupOpts) => {
-  const store = getStore(mainReducers, createMockState({ currentUser: user }));
-
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
       {getMonitorRoutes(
-        store,
         CanAccessMonitor,
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
         CanAccessAlertsManagement,
       )}
     </Route>,
-    { withRouter: true, initialRoute },
+    {
+      withRouter: true,
+      initialRoute,
+      storeInitialState: createMockState({ currentUser: user }),
+    },
   );
 };
 
@@ -146,23 +146,18 @@ const setupWithGuards = ({
   CanAccessMonitoringTools?: (props: { children?: ReactNode }) => ReactNode;
   CanAccessAlertsManagement?: (props: { children?: ReactNode }) => ReactNode;
 }) => {
-  const store = getStore(
-    mainReducers,
-    createMockState({ currentUser: createMockUser({ is_superuser: true }) }),
-  );
-
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
-      {getMonitorRoutes(
-        store,
-        CanAccessMonitor,
-        Diagnostics,
-        Tools,
-        AlertsManagement,
-      )}
+      {getMonitorRoutes(CanAccessMonitor, Diagnostics, Tools, AlertsManagement)}
     </Route>,
-    { withRouter: true, initialRoute },
+    {
+      withRouter: true,
+      initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 };
 

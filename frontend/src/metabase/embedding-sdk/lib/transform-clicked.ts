@@ -14,6 +14,7 @@ export function transformClickedDataPoint(
   question: Question,
 ): MetabaseDataPointObject {
   return {
+    // Unjustified type cast. FIXME
     raw: clicked as Record<string, unknown>,
 
     column: clicked.column

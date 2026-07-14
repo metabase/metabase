@@ -392,6 +392,7 @@ describe("monitor > tools > erroring questions ", () => {
       .findByText(name)
       .closest("a")
       .invoke("attr", "href")
+      // the row link always carries an href; narrow string | undefined for cy.visit
       .then((href) => cy.visit(href as string));
 
     cy.findByText("Open Editor").click();
@@ -447,6 +448,7 @@ describe("monitor > tools > erroring questions ", () => {
 
     describe("with the existing broken questions", () => {
       beforeEach(() => {
+        // Unjustified type cast. FIXME
         H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
           loadMetadata: true,
         });

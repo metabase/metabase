@@ -1,7 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -15,6 +14,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Card,

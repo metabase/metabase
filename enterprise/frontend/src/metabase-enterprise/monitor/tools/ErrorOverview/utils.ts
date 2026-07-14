@@ -46,9 +46,8 @@ type InternalDatasetQuery = {
   offset?: number;
 };
 
-// Conversion of InternalDatasetQuery to the branded opaque DatasetQuery union,
-// which is required for `/api/dataset`.
 const toDatasetQuery = (query: InternalDatasetQuery): DatasetQuery =>
+  // conversion to the branded opaque DatasetQuery union required by /api/dataset
   query as unknown as DatasetQuery;
 
 export function getErroringQuestionsQuery(
