@@ -53,6 +53,8 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
+import S from "./EditSandboxingModal.module.css";
+
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
@@ -221,12 +223,10 @@ const EditSandboxingModal = ({
                 onClick={showModal}
                 fullWidth
                 rightSection={policyCard ? undefined : <Icon name="ellipsis" />}
-                styles={{
-                  inner: {
-                    justifyContent: "space-between",
-                  },
-                  label: policyCard ? { paddingRight: "2rem" } : undefined,
-                  root: { "&:active": { transform: "none" } },
+                classNames={{
+                  root: S.policyCardButton,
+                  inner: S.policyCardButtonInner,
+                  label: policyCard ? S.policyCardLabel : undefined,
                 }}
               >
                 {policyCard?.name ?? t`Select a question`}
@@ -236,10 +236,7 @@ const EditSandboxingModal = ({
                   <Menu.Target>
                     <ActionIcon
                       aria-label={t`Question options`}
-                      pos="absolute"
-                      right="0.75rem"
-                      top="50%"
-                      style={{ transform: "translateY(-50%)" }}
+                      className={S.optionsButton}
                     >
                       <Icon name="ellipsis" />
                     </ActionIcon>
