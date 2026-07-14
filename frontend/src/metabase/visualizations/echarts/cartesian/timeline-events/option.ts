@@ -1,11 +1,27 @@
 import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine2DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
-import { Icons } from "metabase/ui/components/icons/Icon/icons";
+// import individual icons instead of the full icon set to keep the
+// static-viz bundle from pulling in every SVG through the barrel file
+import bell_source from "metabase/ui/components/icons/Icon/icons/bell.svg?source";
+import cake_source from "metabase/ui/components/icons/Icon/icons/birthday.svg?source";
+import cloud_source from "metabase/ui/components/icons/Icon/icons/cloud.svg?source";
+import mail_source from "metabase/ui/components/icons/Icon/icons/mail.svg?source";
+import star_source from "metabase/ui/components/icons/Icon/icons/star.svg?source";
+import warning_source from "metabase/ui/components/icons/Icon/icons/warning.svg?source";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
-import type { IconName, TimelineEventId } from "metabase-types/api";
+import type { TimelineEventId, TimelineIcon } from "metabase-types/api";
+
+const TIMELINE_EVENT_ICON_SOURCES: Record<TimelineIcon, string> = {
+  star: star_source,
+  cake: cake_source,
+  mail: mail_source,
+  warning: warning_source,
+  bell: bell_source,
+  cloud: cloud_source,
+};
 
 import {
   TIMELINE_EVENT_DATA_NAME,
@@ -59,10 +75,12 @@ export const getTimelineEventsSeries = (
     );
 
     const color = getColor(isSelected ? "core-brand" : "text-disabled");
-    const iconName =
-      events.length === 1 ? (events[0].icon as IconName) : "star";
+    const iconName = events.length === 1 ? events[0].icon : "star";
 
-    const iconSvg = setSvgColor(Icons[iconName].source, color);
+    const iconSvg = setSvgColor(
+      TIMELINE_EVENT_ICON_SOURCES[iconName] ?? star_source,
+      color,
+    );
     const dataUri = svgToImageUri(iconSvg);
 
     const itemProps = {

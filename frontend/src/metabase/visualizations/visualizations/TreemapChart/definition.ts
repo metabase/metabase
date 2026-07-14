@@ -21,12 +21,7 @@ import type {
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, SingleSeries } from "metabase-types/api";
 
-import {
-  SliceNameWidget,
-  type SliceNameWidgetProps,
-} from "../PieChart/SliceNameWidget";
-
-import { TreemapGroupsPicker } from "./TreemapGroupsPicker";
+import type { SliceNameWidgetProps } from "../PieChart/SliceNameWidget";
 
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ getHidden: () => true }),
@@ -57,7 +52,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   "treemap._groups_widget": {
     getSection: () => t`Data`,
-    widget: TreemapGroupsPicker,
+    widget: "treemapGroups",
     getWrapperStyle: () => ({ marginBottom: 0 }),
     getProps: (
       rawSeries: RawSeries,
@@ -79,7 +74,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     SliceNameWidgetProps
   >(SERIES_SETTING_KEY, {
     getObjectKey: keyForSingleSeries,
-    widget: SliceNameWidget,
+    widget: "pieSliceName",
     getHidden: (_series, _settings, extra) => !extra?.isDashboard,
     getSection: (_series, _settings, extra) =>
       extra?.isDashboard ? t`Display` : t`Style`,
