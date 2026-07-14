@@ -7,8 +7,10 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -137,16 +139,15 @@
             (mt/with-test-user :rasta
               (is (true? (mi/can-write? :model/Exploration (:id e)))))))))))
 
-(deftest exploration-thread-json-transforms-test
+(deftest exploration-query-json-transforms-test
+  ;; ExplorationBlock's :metrics/:dimensions JSON roundtrip is covered by
+  ;; `metabase.explorations.models.exploration-block-test/json-transforms-roundtrip-test`;
+  ;; this test only covers the ExplorationQuery transforms.
   (mt/with-temp [:model/User u {}
                  :model/Card metric {:type :metric :creator_id (:id u)}
                  :model/Exploration e {:name "x" :creator_id (:id u)}
                  :model/ExplorationThread t {:exploration_id (:id e)}
-                 :model/ExplorationBlock m {:exploration_thread_id (:id t)
-                                            :metrics [{:card_id (:id metric)
-                                                       :dimension_mappings [{:dimension_id "d1"
-                                                                             :table_id 1
-                                                                             :target ["field" {} 1]}]}]}
+                 :model/ExplorationBlock m {:exploration_thread_id (:id t)}
                  :model/ExplorationPage p {:exploration_block_id (:id m)
                                            :card_id (:id metric) :dimension_id "d1"
                                            :query_type "default"}
@@ -155,15 +156,17 @@
                                             :dimension_id "d1"
                                             :page_id (:id p)
                                             :dataset_query {:database 1 :type :query}}]
-    (testing "ExplorationBlock.metrics dimension_mappings round-trips through JSON"
-      (let [reread (t2/select-one :model/ExplorationBlock :id (:id m))]
-        (is (= "d1" (-> reread :metrics first :dimension_mappings first :dimension_id)))))
     (testing "ExplorationQuery transforms"
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
         (is (= "d1" (:dimension_id reread)))
         (is (= 1 (-> reread :dataset_query :database)))))))
 
 (deftest exploration-is-searchable-test
+  ;; The wiring assertions run unconditionally so this test can never silently pass
+  ;; with zero assertions; only the index round-trip below is gated on engine support.
+  (testing "the exploration search-model is wired up"
+    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))
+    (is (contains? search.config/all-models "exploration")))
   (testing "an exploration is indexed and returned from the default search"
     (when (search/supports-index?)
       (search.tu/with-temp-index-table

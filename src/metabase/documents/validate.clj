@@ -113,8 +113,22 @@
 
                      :else
                      (case t
+                       ;; An empty root doc ({:type "doc" :content []} or no :content at all) is
+                       ;; valid — the backend itself creates empty docs for new exploration
+                       ;; scratchpads. Only the root can be a `doc` node (nested nodes are checked
+                       ;; against :block/:inline/:listItem before reaching this case), so this
+                       ;; leniency doesn't weaken the non-empty rule for other container nodes.
                        "doc"
-                       (validate-children node path :block)
+                       (let [content (get-key node "content")]
+                         (cond
+                           (nil? content)
+                           []
+
+                           (not (sequential? content))
+                           [(str path ": `content` must be an array, got " (pr-str (type content)))]
+
+                           :else
+                           (validate-content content path :block)))
 
                        "paragraph"
                        (let [content (get-key node "content")]
