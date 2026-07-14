@@ -23,6 +23,7 @@ import type {
   AdvisorySeverity,
 } from "metabase-types/api";
 
+import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
 import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
 interface AdvisoryCardProps {
@@ -101,6 +102,7 @@ export function AdvisoryCard({
               target="_blank"
               rel="noopener noreferrer"
               leftSection={<Icon name="download" />}
+              onClick={trackSecurityAdvisoryDownloadClicked}
             >
               {t`Download v${downloadJar.version}`}
             </Button>
