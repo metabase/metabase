@@ -652,12 +652,15 @@
             (sync/sync-table! table)
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
-                (let [field-clause [:field (u/the-id field) {:binning
-                                                             {:strategy :num-bins,
-                                                              :num-bins 100,
-                                                              :min-value 0.75,
-                                                              :max-value 54.0,
-                                                              :bin-width 0.75}}]]
+                (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
+                                                                 :field
+                                                                 {:binning
+                                                                  {:strategy :num-bins,
+                                                                   :num-bins 100,
+                                                                   :min-value 0.75,
+                                                                   :max-value 54.0,
+                                                                   :bin-width 0.75}}
+                                                                 (u/the-id field))]
                   (is (= ["((FLOOR((((JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))

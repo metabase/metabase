@@ -35,6 +35,7 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const info = safeJsonParse(stdout) as ContainerInfo;
 
   if (!info) {

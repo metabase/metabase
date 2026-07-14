@@ -108,6 +108,7 @@ const StatusCard = ({
     <LinkWrapper item={item} key={id}>
       <StatusCardRoot hasBody={!!description}>
         <StatusCardIcon>
+          {/* Unjustified type cast. FIXME */}
           <Icon name={icon as unknown as IconName} />
         </StatusCardIcon>
         <StatusCardBody>

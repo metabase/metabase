@@ -19,7 +19,8 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [next.jdbc :as jdbc])
   (:import
    (org.postgresql.util PGobject)))
 
@@ -205,6 +206,20 @@
              (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
           (is (zero? (semantic.tu/index-count index)))
           (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
+
+(deftest create-index-table!-extension-failure-test
+  (testing "a failed CREATE EXTENSION surfaces the actionable pgvector guidance, not the generic wrapper"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+        ;; the extension is the first statement create! runs, so throwing here exercises the inner catch
+        (mt/with-dynamic-fn-redefs [jdbc/execute!
+                                    (fn [& _] (throw (RuntimeException. "permission denied to create extension")))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (semantic.index/create-index-table-if-not-exists!
+                                (semantic.env/get-pgvector-datasource!) @index-ref)))]
+            (testing "the escaping error keeps the extension-install type and message, not \"Failed to create index table\""
+              (is (= ::semantic.index/extension-install-failed (:type (ex-data e))))
+              (is (re-find #"pgvector extension" (ex-message e))))))))))
 
 (deftest create-hnsw-index-if-not-exists!-test
   (mt/with-premium-features #{:semantic-search}

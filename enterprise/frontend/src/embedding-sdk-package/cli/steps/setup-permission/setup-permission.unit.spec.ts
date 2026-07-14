@@ -45,6 +45,7 @@ describe("grantAccessToModelCollection", () => {
       >
     ).mockResolvedValue(undefined);
 
+    // Unjustified type cast. FIXME
     (
       getSandboxedCollectionPermissions as jest.MockedFunction<
         typeof getSandboxedCollectionPermissions
@@ -71,6 +72,7 @@ describe("grantAccessToModelCollection", () => {
     expect(collectionUpdateCalls).toHaveLength(1);
 
     const requestBody = JSON.parse(
+      // Unjustified type cast. FIXME
       collectionUpdateCalls[0].options?.body as string,
     );
     expect(requestBody.revision).toBe(42); // This is the key assertion
@@ -99,6 +101,7 @@ describe("grantAccessToModelCollection", () => {
       >
     ).mockResolvedValue(undefined);
 
+    // Unjustified type cast. FIXME
     (
       getSandboxedCollectionPermissions as jest.MockedFunction<
         typeof getSandboxedCollectionPermissions
@@ -118,6 +121,7 @@ describe("grantAccessToModelCollection", () => {
     expect(collectionUpdateCalls).toHaveLength(1);
 
     const requestBody = JSON.parse(
+      // Unjustified type cast. FIXME
       collectionUpdateCalls[0].options?.body as string,
     );
     expect(requestBody.revision).toBe(0); // Should default to 0 when revision is missing
@@ -133,6 +137,7 @@ describe("grantAccessToModelCollection", () => {
       .get("http://localhost:3000/api/collection/graph", mockCurrentGraph)
       .put("http://localhost:3000/api/collection/graph?skip-graph=true", {});
 
+    // Unjustified type cast. FIXME
     (
       propagateErrorResponse as jest.MockedFunction<
         typeof propagateErrorResponse
@@ -156,6 +161,7 @@ describe("grantAccessToModelCollection", () => {
       { method: "PUT" },
     );
     const requestBody = JSON.parse(
+      // Unjustified type cast. FIXME
       collectionUpdateCalls[0].options?.body as string,
     );
 

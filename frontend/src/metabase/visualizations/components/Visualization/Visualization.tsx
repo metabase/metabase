@@ -240,6 +240,7 @@ const deriveStateFromProps = (props: VisualizationProps) => {
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
+        // Unjustified type cast. FIXME
         extractRemappings(props.rawSeries as RawSeries),
       )
     : null;
@@ -282,6 +283,7 @@ class Visualization extends PureComponent<
     width: 0,
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: (location: Location) => {
+      // Unjustified type cast. FIXME
       window.location = location as any;
     },
   };
@@ -779,6 +781,7 @@ class Visualization extends PureComponent<
           }
         } catch (e: unknown) {
           error =
+            // Unjustified type cast. FIXME
             (e as Error).message ||
             t`Could not display this chart with this data.`;
           if (
@@ -835,6 +838,7 @@ class Visualization extends PureComponent<
       };
     }
 
+    // Unjustified type cast. FIXME
     const CardVisualization = visualization as VisualizationType;
 
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
@@ -965,6 +969,7 @@ class Visualization extends PureComponent<
                     metadata={metadata}
                     mode={mode}
                     queryBuilderMode={queryBuilderMode}
+                    // Unjustified type cast. FIXME
                     rawSeries={rawSeries as RawSeries}
                     visualizerRawSeries={visualizerRawSeries}
                     renderEmptyMessage={renderEmptyMessage}

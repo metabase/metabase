@@ -14,11 +14,11 @@ import { timelineEventApi } from "metabase/api/timeline-event";
 import { transformApi } from "metabase/api/transform";
 import { transformTagApi } from "metabase/api/transform-tag";
 import type { State } from "metabase/redux/store";
-import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
 
+import { getCollectionFromCollectionsTree } from "./collection";
 import {
   InvalidationType,
   type ModelMutationConfig,
@@ -29,7 +29,9 @@ import {
  * RTK Query stores the original arguments in action.meta.arg.originalArgs
  */
 function getOriginalArgs<T>(action: UnknownAction): T | undefined {
+  // Unjustified type cast. FIXME
   const meta = (action as { meta?: { arg?: { originalArgs?: unknown } } }).meta;
+  // Unjustified type cast. FIXME
   return meta?.arg?.originalArgs as T | undefined;
 }
 

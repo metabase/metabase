@@ -3,10 +3,10 @@ import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
 import type {
   DashCardId,
   ParameterId,
@@ -154,6 +154,7 @@ export const updateDashboardAndCards = createThunkAction(
           .map((dc) =>
             dispatch(
               cardApi.endpoints.updateCard.initiate(
+                // Unjustified type cast. FIXME
                 dc.card as UpdateCardRequest,
               ),
             ).unwrap(),

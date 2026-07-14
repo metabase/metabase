@@ -1,6 +1,7 @@
 export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
 const method = (proto: object, key: string): object | undefined =>
+  // Unjustified type cast. FIXME
   Object.getOwnPropertyDescriptor(proto, key)?.value as object | undefined;
 
 const getter = (proto: object, key: string): object | undefined =>

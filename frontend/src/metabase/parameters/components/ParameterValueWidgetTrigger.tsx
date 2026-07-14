@@ -47,6 +47,7 @@ function ParameterValueWidgetTriggerInner(
       }
     : {
         component: "div" as const,
+        // Unjustified type cast. FIXME
         ref: ref as Ref<HTMLDivElement>,
       };
 

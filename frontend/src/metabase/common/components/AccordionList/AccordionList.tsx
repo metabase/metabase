@@ -376,6 +376,7 @@ export class AccordionList<
       if (isSearching && isEmpty) {
         rows.unshift({
           type: "no-results",
+          // Unjustified type cast. FIXME
           section: {} as TSection,
           sectionIndex: 0,
           isLastSection: false,
@@ -384,6 +385,7 @@ export class AccordionList<
 
       rows.unshift({
         type: "search",
+        // Unjustified type cast. FIXME
         section: {} as TSection,
         sectionIndex: 0,
         isLastSection: false,

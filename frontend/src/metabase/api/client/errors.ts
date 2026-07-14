@@ -46,6 +46,7 @@ export function isAbortError(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
+    // Unjustified type cast. FIXME
     (error as { name?: unknown }).name === "AbortError"
   );
 }

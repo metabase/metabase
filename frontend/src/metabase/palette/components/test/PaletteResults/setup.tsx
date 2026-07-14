@@ -108,7 +108,9 @@ const recents_2 = createMockRecentCollectionItem({
   ..._.pick(dashboard, "id", "name"),
   model: "dashboard",
   parent_collection: {
+    // Unjustified type cast. FIXME
     id: dashboard.collection?.id as number,
+    // Unjustified type cast. FIXME
     name: dashboard.collection?.name as string,
   },
 });

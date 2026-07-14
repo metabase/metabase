@@ -255,6 +255,7 @@ export type GdrivePayload = {
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
+  "attached-dwh",
   "audit-app",
   "cache-granular-controls",
   "collection-cleanup",
@@ -345,6 +346,7 @@ export const tokenFeatures = [
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabot-v3",
+  "multi-factor-auth",
   "official_collections",
   "sandboxes",
   "scim",
@@ -582,6 +584,7 @@ interface PublicSettings {
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
+  "mfa-enforcement"?: "off" | "optional";
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;

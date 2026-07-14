@@ -160,6 +160,7 @@ export function searchFilter<
 >({
   sections,
   searchText,
+  // Unjustified type cast. FIXME
   searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
 }: FilterOptions<TItem, TSection>) {
   const strategy = searchStrategy({

@@ -117,6 +117,7 @@ export const useCreateSampleDashboardInSharedCollection = () => {
 
         await updateDashboard({
           id: dashboard.id,
+          // Unjustified type cast. FIXME
           dashcards: [dashcard as DashboardCard],
         }).unwrap();
 

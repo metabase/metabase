@@ -118,6 +118,7 @@ const setup = async ({
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
+  // Unjustified type cast. FIXME
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
   setupMetabotsEndpoints(metabots);
 

@@ -83,6 +83,7 @@ export const updateSetting = createThunkAction(
         // strict, so narrow it here.
         await dispatch(
           settingsApi.endpoints.updateSetting.initiate(
+            // Unjustified type cast. FIXME
             setting as {
               key: EnterpriseSettingKey;
               value: EnterpriseSettingValue<EnterpriseSettingKey>;

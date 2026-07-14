@@ -46,6 +46,7 @@ class MetabaseSettings {
    * @deprecated set setting values in the redux store
    */
   setAll(settings: Settings) {
+    // Unjustified type cast. FIXME
     const keys = Object.keys(settings) as SettingKey[];
 
     keys.forEach((key) => {
@@ -210,6 +211,7 @@ class MetabaseSettings {
    * Only use this when Redux store is not always available, e.g. in ThemeProvider
    */
   applicationColors(): ColorSettings {
+    // Unjustified type cast. FIXME
     return this.get("application-colors" as SettingKey) as ColorSettings;
   }
 }

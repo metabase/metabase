@@ -1,6 +1,5 @@
 import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -24,6 +23,7 @@ import type {
 } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchBody,
@@ -61,6 +61,7 @@ export function SearchApp({ location }: { location: SearchAwareLocation }) {
   );
   const models = searchFilters[SearchFilterKeys.Type];
 
+  // Unjustified type cast. FIXME
   const query = {
     q: searchText,
     ..._.omit(searchFilters, SearchFilterKeys.Type),

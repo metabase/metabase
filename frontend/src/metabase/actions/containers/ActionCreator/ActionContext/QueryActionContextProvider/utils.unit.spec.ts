@@ -62,6 +62,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         },
       });
 
+      // Unjustified type cast. FIXME
       const parameters = [
         { id: "aaa", name: "foo", type: "number/=" },
         { id: "bbb", name: "foo", type: "number/=" },
@@ -86,6 +87,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         },
       });
 
+      // Unjustified type cast. FIXME
       const parameters = [
         { id: "aaa", name: "foo", type: "string/=" },
         { id: "bbb", name: "foo", type: "string/=" },
@@ -110,6 +112,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         },
       });
 
+      // Unjustified type cast. FIXME
       const parameters = [
         { id: "aaa", name: "foo", type: "string/=" },
         { id: "bbb", name: "foo", type: "string/=" },

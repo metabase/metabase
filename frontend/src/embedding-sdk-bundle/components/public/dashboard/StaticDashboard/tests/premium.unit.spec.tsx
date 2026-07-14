@@ -23,6 +23,7 @@ const setupPremium = async (
       embedding_sdk: true,
     },
     enterprisePlugins: ["sdk_notifications"],
+    // Unjustified type cast. FIXME
     component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };

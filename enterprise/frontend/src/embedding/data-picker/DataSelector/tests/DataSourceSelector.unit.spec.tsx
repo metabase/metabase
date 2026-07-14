@@ -206,6 +206,7 @@ describe("DataSourceSelector", () => {
         isJoinStep: true,
         databases: [sampleDatabase, manyTablesDatabase],
         selectedTable: {
+          // Unjustified type cast. FIXME
           id: (manyTablesDatabase.tables as Table[])[0].id as number,
           databaseId: manyTablesDatabase.id,
         },

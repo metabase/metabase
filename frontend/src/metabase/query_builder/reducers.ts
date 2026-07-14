@@ -316,7 +316,9 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         isShowingQuestionInfoSidebar: false,
       }))
       .addCase(OPEN_QUESTION_SETTINGS, (state) =>
+        // Unjustified type cast. FIXME
         setUIControls(state, {
+          // Unjustified type cast. FIXME
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
         } as Partial<QueryBuilderUIControls>),

@@ -51,6 +51,7 @@ export function McpUiAppRoute() {
   const { app, hostContext, prompt, query } = useMcpApp();
 
   const { instanceUrl = "", sessionToken = "" } =
+    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
@@ -102,6 +103,7 @@ function McpUiAppRouteContent({
   const isHosted = useSelector(getIsHosted);
 
   const { mcpSessionId = "" } =
+    // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
