@@ -56,7 +56,7 @@
 
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :source_type])
+    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at])
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
