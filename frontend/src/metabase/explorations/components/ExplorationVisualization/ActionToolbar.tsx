@@ -21,7 +21,7 @@ import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
 } from "metabase/explorations/utils";
-import { ActionIcon, Group, Icon, Menu, Popover } from "metabase/ui";
+import { ActionIcon, Group, Icon, Menu, Popover, Tooltip } from "metabase/ui";
 import type {
   DocumentContent,
   ExplorationId,
@@ -35,6 +35,8 @@ import type { CommentDrafts } from "../../types";
 import S from "./ActionToolbar.module.css";
 import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
 
+const TRIAGE_TOOLTIP_OPEN_DELAY = 500;
+
 interface ActionToolbarProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
@@ -45,6 +47,8 @@ interface ActionToolbarProps {
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   interestingTimelineIds?: ReadonlySet<TimelineId>;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 export function ActionToolbar({
@@ -57,11 +61,14 @@ export function ActionToolbar({
   selectedTimelineId,
   onSelectTimelineId,
   interestingTimelineIds,
+  onPreviousPage,
+  onNextPage,
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
 
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
+  const [isMoreActionsOpen, setMoreActionsOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
 
   const [sendToast] = useToast();
@@ -127,8 +134,14 @@ export function ActionToolbar({
         actionLabel: t`Undo`,
         actions: [() => setHidden(false)],
       });
+      onNextPage?.();
     }
-  }, [page.hidden, page.name, setHidden, sendToast]);
+  }, [page.hidden, page.name, setHidden, sendToast, onNextPage]);
+
+  const handleCopyLink = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href);
+    sendToast({ icon: "check", message: t`Copied link` });
+  }, [sendToast]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -205,104 +218,162 @@ export function ActionToolbar({
   };
 
   return (
-    <Group
-      gap="xs"
-      bd="1px solid border"
-      bdrs="lg"
-      px="sm"
-      py="xs"
-      className={S.toolbar}
-    >
-      {showTimelineDropdown && (
-        <Menu position="top">
-          <Menu.Target>
-            {selectedTimeline ? (
-              <Group
-                aria-label={t`Change selected timeline`}
-                bd="0.5px solid border"
-                bdrs="lg"
-                py="xs"
-                px="sm"
-                gap={2}
-                className={S.timelineMenuTarget}
-              >
-                {selectedTimeline.name}
-                <ActionIcon
-                  aria-label={t`Remove timeline`}
-                  onClick={(e) => {
-                    handleSelectTimelineId(null, "click");
-                    e.stopPropagation();
-                  }}
-                  size="sm"
+    <Group gap="md" align="center" wrap="nowrap" className={S.toolbarRow}>
+      <Tooltip label={t`Previous`} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
+        <ActionIcon
+          className={S.triageButton}
+          aria-label={t`Previous`}
+          radius="xl"
+          size="2rem"
+          disabled={!onPreviousPage}
+          onClick={onPreviousPage}
+        >
+          <Icon name="chevronleft" />
+        </ActionIcon>
+      </Tooltip>
+
+      <Group
+        gap="xs"
+        bd="1px solid border"
+        bdrs="lg"
+        px="sm"
+        py="xs"
+        className={S.toolbar}
+      >
+        {showTimelineDropdown && (
+          <Menu position="top">
+            <Menu.Target>
+              {selectedTimeline ? (
+                <Group
+                  aria-label={t`Change selected timeline`}
+                  bd="0.5px solid border"
+                  bdrs="lg"
+                  py="xs"
+                  px="sm"
+                  gap={2}
+                  className={S.timelineMenuTarget}
                 >
-                  <Icon name="close" />
-                </ActionIcon>
-              </Group>
-            ) : (
-              <ToolbarButton
-                icon="clock"
-                tooltipLabel={t`Select timeline`}
-                iconProps={{ size: "1.125rem" }}
-              />
-            )}
+                  {selectedTimeline.name}
+                  <ActionIcon
+                    aria-label={t`Remove timeline`}
+                    onClick={(e) => {
+                      handleSelectTimelineId(null, "click");
+                      e.stopPropagation();
+                    }}
+                    size="sm"
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
+                </Group>
+              ) : (
+                <ToolbarButton
+                  icon="clock"
+                  tooltipLabel={t`Select timeline`}
+                  iconProps={{ size: "1.125rem" }}
+                />
+              )}
+            </Menu.Target>
+            <Menu.Dropdown>
+              {availableTimelines.map((timeline) => (
+                <Menu.Item
+                  key={timeline.id}
+                  onClick={() => {
+                    handleSelectTimelineId(timeline.id, "click");
+                  }}
+                  rightSection={
+                    interestingTimelineIds?.has(timeline.id) ? (
+                      <PotentiallyInterestingMarker />
+                    ) : null
+                  }
+                >
+                  {timeline.name}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+        <ToolbarButton
+          icon={page.starred ? "star_filled" : "star"}
+          tooltipLabel={page.starred ? t`Remove star` : t`Star`}
+          iconProps={{
+            size: "1.125rem",
+            c: page.starred ? "core-yellow-saturated" : undefined,
+          }}
+          onClick={handleToggleStarred}
+        />
+        <Popover
+          position="top"
+          offset={16}
+          opened={isCommentEditorOpen}
+          onChange={setCommentEditorOpen}
+        >
+          <Popover.Target>
+            <ToolbarButton
+              onClick={() => setCommentEditorOpen(!isCommentEditorOpen)}
+              icon="add_comment"
+              tooltipLabel={t`Add comment`}
+              iconProps={{ size: "1.125rem" }}
+            />
+          </Popover.Target>
+          <Popover.Dropdown className={S.commentDropdown}>
+            <ExplorationCommentEditor
+              commentDrafts={commentDrafts}
+              setCommentDrafts={setCommentDrafts}
+              pageId={pageId}
+              handleAddComment={handleAddComment}
+            />
+          </Popover.Dropdown>
+        </Popover>
+        <Menu
+          position="top-end"
+          offset={8}
+          opened={isMoreActionsOpen}
+          onChange={setMoreActionsOpen}
+        >
+          <Menu.Target>
+            {/* Suppress the tooltip while the menu is open — showing both at
+             * once reads as clutter. */}
+            <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
+              <ActionIcon
+                size="2rem"
+                variant="viewHeader"
+                aria-label={t`More actions`}
+              >
+                <Icon name="ellipsis" size="1.125rem" />
+              </ActionIcon>
+            </Tooltip>
           </Menu.Target>
           <Menu.Dropdown>
-            {availableTimelines.map((timeline) => (
-              <Menu.Item
-                key={timeline.id}
-                onClick={() => {
-                  handleSelectTimelineId(timeline.id, "click");
-                }}
-                rightSection={
-                  interestingTimelineIds?.has(timeline.id) ? (
-                    <PotentiallyInterestingMarker />
-                  ) : null
-                }
-              >
-                {timeline.name}
-              </Menu.Item>
-            ))}
+            <Menu.Item
+              leftSection={<Icon name="link" />}
+              onClick={handleCopyLink}
+            >
+              {t`Copy link`}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={
+                <Icon name={page.hidden ? "eye" : "eye_crossed_out"} />
+              }
+              onClick={handleToggleHidden}
+            >
+              {page.hidden ? t`Show` : t`Hide`}
+            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
-      )}
-      <ToolbarButton
-        icon={page.starred ? "star_filled" : "star"}
-        tooltipLabel={page.starred ? t`Remove star` : t`Star`}
-        iconProps={{
-          size: "1.125rem",
-          c: page.starred ? "core-yellow-saturated" : undefined,
-        }}
-        onClick={handleToggleStarred}
-      />
-      <Popover
-        position="top"
-        offset={16}
-        opened={isCommentEditorOpen}
-        onChange={setCommentEditorOpen}
-      >
-        <Popover.Target>
-          <ToolbarButton
-            onClick={() => setCommentEditorOpen(!isCommentEditorOpen)}
-            icon="add_comment"
-            tooltipLabel={t`Add comment`}
-            iconProps={{ size: "1.125rem" }}
-          />
-        </Popover.Target>
-        <Popover.Dropdown className={S.commentDropdown}>
-          <ExplorationCommentEditor
-            commentDrafts={commentDrafts}
-            setCommentDrafts={setCommentDrafts}
-            pageId={pageId}
-            handleAddComment={handleAddComment}
-          />
-        </Popover.Dropdown>
-      </Popover>
-      <ToolbarButton
-        icon={page.hidden ? "eye" : "eye_crossed_out"}
-        tooltipLabel={page.hidden ? t`Show` : t`Hide`}
-        iconProps={{ size: "1.125rem" }}
-        onClick={handleToggleHidden}
-      />
+      </Group>
+
+      <Tooltip label={t`Next`} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
+        <ActionIcon
+          className={S.triageButton}
+          aria-label={t`Next`}
+          radius="xl"
+          size="2rem"
+          disabled={!onNextPage}
+          onClick={onNextPage}
+        >
+          <Icon name="chevronright" />
+        </ActionIcon>
+      </Tooltip>
     </Group>
   );
 }

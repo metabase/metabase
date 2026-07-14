@@ -1,10 +1,10 @@
 import type { ExplorationId } from "metabase-types/api";
 
-// Sidebar preferences the user sets from the filter menu. Persisted to
-// localStorage for now so they don't require a backend change; keyed per
-// exploration.
+// Per-exploration sidebar state. Persisted to localStorage for now so it
+// doesn't require a backend change; keyed per exploration.
 
 const SORT_ORDER_KEY = "metabase-explorations-sort-order";
+const READ_PAGES_KEY = "metabase-explorations-read-pages";
 
 // How the sidebar tree is ordered. "interestingness" ranks pages by their
 // interestingness score (the default); "alphabetical" sorts by name.
@@ -43,4 +43,23 @@ export function setExplorationSortOrder(
   const all = read<Record<string, ExplorationSortOrder>>(SORT_ORDER_KEY, {});
   all[String(explorationId)] = sortOrder;
   write(SORT_ORDER_KEY, all);
+}
+
+export function getReadExplorationPageIds(
+  explorationId: ExplorationId,
+): Set<string> {
+  const all = read<Record<string, string[]>>(READ_PAGES_KEY, {});
+  return new Set(all[String(explorationId)] ?? []);
+}
+
+export function setExplorationPageRead(
+  explorationId: ExplorationId,
+  pageId: string | number,
+): void {
+  const all = read<Record<string, string[]>>(READ_PAGES_KEY, {});
+  const key = String(explorationId);
+  const current = new Set(all[key] ?? []);
+  current.add(String(pageId));
+  all[key] = Array.from(current);
+  write(READ_PAGES_KEY, all);
 }

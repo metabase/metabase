@@ -43,6 +43,7 @@ import {
 } from "../components/ExplorationSidebar";
 import {
   type ExplorationTreeNode,
+  flattenTree,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
@@ -60,6 +61,8 @@ import { setCurrentExploration } from "../explorations.slice";
 import {
   type ExplorationSortOrder,
   getExplorationSortOrder,
+  getReadExplorationPageIds,
+  setExplorationPageRead,
   setExplorationSortOrder,
 } from "../sidebar-preferences";
 import {
@@ -183,6 +186,9 @@ export function ExplorationPage({
   const [sortOrder, setSortOrder] = useState<ExplorationSortOrder>(() =>
     getExplorationSortOrder(Number(params.id)),
   );
+  const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(() =>
+    getReadExplorationPageIds(Number(params.id)),
+  );
 
   const handleChangeSortOrder = useCallback(
     (order: ExplorationSortOrder) => {
@@ -293,6 +299,44 @@ export function ExplorationPage({
     }
     return pickInitialSidebarEntity(tree);
   }, [params.entityType, params.entityId, tree]);
+
+  const orderedPageIds = useMemo(
+    () =>
+      flattenTree(tree).flatMap((item) =>
+        item.data?.type === "page" ? [item.data.page_id] : [],
+      ),
+    [tree],
+  );
+  const currentPageIndex =
+    selectedEntityId?.type === "page"
+      ? orderedPageIds.indexOf(selectedEntityId.id)
+      : -1;
+  const previousPageId =
+    currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
+  const nextPageId =
+    currentPageIndex !== -1 && currentPageIndex < orderedPageIds.length - 1
+      ? orderedPageIds[currentPageIndex + 1]
+      : undefined;
+  const goToPreviousPage = useCallback(() => {
+    if (previousPageId != null) {
+      setSelectedEntityId({ type: "page", id: previousPageId });
+    }
+  }, [previousPageId, setSelectedEntityId]);
+  const goToNextPage = useCallback(() => {
+    if (nextPageId != null) {
+      setSelectedEntityId({ type: "page", id: nextPageId });
+    }
+  }, [nextPageId, setSelectedEntityId]);
+
+  useEffect(() => {
+    if (
+      selectedEntityId?.type === "page" &&
+      !readPageIds.has(selectedEntityId.id)
+    ) {
+      setExplorationPageRead(Number(params.id), selectedEntityId.id);
+      setReadPageIds((prev) => new Set(prev).add(String(selectedEntityId.id)));
+    }
+  }, [selectedEntityId, readPageIds, params.id]);
 
   // AI Summary generates its document asynchronously: the FE shows a
   // placeholder "Analysis underway…" Document while the worker runs, and
@@ -581,6 +625,7 @@ export function ExplorationPage({
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             isOpen={isSidebarOpen}
+            readPageIds={readPageIds}
             showHidden={showHidden}
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
             sortOrder={sortOrder}
@@ -605,6 +650,10 @@ export function ExplorationPage({
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+              onPreviousPage={
+                previousPageId != null ? goToPreviousPage : undefined
+              }
+              onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
           {selectedDocument && (

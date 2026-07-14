@@ -65,6 +65,7 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
+  pickInitialSidebarEntity,
 } from "./utils";
 
 // Each kind of heading carries a distinct icon so the tree reads as a legible
@@ -90,6 +91,7 @@ interface ExplorationSidebarProps {
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
   isOpen: boolean;
+  readPageIds: ReadonlySet<string>;
   showHidden: boolean;
   onToggleShowHidden: () => void;
   sortOrder: ExplorationSortOrder;
@@ -107,6 +109,7 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   getSelectedEntityIdUrl,
   isOpen,
+  readPageIds,
   showHidden,
   onToggleShowHidden,
   sortOrder,
@@ -231,6 +234,7 @@ export function ExplorationSidebar({
         handlePrefetch={handlePrefetch}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        readPageIds={readPageIds}
       />
     ),
     [
@@ -238,6 +242,7 @@ export function ExplorationSidebar({
       exploration.can_write,
       handlePrefetch,
       getSelectedEntityIdUrl,
+      readPageIds,
     ],
   );
 
@@ -452,6 +457,7 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  readPageIds: ReadonlySet<string>;
 }
 
 function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
@@ -489,11 +495,9 @@ function ExplorationTreeHeading({
   depth,
   explorationId,
   canWrite,
+  getSelectedEntityIdUrl,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
-  const pageIds = item.data?.pageIds ?? [];
-  const canHideGroup =
-    canWrite && item.data?.hideable === true && pageIds.length > 0;
   return (
     <Box
       role="group"
@@ -502,6 +506,8 @@ function ExplorationTreeHeading({
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
+        [S.treeRowThreadSeparated]:
+          depth === 0 && item.data?.headingKind === "sub-exploration",
       })}
       onClick={onToggleExpand}
       style={{ "--tree-depth": depth } as React.CSSProperties}
@@ -526,95 +532,80 @@ function ExplorationTreeHeading({
       >
         {item.name}
       </Ellipsified>
-      {canHideGroup && (
-        <ExplorationGroupHideButton
-          explorationId={explorationId}
-          groupName={item.name}
-          pageIds={pageIds}
-          allHidden={item.data?.allHidden === true}
-        />
-      )}
       {item.data?.lastActivityAt && isSettled(item.data.status) && (
         <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
-      <ExplorationThreadMenu item={item} canWrite={canWrite} />
+      <ExplorationGroupMenu
+        item={item}
+        canWrite={canWrite}
+        explorationId={explorationId}
+        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+      />
     </Box>
   );
 }
 
-function ExplorationGroupHideButton({
-  explorationId,
-  groupName,
-  pageIds,
-  allHidden,
-}: {
-  explorationId: ExplorationId;
-  groupName: string;
-  pageIds: number[];
-  allHidden: boolean;
-}) {
-  const [setPagesHidden] = useSetPagesHiddenMutation();
-  const [sendToast] = useToast();
-
-  const handleClick = useCallback(
-    async (event: React.MouseEvent) => {
-      // don't toggle the group's expanded state when hiding/showing it
-      event.stopPropagation();
-      // when the whole group is already hidden, the control shows it again
-      const nextHidden = !allHidden;
-      try {
-        await setPagesHidden({
-          pageIds,
-          explorationId,
-          hidden: nextHidden,
-        }).unwrap();
-      } catch {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
-          message: t`Failed to update ${groupName}`,
-        });
-        return;
-      }
-      if (nextHidden) {
-        sendToast({
-          icon: "eye_crossed_out",
-          message: t`${groupName} hidden`,
-          actionLabel: t`Undo`,
-          actions: [
-            () => setPagesHidden({ pageIds, explorationId, hidden: false }),
-          ],
-        });
-      }
-    },
-    [setPagesHidden, pageIds, explorationId, groupName, allHidden, sendToast],
-  );
-
-  return (
-    <Tooltip label={allHidden ? t`Show` : t`Hide`}>
-      <ActionIcon
-        className={S.hideGroupButton}
-        size="1rem"
-        c="icon-primary"
-        aria-label={allHidden ? t`Show ${groupName}` : t`Hide ${groupName}`}
-        onClick={handleClick}
-      >
-        <Icon name={allHidden ? "eye" : "eye_crossed_out"} size="1rem" />
-      </ActionIcon>
-    </Tooltip>
-  );
-}
-
-function ExplorationThreadMenu({
+function ExplorationGroupMenu({
   item,
   canWrite,
+  explorationId,
+  getSelectedEntityIdUrl,
 }: {
   item: ITreeNodeItem<ExplorationTreeHeading>;
   canWrite: boolean;
+  explorationId: ExplorationId;
+  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
 }) {
   const [cancelThread] = useCancelExplorationThreadMutation();
   const [restartExploration] = useRestartExplorationMutation();
+  const [setPagesHidden] = useSetPagesHiddenMutation();
   const [sendToast] = useToast();
+
+  const groupName = item.name;
+  const itemPageIds = item.data?.pageIds;
+  const pageIds = useMemo(() => itemPageIds ?? [], [itemPageIds]);
+  // when the whole group is already hidden, the action shows it again
+  const allHidden = item.data?.allHidden === true;
+  const canHideGroup =
+    canWrite && item.data?.hideable === true && pageIds.length > 0;
+
+  const handleToggleGroupHidden = useCallback(async () => {
+    const nextHidden = !allHidden;
+    try {
+      await setPagesHidden({
+        pageIds,
+        explorationId,
+        hidden: nextHidden,
+      }).unwrap();
+    } catch {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Failed to update ${groupName}`,
+      });
+      return;
+    }
+    if (nextHidden) {
+      sendToast({
+        icon: "eye_crossed_out",
+        message: t`${groupName} hidden`,
+        actionLabel: t`Undo`,
+        actions: [
+          () => setPagesHidden({ pageIds, explorationId, hidden: false }),
+        ],
+      });
+    }
+  }, [setPagesHidden, pageIds, explorationId, groupName, allHidden, sendToast]);
+
+  const handleCopyLink = useCallback(() => {
+    const entity = pickInitialSidebarEntity(item.children ?? []);
+    if (entity == null) {
+      return;
+    }
+    const url = getSelectedEntityIdUrl(entity);
+    navigator.clipboard.writeText(`${window.location.origin}${url}`);
+    sendToast({ icon: "check", message: t`Copied link` });
+  }, [item.children, getSelectedEntityIdUrl, sendToast]);
 
   const handleCancelThread = useCallback(
     async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
@@ -648,48 +639,47 @@ function ExplorationThreadMenu({
     [restartExploration, sendToast],
   );
 
-  if (!item.data?.explorationId || !item.data?.thread) {
-    return null;
-  }
-  const { explorationId, thread } = item.data;
-  const menuItems = [];
-
-  if (canWrite && thread.completed_at == null) {
-    menuItems.push(
-      <Menu.Item
-        key="stop"
-        onClick={() => handleCancelThread(explorationId, thread.id)}
-      >
-        {t`Stop running`}
-      </Menu.Item>,
-    );
-  }
-
-  if (canWrite && thread.canceled_at != null) {
-    menuItems.push(
-      <Menu.Item key="restart" onClick={() => handleRestart(explorationId)}>
-        {t`Restart`}
-      </Menu.Item>,
-    );
-  }
-
-  if (menuItems.length === 0) {
-    return null;
-  }
+  const thread = item.data?.thread;
+  const canStop = canWrite && thread != null && thread.completed_at == null;
+  const canRestart = canWrite && thread != null && thread.canceled_at != null;
 
   return (
     <Menu>
       <Menu.Target>
         <ActionIcon
+          className={S.groupMenuTrigger}
           size="1rem"
           c="icon-primary"
+          aria-label={t`Group actions`}
           onClick={(e) => e.stopPropagation()}
         >
           <Icon name="ellipsis" size="1rem" />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
-        {menuItems}
+        <Menu.Item leftSection={<Icon name="link" />} onClick={handleCopyLink}>
+          {t`Copy link`}
+        </Menu.Item>
+        {canHideGroup && (
+          <Menu.Item
+            leftSection={<Icon name={allHidden ? "eye" : "eye_crossed_out"} />}
+            onClick={handleToggleGroupHidden}
+          >
+            {allHidden ? t`Show` : t`Hide`}
+          </Menu.Item>
+        )}
+        {canStop && (
+          <Menu.Item
+            onClick={() => handleCancelThread(explorationId, thread.id)}
+          >
+            {t`Stop running`}
+          </Menu.Item>
+        )}
+        {canRestart && (
+          <Menu.Item onClick={() => handleRestart(explorationId)}>
+            {t`Restart`}
+          </Menu.Item>
+        )}
       </Menu.Dropdown>
     </Menu>
   );
@@ -715,6 +705,7 @@ function ExplorationTreeItem({
   handlePrefetch,
   shouldScrollSelectionRef,
   getSelectedEntityIdUrl,
+  readPageIds,
 }: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLAnchorElement>(null);
 
@@ -754,6 +745,7 @@ function ExplorationTreeItem({
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
+  const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
   const isInteresting =
     !isError &&
     (pageData?.interestingness_score ?? 0) >=
@@ -782,7 +774,7 @@ function ExplorationTreeItem({
         flex={1}
         size="md"
         lh="1rem"
-        fw={500}
+        fw={isUnread ? 700 : 500}
         {...(isLoading ? { className: S.shimmerText, c: "transparent" } : {})}
       >
         {item.name}

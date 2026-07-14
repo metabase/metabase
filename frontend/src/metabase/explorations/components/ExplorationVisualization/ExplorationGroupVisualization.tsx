@@ -63,6 +63,8 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
@@ -156,6 +158,8 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onPreviousPage,
+  onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
 
@@ -366,6 +370,8 @@ function ExplorationGroupVisualizationChart({
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
           interestingTimelineIds={interestingTimelineIds}
+          onPreviousPage={onPreviousPage}
+          onNextPage={onNextPage}
         />
       </Stack>
       {isCommentsSidebarOpen && (

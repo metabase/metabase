@@ -106,6 +106,10 @@ async function openCommentEditor() {
   expect(await screen.findByText("Add a comment…")).toBeInTheDocument();
 }
 
+async function openMoreActionsMenu() {
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+}
+
 function expectTimelineChangedAnalytics(triggered_from: "click" | "keyboard") {
   expect(trackSimpleEvent).toHaveBeenCalledWith({
     event: "exploration_timeline_changed",
@@ -413,16 +417,24 @@ describe("ActionToolbar", () => {
   });
 
   describe("hide", () => {
-    it("shows the hide action when the page is not hidden", () => {
+    it("shows the hide action in the more-actions menu when the page is not hidden", async () => {
       setup({ page: createPage({ id: PAGE_ID, hidden: false }) });
 
-      expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+      await openMoreActionsMenu();
+
+      expect(
+        screen.getByRole("menuitem", { name: /Hide/ }),
+      ).toBeInTheDocument();
     });
 
-    it("shows the show action when the page is hidden", () => {
+    it("shows the show action in the more-actions menu when the page is hidden", async () => {
       setup({ page: createPage({ id: PAGE_ID, hidden: true }) });
 
-      expect(screen.getByRole("button", { name: "Show" })).toBeInTheDocument();
+      await openMoreActionsMenu();
+
+      expect(
+        screen.getByRole("menuitem", { name: /Show/ }),
+      ).toBeInTheDocument();
     });
 
     it("hides the page on click", async () => {
@@ -430,7 +442,8 @@ describe("ActionToolbar", () => {
 
       setup({ page: createPage({ id: PAGE_ID, hidden: false }) });
 
-      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+      await openMoreActionsMenu();
+      await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
 
       await waitFor(() => {
         const calls = fetchMock.callHistory.calls(
@@ -450,7 +463,8 @@ describe("ActionToolbar", () => {
 
       setup({ page: createPage({ id: PAGE_ID, hidden: true }) });
 
-      await userEvent.click(screen.getByRole("button", { name: "Show" }));
+      await openMoreActionsMenu();
+      await userEvent.click(screen.getByRole("menuitem", { name: /Show/ }));
 
       await waitFor(() => {
         const calls = fetchMock.callHistory.calls(
@@ -489,7 +503,8 @@ describe("ActionToolbar", () => {
         withUndos: true,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+      await openMoreActionsMenu();
+      await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
 
       expect(await screen.findByText("Chart hidden")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
@@ -503,7 +518,8 @@ describe("ActionToolbar", () => {
         withUndos: true,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Show" }));
+      await openMoreActionsMenu();
+      await userEvent.click(screen.getByRole("menuitem", { name: /Show/ }));
 
       await waitFor(() => {
         expect(
@@ -523,7 +539,8 @@ describe("ActionToolbar", () => {
         withUndos: true,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+      await openMoreActionsMenu();
+      await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
 
       expect(
         await screen.findByText("Failed to update visibility"),
