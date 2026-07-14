@@ -8,6 +8,7 @@
    [metabase.agent-api.api :as agent-api]
    [metabase.agent-api.catalog :as agent-api.catalog]
    [metabase.agent-api.handles :as agent-api.handles]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
@@ -168,6 +169,20 @@
   [tool supported-extensions]
   (seq (set/difference (:required-extensions tool #{}) supported-extensions)))
 
+(def ^:private tool-switches
+  "Tools an admin can turn off instance-wide, and the setting that says so.
+
+   A disabled tool is *absent* from `tools/list`, not merely refused when called: a tool the server
+   advertises is a tool a model will spend a turn on, and the turn it spends learning that raw SQL is off is
+   a turn the user watches it waste. The endpoint refuses the call as well — a client that cached the list
+   before the switch was thrown still reaches it."
+  {"execute_sql" agent-api.settings/mcp-execute-sql-enabled})
+
+(defn- disabled?
+  [{tool-name :name}]
+  (when-let [enabled? (tool-switches tool-name)]
+    (not (enabled?))))
+
 (defn- missing-extensions-error
   [tool-name missing-extensions]
   (let [extension-names (str/join ", " (map #(get extension-labels % (name %)) missing-extensions))]
@@ -188,6 +203,7 @@
          supported       (supported-extensions options)]
      (into []
            (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
+                 (remove disabled?)
                  (remove #(missing-required-extensions % supported))
                  (map (fn [tool]
                         (select-keys tool [:name :title :description :inputSchema :outputSchema

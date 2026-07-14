@@ -204,6 +204,7 @@
    enums, and the Metabot prompt document the construct tools point at."
   #{"query_handle" "collection_path" "collection_id" "database_id" "table_id" "source_card_id"
     "parameter_id" "source_table" "source_card" "content_markdown" "template_tags" "has_more_values"
+    "template_tag_values"
     "row_limit" "row_count" "response_format" "sort_column" "sort_direction" "display_size"
     "question_ids" "dashcard_id" "card_id" "include_hidden" "term_queries" "semantic_queries"
     "created_by" "validate_only" "parent_collection_id" "visualization_settings" "dataset_query"

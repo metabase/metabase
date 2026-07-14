@@ -13,8 +13,10 @@
    [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
    [metabase.agent-api.execute-query :as agent-api.execute-query]
+   [metabase.agent-api.execute-sql :as agent-api.execute-sql]
    [metabase.agent-api.get-content :as agent-api.get-content]
    [metabase.agent-api.parameter-values :as agent-api.parameter-values]
+   [metabase.agent-api.results :as agent-api.results]
    [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.tools :as agent-api.tools]
    [metabase.agent-api.v1-api :as v1-api]
@@ -557,10 +559,10 @@
     [:maybe :boolean]]
    [:row_limit
     {:optional true
-     :tool/description (str "Rows to return (default " agent-api.execute-query/default-row-limit
-                            ", max " agent-api.execute-query/max-row-limit "). A page that would exceed the "
+     :tool/description (str "Rows to return (default " agent-api.results/default-row-limit
+                            ", max " agent-api.results/max-row-limit "). A page that would exceed the "
                             "response budget comes back smaller, and says so.")}
-    [:maybe [:int {:min 1 :max agent-api.execute-query/max-row-limit}]]]
+    [:maybe [:int {:min 1 :max agent-api.results/max-row-limit}]]]
    [:offset
     {:optional true
      :tool/description (str "Rows to skip — page with the `query_handle` and the offset the truncation "
@@ -573,7 +575,7 @@
                             "carries about it. Rows are unaffected.")}
     agent-api.tools/ResponseFormatField]])
 
-(mr/def ::execute-query-response
+(mr/def ::query-response
   "The dataset REST shape — `cols` and `rows` as value arrays — plus the handle for what ran and the
   steer to the next page. `validate_only` returns the handle alone: nothing ran, so there is nothing to
   report about it."
@@ -586,7 +588,7 @@
    [:truncated          {:optional true} :boolean]
    [:truncation_message {:optional true} :string]])
 
-(mr/def ::execute-query-structured-output
+(mr/def ::query-structured-output
   "The `structuredContent` of `execute_query`: the rows travel once in the text block, and the handle — what
   a save, a chart, or a next page is addressed by — rides here with the count and the truncation steer."
   [:map
@@ -604,7 +606,7 @@
      :tool/description "How to reach the rest: the next offset, and what narrows the result instead."}
     [:maybe :string]]])
 
-(api.macros/defendpoint :post "/v2/execute-query" :- ::execute-query-response
+(api.macros/defendpoint :post "/v2/execute-query" :- ::query-response
   "Run an MBQL query — the one entry point for a query the caller holds.
 
   Takes portable MBQL 5 JSON or a `query_handle`, validates it against the database's metadata with
@@ -622,8 +624,8 @@
                 "or back here with an `offset` to read the next page. `validate_only: true` checks the "
                 "query and mints the handle without running it.\n"
                 "\n"
-                "`row_limit` defaults to " agent-api.execute-query/default-row-limit " (max "
-                agent-api.execute-query/max-row-limit "). A page that would not fit the response budget "
+                "`row_limit` defaults to " agent-api.results/default-row-limit " (max "
+                agent-api.results/max-row-limit "). A page that would not fit the response budget "
                 "comes back smaller than you asked for. A truncated page says so and names the next "
                 "`offset`. To answer a question about many rows, aggregate — do not page through them.\n"
                 "\n"
@@ -656,7 +658,7 @@
                 "\n"
                 "Raw SQL goes to `execute_sql`; a saved question goes to `run_saved_question`.")
            :annotations       {:read-only? true :idempotent? true}
-           :structured-output ::execute-query-structured-output
+           :structured-output ::query-structured-output
            :input-examples
            [{:query {:lib/type "mbql/query"
                      :stages   [{:lib/type     "mbql.stage/mbql"
@@ -671,6 +673,109 @@
    _query-params
    body :- ::execute-query-request]
   (agent-api.execute-query/execute-query body))
+
+;;; -------------------------------------------------- Execute SQL ---------------------------------------------------
+
+(mr/def ::execute-sql-request
+  "Arguments to the `execute_sql` tool. Exactly one of `sql` | `query_handle` names the query, and which one is
+  a runtime rule rather than a schema combinator: strict clients reject a top-level `oneOf`."
+  [:map
+   [:database_id
+    {:optional true
+     :tool/description (str "The database to run the SQL against — required with `sql`. Accepts a numeric id "
+                            "or a 21-character entity_id. A `query_handle` already names its database.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:sql
+    {:optional true
+     :tool/description (str "The SQL to run, in the target database's own dialect. Use `query_handle` instead "
+                            "when you have one.")}
+    [:maybe ms/NonBlankString]]
+   [:query_handle
+    {:optional true
+     :tool/description (str "A handle returned by a previous `execute_sql` — it names the SQL, and the values "
+                            "that call gave its variables. Required to page: pass it with the `offset` the "
+                            "truncation message named.")}
+    [:maybe ms/UUIDString]]
+   [:template_tag_values
+    {:optional true
+     :tool/description (str "The values for the SQL's `{{variables}}`, as {variable_name: value}. A value is "
+                            "a string, a number, or a boolean, and is substituted as the type it is. Only "
+                            "with `sql`.")}
+    [:maybe [:map-of ms/NonBlankString [:or :string number? :boolean]]]]
+   [:validate_only
+    {:optional true
+     :tool/description (str "Mint the query's handle without running it (default false). The template tags "
+                            "and your permissions are checked; the SQL itself is not — only the database can "
+                            "say whether it parses.")}
+    [:maybe :boolean]]
+   [:row_limit
+    {:optional true
+     :tool/description (str "Rows to return (default " agent-api.results/default-row-limit
+                            ", max " agent-api.results/max-row-limit "). A page that would exceed the "
+                            "response budget comes back smaller, and says so.")}
+    [:maybe [:int {:min 1 :max agent-api.results/max-row-limit}]]]
+   [:offset
+    {:optional true
+     :tool/description (str "Rows to skip — page with the `query_handle` and the offset the truncation "
+                            "message names. Bounded by the instance's row cap, because raw SQL is paged by "
+                            "re-reading it: past the cap, page inside the SQL with `LIMIT`/`OFFSET`.")}
+    [:maybe [:int {:min 0}]]]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) describes each column by name, display name, description, "
+                            "and type; \"detailed\" returns every field the query processor carries about it. "
+                            "Rows are unaffected.")}
+    agent-api.tools/ResponseFormatField]])
+
+(api.macros/defendpoint :post "/v2/execute-sql" :- ::query-response
+  "Run raw SQL — the one entry point for a query MBQL cannot express.
+
+  Takes `sql` against a `database_id`, or a `query_handle` from an earlier call, and runs it unless
+  `validate_only`. Requires native-query permission on the target database, and the whole tool can be turned
+  off instance-wide, in which case it is absent from `tools/list` as well as refused here. Returns a
+  `query_handle` either way, so SQL reaches a saved question or a chart with no construct step."
+  {:scope "agent:query:read"
+   :tool  {:name  "execute_sql"
+           :title "Run SQL"
+           :description
+           (str "Run raw SQL against a database and get its rows. Pass `sql` with a `database_id`, or a "
+                "`query_handle` from an earlier call — exactly one.\n"
+                "\n"
+                "Reach for SQL only when MBQL cannot say it — a window function, a recursive CTE, "
+                "engine-specific syntax. `execute_query` is portable across engines and validates column "
+                "names against the schema before it runs, so a typo comes back naming the column rather than "
+                "as a database error. Read the real table and column names with `browse_data` first; never "
+                "write them from memory.\n"
+                "\n"
+                "Every call returns a `query_handle` naming the query that ran. Pass it to `question_write` "
+                "to save exactly what you just ran, to `visualize_query` to chart it, or back here with an "
+                "`offset` to read the next page. `validate_only: true` mints the handle without running "
+                "anything — but nothing checks the SQL itself, so run it before you save it.\n"
+                "\n"
+                "**Variables.** Write `{{name}}` in the SQL and pass `template_tag_values: {\"name\": value}`. "
+                "The value is substituted by Metabase as the type it is — a number as a number, a string as a "
+                "string — and rides on the saved question as the variable's default. `[[AND x = {{name}}]]` "
+                "wraps a clause that is dropped when the variable has no value.\n"
+                "\n"
+                "`row_limit` defaults to " agent-api.results/default-row-limit " (max "
+                agent-api.results/max-row-limit "). To answer a question about many rows, aggregate in the "
+                "SQL — do not page through them.\n"
+                "\n"
+                "You need native-query permission on the database. If you do not have it, no rewrite of the "
+                "SQL will help: answer with `execute_query` instead.")
+           :annotations       {:destructive? true :idempotent? false}
+           :structured-output ::query-structured-output
+           :input-examples
+           [{:database_id 1
+             :sql "SELECT status, count(*) AS orders FROM orders GROUP BY status ORDER BY orders DESC"}
+            {:database_id 1
+             :sql "SELECT id, total FROM orders WHERE status = {{status}} ORDER BY id"
+             :template_tag_values {:status "paid"}}
+            {:query_handle "1c9d2f3a-5b6e-4a7c-8d9e-0f1a2b3c4d5e" :offset 100}]}}
+  [_route-params
+   _query-params
+   body :- ::execute-sql-request]
+  (agent-api.execute-sql/execute-sql body))
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

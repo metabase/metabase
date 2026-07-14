@@ -55,12 +55,11 @@ Access tokens are scoped to limit what tools a client can use:
 | Scope                     | Grants access to                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `agent:discover:read`     | the discover toolset: `search`, `browse_data`, `browse_collection`, `get_content`, `get_parameter_values`       |
-| `agent:query:read`        | the query toolset: `execute_query`                                                                             |
+| `agent:query:read`        | the query toolset: `execute_query`, `execute_sql`                                                              |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |
 | `agent:sql:construct`     | `construct_native_query`                                                                                       |
-| `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
 | `agent:question:update`   | `update_question` (also covers "move card to collection")                                                      |
 | `agent:question:execute`  | `execute_question`                                                                                             |
@@ -100,7 +99,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `construct_native_query` | Construct a native (raw SQL) query for a database. Returns an opaque `query_handle` to feed `create_question` and save it. Does not execute the SQL; native handles are rejected by `execute_query`/`query` (use `execute_sql` to run raw SQL). |
 | `query`           | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                                 |
 | `execute_query`   | Run a query: portable MBQL 5 JSON or a `query_handle`, `validate_only` for a dry run, `row_limit` + `offset` to page. Returns the rows in the dataset REST shape and a `query_handle` naming what ran — the handle a save or a chart reuses. |
-| `execute_sql`     | Execute a raw SQL query against a database. Requires the user to have native-query permission on the target database. Can be disabled instance-wide via the `mcp-execute-sql-enabled` setting. |
+| `execute_sql`     | Run raw SQL: `sql` against a `database_id`, or a `query_handle`, with `template_tag_values` for the SQL's `{{variables}}`, `validate_only` for a dry run, `row_limit` + `offset` to page. Returns the rows and a `query_handle` naming what ran — the handle a save or a chart reuses. Requires native-query permission on the database. The `mcp-execute-sql-enabled` setting turns it off instance-wide, and a disabled tool is absent from `tools/list` as well as refused when called. |
 | `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
 
 ### Write

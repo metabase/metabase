@@ -994,3 +994,60 @@
                                  :condition    [:= [:field (mt/id :venues :id) nil]
                                                 [:field (mt/id :checkins :venue_id) {:join-alias "Checkins"}]]}]
                         :limit 1})]})))))
+
+;;; ------------------------------------------------- execute_sql --------------------------------------------------
+;;
+;; The SQL the rows come from, on both surfaces, is the same string: the REST endpoint an `execute_sql` call
+;; stands in for is `POST /api/dataset` with a native query, which is what the app's own SQL editor posts.
+
+(def ^:private venues-sql
+  "SELECT ID, NAME FROM VENUES ORDER BY ID LIMIT 1")
+
+(defn- native-venues-query
+  []
+  {:database (mt/id)
+   :type     :native
+   :native   {:query venues-sql}})
+
+(deftest execute-sql-baseline-parity-test
+  (testing "the positive control: with native-query permission both surfaces run the SQL, and return the same rows"
+    (check-parity!
+     {:scenario :full-permissions
+      :user     :rasta
+      :expect   :allowed
+      :tool     ["execute_sql" {:database_id (mt/id) :sql venues-sql}]
+      :rest     [:post "dataset" (native-venues-query)]
+      :payload  venues-rows-payload})))
+
+(deftest execute-sql-without-native-permission-parity-test
+  (testing "a caller who may build queries but not write them refuses on both surfaces — the query-builder
+            permission is not the native one, and SQL is exactly the gap between them"
+    (perms.test-util/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+      (check-parity!
+       {:scenario :no-native-query-permission
+        :user     :rasta
+        :expect   :denied
+        :tool     ["execute_sql" {:database_id (mt/id) :sql venues-sql}]
+        :rest     [:post "dataset" (native-venues-query)]}))))
+
+(deftest execute-sql-blocked-database-parity-test
+  (perms.test-util/with-no-data-perms-for-all-users!
+    (check-parity!
+     {:scenario :blocked-database
+      :user     :rasta
+      :expect   :denied
+      :tool     ["execute_sql" {:database_id (mt/id) :sql venues-sql}]
+      :rest     [:post "dataset" (native-venues-query)]})))
+
+(deftest execute-sql-validate-only-without-native-permission-parity-test
+  (testing "a dry run is refused by the permission the run needs: `validate_only` never reaches the query
+            processor, so the check it skips is the only one standing in front of it"
+    (perms.test-util/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+      (check-parity!
+       {:scenario :no-native-query-permission
+        :user     :rasta
+        :expect   :denied
+        :tool     ["execute_sql" {:database_id (mt/id) :sql venues-sql :validate_only true}]
+        :rest     [:post "dataset" (native-venues-query)]}))))

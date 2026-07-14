@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.agent-api.execute-query :as execute-query]
    [metabase.agent-api.handles :as handles]
+   [metabase.agent-api.results :as results]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -172,7 +173,7 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest row-limit-defaults-to-100-test
-  (is (= execute-query/default-row-limit
+  (is (= results/default-row-limit
          (:row_count (execute! {:query (orders-query)})))))
 
 (deftest a-row-limit-above-the-default-is-honored-test

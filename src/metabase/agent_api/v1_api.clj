@@ -569,15 +569,10 @@
 
   Requires the user to have native-query permission on the target database; the QP
   middleware enforces this. The instance-level `mcp-execute-sql-enabled` setting
-  must also be on (it is by default)."
-  {:scope metabot/agent-sql-execute
-   :tool  {:name "execute_sql"
-           :description (str "Execute a raw SQL query against a Metabase-connected database. "
-                             "Use this ONLY when MBQL cannot express the question — reach for "
-                             "`execute_query` first. You must have native-query permission on the target "
-                             "database. Standard userspace query limits apply.")
-           ;; Arbitrary SQL: the tool cannot promise that running it twice is the same as running it once.
-           :annotations {:idempotent? false}}}
+  must also be on (it is by default).
+
+  The `execute_sql` tool is served by `/v2/execute-sql`; this endpoint is HTTP-only."
+  {:scope metabot/agent-sql-execute}
   [_route-params
    _query-params
    {:keys [database_id sql]} :- ::execute-sql-request]

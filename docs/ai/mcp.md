@@ -9,7 +9,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-> To learn how to use the Metabase MCP server for AI data exploration, [register for our free MCP workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
+> To learn how to use the Metabase MCP server and CLI for AI data exploration, [register for our free MCP and CLI workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
 
 ## Connect a client to your Metabase MCP server's URL
 
@@ -88,7 +88,7 @@ These render inline visualizations in your AI client, and only work in clients t
 - **Create dashboard** (`create_dashboard`): Create a new dashboard, optionally populated with saved questions.
 - **Create question** (`create_question`): Save a query as a named question.
 - **Create metric** (`create_metric`) and **Update metric** (`update_metric`): Save and edit a reusable metric.
-- **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
+- **Execute SQL** (`execute_sql`): Run raw SQL against a database, with values for the query's `{{variables}}`. Returns a query handle that a save or a chart can reuse, so what gets saved is the SQL that ran. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default); a disabled tool disappears from the client's tool list.
 - **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived), and add, remove, or move its cards.
 - **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 

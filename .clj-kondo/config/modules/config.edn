@@ -160,7 +160,8 @@
    :api     #{metabase.agent-api.api
               metabase.agent-api.catalog
               metabase.agent-api.handles
-              metabase.agent-api.init}
+              metabase.agent-api.init
+              metabase.agent-api.settings}
    :uses    #{activity-feed
               agent-lib
               api
