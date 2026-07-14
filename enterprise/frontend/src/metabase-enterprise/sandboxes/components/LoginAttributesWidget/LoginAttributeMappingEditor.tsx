@@ -122,6 +122,7 @@ export const LoginAttributeMappingEditor = ({
       onError(hasError(newEntries));
     } else {
       onChange(buildMapping(newEntries));
+      setAutoFocusIndex(newEntries.length - 1);
     }
   };
 
@@ -178,7 +179,6 @@ export const LoginAttributeMappingEditor = ({
         size="xs"
         leftSection={<Icon name="add" />}
         onClick={() => {
-          setAutoFocusIndex(entries.length);
           handleChange(addEntry(entries));
         }}
         mt="md"
