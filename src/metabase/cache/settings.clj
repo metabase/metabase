@@ -47,3 +47,14 @@
   :type    :double
   :default (* 60.0 60.0 24.0 35.0) ; 35 days
   :audit   :getter)
+
+(defsetting query-caching-max-concurrent-writes
+  (deferred-tru
+   (str "Maximum number of queries that can write their results to the query cache at the same time. "
+        "Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent "
+        "compressing results during a burst of cache misses."))
+  :type       :integer
+  :default    16
+  :visibility :internal
+  :export?    false
+  :setter     :none)
