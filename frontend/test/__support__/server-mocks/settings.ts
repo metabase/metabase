@@ -7,6 +7,7 @@ import type {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  EnterpriseSettings,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -37,6 +38,49 @@ export function setupUpdateSettingEndpoint(
   const name = "update-setting";
   fetchMock.removeRoute(name);
   fetchMock.put(new RegExp("/api/setting/"), { status }, { name: name });
+}
+
+/**
+ * Stateful settings mocks for save-then-read tests: PUT /api/setting(/:key)
+ * mutate a shared store that GET /api/session/properties returns, so the
+ * post-save refetch reflects the write instead of the pre-save snapshot.
+ * Returns the mutable store for assertions.
+ */
+export function setupStatefulSettingsEndpoints(
+  initialSettings: Partial<EnterpriseSettings> | Record<string, unknown>,
+) {
+  const store: Record<string, unknown> = { ...initialSettings };
+
+  fetchMock.removeRoute("get-session-properties");
+  fetchMock.get("path:/api/session/properties", () => ({ ...store }), {
+    name: "get-session-properties",
+  });
+
+  fetchMock.removeRoute("update-setting");
+  fetchMock.put(
+    new RegExp("/api/setting/(.+)"),
+    ({ url, options }) => {
+      const key = decodeURIComponent(url.split("/api/setting/")[1]);
+      // Unjustified type cast. FIXME
+      const { value } = JSON.parse(options.body as string);
+      store[key] = value;
+      return { status: 204 };
+    },
+    { name: "update-setting" },
+  );
+
+  fetchMock.removeRoute("update-settings");
+  fetchMock.put(
+    "path:/api/setting",
+    ({ options }) => {
+      // Unjustified type cast. FIXME
+      Object.assign(store, JSON.parse(options.body as string));
+      return { status: 204 };
+    },
+    { name: "update-settings" },
+  );
+
+  return store;
 }
 
 export function setupUpdateSettingsEndpoint(

@@ -1,27 +1,51 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { sessionApi } from "metabase/api/session";
 import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import type { TokenFeature, TokenStatus, Version } from "metabase-types/api";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettings,
+  TokenFeature,
+  TokenStatus,
+  Version,
+} from "metabase-types/api";
 
-export const getSettings: <S extends State>(state: S) => GetSettings<S> =
-  createSelector(
-    (state: State) => state.settings,
-    (settings) => settings.values,
-  );
+// Settings (a.k.a. session properties) live in the `getSessionProperties` RTK
+// Query cache; `getSettings` reads them from there, falling back to
+// `window.MetabaseBootstrap` so reads aren't empty before the first fetch.
+//
+// The explicit annotation collapses the RTK-generated selector generics; left
+// inferred, they leak into every consumer and can push deeply-nested reducer
+// files over TypeScript's instantiation-depth limit (TS2589).
+const selectSessionProperties: (state: State) => {
+  data?: EnterpriseSettings;
+  isLoading: boolean;
+} = sessionApi.endpoints.getSessionProperties.select();
 
-export const getSettingsLoading = createSelector(
-  (state: State) => state.settings,
-  (settings) => settings.loading,
-);
+// Fallback for when neither the cache nor the bootstrap has data: the main app
+// always has the server-injected bootstrap, but the embedding SDK runs on a host
+// page with no bootstrap and reads settings before auth injects them into the cache.
+//
+// Hoisted so `getSettings` returns a stable reference
+const EMPTY_SETTINGS = {};
 
-type GetSettings<S extends State> = S["settings"]["values"];
-type GetSettingKey<S extends State> = keyof GetSettings<S>;
+// Typed as `EnterpriseSettings` (a superset of the OSS `Settings`): the cache
+// holds whatever the backend returned, and reads of OSS keys narrow naturally.
+// There is no `settings` key on `State` — settings are not redux state.
+export const getSettings = (state: State): EnterpriseSettings =>
+  // Unjustified type cast. FIXME
+  (selectSessionProperties(state).data ??
+    window.MetabaseBootstrap ??
+    EMPTY_SETTINGS) as EnterpriseSettings;
 
-export const getSetting = <S extends State, T extends GetSettingKey<S>>(
-  state: S,
+export const getSettingsLoading = (state: State): boolean =>
+  selectSessionProperties(state).isLoading;
+
+export const getSetting = <T extends EnterpriseSettingKey>(
+  state: State,
   key: T,
-): GetSettings<S>[T] => {
+): EnterpriseSettings[T] => {
   const settings = getSettings(state);
   const setting = settings[key];
   return setting;

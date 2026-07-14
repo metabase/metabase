@@ -30,13 +30,13 @@ import { createRoot } from "react-dom/client";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import { refetchSiteSettings } from "metabase/api";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { createV7Navigator } from "metabase/router/v7/navigator";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -108,7 +108,13 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
   registerDashboardVisualizations();
 
-  store.dispatch(refreshSiteSettings());
+  // Populate the settings cache on load for every app entry. The main app also
+  // keeps a live `useGetSettingsQuery` subscription in AppComponent (so setting
+  // mutations refetch), but the public and embed entries don't mount
+  // AppComponent — without this fetch their settings cache stays empty and
+  // `getSettings` falls back to the server-injected `window.MetabaseBootstrap`,
+  // missing anything only present in the session-properties response.
+  store.dispatch(refetchSiteSettings());
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());
 

@@ -69,6 +69,10 @@ export const ApiKeyProviderFields = ({
 
   const apiKeySettingValue = apiKeySetting?.value;
 
+  // Reset the local (dirty) key when the saved key changes, e.g. after a save
+  // or a provider switch. The parent gates these fields on details-loaded, so
+  // the saved value is authoritative on mount and this can't fire on a
+  // details-hydration flip and wipe a key the user has started typing.
   useEffect(() => {
     if (apiKeySettingValue) {
       setLocalApiKey(null);

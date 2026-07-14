@@ -77,19 +77,17 @@ const setup = async (props: {
 
 describe("UpdatesSettingsPage", () => {
   it("should render a UpdatesSettingsPage", async () => {
-    await act(() =>
-      setup({
-        isHosted: false,
-        versionTag: "v1.53.8",
-      }),
-    );
-
-    [
-      "Check for updates",
-      "You're running Metabase 1.53.8 which is the latest and greatest!",
-    ].forEach((text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
     });
+
+    expect(await screen.findByText("Check for updates")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You're running Metabase 1.53.8 which is the latest and greatest!",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should load initial settings", async () => {

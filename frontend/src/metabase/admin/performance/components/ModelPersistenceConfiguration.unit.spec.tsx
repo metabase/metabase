@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSettingsQuery } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -39,9 +40,23 @@ const setup = ({
 
   const state = createMockState({ settings: mockSettings(settings) });
 
-  return renderWithProviders(<ModelPersistenceConfiguration />, {
-    storeInitialState: state,
-  });
+  // In the app, AppComponent holds an app-lifetime useGetSettingsQuery
+  // subscription; it is what turns the persist mutations' session-properties
+  // invalidation into a refetch. Mount the same subscription here.
+  const SettingsSubscriber = () => {
+    useGetSettingsQuery();
+    return null;
+  };
+
+  return renderWithProviders(
+    <>
+      <SettingsSubscriber />
+      <ModelPersistenceConfiguration />
+    </>,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("ModelPersistenceConfiguration", () => {
@@ -102,10 +117,20 @@ describe("ModelPersistenceConfiguration", () => {
     it("refetches site settings after toggling", async () => {
       setup({ persistedModelsEnabled: false });
 
+      // the mounted settings subscription fetches once on mount
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(SESSION_PROPERTIES_URL),
+        ).toHaveLength(1);
+      });
+
       await userEvent.click(screen.getByRole("switch"));
 
+      // enablePersist invalidates session-properties → the subscription refetches
       await waitFor(() => {
-        expect(fetchMock.callHistory.called(SESSION_PROPERTIES_URL)).toBe(true);
+        expect(
+          fetchMock.callHistory.calls(SESSION_PROPERTIES_URL),
+        ).toHaveLength(2);
       });
     });
   });

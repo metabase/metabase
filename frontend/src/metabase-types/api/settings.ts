@@ -714,7 +714,7 @@ export type UserSettings = {
  *
  * To further complicate things, there are two endpoints for fetching settings:
  *  - `GET /api/setting` that _can only be used by admins!_ — returns `403` for non-admins.
- *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted (unavailable).
+ *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted.
  */
 export type Settings = InstanceSettings &
   PublicSettings &

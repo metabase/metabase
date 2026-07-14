@@ -68,15 +68,17 @@ describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
 
-    [
-      "From Name",
-      "From Address",
-      "Reply-To Address",
-      "Add Recipients as CC or BCC",
-      "Approved domains for notifications",
-      "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach(async (text) => {
-      expect(screen.getByText(text)).toBeInTheDocument();
+    await waitFor(() => {
+      [
+        "From Name",
+        "From Address",
+        "Reply-To Address",
+        "Add Recipients as CC or BCC",
+        "Approved domains for notifications",
+        "Suggest recipients on dashboard subscriptions and alerts",
+      ].forEach((text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      });
     });
   });
 

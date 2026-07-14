@@ -7,6 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotToggleWidget } from "./MetabotToggleWidget";
@@ -14,14 +15,16 @@ import { MetabotToggleWidget } from "./MetabotToggleWidget";
 const TOGGLE_LABEL = "Display welcome message on the homepage";
 
 const setup = (value = true) => {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "show-metabot": !!value,
-    }),
-  );
+  const settings = { "show-metabot": !!value };
+  setupPropertiesEndpoints(createMockSettings(settings));
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
-  renderWithProviders(<MetabotToggleWidget />, {});
+  // Seed the bootstrap so `show-metabot` is readable on the first render.
+  // Otherwise the click can fire before the settings fetch resolves, and the
+  // widget computes the toggled value from an undefined current value.
+  renderWithProviders(<MetabotToggleWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
+  });
 };
 
 describe("MetabotToggleWidget", () => {

@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from "react";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { getSetting, getSettings } from "metabase/selectors/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
@@ -26,7 +29,6 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   settingName: SettingName,
 ) => {
   const {
-    data: settings,
     isLoading: settingsLoading,
     isFetching: settingsFetching,
     ...apiProps
@@ -107,10 +109,13 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSettings, sendToast],
   );
 
+  // Read the value through `getSetting` so it resolves from the cache with a
+  // synchronous fallback to the bootstrap (available before the fetch resolves),
+  // the same as `useSetting`.
   // Unjustified type cast. FIXME
-  const settingValue = settings?.[
-    settingName
-  ] as EnterpriseSettingValue<SettingName>;
+  const settingValue = useSelector((state) =>
+    getSetting(state, settingName),
+  ) as EnterpriseSettingValue<SettingName>;
 
   return {
     value: settingValue,
@@ -175,10 +180,14 @@ export const useAdminSettings = <
   );
 
   type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
-  const values = useMemo(() => {
+  // Pick from `getSettings` (cache with bootstrap fallback) rather than raw
+  // `useGetSettingsQuery` data, which is an empty bag mid-fetch — making
+  // `Object.values({}).every(...)` checks vacuously true.
+  const values = useSelector(
     // Unjustified type cast. FIXME
-    return (settings ? _.pick(settings, ...settingNames) : {}) as Values;
-  }, [settings, settingNames]);
+    (state) => _.pick(getSettings(state), ...settingNames) as Values,
+    shallowEqual,
+  );
 
   type Details = { [K in SettingNames[number]]: SettingDefinition<K> };
   const details = useMemo(() => {

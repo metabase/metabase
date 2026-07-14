@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,11 +13,10 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
+import { refetchSiteSettings, useUpdateSettingMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
 import type { Route } from "metabase/router";
 import { push } from "metabase/router";
 import {
@@ -81,14 +80,22 @@ export function PermissionsPageLayout({
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
-  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
-    useToggle(_showSplitPermsModal);
+  // Derive the modal's open state from the setting rather than capturing it once
+  // at mount. `show-updated-permission-modal` now resolves from the RTK Query
+  // cache (asynchronously) instead of a synchronously-hydrated redux slice, so
+  // it can flip to `true` *after* this component has mounted — a mount-time
+  // capture (`useToggle`) missed that late arrival and the modal never opened.
+  const [isSplitPermsModalDismissed, setIsSplitPermsModalDismissed] =
+    useState(false);
+  const showSplitPermsModal =
+    _showSplitPermsModal && !isSplitPermsModalDismissed;
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
@@ -101,11 +108,17 @@ export function PermissionsPageLayout({
     dispatch(toggleHelpReference());
   }, [dispatch]);
 
-  const handleDimissSplitPermsModal = () => {
-    disableSplitPermsModal();
-    dispatch(
-      updateUserSetting({ key: "show-updated-permission-modal", value: false }),
-    );
+  const handleDimissSplitPermsModal = async () => {
+    setIsSplitPermsModalDismissed(true);
+    await updateSetting({
+      key: "show-updated-permission-modal",
+      value: false,
+    });
+    // Refetch settings unconditionally, even when the PUT above fails — the
+    // modal must dismiss "even if the network request fails", and on error the
+    // mutation's tag invalidation is skipped so nothing else resyncs the cache.
+    // Mirrors the removed `updateUserSetting` thunk's `finally { refresh }`.
+    dispatch(refetchSiteSettings());
   };
 
   return (

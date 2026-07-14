@@ -1,10 +1,10 @@
 import { useLayoutEffect } from "react";
 import { t } from "ttag";
 
+import { useUpdateSettingMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/home/use-homepage-dashboard";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { replace } from "metabase/router";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
@@ -29,6 +29,7 @@ const useDashboardRedirect = () => {
   const { dashboardId, dashboard, isLoading } = useHomepageDashboard();
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
+  const [updateSetting] = useUpdateSettingMutation();
 
   // This redirect must live inside a useLayoutEffect to prevent the browser from painting a frame of <HomeContent>
   // before firing the redirect (metabase#69917)
@@ -48,12 +49,10 @@ const useDashboardRedirect = () => {
             icon: "info",
             timeout: 10000,
             action: () => {
-              dispatch(
-                updateUserSetting({
-                  key: "dismissed-custom-dashboard-toast",
-                  value: true,
-                }),
-              );
+              updateSetting({
+                key: "dismissed-custom-dashboard-toast",
+                value: true,
+              });
             },
             actionLabel: t`Got it`,
             canDismiss: false,
@@ -65,6 +64,7 @@ const useDashboardRedirect = () => {
     dashboardId,
     hasDismissedToast,
     dispatch,
+    updateSetting,
     dashboard?.archived,
     isLoading,
   ]);

@@ -10,6 +10,7 @@ import {
   setupUpdateAIControlsInstanceLimitEndpoint,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -22,34 +23,39 @@ type SetupOpts = {
   instanceMaxUsage?: number | null;
 };
 
-function setup({
+async function setup({
   limitType = "tokens",
   limitPeriod = "monthly",
   quotaMessage = "",
   // Unjustified type cast. FIXME
   instanceMaxUsage = null as number | null,
 }: SetupOpts = {}) {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "metabot-limit-unit": limitType,
-      "metabot-limit-reset-rate": limitPeriod,
-      "metabot-quota-reached-message": quotaMessage || null,
-    }),
-  );
+  const settingValues = {
+    "metabot-limit-unit": limitType,
+    "metabot-limit-reset-rate": limitPeriod,
+    "metabot-quota-reached-message": quotaMessage || null,
+  };
+  setupPropertiesEndpoints(createMockSettings(settingValues));
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupAIControlsInstanceLimitEndpoint({ max_usage: instanceMaxUsage });
   setupUpdateAIControlsInstanceLimitEndpoint();
 
-  renderWithProviders(<GeneralLimitsSettingsSection />);
+  renderWithProviders(<GeneralLimitsSettingsSection />, {
+    storeInitialState: { settings: createMockSettingsState(settingValues) },
+  });
+
+  // Wait for the section to render before returning so tests don't each repeat
+  // a load gate.
+  await screen.findByText("How do you want to limit AI usage?");
 }
 
 describe("GeneralLimitsSettingsSection", () => {
   it("renders the limit type segmented control with saved value", async () => {
-    setup({ limitType: "messages" });
+    await setup({ limitType: "messages" });
 
     expect(
-      await screen.findByText("How do you want to limit AI usage?"),
+      screen.getByText("How do you want to limit AI usage?"),
     ).toBeInTheDocument();
     expect(screen.getByText("By token usage")).toBeInTheDocument();
     expect(screen.getByText("By message count")).toBeInTheDocument();
@@ -67,10 +73,10 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("renders the reset period segmented control with saved value", async () => {
-    setup({ limitPeriod: "weekly" });
+    await setup({ limitPeriod: "weekly" });
 
     expect(
-      await screen.findByText("When should usage limits reset?"),
+      screen.getByText("When should usage limits reset?"),
     ).toBeInTheDocument();
     expect(screen.getByText("Daily")).toBeInTheDocument();
     expect(screen.getByText("Weekly")).toBeInTheDocument();
@@ -86,9 +92,7 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("shows token-based label for instance limit when limit type is tokens", async () => {
-    setup({ limitType: "tokens" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ limitType: "tokens" });
     await waitFor(() => {
       expect(
         screen.getByText("Total monthly instance token limit"),
@@ -97,9 +101,7 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("shows message-based label for instance limit when limit type is messages", async () => {
-    setup({ limitType: "messages" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ limitType: "messages" });
     await waitFor(() => {
       expect(
         screen.getByText("Total monthly instance message limit"),
@@ -108,43 +110,33 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("populates the instance limit input from API data", async () => {
-    setup({ instanceMaxUsage: 500 });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ instanceMaxUsage: 500 });
     await waitFor(() => {
       expect(screen.getByDisplayValue("500")).toBeInTheDocument();
     });
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", async () => {
-    setup({ instanceMaxUsage: null });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ instanceMaxUsage: null });
     expect(screen.getByPlaceholderText("Unlimited")).toBeInTheDocument();
   });
 
   it("shows 'million' unit beside the instance limit input when limit type is tokens", async () => {
-    setup({ limitType: "tokens" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ limitType: "tokens" });
     await waitFor(() => {
       expect(screen.getByText("million")).toBeInTheDocument();
     });
   });
 
   it("shows 'messages' unit beside the instance limit input when limit type is messages", async () => {
-    setup({ limitType: "messages" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ limitType: "messages" });
     await waitFor(() => {
       expect(screen.getByText("messages")).toBeInTheDocument();
     });
   });
 
   it("renders the quota-reached message input with saved value", async () => {
-    setup({ quotaMessage: "You hit the limit!" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ quotaMessage: "You hit the limit!" });
     await waitFor(() => {
       expect(
         screen.getByDisplayValue("You hit the limit!"),
@@ -153,9 +145,7 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("updates limit type setting when user clicks a different option", async () => {
-    setup({ limitType: "tokens" });
-    await screen.findByText("How do you want to limit AI usage?");
-
+    await setup({ limitType: "tokens" });
     await userEvent.click(screen.getByText("By message count"));
 
     expect(
@@ -164,8 +154,8 @@ describe("GeneralLimitsSettingsSection", () => {
   });
 
   it("updates reset period setting when user clicks a different option", async () => {
-    setup({ limitPeriod: "monthly" });
-    await screen.findByText("When should usage limits reset?");
+    await setup({ limitPeriod: "monthly" });
+    expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
 
     await userEvent.click(screen.getByText("Daily"));
 

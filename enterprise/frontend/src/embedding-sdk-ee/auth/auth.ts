@@ -28,6 +28,7 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import { refetchSiteSettings, sessionApi } from "metabase/api";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
 import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
@@ -39,11 +40,10 @@ import {
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import MetabaseSettings from "metabase/utils/settings";
-import type { Settings } from "metabase-types/api";
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -102,8 +102,21 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }),
       );
       dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
-      // Unjustified type cast. FIXME
-      dispatch(loadSettings(authState.siteSettings as Settings));
+      dispatch(
+        sessionApi.util.upsertQueryData(
+          "getSessionProperties",
+          undefined,
+          // Unjustified type cast. FIXME
+          authState.siteSettings as EnterpriseSettings,
+        ),
+      );
+      // Pin the upserted entry with a never-released subscription (it's
+      // fulfilled, so no request fires). A tag invalidation outright deletes
+      // zero-subscriber entries instead of refetching them, and an SDK host
+      // page has no bootstrap to fall back to. This mirrors the non-bootstrap
+      // path, whose refetchSiteSettings subscription below is also never
+      // released.
+      dispatch(sessionApi.endpoints.getSessionProperties.initiate());
       // Unjustified type cast. FIXME
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
@@ -160,7 +173,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // Fetch user and site settings
   const [user, siteSettings] = await Promise.all([
     dispatch(refreshCurrentUser()),
-    dispatch(refreshSiteSettings()),
+    dispatch(refetchSiteSettings()),
   ]);
 
   if (!user.payload) {
@@ -170,7 +183,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
     throw MetabaseError.USER_FETCH_FAILED();
   }
-  if (!siteSettings.payload) {
+  if (!siteSettings.data) {
     throw MetabaseError.USER_FETCH_FAILED();
   }
 };

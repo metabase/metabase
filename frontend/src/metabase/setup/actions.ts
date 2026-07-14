@@ -1,17 +1,17 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { setupApi, userApi } from "metabase/api";
+import {
+  refetchSiteSettings,
+  settingsApi,
+  setupApi,
+  userApi,
+} from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { trackUserInvited } from "metabase/common/analytics";
 import { createDatabase } from "metabase/redux/databases";
-import {
-  initializeSettings,
-  updateSetting,
-  updateSettings,
-} from "metabase/redux/settings";
 import type {
   InviteInfo,
   Locale,
@@ -116,7 +116,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
-    dispatch(initializeSettings());
+    dispatch(refetchSiteSettings());
   },
 );
 
@@ -203,11 +203,11 @@ export const submitLicenseToken = createAsyncThunk(
     try {
       if (licenseToken) {
         await dispatch(
-          updateSetting({
+          settingsApi.endpoints.updateSetting.initiate({
             key: "premium-embedding-token",
             value: licenseToken,
           }),
-        );
+        ).unwrap();
       }
       trackLicenseTokenStepSubmitted(Boolean(licenseToken));
     } catch (err) {
@@ -226,11 +226,11 @@ export const updateTracking = createAsyncThunk(
   async (isTrackingAllowed: boolean, { dispatch, rejectWithValue }) => {
     try {
       await dispatch(
-        updateSetting({
+        settingsApi.endpoints.updateSetting.initiate({
           key: "anon-tracking-enabled",
           value: isTrackingAllowed,
         }),
-      );
+      ).unwrap();
       trackTrackingChanged(isTrackingAllowed);
       MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
     } catch (error) {
@@ -262,6 +262,6 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;
 
-    dispatch(updateSettings(settingsToChange));
+    dispatch(settingsApi.endpoints.updateSettings.initiate(settingsToChange));
   },
 );

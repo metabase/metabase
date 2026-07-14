@@ -9,9 +9,8 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
+import { Api, sessionApi } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
-import { settings as settingsReducer } from "metabase/redux/settings";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -25,29 +24,17 @@ import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware"
 
 interface TestState {
   remoteSyncPlugin: SyncTaskState;
-  settings: {
-    values: Record<string, unknown>;
-    loading: boolean;
-  };
 }
 
 const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
-  return configureStore({
+  const store = configureStore({
     reducer: combineReducers({
       remoteSyncPlugin: remoteSyncReducer,
-      settings: settingsReducer,
       // EnterpriseApi is an enhanced version of Api, so they share the same reducer
       [Api.reducerPath]: Api.reducer,
     }),
     preloadedState: {
       remoteSyncPlugin: initialState,
-      settings: {
-        values: {
-          "remote-sync-transforms": false,
-          ...settingsOverrides,
-        },
-        loading: false,
-      },
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -59,6 +46,23 @@ const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
         // and the test store's State type (test store uses simplified State)
         .concat(remoteSyncListenerMiddleware.middleware as any),
   });
+
+  // Settings are served from the getSessionProperties RTK Query cache.
+  store.dispatch(
+    sessionApi.util.upsertQueryEntries([
+      {
+        endpointName: "getSessionProperties",
+        arg: undefined,
+        // Unjustified type cast. FIXME
+        value: {
+          "remote-sync-transforms": false,
+          ...settingsOverrides,
+        } as any,
+      },
+    ]),
+  );
+
+  return store;
 };
 
 const waitForCondition = async (
