@@ -627,7 +627,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql :percentile arg 0.5)))
+  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]

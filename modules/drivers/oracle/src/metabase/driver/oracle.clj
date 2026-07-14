@@ -47,8 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-mbql5 :sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
@@ -586,7 +585,7 @@
 
 (defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "varchar2(256)")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ messages]

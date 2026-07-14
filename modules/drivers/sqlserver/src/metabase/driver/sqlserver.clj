@@ -46,7 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -782,7 +782,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql :percentile arg 0.5)))
+  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
@@ -856,7 +856,7 @@
                                         (if (some? (driver-api/match-one expr
                                                      [_ (_opts :guard :lib/uuid) val & _] val
                                                      [_ val & _] val))
-                                          (sql.qp/mbql ::cast expr field-database-type)
+                                          [::cast {} expr field-database-type]
                                           expr)))))
                              identity)
                          args)]
@@ -864,7 +864,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "varchar(256)")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar(256)"]))
 
 ;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
 ;; SQL server does not have a boolean data type. See #53805 for more details.

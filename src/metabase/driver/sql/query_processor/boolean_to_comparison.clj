@@ -119,7 +119,7 @@
            (boolean-value-clause? clause)
            (boolean-field-clause? clause boolean-field-types)
            (boolean-expression-clause? clause))
-     (sql.qp/mbql := clause true)
+     [:= {} clause true]
      clause)))
 
 (defn case-boolean->comparison
