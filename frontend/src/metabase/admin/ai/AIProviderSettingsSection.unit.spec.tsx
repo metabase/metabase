@@ -2420,9 +2420,9 @@ function setupDivergentReadsBackend({
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const backend = {
+  const backend: { apiKeySaved: boolean; providerRow: string | null } = {
     apiKeySaved: false,
-    providerRow: null as string | null,
+    providerRow: null,
   };
 
   const providerValue = () => backend.providerRow ?? DEFAULT_PROVIDER_VALUE;
@@ -2476,11 +2476,9 @@ function setupDivergentReadsBackend({
   }));
 
   fetchMock.put("path:/api/metabot/settings", (call) => {
-    const body = JSON.parse(String(call.options?.body ?? "{}")) as {
-      provider: MetabotProvider;
-      model?: string;
-      "api-key"?: string | null;
-    };
+    const body: MetabotSettingsUpdateBody = JSON.parse(
+      String(call.options?.body ?? "{}"),
+    );
     const currentProviderFromGetter = providerValue().split("/")[0];
     const providerChanged = currentProviderFromGetter !== body.provider;
 
