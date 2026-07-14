@@ -667,14 +667,10 @@
                                      nil)))
 
 (defn- placeholder-still-active?
-  "True if `row` is an in-flight placeholder created by [[start-turn!]] for a
-  stream that hasn't yet completed: assistant role, `:finished` IS NULL (the
-  schema-level placeholder marker), and `:created_at` within the grace window.
-  Used by [[messages->chat-messages]] to suppress live placeholders from chat
-  reads so a reload mid-stream does not render an empty `turn_aborted` stub."
-  [{:keys [role finished created_at]}]
+  [{:keys [role finished created_at deleted_at]}]
   (and (= :assistant role)
        (nil? finished)
+       (nil? deleted_at)
        (some? created_at)
        (when-let [then (->instant created_at)]
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
@@ -689,6 +685,47 @@
    (let [active (remove placeholder-still-active? messages)]
      (->> (if include-errored? active (drop-errored-pairs active))
           (into [] (mapcat message->chat-messages))))))
+
+(defn- row->flat-messages
+  [row parent-id]
+  (let [messages (if (placeholder-still-active? row)
+                   [(cond-> {:id   (or (:external_id row) (str (:id row)))
+                             :role "agent"
+                             :type "turn_in_progress"}
+                      (:external_id row) (assoc :externalId (:external_id row)))]
+                   (message->chat-messages row))]
+    (reduce (fn [[messages parent-id] message]
+              (let [message (assoc message :parent_message_id parent-id)]
+                [(conj messages message) (:id message)]))
+            [[] parent-id]
+            messages)))
+
+(defn messages->flat-messages
+  "Convert ordered live and deleted rows to chat messages with parent pointers.
+  With `:include-rewound-errors?`, a turn whose prompt was soft-deleted is also
+  kept when it errored (a rewound failed turn), as a dead branch the main thread
+  does not descend from; by default such turns are dropped."
+  ([messages] (messages->flat-messages messages nil))
+  ([messages {:keys [include-rewound-errors?]}]
+   (loop [turns (rows->turns messages), parent-id nil, flat-messages []]
+     (if-let [turn (first turns)]
+       (let [prompt-row   (u/seek #(= :user (:role %)) turn)
+             prompt-live? (and prompt-row (nil? (:deleted_at prompt-row)))
+             errored?     (and include-rewound-errors?
+                               (some #(and (= :assistant (:role %)) (some? (:error %))) turn))]
+         (if (and prompt-row (or prompt-live? errored?))
+           (let [[prompt-messages prompt-last-id] (row->flat-messages prompt-row parent-id)
+                 assistant-rows                  (filterv #(= :assistant (:role %)) turn)
+                 attempts                        (mapv #(row->flat-messages % prompt-last-id) assistant-rows)
+                 kept-last-id                    (->> (map vector assistant-rows attempts)
+                                                      (keep (fn [[row [_ last-id]]]
+                                                              (when (nil? (:deleted_at row)) last-id)))
+                                                      last)]
+             (recur (rest turns)
+                    (if prompt-live? (or kept-last-id prompt-last-id) parent-id)
+                    (into (into flat-messages prompt-messages) (mapcat first) attempts)))
+           (recur (rest turns) parent-id flat-messages)))
+       flat-messages))))
 
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found."

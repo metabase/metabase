@@ -79,12 +79,20 @@ export type MetabotAgentTurnErroredMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentTurnInProgressMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_in_progress";
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
   | MetabotAgentTurnAbortedMessage
-  | MetabotAgentTurnErroredMessage;
+  | MetabotAgentTurnErroredMessage
+  | MetabotAgentTurnInProgressMessage;
 
 export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 

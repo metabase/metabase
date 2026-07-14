@@ -1,5 +1,5 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
 import type {
   DatasetQuery,
   MetabotFeedback,
@@ -95,7 +95,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
-  chat_messages: FetchedChatMessage[];
+  messages: ParentedChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;

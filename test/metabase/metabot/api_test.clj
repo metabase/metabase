@@ -1501,19 +1501,20 @@
   (testing "streaming-request passes metabot-id to native-agent-streaming-request"
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
-      (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                                  api/check-conversation-access!        (constantly nil)
-                                  metabot.persistence/leaf-external-id  (constantly nil)
-                                  metabot.persistence/live-messages     (constantly [])
-                                  metabot.persistence/history           (constantly [])
-                                  metabot.persistence/start-turn!       (fn [& _]
-                                                                          {:assistant-msg-id 1
-                                                                           :assistant-external-id "ext-id"})
-                                  api/native-agent-streaming-request    (fn [args]
-                                                                          (reset! captured-args args)
-                                                                          ;; Return a minimal streaming response
-                                                                          nil)]
-        (mt/with-test-user :rasta
+      (mt/with-model-cleanup [:model/MetabotMessage
+                              [:model/MetabotConversation :created_at]]
+        (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                    api/check-conversation-access!        (constantly nil)
+                                    metabot.persistence/leaf-external-id  (constantly nil)
+                                    metabot.persistence/live-messages     (constantly [])
+                                    metabot.persistence/history           (constantly [])
+                                    metabot.persistence/start-turn!       (fn [& _]
+                                                                            {:assistant-msg-id 1
+                                                                             :assistant-external-id "ext-id"})
+                                    api/native-agent-streaming-request    (fn [args]
+                                                                            (reset! captured-args args)
+                                                                            ;; Return a minimal streaming response
+                                                                            nil)]
           (api/streaming-request {:metabot_id      test-metabot-id
                                   :profile_id      nil
                                   :message         "test message"
