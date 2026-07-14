@@ -140,7 +140,6 @@ function createTestMeasure(opts: { name?: string; description?: string } = {}) {
   H.createMeasure({
     name,
     description,
-    table_id: ORDERS_ID,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

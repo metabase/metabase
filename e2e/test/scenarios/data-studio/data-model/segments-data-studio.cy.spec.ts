@@ -404,7 +404,6 @@ describe(
         cy.log("create segment on Products table");
         H.createSegment({
           name: "Expensive Products",
-          table_id: PRODUCTS_ID,
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -441,7 +440,6 @@ describe(
           cy.log("create segment based on segment");
           H.createSegment({
             name: "High Value Recent Orders",
-            table_id: ORDERS_ID,
             definition: {
               type: "query",
               database: SAMPLE_DB_ID,
@@ -475,7 +473,6 @@ describe(
         cy.log("create Segment A");
         H.createSegment({
           name: "Segment A",
-          table_id: ORDERS_ID,
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -488,7 +485,6 @@ describe(
           cy.log("create Segment B that depends on A");
           H.createSegment({
             name: "Segment B",
-            table_id: ORDERS_ID,
             definition: {
               type: "query",
               database: SAMPLE_DB_ID,
@@ -739,7 +735,6 @@ function createTestSegment(
   H.createSegment({
     name,
     description,
-    table_id: tableId,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

@@ -73,7 +73,6 @@ export function NewSegmentPage({
     }
     const { data: segment, error } = await createSegment({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });

@@ -636,7 +636,6 @@ describe("issue 24922", () => {
   const segmentDetails = {
     name: "OrdersSegment",
     description: "All orders with a total under $100.",
-    table_id: ORDERS_ID,
     definition: {
       "source-table": ORDERS_ID,
       aggregation: [["count"]],

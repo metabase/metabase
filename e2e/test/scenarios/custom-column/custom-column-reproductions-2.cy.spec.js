@@ -305,7 +305,6 @@ describe("issue 55300", () => {
 
       H.createSegment({
         name: "now",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -315,7 +314,6 @@ describe("issue 55300", () => {
 
       H.createSegment({
         name: "Count",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],

@@ -77,7 +77,6 @@ export function NewMeasurePage({
     }
     const { data: measure, error } = await createMeasure({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });

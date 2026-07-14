@@ -529,7 +529,6 @@ function createTestMeasure(
   H.createMeasure({
     name,
     description,
-    table_id: tableId,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,
