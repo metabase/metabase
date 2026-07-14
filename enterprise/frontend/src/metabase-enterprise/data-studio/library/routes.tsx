@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
-import { IndexRoute, Route } from "metabase/router";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 
 import { LibraryPage } from "./LibraryPage";
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
@@ -12,7 +12,17 @@ import { getDataStudioTableRoutes } from "./tables/routes";
 export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
     <Route path="library" component={LibrarySectionLayout}>
-      <IndexRoute component={LibraryPage} />
+      <IndexRoute
+        component={LibraryPage}
+        onEnter={(nextState, replace) => {
+          if (PROTO_NAV_ENABLED && !nextState.location.query?.library) {
+            replace({
+              ...nextState.location,
+              query: { ...nextState.location.query, library: "tables" },
+            });
+          }
+        }}
+      />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
       {getDataStudioSegmentRoutes()}

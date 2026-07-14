@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -117,7 +118,18 @@ export const AdminNavbar = ({
       </Flex>
       <Group gap="0.5rem" ms="auto">
         <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
-        <AppSwitcher />
+        {PROTO_NAV_ENABLED ? (
+          <Button
+            component={Link}
+            to="/"
+            variant="subtle"
+            c="text-primary-inverse"
+          >
+            {t`Back to app`}
+          </Button>
+        ) : (
+          <AppSwitcher />
+        )}
       </Group>
     </Flex>
   );

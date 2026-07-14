@@ -52,14 +52,28 @@ export function ResizableArea(props: {
     [resize],
   );
 
+  // Grow with the parent when layout expands (e.g. New Query SQL
+  // idle card → full-width editor). Don't shrink on initialHeight
+  // changes — that would fight manual resizing.
+  useEffect(() => {
+    setHeight((current) =>
+      initialHeight > current ? initialHeight : current,
+    );
+  }, [initialHeight]);
+
   useEffect(() => {
     // If the height is higher than the max height,
-    // resize to the max height
-    if (maxHeight == null) {
+    // resize to the max height. Skip while maxHeight is still
+    // below minHeight — that usually means the parent layout
+    // hasn't settled yet (e.g. an expanding container).
+    if (maxHeight == null || maxHeight === Infinity) {
+      return;
+    }
+    if (maxHeight < minHeight) {
       return;
     }
     if (height >= maxHeight) {
-      resize(Math.max(minHeight, maxHeight));
+      resize(maxHeight);
     }
   }, [height, minHeight, maxHeight, resize]);
 

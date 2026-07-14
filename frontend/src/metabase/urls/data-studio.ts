@@ -91,14 +91,18 @@ export function dataStudioData({
 
 export function dataStudioLibrary({
   expandedIds,
-}: { expandedIds?: CollectionId[] } = {}) {
-  let query = "";
-  if (expandedIds?.length) {
-    const params = new URLSearchParams();
-    expandedIds.forEach((id) => params.append("expandedId", String(id)));
-    query = `?${params.toString()}`;
+  library,
+}: {
+  expandedIds?: CollectionId[];
+  library?: string;
+} = {}) {
+  const params = new URLSearchParams();
+  if (library) {
+    params.set("library", library);
   }
-  return `${ROOT_URL}/library${query}`;
+  expandedIds?.forEach((id) => params.append("expandedId", String(id)));
+  const query = params.toString();
+  return `${ROOT_URL}/library${query ? `?${query}` : ""}`;
 }
 
 export function dataStudioTable(tableId: TableId) {
@@ -315,6 +319,10 @@ export function dataStudioSchemaViewer(args?: DataStudioSchemaViewerParams) {
 
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
+}
+
+export function dataStudioEvents() {
+  return `${dataStudio()}/events`;
 }
 
 export function dataStudioGitSync() {

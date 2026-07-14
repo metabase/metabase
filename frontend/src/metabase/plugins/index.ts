@@ -128,7 +128,10 @@ export {
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
-export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REMOTE_SYNC,
+  type CollectionsNavTreeProps,
+} from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,

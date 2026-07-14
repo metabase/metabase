@@ -10,6 +10,8 @@ interface VisibilityTogglerProps {
   readOnly: boolean;
   toggleEditor: () => void;
   className?: string;
+  /** When true, always show the expand icon and omit the "Open Editor" label. */
+  forceExpand?: boolean;
 }
 
 export const VisibilityToggler = ({
@@ -17,9 +19,11 @@ export const VisibilityToggler = ({
   readOnly,
   toggleEditor,
   className = "",
+  forceExpand = false,
 }: VisibilityTogglerProps) => {
-  const text = isOpen ? null : t`Open Editor`;
-  const icon = isOpen ? "contract" : "expand";
+  const showExpand = forceExpand || !isOpen;
+  const text = showExpand && !forceExpand ? t`Open Editor` : null;
+  const icon = showExpand ? "expand" : "contract";
 
   return (
     <Flex
@@ -30,6 +34,7 @@ export const VisibilityToggler = ({
       })}
       onClick={toggleEditor}
       data-testid="visibility-toggler"
+      aria-label={showExpand ? t`Expand editor` : t`Collapse editor`}
       aria-hidden={readOnly}
     >
       {text && (

@@ -623,12 +623,11 @@ describe(
     });
 
     it("can create a question from the sample database", () => {
-      cy.visit("/question/new");
+      cy.visit("/question/notebook");
 
       H.miniPickerBrowseAll().click();
       H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
 
-      // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
       H.tableInteractive().within(() => {
@@ -637,12 +636,11 @@ describe(
     });
 
     it("can create a question from a saved question", () => {
-      cy.visit("/question/new");
+      cy.visit("/question/notebook");
 
       H.miniPickerBrowseAll().click();
       H.pickEntity({ path: ["Our analytics", "Orders"] });
 
-      // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
       H.tableInteractive().within(() => {

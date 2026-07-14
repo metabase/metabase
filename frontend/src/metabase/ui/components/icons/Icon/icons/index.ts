@@ -134,6 +134,8 @@ import company_component from "./company.svg?component";
 import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
+import compass_component from "./compass.svg?component";
+import compass_source from "./compass.svg?source";
 import connections_component from "./connections.svg?component";
 import connections_source from "./connections.svg?source";
 import contract_component from "./contract.svg?component";
@@ -414,6 +416,8 @@ import published_component from "./published.svg?component";
 import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
+import query_component from "./query.svg?component";
+import query_source from "./query.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
 import quote_component from "./quote.svg?component";
@@ -856,6 +860,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     comment: {
       component: comment_component,
       source: comment_source,
+    },
+    compass: {
+      component: compass_component,
+      source: compass_source,
     },
     connections: {
       component: connections_component,
@@ -1476,6 +1484,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     synced_collection: {
       component: synced_collection_component,
       source: synced_collection_source,
+    },
+    query: {
+      component: query_component,
+      source: query_source,
     },
     question: {
       component: question_component,

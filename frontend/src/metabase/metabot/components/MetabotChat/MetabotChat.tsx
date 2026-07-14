@@ -40,10 +40,14 @@ export const MetabotChat = ({
   config = defaultConfig,
   className,
   headerActions,
+  hideInput = false,
+  hideEmptyState = false,
 }: {
   config?: MetabotConfig;
   className?: string;
   headerActions?: ReactNode;
+  hideInput?: boolean;
+  hideEmptyState?: boolean;
 }) => {
   const [
     isAiProviderConfigurationModalOpen,
@@ -91,7 +95,7 @@ export const MetabotChat = ({
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
         >
-          {!hasMessages && !metabot.isDoingScience && (
+          {!hasMessages && !metabot.isDoingScience && !hideEmptyState && (
             <>
               {/* empty state */}
               <Flex
@@ -176,7 +180,7 @@ export const MetabotChat = ({
         </Box>
       </Box>
 
-      {isConfigured && (
+      {isConfigured && !hideInput && (
         <Box className={Styles.textInputContainer}>
           <Paper
             className={cx(

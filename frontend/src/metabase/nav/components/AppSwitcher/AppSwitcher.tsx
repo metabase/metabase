@@ -7,6 +7,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { userInitials } from "metabase/common/utils/user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { prepareInitials } from "metabase/common/utils/user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
@@ -72,6 +74,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const currentApp = useGetCurrentApp();
 
   const appsSection = useMemo(() => {
+    // The prototype nav drops the app-switching items, leaving just the
+    // initials avatar that opens the account menu.
+    if (PROTO_NAV_ENABLED) {
+      return null;
+    }
+
     const showAdminSettingsItem = adminItems?.length > 0;
 
     if (!canAccessDataStudio && !showAdminSettingsItem) {

@@ -20,6 +20,7 @@ import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
   getDatabasesList,
@@ -498,6 +499,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   });
 
   useEffect(() => {
+    // The prototype nav stays open; don't auto-close it on the QB.
+    if (PROTO_NAV_ENABLED) {
+      return;
+    }
     if (
       (isAnySidebarOpen && !wasShowingAnySidebar) ||
       (isNativeEditorOpen && !wasNativeEditorOpen)

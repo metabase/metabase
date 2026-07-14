@@ -1,5 +1,5 @@
-import type { ExpandedState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ExpandedState, Row } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -28,6 +28,10 @@ import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
 import { useLibraryCollections } from "./useLibraryCollections";
 import { useLibrarySearch } from "./useLibrarySearch";
+import {
+  type LibraryHierarchyKind,
+  useLibrarySegmentsMeasuresTree,
+} from "./useLibrarySegmentsMeasuresTree";
 
 type Params = {
   collections: Collection[];
@@ -35,6 +39,49 @@ type Params = {
   searchQuery: string;
   onPublishTableClick: VoidFunction;
 };
+
+const EMPTY_SNIPPET_TREE: TreeItem[] = [];
+const EMPTY_TREE: TreeItem[] = [];
+
+function filterSectionTree(tree: TreeItem[]) {
+  return tree.filter((node) => node.model !== "empty-state");
+}
+
+function filterHierarchyTree(tree: TreeItem[], searchQuery: string) {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) {
+    return tree;
+  }
+
+  return tree.flatMap((tableNode) => {
+    const tableNameMatches = tableNode.name.toLowerCase().includes(query);
+    const matchingChildren = (tableNode.children ?? []).filter((child) =>
+      child.name.toLowerCase().includes(query),
+    );
+
+    if (tableNameMatches) {
+      return [tableNode];
+    }
+
+    if (matchingChildren.length > 0) {
+      return [{ ...tableNode, children: matchingChildren }];
+    }
+
+    return [];
+  });
+}
+
+function unwrapLibrarySectionRoot(tree: TreeItem[]) {
+  return filterSectionTree(tree.flatMap((node) => node.children ?? []));
+}
+
+function getExpandedRowSignature<T>(rows: Row<T>[]) {
+  return rows
+    .filter((row) => row.getIsExpanded())
+    .map((row) => row.id)
+    .sort()
+    .join("|");
+}
 
 export function useLibraryTreeTableInstance({
   collections,
@@ -44,6 +91,17 @@ export function useLibraryTreeTableInstance({
 }: Params) {
   const { location } = useRouter();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  const sectionFilter = location.query?.library;
+  const isSectionFiltered = sectionFilter != null;
+  const hierarchyKind: LibraryHierarchyKind | null =
+    sectionFilter === "segments" || sectionFilter === "measures"
+      ? sectionFilter
+      : null;
+  const isHierarchyView = hierarchyKind != null;
+  const needsTableTree = !isSectionFiltered || sectionFilter === "tables";
+  const needsMetricTree = !isSectionFiltered || sectionFilter === "metrics";
+  const needsSnippets = !isSectionFiltered;
 
   const expandedIdsFromUrl = useMemo(() => {
     const rawIds = location.query?.expandedId;
@@ -57,6 +115,7 @@ export function useLibraryTreeTableInstance({
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
   }, [location.query?.expandedId]);
+
   const { libraryCollection, tableCollection, metricCollection } =
     useLibraryCollections(collections);
 
@@ -67,7 +126,10 @@ export function useLibraryTreeTableInstance({
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
     refreshCollections: refreshTableCollections,
-  } = useLibraryCollectionTree(tableCollection, "data");
+  } = useLibraryCollectionTree(
+    needsTableTree ? tableCollection : undefined,
+    "data",
+  );
   const {
     tree: metricsTree,
     isLoading: loadingMetrics,
@@ -76,7 +138,7 @@ export function useLibraryTreeTableInstance({
     isChildrenLoading: isMetricChildrenLoading,
     refreshCollections: refreshMetricCollections,
   } = useLibraryCollectionTree(
-    metricCollection,
+    needsMetricTree ? metricCollection : undefined,
     "metrics",
     metricCollection?.id,
   );
@@ -86,39 +148,81 @@ export function useLibraryTreeTableInstance({
     error: snippetsError,
   } = useBuildSnippetTree();
 
-  // Server-side search for tables and metrics, client-side for snippets
+  const activeSnippetTree = needsSnippets ? snippetTree : EMPTY_SNIPPET_TREE;
+
   const {
     tree: searchTree,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
-  } = useLibrarySearch(searchQuery, libraryCollection?.id, snippetTree);
-
-  const combinedTree = useMemo(
-    () =>
-      isSearchActive
-        ? searchTree
-        : [...tablesTree, ...metricsTree, ...snippetTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, snippetTree],
+  } = useLibrarySearch(
+    needsSnippets || sectionFilter === "tables" || sectionFilter === "metrics"
+      ? searchQuery
+      : "",
+    libraryCollection?.id,
+    activeSnippetTree,
   );
 
-  const isLoading =
-    isLoadingCollections ||
-    loadingTables ||
-    loadingMetrics ||
-    loadingSnippets ||
-    isSearchLoading;
+  const {
+    tree: hierarchyTree,
+    isLoading: loadingHierarchy,
+    rawItemCount,
+  } = useLibrarySegmentsMeasuresTree(hierarchyKind);
+
+  const combinedTree = useMemo(() => {
+    if (isHierarchyView) {
+      const tree = hierarchyTree.length > 0 ? hierarchyTree : EMPTY_TREE;
+      return filterHierarchyTree(tree, searchQuery);
+    }
+    if (isSearchActive) {
+      return searchTree;
+    }
+    if (sectionFilter === "tables") {
+      return unwrapLibrarySectionRoot(tablesTree);
+    }
+    if (sectionFilter === "metrics") {
+      return unwrapLibrarySectionRoot(metricsTree);
+    }
+    return [...tablesTree, ...metricsTree, ...activeSnippetTree];
+  }, [
+    isHierarchyView,
+    hierarchyTree,
+    searchQuery,
+    isSearchActive,
+    sectionFilter,
+    searchTree,
+    tablesTree,
+    metricsTree,
+    activeSnippetTree,
+  ]);
+
+  const isLoading = isHierarchyView
+    ? loadingHierarchy
+    : sectionFilter === "tables"
+      ? isLoadingCollections || loadingTables || isSearchLoading
+      : sectionFilter === "metrics"
+        ? isLoadingCollections || loadingMetrics || isSearchLoading
+        : isLoadingCollections ||
+          loadingTables ||
+          loadingMetrics ||
+          loadingSnippets ||
+          isSearchLoading;
+
   useErrorHandling(tablesError || metricsError || snippetsError);
 
-  const libraryHasContent = useMemo(
-    () =>
-      combinedTree.some(
-        (node) =>
-          node.children &&
-          node.children.length > 0 &&
-          node.children.some((child) => child.model !== "empty-state"),
-      ),
-    [combinedTree],
-  );
+  const libraryHasContent = useMemo(() => {
+    if (isHierarchyView) {
+      return hierarchyTree.length > 0;
+    }
+    if (sectionFilter === "tables" || sectionFilter === "metrics") {
+      return combinedTree.length > 0;
+    }
+    return combinedTree.some(
+      (node) =>
+        node.children &&
+        node.children.length > 0 &&
+        node.children.some((child) => child.model !== "empty-state"),
+    );
+  }, [combinedTree, hierarchyTree, isHierarchyView, sectionFilter]);
 
   const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
     () => [
@@ -190,16 +294,28 @@ export function useLibraryTreeTableInstance({
       {
         id: "actions",
         width: 48,
-        cell: ({ row }) => (
-          <ActionCell
-            treeItem={row.original}
-            refreshMetricCollections={refreshMetricCollections}
-            refreshTableCollections={refreshTableCollections}
-          />
-        ),
+        cell: ({ row }) => {
+          if (isHierarchyView) {
+            return null;
+          }
+          if (
+            row.original.model === "segment" ||
+            row.original.model === "measure"
+          ) {
+            return null;
+          }
+          return (
+            <ActionCell
+              treeItem={row.original}
+              refreshMetricCollections={refreshMetricCollections}
+              refreshTableCollections={refreshTableCollections}
+            />
+          );
+        },
       },
     ],
     [
+      isHierarchyView,
       isRemoteSyncReadOnly,
       onPublishTableClick,
       refreshMetricCollections,
@@ -207,10 +323,44 @@ export function useLibraryTreeTableInstance({
     ],
   );
 
-  const snippetRootId = snippetTree[0]?.id;
+  const getSubRows = useCallback((node: TreeItem) => node.children, []);
+  const getNodeId = useCallback((node: TreeItem) => node.id, []);
 
-  // Controlled expansion: expand all during search, preserve user state when browsing.
-  // Default any IDs from the URL. If none are provided, default to Data, Metrics and SQL Snippets expanded
+  const getRowCanExpand = useCallback(
+    (row: Row<TreeItem>) => {
+      const { model, data, children } = row.original;
+      if (isHierarchyView) {
+        return (children?.length ?? 0) > 0;
+      }
+      if (model !== "collection") {
+        return false;
+      }
+      if (row.original.childrenLoaded) {
+        return children != null && children.length > 0;
+      }
+      if (children && children.length > 0) {
+        return true;
+      }
+      if (!isEmptyStateData(data) && "here" in data) {
+        const item = data as { here?: string[]; below?: string[] };
+        return (
+          (item.here != null && item.here.length > 0) ||
+          (item.below != null && item.below.length > 0)
+        );
+      }
+      return false;
+    },
+    [isHierarchyView],
+  );
+
+  const isFilterable = useCallback(
+    (node: TreeItem) =>
+      node.model !== "collection" && node.model !== "empty-state",
+    [],
+  );
+
+  const snippetRootId = needsSnippets ? snippetTree[0]?.id : undefined;
+
   const defaultExpanded = useMemo<ExpandedState>(() => {
     if (expandedIdsFromUrl) {
       return expandedIdsFromUrl;
@@ -222,94 +372,123 @@ export function useLibraryTreeTableInstance({
     if (metricCollection) {
       ids[`collection:${metricCollection.id}`] = true;
     }
-
     if (snippetRootId) {
       ids[snippetRootId] = true;
     }
-
     return ids;
   }, [expandedIdsFromUrl, tableCollection, metricCollection, snippetRootId]);
 
   const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
     null,
   );
+  const lastExpandedSignatureRef = useRef<string | null>(null);
 
-  // Lock browseExpanded once loading settles. isLoading now includes the collections fetch, so it
-  // no longer fires early (section item queries are skipped until collections resolve).
   useEffect(() => {
-    if (
-      browseExpanded === null &&
-      !isLoading &&
-      Object.keys(defaultExpanded).length > 0
-    ) {
-      setBrowseExpanded(defaultExpanded);
+    setBrowseExpanded(null);
+    lastExpandedSignatureRef.current = null;
+  }, [sectionFilter]);
+
+  useEffect(() => {
+    if (isSectionFiltered || browseExpanded !== null || isLoading) {
+      return;
     }
-  }, [browseExpanded, defaultExpanded, isLoading]);
+    setBrowseExpanded(defaultExpanded);
+  }, [isSectionFiltered, browseExpanded, defaultExpanded, isLoading]);
 
   const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
   const onExpandedChange = useCallback(
     (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
-      if (!isSearchActive) {
+      if (isSearchActive) {
+        return;
+      }
+      if (!isSectionFiltered) {
         setBrowseExpanded((prev) => {
           const current = prev ?? defaultExpanded;
           return typeof updater === "function" ? updater(current) : updater;
         });
       }
     },
-    [isSearchActive, defaultExpanded],
+    [isSearchActive, isSectionFiltered, defaultExpanded],
   );
+
+  const useControlledExpansion = isSearchActive || !isSectionFiltered;
+  const isHierarchyExpandView =
+    hierarchyKind === "segments" || hierarchyKind === "measures";
 
   const treeTableInstance = useTreeTableInstance({
     data: combinedTree,
     columns: libraryColumnDef,
-    getSubRows: (node) => node.children,
-    getNodeId: (node) => node.id,
-    getRowCanExpand: (row) => {
-      const { model, data, children } = row.original;
-      if (model !== "collection") {
-        return false;
-      }
-      if (row.original.childrenLoaded) {
-        return children != null && children.length > 0;
-      }
-      // Already has children populated
-      if (children && children.length > 0) {
-        return true;
-      }
-      // Not loaded yet — check here/below from the API to know if expandable
-      if (!isEmptyStateData(data) && "here" in data) {
-        // Unjustified type cast. FIXME
-        const item = data as { here?: string[]; below?: string[] };
-        return (
-          (item.here != null && item.here.length > 0) ||
-          (item.below != null && item.below.length > 0)
-        );
-      }
-      return false;
-    },
-    expanded,
-    onExpandedChange,
-    isFilterable: (node) =>
-      node.model !== "collection" && node.model !== "empty-state",
+    getSubRows,
+    getNodeId,
+    getRowCanExpand,
+    isFilterable,
+    ...(isHierarchyExpandView
+      ? { defaultExpanded: true }
+      : useControlledExpansion
+        ? {
+            expanded,
+            onExpandedChange,
+          }
+        : {}),
   });
 
-  // Lazy-load subcollection items when expanded
   useEffect(() => {
-    watchTableRows(treeTableInstance.rows);
-    watchMetricRows(treeTableInstance.rows);
-  }, [treeTableInstance.rows, watchTableRows, watchMetricRows]);
+    if (isHierarchyView) {
+      return;
+    }
+
+    const signature = getExpandedRowSignature(treeTableInstance.rows);
+    if (signature === lastExpandedSignatureRef.current) {
+      return;
+    }
+    lastExpandedSignatureRef.current = signature;
+
+    const rows = treeTableInstance.rows;
+    if (needsTableTree) {
+      watchTableRows(rows);
+    }
+    if (needsMetricTree) {
+      watchMetricRows(rows);
+    }
+  }, [
+    isHierarchyView,
+    needsTableTree,
+    needsMetricTree,
+    treeTableInstance.rows,
+    watchTableRows,
+    watchMetricRows,
+  ]);
 
   const isChildrenLoading = useCallback(
-    (row: Parameters<typeof isTableChildrenLoading>[0]) =>
-      isTableChildrenLoading(row) || isMetricChildrenLoading(row),
-    [isTableChildrenLoading, isMetricChildrenLoading],
+    (row: Parameters<typeof isTableChildrenLoading>[0]) => {
+      if (sectionFilter === "metrics") {
+        return isMetricChildrenLoading(row);
+      }
+      if (sectionFilter === "tables") {
+        return isTableChildrenLoading(row);
+      }
+      return isTableChildrenLoading(row) || isMetricChildrenLoading(row);
+    },
+    [sectionFilter, isTableChildrenLoading, isMetricChildrenLoading],
   );
 
   let emptyMessage = null;
-  if (!libraryHasContent) {
-    emptyMessage = t`No tables, metrics, or snippets yet`;
-  } else if (searchQuery) {
+  const trimmedSearchQuery = searchQuery.trim();
+
+  if (trimmedSearchQuery && !isLoading && combinedTree.length === 0) {
     emptyMessage = t`No results for "${searchQuery}"`;
+  } else if (!libraryHasContent && !isLoading) {
+    if (sectionFilter === "tables") {
+      emptyMessage = t`No published tables yet`;
+    } else if (sectionFilter === "metrics") {
+      emptyMessage = t`No metrics yet`;
+    } else if (sectionFilter === "segments") {
+      emptyMessage = rawItemCount === 0 ? t`No segments yet` : null;
+    } else if (sectionFilter === "measures") {
+      emptyMessage = rawItemCount === 0 ? t`No measures yet` : null;
+    } else {
+      emptyMessage = t`No tables, metrics, or snippets yet`;
+    }
   }
 
   return {

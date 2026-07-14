@@ -8,6 +8,7 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import * as Urls from "metabase/urls";
 
 type ToolsAppProps = {
@@ -21,50 +22,53 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
       maw="100rem"
       fullWidth={location?.pathname === Urls.dependencyGraph()}
       sidebar={
-        <AdminNavWrapper>
-          <ToolsNavItem
-            label={t`Help`}
-            path={Urls.adminToolsHelp()}
-            icon="info"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Tasks`}
-            path={Urls.adminToolsTasks()}
-            icon="clipboard"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Jobs`}
-            path={Urls.adminToolsJobs()}
-            icon="clock"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Logs`}
-            path={Urls.adminToolsLogs()}
-            icon="audit"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Erroring questions`}
-            path={Urls.adminToolsErrors()}
-            icon="warning_round_filled"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Model cache log`}
-            path={Urls.adminToolsModelCaching()}
-            icon="database"
-            location={location}
-          />
-          <ToolsNavItem
-            label={t`Alerts management`}
-            path={Urls.adminToolsNotifications()}
-            icon="bell"
-            location={location}
-          />
-        </AdminNavWrapper>
+        // The prototype nav's Monitor section replaces the Tools sidebar.
+        PROTO_NAV_ENABLED ? null : (
+          <AdminNavWrapper>
+            <ToolsNavItem
+              label={t`Help`}
+              path={Urls.adminToolsHelp()}
+              icon="info"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Tasks`}
+              path={Urls.adminToolsTasks()}
+              icon="clipboard"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Jobs`}
+              path={Urls.adminToolsJobs()}
+              icon="clock"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Logs`}
+              path={Urls.adminToolsLogs()}
+              icon="audit"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Erroring questions`}
+              path={Urls.adminToolsErrors()}
+              icon="warning_round_filled"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Model cache log`}
+              path={Urls.adminToolsModelCaching()}
+              icon="database"
+              location={location}
+            />
+            <ToolsNavItem
+              label={t`Alerts management`}
+              path={Urls.adminToolsNotifications()}
+              icon="bell"
+              location={location}
+            />
+          </AdminNavWrapper>
+        )
       }
     >
       {children}
