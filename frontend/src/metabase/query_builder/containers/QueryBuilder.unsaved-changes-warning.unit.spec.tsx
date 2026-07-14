@@ -16,7 +16,7 @@ import {
   within,
 } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/lib/card";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCardQueryMetadata,
   createMockDataset,

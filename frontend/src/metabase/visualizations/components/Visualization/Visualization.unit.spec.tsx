@@ -6,7 +6,7 @@ import { delay } from "__support__/utils";
 import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   RawSeries,

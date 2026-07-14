@@ -10,7 +10,7 @@ import { act, renderWithProviders, screen } from "__support__/ui";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,

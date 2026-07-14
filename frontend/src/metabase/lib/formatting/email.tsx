@@ -1,7 +1,7 @@
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { isEmail } from "metabase/lib/email";
-import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 
+import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick } from "./link";
 import { removeNewLines } from "./strings";
 import type { OptionsType } from "./types";

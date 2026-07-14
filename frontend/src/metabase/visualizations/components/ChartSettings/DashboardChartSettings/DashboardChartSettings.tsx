@@ -6,7 +6,7 @@ import { Divider, Flex } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { BaseChartSettings } from "../BaseChartSettings";

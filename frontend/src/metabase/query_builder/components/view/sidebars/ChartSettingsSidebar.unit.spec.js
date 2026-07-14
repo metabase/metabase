@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   PRODUCTS_ID,
   createSampleDatabase,

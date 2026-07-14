@@ -19,7 +19,7 @@ import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
   createMockActionDashboardCard,

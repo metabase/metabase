@@ -6,12 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { parseNumber } from "metabase/lib/number";
-import {
-  clickBehaviorIsValid,
-  getDataFromClicked,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
 import {
   isBoolean,
   isCoordinate,
@@ -23,10 +18,12 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
+import { clickBehaviorIsValid, getDataFromClicked } from "./click-data";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
+import { renderLinkTextForClick } from "./link";
 import { formatNumber } from "./numbers";
 import { removeNewLines } from "./strings";
 import { formatTime } from "./time";

@@ -33,8 +33,7 @@ import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { SingleSeries } from "metabase-types/api";
 
-import { DimensionsWidget } from "./DimensionsWidget";
-import { SliceNameWidget, type SliceNameWidgetProps } from "./SliceNameWidget";
+import type { SliceNameWidgetProps } from "./SliceNameWidget";
 
 const pieRowsReadDeps = [
   "pie.dimension",
@@ -146,7 +145,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       SliceNameWidgetProps
     >(SERIES_SETTING_KEY, {
       getObjectKey: keyForSingleSeries,
-      widget: SliceNameWidget,
+      widget: "pieSliceName",
       getHidden: ([{ card }], _settings, extra) =>
         !extra?.isDashboard || card?.display === "waterfall",
       getSection: (_series, _settings, extra) =>
@@ -178,10 +177,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
 
     "pie._dimensions_widget": {
-      get section() {
-        return t`Data`;
-      },
-      widget: DimensionsWidget,
+      getSection: () => t`Data`,
+      widget: "pieDimensions",
       getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => ({
         rawSeries,
         settings,

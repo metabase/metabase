@@ -13,7 +13,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Input } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,

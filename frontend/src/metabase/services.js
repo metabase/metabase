@@ -2,7 +2,7 @@ import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
-import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
+import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 
 import { getIsEmbedPreview } from "./get-is-embed-preview";
 

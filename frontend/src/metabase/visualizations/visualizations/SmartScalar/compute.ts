@@ -16,7 +16,6 @@ import {
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -248,7 +247,6 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card,
       data: { rows, cols },
     },
   ] = series;
@@ -291,16 +289,18 @@ function getCurrentMetricData({
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
+
+  const isNative = cols.some((col) => col.source === "native");
+
   const dateColumnWithUnit = { ...dateColumn };
   dateColumnWithUnit.unit ??= dateUnit;
   const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
-  const question = new Question(card);
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
     dateColumnSettings,
     dateUnit,
-    queryType: question.isNative() ? "native" : "query",
+    queryType: isNative ? "native" : "query",
   };
 
   const formatOptions = {

@@ -13,10 +13,7 @@ import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
 } from "metabase/plugins";
-import {
-  NotFoundPlaceholder,
-  PluginPlaceholder,
-} from "metabase/plugins/components/PluginPlaceholder";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
@@ -62,7 +59,7 @@ export interface RemoteSyncDirtyState {
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
-  RemoteSyncSettings: NotFoundPlaceholder,
+  RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   GitSyncAppBarControls: PluginPlaceholder as ComponentType,
   GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,

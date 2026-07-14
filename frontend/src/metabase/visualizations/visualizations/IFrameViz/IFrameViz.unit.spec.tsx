@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Parameter, VisualizationSettings } from "metabase-types/api";
 import {
   createMockDashboard,
