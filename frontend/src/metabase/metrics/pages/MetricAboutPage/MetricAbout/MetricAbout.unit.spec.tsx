@@ -8,7 +8,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field } from "metabase-types/api";
 import {
   createMockCard,

@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.ai-tracing.core :as ait]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -102,7 +103,7 @@
   `start` event's `messageId` so the client can correlate streamed messages
   with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           assistant-msg-id external-id]}]
+           eval-session-id assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -121,12 +122,13 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages      messages
-                               :state         state
-                               :metabot-id    metabot-id
-                               :profile-id    (keyword profile-id)
-                               :context       enriched-context
-                               :tracking-opts {:session-id conversation-id}}
+                      (cond-> {:messages        messages
+                               :state           state
+                               :metabot-id      metabot-id
+                               :profile-id      (keyword profile-id)
+                               :context         enriched-context
+                               :eval-session-id eval-session-id
+                               :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -186,7 +188,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug eval_session_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -211,6 +213,7 @@
         :conversation-id  conversation_id
         :state            state
         :debug?           debug?
+        :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id}))))
 
@@ -255,6 +258,12 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
+            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
+            ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
+            ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.
+            ;; `ait/max-session-id-length` / `ait/safe-session-id-re` are the single source of truth.
+            [:eval_session_id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)
@@ -279,13 +288,7 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (let [message (metabot.feedback/persist-feedback! body)]
-    (try
-      (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                      (metabot.feedback/harbormaster-payload body message))
-                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
-      (catch Exception e
-        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/source-feedback" :- [:map

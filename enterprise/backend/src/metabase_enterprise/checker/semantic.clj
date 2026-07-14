@@ -441,8 +441,19 @@
   (let [stages (get-in data [:dataset_query :stages])]
     (reduce
      (fn [acc stage]
-       (let [;; Snippets from template-tags
-             snippets (->> (vals (:template-tags stage))
+       (let [template-tags (:template-tags stage)
+             ;; TODO (Cam 2026-07-07) MEGA ICK - we have to copy the usual template tag normalization stuff (map =>
+             ;; list) done IN LIB here because this code is DOING ⚠⚠⚠ RAW MBQL INTROSPECTION OUTSIDE OF LIB ⚠⚠⚠ which
+             ;; means it has to handle both old and new shapes instead of letting Lib take care of that for us... who
+             ;; know what other shape variations this code doesn't handle correctly? (See GHY-4080)
+             template-tags (if (map? template-tags)
+                             (into []
+                                   (map (fn [[tag-name tag]]
+                                          (assoc tag :name tag-name)))
+                                   template-tags)
+                             template-tags)
+             ;; Snippets from template-tags
+             snippets (->> template-tags
                            (filter #(= "snippet" (get % :type)))
                            (keep :snippet-name))
              ;; Measures and metrics from aggregation clauses

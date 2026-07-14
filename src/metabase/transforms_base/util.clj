@@ -129,10 +129,10 @@
   This is the table variable the incremental range filter is injected into (see
   `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
   [query table-id]
-  (some (fn [[k v]]
-          (when (and (#{:table "table"} (:type v))
-                     (or (nil? table-id) (= table-id (:table-id v))))
-            k))
+  (some (fn [{tag-name :name, :as tag}]
+          (when (and (#{:table "table"} (:type tag))
+                     (or (nil? table-id) (= table-id (:table-id tag))))
+            tag-name))
         (lib/template-tags query)))
 
 (defn incremental-table-tag-name
@@ -335,7 +335,13 @@
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
     (lib.util/update-query-stage
      query 0
-     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
+     update :template-tags
+     (fn [template-tags]
+       (mapv (fn [tag]
+               (cond-> tag
+                 (= (:name tag) tag-name)
+                 (assoc :source-filters filters)))
+             template-tags)))))
 
 (mu/defn get-source-range-params :- [:maybe ::transforms-base.schema/source-range-params]
   "Returns information on the incremental range filters that ought to be applied to a source query.
@@ -352,7 +358,7 @@
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when (and (incremental-target? transform)
                (native-query-transform? transform)
-               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]

@@ -692,7 +692,7 @@
                               dataset-name)))
 
 (defmethod test.data.impl.get-or-create/dataset-lock :snowflake
-  [_driver dataset-name]
+  [_driver dataset]
   (reify ReadWriteLock
     (readLock [_]
       (reify Lock
@@ -701,6 +701,6 @@
     (writeLock [_]
       (reify Lock
         (lock [_]
-          (lock! dataset-name))
+          (lock! (qualified-db-name dataset)))
         (unlock [_]
-          (with-write-stmt! (partial unlock! dataset-name)))))))
+          (with-write-stmt! (partial unlock! (qualified-db-name dataset))))))))
