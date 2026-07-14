@@ -1,7 +1,8 @@
-import { MetabaseProvider } from "enterprise/frontend/src/embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";
-import type { MetabaseProviderProps } from "frontend/src/embedding-sdk-bundle/types/metabase-provider";
-import { ensureMetabaseProviderPropsStore } from "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { once } from "underscore";
+
+import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 const registerDataAppDevContext = once((appSlug: string) => {
   ensureMetabaseProviderPropsStore().updateInternalProps({

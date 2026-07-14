@@ -1,12 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { ensureMetabaseProviderPropsStore } from "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 import { DataAppDevProvider } from "./DataAppDevProvider";
 
 // The real MetabaseProvider boots the SDK bundle loading flow; this spec only
 // covers DataAppDevProvider's own wiring.
 jest.mock(
-  "enterprise/frontend/src/embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider",
+  "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider",
   () => ({
     MetabaseProvider: ({ children }: { children: React.ReactNode }) => (
       <>{children}</>
