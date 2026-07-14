@@ -15,7 +15,6 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
-  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -59,7 +58,6 @@ import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
-  getSidebarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -68,7 +66,6 @@ import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
-import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 
 // The prefetch queue tracks every card embed's in-flight load, so it doubles
 // as the print-readiness signal: printing waits until nothing is loading.
@@ -149,7 +146,6 @@ export const DocumentPage = ({
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const sidebarMode = useSelector(getSidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [mainContentEl, setMainContentEl] = useState<HTMLDivElement | null>(
     null,
@@ -159,7 +155,6 @@ export const DocumentPage = ({
     "duplicate" | "leave" | null
   >(null);
 
-  useListTimelinesQuery({ include: "events" }); // warm the cache for the timeline sidebar
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
   });
@@ -292,8 +287,7 @@ export const DocumentPage = ({
 
             {selectedQuestionId &&
               selectedEmbedIndex !== null &&
-              editorInstance &&
-              sidebarMode === "viz-settings" && (
+              editorInstance && (
                 <Box
                   className={styles.sidebar}
                   data-testid="document-card-sidebar"
@@ -301,23 +295,6 @@ export const DocumentPage = ({
                   <EmbedQuestionSettingsSidebar
                     cardId={selectedQuestionId}
                     editorInstance={editorInstance}
-                  />
-                </Box>
-              )}
-
-            {selectedQuestionId &&
-              selectedEmbedIndex !== null &&
-              editorInstance &&
-              sidebarMode === "timeline-events" && (
-                <Box
-                  className={styles.sidebar}
-                  data-testid="document-timeline-sidebar"
-                >
-                  <TimelineEventsSidebar
-                    cardId={selectedQuestionId}
-                    selectedEmbedIndex={selectedEmbedIndex}
-                    editorInstance={editorInstance}
-                    collectionId={documentData?.collection_id ?? null}
                   />
                 </Box>
               )}

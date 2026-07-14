@@ -14,15 +14,11 @@ import { onOpenTimelines } from "metabase/redux/query-builder";
 import { Box, Button, Icon } from "metabase/ui";
 import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
-import type {
-  CollectionId,
-  DatetimeUnit,
-  Timeline,
-  TimelineEvent,
-} from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
+import type { DatetimeUnit, Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
-  collectionId: CollectionId | null | undefined;
+  question: Question;
   timelines: Timeline[];
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
@@ -36,7 +32,7 @@ export interface TimelineSidebarProps {
 }
 
 export const TimelineSidebar = ({
-  collectionId,
+  question,
   timelines,
   visibleTimelineEventIds,
   selectedTimelineEventIds,
@@ -119,7 +115,7 @@ export const TimelineSidebar = ({
       )}
       <TimelinePanel
         timelines={displayedTimelines}
-        collectionId={collectionId}
+        collectionId={question.collectionId()}
         visibleEventIds={visibleTimelineEventIds}
         selectedEventIds={selectedTimelineEventIds}
         onNewEvent={handleNewEvent}

@@ -129,7 +129,6 @@ export const NativeQueryRightSidebar = (
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
         {...props}
-        collectionId={question.collectionId()}
         onShowTimelineEvents={showTimelineEvents}
         onHideTimelineEvents={hideTimelineEvents}
         onSelectTimelineEvents={selectTimelineEvents}

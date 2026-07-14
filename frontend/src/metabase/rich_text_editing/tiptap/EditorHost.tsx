@@ -119,9 +119,6 @@ export interface EditorCardHost {
     openVizSettingsSidebar: (payload: {
       embedIndex: number;
     }) => DispatchableAction;
-    openTimelineEventsSidebar: (payload: {
-      embedIndex: number;
-    }) => DispatchableAction;
     updateVizSettings: (payload: {
       cardId: number;
       settings: VisualizationSettings;
@@ -208,7 +205,6 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     loadMetadataForDocumentCard: () => ({ type: "@@editor-host/noop" }),
     openVizSettingsSidebar: () => ({ type: "@@editor-host/noop" }),
     updateVizSettings: () => ({ type: "@@editor-host/noop" }),
-    openTimelineEventsSidebar: () => ({ type: "@@editor-host/noop" }),
     updateMentionsCache: () => ({ type: "@@editor-host/noop" }),
   },
   analytics: {

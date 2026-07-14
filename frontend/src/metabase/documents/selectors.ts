@@ -49,11 +49,6 @@ export const getSelectedCardEmbed = createSelector(
   },
 );
 
-export const getSidebarMode = createSelector(
-  getDocumentsState,
-  (documents) => documents.sidebarMode,
-);
-
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument || null,
