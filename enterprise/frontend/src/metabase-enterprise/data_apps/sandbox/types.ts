@@ -8,7 +8,7 @@ export const DATA_APP_PROVIDER_PROP_KEYS = [
   "theme",
   "allowedCustomVisualizations",
   "errorComponent",
-] as const;
+] as const satisfies readonly (keyof DataAppMetabaseProviderProps)[];
 
 /**
  * Structural mirror of the `MetabaseProviderProps` subset a data app may
