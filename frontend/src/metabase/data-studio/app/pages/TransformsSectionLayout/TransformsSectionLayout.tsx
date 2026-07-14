@@ -9,10 +9,11 @@ import { useSelector } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
 import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
-import { NoWritableDatabasesEmptyState } from "metabase/transforms/pages/NoWritableDatabasesEmptyState";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
 
 import { SectionLayout } from "../../components/SectionLayout";
+
+import { NoWritableDatabasesEmptyState } from "./NoWritableDatabasesEmptyState";
 
 type TransformsSectionLayoutProps = WithRouterProps & {
   children?: ReactNode;
