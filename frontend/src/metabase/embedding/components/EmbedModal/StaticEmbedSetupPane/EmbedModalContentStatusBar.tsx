@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -32,7 +33,26 @@ export const EmbedModalContentStatusBar = ({
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
 
-  const readOnlyTooltip = t`This ${resourceType} is synced from another instance and is read-only here, so its embed settings can’t be changed.`;
+  // One whole sentence per resource type rather than an interpolated noun: the
+  // noun is not translatable on its own, and the rest of the sentence has to
+  // agree with its gender in many languages.
+  const readOnlyTooltip = match(resourceType)
+    .with(
+      "dashboard",
+      () =>
+        t`This dashboard is synced from another instance and is read-only here, so its embed settings can’t be changed.`,
+    )
+    .with(
+      "question",
+      () =>
+        t`This question is synced from another instance and is read-only here, so its embed settings can’t be changed.`,
+    )
+    .with(
+      "document",
+      () =>
+        t`This document is synced from another instance and is read-only here, so its embed settings can’t be changed.`,
+    )
+    .exhaustive();
 
   return (
     <Flex
