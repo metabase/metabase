@@ -113,10 +113,10 @@ function getStartOfWeekDay(
 // wants it back. Every context has to be walked, not just the default one: a string extracted
 // with a `msgctxt` (`c("…").t`) lives under that context, and leaving it without a `msgid` breaks
 // the locale for every string, not just that one.
-type TtagMessage = { msgid?: string; msgstr: string[] };
+type TtagMessage = { msgid?: string };
 
 const isTtagMessage = (value: unknown): value is TtagMessage =>
-  typeof value === "object" && value !== null && "msgstr" in value;
+  typeof value === "object" && value !== null;
 
 function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
   for (const context of Object.values(translationsObject.translations)) {
