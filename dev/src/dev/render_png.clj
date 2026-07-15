@@ -9,13 +9,13 @@
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as img]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.core :as qp]
    [metabase.system.core :as system]
    [metabase.test :as mt]
-   [metabase.util.markdown :as markdown]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
