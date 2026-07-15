@@ -4,11 +4,10 @@ import path from "node:path";
 import { load as parseYaml } from "js-yaml";
 
 /**
- * The app's parsed `data_app.yml` manifest, validated and normalized:
- * `slug` is trimmed, `allowed_hosts` is guaranteed to be a list of strings.
+ * The app's parsed `data_app.yaml` manifest, validated and normalized:
+ * `allowed_hosts` is guaranteed to be a list of strings.
  */
 export type DataAppManifest = {
-  slug?: string;
   allowed_hosts?: string[];
 };
 
@@ -40,16 +39,15 @@ const parseAllowedHosts = (
 };
 
 /**
- * Read, parse, and normalize the app's `data_app.yml`/`.yaml` manifest.
+ * Read, parse, and normalize the app's `data_app.yaml` manifest.
  * Returns null when the app has no manifest.
  */
 export const readManifest = (
   appRoot: string,
 ): { manifestPath: string; manifest: DataAppManifest } | null => {
-  const manifestPath = [
-    path.join(appRoot, "data_app.yaml"),
-    path.join(appRoot, "data_app.yml"),
-  ].find((candidate) => fs.existsSync(candidate));
+  const manifestPath = [path.join(appRoot, "data_app.yaml")].find((candidate) =>
+    fs.existsSync(candidate),
+  );
 
   if (!manifestPath) {
     return null;
@@ -67,13 +65,12 @@ export const readManifest = (
     );
   }
 
-  const raw: { slug?: unknown; allowed_hosts?: unknown } =
+  const raw: { allowed_hosts?: unknown } =
     typeof parsed === "object" && parsed !== null ? parsed : {};
 
   return {
     manifestPath,
     manifest: {
-      slug: isString(raw.slug) ? raw.slug.trim() : undefined,
       allowed_hosts: parseAllowedHosts(raw.allowed_hosts, manifestPath),
     },
   };

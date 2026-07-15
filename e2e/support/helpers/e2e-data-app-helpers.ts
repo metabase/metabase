@@ -3,6 +3,24 @@ import type { DataApp } from "metabase-types/api";
 
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
+import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
+
+export const SYNCED_DATA_APPS_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_data_apps";
+
+/**
+ * Copy the example data-app repo into the working directory of the local git repo
+ * `setupGitSync` created, so a `commitToRepo` + a real pull materialize its apps.
+ * The repo holds one directory per materialization outcome (a good app, an app
+ * whose bundle is missing, a malformed config, and a directory with no config) —
+ * see the fixture and the sync spec that drives it.
+ */
+export const copySyncedDataAppsFixture = () =>
+  cy.task("copyDirectory", {
+    source: SYNCED_DATA_APPS_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
 
 /**
  * The e2e data-app fixture that `mockDataApp` builds and serves — its directory

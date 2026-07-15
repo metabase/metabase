@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import react from "@vitejs/plugin-react";
 import {
   type ConfigEnv,
@@ -27,9 +29,18 @@ import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
-  const { manifest } = readManifest(appRoot) ?? {};
-  const appSlug = manifest?.slug ?? "";
-  const allowedHosts = manifest?.allowed_hosts ?? [];
+
+  const manifestResult = readManifest(appRoot);
+
+  if (!manifestResult) {
+    throw new Error(
+      `No data_app.yaml found in ${appRoot}. Run vite from the data app's own ` +
+        `directory (data_apps/<slug>/).`,
+    );
+  }
+
+  const appSlug = path.basename(appRoot);
+  const allowedHosts = manifestResult.manifest.allowed_hosts ?? [];
 
   return [
     react(),

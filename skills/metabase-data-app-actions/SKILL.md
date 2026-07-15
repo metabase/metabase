@@ -219,4 +219,4 @@ When an action appears to succeed but the screen doesn't update, or a call fails
 - Letting the trigger fire while a previous request is in flight. Drive `disabled={isExecuting}` from the hook.
 - Prepending the action's `result` directly to a local list to skip the refresh. Server-filled defaults (auto-IDs, timestamps, computed columns, derived join columns) diverge from any client-side guess.
 - Inventing an action because the user asked for behavior the instance doesn't expose. The schema is the catalog of what exists; surface the gap, don't fake the call.
-- Reaching for `fetch("/api/action/...")` directly. The sandbox blocks raw network calls to the Metabase origin (raw `fetch`/XHR work only for external `allowed_hosts` declared in `data_app.yml`); the only path to actions is `useAction`.
+- Reaching for `fetch("/api/action/...")` directly. The sandbox blocks raw network calls to the Metabase origin (raw `fetch`/XHR work only for external `allowed_hosts` declared in `data_app.yaml`); the only path to actions is `useAction`.

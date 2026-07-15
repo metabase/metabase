@@ -38,7 +38,7 @@ import (manual "Pull changes", auto-import, or startup).
 
 ```
 .
-├── data_app.yaml           ← manifest: name, slug, bundle path, allowed_hosts
+├── data_app.yaml           ← manifest: name, bundle path, allowed_hosts
 ├── package.json            ← @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
 ├── vite.config.ts          ← one-liner: `export default dataAppConfig()`
 ├── tsconfig.json

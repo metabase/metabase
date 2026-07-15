@@ -1,7 +1,6 @@
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
-  fakeDataApp as fakeApp,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
@@ -61,15 +60,9 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("shows a not-found state for a disabled or missing app", () => {
-      // A disabled or non-existent app 404s from the metadata endpoint; the host
-      // renders a not-found state rather than a broken iframe.
-      cy.intercept("GET", `/api/apps/${APP_NAME}`, {
-        statusCode: 404,
-        body: {},
-      }).as("meta");
-
-      H.openDataApp(APP_NAME);
-      cy.wait("@meta");
+      // No app with this slug exists, so the metadata endpoint really 404s and the
+      // host renders a not-found state rather than a broken iframe — no mock needed.
+      H.openDataApp("does-not-exist");
       H.main().findByText("Data app not found").should("be.visible");
     });
   });
@@ -148,20 +141,6 @@ describe("scenarios > data apps > viewing & routing", () => {
       // renders its themed failure screen in the host realm.
       H.main()
         .findByText(/couldn.t be loaded/i, { timeout: 30000 })
-        .should("be.visible");
-    });
-
-    it("shows a not-ready screen when the bundle hasn't synced (404)", () => {
-      cy.intercept("GET", "/api/apps/repo-status", { configured: true });
-      cy.intercept("GET", `/api/apps/${APP_NAME}`, fakeApp());
-      cy.intercept("GET", `/api/apps/${APP_NAME}/bundle*`, {
-        statusCode: 404,
-        body: { error: "Bundle not synced yet" },
-      });
-
-      cy.visit(`/apps/${APP_NAME}`);
-      H.main()
-        .findByText(/isn.t ready yet/i, { timeout: 30000 })
         .should("be.visible");
     });
   });
