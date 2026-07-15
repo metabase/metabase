@@ -13,7 +13,7 @@
                  :deprecated-var                                                      91
                  :discouraged-java-method                                             4
                  :discouraged-namespace                                               81
-                 :discouraged-var                                                     144
+                 :discouraged-var                                                     143
                  :equals-true                                                         28
                  :invalid-arity                                                       1
                  :main-without-gen-class                                              1
