@@ -44,17 +44,18 @@
                               :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
+;; in CI use a completely different set of databases for each run and tear down
+;; all of them when the job completes; see after-run below.
+(defonce dataset-prefix (str (rand-int 9999999)))
+
 (defn qualified-db-name
-  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
-  time."
+  "Isolate db name so we don't stomp on any other jobs running at the same time."
   [{:keys [database-name] :as db-def}]
-  (cond (str/starts-with? database-name "sha_")
-        database-name
-        ;; releases get their own isolated datasets
-        (tx/on-master-or-release-branch?)
-        (str "sha_rel_" (tx/hash-dataset db-def) "_" database-name)
-        :else
-        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (or (str/starts-with? database-name "isolate_")
+            (str/starts-with? database-name "sha_")) database-name
+        ;; isolate if we are in a CI job
+        (System/getenv "GITHUB_REF_NAME") (str "isolate_" dataset-prefix database-name)
+        :else (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -99,6 +100,17 @@
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
+
+;;; --------------------------------- Cleanup ----------------------------------
+
+(defmethod tx/after-run :snowflake [_driver]
+  (let [spec (no-db-connection-spec)
+        query "select name from metabase_test_tracking.PUBLIC.datasets
+                where name like 'isolate_%s%%'"]
+    (doseq [{:keys [name]} (jdbc/query spec [(format query dataset-prefix)])]
+      (jdbc/query spec
+                  ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" name])
+      (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
 
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
@@ -230,6 +242,8 @@
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] destroy database " database-name (:database-name dbdef))
     (jdbc/query (no-db-connection-spec)
                 ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
     (jdbc/execute! (no-db-connection-spec) [sql])))
@@ -386,6 +400,13 @@
     (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
 
 (comment
+  (let [test-data (tx/get-dataset-definition (data.impl/resolve-dataset-definition
+                                              *ns* 'test-data))]
+    (tx/dataset-already-loaded? :snowflake test-data))
+  (jdbc/query (no-db-connection-spec) ["SELECT query_text, end_time
+                                        FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+                                        WHERE query_text LIKE 'DROP DATABASE %'
+                                        ORDER BY end_time DESC limit 64"])
   (old-dataset-names)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
   ;; Tracked databases ordered by age
