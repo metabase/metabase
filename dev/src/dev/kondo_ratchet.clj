@@ -27,9 +27,10 @@
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
-;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`; the vector may span lines.
+;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`; the vector may span lines. The closing brace is
+;; optional so a map with extra keys after the vector still counts, but removal spans the whole form.
 (def ^:private vector-form-re
-  (re-pattern (str "(?:#_|\\^)\\s*\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\]")))
+  (re-pattern (str "(?:#_|\\^)\\s*\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\]\\s*\\}?")))
 
 ;; Bare `#_kw` / `^kw` with no linter vector: suppresses every linter on the next form.
 (def ^:private bare-form-re
@@ -117,6 +118,17 @@
                  (when-let [prev (first prev-lines)]
                    (re-matches substantive-comment-re (str/trim prev)))))))
 
+(defn ignore-matches
+  "Inline ignore matches in `content`, in file order:
+  `{:start _, :end _, :line _, :linters [...]}` with character offsets and a 1-based line.
+  Matches inside string literals or line comments are excluded."
+  [content]
+  (let [masked (mask-strings-and-comments content)]
+    (->> (concat (matches-with-offsets vector-form-re masked false)
+                 (matches-with-offsets bare-form-re masked true))
+         (sort-by :start)
+         (map #(assoc % :line (offset->line masked (:start %)))))))
+
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
   Returns `{:file \"src/...\", :line 42, :linters [...], :justified? true}` maps.
@@ -130,12 +142,9 @@
                     (some #(str/ends-with? (.getPath f) %) source-extensions))
          :let  [content (slurp f)]
          :when (str/includes? content ignore-marker)
-         :let  [masked (mask-strings-and-comments content)]
-         m     (sort-by :start
-                        (concat (matches-with-offsets vector-form-re masked false)
-                                (matches-with-offsets bare-form-re masked true)))]
+         m     (ignore-matches content)]
      {:file       (.getPath f)
-      :line       (offset->line masked (:start m))
+      :line       (:line m)
       :linters    (:linters m)
       :justified? (justified? content (:start m) (:end m))})))
 

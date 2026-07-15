@@ -34,10 +34,32 @@
     (kondo-ratchet/line-linters
      (str/join "\n" (subvec lines (dec row) (min (count lines) (+ row 2)))))))
 
+(defn- remove-ignores-at
+  "`text` with the inline ignore forms that start on the 1-based `rows` removed.
+  A line left whitespace-only by a removal is deleted; an inline removal also swallows one space."
+  [text rows]
+  (let [rowset (set rows)]
+    (reduce (fn [t {:keys [start end]}]
+              (let [before     (subs t 0 start)
+                    after      (subs t end)
+                    after      (if (and (str/ends-with? before " ") (str/starts-with? after " "))
+                                 (str/replace-first after #" +" "")
+                                 after)
+                    line-start (inc (or (str/last-index-of before "\n") -1))
+                    line-end   (or (str/index-of after "\n") (count after))
+                    remnant    (str (subs before line-start) (subs after 0 line-end))]
+                (if (str/blank? remnant)
+                  (str (subs before 0 line-start) (subs after (min (count after) (inc line-end))))
+                  (str before after))))
+            text
+            ;; bottom-up so earlier offsets stay valid
+            (sort-by :start > (filter (comp rowset :line) (kondo-ratchet/ignore-matches text))))))
+
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
-  findings with no location, and ignores that only name linters kondo doesn't run (clojure-lsp/*)."
-  [_args]
+  findings with no location, and ignores that only name linters kondo doesn't run (clojure-lsp/*).
+  With `--fix`, remove the candidates from source."
+  [parsed]
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [findings (kondo-findings! :redundant-ignore lint-roots)
         {located true, homeless false} (group-by #(some? (:row %)) findings)
@@ -51,7 +73,13 @@
       (println (format "%s:%d %s" filename row (str/join " " (ignored-linters-at filename row)))))
     (println)
     (println (format "%d candidate redundant ignores (dropped as false positives: %d location-less, %d lsp-only)"
-                     (count candidates) (count homeless) (count lsp-only)))))
+                     (count candidates) (count homeless) (count lsp-only)))
+    (when (get-in parsed [:options :fix])
+      (doseq [[file file-candidates] (sort-by key (group-by :filename candidates))]
+        (spit file (remove-ignores-at (slurp file) (map :row file-candidates))))
+      (println (format "Removed them across %d files. Now rerun `./bin/mage kondo` to double-check, and
+`./bin/mage fix-kondo-ratchets` to lower the budgets."
+                       (count (distinct (map :filename candidates))))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; kondo-insert-ignores
