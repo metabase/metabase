@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
+   [metabase.test :as mt]
    [metabase.typed-schemas.api.schema.metric :as schema.metric]
+   [metabase.typed-schemas.api.schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel metric-dimension-schema-uses-dimension-id-test
@@ -109,6 +111,27 @@
         :name "Customer Lifetime Value"}
        {:id 247})
       (is (= 1 @table-select-count)))))
+
+(deftest metric-dimensions-bulk-load-table-ids-test
+  (let [field-select-count   (atom 0)
+        field-lookup-attempts (atom [])
+        dimensions           [{:id "orders-dimension"
+                               :sources [{:type :field, :field-id 42}]}
+                              {:id "people-dimension"
+                               :sources [{:type :field, :field-id 84}]}]]
+    (mt/with-dynamic-fn-redefs [schema.metric/sync-and-fetch-metric-dimensions! (constantly dimensions)
+                                schema.table/table-by-field-id (fn [field-id]
+                                                                 (swap! field-lookup-attempts conj field-id)
+                                                                 ({42 10, 84 20} field-id))
+                                t2/select (fn [columns & _args]
+                                            (when (= columns [:model/Field :id :table_id])
+                                              (swap! field-select-count inc)
+                                              [{:id 42 :table_id 10}
+                                               {:id 84 :table_id 20}]))]
+      (is (= (mapv vector dimensions [10 20])
+             (#'schema.metric/metric-dimensions-with-table-ids {:id 247} nil)))
+      (is (= 1 @field-select-count))
+      (is (empty? @field-lookup-attempts)))))
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
   (with-redefs [schema.metric/metric-result-column (constantly nil)

@@ -49,10 +49,26 @@
 
 (defn- dimension-table-id
   "Returns the table id that backs a metric dimension, when known."
-  [dimension]
-  (or (:table_id dimension)
-      (:table-id dimension)
-      (schema.table/table-by-field-id (dimension-field-id dimension))))
+  ([dimension]
+   (dimension-table-id dimension nil))
+  ([dimension field-table-ids]
+   (or (:table_id dimension)
+       (:table-id dimension)
+       (if field-table-ids
+         (get field-table-ids (dimension-field-id dimension))
+         (schema.table/table-by-field-id (dimension-field-id dimension))))))
+
+(defn- field-table-ids
+  "Returns backing table ids for dimensions that need field-based resolution."
+  [dimensions]
+  (let [field-ids (into #{}
+                        (comp (remove #(or (:table_id %) (:table-id %)))
+                              (keep dimension-field-id))
+                        dimensions)]
+    (when (seq field-ids)
+      (into {}
+            (map (juxt :id :table_id))
+            (t2/select [:model/Field :id :table_id] :id [:in field-ids])))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -183,9 +199,10 @@
   "Returns metric dimensions paired with their backing table ids, filtering mapped dimensions for card metrics."
   [details source-card-id-value]
   (let [dimensions (or (seq (sync-and-fetch-metric-dimensions! details))
-                       (:queryable-dimensions details))]
+                       (:queryable-dimensions details))
+        field-table-ids (field-table-ids dimensions)]
     (cond->> (mapv (fn [dimension]
-                     [dimension (dimension-table-id dimension)])
+                     [dimension (dimension-table-id dimension field-table-ids)])
                    dimensions)
       source-card-id-value (remove (fn [[_dimension table-id]]
                                      (integer? table-id))))))
