@@ -74,6 +74,8 @@ header h1 .dim{color:var(--ink-soft);font-weight:400}
 .ghost{border:1px solid var(--line-strong);background:var(--panel-2);color:var(--ink-soft);
   border-radius:8px;padding:6px 11px;font-size:12.5px;cursor:pointer}
 .ghost:hover{color:var(--ink);border-color:var(--accent)}
+.ghost:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.themepick:focus-within{color:var(--ink);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .themepick{display:inline-flex;align-items:center;gap:6px;padding:0 9px}
 .themepick .ticon{color:var(--ink-soft);flex-shrink:0}
 .themepick:hover .ticon,.themepick:hover .tchev{color:var(--ink)}
@@ -334,7 +336,7 @@ function render(){
   const keep = visibleKeys();
   treeEl.innerHTML='';
   const frag = document.createDocumentFragment();
-  (function walk(node, path, container){
+  (function walk(node, path, container, visible){
     for(const kid of sortedKids(node)){
       const kpath = path.concat(kid.seg);
       const key = kpath.join('/');
@@ -345,7 +347,7 @@ function render(){
       const isOpen = open.has(key) || (keep && keep.has(key));
       if(hasKids && isOpen) row.classList.add('open');
       if(hasKids){ const sc=document.createElement('span'); sc.className='submini'; sc.textContent=kid.sub; sc.title=kid.sub+' modules below'; row.appendChild(sc); }
-      if(m) visibleIds.push(m.id);
+      if(m && visible) visibleIds.push(m.id);   // only rows whose ancestors are all open are keyboard-reachable
       const kidsBox=document.createElement('div');
       kidsBox.className='kids'+(hasKids&&isOpen?'':' hidden');
       const toggle=()=>{ if(open.has(key)) open.delete(key); else open.add(key); render(); };
@@ -353,9 +355,9 @@ function render(){
       row.onclick=(e)=>{ e.stopPropagation(); if(m) select(m.id); else if(hasKids) toggle(); };
       container.appendChild(row);
       container.appendChild(kidsBox);
-      if(hasKids) walk(kid, kpath, kidsBox);
+      if(hasKids) walk(kid, kpath, kidsBox, visible && isOpen);
     }
-  })(root, [], frag);
+  })(root, [], frag, true);
   treeEl.appendChild(frag);
   treeEl.scrollTop = scroll;
 }
@@ -403,15 +405,24 @@ function section(title, items, opts={}){
 }
 function expandAncestors(id){ const p=byId[id]&&byId[id].path; if(!p) return; for(let i=1;i<p.length;i++) open.add(p.slice(0,i).join('/')); }
 function scrollToSelected(){ if(!selected) return; const el=treeEl.querySelector('[data-id='+JSON.stringify(selected)+']'); if(el) el.scrollIntoView({block:'center'}); }
-function syncHash(){ history.replaceState(null,'', selected ? '#'+encodeURIComponent(selected) : location.pathname+location.search); }
-function select(id){
-  selected = (selected===id)?null:id;
+function syncHash(push){
+  const url = selected ? '#'+encodeURIComponent(selected) : location.pathname+location.search;
+  (push ? history.pushState : history.replaceState).call(history, null, '', url);
+}
+function applySelected(id){   // id may be null; updates tree + detail, never touches history
+  selected = id;
   if(selected && view==='tree') expandAncestors(selected);   // reveal: open the path down to it
   render();
-  syncHash();
-  if(!selected){ detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
-  scrollToSelected();
-  const m=byId[id];
+  if(selected) scrollToSelected();
+  renderDetail();
+}
+function select(id, replace){   // user selection → push a history entry (replace for continuous arrow browsing)
+  applySelected(selected===id ? null : id);
+  syncHash(!replace);
+}
+function renderDetail(){
+  if(!selected){ detailEl.classList.remove('show'); detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
+  const m=byId[selected];
   detailEl.classList.add('show');
   detailEl.innerHTML='';
   const head=document.createElement('div'); head.className='d-head';
@@ -495,20 +506,22 @@ document.addEventListener('keydown', e=>{
     return;
   }
   if((e.key==='ArrowDown'||e.key==='ArrowUp') && visibleIds.length){
+    const ae=document.activeElement, tag=ae&&ae.tagName;
+    if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA'||(ae&&ae.isContentEditable)) return;   // don't hijack native controls
     e.preventDefault();
     let i=visibleIds.indexOf(selected);
     if(e.key==='ArrowDown') i = i<0 ? 0 : Math.min(i+1, visibleIds.length-1);
     else                    i = i<0 ? visibleIds.length-1 : Math.max(i-1, 0);
-    if(visibleIds[i] && visibleIds[i]!==selected) select(visibleIds[i]);
+    if(visibleIds[i] && visibleIds[i]!==selected) select(visibleIds[i], true);   // replace: continuous browsing, one history entry
   }
 });
-// deep-link: reflect selection in the URL hash, and honor it on load / back-forward
-window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h] && h!==selected) select(h); });
+// deep-link: sync selection to the URL hash on load / back-forward, incl. empty hash → deselect
+window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); const id=(h&&byId[h])?h:null; if(id!==selected) applySelected(id); });
 
 // fully expanded by default
 expandAll();
 render();
-{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) select(h); }
+{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) applySelected(h); }
 ")
 
 (def ^:private html-head

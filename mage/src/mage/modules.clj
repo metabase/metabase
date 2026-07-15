@@ -411,13 +411,18 @@
     :else         []))
 
 (defn- used-by-index
-  "Reverse of every module's `:uses`: `module-string -> #{modules that :use it}`."
+  "Reverse of every module's `:uses`: `module-string -> #{modules that :use it}`. A `:uses :any` module is
+  treated as using every other module, matching how [[direct-dependents]] expands `:any` — otherwise the
+  explorer under-reports `used-by` for the wildcard users (`core`, `api-routes`, their enterprise twins)."
   [modules-config]
-  (reduce-kv (fn [acc m {:keys [uses]}]
-               (if (set? uses)
-                 (reduce (fn [a used] (update a (str used) (fnil conj #{}) (str m))) acc uses)
-                 acc))
-             {} modules-config))
+  (let [all-modules (keys modules-config)]
+    (reduce-kv (fn [acc m {:keys [uses]}]
+                 (let [targets (cond
+                                 (= uses :any) (remove #(= % m) all-modules)
+                                 (set? uses)   uses
+                                 :else         nil)]
+                   (reduce (fn [a used] (update a (str used) (fnil conj #{}) (str m))) acc targets)))
+               {} modules-config)))
 
 (defn- module->viz-node
   "Flatten one module's config into the plain-data map the HTML explorer consumes. `:path` reuses the
@@ -444,11 +449,24 @@
 ;;;; Optional per-module source metrics for the HTML detail pane (namespaces, LOC, tests, commits).
 ;;;; Gathered from the working tree + git history, so this is skippable via `--no-stats`.
 
-(def ^:private source-metric-dirs ["src" "enterprise/backend/src"])
-(def ^:private test-metric-dirs ["test" "enterprise/backend/test"])
+;; Roots scanned for metrics. `modules/drivers` covers the driver plugins, whose `metabase.driver.<d>…`
+;; namespaces belong to the `driver` module — without it the driver module is materially undercounted.
+(def ^:private metric-dirs ["src" "enterprise/backend/src" "test" "enterprise/backend/test" "modules/drivers"])
 
 (defn- clj-source? [filename]
   (some #(str/ends-with? filename %) [".clj" ".cljc" ".cljs"]))
+
+(defn- test-file? [filename]
+  (or (str/starts-with? filename "test/")
+      (str/starts-with? filename "enterprise/backend/test/")
+      (str/includes? filename "/test/")))    ; driver plugins live at modules/drivers/<d>/test/…
+
+(defn- metric-file->module
+  "Resolve a source/test file to its module, first rewriting driver-plugin paths
+  (`modules/drivers/<d>/(src|test)/…`) to their canonical `src|test/metabase/…` form so their
+  `metabase.driver.<d>…` namespaces resolve to the `driver` module."
+  [prefix->module filename]
+  (file->module prefix->module (str/replace filename #"^modules/drivers/[^/]+/(src|test)/" "$1/")))
 
 (defn- count-lines [filename]
   (try
@@ -467,56 +485,44 @@
        :out
        (remove str/blank?)))
 
-(defn- module->test-files
-  "`module -> [test-file …]`, reusing the same test-path resolution as the test runner."
-  [modules-config]
-  (into {} (for [m (keys modules-config)
-                 :let [files (vec (module->test-paths modules-config m))]
-                 :when (seq files)]
-             [m files])))
-
 (defn- module->commit-counts
-  "One `git log` pass over source + test dirs: `module -> distinct commits that touched its files`.
+  "One `git log` pass over the metric dirs: `module -> distinct commits that touched its files`.
   `file->module-map` maps every tracked source/test path to its owning module."
   [file->module-map]
   (let [lines (:out (apply shell/sh* {:quiet? true}
-                           "git" "log" "--format=%H" "--name-only" "--"
-                           (concat source-metric-dirs test-metric-dirs)))]
+                           "git" "log" "--format=%H" "--name-only" "--" metric-dirs))]
     (loop [lines lines, commit nil, acc {}]
       (if-let [line (first lines)]
         (cond
           (re-matches #"[0-9a-f]{7,40}" line) (recur (rest lines) line acc)
-          (str/blank? line)                (recur (rest lines) commit acc)
-          :else                            (recur (rest lines) commit
-                                                  (if-let [m (get file->module-map line)]
-                                                    (update acc m (fnil conj #{}) commit)
-                                                    acc)))
+          (str/blank? line)                   (recur (rest lines) commit acc)
+          :else                               (recur (rest lines) commit
+                                                     (if-let [m (get file->module-map line)]
+                                                       (update acc m (fnil conj #{}) commit)
+                                                       acc)))
         (update-vals acc count)))))
 
 (defn- gather-module-stats
-  "`module -> {:namespaces :loc :tests :commits}`. Namespaces/LOC come from tracked backend source
-  files, tests from the module's test files (file + `deftest` counts), commits from git history."
+  "`module -> {:namespaces :loc :test-files :tests :commits}`, from tracked backend source/test files
+  (including driver plugins) plus one git-log pass for commit attribution."
   [modules-config]
   (let [prefix->module (build-prefix->module modules-config)
-        src-files      (filter clj-source? (git-tracked-files source-metric-dirs))
-        src-by-module  (reduce (fn [acc f]
-                                 (if-let [m (file->module prefix->module f)]
-                                   (-> acc
-                                       (update-in [m :namespaces] (fnil inc 0))
-                                       (update-in [m :loc] (fnil + 0) (count-lines f)))
-                                   acc))
-                               {} src-files)
-        tests-by-mod   (module->test-files modules-config)
-        file->module*  (merge (into {} (keep (fn [f] (when-let [m (file->module prefix->module f)] [f m])) src-files))
-                              (into {} (for [[m files] tests-by-mod, f files] [f m])))
+        files          (filter clj-source? (git-tracked-files metric-dirs))
+        file->module*  (into {} (keep (fn [f] (when-let [m (metric-file->module prefix->module f)] [f m])) files))
+        add            (fn [acc f loc?] (let [m (get file->module* f)]
+                                          (cond-> acc
+                                            (and m loc?)       (-> (update-in [m :namespaces] (fnil inc 0))
+                                                                   (update-in [m :loc] (fnil + 0) (count-lines f)))
+                                            (and m (not loc?)) (-> (update-in [m :test-files] (fnil inc 0))
+                                                                   (update-in [m :tests] (fnil + 0) (count-deftests f))))))
+        by-module      (reduce (fn [acc f] (add acc f (not (test-file? f)))) {} files)
         commit-counts  (module->commit-counts file->module*)]
     (into {}
-          (for [m (keys modules-config)
-                :let [files (get tests-by-mod m [])]]
-            [m {:namespaces (get-in src-by-module [m :namespaces] 0)
-                :loc        (get-in src-by-module [m :loc] 0)
-                :test-files (count files)
-                :tests      (reduce + 0 (map count-deftests files))
+          (for [m (keys modules-config)]
+            [m {:namespaces (get-in by-module [m :namespaces] 0)
+                :loc        (get-in by-module [m :loc] 0)
+                :test-files (get-in by-module [m :test-files] 0)
+                :tests      (get-in by-module [m :tests] 0)
                 :commits    (get commit-counts m 0)}]))))
 
 (defn- modules->viz-data

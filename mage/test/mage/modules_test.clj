@@ -383,3 +383,16 @@
       (is (= 'lib.schema
              (file->module prefix->module
                            "test/metabase/lib/schema_test.cljc"))))))
+
+(deftest used-by-index-expands-any-test
+  (let [used-by-index @#'mage.modules/used-by-index
+        config        '{core   {:uses :any}
+                        widget {:uses #{gadget}}
+                        gadget {:uses #{}}}
+        index         (used-by-index config)]
+    (testing "an explicit :uses set contributes a used-by edge"
+      (is (contains? (get index "gadget") "widget")))
+    (testing "a :uses :any module is a used-by of every other module, but not itself"
+      (is (= #{"core"} (get index "widget")))
+      (is (contains? (get index "gadget") "core"))
+      (is (not (contains? (get index "core") "core"))))))
