@@ -114,7 +114,7 @@
   self-column string) is nil."
   [goal-value]
   (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
-    (select-keys goal-value [:card_id :column])))
+    (perf/select-keys goal-value [:card_id :column])))
 
 (defn viz-settings->specs
   "Extract referenced-card specs from a card's merged `viz` settings: `GoalSource` references in
@@ -126,10 +126,10 @@
                        (cons (:graph.goal_value viz)
                              (mapcat (juxt :min :max) segments)))]
     (when (seq sources)
-      (mapv (fn [[card-id ss]]
-              {:card_id card-id
-               :columns (vec (distinct (map :column ss)))})
-            (group-by :card_id sources)))))
+      (perf/mapv (fn [[card-id ss]]
+                   {:card_id card-id
+                    :columns (vec (distinct (map :column ss)))})
+                 (group-by :card_id sources)))))
 
 (defn wrap-qp-for-card
   "Saved-card hook: derive referenced-card specs from a card's merged `viz` settings and wrap `qp` to inject

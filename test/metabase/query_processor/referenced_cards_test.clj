@@ -1,6 +1,12 @@
 (ns metabase.query-processor.referenced-cards-test
   "Tests for the dynamic-goals engine: running referenced queries and adding their values under
   `data.referenced_cards`."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here since this tests the REST API which doesn't use
+                       ;; metadata providers. Same exception as [[metabase.query-processor.card-test]].
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.referenced-cards-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.referenced-cards :as referenced-cards]
