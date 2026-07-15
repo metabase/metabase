@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
@@ -149,6 +150,35 @@
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
+
+(deftest read-destination-backed-entities-return-errors-test
+  (testing "destination-backed entity resources cannot expose destination database metadata"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}
+                     :model/Table    {table-id :id}       {:db_id destination-id :active true}
+                     :model/Card     {model-id :id}       {:type :model :database_id destination-id}
+                     :model/Card     {question-id :id}    {:type :question :database_id destination-id}
+                     :model/Card     {metric-id :id}      {:type :metric :database_id destination-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (doseq [uri [(str "metabase://table/" table-id)
+                       (str "metabase://table/" table-id "/fields")
+                       (str "metabase://table/" table-id "/fields/42")
+                       (str "metabase://model/" model-id)
+                       (str "metabase://model/" model-id "/fields")
+                       (str "metabase://model/" model-id "/fields/42")
+                       (str "metabase://question/" question-id)
+                       (str "metabase://question/" question-id "/fields")
+                       (str "metabase://question/" question-id "/fields/42")
+                       (str "metabase://metric/" metric-id)
+                       (str "metabase://metric/" metric-id "/dimensions")
+                       (str "metabase://metric/" metric-id "/dimensions/42")]]
+            (testing uri
+              ;; Match the guard's 404 message exactly: a plain error check can't tell the
+              ;; destination-database guard from unrelated failures like "Field 42 not found".
+              (is (= "Not found."
+                     (-> (read-resource/read-resource {:uris [uri]}) :resources first :error))
+                  "destination-backed entity resource must 404 via the destination-database guard"))))))))
 
 (deftest format-resources-test
   (testing "formats resources with content"
