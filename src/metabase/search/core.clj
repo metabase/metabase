@@ -108,21 +108,17 @@
     (let [engines              (search.engine/supported-engines)
           semantic-default?    (= :search.engine/semantic (first engines))
           semantic-additional? (contains? (set (search.engine/additional-engines)) :search.engine/semantic)
-          fallback             (when semantic-default? (second engines))]
+          fallback             (when semantic-default? (second engines))
+          remedies             (cond-> []
+                                 fallback             (conj (trs "set MB_SEARCH_ENGINE={0}" (name fallback)))
+                                 semantic-additional? (conj (trs "remove semantic from additional-search-engines")))]
       (if-let [msg (cond
-                     (and fallback semantic-additional?)
-                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} and remove semantic from additional-search-engines to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
-                          (name fallback))
-
-                     fallback
-                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
-                          (name fallback))
-
-                     semantic-default?
+                     (and semantic-default? (not fallback))
                      (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
 
-                     semantic-additional?
-                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Remove semantic from additional-search-engines to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."))]
+                     (seq remedies)
+                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. To keep semantic search off, {0}; then remove MB_SEMANTIC_SEARCH_ENABLED."
+                          (str/join " and " remedies)))]
         (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
         (log/warn "MB_SEMANTIC_SEARCH_ENABLED is no longer supported; remove it from your configuration.")))))
 

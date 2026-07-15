@@ -59,13 +59,13 @@
         (with-engines {:supported all-engines}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Set MB_SEARCH_ENGINE=appdb to keep semantic search off"
+               #"To keep semantic search off, set MB_SEARCH_ENGINE=appdb"
                (search/check-for-removed-env-vars!))))
         (testing "the fallback follows precedence, not a hardcoded engine"
           (with-engines {:supported #{:search.engine/semantic :search.engine/in-place}}
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"Set MB_SEARCH_ENGINE=in-place"
+                 #"set MB_SEARCH_ENGINE=in-place"
                  (search/check-for-removed-env-vars!)))))
         (testing "when semantic is the only supported engine there is nothing to fall back to"
           (with-engines {:supported #{:search.engine/semantic}}
@@ -77,13 +77,13 @@
         (with-engines {:supported all-engines :additional ["semantic"]}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Set MB_SEARCH_ENGINE=appdb and remove semantic from additional-search-engines"
+               #"set MB_SEARCH_ENGINE=appdb and remove semantic from additional-search-engines"
                (search/check-for-removed-env-vars!)))))
       (testing "pointing at additional-search-engines when semantic is only force-enabled through it"
         (with-engines {:supported all-engines :configured :appdb :additional ["semantic"]}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Remove semantic from additional-search-engines"
+               #"To keep semantic search off, remove semantic from additional-search-engines"
                (search/check-for-removed-env-vars!)))))
       (testing "startup proceeds with just a warning when another engine already serves search"
         (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
