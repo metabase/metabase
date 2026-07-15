@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -277,6 +278,51 @@
              clojure.lang.ExceptionInfo #"Could not resolve explore filter field ref"
              (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                             :page_id page-id :params {}})))))))
+
+(deftest enrich-explore-filters-remaps-top-n-other-expression-test
+  (testing "a top-n-other bar's synthetic CASE-expression click ref is remapped to the underlying dimension"
+    ;; The `top-n-other` variant breaks out on a synthetic `[:expression <dim display-name>]` that
+    ;; exists only on the variant query, never on the metric Card. A click on a named bar sends that
+    ;; expression ref; enrich must resolve it back to the dimension's real target so the drilled
+    ;; filter scopes the actual column (`Name = "Smallville"`), not an unresolvable expression.
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
+      (let [name-id    (mt/id :venues :name)
+            mappings   [{:dimension_id "d1" :table_id (mt/id :venues)
+                         :target ["field" {} name-id]}]
+            metric-sel {:card_id (:id metric) :dimension_mappings mappings}
+            block      {:metrics    [metric-sel]
+                        :dimensions [{:dimension_id "d1" :display_name "Name"
+                                      :effective_type "type/Text"}]}
+            filters    [{:field_ref ["expression" "Name"] :value "Smallville"}]
+            [enriched] (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
+        (testing "field_ref no longer references the synthetic expression"
+          (is (not (contains? #{"expression" :expression} (first (:field_ref enriched))))))
+        (testing "field_ref now targets the real dimension column"
+          (is (= name-id (nth (qp.mbql/normalize-target-ref (:field_ref enriched)) 2))))
+        (testing "value is preserved"
+          (is (= "Smallville" (:value enriched))))
+        (testing "the remapped filter actually applies to the metric Card"
+          (is (some #(and (str/includes? % "Name") (str/includes? % "Smallville"))
+                    (card-filter-display-names
+                     (reduce (fn [c ef] (#'qp.context/apply-single-explore-filter
+                                         (mt/metadata-provider) c ef))
+                             metric
+                             [enriched])))))))))
+
+(deftest enrich-explore-filters-tolerates-unresolvable-ref-test
+  (testing "enrich never throws on a click ref it can't resolve"
+    ;; Regression for the `POST /explore-further` 500: a top-n-other bar's expression ref used to
+    ;; normalize to `[:expression {} nil]` (name dropped), which `find-matching-column` rejected
+    ;; with an :invalid-input exception mid-request. It must degrade to "no display name" instead.
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
+      (let [metric-sel {:card_id (:id metric) :dimension_mappings []}
+            block      {:metrics    [metric-sel]
+                        :dimensions [{:dimension_id "d1" :display_name "Name"}]}
+            filters    [{:field_ref ["expression" "Nonexistent"] :value "x"}]
+            enriched   (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
+        (is (= 1 (count enriched)))
+        (is (nil? (:display_name (first enriched))) "no label resolved, but no exception thrown")
+        (is (= "x" (:value (first enriched))))))))
 
 (deftest build-row-context-exposes-explore-filters-as-cache-key-material-test
   (testing "the ctx exposes stable :explore-filters for the discovery cache key —"

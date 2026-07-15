@@ -42,11 +42,26 @@
       (:has_field_values dim) (update :has_field_values keyword)
       (:sources dim)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
 
+(defn- canonicalize-legacy-expression-ref
+  "`lib/normalize` relocates a legacy `:field` ref's id into MBQL-5 position (opts before id), but
+   the `:expression` ref schema has no such handler, so a legacy `[\"expression\" name]` /
+   `[\"expression\" name opts]` gets read as `[tag opts name]` and loses its name (yielding
+   `[:expression {} nil]`). Reshape those into MBQL-5 order `[\"expression\" opts name]` first. An
+   already-MBQL-5 ref (options map in the id slot) is returned untouched."
+  [target]
+  (if (and (sequential? target)
+           (#{"expression" :expression} (first target))
+           ;; legacy shape: the expression name (a string) sits in the id/index-1 slot
+           (string? (second target)))
+    (let [[tag nm opts] target]
+      [tag (or opts {}) nm])
+    target))
+
 (defn normalize-target-ref
   "Normalize a target ref after JSON parsing, e.g. [\"field\" {...} id] to a well-formed
    MBQL 5 [:field {...} id] ref, via the ref schema."
   [target]
-  (lib/normalize :metabase.lib.schema.ref/ref target))
+  (lib/normalize :metabase.lib.schema.ref/ref (canonicalize-legacy-expression-ref target)))
 
 (defn normalize-dimension-mapping
   "Normalize a dimension mapping after JSON parsing: rename legacy kebab-case

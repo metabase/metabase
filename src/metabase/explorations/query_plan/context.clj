@@ -253,23 +253,47 @@
 (defn- explore-filter-display-name
   "Resolve the column label for one explore filter on `metric` within `block`."
   [mp card block metric filter-spec]
-  (let [block-dims (or (:dimensions block) [])]
-    (or (some-> (dimension-for-explore-filter mp card block-dims metric filter-spec)
-                (explore-filter-dimension-label block-dims))
-        (try
+  (try
+    (let [block-dims (or (:dimensions block) [])]
+      (or (some-> (dimension-for-explore-filter mp card block-dims metric filter-spec)
+                  (explore-filter-dimension-label block-dims))
           (let [base       (lib/query mp (:dataset_query card))
                 ref-clause (qp.mbql/normalize-target-ref (:field_ref filter-spec))
                 col        (lib/find-matching-column base -1 ref-clause
                                                      (lib/breakoutable-columns base))]
-            (when col (lib/display-name base col)))
-          (catch Exception _ nil)))))
+            (when col (lib/display-name base col)))))
+    (catch Exception _ nil)))
+
+(defn- expression-ref-name
+  "The expression name of `field-ref` when it is an `:expression` ref, else nil."
+  [field-ref]
+  (let [ref-clause (qp.mbql/normalize-target-ref field-ref)]
+    (when (and (vector? ref-clause) (= :expression (first ref-clause)))
+      (nth ref-clause 2 nil))))
+
+(defn- explore-filter-dimension-target
+  "The `top-n-other` variant breaks out on a synthetic CASE expression named after its dimension
+  that lives only on the variant query, not the metric Card — so a click ref against it can't be
+  resolved as a Card column. Map that expression name back to the dimension's real `:target` via the
+  metric's `:dimension_mappings` so the drilled filter scopes the actual column. Returns the target
+  ref, or nil when `field-ref` isn't such an expression."
+  [block metric field-ref]
+  (when-let [expr-name (expression-ref-name field-ref)]
+    (some (fn [dim]
+            (when (= expr-name (or (:display_name dim) (:dimension_id dim) "value"))
+              (qp.mbql/find-dimension-target (:dimension_id dim) (:dimension_mappings metric))))
+          (:dimensions block))))
 
 (defn enrich-explore-filters
-  "Stamp BE-computed `:display_name` onto each request filter, preserving the FE-supplied
-  `:display_value` when present."
+  "Normalize and label each request filter: remap a `top-n-other` bucket's synthetic expression ref
+  to its underlying dimension target (so the drill scopes the real column), then stamp the
+  BE-computed `:display_name`, preserving the FE-supplied `:display_value` when present."
   [mp card block metric explore-filters]
   (mapv (fn [filter-spec]
-          (let [display-name (explore-filter-display-name mp card block metric filter-spec)]
+          (let [target       (explore-filter-dimension-target block metric (:field_ref filter-spec))
+                filter-spec  (cond-> filter-spec
+                               target (assoc :field_ref target))
+                display-name (explore-filter-display-name mp card block metric filter-spec)]
             (cond-> filter-spec
               display-name (assoc :display_name display-name))))
         explore-filters))
