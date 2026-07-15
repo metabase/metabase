@@ -3,15 +3,13 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+import { Schedule, toCronString } from "metabase/common/components/Schedule";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
+import { formatNotificationScheduleDescription } from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
@@ -34,7 +32,7 @@ import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
-import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { SubscriptionScheduleDescription } from "./SubscriptionScheduleDescription";
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -50,7 +48,7 @@ interface AddEditEmailSidebarProps {
   onChannelPropertyChange: (property: string, value: unknown) => void;
   onChannelScheduleChange: (
     schedule: ScheduleSettings,
-    changedProp: ScheduleChangeProp,
+    changedProp: { name: keyof ScheduleSettings; value: unknown },
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
@@ -83,6 +81,16 @@ export const AddEditEmailSidebar = ({
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getUser);
+
+  const renderScheduleDescription = (schedule: ScheduleSettings) => {
+    const description = formatNotificationScheduleDescription(schedule);
+    return description ? (
+      <SubscriptionScheduleDescription
+        channelSpec={channelSpec}
+        description={description}
+      />
+    ) : null;
+  };
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards.every(
@@ -127,22 +135,25 @@ export const AddEditEmailSidebar = ({
             />
           </div>
         )}
-        <SchedulePicker
-          schedule={_.pick(
-            channel,
-            "schedule_day",
-            "schedule_frame",
-            "schedule_hour",
-            "schedule_type",
+        <Schedule
+          mt="md"
+          cronString={toCronString(
+            _.pick(
+              channel,
+              "schedule_day",
+              "schedule_frame",
+              "schedule_hour",
+              "schedule_type",
+            ),
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+          verb={t`Sent`}
+          renderScheduleDescription={renderScheduleDescription}
+          onScheduleChange={(_cronString, newSchedule) =>
+            onChannelScheduleChange(newSchedule, {
+              name: "schedule_type",
+              value: newSchedule.schedule_type,
+            })
           }
         />
         <div className={cx(CS.py2)}>

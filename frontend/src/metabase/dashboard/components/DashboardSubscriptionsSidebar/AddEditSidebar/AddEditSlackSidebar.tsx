@@ -2,14 +2,13 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { toCronString } from "metabase/common/components/Schedule/cron";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
+import { formatNotificationScheduleDescription } from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
@@ -28,7 +27,7 @@ import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { SubscriptionScheduleDescription } from "./SubscriptionScheduleDescription";
 
 interface AddEditSlackSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -43,7 +42,7 @@ interface AddEditSlackSidebarProps {
   onChannelPropertyChange: (property: string, value: unknown) => void;
   onChannelScheduleChange: (
     schedule: ScheduleSettings,
-    changedProp: ScheduleChangeProp,
+    changedProp: { name: keyof ScheduleSettings; value: unknown },
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
@@ -70,6 +69,16 @@ export const AddEditSlackSidebar = ({
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
+  const renderScheduleDescription = (schedule: ScheduleSettings) => {
+    const description = formatNotificationScheduleDescription(schedule);
+    return description ? (
+      <SubscriptionScheduleDescription
+        channelSpec={channelSpec}
+        description={description}
+      />
+    ) : null;
+  };
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards?.every(
@@ -107,22 +116,25 @@ export const AddEditSlackSidebar = ({
             onChannelPropertyChange={onChannelPropertyChange}
           />
         )}
-        <SchedulePicker
-          schedule={_.pick(
-            channel,
-            "schedule_day",
-            "schedule_frame",
-            "schedule_hour",
-            "schedule_type",
+        <Schedule
+          mt="md"
+          cronString={toCronString(
+            _.pick(
+              channel,
+              "schedule_day",
+              "schedule_frame",
+              "schedule_hour",
+              "schedule_type",
+            ),
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Send`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+          verb={t`Send`}
+          renderScheduleDescription={renderScheduleDescription}
+          onScheduleChange={(_cronString, newSchedule) =>
+            onChannelScheduleChange(newSchedule, {
+              name: "schedule_type",
+              value: newSchedule.schedule_type,
+            })
           }
         />
         <div className={cx(CS.pt2, CS.pb1)}>
