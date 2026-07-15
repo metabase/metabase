@@ -206,10 +206,15 @@
   "One exception carrying every failure in `throwables`: the first is the cause,
   the rest are attached as suppressed (the JDK mechanism for multiple failures
   on one throwable). The message is the messages the databases returned, joined
-  into one line."
+  into one line. The ex-data is shaped so the API error middleware returns just
+  that message — without it, an uncaught 500 dumps the full `Throwable->map`
+  cause chain into the response."
   ^Throwable [throwables]
-  (let [^Throwable ex (ex-info (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
-                               {}
+  (let [message       (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
+        ^Throwable ex (ex-info message
+                               {:status-code 500
+                                :message     message
+                                :errors      {:_error message}}
                                (first throwables))]
     (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
     ex))
@@ -272,10 +277,19 @@
         (let [cleaned-up? (try
                             (teardown-workspace-databases! (:id ws))
                             true
+                            ;; Cleanup failed: the workspace and the failed rows are
+                            ;; kept — and returned — so the teardown can be retried
+                            ;; via delete. Both errors are deliberately swallowed,
+                            ;; not logged (raw warehouse errors are sensitive);
+                            ;; callers see the failure in the databases' statuses,
+                            ;; and a delete retry surfaces the teardown errors.
                             (catch Throwable _ false))]
           (when cleaned-up?
-            (workspace/delete-workspace! (:id ws))
-            (throw t)))))
+            (try
+              (workspace/delete-workspace! (:id ws))
+              (catch Throwable delete-t
+                (.addSuppressed t delete-t)))
+            (throw (combined-exception [t]))))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!

@@ -241,15 +241,15 @@
   There is no partial outcome: the teardown either fully succeeds or the row
   stays. The row is the durable record that warehouse resources may exist — it
   must survive instance crashes and disappear only once the warehouse footprint
-  is confirmed gone. On success the WorkspaceDatabase row is DELETED; on failure
-  it is kept, forced to `:unprovisioned`, and the caller is expected to keep the
-  Workspace too so the teardown can be retried. App-DB `TableRemapping` rows for
-  the iso namespace are ALWAYS cleared — stale remappings would rewrite queries
-  to a dropped schema and 500 the QP.
+  is confirmed gone. On success the WorkspaceDatabase row is DELETED and the
+  app-DB `TableRemapping` rows for the iso namespace are cleared — stale
+  remappings would rewrite queries to a dropped schema and 500 the QP.
 
-  Throws on failure — lock timeout, identifier computation, the destroy itself —
-  after the row bookkeeping ran: the row is kept (forced `:unprovisioned`) so
-  the teardown can be retried. Returns nil."
+  Throws on failure. When the destroy itself fails, the row bookkeeping runs
+  first: the row is kept, forced `:unprovisioned`, and the remapping cleanup
+  still runs. Failures before the destroy — lock timeout, identifier
+  computation — throw without touching the row. Either way the teardown can be
+  retried. Returns nil."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
@@ -266,8 +266,12 @@
         (try
           (destroy! provisioner driver db workspace)
           (catch Throwable t
-            (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                        {:output_namespace "" :database_details {} :status :unprovisioned})
+            ;; The rethrow rolls back the cluster lock's wrapping transaction on
+            ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
+            ;; autocommit connection to survive it.
+            (binding [t2.connection/*current-connectable* nil]
+              (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
+                          {:output_namespace "" :database_details {} :status :unprovisioned}))
             (throw t))
           (finally
             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale

@@ -761,9 +761,8 @@
 (defmethod driver/init-workspace-isolation! :h2
   [driver database workspace]
   (let [schema-name (:schema workspace)
-        [_file {:strs [USER PASSWORD]}] (connection-string->file+options (-> workspace :database_details :db))
-        username    USER
-        password    PASSWORD]
+        [_file {username "USER" password "PASSWORD"}]
+        (connection-string->file+options (-> workspace :database_details :db))]
     ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
     ;; transaction, so a wrapper would be decorative. Failure recovery is
     ;; compensation via the idempotent destroy, not rollback.

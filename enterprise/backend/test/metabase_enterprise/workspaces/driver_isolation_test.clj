@@ -1093,3 +1093,39 @@
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
                               driver)))))))))
+
+(deftest ^:synchronized reprovision-resets-workspace-password-test
+  ;; A workspace user can survive a failed teardown (the row is kept and later
+  ;; re-provisioned). Identifiers are deterministic but the password is random
+  ;; per provisioning attempt, so init must reset the surviving user's password
+  ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
+  ;; explicit ALTER, or the persisted password stops matching the warehouse.
+  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                           (mt/normal-drivers-with-feature :workspace))
+    (testing "re-running init for the same workspace id resets the user's password"
+      (let [driver    driver/*driver*
+            database  (mt/db)
+            details   (:details database)
+            run-id    (random-suffix)
+            workspace {:id   (Long/parseLong run-id 16)
+                       :name (str "wsd-repw-" run-id)}
+            ;; same deterministic identifiers, two different random passwords
+            first-ws  (with-isolation-details driver database workspace)
+            second-ws (with-isolation-details driver database workspace)]
+        (try
+          (driver/init-workspace-isolation! driver database first-ws)
+          (driver/init-workspace-isolation! driver database second-ws)
+          ;; MySQL: the workspace user's JDBC handshake needs access to the
+          ;; bound DB (see [[reuse-bound-db-as-input?]]).
+          (when (reuse-bound-db-as-input? driver)
+            (driver/grant-workspace-read-access! driver database second-ws
+                                                 [(-> database :details :db)]))
+          (testing "the credentials persisted by the second init authenticate"
+            (is (= [{:one 1}]
+                   (jdbc/query (workspace-user-spec driver details second-ws)
+                               ["SELECT 1 AS one"]))))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database second-ws)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during password-reset test cleanup"
+                              driver)))))))))

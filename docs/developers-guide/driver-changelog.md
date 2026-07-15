@@ -10,7 +10,9 @@ title: Driver interface changelog
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
   `grant-workspace-read-access!`, and `destroy-workspace-isolation!` now receive those identifiers on the
-  `workspace` map instead of computing them internally. Drivers supporting `:workspace-isolation` must implement it.
+  `workspace` map instead of computing them internally. `:sql-jdbc` drivers inherit a default implementation
+  (deterministic schema/user names plus a random password); non-JDBC drivers that support workspaces must
+  implement it themselves.
 
 - `metabase.driver/check-isolation-permissions`, added in 0.59.0, has been removed. Permission problems now
   surface as failures from `init-workspace-isolation!`/`grant-workspace-read-access!` themselves.

@@ -15,7 +15,11 @@ import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
-import { getWorkspaceDatabaseName, isProvisioned } from "../../../utils";
+import {
+  getProvisioningFailureMessage,
+  getWorkspaceDatabaseName,
+  isUnprovisioned,
+} from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
@@ -43,7 +47,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {!databases.every(isProvisioned) && <WorkspaceProvisioningWarning />}
+          {databases.some(isUnprovisioned) && <WorkspaceProvisioningWarning />}
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -83,7 +87,7 @@ function WorkspaceProvisioningWarning() {
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="warning" aria-hidden />
-        {t`Failed to provision the workspace.`}
+        {getProvisioningFailureMessage()}
       </Group>
     </Box>
   );

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.core-test
   "Tests for the workspace programmatic API and lifecycle rules."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -10,6 +11,8 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -205,6 +208,39 @@
             (is (nil? (ws/delete-workspace! (:id ws)))))
           (is (nil? (ws/get-workspace (:id ws))))
           (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))
+
+(deftest delete-workspace-combines-teardown-failures-test
+  (testing "every database gets its teardown attempt and all failures come back as one combined exception"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine   :postgres
+                                                 :details  {}
+                                                 :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws   (ws/create-workspace! {:name "Multi fail" :creator_id (mt/user->id :crowberto)})
+              _    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                     (add-database! (:id ws) (mt/id) ["PUBLIC"])
+                     (add-database! (:id ws) db2-id ["public"]))
+              boom (reify provisioning/Provisioner
+                     (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                     (init!    [_ _ _ _]   nil)
+                     (grant!   [_ _ _ _ _] nil)
+                     (destroy! [_ _ db _]  (throw (ex-info (str "down: " (:id db)) {}))))
+              e    (with-redefs [provisioning/dispatching-provisioner boom]
+                     (try
+                       (ws/delete-workspace! (:id ws))
+                       nil
+                       (catch Throwable t t)))]
+          (is (some? e))
+          (is (= #{(str "down: " (mt/id)) (str "down: " db2-id)}
+                 (set (str/split (ex-message e) #"; ")))
+              "the message joins what each database returned")
+          (is (some? (ex-cause e))
+              "the first failure is the cause")
+          (is (= 1 (count (.getSuppressed ^Throwable e)))
+              "the remaining failures are suppressed")
+          (is (= 2 (t2/count :model/WorkspaceDatabase :workspace_id (:id ws)))
+              "both rows are kept for retry")
+          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (is (nil? (ws/delete-workspace! (:id ws))))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

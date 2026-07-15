@@ -64,8 +64,8 @@
    [:creator     [:maybe CreatorResponse]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
-   ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
-   ;; The list endpoint omits it — clients should treat a missing array as `[]`.
+   ;; Both the list and GET /:id endpoints hydrate `:databases`; it stays
+   ;; optional so clients treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------

@@ -63,8 +63,8 @@ function DeleteWorkspaceLoader({
   onDelete,
   onClose,
 }: DeleteWorkspaceLoaderProps) {
-  // The list page omits databases, so fetch the hydrated workspace to learn which
-  // databases are still provisioning/deprovisioning.
+  // Fetch the workspace on open so the pending-databases warning reflects
+  // fresh statuses, not the possibly stale list-page snapshot.
   const {
     data: workspace,
     isLoading,

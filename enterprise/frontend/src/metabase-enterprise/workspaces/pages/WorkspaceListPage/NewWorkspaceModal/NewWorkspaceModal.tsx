@@ -19,7 +19,7 @@ import {
 import type { Database, Workspace } from "metabase-types/api";
 
 import { trackWorkspaceCreated } from "../../../analytics";
-import { isProvisioned } from "../../../utils";
+import { getProvisioningFailureMessage, isUnprovisioned } from "../../../utils";
 
 type NewWorkspaceModalProps = {
   databases: Database[];
@@ -90,10 +90,10 @@ function NewWorkspaceForm({
     }).unwrap();
     trackWorkspaceCreated({ workspaceId: workspace.id });
 
-    const databases = workspace.databases ?? [];
-    if (!databases.every(isProvisioned)) {
+    const workspaceDatabases = workspace.databases ?? [];
+    if (workspaceDatabases.some(isUnprovisioned)) {
       sendToast({
-        message: t`Failed to provision the workspace.`,
+        message: getProvisioningFailureMessage(),
         icon: "warning",
         toastColor: "feedback-negative",
         timeout: null,

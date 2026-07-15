@@ -9,11 +9,15 @@ export function getWorkspaceDatabaseName(workspaceDatabase: WorkspaceDatabase) {
   );
 }
 
-export function isProvisioned(workspaceDatabase: WorkspaceDatabase) {
-  return workspaceDatabase.status === "provisioned";
+export function isUnprovisioned(workspaceDatabase: WorkspaceDatabase) {
+  return workspaceDatabase.status === "unprovisioned";
 }
 
 export function isPending(workspaceDatabase: WorkspaceDatabase) {
   const { status } = workspaceDatabase;
   return status === "provisioning" || status === "deprovisioning";
+}
+
+export function getProvisioningFailureMessage() {
+  return t`Failed to provision the workspace.`;
 }
