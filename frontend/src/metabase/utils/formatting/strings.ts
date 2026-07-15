@@ -48,6 +48,10 @@ export function stripId(name: string) {
   return name?.replace(/ id$/i, "").trim();
 }
 
+export function slugify(name: string) {
+  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
+}
+
 export function removeNewLines<T>(value: T) {
   if (typeof value === "string") {
     // Replace all common newline sequences with a single space

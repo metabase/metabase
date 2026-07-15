@@ -30,7 +30,7 @@ import {
   Text,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { slugify } from "metabase/value-formatting";
+import { slugify } from "metabase/utils/formatting";
 import { useReplaceModelWithTransformMutation } from "metabase-enterprise/api";
 import type { Card, Database } from "metabase-types/api";
 
