@@ -112,8 +112,12 @@ export function getTreemapData(
       return;
     }
 
+    // Filter negatives per-row (before summing) so a parent's value always
+    // equals the sum of its surviving leaves — required for treemap area
+    // containment. This differs from the pie chart, which drops whole negative
+    // groups but still sums negative rows into the aggregate.
     const numericValue = getNumberOr(metricValue, null);
-    if (numericValue != null && numericValue < 0) {
+    if (numericValue !== null && numericValue < 0) {
       if (areAllNegative) {
         metricValue = Math.abs(numericValue);
       } else {
