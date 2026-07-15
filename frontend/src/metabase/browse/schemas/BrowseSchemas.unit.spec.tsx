@@ -47,32 +47,8 @@ describe("BrowseSchemas name-based permalinks", () => {
       );
     });
 
-    it("resolves a colliding name to the lowest-id database", async () => {
-      setup({
-        databases: [
-          createMockDatabase({
-            id: 4,
-            name: "Prod",
-            tables: [
-              createMockTable({ id: 40, db_id: 4, schema: "ALPHA" }),
-              createMockTable({ id: 41, db_id: 4, schema: "BETA" }),
-            ],
-          }),
-          createMockDatabase({
-            id: 9,
-            name: "Prod",
-            tables: [
-              createMockTable({ id: 90, db_id: 9, schema: "GAMMA" }),
-              createMockTable({ id: 91, db_id: 9, schema: "DELTA" }),
-            ],
-          }),
-        ],
-        initialRoute: "/browse/databases/Prod",
-      });
-
-      expect(await screen.findByText("ALPHA")).toBeInTheDocument();
-      expect(screen.queryByText("GAMMA")).not.toBeInTheDocument();
-    });
+    // Name collisions (lowest-id wins) are owned by findDatabaseByName's own
+    // tests in common/utils/database.unit.spec.ts; not re-tested per component.
   });
 
   describe("preserving the url form when drilling into a schema", () => {
@@ -141,19 +117,13 @@ describe("BrowseSchemas name-based permalinks", () => {
   });
 
   describe("when the database can't be resolved", () => {
+    // Exact (case-sensitive) name matching is covered by findDatabaseByName's
+    // tests; this only needs to prove the component renders not-found when the
+    // database can't be resolved, which the unknown-name case already does.
     it("shows a not-found page for an unknown name", async () => {
       setup({
         databases: [createMockDatabase({ id: 7, name: "Sales" })],
         initialRoute: "/browse/databases/Unknown",
-      });
-
-      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-    });
-
-    it("matches names case-sensitively", async () => {
-      setup({
-        databases: [createMockDatabase({ id: 7, name: "Sales" })],
-        initialRoute: "/browse/databases/sales",
       });
 
       expect(await screen.findByLabelText("error page")).toBeInTheDocument();

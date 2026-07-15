@@ -63,58 +63,18 @@ describe("BrowseTables name-based schema permalinks", () => {
       expect(await screen.findByText("Orders")).toBeInTheDocument();
     });
 
-    it("resolves a colliding database name to the lowest-id database", async () => {
-      setup({
-        databases: [
-          createMockDatabase({
-            id: 4,
-            name: "Prod",
-            tables: [
-              createMockTable({
-                id: 40,
-                db_id: 4,
-                schema: "PUBLIC",
-                name: "orders",
-                display_name: "Orders in db 4",
-              }),
-            ],
-          }),
-          createMockDatabase({
-            id: 9,
-            name: "Prod",
-            tables: [
-              createMockTable({
-                id: 90,
-                db_id: 9,
-                schema: "PUBLIC",
-                name: "orders",
-                display_name: "Orders in db 9",
-              }),
-            ],
-          }),
-        ],
-        initialRoute: "/browse/databases/Prod/schema/PUBLIC",
-      });
-
-      expect(await screen.findByText("Orders in db 4")).toBeInTheDocument();
-      expect(screen.queryByText("Orders in db 9")).not.toBeInTheDocument();
-    });
+    // Name collisions (lowest-id wins) are owned by findDatabaseByName's own
+    // tests in common/utils/database.unit.spec.ts; not re-tested per component.
   });
 
   describe("when the database can't be resolved", () => {
+    // Exact (case-sensitive) name matching is covered by findDatabaseByName's
+    // tests; this only needs to prove the component renders not-found when the
+    // database can't be resolved, which the unknown-name case already does.
     it("shows a not-found page for an unknown database name", async () => {
       setup({
         databases: [createMockDatabase({ id: 7, name: "Sales" })],
         initialRoute: "/browse/databases/Unknown/schema/PUBLIC",
-      });
-
-      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-    });
-
-    it("matches the database name case-sensitively", async () => {
-      setup({
-        databases: [createMockDatabase({ id: 7, name: "Sales" })],
-        initialRoute: "/browse/databases/sales/schema/PUBLIC",
       });
 
       expect(await screen.findByLabelText("error page")).toBeInTheDocument();

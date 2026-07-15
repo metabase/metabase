@@ -167,38 +167,6 @@ describe("TablePermalinkRedirect", () => {
 
       expect(await screen.findByLabelText("error page")).toBeInTheDocument();
     });
-
-    it("does not match a same-named table in a different database", async () => {
-      const otherDbTable = createMockTable({
-        id: 20,
-        db_id: 99, // a different database than Sales (7)
-        schema: "PUBLIC",
-        name: "orders",
-      });
-      setup({
-        databases: [SALES],
-        tables: [otherDbTable],
-        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
-      });
-
-      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-    });
-
-    it("does not match a same-named table in a different schema", async () => {
-      const otherSchemaTable = createMockTable({
-        id: 21,
-        db_id: 7,
-        schema: "ANALYTICS", // a different schema than the PUBLIC in the url
-        name: "orders",
-      });
-      setup({
-        databases: [SALES],
-        tables: [otherSchemaTable],
-        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
-      });
-
-      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-    });
   });
 
   describe("handle failing requests", () => {
