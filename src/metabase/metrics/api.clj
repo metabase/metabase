@@ -227,8 +227,7 @@
    - expression: A metric math expression tree (leaf reference or arithmetic)
      Examples: [:metric {:lib/uuid \"a\"} 42], [:- {} [:metric {:lib/uuid \"a\"} 1] [:metric {:lib/uuid \"b\"} 2]]
    - filters (optional): Per-instance filters keyed by :lib/uuid from the expression
-   - projections (optional): Typed projections keyed by source type and ID
-   - measures (optional): Measure IDs to add as extra aggregations to a single metric expression"
+   - projections (optional): Typed projections keyed by source type and ID"
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
