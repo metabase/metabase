@@ -894,6 +894,52 @@ describe("version-helpers", () => {
         getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "" }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
     });
+
+    it("should append -lts to version tags for a major LTS version", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v1.75.0", isLts: true }),
+      ).toEqual(["v0.75.x-lts", "v1.75.x-lts"]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.75.0", isLts: true }),
+      ).toEqual(["v0.75.x-lts", "v1.75.x-lts"]);
+    });
+
+    it("should append -lts to version tags for a minor/patch LTS version", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v1.75.1", isLts: true }),
+      ).toEqual([
+        "v0.75.x-lts",
+        "v1.75.x-lts",
+        "v0.75.1.x-lts",
+        "v1.75.1.x-lts",
+      ]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.75.1.3", isLts: true }),
+      ).toEqual([
+        "v0.75.x-lts",
+        "v1.75.x-lts",
+        "v0.75.1.x-lts",
+        "v1.75.1.x-lts",
+      ]);
+    });
+
+    it("should append -lts to version tags but leave the latest tag unchanged", () => {
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.1",
+          latestMajorVersion: "58",
+          isLts: true,
+        }),
+      ).toEqual([
+        "v0.58.x-lts",
+        "v1.58.x-lts",
+        "v0.58.1.x-lts",
+        "v1.58.1.x-lts",
+        "latest",
+      ]);
+    });
   });
 
   describe("filterOutNonSupportedPrereleaseIdentifier", () => {
