@@ -42,27 +42,29 @@
      :semantic_type  (some-> (:semantic-type dimension) u/qualified-name)
      :field_id       field-id}))
 
+(defn- dimension-field-id
+  "Returns the field id backing a metric dimension, including persisted dimension sources."
+  [{:keys [field_id] :as dimension}]
+  (or field_id (some-> dimension :sources first :field-id)))
+
 (defn- dimension-table-id
   "Returns the table id that backs a metric dimension, when known."
-  [{:keys [field_id] :as dimension}]
-  (let [field-id (or field_id (some-> dimension :sources first :field-id))]
-    (or (:table_id dimension)
-        (:table-id dimension)
-        (schema.table/table-by-field-id field-id))))
+  [dimension]
+  (or (:table_id dimension)
+      (:table-id dimension)
+      (schema.table/table-by-field-id (dimension-field-id dimension))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
   ([dimension metric-id]
-   (dimension-schema dimension metric-id {}))
-  ([dimension metric-id table-key-by-id]
-   (dimension-schema dimension metric-id table-key-by-id {}))
-  ([{:keys [field_id] :as dimension}
+   (dimension-schema dimension metric-id (dimension-table-id dimension) {} {}))
+  ([dimension
     metric-id
+    table-id
     table-key-by-id
     table-source-name-by-id]
-   (let [dimension-id (or (:id dimension) field_id)
-         field-id     (or field_id (some-> dimension :sources first :field-id))
-         table-id     (dimension-table-id dimension)
+   (let [field-id     (dimension-field-id dimension)
+         dimension-id (or (:id dimension) field-id)
          column       (if (:sources dimension)
                         (persisted-dimension->column dimension)
                         dimension)]
@@ -101,7 +103,7 @@
                                                    mapping-source-field-id)))
           dimensions)))
 
-(defn- metric-dimensions
+(defn- sync-and-fetch-metric-dimensions!
   "Syncs and returns persisted metric dimensions with mapping metadata."
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
@@ -177,6 +179,35 @@
    :displayName name
    :jsType      "unknown"})
 
+(defn- metric-dimensions-with-table-ids
+  "Returns metric dimensions paired with their backing table ids, filtering mapped dimensions for card metrics."
+  [details source-card-id-value]
+  (let [dimensions (or (seq (sync-and-fetch-metric-dimensions! details))
+                       (:queryable-dimensions details))]
+    (cond->> (mapv (fn [dimension]
+                     [dimension (dimension-table-id dimension)])
+                   dimensions)
+      source-card-id-value (remove (fn [[_dimension table-id]]
+                                     (integer? table-id))))))
+
+(defn- metric-dimension-schemas
+  "Returns dimension schemas and mapped table ids for a metric."
+  [metric-id details source-card-id-value]
+  (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
+        table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
+        table-rows               (readable-table-source-rows table-ids)
+        table-key-by-id          (table-key-disambiguators table-ids table-rows)
+        table-source-name-by-id  (table-source-names table-ids table-rows)
+        dimension-schemas        (mapv (fn [[dimension table-id]]
+                                         (dimension-schema dimension
+                                                           metric-id
+                                                           table-id
+                                                           table-key-by-id
+                                                           table-source-name-by-id))
+                                       dimension-table-id-pairs)]
+    {:dimension-schemas dimension-schemas
+     :mapped-table-ids  (->> dimension-schemas (keep :tableId) distinct sort vec)}))
+
 (defn- metric-schema
   "Returns the schema for a metric and its queryable dimensions."
   [{:keys [id name description verified portable_entity_id base_table_portable_fk] :as details}
@@ -184,23 +215,7 @@
   (let [result-column (or (some-> (metric-result-column card) common/column-schema)
                           (fallback-metric-column details))
         source-card-id-value (source-card-id card)
-        dimensions    (cond->> (or (seq (metric-dimensions details))
-                                   (:queryable-dimensions details))
-                        source-card-id-value (remove (comp integer? dimension-table-id)))
-        table-ids     (->> dimensions
-                           (keep dimension-table-id)
-                           (filter integer?)
-                           distinct)
-        table-rows              (readable-table-source-rows table-ids)
-        table-key-by-id         (table-key-disambiguators table-ids table-rows)
-        table-source-name-by-id (table-source-names table-ids table-rows)
-        dimension-schemas (mapv #(dimension-schema % id table-key-by-id table-source-name-by-id)
-                                dimensions)
-        mapped-table-ids  (->> dimension-schemas
-                               (keep :tableId)
-                               distinct
-                               sort
-                               vec)]
+        {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas id details source-card-id-value)]
     (m/assoc-some
      {:type    "metric"
       :key     (common/generated-key name id)

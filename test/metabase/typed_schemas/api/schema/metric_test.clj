@@ -5,7 +5,7 @@
    [metabase.typed-schemas.api.schema.metric :as schema.metric]
    [toucan2.core :as t2]))
 
-(deftest metric-dimension-schema-uses-dimension-id-test
+(deftest ^:parallel metric-dimension-schema-uses-dimension-id-test
   (is (= {:type        "column"
           :name        "category"
           :displayName "Category"
@@ -25,7 +25,7 @@
            :sources        [{:type :field, :field-id 3815}]}
           247))))
 
-(deftest metric-dimension-schema-preserves-source-field-id-test
+(deftest ^:parallel metric-dimension-schema-preserves-source-field-id-test
   (is (= 102
          (:sourceFieldId
           (#'schema.metric/dimension-schema
@@ -34,7 +34,7 @@
             :source-field-id 102}
            247)))))
 
-(deftest metric-source-id-test
+(deftest ^:parallel metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
     (let [card {:dataset_query {:query {:source-table 10}}}]
       (is (= 10 (#'schema.metric/source-table-id card)))
@@ -60,7 +60,7 @@
   (with-redefs [schema.metric/metric-result-column (constantly nil)
                 schema.metric/readable-table-source-rows
                 (constantly [{:id 10 :name "orders" :display_name "Orders"}])
-                schema.metric/metric-dimensions
+                schema.metric/sync-and-fetch-metric-dimensions!
                 (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                               :name           "orders"
                               :display-name   "Orders"
@@ -95,7 +95,7 @@
 (deftest metric-schema-reuses-table-source-rows-test
   (let [table-select-count (atom 0)]
     (with-redefs [schema.metric/metric-result-column (constantly nil)
-                  schema.metric/metric-dimensions
+                  schema.metric/sync-and-fetch-metric-dimensions!
                   (constantly [{:id       "orders-dimension"
                                 :name     "orders"
                                 :table-id 10}])
@@ -112,7 +112,7 @@
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
   (with-redefs [schema.metric/metric-result-column (constantly nil)
-                schema.metric/metric-dimensions
+                schema.metric/sync-and-fetch-metric-dimensions!
                 (constantly [{:id   "count-dimension-uuid"
                               :name "count"}
                              {:id             "store-name-dimension-uuid"
