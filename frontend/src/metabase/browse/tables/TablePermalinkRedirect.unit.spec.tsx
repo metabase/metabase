@@ -201,7 +201,7 @@ describe("TablePermalinkRedirect", () => {
     });
   });
 
-  describe("when a request fails", () => {
+  describe("handle failing requests", () => {
     it("shows an error instead of not-found when the databases request fails", async () => {
       setup({
         databases: 500,

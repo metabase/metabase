@@ -5,17 +5,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-// Name-based URLs for databases, schemas and tables (#8657).
-//
-// Databases and schemas render in place under their name url; a table name url
-// resolves to the table and redirects to the canonical /table/:id-:slug query
-// builder page.
-//
-// These specs cover only what unit tests can't: that the routes in routes.tsx
-// match real URLs, that they resolve against the real backend, and that
-// permissions are enforced. Name collisions, digit-leading names, case
-// sensitivity and error branches are pure frontend logic covered by unit tests.
-
 describe("browse > name-based urls > databases", () => {
   beforeEach(() => {
     H.restore();
@@ -40,6 +29,13 @@ describe("browse > name-based urls > databases", () => {
 
     cy.findByRole("heading", { name: "Orders" }).should("be.visible");
   });
+
+  it("shows not-found for a user without access to the database", () => {
+    cy.signIn("nodata");
+    cy.visit("/browse/databases/Sample%20Database");
+
+    cy.findByLabelText("error page").should("be.visible");
+  });
 });
 
 describe("browse > name-based urls > schemas", () => {
@@ -56,6 +52,13 @@ describe("browse > name-based urls > schemas", () => {
       "eq",
       "/browse/databases/Sample%20Database/schema/PUBLIC",
     );
+  });
+
+  it("shows not-found for a user without access to the schema's database", () => {
+    cy.signIn("nodata");
+    cy.visit("/browse/databases/Sample%20Database/schema/PUBLIC");
+
+    cy.findByLabelText("error page").should("be.visible");
   });
 });
 
