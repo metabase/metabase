@@ -223,6 +223,7 @@ const getXAxisTicksWidth = (
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   axisModel: XAxisModel,
   { theme, measureText, fontFamily }: RenderingContext,
+  xTickWidthCap: number,
 ) => {
   const { fontSize } = theme.cartesian.label;
 
@@ -259,12 +260,15 @@ const getXAxisTicksWidth = (
 
   if (axisEnabledSetting === "rotate-45") {
     return {
-      firstXTickWidth: firstXTickWidth / Math.SQRT2,
-      lastXTickWidth: lastXTickWidth / Math.SQRT2,
+      firstXTickWidth: Math.min(firstXTickWidth / Math.SQRT2, xTickWidthCap),
+      lastXTickWidth: Math.min(lastXTickWidth / Math.SQRT2, xTickWidthCap),
     };
   }
 
-  return { firstXTickWidth, lastXTickWidth };
+  return {
+    firstXTickWidth: Math.min(firstXTickWidth, xTickWidthCap),
+    lastXTickWidth: Math.min(lastXTickWidth, xTickWidthCap),
+  };
 };
 
 const getXAxisTicksHeight = (
@@ -299,19 +303,6 @@ const getXAxisTicksHeight = (
 
 const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
 
-const checkHeight = (
-  maxXTickWidth: number,
-  outerHeight: number,
-  rotation: "rotate-90" | "rotate-45",
-) => {
-  if (rotation === "rotate-90") {
-    return maxXTickWidth / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD;
-  }
-  return (
-    maxXTickWidth / Math.SQRT2 / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD
-  );
-};
-
 const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
@@ -319,8 +310,6 @@ const getAutoAxisEnabledSetting = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   boundaryWidth: number,
-  maxXTickWidth: number,
-  outerHeight: number,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
   const { xAxisModel } = input;
@@ -348,18 +337,34 @@ const getAutoAxisEnabledSetting = (
   }
 
   if (dimensionWidth >= fontSize * X_LABEL_ROTATE_45_THRESHOLD_FACTOR) {
-    return checkHeight(maxXTickWidth, outerHeight, "rotate-45")
-      ? "rotate-45"
-      : false;
+    return "rotate-45";
   }
 
   if (dimensionWidth >= fontSize * X_LABEL_ROTATE_90_THRESHOLD_FACTOR) {
-    return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
-      ? "rotate-90"
-      : false;
+    return "rotate-90";
   }
 
   return false;
+};
+
+const getXTickWidthCap = (
+  settings: ComputedVisualizationSettings,
+  autoAxisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  outerHeight: number,
+) => {
+  if (
+    settings["graph.x_axis.scale"] !== "ordinal" &&
+    settings["graph.x_axis.scale"] !== "histogram"
+  ) {
+    return Infinity;
+  }
+  if (autoAxisEnabledSetting === "rotate-90") {
+    return X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight;
+  }
+  if (autoAxisEnabledSetting === "rotate-45") {
+    return X_LABEL_HEIGHT_RATIO_THRESHOLD * outerHeight * Math.SQRT2;
+  }
+  return Infinity;
 };
 
 const X_TICKS_TO_MEASURE_COUNT = 50;
@@ -398,6 +403,7 @@ const getMaxXTickWidth = (
   input: ChartLayoutInput,
   dimensionWidth: number,
   renderingContext: RenderingContext,
+  xTickWidthCap: number,
 ) => {
   const { xAxisModel } = input;
   const valueToMeasure = getXTicksToMeasure(
@@ -413,11 +419,12 @@ const getMaxXTickWidth = (
     family: renderingContext.fontFamily,
   };
 
-  return Math.max(
+  const maxXTickWidth = Math.max(
     ...valueToMeasure.map((value) =>
       renderingContext.measureText(xAxisModel.formatter(value), fontStyle),
     ),
   );
+  return Math.min(maxXTickWidth, xTickWidthCap);
 };
 
 const getTicksDimensions = (
@@ -434,6 +441,7 @@ const getTicksDimensions = (
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
     xTicksHeight: 0,
+    xTickWidthCap: 0,
     firstXTickWidth: 0,
     lastXTickWidth: 0,
     getXTickWidth: () => 0,
@@ -472,19 +480,25 @@ const getTicksDimensions = (
   if (hasBottomAxis) {
     const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
 
-    const maxXTickWidth = getMaxXTickWidth(
-      input,
-      dimensionWidth,
-      renderingContext,
-    );
-
     axisEnabledSetting = getAutoAxisEnabledSetting(
       input,
       settings,
       currentBoundaryWidth,
-      maxXTickWidth,
-      outerHeight,
       renderingContext,
+    );
+
+    const xTickWidthCap = getXTickWidthCap(
+      settings,
+      axisEnabledSetting,
+      outerHeight,
+    );
+    ticksDimensions.xTickWidthCap = xTickWidthCap;
+
+    const maxXTickWidth = getMaxXTickWidth(
+      input,
+      dimensionWidth,
+      renderingContext,
+      xTickWidthCap,
     );
 
     const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
@@ -492,6 +506,7 @@ const getTicksDimensions = (
       axisEnabledSetting,
       xAxisModel,
       renderingContext,
+      xTickWidthCap,
     );
     ticksDimensions.firstXTickWidth = firstXTickWidth;
     ticksDimensions.lastXTickWidth = lastXTickWidth;
@@ -512,9 +527,9 @@ const getTicksDimensions = (
         family: renderingContext.fontFamily,
       });
       if (axisEnabledSetting === "rotate-45") {
-        return width / Math.SQRT2;
+        return Math.min(width / Math.SQRT2, xTickWidthCap);
       }
-      return width;
+      return Math.min(width, xTickWidthCap);
     };
   }
 
@@ -974,6 +989,7 @@ const computeSplitPanelLayout = (
     yTicksWidthLeft: maxYTicksWidth,
     yTicksWidthRight: 0,
     xTicksHeight: computedTicks.xTicksHeight,
+    xTickWidthCap: computedTicks.xTickWidthCap,
     firstXTickWidth: computedTicks.firstXTickWidth,
     lastXTickWidth: computedTicks.lastXTickWidth,
     getXTickWidth: computedTicks.getXTickWidth,

@@ -1608,7 +1608,7 @@
 (defmulti supported-index-methods
   "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata
   matching `::supported-index-methods`. Defaults to `{}` for drivers with no index support."
-  {:added "0.63.0", :arglists '([driver database])}
+  {:added "0.64.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1622,7 +1622,7 @@
   also carry `:unique` and `:if-not-exists` booleans. The index's `:name` is rendered verbatim as the physical name.
 
   Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]]."
-  {:added "0.63.0", :arglists '([driver schema table structured])}
+  {:added "0.64.0", :arglists '([driver schema table structured])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1671,7 +1671,7 @@
   Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which capture only single-column indexes
   to flag fields as indexed; this returns full physical detail (uniqueness, partial predicate, INCLUDE columns, key
   order, raw DDL)."
-  {:added "0.63.0", :arglists '([driver database schema table])}
+  {:added "0.64.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
