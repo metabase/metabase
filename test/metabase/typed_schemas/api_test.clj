@@ -2,164 +2,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]
    [metabase.typed-schemas.api.render :as typed-schemas.api.render]
+   [metabase.typed-schemas.api.schema.metric :as typed-schemas.api.schema.metric]
    [metabase.typed-schemas.api.schema.model :as typed-schemas.api.schema.model]
    [metabase.typed-schemas.api.schema.question :as typed-schemas.api.schema.question]
    [metabase.typed-schemas.api.schema.table :as typed-schemas.api.schema.table]
-   [metabase.typed-schemas.api.scope :as typed-schemas.api.scope]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.api.scope :as typed-schemas.api.scope]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-(deftest metric-dimension-schema-uses-dimension-id-test
-  (is (= {:type          "column"
-          :name          "category"
-          :displayName   "Category"
-          :baseType      "type/Text"
-          :jsType        "string"
-          :key           "category"
-          :id            "550e8400-e29b-41d4-a716-446655440001"
-          :fieldId       3815
-          :tableId       12
-          :metricId      247}
-         (#'typed-schemas.api/dimension-schema
-          {:id             "550e8400-e29b-41d4-a716-446655440001"
-           :name           "category"
-           :display-name   "Category"
-           :effective-type :type/Text
-           :table-id       12
-           :sources        [{:type :field, :field-id 3815}]}
-          247))))
-
-(deftest metric-dimension-schema-preserves-source-field-id-test
-  (is (= 102
-         (:sourceFieldId
-          (#'typed-schemas.api/dimension-schema
-           {:id              "550e8400-e29b-41d4-a716-446655440001"
-            :name            "category"
-            :display-name    "Category"
-            :effective-type  :type/Text
-            :table-id        12
-            :source-field-id 102
-            :sources         [{:type :field, :field-id 3815}]}
-           247)))))
-
-(deftest metric-source-id-test
-  (testing "integer source-table emits sourceTableId but not sourceCardId"
-    (let [card {:dataset_query {:query {:source-table 10}}}]
-      (is (= 10 (#'typed-schemas.api/source-table-id card)))
-      (is (nil? (#'typed-schemas.api/source-card-id card)))))
-  (testing "card source-table emits sourceCardId but not sourceTableId"
-    (let [card {:dataset_query {:query {:source-table "card__42"}}}]
-      (is (nil? (#'typed-schemas.api/source-table-id card)))
-      (is (= 42 (#'typed-schemas.api/source-card-id card)))))
-  (testing "stage source-card emits sourceCardId"
-    (is (= 42 (#'typed-schemas.api/source-card-id
-               {:dataset_query {:stages [{:source-card 42}]}})))))
-
-(deftest table-source-names-filters-unreadable-tables-test
-  (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
-                                       {:id 20 :name "franchises" :display_name "Franchises"}])
-                mi/can-read? (fn [{:keys [id]}] (= id 10))]
-    (is (= {10 "orders"}
-           (#'typed-schemas.api/table-source-names [10 20])))
-    (is (= {10 "Orders"}
-           (#'typed-schemas.api/table-key-disambiguators [10 20])))))
-
-(deftest metric-schema-keys-dimensions-test
-  (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
-                typed-schemas.api/readable-table-source-rows
-                (constantly [{:id 10 :name "orders" :display_name "Orders"}])
-                typed-schemas.api/metric-dimensions
-                (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
-                              :name           "orders"
-                              :display-name   "Orders"
-                              :effective-type :type/Integer
-                              :table-id       10
-                              :sources        [{:type :field, :field-id 42}]}])]
-    (is (= {:type           "metric"
-            :key            "customerLifetimeValue"
-            :id             247
-            :name           "Customer Lifetime Value"
-            :columns        [{:type        "column"
-                              :name        "Customer Lifetime Value"
-                              :displayName "Customer Lifetime Value"
-                              :jsType      "unknown"}]
-            :mappedTableIds [10]
-            :dimensions     {"orders" {:type        "column"
-                                       :name        "orders"
-                                       :sourceName "orders"
-                                       :displayName "Orders"
-                                       :baseType    "type/Integer"
-                                       :jsType      "number"
-                                       :key         "orders"
-                                       :id          "550e8400-e29b-41d4-a716-446655440001"
-                                       :fieldId     42
-                                       :tableId     10
-                                       :metricId    247}}}
-           (#'typed-schemas.api/metric-schema
-            {:id   247
-             :name "Customer Lifetime Value"}
-            {:id 247})))))
-
-(deftest metric-schema-reuses-table-source-rows-test
-  (let [table-select-count (atom 0)]
-    (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
-                  typed-schemas.api/metric-dimensions
-                  (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
-                                :name           "orders"
-                                :display-name   "Orders"
-                                :effective-type :type/Integer
-                                :table-id       10
-                                :sources        [{:type :field, :field-id 42}]}])
-                  mi/can-read? (constantly true)
-                  t2/select (fn [columns & _args]
-                              (when (= columns [:model/Table :id :name :display_name])
-                                (swap! table-select-count inc)
-                                [{:id 10 :name "orders" :display_name "Orders"}]))]
-      (#'typed-schemas.api/metric-schema
-       {:id   247
-        :name "Customer Lifetime Value"}
-       {:id 247})
-      (is (= 1 @table-select-count)))))
-
-(deftest source-card-metric-schema-omits-mapped-table-dimensions-test
-  (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
-                typed-schemas.api/table-source-names (constantly {10 "employee_store_roster"})
-                typed-schemas.api/metric-dimensions
-                (constantly [{:id   "count-dimension-uuid"
-                              :name "count"}
-                             {:id             "store-name-dimension-uuid"
-                              :name           "store_name"
-                              :display-name   "Store Name"
-                              :effective-type :type/Text
-                              :table-id       10
-                              :sources        [{:type :field, :field-id 42}]}])]
-    (is (= {:type         "metric"
-            :key          "storesWithOver5Employees"
-            :id           259
-            :name         "Stores with Over 5 Employees"
-            :columns      [{:type "column"
-                            :name "Stores with Over 5 Employees"
-                            :displayName "Stores with Over 5 Employees"
-                            :jsType "unknown"}]
-            :sourceCardId 258
-            :dimensions   {"count" {:type        "column"
-                                    :name        "count"
-                                    :displayName "count"
-                                    :jsType      "unknown"
-                                    :key         "count"
-                                    :id          "count-dimension-uuid"
-                                    :metricId    259}}}
-           (#'typed-schemas.api/metric-schema
-            {:id   259
-             :name "Stores with Over 5 Employees"}
-            {:id            259
-             :dataset_query {:stages [{:source-card 258}]}})))))
 
 (deftest typescript-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
@@ -221,9 +74,9 @@
                   typed-schemas.api.schema.question/question-schemas (fn
                                                                        ([_database-ids] [])
                                                                        ([_database-ids _collection-ids] []))
-                  typed-schemas.api/metric-schemas (fn
-                                                     ([_database-ids] [])
-                                                     ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.metric/metric-schemas (fn
+                                                                   ([_database-ids] [])
+                                                                   ([_database-ids _collection-ids] []))
                   typed-schemas.api.schema.table/select-tables (fn
                                                                  ([_database-ids] [])
                                                                  ([_database-ids _table-ids] []))
@@ -277,7 +130,7 @@
                      (is false "library-only schemas should not load models"))
                     ([_database-ids _collection-ids]
                      (is false "library-only schemas should not load models")))
-                  typed-schemas.api/metric-schemas
+                  typed-schemas.api.schema.metric/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
                     [{:type           "metric"
@@ -315,7 +168,7 @@
                      (is false "library-only schemas should not load models"))
                     ([_database-ids _collection-ids]
                      (is false "library-only schemas should not load models")))
-                  typed-schemas.api/metric-schemas
+                  typed-schemas.api.schema.metric/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
                     [{:type           "metric"
@@ -354,7 +207,7 @@
                    (is false "include-models-only schemas should not load questions"))
                   ([_database-ids _collection-ids]
                    (is false "include-models-only schemas should not load questions")))
-                typed-schemas.api/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (fn
                   ([_database-ids]
                    (is false "include-models-only schemas should not load metrics"))
@@ -383,9 +236,9 @@
                   typed-schemas.api.schema.question/question-schemas (fn
                                                                        ([_database-ids] [])
                                                                        ([_database-ids _collection-ids] []))
-                  typed-schemas.api/metric-schemas (fn
-                                                     ([_database-ids] [])
-                                                     ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.metric/metric-schemas (fn
+                                                                   ([_database-ids] [])
+                                                                   ([_database-ids _collection-ids] []))
                   typed-schemas.api.schema.table/select-tables (fn
                                                                  ([_database-ids] [])
                                                                  ([_database-ids _table-ids] []))
@@ -438,7 +291,7 @@
                    (is false "question collection schemas should not load models"))
                   ([_database-ids _collection-ids]
                    (is false "question collection schemas should not load models")))
-                typed-schemas.api/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (constantly [{:type "metric", :key "revenue", :id 2}])
                 typed-schemas.api.schema.table/select-library-tables
                 (constantly [{:id 3}])
@@ -473,7 +326,7 @@
                   (is (nil? database-ids))
                   [{:key     "selectedQuestionCollectionModel"
                     :actions {"create" {:kind "action", :key "create", :id 1}}}])
-                typed-schemas.api/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (constantly [{:type "metric", :key "revenue", :id 2}])
                 typed-schemas.api.schema.table/select-library-tables
                 (constantly [{:id 3}])
