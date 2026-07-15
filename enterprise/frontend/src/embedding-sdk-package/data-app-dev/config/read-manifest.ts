@@ -4,12 +4,21 @@ import path from "node:path";
 import { load as parseYaml } from "js-yaml";
 
 /**
+ * The user-authored `data_app.yml` manifest. Values come straight from YAML
+ * and are unvalidated — narrow each field before use.
+ */
+export type DataAppManifest = {
+  slug?: unknown;
+  allowed_hosts?: unknown;
+};
+
+/**
  * Read + parse the app's `data_app.yml`/`.yaml` manifest.
  * Returns null when the app has no manifest.
  */
 export function readManifest(
   appRoot: string,
-): { manifestPath: string; manifest: Record<string, unknown> } | null {
+): { manifestPath: string; manifest: DataAppManifest } | null {
   const manifestPath = [
     path.join(appRoot, "data_app.yaml"),
     path.join(appRoot, "data_app.yml"),
@@ -33,10 +42,7 @@ export function readManifest(
 
   return {
     manifestPath,
-    manifest:
-      typeof parsed === "object" && parsed !== null
-        ? (parsed as Record<string, unknown>)
-        : {},
+    manifest: typeof parsed === "object" && parsed !== null ? parsed : {},
   };
 }
 
