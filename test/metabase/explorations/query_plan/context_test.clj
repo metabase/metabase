@@ -3,8 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -246,6 +248,39 @@
             lhs      (get (first (lib/filters q)) 2)]
         (is (= :default (:strategy (lib/binning lhs)))
             "click ref's default binning is applied to the explore filter target")))))
+
+(deftest enrich-explore-filters-disambiguates-same-named-dimensions-test
+  (testing "enrich-explore-filters qualifies ambiguous explore-filter dimension_names with the dim's group"
+    ;; Block snapshots don't carry :group — it lives on the metric Card's :dimensions. When two
+    ;; block dims share a display_name, explore-filter labels should mirror query :dimension_name
+    ;; disambiguation (e.g. \"Users → Created At\"), not fall back to the bare name or the raw
+    ;; column display name.
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
+            orders-created "00000000-0000-0000-0000-00000000bbbb"
+            users-field    (mt/id :venues :latitude)
+            orders-field   (mt/id :venues :longitude)]
+        (mt/with-temp
+          [:model/User u {:email "enrich-filter-ambig@example.com"}
+           :model/Card metric (assoc {:type          :metric
+                                      :creator_id    (:id u)
+                                      :dataset_query (count-metric-query)}
+                                     :dimensions
+                                     [{:id users-created  :name "LATITUDE"  :display_name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                      {:id orders-created :name "LONGITUDE" :display_name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+          (let [mp              (lib-be/application-database-metadata-provider (mt/id))
+                block           {:dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                              {:dimension_id orders-created :display_name "Created At"}]}
+                metric-selection {:dimension_mappings [{:dimension_id users-created  :table_id (mt/id :venues)
+                                                        :target ["field" {} users-field]}
+                                                       {:dimension_id orders-created :table_id (mt/id :venues)
+                                                        :target ["field" {} orders-field]}]}
+                filter          {:field_ref ["field" {} users-field] :value 40.7}
+                [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter])]
+            (is (= "Users → Created At" (:dimension_name enriched))
+                "the clicked filter is labeled with the dim's group when the display_name is shared")))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; build-row-context — "Explore further" filter edge cases
