@@ -255,20 +255,26 @@
         ":a still has an unjustified ignore; :b's are all justified so its exemption is stale")))
 
 (deftest ^:parallel config-suppressions-test
-  (is (= {:redundant-ignore  1
-          :unresolved-symbol 3
-          :missing-docstring 2
-          :discouraged-var   1}
+  (is (= {:redundant-ignore    1
+          :unresolved-symbol   4
+          :missing-docstring   2
+          :discouraged-var     1
+          :unused-referred-var 4
+          :deprecated-var      1}
          (kondo-ratchet/config-suppressions
-          '{:linters      {:redundant-ignore  {:level :off}
-                           :unresolved-symbol {:exclude [a b c]}
-                           :discouraged-var   {clojure.core/println {:message "no"}}
-                           :equals-true       {:level :warning}}
-            :config-in-ns {tests {:linters {:missing-docstring {:level :off}
-                                            :discouraged-var   {clojure.core/println {:level :off}}}}
-                           lib   {:linters {:missing-docstring {:level :off}}}}}))
-      "an :off is 1, :exclude entries count each, per-var re-allows count, discouragements and
-       enablements count nothing; groups sum per linter"))
+          '{:linters           {:redundant-ignore    {:level :off}
+                                :unresolved-symbol   {:exclude [a b c]}
+                                :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+                                :deprecated-var      {:exclude {some.ns/old-var {:namespaces [caller.*]}}}
+                                :discouraged-var     {clojure.core/println {:message "no"}}
+                                :equals-true         {:level :warning}}
+            :config-in-comment {:linters {:unresolved-symbol {:level :off}}}
+            :config-in-ns      {tests {:linters {:missing-docstring {:level :off}
+                                                 :discouraged-var   {clojure.core/println {:level :off}}}}
+                                lib   {:linters {:missing-docstring {:level :off}}}}}))
+      "an :off is 1, :exclude items count each (map values count their elements; a scoping map is one
+       var), per-var re-allows count, discouragements and enablements count nothing; groups and
+       :config-in-comment sum per linter"))
 
 (deftest ^:parallel config-drift-test
   (is (= {:gone {:recorded 2, :actual 0}

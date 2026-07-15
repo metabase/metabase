@@ -238,6 +238,16 @@
 (def ^:private kondo-config-file
   ".clj-kondo/config.edn")
 
+(defn- excluded-items
+  "How many items an `:exclude` value waives: sequential entries count each, and a map's values count
+  their elements when sequential (`{compojure.core [GET POST]}` is 2) or 1 otherwise (a scoping map like
+  `{some.var {:namespaces [...]}}` excludes one var)."
+  [excl]
+  (cond
+    (map? excl)  (reduce + (map #(if (sequential? %) (count %) 1) (vals excl)))
+    (coll? excl) (count excl)
+    :else        0))
+
 (defn- suppressed-in
   "How many warnings one linter's config map waives: 1 for a `{:level :off}` switch, one per excluded
   item, and one per nested per-var or per-namespace `:off`."
@@ -245,14 +255,13 @@
   (if-not (map? cfg)
     0
     (+ (if (= (:level cfg) :off) 1 0)
-       (let [excl (:exclude cfg)]
-         (if (coll? excl) (count excl) 0))
+       (excluded-items (:exclude cfg))
        (count (filter #(and (map? %) (= (:level %) :off))
                       (vals (dissoc cfg :level :exclude)))))))
 
 (defn config-suppressions
   "Per-linter counts of config-level suppressions in `config` (default: `.clj-kondo/config.edn`):
-  top-level `:linters` entries plus every `:config-in-ns` group.
+  top-level `:linters` entries, every `:config-in-ns` group, and `:config-in-comment`.
   Entries that add discouragements or turn linters on count nothing — only weakening counts."
   ([]
    (config-suppressions (edn/read-string (slurp kondo-config-file))))
@@ -265,6 +274,7 @@
                           [linter n])))]
      (apply merge-with +
             (counts (:linters config))
+            (counts (get-in config [:config-in-comment :linters]))
             (for [[_group group-cfg] (:config-in-ns config)]
               (counts (:linters group-cfg)))))))
 

@@ -63,9 +63,9 @@
                   :redundant-primitive-coercion            1
                   :refer-all                               1
                   :unexpected-recur                        1
-                  :unresolved-symbol                       18
+                  :unresolved-symbol                       19
                   :unresolved-var                          1
-                  :unused-referred-var                     1}
+                  :unused-referred-var                     4}
  :comment-exempt #{:aliased-namespace-symbol
                    :all
                    :case-symbol-test
