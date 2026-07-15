@@ -308,7 +308,7 @@ For an overview of how data permissions work in Metabase, see [Data permissions]
 
   If every tenant has their data in a separate database, then instead of using permissions for data access control, you can use [**database routing**](../permissions/database-routing.md) to route queries to appropriate databases directly.
 
-  For a comparison of data isolation methods, see [Choosing a data isolation method](../permissions/choosing-a-data-isolation-method.md).
+  For a comparison of data isolation methods, see [Choosing a data isolation method](../permissions/data-isolation-methods.md).
 
 - **Create queries** controls whether tenant users can create queries on the data they see. If you want to give your tenant users the ability to drill through (e.g., through `drills` parameter in [modular embedding](../embedding/modular-embedding.md)), you need to give them "Create queries" permissions, because a drill through is a new query.
 
@@ -439,4 +439,4 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 - [Embedding overview](./start.md)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)
 - [Permissions overview](../permissions/start.md)
-- [Data isolation methods](../permissions/choosing-a-data-isolation-method.md)
+- [Data isolation methods](../permissions/data-isolation-methods.md)
