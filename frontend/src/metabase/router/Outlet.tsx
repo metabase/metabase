@@ -5,6 +5,19 @@ import type { Route } from "./route";
 
 const OutletContext = createContext<ReactNode>(null);
 
+const RouteContext = createContext<Route | null>(null);
+
+/**
+ * The route matched for the nearest `element`-based route ancestor. On v3 the
+ * matched route is injected as a `route` prop; this exposes it to `element`
+ * routes, which are not passed props. Replaces threading the v3 `route` prop
+ * through pages (e.g. for `setRouteLeaveHook`). Native `useMatch`/route context
+ * takes over at the engine swap.
+ */
+export function useRoute(): Route | null {
+  return useContext(RouteContext);
+}
+
 /**
  * react-router v7's `<Outlet>`: renders the matched child route (or nothing when
  * there is none). On v3 the child is injected as `props.children`, which
@@ -73,9 +86,11 @@ function elementType(element: ReactNode): object | null {
 function makeRouteElementComponent(): RouteElementComponent {
   return function RouteElement({ children, route }) {
     return (
-      <OutletContext.Provider value={children}>
-        {route?.element}
-      </OutletContext.Provider>
+      <RouteContext.Provider value={route ?? null}>
+        <OutletContext.Provider value={children}>
+          {route?.element}
+        </OutletContext.Provider>
+      </RouteContext.Provider>
     );
   };
 }
