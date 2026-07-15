@@ -35,7 +35,6 @@ import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Autocomplete,
-  type ComboboxItem,
   Loader,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
@@ -633,23 +632,21 @@ function RemappedValue({
 }
 
 type RemappedOptionProps = {
-  option: ComboboxItem;
+  option: { value: string; label?: string };
   fields: Field[];
   tc: ContentTranslationFunction;
 };
 
 function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
+  const label = tc(option.label ?? option.value);
 
   return (
     <SelectItem>
       {isRemapped ? (
-        <MultiAutocompleteOption
-          value={option.value}
-          label={tc(option.label)}
-        />
+        <MultiAutocompleteOption value={option.value} label={label} />
       ) : (
-        tc(option.label)
+        label
       )}
     </SelectItem>
   );
