@@ -451,10 +451,16 @@
                                     (/ (- (System/nanoTime) start) 1e6) (count result))
                         result))
         response    (if custom-viz?
+                      ;; EXPERIMENT (perf comparison): route custom-viz plugins through the *regular* in-process
+                      ;; pooled context (`HostAccess/NONE`, same as built-in charts) instead of the
+                      ;; `SandboxPolicy/UNTRUSTED` native isolate. This drops the isolate boundary (no per-render
+                      ;; Source/arg marshalling, no ~16MB cold re-parse per fresh isolate) so we can measure the
+                      ;; in-process render time. Trades away the strong isolation of untrusted third-party plugin
+                      ;; JS — this is a benchmarking configuration, not a security posture.
                       (let [start (System/nanoTime)]
-                        (log/infof "custom-viz: static-rendering plugin(s) %s" ids)
-                        (u/prog1 (with-untrusted-static-viz-context context (run context))
-                          (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
+                        (log/infof "custom-viz: static-rendering plugin(s) %s via REGULAR in-process pipeline" ids)
+                        (u/prog1 (with-static-viz-context context (run context))
+                          (log/infof "custom-viz: static-rendered %s in %.0fms (regular in-process pipeline)"
                                      ids (/ (- (System/nanoTime) start) 1e6))))
                       (with-static-viz-context context (run context)))]
     (-> response
