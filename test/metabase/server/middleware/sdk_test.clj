@@ -166,21 +166,21 @@
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "400"})))
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "500"}))))))
 
-(deftest embedding-mw-bumps-metrics-with-data-app-client-header
-  (mt/with-prometheus-system! [_ system]
-    (let [request (mock-request {:client "data-app"})
-          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
-      (good request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "200"})))
-      (bad request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "400"})))
-      (exception request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "400"})))
-      (is (= 1.0 (mt/metric-value system :metabase-data-app/response {:status "500"}))))))
+(deftest embedding-mw-does-not-bump-metrics-with-data-app-client-header
+  (let [prometheus-standin (atom {})]
+    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
+      ;; data-app is a known SDK client, but a response-code counter tells us nothing
+      ;; actionable about data apps, so the middleware intentionally emits no metric.
+      (let [request (mock-request {:client "data-app"})
+            good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
+        (good request identity identity)
+        (is (= {} @prometheus-standin))
+        (bad request identity identity)
+        (is (= {} @prometheus-standin))
+        (exception request identity identity)
+        (is (= {} @prometheus-standin))))))
 
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]
