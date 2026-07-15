@@ -2,7 +2,18 @@
   "extends": "./tsconfig.sdk.json",
   "compilerOptions": {
     "declarationMap": false,
-    "incremental": false
+    "incremental": false,
+    // Same paths as tsconfig.sdk.json ("paths" is not merged across
+    // "extends"), except cljs/* which points at one-line stubs so the dts
+    // build does not need the shadow-cljs output. Safe because every
+    // cljs-importing file has explicit type annotations; a new cljs module
+    // without a stub fails loudly with TS2307.
+    "paths": {
+      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
+      "build-configs/*": ["./frontend/build/*"],
+      "cljs/*": ["./frontend/build/embedding-sdk/cljs-stubs/*"],
+      "__support__/*": ["./frontend/test/__support__/*"]
+    }
   },
   // The dts bundler walks the import graph from the entry point, so only the
   // entry and the ambient declaration files (global augmentations, css/svg

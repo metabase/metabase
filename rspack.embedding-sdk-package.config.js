@@ -49,6 +49,12 @@ const config = {
 
   resolve: {
     ...mainConfig.resolve,
+    alias: {
+      ...mainConfig.resolve.alias,
+      // No cljs code ends up in the package bundle, so resolve cljs/* to
+      // one-line stubs instead of requiring the shadow-cljs build output.
+      cljs: __dirname + "/frontend/build/embedding-sdk/cljs-stubs",
+    },
   },
 
   module: {

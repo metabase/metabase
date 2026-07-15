@@ -9,8 +9,9 @@ import { defineConfig } from "tsdown";
  * which replaces the old chain of whole-tree tsc emit, alias fixups, and
  * api-extractor rollup.
  *
- * Requires target/cljs_release to exist (built by build-release:cljs) so that
- * `cljs/*` imports resolve during declaration emit.
+ * `cljs/*` imports resolve to the stubs in
+ * frontend/build/embedding-sdk/cljs-stubs (see tsconfig.sdk-dts.json), so
+ * this build does not need the shadow-cljs output.
  */
 // eslint-disable-next-line import/no-default-export
 export default defineConfig({
