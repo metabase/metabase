@@ -8,7 +8,7 @@
   is the same dirigiste `Pool` the GraalVM static-viz contexts use, with the same semantics: 0-3 arrays, each held
   exclusively from [[acquire]] to [[release]], idle arrays dropped after ~10 minutes."
   (:require
-   [metabase.channel.render.js.common :as js.common])
+   [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
    (java.awt Point)
@@ -30,7 +30,7 @@
 (def ^:private pool-key ::arrays)
 
 (def ^:private ^Pool array-pool
-  (js.common/create-pool #(int-array array-pixels) (fn [_array]) {:max-size 3, :idle-minutes 10}))
+  (u.pool/create-pool #(int-array array-pixels) (fn [_array]) {:max-size 3, :idle-minutes 10}))
 
 (defn- wrap-array
   "A `w` x `h` ARGB [[BufferedImage]] over the first `w*h` ints of `backing`."
