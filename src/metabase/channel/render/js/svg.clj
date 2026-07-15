@@ -61,12 +61,18 @@
   (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Generate a tuple of the context and the expiry timestamp.
-               [(load-viz-bundle (js.engine/context))
-                (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
+               ;; Generate a tuple of the context and the expiry timestamp. Timing logged so the in-process
+               ;; bundle load is directly comparable to the isolate's (see untrusted-static-viz-context-pool):
+               ;; the same ~16MB bundle, but no native-isolate Source marshalling, so this is much faster.
+               (let [start (System/nanoTime)
+                     ctx   (load-viz-bundle (js.engine/context))]
+                 (log/infof "static-viz: generated in-process context (loaded bundle) in %.0fms"
+                            (/ (- (System/nanoTime) start) 1e6))
+                 [ctx (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))]))
              (destroy [_ _ [^Context ctx _expiry]]
                ;; Close the context when it's disposed from the pool (expiry/shutdown). Without this, each disposed
                ;; static-viz context (~130 MB) leaks its native memory: GraalVM only releases it on `close`, not on GC.
+               (log/debug "static-viz: disposing in-process context")
                (try
                  (.close ctx true) ;; force close - can't wait for running code
                  (catch Exception _))))
@@ -438,9 +444,11 @@
                                                                          (json/encode cards-with-data)
                                                                          (json/encode dashcard-viz-settings)
                                                                          options))]
-                        (when custom-viz?
-                          (log/debugf "custom-viz: executed javascript_visualization for %s in %.0fms (output %d chars)"
-                                      ids (/ (- (System/nanoTime) start) 1e6) (count result)))
+                        ;; Logged for both paths so isolate vs in-process execute time is directly comparable.
+                        (log/debugf "%s: executed javascript_visualization%s in %.0fms (output %d chars)"
+                                    (if custom-viz? "custom-viz" "static-viz")
+                                    (if custom-viz? (str " for " ids) "")
+                                    (/ (- (System/nanoTime) start) 1e6) (count result))
                         result))
         response    (if custom-viz?
                       (let [start (System/nanoTime)]
