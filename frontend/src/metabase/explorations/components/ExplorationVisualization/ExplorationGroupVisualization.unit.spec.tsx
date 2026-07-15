@@ -377,7 +377,7 @@ describe("ExplorationGroupVisualization", () => {
           field_ref: ["field", 1, null],
           value: "TX",
           display_value: "TX",
-          display_name: "State",
+          dimension_name: "State",
         },
       ],
     });

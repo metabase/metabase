@@ -1571,21 +1571,21 @@
               (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
                 (is (= 1 (count persisted-filters)))
                 (is (= filter-value (:value (first persisted-filters))))
-                (is (= "Price" (:display_name (first persisted-filters))))
+                (is (= "Price" (:dimension_name (first persisted-filters))))
                 (is (contains? (first persisted-filters) :display_value)))))
           (testing "filtered blocks expose explore_filters on the block node and unprefixed page names"
-            (let [page (first (:pages new-block))]
-              (is (some? page))
-              (is (= [{:field_ref     field-ref
-                       :value         filter-value
-                       :display_name  "Price"
-                       :display_value "2"}]
-                     (map #(select-keys % [:field_ref :value :display_name :display_value])
+            (let [price-page (some #(when (str/includes? (:name %) "Price") %) (:pages new-block))]
+              (is (some? price-page))
+              (is (= [{:field_ref      field-ref
+                       :value          filter-value
+                       :dimension_name "Price"
+                       :display_value  "2"}]
+                     (map #(select-keys % [:field_ref :value :dimension_name :display_value])
                           (:explore_filters new-block)))
                   "block node echoes persisted explore_filters")
-              (is (str/includes? (:name page) "Price")
+              (is (str/includes? (:name price-page) "Price")
                   "page short name is heading-relative, without the clicked value prefix")
-              (is (= "Number of venues by Price" (:long_name page)))))
+              (is (= "Number of venues by Price" (:long_name price-page)))))
           (testing "timelines are copied from the source thread"
             (is (= 1 (count (:timelines new))))
             (is (= (:id tl) (-> new :timelines first :timeline_id))))
@@ -1875,14 +1875,14 @@
 
 (deftest blocks-tree-explore-further-naming-test
   (testing "filtered blocks expose explore_filters on the block node with unprefixed page names"
-    (let [filters [{:field_ref ["field" {} 1]
-                    :value     "texas"
-                    :display_name "State"
-                    :display_value "Texas"}
-                   {:field_ref ["field" {} 2]
-                    :value     "2024"
-                    :display_name "Year"
-                    :display_value "2024"}]
+    (let [filters [{:field_ref      ["field" {} 1]
+                    :value          "texas"
+                    :dimension_name "State"
+                    :display_value  "Texas"}
+                   {:field_ref      ["field" {} 2]
+                    :value          "2024"
+                    :dimension_name "Year"
+                    :display_value  "2024"}]
           blocks  [{:id 5 :metrics [{:card_id 10 :explore_filters filters}]}]
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Category" :name "stored name"}]
@@ -2640,6 +2640,47 @@
                                           {:order-by [[:position :desc] [:id :desc]]})]
             (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
                 "top-level follow-up names all filters as Metric → Column: Value")))))))
+
+(deftest explore-further-disambiguates-same-named-filter-dimensions-test
+  (testing "POST /:id/explore-further qualifies ambiguous explore-filter dimension_names with the dim's group"
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
+            orders-created "00000000-0000-0000-0000-00000000bbbb"
+            users-field    (mt/id :venues :latitude)
+            orders-field   (mt/id :venues :longitude)]
+        (mt/with-temp
+          [:model/User u {:email "explore-further-ambig@example.com"}
+           :model/Card metric (assoc (venues-metric-card (:id u))
+                                     :name "Revenue"
+                                     :dimensions
+                                     [{:id users-created  :name "LATITUDE"  :display_name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                      {:id orders-created :name "LONGITUDE" :display_name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+          (let [body      {:name       "ambig drill"
+                           :metrics    [{:card_id (:id metric)
+                                         :dimension_mappings
+                                         [{:dimension_id users-created  :table_id (mt/id :venues)
+                                           :target ["field" {} users-field]}
+                                          {:dimension_id orders-created :table_id (mt/id :venues)
+                                           :target ["field" {} orders-field]}]}]
+                           :dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                        {:dimension_id orders-created :display_name "Created At"}]}
+                created   (create-exploration! u body)
+                expl-id   (:id created)
+                page-id   (->> created :threads first :blocks first :pages
+                               (some #(when (= "Users → Created At" (:name %)) (:id %))))
+                _         (is (some? page-id) "find the users-created page by its disambiguated name")
+                filter    {:field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
+                hydrated  (explore-further-and-hydrate! u expl-id page-id [filter])
+                new-thread (->> hydrated :threads (sort-by :position) last)
+                persisted  (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
+            (is (= "Revenue → Users → Created At: 40.7" (:name new-thread))
+                "thread name uses the group-qualified filter dimension label")
+            (is (= "Users → Created At"
+                   (:dimension_name (first (:explore_filters (first (:metrics persisted))))))
+                "persisted explore_filters carry the group-qualified dimension_name")))))))
+
 ;;; |                                 Create-time reference permission checks                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

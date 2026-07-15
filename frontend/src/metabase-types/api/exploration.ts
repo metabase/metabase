@@ -134,7 +134,7 @@ export type ExplorationExploreFilter = {
 };
 
 export type HydratedExplorationExploreFilter = ExplorationExploreFilter & {
-  display_name?: string | null;
+  dimension_name?: string | null;
 };
 
 export interface ExploreFurtherRequest {
