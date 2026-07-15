@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  Dataset,
   ListMetricDimensionsResponse,
   Metric,
   MetricId,
@@ -13,6 +14,12 @@ export function setupMetricEndpoint(metric: Metric) {
 export function setupMetricsEndpoints(metrics: Metric[]) {
   fetchMock.get("path:/api/metric", metrics);
   metrics.forEach((metric) => setupMetricEndpoint(metric));
+}
+
+export function setupMetricDatasetEndpoint(dataset: Dataset) {
+  fetchMock.post("path:/api/metric/dataset", dataset, {
+    name: "metric-dataset",
+  });
 }
 
 export function setupMetricDimensionsEndpoints(

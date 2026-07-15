@@ -30,12 +30,19 @@ import {
   provideMetricListTags,
   provideMetricTags,
 } from "./tags/utils";
+import { getMetricDatasetCacheKey } from "./utils/get-metric-dataset-cache-key";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
-// Curation edits change the dimensions embedded in the metric card itself,
-// so consumers of `getMetric` (tabs, overview grid) must refetch too.
+/**
+ * Curation edits change the dimensions embedded in the metric card itself,
+ * so consumers of `getMetric` and projected metric datasets must refetch too.
+ */
 function metricDimensionInvalidationTags(metricId: MetricId) {
-  return [idTag("metric-dimension", metricId), idTag("card", metricId)];
+  return [
+    "metric-dimension" as const,
+    idTag("metric-dimension", metricId),
+    idTag("card", metricId),
+  ];
 }
 
 export const metricApi = Api.injectEndpoints({
@@ -207,6 +214,9 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric/dataset",
         body,
       }),
+      serializeQueryArgs: ({ endpointName, queryArgs }) =>
+        `${endpointName}(${getMetricDatasetCacheKey(queryArgs)})`,
+      providesTags: ["metric-dimension"],
       keepUnusedDataFor: 30 * 60,
     }),
   }),

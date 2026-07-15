@@ -8,10 +8,14 @@ import * as LibMetric from "metabase-lib/metric";
 import { projectDimension } from "../utils/project-dimension";
 
 export function useMetricDimensionQuery(
-  definition: MetricDefinition,
-  dimensionId: string,
+  definition: MetricDefinition | null,
+  dimensionId: string | null,
 ) {
   const request = useMemo(() => {
+    if (!definition || !dimensionId) {
+      return null;
+    }
+
     const descriptor = getDimensionDescriptors(definition).get(dimensionId);
     if (!descriptor) {
       return null;

@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
+import {
+  DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
+  type DefaultDimensionDisplayType,
+} from "metabase/common/metrics/utils/dimension-types";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useDispatch } from "metabase/redux";
@@ -38,16 +41,6 @@ type MetricDimensionGridProps = {
 
 const DEFAULT_SKELETON_COUNT = 3;
 
-const DISPLAY_TYPE_BY_DIMENSION = {
-  time: "line",
-  geo: "map",
-  category: "bar",
-  boolean: "bar",
-  numeric: "bar",
-} as const satisfies Record<DimensionType, CardDisplayType>;
-
-type DimensionDisplayType = (typeof DISPLAY_TYPE_BY_DIMENSION)[DimensionType];
-
 export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
   const { cards, definition, isLoading, hasMore, showMore } =
     useMetricDimensionCards(metricId);
@@ -69,7 +62,7 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
             metricId={metricId}
             definition={definition}
             dimension={card}
-            displayType={DISPLAY_TYPE_BY_DIMENSION[card.dimensionType]}
+            displayType={DEFAULT_DISPLAY_TYPE_BY_DIMENSION[card.dimensionType]}
           />
         ))}
       </SimpleGrid>
@@ -93,7 +86,7 @@ interface MetricDimensionCardProps {
   metricId: MetricId;
   definition: MetricDefinition;
   dimension: DefaultDimension;
-  displayType: DimensionDisplayType;
+  displayType: DefaultDimensionDisplayType;
 }
 
 function MetricDimensionCard({
