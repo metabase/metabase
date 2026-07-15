@@ -1,5 +1,5 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
@@ -20,7 +20,7 @@ export function getDataStudioMetricRoutes() {
           path=":cardId/dependencies"
           component={DataStudioMetricDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
       <Route path=":cardId/history" component={DataStudioMetricHistoryPage} />

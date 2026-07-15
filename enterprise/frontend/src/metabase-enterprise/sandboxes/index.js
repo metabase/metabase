@@ -5,7 +5,7 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
@@ -64,18 +64,10 @@ export function initializePlugin() {
     PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
 
     PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-      <ModalRoute
-        key=":tableId/segmented"
-        path=":tableId/segmented"
-        modal={EditSandboxingModal}
-      />,
+      modalRoute(":tableId/segmented", EditSandboxingModal),
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-      <ModalRoute
-        key="segmented/group/:groupId"
-        path="segmented/group/:groupId"
-        modal={EditSandboxingModal}
-      />,
+      modalRoute("segmented/group/:groupId", EditSandboxingModal),
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
