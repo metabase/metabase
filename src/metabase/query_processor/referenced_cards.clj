@@ -65,7 +65,7 @@
       {:status "failed"
        :error  (or (ex-message e) "Failed to run referenced query")})))
 
-(defn referenced-cards-result
+(defn- referenced-cards-result
   "Run each spec and return `{card-id-string result}`, nil when there are none. Must run before the main
   query's QP store binds."
   [specs]
@@ -93,7 +93,7 @@
 ;;; Saved-card path: derive specs from a card's viz settings.
 ;;; ---------------------------------------------------------------------------------------------------------
 
-(defn maybe-wrap-qp
+(defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`."
   [qp specs]
   (if-let [result (referenced-cards-result specs)]
