@@ -1,10 +1,10 @@
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
-import { slugify } from "metabase/formatting";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { isNotNull } from "metabase/utils/types";
+import { slugify } from "metabase/value-formatting";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

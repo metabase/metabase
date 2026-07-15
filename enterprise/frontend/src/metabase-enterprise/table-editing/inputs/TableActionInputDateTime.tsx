@@ -1,8 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type KeyboardEvent, useCallback, useState } from "react";
 
-import { DEFAULT_DATE_STYLE, DEFAULT_TIME_STYLE } from "metabase/formatting";
 import { DateTimePicker } from "metabase/ui";
+import {
+  DEFAULT_DATE_STYLE,
+  DEFAULT_TIME_STYLE,
+} from "metabase/value-formatting";
 
 import type { TableActionInputSharedProps } from "./types";
 import { useDateValueWithoutTimezone } from "./use-date-value-without-timezone";

@@ -7,12 +7,6 @@ const rspack = require("@rspack/core");
 const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-const {
-  COMPRESSION_CONFIG,
-} = require("./frontend/build/shared/rspack/compression");
-const {
-  bundleStatsPlugins,
-} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -20,6 +14,12 @@ const {
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -148,7 +148,7 @@ const config = {
         // The formatting module has no import-time side effects, so unused
         // files behind its barrel (index.ts) can be tree-shaken away.
         test: /\.(tsx?|jsx?)$/,
-        include: SRC_PATH + "/formatting/",
+        include: SRC_PATH + "/value-formatting/",
         sideEffects: false,
       },
       {

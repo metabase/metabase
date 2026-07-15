@@ -2,15 +2,15 @@ import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/formatting";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,

@@ -2,7 +2,7 @@ import type { Dayjs } from "dayjs";
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/formatting";
+import { formatNullable } from "metabase/utils/formatting";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {

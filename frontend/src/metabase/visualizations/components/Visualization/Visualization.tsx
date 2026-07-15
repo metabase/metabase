@@ -20,7 +20,6 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { formatNumber } from "metabase/formatting";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
@@ -30,6 +29,7 @@ import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensi
 import { getTokenFeature } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import {
   extractRemappings,

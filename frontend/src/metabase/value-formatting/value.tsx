@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatNumber } from "metabase/utils/formatting";
 import { removeNewLines } from "metabase/utils/formatting/strings";
 import { parseNumber } from "metabase/utils/number";
 import {
@@ -25,7 +26,6 @@ import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { renderLinkTextForClick } from "./link";
-import { formatNumber } from "./numbers";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
 

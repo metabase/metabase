@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { formatDurationLong } from "metabase/formatting";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { formatDurationLong } from "metabase/utils/formatting";
 
 /**
  * `time` can most likely never be `null`

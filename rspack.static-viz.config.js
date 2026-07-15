@@ -63,7 +63,7 @@ module.exports = (env) => {
           // The formatting module has no import-time side effects, so unused
           // files behind its barrel (index.ts) can be tree-shaken away.
           test: /\.(tsx?|jsx?)$/,
-          include: SRC_PATH + "/formatting/",
+          include: SRC_PATH + "/value-formatting/",
           sideEffects: false,
         },
         {

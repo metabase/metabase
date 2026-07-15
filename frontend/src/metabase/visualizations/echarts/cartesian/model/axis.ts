@@ -2,10 +2,10 @@ import * as d3 from "d3";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { formatValue } from "metabase/formatting";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,

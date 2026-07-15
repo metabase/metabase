@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatNullable } from "metabase/formatting";
+import { formatNullable } from "metabase/utils/formatting";
 import { getColumnScaling } from "metabase/visualizations/echarts/cartesian/model/util";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {

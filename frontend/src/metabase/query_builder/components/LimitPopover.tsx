@@ -4,9 +4,9 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { formatNumber } from "metabase/formatting";
 import { LimitInput } from "metabase/querying/components/LimitInput";
 import { Box, Radio, Stack } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 interface LimitPopoverProps {

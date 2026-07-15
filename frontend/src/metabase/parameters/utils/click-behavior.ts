@@ -1,11 +1,11 @@
-import type { ValueAndColumnForColumnNameDate } from "metabase/formatting";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNotNull } from "metabase/utils/types";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import {
   clickBehaviorIsValid,
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
-} from "metabase/formatting";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { checkNotNull } from "metabase/utils/types";
+} from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {

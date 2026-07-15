@@ -8,7 +8,6 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
-import { formatNumber } from "metabase/formatting";
 import { useAIProviderConfigurationContext } from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
@@ -28,6 +27,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import {
   type MetabotUsageResponse,
   useGetMetabotUsageQuery,

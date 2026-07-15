@@ -1,6 +1,5 @@
 import { c, t } from "ttag";
 
-import { formatNumber } from "metabase/formatting";
 import {
   Button,
   Group,
@@ -9,6 +8,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 import type { ICloudAddOnProduct } from "metabase-types/api";
 
 const ROWS_BLOCK = 1_000_000;

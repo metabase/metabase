@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import type { MouseEvent } from "react";
 
-import { formatValue } from "metabase/formatting";
+import { formatValue } from "metabase/value-formatting";
 import type {
   ClickObject,
   ComputedVisualizationSettings,

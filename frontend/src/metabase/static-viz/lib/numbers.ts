@@ -1,4 +1,4 @@
-import { formatNumber as appFormatNumber } from "metabase/formatting";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting";
 import type { CurrencyStyle } from "metabase-types/api";
 
 export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";

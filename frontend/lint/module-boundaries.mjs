@@ -135,7 +135,7 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
-  createElement({ type: "shared", name: "formatting" }),
+  createElement({ type: "shared", name: "value-formatting" }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -354,15 +354,15 @@ const rules = [
   // so nothing app-ward may leak into it. The only exceptions are the JSX
   // glue (common links) and the SDK link handling in ui.tsx.
   {
-    from: ["shared/formatting"],
+    from: ["shared/value-formatting"],
     disallow: ["shared/*"],
     message:
       "formatting is a leaf module - value formatting must not depend on app code (only common/embedding-sdk JSX glue is allowed)",
   },
   {
-    from: ["shared/formatting"],
+    from: ["shared/value-formatting"],
     allow: [
-      "shared/formatting",
+      "shared/value-formatting",
       "shared/common",
       "shared/embedding-sdk",
       "shared/embedding-sdk-shared",

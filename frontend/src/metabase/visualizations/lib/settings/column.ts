@@ -3,18 +3,20 @@ import _ from "underscore";
 
 import {
   currency,
-  displayNameForColumn,
   getCurrency,
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+  numberFormatterForOptions,
+} from "metabase/utils/formatting";
+import MetabaseSettings from "metabase/utils/settings";
+import {
+  displayNameForColumn,
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   hasHour,
-  numberFormatterForOptions,
-} from "metabase/formatting";
-import MetabaseSettings from "metabase/utils/settings";
+} from "metabase/value-formatting";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {

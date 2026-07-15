@@ -1,4 +1,4 @@
-import { isSafeUrl } from "metabase/formatting";
+import { isSafeUrl } from "metabase/value-formatting";
 
 /**
  * Reconstructs a URL from its parts while preserving parameter placeholders (e.g. {{param}}).

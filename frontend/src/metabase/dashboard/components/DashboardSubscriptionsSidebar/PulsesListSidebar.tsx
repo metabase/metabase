@@ -6,10 +6,6 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/formatting";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
@@ -17,6 +13,10 @@ import type { State } from "metabase/redux/store";
 import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

@@ -1,14 +1,14 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/formatting";
 import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { getEmailDomain } from "metabase/utils/email";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,

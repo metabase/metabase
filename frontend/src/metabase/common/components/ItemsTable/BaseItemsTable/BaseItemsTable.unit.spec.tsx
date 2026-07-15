@@ -7,8 +7,11 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
-import { DEFAULT_DATE_STYLE, DEFAULT_TIME_STYLE } from "metabase/formatting";
 import { Route } from "metabase/router";
+import {
+  DEFAULT_DATE_STYLE,
+  DEFAULT_TIME_STYLE,
+} from "metabase/value-formatting";
 import type { CollectionItem, IconName } from "metabase-types/api";
 import {
   createMockCollection,

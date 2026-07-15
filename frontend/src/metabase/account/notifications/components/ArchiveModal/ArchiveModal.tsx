@@ -2,12 +2,12 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
-import { formatDateTimeWithUnit } from "metabase/formatting";
 import { FormMessage } from "metabase/forms";
 import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
 import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type ArchiveModalProps = {

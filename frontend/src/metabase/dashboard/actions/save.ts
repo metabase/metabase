@@ -3,10 +3,10 @@ import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { clickBehaviorIsValid } from "metabase/formatting";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import { clickBehaviorIsValid } from "metabase/value-formatting";
 import type {
   DashCardId,
   ParameterId,

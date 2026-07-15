@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatValue } from "metabase/formatting";
+import { formatValue } from "metabase/value-formatting";
 import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";

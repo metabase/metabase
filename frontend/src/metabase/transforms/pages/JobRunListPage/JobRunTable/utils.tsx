@@ -1,7 +1,6 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
-import { formatDurationLong } from "metabase/formatting";
 import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
 import {
   formatRunMethod,
@@ -13,6 +12,7 @@ import {
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Box, Ellipsified, Group, SortableHeaderPill } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { formatDurationLong } from "metabase/utils/formatting";
 import {
   TRANSFORM_JOB_RUN_SORT_COLUMNS,
   type TransformJobRun,

@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 
-import { type FormatNumberOptions, formatNumber } from "metabase/formatting";
+import {
+  type FormatNumberOptions,
+  formatNumber,
+} from "metabase/utils/formatting";
 import { useListAddOnsQuery } from "metabase-enterprise/api";
 import type { GetCloudAddOnsResponse } from "metabase-types/api";
 

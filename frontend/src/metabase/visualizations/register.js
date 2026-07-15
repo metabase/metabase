@@ -1,4 +1,4 @@
-import { registerJsxFormatting } from "metabase/formatting";
+import { registerJsxFormatting } from "metabase/value-formatting";
 import {
   registerSettingWidgets,
   registerVisualization,

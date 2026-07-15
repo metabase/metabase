@@ -3,15 +3,15 @@ import Color from "color";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Ellipsified } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   formatChangeWithSign,
   formatNullable,
   formatNumber,
-  formatValue,
-} from "metabase/formatting";
-import { Ellipsified } from "metabase/ui";
-import { color } from "metabase/ui/colors";
+} from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   FunnelNormalRoot,
   FunnelStart,

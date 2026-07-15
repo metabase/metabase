@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { formatNumber } from "metabase/formatting";
+import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils/index";
 import type { Dataset } from "metabase-types/api";
 

@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { type FormatNumberOptions, formatNumber } from "metabase/formatting";
+import {
+  type FormatNumberOptions,
+  formatNumber,
+} from "metabase/utils/formatting";
 
 export type UseFormatNumberOptions = FormatNumberOptions & {
   ignoreInstanceSettings?: boolean;

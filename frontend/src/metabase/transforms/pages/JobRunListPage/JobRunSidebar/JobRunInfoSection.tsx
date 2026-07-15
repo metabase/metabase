@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { formatDurationLong } from "metabase/formatting";
 import { SidebarInfoRow } from "metabase/transforms/components/SidebarInfoRow";
 import {
   formatRunMethod,
@@ -11,6 +10,7 @@ import {
 } from "metabase/transforms/utils";
 import { Box, Card } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { TransformJobRun } from "metabase-types/api";
 
 type JobRunInfoSectionProps = {

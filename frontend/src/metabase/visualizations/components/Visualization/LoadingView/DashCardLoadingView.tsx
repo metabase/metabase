@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { duration } from "metabase/formatting";
 import { Box, Button, HoverCard, Icon, Text, Transition } from "metabase/ui";
+import { duration } from "metabase/utils/formatting";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { CardDisplayType } from "metabase-types/api";
 
