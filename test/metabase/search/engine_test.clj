@@ -88,7 +88,7 @@
       (testing "startup proceeds with just a warning when another engine already serves search"
         (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
           (is (=? [{:level   :warn
-                    :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported; remove it from your configuration."}]
+                    :message "MB_SEMANTIC_SEARCH_ENABLED is no longer supported. Remove it from your configuration."}]
                   (mt/with-log-messages-for-level [messages :warn]
                     (search/check-for-removed-env-vars!)
                     (messages))))))

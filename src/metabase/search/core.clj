@@ -112,15 +112,18 @@
           remedies             (cond-> []
                                  fallback             (conj (trs "set MB_SEARCH_ENGINE={0}" (name fallback)))
                                  semantic-additional? (conj (trs "remove semantic from additional-search-engines")))]
-      (if-let [msg (cond
+      (let [detail (cond
                      (and semantic-default? (not fallback))
-                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
+                     (trs "Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
 
                      (seq remedies)
-                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. To keep semantic search off, {0}; then remove MB_SEMANTIC_SEARCH_ENABLED."
-                          (str/join " and " remedies)))]
-        (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
-        (log/warn "MB_SEMANTIC_SEARCH_ENABLED is no longer supported; remove it from your configuration.")))))
+                     (trs "To keep semantic search off, {0}; then remove MB_SEMANTIC_SEARCH_ENABLED."
+                          (str/join " and " remedies)))
+            msg    (str (trs "MB_SEMANTIC_SEARCH_ENABLED is no longer supported.") " "
+                        (or detail (trs "Remove it from your configuration.")))]
+        (if detail
+          (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
+          (log/warn msg))))))
 
 (defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
   (check-for-removed-env-vars!))
