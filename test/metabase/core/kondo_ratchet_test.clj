@@ -11,20 +11,26 @@
 
 (set! *warn-on-reflection* true)
 
+;; Scanning walks the whole tree, so the ratchet tests share one pass per run; the fixture invalidates
+;; the cache so a long-lived REPL doesn't compare fresh ratchet-file contents with stale counts.
+(def ^:private tree-scan-cache
+  (atom nil))
+
+(defn- tree-scan []
+  (or @tree-scan-cache
+      (reset! tree-scan-cache (kondo-ratchet/scan))))
+
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The self-heal workflow does the same for labelled PRs.
 (use-fixtures :once (fn [thunk]
                       (when-not (System/getenv "CI")
                         (kondo-ratchet/fix!))
+                      (reset! tree-scan-cache nil)
                       (thunk)))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; The ratchets themselves
 ;;;; ---------------------------------------------------------------------------
-
-;; Scanning walks the whole tree, so the ratchet tests share one pass.
-(def ^:private tree-scan
-  (delay (kondo-ratchet/scan)))
 
 (deftest ^:parallel budgets-match-actual-counts-test
   (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
@@ -35,7 +41,7 @@
                 "run means `fix!` itself is broken, since the test fixture just ran it.")
     (is (= {}
            (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
-                                @tree-scan)))))
+                                (tree-scan))))))
 
 (deftest ^:parallel ignores-are-justified-test
   (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
@@ -45,7 +51,7 @@
     (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
       (is (= []
              (map #(dissoc % :justified?)
-                  (kondo-ratchet/unjustified exempt @tree-scan)))))))
+                  (kondo-ratchet/unjustified exempt (tree-scan))))))))
 
 (deftest ^:parallel no-stale-exemptions-test
   (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
@@ -53,7 +59,7 @@
                 "the PR kondo-ratchets-self-healing.")
     (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
       (is (= #{}
-             (kondo-ratchet/stale-exemptions comment-exempt @tree-scan))))))
+             (kondo-ratchet/stale-exemptions comment-exempt (tree-scan)))))))
 
 (deftest ^:parallel ratchets-file-normalized-test
   (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
