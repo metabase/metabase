@@ -9,6 +9,7 @@
    [metabase.actions.init]
    [metabase.activity-feed.init]
    [metabase.agent-api.init]
+   [metabase.ai-tracing.init]
    [metabase.analytics.init]
    [metabase.api-scope.init]
    [metabase.api.init]

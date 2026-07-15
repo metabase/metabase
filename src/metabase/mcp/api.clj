@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
@@ -109,9 +110,24 @@
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
-(defn- dispatch-request
-  "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [{:keys [id method params] :as _msg} session-id token-scopes request-context]
+(defn- eval-session-override
+  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and
+  later fetch) the trace itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates
+  the `Mcp-Session-Id` internally, so without this the harness can't know which `<uuid>.jsonl` to read.
+
+  Validates through `ait/checked-session-id` — the mint-time boundary, and the single source of truth
+  for the safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls
+  back to the Mcp-Session-Id correlator rather than 500ing ahead of `dispatch-request`'s try/catch. The
+  `when-let` guards the absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid
+  branch (which would invent a trace file the harness never named)."
+  [request]
+  (when-let [id (get-in request [:headers "x-eval-session-id"])]
+    (try (ait/checked-session-id id) (catch Exception _ nil))))
+
+(defn- dispatch-method
+  "Route a single JSON-RPC `method` to its handler, returning a response map or nil (notifications).
+  A handler that throws is turned into a JSON-RPC internal error rather than propagating."
+  [id method params session-id token-scopes request-context]
   (try
     (case method
       "notifications/initialized" nil
@@ -126,6 +142,33 @@
     (catch Throwable e
       (log/error e "Error dispatching JSON-RPC method" method)
       (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
+
+(defn- dispatch-request
+  "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
+  [{:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
+  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session and open a per-request root
+  ;; span; tool/resource/agent-api spans nest under it automatically. Key on the harness-supplied
+  ;; `eval-session-id` when given (so it owns the trace file name), else the MCP session's UUID
+  ;; correlator so an entire conversation's requests append to one `<uuid>.jsonl`. We key on the UUID
+  ;; prefix (not the full `<uuid>.<base64>` id): it's stable across the conversation AND always
+  ;; filesystem/URL-safe, whereas the full id can carry a base64 payload that `require-valid-session`
+  ;; accepts but `safe-session-id-re` rejects (e.g. `=` padding) — passing that to `with-eval-session`
+  ;; would throw out here, ahead of the try/catch.
+  ;;
+  ;; When BOTH are absent (a stateless / pre-initialize request with no header), this is nil and
+  ;; `with-eval-session` mints a fresh uuid — so such requests get their own `<uuid>.jsonl` rather than
+  ;; grouping. That's fine for the eval flow, which always supplies `eval-session-id`; the ungrouped
+  ;; files are reaped by the appender's IdlePurgePolicy.
+  (ait/with-eval-session (or eval-session-id (some-> session-id (str/split #"\.") first))
+    (ait/eval-span (str "mcp." method) {:mcp/method     method
+                                        :mcp/request-id id
+                                        :mcp/params     params
+                                        :mcp/user-id    api/*current-user-id*
+                                        :mcp/scopes     token-scopes}
+                   (let [response (dispatch-method id method params session-id token-scopes request-context)]
+                     ;; record the materialized JSON-RPC result/error (the request's output)
+                     (ait/record! {:mcp/response response})
+                     response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
 
@@ -222,9 +265,10 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [user-id request]
-  (let [body       (:body request)
-        session-id (get-in request [:headers "mcp-session-id"])
-        batch?     (sequential? body)]
+  (let [body            (:body request)
+        session-id      (get-in request [:headers "mcp-session-id"])
+        eval-session-id (eval-session-override request)
+        batch?          (sequential? body)]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
@@ -270,7 +314,10 @@
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
-                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context)) messages)]
+                dispatch-msg    (fn [msg]
+                                  (dispatch-request msg session-id (:token-scopes request)
+                                                    request-context eval-session-id))
+                responses       (into [] (keep dispatch-msg) messages)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}

@@ -9,6 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
@@ -36,17 +37,38 @@
   [schema table-names]
   (map #(cond->> % schema (str schema ".")) table-names))
 
+(defn- like-escape
+  "Escape LIKE wildcards so `s` only matches itself (Postgres's default escape character is backslash)."
+  [s]
+  (str/replace s #"([\\%_])" "\\\\$1"))
+
 (defn- orphan-index-tables
-  "Returns a list of semantic search index tables which are not referenced in the metadata table.
-  Not expected to occur, but if it does, these tables can be dropped.
+  "Returns a list of semantic search index tables which are not registered in the metadata table's
+  table_name column. Not expected to occur (index tables are created in the same transaction that
+  registers them), but if it does, these tables can be dropped.
+
+  Candidacy is decided by table-name shape ([[semantic.index/index-table-name?]]); the control-plane
+  tables (metadata/control/gate) share the index_ prefix but are excluded both by shape and by name.
+  Matching is index-table-qualifier-aware, so a config with a distinguishing qualifier (e.g. test
+  configs) only ever sees its own tables. Only base tables are candidates — never views.
+
   With a `:schema` (shared app-db mode) only tables inside the module's schema are considered, and the
-  returned names are schema-qualified to match how the metadata table stores them."
-  ;; TODO (Chris 2026-07-09) -- BOT-1833: the LIKE 'index_table_%' pattern predates the
-  ;; index_<provider>_<model>_<dims> naming, so it matches nothing and orphan detection is a no-op. A fix
-  ;; needs shape-aware matching that excludes index_metadata/index_control/index_gate (not registered in
-  ;; metadata.table_name — a naive 'index\_%' pattern would drop them as orphans).
-  [pgvector {:keys [metadata-table-name schema]}]
-  (let [;; information_schema reports bare names; stored metadata names are qualified when we have a schema
+  returned names are schema-qualified to match how the metadata table stores them. Without one
+  (dedicated pgvector DB) the scan is limited to current_schema(), where the unqualified DROP that
+  consumes these names resolves — tables in other schemas would be detected but never dropped."
+  [pgvector {:keys [metadata-table-name control-table-name gate-table-name index-table-qualifier schema]}]
+  (let [;; the qualifier may embed the app-db schema ("<schema>.%s") — information_schema reports bare
+        ;; table names, so build the LIKE pattern and the qualifier stripping from its name part only
+        [prefix suffix]     (str/split (semantic.u/table-name-part index-table-qualifier) #"%s" -1)
+        like-pattern        (str (like-escape prefix) "index\\_%" (like-escape suffix))
+        control-plane-names (into #{} (map semantic.u/table-name-part)
+                                  [metadata-table-name control-table-name gate-table-name])
+        index-shaped?       (fn [table-name]
+                              ;; the LIKE prefilter guarantees the literal qualifier prefix/suffix, so
+                              ;; strip them to recover the bare index_… name the naming code produced
+                              (semantic.index/index-table-name?
+                               (subs table-name (count prefix) (- (count table-name) (count suffix)))))
+        ;; information_schema reports bare names; stored metadata names are qualified when we have a schema
         stored-name (if schema
                       [:|| [:inline (str schema ".")] :t.table_name]
                       :t.table_name)
@@ -55,13 +77,18 @@
              :from [[:information_schema.tables :t]]
              :left-join [[(keyword metadata-table-name) :meta]
                          [:= :meta.table_name stored-name]]
-             :where (scope-where-to-schema [:and
-                                            [:like :t.table_name [:inline "index_table_%"]]
-                                            [:= :meta.table_name nil]]
-                                           schema)}
+             :where [:and
+                     [:like :t.table_name [:inline like-pattern]]
+                     [:= :meta.table_name nil]
+                     [:= :t.table_type [:inline "BASE TABLE"]]
+                     [:= :t.table_schema (if schema
+                                           [:inline schema]
+                                           [:current_schema])]]}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name)
+         (remove control-plane-names)
+         (filter index-shaped?)
          (requalify-table-names schema))))
 
 (defn- parse-repair-table-timestamp
@@ -179,19 +206,37 @@
     (catch Exception e
       (log/error e "Failed to clean up tombstone records from gate table"))))
 
+(defn- drop-index-table!
+  "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a
+  dependent view) must not abort the rest of the cleanup batch.
+  Returns :dropped, :missing (referenced table no longer exists), or :failed."
+  [pgvector kind table-name]
+  (try
+    (log/infof "Dropping %s semantic search index: %s" kind table-name)
+    (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table (keyword table-name)) :quoted true))
+    :dropped
+    ;; no IF EXISTS: a vacuous drop must not count as :dropped, so let 42P01 (undefined_table) tell us
+    (catch java.sql.SQLException e
+      (if (= "42P01" (.getSQLState e))
+        (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
+            :missing)
+        (do (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+            :failed)))
+    (catch Exception e
+      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+      :failed)))
+
 (defn- cleanup-stale-indexes!
   [pgvector index-metadata]
-  (let [stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
-        orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
-        tables-to-drop       (concat stale-table-names orphaned-table-names)
-        drop-table-sql       (sql/format
-                              (apply sql.helpers/drop-table :if-exists tables-to-drop)
-                              :quoted true)]
-    (when (seq tables-to-drop)
-      (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
-      (doseq [table-name stale-table-names]
-        (log/info "Dropping stale/orphaned semantic search index:" table-name))
-      (jdbc/execute! pgvector drop-table-sql))))
+  (let [stale-table-names    (stale-index-tables pgvector index-metadata)
+        orphaned-table-names (orphan-index-tables pgvector index-metadata)
+        found                (+ (count stale-table-names) (count orphaned-table-names))]
+    (when (pos? found)
+      (log/infof "Found %d semantic search index tables to clean up" found)
+      (let [outcomes (concat (mapv #(drop-index-table! pgvector "stale" %) stale-table-names)
+                             (mapv #(drop-index-table! pgvector "orphaned" %) orphaned-table-names))
+            dropped  (count (filter #{:dropped} outcomes))]
+        (log/infof "Dropped %d of %d semantic search index tables" dropped found)))))
 
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []

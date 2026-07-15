@@ -14,6 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
@@ -64,10 +65,13 @@ const setup = async ({
   const { store } = renderWithProviders(
     <>
       <Route path="/" />
-      <Route
-        path="database/:databaseId/impersonated/group/:groupId"
-        component={ImpersonationModal}
-      />
+      <Route path="database/:databaseId">
+        {modalRoute(
+          "impersonated/group/:groupId",
+          // @ts-expect-error - params prop can't be inferred
+          ImpersonationModal,
+        )}
+      </Route>
     </>,
     {
       initialRoute: `database/${databaseId}/impersonated/group/${groupId}`,

@@ -1394,6 +1394,21 @@ Whether the user's recently viewed items are included in the Metabot system prom
 
 Signing secret for verifying requests from the Metabot Slack app.
 
+### `MB_MFA_CHALLENGE_SIGNING_KEY`
+
+- Type: string
+- Default: `null`
+
+Key used to sign MFA challenge tokens. Generated automatically on first use.
+
+### `MB_MFA_ENFORCEMENT`
+
+- Type: keyword
+- Default: `off`
+- [Configuration file name](./config-file.md): `mfa-enforcement`
+
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
+
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
@@ -1565,6 +1580,15 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_MAX_CONCURRENT_WRITES`
+
+- Type: integer
+- Default: `0`
+
+Maximum number of queries that can write their results to the query cache at the same time; 0 means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. Each concurrent write buffers a result capped by query-caching-max-kb (2 MB by default), so e.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB including growth transients.
+
+Maximum number of queries that can write their results to the query cache at the same time; 0 (the default) means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. E.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1580,6 +1604,27 @@ The maximum size of the cache, per saved question, in kilobytes.
 - [Configuration file name](./config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
+
+### `MB_QUEUE_BACKEND`
+
+- Type: string
+- Default: `quartz`
+
+Which queue backend to use. Valid values: `quartz`, `memory`.
+
+### `MB_QUEUE_MAX_RETRIES`
+
+- Type: integer
+- Default: `5`
+
+Maximum number of times a failed queue message will be retried before being dropped.
+
+### `MB_QUEUE_NO_LISTENER_MAX_AGE_MS`
+
+- Type: integer
+- Default: `86400000`
+
+How long (in milliseconds) a Quartz queue message with no listener anywhere in the cluster is kept before the reaper drops it. With node-affinity, such a message is never acquired and just waits in the store; this bounds that wait so a message for a queue no node handles (e.g. a new queue whose node was rolled back) does not linger forever. Generous by default (1 day) so a node can restart or be re-upgraded and still deliver it.
 
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
@@ -2241,15 +2286,6 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 - [Configuration file name](./config-file.md): `start-of-week`
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
-
-### `MB_STATIC_VIZ_MODE`
-
-- Type: keyword
-- Default: `graalvm`
-
-How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
-  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
-  pool of external Node.js child processes (requires a `node` binary on the host's PATH).
 
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
