@@ -96,7 +96,9 @@ describe("getGoalValue", () => {
   });
 
   it("should return 0 for invalid goal types", () => {
+    // Unjustified type cast. FIXME
     expect(getGoalValue(null as any, mockColumns, rows)).toBe(0);
+    // Unjustified type cast. FIXME
     expect(getGoalValue(undefined as any, mockColumns, rows)).toBe(0);
   });
 });
@@ -255,13 +257,17 @@ describe("calculateProgressMetrics", () => {
   });
 
   it("should handle null and undefined values", () => {
+    // Unjustified type cast. FIXME
     expect(calculateProgressMetrics(null as any, 100).hasValidValue).toBe(
       false,
     );
+    // Unjustified type cast. FIXME
     expect(calculateProgressMetrics(undefined as any, 100).hasValidValue).toBe(
       false,
     );
+    // Unjustified type cast. FIXME
     expect(calculateProgressMetrics(50, null as any).hasValidGoal).toBe(false);
+    // Unjustified type cast. FIXME
     expect(calculateProgressMetrics(50, undefined as any).hasValidGoal).toBe(
       false,
     );

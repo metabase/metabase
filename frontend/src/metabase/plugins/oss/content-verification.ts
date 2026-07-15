@@ -14,6 +14,7 @@ export type MetricFilterSettings = {
 
 const getDefaultPluginContentVerification = () => ({
   contentVerificationEnabled: false,
+  // Unjustified type cast. FIXME
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,

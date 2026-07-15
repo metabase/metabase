@@ -2888,6 +2888,115 @@
            :created_at       :%now}
           attrs)))
 
+(deftest collapse-uniform-table-permissions-migration-test
+  (testing "Migrations v62.2026-07-14T00:00:00 through v62.2026-07-07T00:00:05:
+            uniform full-coverage :blocked view-data table rows collapse to a db-level row (#76077)"
+    (impl/test-migrations ["v62.2026-07-14T00:00:00" "v62.2026-07-07T00:00:05"] [migrate!]
+      (let [group-id (t2/insert-returning-pk! :permissions_group {:name "collapse-test-group"})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database
+                                                {:details    "{}"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :engine     "h2"
+                                                 :is_sample  false
+                                                 :name       db-name}))
+            table!   (fn [db-id active?]
+                       (t2/insert-returning-pk! :metabase_table
+                                                {:db_id      db-id
+                                                 :name       (mt/random-name)
+                                                 :schema     "PUBLIC"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :active     active?}))
+            perm!    (fn [db-id table-id perm-type perm-value]
+                       (t2/insert! :data_permissions
+                                   {:group_id    group-id
+                                    :db_id       db-id
+                                    :table_id    table-id
+                                    :schema_name (when table-id "PUBLIC")
+                                    :perm_type   perm-type
+                                    :perm_value  perm-value}))
+            rows     (fn [db-id perm-type]
+                       (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
+                                         :group_id group-id :db_id db-id :perm_type perm-type))
+            ;; db-1: uniform :blocked covering all active tables (+ a :blocked row for an inactive table)
+            ;; → collapses
+            db-1     (db! "collapse-uniform")
+            t1a      (table! db-1 true)
+            t1b      (table! db-1 true)
+            t1-off   (table! db-1 false)
+            ;; db-2: partial coverage → untouched
+            db-2     (db! "collapse-partial")
+            t2a      (table! db-2 true)
+            _t2b     (table! db-2 true)
+            ;; db-3: mixed values → untouched
+            db-3     (db! "collapse-mixed")
+            t3a      (table! db-3 true)
+            t3b      (table! db-3 true)
+            ;; db-4: uniform but :unrestricted → untouched
+            db-4     (db! "collapse-unrestricted")
+            t4a      (table! db-4 true)
+            ;; db-5: uniform :no create-queries (not view-data) → untouched
+            db-5     (db! "collapse-other-type")
+            t5a      (table! db-5 true)
+            ;; db-6: active tables uniformly :blocked, but an INACTIVE table's row differs → untouched;
+            ;; the differing row must survive so a reactivated table picks its value back up
+            db-6     (db! "collapse-inactive-differs")
+            t6a      (table! db-6 true)
+            t6-off   (table! db-6 false)
+            ;; db-7: table row duplicating an equal-value db-level row → duplicate deleted
+            db-7     (db! "collapse-dup-of-db-level")
+            t7a      (table! db-7 true)
+            ;; db-8: duplicate row alongside full coverage → conservatively NOT collapsed: coverage is
+            ;; row-counted, so the duplicate makes the count exceed the active-table count (the app never
+            ;; writes duplicate rows; leaving them uncollapsed preserves the current state)
+            db-8     (db! "collapse-dup-full-coverage")
+            t8a      (table! db-8 true)
+            t8b      (table! db-8 true)
+            ;; db-9: duplicate row exactly offsetting a MISSING table row → collapsed; lossless because a
+            ;; table with no row in a group with no db-level row already reads as the least permissive
+            ;; value, blocked, which is what the inserted db-level row says
+            db-9     (db! "collapse-dup-masks-missing")
+            t9a      (table! db-9 true)
+            _t9b     (table! db-9 true)]
+        (perm! db-1 t1a "perms/view-data" "blocked")
+        (perm! db-1 t1b "perms/view-data" "blocked")
+        (perm! db-1 t1-off "perms/view-data" "blocked")
+        (perm! db-2 t2a "perms/view-data" "blocked")
+        (perm! db-3 t3a "perms/view-data" "blocked")
+        (perm! db-3 t3b "perms/view-data" "unrestricted")
+        (perm! db-4 t4a "perms/view-data" "unrestricted")
+        (perm! db-5 t5a "perms/create-queries" "no")
+        (perm! db-6 t6a "perms/view-data" "blocked")
+        (perm! db-6 t6-off "perms/view-data" "unrestricted")
+        (perm! db-7 nil "perms/view-data" "unrestricted")
+        (perm! db-7 t7a "perms/view-data" "unrestricted")
+        (perm! db-8 t8a "perms/view-data" "blocked")
+        (perm! db-8 t8a "perms/view-data" "blocked")
+        (perm! db-8 t8b "perms/view-data" "blocked")
+        (perm! db-9 t9a "perms/view-data" "blocked")
+        (perm! db-9 t9a "perms/view-data" "blocked")
+        (migrate!)
+        (testing "uniform :blocked collapses to a single db-level row, dropping the inactive table's row too"
+          (is (= #{[nil "blocked"]} (rows db-1 "perms/view-data"))))
+        (testing "partial coverage untouched"
+          (is (= #{[t2a "blocked"]} (rows db-2 "perms/view-data"))))
+        (testing "mixed values untouched"
+          (is (= #{[t3a "blocked"] [t3b "unrestricted"]} (rows db-3 "perms/view-data"))))
+        (testing "uniform non-blocked value untouched"
+          (is (= #{[t4a "unrestricted"]} (rows db-4 "perms/view-data"))))
+        (testing "non-view-data perm types untouched"
+          (is (= #{[t5a "no"]} (rows db-5 "perms/create-queries"))))
+        (testing "a differing value on an inactive table's row blocks the collapse"
+          (is (= #{[t6a "blocked"] [t6-off "unrestricted"]} (rows db-6 "perms/view-data"))))
+        (testing "table rows duplicating an equal-value db-level row are deleted"
+          (is (= #{[nil "unrestricted"]} (rows db-7 "perms/view-data"))))
+        (testing "a duplicate row alongside full coverage conservatively blocks the collapse"
+          (is (= #{[t8a "blocked"] [t8b "blocked"]} (rows db-8 "perms/view-data"))))
+        (testing "a duplicate row offsetting a missing table row collapses losslessly"
+          (is (= #{[nil "blocked"]} (rows db-9 "perms/view-data"))))))))
+
 (defn- collection-entity-id
   [collection-id]
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
@@ -3246,3 +3355,45 @@
               (when (= :mysql (mdb/db-type))
                 (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
                   (is (nil? (nid invalid))))))))))))
+
+(deftest move-metabot-conversation-state-to-messages-test
+  (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
+    (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "State"
+                                                              :last_name     "Mover"
+                                                              :email         "state-mover@test.com"
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            blob         "{\"queries\":{\"q1\":{\"database\":1}},\"todos\":[{\"id\":\"a\"}]}"
+            conv-a       (str (random-uuid))
+            conv-b       (str (random-uuid))
+            new-message! (fn [conversation-id role & {:as extra}]
+                           (t2/insert-returning-pk! :metabot_message
+                                                    (merge {:conversation_id conversation-id
+                                                            :created_at      :%now
+                                                            :profile_id      "internal"
+                                                            :role            role
+                                                            :data            "[]"
+                                                            :total_tokens    0
+                                                            :data_version    2}
+                                                           extra)))
+            _            (t2/insert! :metabot_conversation {:id conv-a :user_id user-id :state blob})
+            _            (t2/insert! :metabot_conversation {:id conv-b :user_id user-id})
+            a-user       (new-message! conv-a "user")
+            a-deleted    (new-message! conv-a "assistant" :deleted_at :%now)
+            a-earliest   (new-message! conv-a "assistant")
+            a-later      (new-message! conv-a "assistant")
+            b-assistant  (new-message! conv-b "assistant")]
+        (migrate!)
+        (is (= blob (t2/select-one-fn :state :metabot_message :id a-earliest))
+            "the blob lands on the earliest live assistant row")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-deleted))
+            "soft-deleted rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-later)))
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-user))
+            "user rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id b-assistant))
+            "conversations without a blob are untouched")
+        (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
+            "metabot_conversation.state is gone")))))

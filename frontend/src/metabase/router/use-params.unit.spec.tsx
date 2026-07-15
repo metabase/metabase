@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
 
+import { Route } from "./route";
 import { useParams } from "./use-params";
 
 function ParamsProbe() {

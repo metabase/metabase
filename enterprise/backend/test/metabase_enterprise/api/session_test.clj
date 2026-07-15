@@ -41,6 +41,7 @@
                               :hosting
                               :metabase-ai-managed
                               :metabot-v3
+                              :multi-factor-auth
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -93,6 +94,7 @@
             :hosting                        true
             :metabase-ai-managed            true
             :metabot-v3                     true
+            :multi-factor-auth              true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true

@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { BadgeColor } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Task,
@@ -55,18 +56,18 @@ export const getEntityUrl = (
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 
-export const getTaskRunStatusColor = (status: TaskRunStatus) =>
+export const getTaskRunStatusColor = (status: TaskRunStatus): BadgeColor =>
   match(status)
-    .with("success", () => "success" as const)
-    .with("failed", () => "error" as const)
+    .with("success", () => "positive" as const)
+    .with("failed", () => "negative" as const)
     .with("abandoned", () => "warning" as const)
-    .otherwise(() => "text-primary" as const);
+    .otherwise(() => "neutral" as const);
 
-export const getTaskStatusColor = (status: TaskStatus) =>
+export const getTaskStatusColor = (status: TaskStatus): BadgeColor =>
   match(status)
-    .with("success", () => "success" as const)
-    .with("failed", () => "error" as const)
-    .otherwise(() => "text-primary" as const);
+    .with("success", () => "positive" as const)
+    .with("failed", () => "negative" as const)
+    .otherwise(() => "neutral" as const);
 
 export const getFilename = (task: Task | undefined) =>
   task ? `task-${task.id}.json` : "task.json";
@@ -90,21 +91,22 @@ export const renderTaskRunCounters = ({
 };
 
 export const guardTaskRunRunType = (value: string): value is TaskRunType =>
-  (
-    ["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[]
-  ).includes(value as TaskRunType);
+  (["subscription", "alert", "sync", "fingerprint"] satisfies TaskRunType[])
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunType);
 
 export const guardTaskRunEntityType = (
   value: string,
 ): value is TaskRunEntityType =>
   (["database", "card", "dashboard"] satisfies TaskRunEntityType[]).includes(
+    // Unjustified type cast. FIXME
     value as TaskRunEntityType,
   );
 
 export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
-  (
-    ["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[]
-  ).includes(value as TaskRunStatus);
+  (["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[])
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunStatus);
 
 export const toBackendStartedAt = (
   value: TaskRunDateFilterOption | null,
@@ -132,4 +134,6 @@ export const guardTaskRunStartedAtRange = (
       "past3months",
       "past12months",
     ] satisfies TaskRunDateFilterOption[]
-  ).includes(value as TaskRunDateFilterOption);
+  )
+    // Unjustified type cast. FIXME
+    .includes(value as TaskRunDateFilterOption);

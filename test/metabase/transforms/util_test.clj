@@ -71,7 +71,7 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:hosting :transforms-basic}
     (testing "tables with schema"
       (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
             table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]

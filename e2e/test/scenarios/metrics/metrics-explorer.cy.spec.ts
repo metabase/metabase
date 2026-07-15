@@ -72,7 +72,7 @@ const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
     aggregation: [["count"]],
   },
   display: "scalar",
-  collection_id: FIRST_COLLECTION_ID as number,
+  collection_id: FIRST_COLLECTION_ID,
 };
 
 const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
@@ -341,6 +341,7 @@ const decodeMetricsViewerUrlHash = (
     char.charCodeAt(0),
   );
 
+  // Unjustified type cast. FIXME
   return JSON.parse(
     new TextDecoder().decode(bytes),
   ) as CompactMetricsViewerUrlState;
@@ -490,6 +491,7 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     H.restore(SNAPSHOT_NAME as any);
     cy.signInAsAdmin();
 

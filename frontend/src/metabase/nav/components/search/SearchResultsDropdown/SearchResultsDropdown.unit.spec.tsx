@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,6 +10,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { SearchResult } from "metabase-types/api";
 import {

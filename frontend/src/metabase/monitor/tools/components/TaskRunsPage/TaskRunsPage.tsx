@@ -1,9 +1,9 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useListTaskRunsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { type WithRouterProps, withRouter } from "metabase/router";
 import { Flex } from "metabase/ui";
 
 import { toBackendStartedAt } from "../../utils";

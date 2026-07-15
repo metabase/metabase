@@ -15,7 +15,7 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -279,6 +279,7 @@ describe("fetchDashboard", () => {
     // dashboards otherwise fail to load).
     const token = "header.payload.signature";
     const dashboard = createMockDashboard({
+      // Unjustified type cast. FIXME
       id: token as unknown as number,
       dashcards: [
         createMockVirtualDashCard({
@@ -297,7 +298,7 @@ describe("fetchDashboard", () => {
 
     const result = await store.dispatch(
       fetchDashboard({
-        dashId: token as unknown as DashboardId,
+        dashId: token,
         queryParams: {},
         options: {},
       }),
@@ -425,6 +426,7 @@ describe("fetchDashboardCardData", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await fetchDashboardCardData()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);
@@ -506,7 +508,9 @@ describe("fetchDashboardCardData", () => {
 
     // Start loading Tab 1 (slow query)
     const tab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -516,7 +520,9 @@ describe("fetchDashboardCardData", () => {
     // Switch to Tab 2
     (state.dashboard as DashboardState).selectedTabId = tab2.id;
     const tab2Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -529,7 +535,9 @@ describe("fetchDashboardCardData", () => {
     // and reused — no new query execution.
     (state.dashboard as DashboardState).selectedTabId = tab1.id;
     const backToTab1Fetch = fetchDashboardCardData()(
+      // Unjustified type cast. FIXME
       dispatch as never,
+      // Unjustified type cast. FIXME
       getState as never,
     );
 
@@ -550,6 +558,7 @@ describe("reloadDashboardCards", () => {
       8,
     );
 
+    // Unjustified type cast. FIXME
     await reloadDashboardCards()(dispatch as never, getState as never);
 
     expect(getMaxConcurrent()).toBe(5);

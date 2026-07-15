@@ -99,7 +99,7 @@
 .StepNumberIcon {
   width: 1rem;
   height: 1rem;
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 .StepLockIcon {

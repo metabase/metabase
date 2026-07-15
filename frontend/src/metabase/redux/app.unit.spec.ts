@@ -21,7 +21,7 @@ const locationChange = (payload: Record<string, unknown>) => ({
   payload,
 });
 
-const initialState = () => appReducer(undefined, { type: "@@INIT" } as any);
+const initialState = () => appReducer(undefined, { type: "@@INIT" });
 
 describe("app reducer — navigation reactions", () => {
   afterEach(() => {

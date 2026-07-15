@@ -32,6 +32,14 @@ export interface Location<State = unknown> {
 }
 
 /**
+ * Whether a relative `to` is resolved against the route hierarchy or against
+ * the current URL path.
+ *
+ * @see https://api.reactrouter.com/v7/types/react-router.RelativeRoutingType.html
+ */
+export type RelativeRoutingType = "route" | "path";
+
+/**
  * Options for the `navigate` function, mirroring react-router v7's
  * `NavigateOptions`.
  *
@@ -40,6 +48,7 @@ export interface Location<State = unknown> {
 export interface NavigateOptions {
   replace?: boolean;
   state?: unknown;
+  relative?: RelativeRoutingType;
 }
 
 /**

@@ -23,7 +23,7 @@
 
   &:hover,
   &.selected {
-    color: var(--mb-color-white);
+    color: var(--mb-color-core-white);
     background-color: var(--mb-color-core-brand);
   }
 }

@@ -1,8 +1,10 @@
 import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
-import { Route, Router, type WithRouterProps, withRouter } from "react-router";
 
 import { useHistory } from "metabase/history";
+
+import { Router, type WithRouterProps, withRouter } from "./react-router";
+import { Route } from "./route";
 
 type RouterContextType = WithRouterProps;
 

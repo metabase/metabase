@@ -294,7 +294,7 @@ export function TablePickerTreeTable({
             <Center w="100%" data-testid="table-published">
               <Icon
                 name="verified_round"
-                c="success"
+                c="feedback-positive"
                 aria-label={t`Published`}
               />
             </Center>

@@ -6,12 +6,14 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.usage :as mcp.usage]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -348,10 +350,21 @@
   (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
     (or (map? v) (sequential? v)) (assoc :structuredContent v)))
 
+;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
+;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL. The
+;; view also maps -32000 ("Server error") defensively (JSON-RPC reserves -32000..-32099), but the
+;; recorder never emits it, so there's no constant for it here.
+(def ^:private error-code-invalid-request -32600)
+(def ^:private error-code-method-not-found -32601)
+(def ^:private error-code-invalid-params -32602)
+(def ^:private error-code-internal -32603)
+
 (defn- error-content
-  "Wrap an error message as MCP error content."
-  [message]
-  {:content [{:type "text" :text message}] :isError true})
+  "Wrap an error message as MCP error content. The JSON-RPC `code` (default: internal error) is
+   carried under a namespaced key for usage logging and stripped from the response before it
+   reaches the client (see [[call-tool]])."
+  ([message] (error-content message error-code-internal))
+  ([message code] {:content [{:type "text" :text message}] :isError true ::error-code code}))
 
 (comment streaming-response/keep-me) ; ensure StreamingResponse class is loaded
 
@@ -485,36 +498,83 @@
   (when arguments
     (into {} (remove (comp nil? val)) arguments)))
 
+(defn- dispatch-tool-call
+  "Resolve and invoke the handler for an MCP `tools/call`, returning MCP content on success
+   or error content on failure. The instrumented [[call-tool]] wraps this."
+  [token-scopes session-id tool-name arguments options]
+  (let [arguments (drop-nil-args arguments)
+        supported (supported-extensions options)]
+    (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
+      (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
+        (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
+        (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
+          (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
+          ((:response-fn ui-tool) arguments {:session-id session-id})))
+      (if-let [tool-def (get (tool-index) tool-name)]
+        (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
+          (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
+          (if-let [missing-extensions (missing-required-extensions tool-def supported)]
+            (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
+            (let [arguments (if (tools-accepting-query-handle tool-name)
+                              (resolve-query-arg session-id tool-name arguments)
+                              arguments)]
+              (if (= arguments ::handle-not-found)
+                (error-content "Query handle not found. The query may have expired — try running construct_query again." error-code-invalid-params)
+                (try
+                  (dispatch-via-agent-api tool-def arguments token-scopes session-id)
+                  (catch Exception e
+                    (error-content (or (ex-message e) "Internal error") error-code-internal)))))))
+        (error-content (str "Unknown tool: " tool-name) error-code-method-not-found)))))
+
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are enforced by the agent API's
    `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
    as opts in case a tool needs to scope reads to the calling MCP session.
-   Returns MCP content on success, or error content on failure."
+   Returns MCP content on success, or error content on failure.
+
+   Every call — including scope-denied, unknown-tool, and error outcomes — is recorded to
+   `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
+   error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {:supports-mcp-ui? true}))
   ([token-scopes session-id tool-name arguments options]
-   (let [arguments (drop-nil-args arguments)
-         supported (supported-extensions options)]
-     (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
-       (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
-         (error-content (str "Insufficient scope to call tool: " tool-name))
-         (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
-           (error-content (missing-extensions-error tool-name missing-extensions))
-           ((:response-fn ui-tool) arguments {:session-id session-id})))
-       (if-let [tool-def (get (tool-index) tool-name)]
-         (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
-           (error-content (str "Insufficient scope to call tool: " tool-name))
-           (if-let [missing-extensions (missing-required-extensions tool-def supported)]
-             (error-content (missing-extensions-error tool-name missing-extensions))
-             (let [arguments (if (tools-accepting-query-handle tool-name)
-                               (resolve-query-arg session-id tool-name arguments)
-                               arguments)]
-               (if (= arguments ::handle-not-found)
-                 (error-content "Query handle not found. The query may have expired — try running construct_query again.")
-                 (try
-                   (dispatch-via-agent-api tool-def arguments token-scopes session-id)
-                   (catch Exception e
-                     (error-content (or (ex-message e) "Internal error"))))))))
-         (error-content (str "Unknown tool: " tool-name)))))))
+   ;; Eval span (inert unless capturing) nesting under the MCP request span; records the tool
+   ;; name + args, and the resulting content as output.
+   (ait/with-tool-call {:ai/tool-name tool-name :ai/tool-args arguments}
+     (let [start   (System/nanoTime)
+           record! (fn [status error-code error-message]
+                     (mcp.usage/record-mcp-tool-call!
+                      {:tool-name     tool-name
+                       :user-id       api/*current-user-id*
+                       :session-id    session-id
+                       :status        status
+                       :duration-ms   (quot (- (System/nanoTime) start) 1000000)
+                       :error-code    error-code
+                       :error-message error-message
+                       ;; Identity + PII are denormalized onto the row (the view no longer joins the
+                       ;; session): client from the call's `_meta`, tenant from the current user,
+                       ;; IP/UA from the request. The recorder falls back to the session row's stored
+                       ;; client when `_meta` carries none, and gates the PII columns.
+                       :client-info   (:client-info options)
+                       :tenant-id     (some-> api/*current-user* deref :tenant_id)
+                       :user-agent    (get-in options [:request-context :user-agent])
+                       :ip-address    (get-in options [:request-context :ip-address])}))]
+       (try
+         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
+               error? (boolean (:isError result))]
+           (record! (if error? "error" "success")
+                    (when error? (or (::error-code result) error-code-internal))
+                    (when error? (some-> result :content first :text)))
+           ;; `::error-code` is an internal classification marker — never expose it to the client.
+           (let [result (dissoc result ::error-code)]
+             (ait/record! {:ai/tool-output result})
+             result))
+         (catch Throwable e
+           ;; A handler that throws instead of returning error content (notably a UI tool
+           ;; `:response-fn`, whose path isn't wrapped in `dispatch-tool-call`) would otherwise
+           ;; skip instrumentation and under-report errors. Record the failure, then rethrow so the
+           ;; transport layer still surfaces it to the client.
+           (record! "error" error-code-internal (ex-message e))
+           (throw e)))))))

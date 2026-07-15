@@ -54,6 +54,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -88,7 +89,10 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpFeedback"
    "McpQueryHandle"
+   "McpSessionLog"
+   "McpToolCallLog"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"

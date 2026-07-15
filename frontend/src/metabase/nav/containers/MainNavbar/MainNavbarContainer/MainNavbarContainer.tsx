@@ -166,7 +166,7 @@ function MainNavbarContainer({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Something went wrong`,
           }),
         );

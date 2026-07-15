@@ -23,5 +23,5 @@
 }
 
 .dropzone.dropzoneError {
-  border-color: var(--mb-color-error);
+  border-color: var(--mb-color-feedback-negative);
 }

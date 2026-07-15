@@ -8,6 +8,7 @@ import * as initializeQBModule from "./core/initializeQB";
 import { locationChanged } from "./navigation";
 
 const loc = (over: Partial<Location> = {}): Location =>
+  // Unjustified type cast. FIXME
   ({
     pathname: "/question/1",
     search: "",
@@ -28,6 +29,7 @@ describe("locationChanged", () => {
     dispatch = jest.fn();
     initSpy = jest
       .spyOn(initializeQBModule, "initializeQB")
+      // Unjustified type cast. FIXME
       .mockReturnValue({ type: "MOCK_INIT" } as any);
   });
 

@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -25,6 +24,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Button,
   FixedSizeIcon,

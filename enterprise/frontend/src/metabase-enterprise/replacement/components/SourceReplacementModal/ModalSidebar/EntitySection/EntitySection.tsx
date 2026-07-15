@@ -18,7 +18,7 @@ export function EntitySection({ icon, error, children }: EntitySectionProps) {
         <Stack gap="sm" miw={0}>
           {children}
           {error && (
-            <Text c="error" size="sm">
+            <Text c="feedback-negative" size="sm">
               {error}
             </Text>
           )}

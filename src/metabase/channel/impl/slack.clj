@@ -50,22 +50,30 @@
 (def ^:private attachment-text-length-limit                  2000)
 
 (defn- parameter-markdown
+  "mrkdwn for one dashboard filter, or nil if it fails to render (a broken filter shouldn't fail the send)."
   [parameter]
-  (truncate
-   (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
-   attachment-text-length-limit))
+  (try
+    (truncate
+     (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
+     attachment-text-length-limit)
+    (catch Throwable e
+      (log/errorf e "Error rendering filter %s; skipping it" (:name parameter)))))
+
+(defn- parameter-fields
+  [parameters]
+  (for [parameter parameters
+        :let [markdown (parameter-markdown parameter)]
+        :when markdown]
+    {:type "mrkdwn"
+     :text markdown}))
 
 (defn- maybe-append-params-block
   "Appends an inline parameters block to a collection of blocks if parameters exist."
   [blocks inline-parameters]
-  (if (seq inline-parameters)
-    (conj blocks {:type "section"
-                  :fields (mapv
-                           (fn [parameter]
-                             {:type "mrkdwn"
-                              :text (parameter-markdown parameter)})
-                           inline-parameters)})
-    blocks))
+  (let [fields (parameter-fields inline-parameters)]
+    (cond-> blocks
+      (seq fields) (conj {:type "section"
+                          :fields (vec fields)}))))
 
 (defn- text->markdown-section
   [text]
@@ -238,9 +246,7 @@
                                    (conj
                                     {:type "mrkdwn"
                                      :text  "Made with Metabase :blue_heart:"}))}
-        filter-fields   (for [parameter top-level-params]
-                          {:type "mrkdwn"
-                           :text (parameter-markdown parameter)})
+        filter-fields   (parameter-fields top-level-params)
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -255,8 +261,7 @@
              [(format "*%s*" (:name dashboard))
               (mkdwn-link-text (urls/dashboard-url (:id dashboard) all-params)
                                (format "Sent from %s by %s" (appearance/site-name) creator-name))]
-             (for [parameter top-level-params]
-               (parameter-markdown parameter)))))
+             (keep parameter-markdown top-level-params))))
 
 (defn- dashboard-pdf
   "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails.

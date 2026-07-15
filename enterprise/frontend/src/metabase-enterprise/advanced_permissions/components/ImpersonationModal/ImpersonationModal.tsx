@@ -1,14 +1,10 @@
-import type { Location } from "history";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseQuery } from "metabase/common/hooks";
-import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
@@ -31,10 +27,7 @@ import { ImpersonationModalView } from "./ImpersonationModalView";
 
 interface ImpersonationModalProps {
   params: ImpersonationModalParams;
-  location: Location;
-  route: {
-    path: string;
-  };
+  onClose: () => void;
 }
 
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
@@ -47,10 +40,9 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   };
 };
 
-const ImpersonationModalInner = ({
-  route,
+export const ImpersonationModal = ({
   params,
-  location,
+  onClose,
 }: ImpersonationModalProps) => {
   const { groupId, databaseId } = parseParams(params);
 
@@ -81,10 +73,6 @@ const ImpersonationModalInner = ({
 
   const dispatch = useDispatch();
 
-  const close = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
-
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
       dispatch(
@@ -110,14 +98,10 @@ const ImpersonationModalInner = ({
         );
       }
 
-      close();
+      onClose();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [onClose, databaseId, dispatch, groupId, selectedAttribute],
   );
-
-  const handleCancel = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());
@@ -141,9 +125,7 @@ const ImpersonationModalInner = ({
       attributes={attributes}
       database={database}
       onSave={handleSave}
-      onCancel={handleCancel}
+      onCancel={onClose}
     />
   );
 };
-
-export const ImpersonationModal = withRouter(ImpersonationModalInner);

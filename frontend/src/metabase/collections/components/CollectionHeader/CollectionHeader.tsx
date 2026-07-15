@@ -1,10 +1,9 @@
-import { withRouter } from "react-router";
-
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
+import { withRouter } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";

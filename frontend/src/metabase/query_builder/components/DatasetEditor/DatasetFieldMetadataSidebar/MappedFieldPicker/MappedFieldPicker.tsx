@@ -75,6 +75,7 @@ export function MappedFieldPicker({
         }}
         hasValue={!!selectedField}
         tabIndex={tabIndex}
+        // Unjustified type cast. FIXME
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >

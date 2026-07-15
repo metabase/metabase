@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -7,6 +5,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockTransform,

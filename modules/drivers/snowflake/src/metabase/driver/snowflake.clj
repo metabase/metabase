@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
+  (:refer-clojure :exclude [select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -34,11 +34,11 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty? mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -68,10 +68,14 @@
                               :expressions/float                      true
                               :expressions/date                       true
                               :identifiers-with-spaces                true
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :split-part                             true
                               :collate                                true
                               :now                                    true
                               :database-routing                       true
+                              :transforms/index-ddl                   true
+                              :uploads                                true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
@@ -230,12 +234,11 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
-(defn- set-put-get [additional-options]
-  (cond (empty? additional-options) "enablePutGet=false"
-        (re-find #"(?i)enablePutGet=" additional-options) (str/replace additional-options
-                                                                       #"enablePutGet=[^&]+"
-                                                                       "enablePutGet=false")
-        :else (str additional-options "&enablePutGet=false")))
+(defn- normalize-additional-options [additional-options]
+  (when-not (str/blank? additional-options)
+    (not-empty
+     (str/join "&" (remove #(re-matches #"(?i)enablePutGet(=.*)?" %)
+                           (str/split additional-options #"&"))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -289,10 +292,11 @@
                    resolve-private-key
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options (update details
-                                                           :additional-options set-put-get))
+                                                           :additional-options normalize-additional-options))
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
-        (maybe-add-role-to-spec-url details))))
+        (maybe-add-role-to-spec-url details)
+        (assoc :enablePutGet "false"))))
 
 (mu/defn- database-type->base-type
   [database-type :- string?
@@ -382,6 +386,63 @@
 (defmethod driver/type->database-type :snowflake
   [_driver base-type]
   (type->database-type base-type))
+
+(defmethod driver/upload-type->database-type :snowflake
+  [_driver upload-type]
+  (case upload-type
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    ;; `_mb_row_id` must follow insertion order, but the default `NOORDER` allocates ids from per-cluster
+    ;; ranges, leaving gaps or even out-of-order values between inserts. `ORDER` fixes that by serializing
+    ;; id generation -- an acceptable cost, since uploads insert from a single connection.
+    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1] :order]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp_ntz]
+    :metabase.upload/offset-datetime          [:timestamp_tz]))
+
+;; Snowflake's JDBC driver cannot bind `java.time` values: `setObject` handles temporal binds only via the
+;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else.
+;;
+;; Converting through those legacy classes is no better: `setTimestamp` binds nanos-since-epoch as
+;; `TIMESTAMP_LTZ` computed in the JVM default zone, while the session runs with `TIMEZONE=UTC`
+;; (see [[connection-details->spec]]), so wall-clock times would shift whenever the JVM zone isn't UTC.
+;;
+;; String binds sidestep both problems: Snowflake parses them server-side into the column's type, independent
+;; of any timezone. Nine fractional digits keep full nanosecond precision -- the CSV parser accepts arbitrary
+;; sub-second precision and Snowflake timestamps store up to 9 digits.
+(defn- temporal-bind->string
+  "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
+  Non-temporal values pass through unchanged."
+  [v]
+  (condp instance? v
+    LocalDate      (u.date/format v)
+    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS" v)
+    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS xx" v)
+    v))
+
+(defmethod driver/insert-into! :snowflake
+  [driver db-id table-name column-names values]
+  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because Metabase's
+  ;; Snowflake connections set `enablePutGet=false`, so use the generic multi-row `INSERT`.
+  ((get-method driver/insert-into! :sql-jdbc)
+   driver db-id table-name column-names
+   (map #(mapv temporal-bind->string %) values)))
+
+(defmethod driver/add-columns! :snowflake
+  [driver db-id table-name column-definitions & args]
+  ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
+  (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[column definition] column-definitions]
+      (apply add-column! driver db-id table-name {column definition} args))))
+
+(defmethod driver/allowed-promotions :snowflake
+  [_driver]
+  ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
+  ;; to a different one, so no promotions are possible
+  {})
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
@@ -1010,6 +1071,60 @@
                                :dialect (sql.qp/quote-style driver)))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Snowflake's only physical "index" is the table's single clustering key (`CLUSTER BY`); there are no secondary
+;; indexes, so it's a standalone `:clustering` kind. The `:name` is Metabase-side only: the warehouse keeps clustering
+;; keys unnamed, so fetch reports `:name nil` and reconcile matches by kind + columns.
+
+(defmethod driver/supported-index-methods :snowflake
+  [_driver _database]
+  {:clustering {:lifecycle    :standalone
+                :display-name (deferred-tru "Clustering key")
+                :fields       [driver.common/index-name-field driver.common/index-columns-field]}})
+
+(defmethod driver/compile-create-index :snowflake
+  [driver schema table {:keys [columns]}]
+  ;; Re-issuing the same CLUSTER BY is a no-op, so no IF NOT EXISTS needed.
+  (let [target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+    [[(format "ALTER TABLE %s CLUSTER BY (%s)" target cols)]]))
+
+(defn- parse-clustering-key
+  "Parse a Snowflake `CLUSTERING_KEY` string like `LINEAR(category, price)` into its top-level column names/expressions
+  in order. Returns nil for a table with no clustering key."
+  [clustering-key]
+  (when-let [s (not-empty (some-> clustering-key str/trim))]
+    (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
+      (->> (driver.common/split-top-level-commas inner)
+           (map #(driver.common/unquote-ident (str/trim %) \"))
+           (remove str/blank?)
+           vec))))
+
+;; `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank schema falls back to `current_schema()`.
+(defmethod driver/fetch-table-indexes :snowflake
+  [_driver database schema table]
+  (let [clustering-key (-> (jdbc/query
+                            (sql-jdbc.conn/db->pooled-connection-spec database)
+                            [(str "SELECT clustering_key FROM information_schema.tables "
+                                  "WHERE table_schema = COALESCE(?, current_schema()) AND table_name = ?")
+                             (not-empty schema) table])
+                           first :clustering_key)]
+    (if-let [columns (not-empty (parse-clustering-key clustering-key))]
+      [{:name              nil
+        :kind              :clustering
+        :access-method     nil
+        :is-unique         false
+        :is-primary        false
+        :is-valid          true
+        :key-columns       columns
+        :include-columns   []
+        :partial-predicate nil
+        :definition        (format "CLUSTER BY (%s)" (str/join ", " columns))}]
+      [])))
 
 (defmethod driver/table-name-length-limit :snowflake
   [_driver]

@@ -2,14 +2,13 @@
 import styled from "@emotion/styled";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { color } from "metabase/ui/utils/colors";
 
 export const StatusRoot = styled.div`
   width: 16rem;
   border-radius: 6px;
   background-color: var(--mb-color-background_page-primary);
-  box-shadow: 0 1px 12px var(--mb-color-shadow);
+  box-shadow: 0 1px 12px var(--mb-color-shadow-default);
   overflow: hidden;
   margin-top: 1rem;
   border: 1px solid var(--mb-color-border-neutral);
@@ -80,13 +79,6 @@ export const StatusCardDescription = styled.div`
   margin-top: 0.25rem;
 `;
 
-export const StatusCardSpinner = styled(LoadingSpinner)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--mb-color-core-brand);
-`;
-
 interface StatusCardIconContainerProps {
   isError?: boolean;
 }
@@ -101,5 +93,5 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   border-radius: 1rem;
   color: var(--mb-color-text-primary-inverse);
   background-color: ${(props) =>
-    props.isError ? color("error") : color("success")};
+    props.isError ? color("feedback-negative") : color("feedback-positive")};
 `;

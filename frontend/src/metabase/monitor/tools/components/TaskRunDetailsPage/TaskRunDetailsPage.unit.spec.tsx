@@ -1,6 +1,5 @@
 import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupTaskRunEndpoint } from "__support__/server-mocks";
 import {
@@ -9,6 +8,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskRunExtended } from "metabase-types/api";
 import { createMockTaskRunExtended } from "metabase-types/api/mocks";
@@ -20,6 +20,7 @@ jest.mock("@mantine/hooks", () => ({
   useClipboard: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
 const PATHNAME = `${Urls.adminToolsTasksRuns()}/:runId`;

@@ -18,6 +18,7 @@ export async function getSignedToken(
   previewEmbeddingParams: EmbeddingParametersValues,
   expirationMinutes: number = DEFAULT_SIGNED_TOKEN_EXPIRATION_MINUTES,
 ) {
+  // Unjustified type cast. FIXME
   const normalizedResourceId = parseInt(rawResourceId as string, 10);
 
   const iat = Math.round(new Date().getTime() / 1000);

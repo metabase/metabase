@@ -17,22 +17,50 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (def ^:private fake-catalog
-  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model"}
-   {:id "openai.gpt-5.5" :object "model"}
-   {:id "anthropic.claude-haiku-4-5" :object "model"}
-   {:id "openai.gpt-oss-120b" :object "model"}
-   {:id "deepseek.v3.2" :object "model"}
-   {:id "anthropic.claude-opus-4-8" :object "model"}
-   {:id "anthropic.claude-fable-5" :object "model"}
-   {:id "openai.gpt-5.4" :object "model"}])
+  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model" :status "available"}
+   {:id "openai.gpt-5.5" :object "model" :status "available"}
+   {:id "anthropic.claude-haiku-4-5" :object "model" :status "available"}
+   {:id "openai.gpt-oss-120b" :object "model" :status "available"}
+   {:id "deepseek.v3.2" :object "model" :status "available"}
+   {:id "anthropic.claude-opus-4-8" :object "model" :status "available"}
+   {:id "anthropic.claude-fable-5" :object "model" :status "available"}
+   {:id "anthropic.claude-3-5-sonnet" :object "model" :status "available"}
+   {:id "openai.gpt-5.4" :object "model" :status "available"}])
 
-(deftest list-models-filters-to-supported-vendors-test
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-4-8" "anthropic.claude-sonnet-5" "openai.gpt-5.5"]]
+      (is (true? (#'bedrock/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported, even for supported vendors"
+    (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
+                "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]
+      (is (false? (#'bedrock/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-to-whitelist-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
-    (testing "only anthropic.* and openai.* models survive, gpt-oss and fable excluded, sorted by id"
-      (is (= {:models [{:id "anthropic.claude-haiku-4-5" :display_name "anthropic.claude-haiku-4-5"}
-                       {:id "anthropic.claude-opus-4-8" :display_name "anthropic.claude-opus-4-8"}
-                       {:id "openai.gpt-5.4" :display_name "openai.gpt-5.4"}
-                       {:id "openai.gpt-5.5" :display_name "openai.gpt-5.5"}]}
+    (testing "only whitelisted models survive sorted by id"
+      (is (= {:models [{:id "anthropic.claude-fable-5" :display_name "Claude Fable 5"}
+                       {:id "anthropic.claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic.claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                       {:id "openai.gpt-5.4" :display_name "GPT-5.4"}
+                       {:id "openai.gpt-5.5" :display_name "GPT-5.5"}]}
+             (bedrock/list-models))))))
+
+(deftest list-models-filters-unavailable-models-test
+  (mt/with-dynamic-fn-redefs
+    [bedrock/list-all-models
+     (constantly
+      [{:id             "anthropic.claude-fable-5"
+        :object         "model"
+        :status         "unavailable"
+        :status_reason  "This model is not available under data retention mode 'default'."
+        :data_retention {:allowed_modes ["provider_data_share"] :mode "default" :source "model_default"}}
+       {:id             "anthropic.claude-sonnet-5"
+        :object         "model"
+        :status         "available"
+        :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}])]
+    (testing "whitelisted models whose catalog status is not \"available\" are excluded"
+      (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models))))))
 
 (deftest list-models-missing-credentials-test
@@ -57,7 +85,8 @@
     (testing "credentials passed in opts are used without requiring saved settings"
       (let [captured (atom nil)]
         (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
-          (is (=? {:models [{:id "anthropic.claude-haiku-4-5"}
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
                             {:id "anthropic.claude-opus-4-8"}
                             {:id "openai.gpt-5.4"}
                             {:id "openai.gpt-5.5"}]}

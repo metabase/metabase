@@ -36,6 +36,7 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { SandboxedPluginContainer } from "./components/SandboxedPluginContainer";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -376,6 +377,7 @@ export async function loadCustomVizPlugin(
 
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
+        // Unjustified type cast. FIXME
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
@@ -515,12 +517,15 @@ function createCustomVizWrapper(
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
+      // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
-      settings: settings as unknown as GenericVizPluginProps["settings"],
+      settings,
       colorScheme: resolvedColorScheme,
+      // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
       ) => void,
+      // Unjustified type cast. FIXME
       onHover: onHoverChange as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,
@@ -532,10 +537,10 @@ function createCustomVizWrapper(
     );
 
     return (
-      <div
-        ref={containerRef}
-        data-plugin-sandbox={pluginId}
-        style={{ width: "100%", height: "100%" }}
+      <SandboxedPluginContainer
+        containerRef={containerRef}
+        fill
+        pluginId={pluginId}
       />
     );
   };

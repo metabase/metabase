@@ -658,6 +658,28 @@
               (is (> (cap-y :top) (cap-y :middle) (cap-y :bottom))))))
         (.close cs)))))
 
+(deftest ^:parallel normalize-ws-strips-variation-selectors-test
+  (testing "variation selectors are dropped so they don't fall back to '?' (UXW-4704)"
+    (let [vs16  (char 0xFE0F)   ; emoji-presentation selector (as in ❤️)
+          vs15  (char 0xFE0E)   ; text-presentation selector
+          heart (char 0x2764)]
+      (is (= (str heart) (#'font/normalize-ws (str heart vs16))) "VS16 dropped, base char kept")
+      (is (= "A" (#'font/normalize-ws (str \A vs15))) "VS15 dropped")
+      (is (= "" (#'font/normalize-ws (str vs16))) "a lone selector leaves nothing")
+      (is (= "a b" (#'font/normalize-ws "a\tb")) "control chars still normalize to a space"))))
+
+(deftest ^:synchronized emoji-font-fallback-test
+  (testing "emoji codepoints resolve to a font glyph instead of the '?' placeholder (UXW-4704)"
+    (with-open [doc (PDDocument.)]
+      (binding [font/*fonts* (#'font/load-fonts! doc)]
+        ;; grinning face, party popper, rocket, thumbs-up, fire, heavy-black-heart
+        (let [emoji "😀🎉🚀👍🔥❤"
+              runs  (#'font/font-runs (#'font/face :regular) (#'font/normalize-ws emoji))
+              drawn (apply str (map second runs))]
+          (is (= emoji drawn)
+              "every emoji survived font resolution (none replaced by '?')")
+          (is (not (str/includes? drawn "?"))))))))
+
 (deftest ^:synchronized em-width-memoization-test
   (with-open [doc (PDDocument.)]
     (binding [font/*fonts* (#'font/load-fonts! doc)]

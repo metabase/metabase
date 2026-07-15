@@ -29,8 +29,8 @@ const normalize = (cssColor: string) => toHex(Color(cssColor));
 const FALLBACK: HarmonyColors = {
   filter: normalize(METABASE_LIGHT_THEME.colors.filter),
   summarize: normalize(METABASE_LIGHT_THEME.colors.summarize),
-  positive: normalize(METABASE_LIGHT_THEME.colors.success),
-  negative: normalize(METABASE_LIGHT_THEME.colors.danger),
+  positive: normalize(METABASE_LIGHT_THEME.colors["feedback-positive"]),
+  negative: normalize(METABASE_LIGHT_THEME.colors["feedback-negative"]),
   charts: DEFAULT_ACCENT_COLORS.flatMap((c) => {
     if (c == null) {
       return [];

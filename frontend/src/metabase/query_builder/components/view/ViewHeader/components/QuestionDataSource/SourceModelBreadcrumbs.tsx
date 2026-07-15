@@ -53,7 +53,7 @@ export function SourceModelBreadcrumbs({
             <span>
               <HeadBreadcrumbs.Breadcrumb
                 icon="warning"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 to={Urls.card(question.card())}
               >
                 {question.displayName()}

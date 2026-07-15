@@ -55,19 +55,6 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
-(defn- build-entity-id-where-clause
-  "Builds a HoneySQL WHERE clause for entity_id filtering.
-   Combines the imported entity-ids exclusion with any spec-level entity_id condition."
-  [entity-ids spec-entity-id-condition]
-  (let [imported-condition (when (seq entity-ids)
-                             [:not-in :entity_id entity-ids])
-        spec-condition (when spec-entity-id-condition
-                         (let [[op value] spec-entity-id-condition]
-                           [op :entity_id value]))
-        conditions (filterv some? [imported-condition spec-condition])]
-    (when (pos? (count conditions))
-      (into [:and] conditions))))
-
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
 
@@ -83,33 +70,71 @@
   Collection are deleted before Collection itself)."
   [synced-collection-ids {:keys [by-entity-id]}]
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
-          :let [serdes-model (:model-type model-spec)
-                entity-ids (get by-entity-id serdes-model [])
-                removal-conds (spec/removal-conditions model-spec)
-                spec-entity-id-condition (get removal-conds :entity_id)
-                entity-id-where (build-entity-id-where-clause entity-ids spec-entity-id-condition)
-                scope-key (get-in model-spec [:removal :scope-key])
-                ;; Get non-entity_id conditions from spec
-                other-conditions (into [] cat (dissoc removal-conds :entity_id))]]
-    (let [conditions (cond-> []
-                       (and scope-key (seq synced-collection-ids))
-                       (conj [:in scope-key synced-collection-ids])
+          :let [entity-ids (get by-entity-id (:model-type model-spec) [])
+                clauses    (spec/removal-where-clauses model-spec synced-collection-ids entity-ids)]]
+    (cond
+      ;; Scoped model with no collections to scope to — nothing to delete
+      (nil? clauses) nil
+      ;; A predicate — delete matching rows
+      (seq clauses)  (t2/delete! model-key {:where (if (= 1 (count clauses))
+                                                     (first clauses)
+                                                     (into [:and] clauses))})
+      ;; No predicate (global model, no imported ids or conditions) — delete all
+      :else          (t2/delete! model-key))))
 
-                       entity-id-where
-                       (conj entity-id-where)
+(defn- quoted
+  "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
+  [s]
+  (str "`" s "`"))
 
-                       (and (not scope-key) (seq other-conditions))
-                       (into (for [[k v] (partition 2 other-conditions)]
-                               [:= k v])))
-          where-clause (when (seq conditions)
-                         (if (= 1 (count conditions))
-                           (first conditions)
-                           (into [:and] conditions)))]
-      (cond
-        ;; Scoped models with no collections to scope to — nothing to delete
-        (and scope-key (empty? synced-collection-ids)) nil
-        where-clause (t2/delete! model-key {:where where-clause})
-        :else        (t2/delete! model-key)))))
+(defn- describe-entity
+  "Renders `{:model :id :name}` as e.g. ``Card `Orders by Month` (`abc123`)``. Omits whichever of name/id is nil."
+  [{:keys [model id] entity-name :name}]
+  (cond-> (or model "Content")
+    entity-name (str " " (quoted entity-name))
+    id          (str " (" (quoted id) ")")))
+
+(defn- missing-reference-message
+  "Renders the user-facing message for an import that references content absent from this instance.
+
+  `missing` is `{:model :id :name}` describing the content that could not be found; `referrer` is the same shape
+  for the entity holding the dangling reference, and may be nil when it is unknown. `:name` may be nil on either."
+  [{:keys [missing referrer]}]
+  (format "Import failed: %s does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
+          (if referrer
+            (format "%s references %s, which" (describe-entity referrer) (describe-entity missing))
+            (describe-entity missing))))
+
+(defn- sentence
+  "Terminates `s` with a period unless it already ends with one. Returns nil for blank input."
+  [s]
+  (when (seq s)
+    (cond-> s
+      (not (str/ends-with? s ".")) (str "."))))
+
+(defn- load-failure-message
+  "Renders the user-facing message for content that could not be written to the appdb.
+
+  `entity` is `{:model :id :name}` describing the content that failed; `reason` is the underlying error text, and
+  may be nil. `stripped-keys`, when present, names the keys that were removed to break a circular dependency —
+  a partial row for `entity` may have been committed."
+  [{:keys [entity reason stripped-keys]}]
+  (->> [(format "Import failed: could not save %s." (describe-entity entity))
+        (sentence reason)
+        (when (seq stripped-keys)
+          (format "It may have been saved without: %s."
+                  (str/join ", " (map (comp quoted name) (sort stripped-keys)))))]
+       (remove nil?)
+       (str/join " ")))
+
+(defn- cause-with-error
+  "Returns the first exception in `e`'s cause chain whose ex-data `:error` is `error-type`, or nil."
+  [e error-type]
+  (->> (iterate ex-cause e)
+       (take-while some?)
+       (some (fn [ex]
+               (when (= error-type (:error (ex-data ex)))
+                 ex)))))
 
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
@@ -117,44 +142,54 @@
   Takes a throwable exception and returns a string message that categorizes the error (network, authentication,
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
-  (cond
-    (or (instance? java.net.UnknownHostException e)
-        (instance? java.net.UnknownHostException (ex-cause e)))
-    "Network error: Unable to reach git repository host"
+  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)]
+    (cond
+      (or (instance? java.net.UnknownHostException e)
+          (instance? java.net.UnknownHostException (ex-cause e)))
+      "Network error: Unable to reach git repository host"
 
-    (str/includes? (ex-message e) "Authentication failed")
-    "Authentication failed: Please check your git credentials"
+      (str/includes? (ex-message e) "Authentication failed")
+      "Authentication failed: Please check your git credentials"
 
-    (str/includes? (ex-message e) "Repository not found")
-    "Repository not found: Please check the repository URL"
+      (str/includes? (ex-message e) "Repository not found")
+      "Repository not found: Please check the repository URL"
 
-    (str/includes? (ex-message e) "branch")
-    "Branch error: Please check the specified branch exists"
+      (str/includes? (ex-message e) "branch")
+      "Branch error: Please check the specified branch exists"
 
-    (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
-    "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+      (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
+      "This repository contains tenant collections, but the tenants feature is disabled on your instance."
 
-    (str/includes? (ex-message e) "Missing commit")
-    "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
+      (str/includes? (ex-message e) "Missing commit")
+      "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
-    (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
-    (let [{:keys [model id]} (ex-data e)]
-      (format "Import failed: %s '%s' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing." model id))
+      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
+      (let [{:keys [model id referrer]} (ex-data e)]
+        (missing-reference-message {:missing  {:model model :id id}
+                                    :referrer referrer}))
 
-    (some-> e ex-cause ex-message (str/includes? "database not found"))
-    (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))
+      ;; the entity that failed to load is the one holding the reference to the absent database
+      missing-db
+      (missing-reference-message {:missing  {:model "Database" :id (:db-name (ex-data missing-db))}
+                                  :referrer (:entity (ex-data e))})
 
-    (seq (:ingest-errors (ex-data e)))
-    (let [ingest-errors (:ingest-errors (ex-data e))]
-      (format "Failed to read %d file(s) from the repository: %s"
-              (count ingest-errors)
-              (str/join "; " (for [ie ingest-errors
-                                   :let [{:keys [file reason]} (ex-data ie)]]
-                               (cond-> file
-                                 reason (str ": " reason))))))
+      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/load-failure)
+      (let [{:keys [entity stripped-keys]} (ex-data e)]
+        (load-failure-message {:entity        entity
+                               :reason        (some-> e ex-cause ex-message)
+                               :stripped-keys stripped-keys}))
 
-    :else
-    (format "Failed to reload from git repository: %s" (ex-message e))))
+      (seq (:ingest-errors (ex-data e)))
+      (let [ingest-errors (:ingest-errors (ex-data e))]
+        (format "Failed to read %d file(s) from the repository: %s"
+                (count ingest-errors)
+                (str/join "; " (for [ie ingest-errors
+                                     :let [{:keys [file reason]} (ex-data ie)]]
+                                 (cond-> (quoted file)
+                                   reason (str ": " reason))))))
+
+      :else
+      (format "Failed to reload from git repository: %s" (ex-message e)))))
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
@@ -204,7 +239,8 @@
                                 ns-coll-conflicts
                                 (when library-conflict [library-conflict]))]
     {:first-import-conflicts (vec first-import-conflicts)
-     :deletion-conflicts     (spec/check-deletion-conflicts imported-data)}))
+     :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
+                                   (spec/check-content-deletion-conflicts imported-data))}))
 
 (def app-db-batch-size
   "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."
@@ -1386,7 +1422,10 @@
     (when (and has-dirty? (not force?) (not merge?))
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400
-                       :conflicts true})))
+                       :conflicts true
+                       ;; The un-pushed local changes a switch would discard, so the client can name exactly
+                       ;; what would be lost without a second round-trip to /dirty.
+                       :dirty_objects (remote-sync.object/dirty-objects)})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

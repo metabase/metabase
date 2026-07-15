@@ -19,7 +19,6 @@ import {
   type Channel,
   type ChannelApiResponse,
   type ChannelSpec,
-  type ChannelSpecs,
   type Dashboard,
   DataPermissionValue,
   type ScheduleSettings,
@@ -70,10 +69,7 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(
-    pulse,
-    formInput.channels as ChannelSpecs,
-  );
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards?.every(

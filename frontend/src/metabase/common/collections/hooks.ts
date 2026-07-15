@@ -41,6 +41,7 @@ export function useInitialCollectionId({
     collectionIdParam(idFromSlug),
   );
 
+  // Unjustified type cast. FIXME
   const idFromQuery = location?.query?.collectionId as
     | Collection["id"]
     | undefined;

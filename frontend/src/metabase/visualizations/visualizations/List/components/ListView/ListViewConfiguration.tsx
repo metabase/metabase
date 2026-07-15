@@ -246,7 +246,7 @@ export const ListViewConfiguration = ({
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
                         ? getIconBackground(iconConfig.selectedIconColor)
-                        : "var(--mb-color-white)",
+                        : "var(--mb-color-core-white)",
                     }}
                   >
                     {iconConfig.useImageColumn &&
@@ -273,7 +273,8 @@ export const ListViewConfiguration = ({
                         className={S.listEntityIcon}
                         c={
                           iconConfig.entityIconEnabled
-                            ? (iconConfig.selectedIconColor as ColorName)
+                            ? // Unjustified type cast. FIXME
+                              (iconConfig.selectedIconColor as ColorName)
                             : "text-disabled"
                         }
                       />
@@ -452,6 +453,7 @@ export const ListViewConfiguration = ({
             cols={cols}
             rows={rows}
             row={previewSample}
+            // Unjustified type cast. FIXME
             settings={settings as ComputedVisualizationSettings}
             entityIcon={
               iconConfig.entityIconEnabled && iconConfig.selectedEntityIcon

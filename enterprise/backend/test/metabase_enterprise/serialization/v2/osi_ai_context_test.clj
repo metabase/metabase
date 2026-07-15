@@ -60,7 +60,7 @@
                       extracted))
               (is (not (contains? extracted :entity_id))))
             (testing "depends on the referenced Card"
-              (is (= [[{:model "Card" :id card-eid}]] (serdes/dependencies extracted))))
+              (is (= [[{:model "Card" :id card-eid}]] (serdes/deserialization-dependencies extracted))))
             (testing "importing resolves the path back to the local card row"
               (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
               (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
@@ -86,7 +86,7 @@
                   (is (=? {:serdes/meta [{:model serdes-model :id eid} {:model "OsiAiContext" :id "ai_context"}]}
                           extracted)))
                 (testing "depends on the referenced entity"
-                  (is (= [[{:model serdes-model :id eid}]] (serdes/dependencies extracted))))
+                  (is (= [[{:model serdes-model :id eid}]] (serdes/deserialization-dependencies extracted))))
                 (testing "importing resolves the path back to the local id"
                   (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id id)
                   (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
@@ -102,7 +102,7 @@
           (is (= {:model "OsiAiContext" :id "ai_context"} (self-segment extracted)))
           (is (= "Table" (:model (last (pop (vec (serdes/path extracted))))))))
         (testing "depends on the Table"
-          (is (= [(vec (pop (vec (serdes/path extracted))))] (serdes/dependencies extracted))))
+          (is (= [(vec (pop (vec (serdes/path extracted))))] (serdes/deserialization-dependencies extracted))))
         (testing "importing resolves the path back to the local id"
           (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))

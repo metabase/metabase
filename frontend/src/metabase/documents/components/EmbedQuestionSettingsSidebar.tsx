@@ -116,7 +116,7 @@ export const EmbedQuestionSettingsSidebar = ({
     return (
       <Stack gap="lg" p="lg" className={S.errorContainer}>
         <Box className={S.errorContent}>
-          <Text c="error">{t`Failed to load question`}</Text>
+          <Text c="feedback-negative">{t`Failed to load question`}</Text>
         </Box>
       </Stack>
     );

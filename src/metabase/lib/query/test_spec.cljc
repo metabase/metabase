@@ -352,29 +352,42 @@
    spec  :- ::lib.schema.test-spec/test-template-tag-spec]
   (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
 
-(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
   [query                  :- ::lib.schema/query
-   inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+   inferred-template-tags :- ::lib.schema.template-tag/template-tags
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (merge-with merge
-              inferred-template-tags
-              (update-vals template-tags-spec #(adjust-template-tag query %))))
+  (let [spec-tags              (for [spec template-tags-spec]
+                                 (adjust-template-tag query spec))
+        inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
+        spec-tag-name->tag     (into {} (map (juxt :name identity)) spec-tags)
+        tag-names              (into []
+                                     (comp cat
+                                           (map :name)
+                                           (distinct))
+                                     [inferred-template-tags
+                                      spec-tags])]
+    (into []
+          (map (fn [tag-name]
+                 (merge (inferred-tag-name->tag tag-name)
+                        (spec-tag-name->tag tag-name))))
+          tag-names)))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (let [inferred-template-tags (or (lib.native/template-tags query) {})]
+  (let [inferred-template-tags (or (lib.native/template-tags query) [])]
     (->> template-tags-spec
          (adjust-template-tags query inferred-template-tags)
          (lib.native/with-template-tags query))))
 
-(def parse-native-query-spec
+(def ^:private parse-native-query-spec
   "Parser for native-query-spec."
   (mc/coercer [:ref ::lib.schema.test-spec/test-native-query-spec]
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
-               mtx/default-value-transformer)))
+               mtx/default-value-transformer
+               {:name :normalize})))
 
 (mu/defn test-native-query :- ::lib.schema/query
   "Creates a native query from a test native query spec."

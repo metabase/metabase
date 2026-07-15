@@ -74,6 +74,7 @@ export const getNewCardUrl = ({
   try {
     const { isNative } = Lib.queryDisplayInfo(nextQuestion.query());
     if (isNative) {
+      // Unjustified type cast. FIXME
       const nativeQuery = nextQuestion.legacyNativeQuery() as NativeQuery;
       return Urls.question(nextQuestion, {
         query: remapParameterValuesToTemplateTags(

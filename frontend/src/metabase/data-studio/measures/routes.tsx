@@ -1,6 +1,5 @@
-import { IndexRoute, Route } from "react-router";
-
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 
 import { MeasureDependenciesPage } from "./pages/MeasureDependenciesPage";
 import { MeasureDetailPage } from "./pages/MeasureDetailPage";
@@ -18,7 +17,7 @@ export function getDataStudioMeasureRoutes() {
           path=":measureId/dependencies"
           component={MeasureDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
     </Route>

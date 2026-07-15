@@ -1549,3 +1549,13 @@
                                          :value "Gadget"}]))]
       (is (= ["Aerodynamic Leather Computer" "Gadget"]
              (mt/first-row (qp/process-query query)))))))
+
+(deftest ^:parallel clustering-clause-test
+  (testing "clustering renders an inline CLUSTER BY with backtick-quoted columns, in order"
+    (is (= "CLUSTER BY `category`, `price`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "category"} {:name "price"}]}]))))
+  (testing "no clustering index -> no clause"
+    (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
+  (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
+    (is (= "CLUSTER BY `c``; DROP TABLE x; --`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

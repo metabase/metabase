@@ -1,7 +1,6 @@
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupDatabaseEndpoints,
@@ -15,6 +14,8 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { modalRoute } from "metabase/common/components/ModalRoute";
+import { Route } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
@@ -64,10 +65,13 @@ const setup = async ({
   const { store } = renderWithProviders(
     <>
       <Route path="/" />
-      <Route
-        path="database/:databaseId/impersonated/group/:groupId"
-        component={ImpersonationModal}
-      />
+      <Route path="database/:databaseId">
+        {modalRoute(
+          "impersonated/group/:groupId",
+          // @ts-expect-error - params prop can't be inferred
+          ImpersonationModal,
+        )}
+      </Route>
     </>,
     {
       initialRoute: `database/${databaseId}/impersonated/group/${groupId}`,
@@ -138,6 +142,7 @@ describe("impersonation modal", () => {
     await userEvent.click(screen.getByText(/save/i));
 
     expect(
+      // Unjustified type cast. FIXME
       getImpersonations(store.getState() as AdvancedPermissionsStoreState),
     ).toHaveLength(0);
   });
@@ -155,6 +160,7 @@ describe("impersonation modal", () => {
 
     await waitFor(() => {
       expect(
+        // Unjustified type cast. FIXME
         getImpersonations(store.getState() as AdvancedPermissionsStoreState),
       ).toStrictEqual([
         {
@@ -179,6 +185,7 @@ describe("impersonation modal", () => {
 
     await waitFor(() => {
       expect(
+        // Unjustified type cast. FIXME
         getImpersonations(store.getState() as AdvancedPermissionsStoreState),
       ).toStrictEqual([
         {

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -18,6 +17,7 @@ import {
 } from "__support__/ui";
 import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Database, TokenFeatures, User } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -645,8 +645,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   if (!textElement) {
     return null;
   }
-  return (textElement.closest('[data-testid="tree-item"]') ??
-    null) as HTMLElement | null;
+  return textElement.closest('[data-testid="tree-item"]') ?? null;
 }
 
 async function clickItem(

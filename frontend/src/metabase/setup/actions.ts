@@ -48,7 +48,7 @@ interface ThunkConfig {
 export const goToNextStep = createAsyncThunk(
   "metabase/setup/goToNextStep",
   async (_, { getState, dispatch }) => {
-    const state = getState() as State;
+    const state = getState();
     const nextStep = getNextStep(state);
     dispatch(selectStep(nextStep));
     if (nextStep === "completed") {

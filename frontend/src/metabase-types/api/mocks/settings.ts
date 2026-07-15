@@ -118,6 +118,7 @@ export const createMockTokenFeatures = (
   hosting: false,
   "metabase-ai-managed": false,
   "metabot-v3": false,
+  "multi-factor-auth": false,
   "offer-metabase-ai-managed": false,
   official_collections: false,
   sandboxes: false,
@@ -414,6 +415,7 @@ export const createMockSettings = (
   "token-status": null,
   "tracing-enabled": false,
   "transforms-enabled": false,
+  "transforms-setup-complete": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
@@ -443,5 +445,6 @@ export const createMockSettings = (
   "mcp-apps-cors-enabled-clients": [],
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
+  "mfa-enforcement": "off",
   ...opts,
 });

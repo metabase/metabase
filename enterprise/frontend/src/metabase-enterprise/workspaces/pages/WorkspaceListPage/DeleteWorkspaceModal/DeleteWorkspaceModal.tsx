@@ -96,7 +96,7 @@ function DeleteWorkspaceForm({
       sendToast({
         message: result.message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         timeout: null,
       });
     }
@@ -132,7 +132,7 @@ function DeleteWorkspaceForm({
             <FormSubmitButton
               label={t`Delete workspace`}
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               disabled={isLoading}
             />
           </Group>

@@ -1378,10 +1378,11 @@
                                :rows [["x" 1]]})]
         (is (some? (:content part)))))
     (testing "the card's conditional formatting colors the measure value cells"
-      (mt/with-dynamic-fn-redefs [js.color/make-color-selector  (fn [_ _] ::selector)
-                                  js.color/get-background-color (fn [_sel cell _col _row]
-                                                                  (when (formatter/NumericWrapper? cell)
-                                                                    "rgb(1, 2, 3)"))]
+      (mt/with-dynamic-fn-redefs [js.color/cell-background-colors (fn [_data _settings queries]
+                                                                    (mapv (fn [[cell _row-index _col-name]]
+                                                                            (when (formatter/NumericWrapper? cell)
+                                                                              "rgb(1, 2, 3)"))
+                                                                          queries))]
         (let [pcard {:display                :pivot
                      :visualization_settings {:pivot_table.column_split pivot-test-split
                                               :table.column_formatting [{:type     "single"

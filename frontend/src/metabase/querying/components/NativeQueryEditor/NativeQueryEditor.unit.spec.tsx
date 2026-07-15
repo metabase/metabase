@@ -17,10 +17,12 @@ jest.mock(
 
 type UseNotebookScreenSize = ReturnType<typeof useNotebookScreenSize>;
 
+// Unjustified type cast. FIXME
 const useNotebookScreenSizeMock = useNotebookScreenSize as jest.MockedFunction<
   () => UseNotebookScreenSize
 >;
 
+// Unjustified type cast. FIXME
 const mockQuestion = {
   isSaved: () => false,
 } as any;
@@ -44,12 +46,14 @@ describe("NativeQueryEditor", () => {
         availableHeight={700}
         isNativeEditorOpen={false}
         question={mockQuestion}
+        // Unjustified type cast. FIXME
         query={null as any}
         setDatasetQuery={jest.fn()}
         setIsNativeEditorOpen={setIsNativeEditorOpen}
         isInitiallyOpen={false}
       />,
       {
+        // Unjustified type cast. FIXME
         storeInitialState: createMockState({
           metabot: {
             conversations: {

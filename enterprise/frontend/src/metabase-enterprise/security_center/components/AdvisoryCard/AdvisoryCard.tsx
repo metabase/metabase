@@ -1,8 +1,11 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   Anchor,
   Badge,
+  type BadgeColor,
   Box,
   Button,
   Card,
@@ -20,16 +23,8 @@ import type {
   AdvisorySeverity,
 } from "metabase-types/api";
 
-import { isAcknowledged } from "../../utils";
-
-import S from "./AdvisoryCard.module.css";
-
-const SEVERITY_CLASS: Record<AdvisorySeverity, string> = {
-  critical: S.severityCritical,
-  high: S.severityHigh,
-  medium: S.severityMedium,
-  low: S.severityLow,
-};
+import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
+import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
 interface AdvisoryCardProps {
   advisory: Advisory;
@@ -42,27 +37,36 @@ export function AdvisoryCard({
   isAffecting,
   onAcknowledge,
 }: AdvisoryCardProps) {
+  const currentVersion = useSetting("version").tag ?? "";
   const acknowledged = isAcknowledged(advisory);
+  const downloadJar = isAffecting
+    ? getDownloadJarForInstance(advisory, currentVersion)
+    : null;
 
   return (
     <Card p="xl" withBorder data-testid="advisory-card">
       <Stack gap="md">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Badge
-            className={
-              isAffecting
-                ? SEVERITY_CLASS[advisory.severity]
-                : S.severityNeutral
+            color={getSeverityColor({
+              isAffecting,
+              severity: advisory.severity,
+            })}
+            tt={
+              isAffecting && advisory.severity === "critical"
+                ? "uppercase"
+                : undefined
             }
+            size="sm"
           >
-            {advisory.severity}
+            {getSeverityLabel(advisory.severity)}
           </Badge>
           {!isAffecting && (
             <Group gap="xs" align="center">
-              <Text size="sm" c="success" fw={500}>
+              <Text size="sm" c="feedback-positive" fw={500}>
                 {t`Your instance is not affected`}
               </Text>
-              <Icon name="check_filled" c="success" size={20} />
+              <Icon name="check_filled" c="feedback-positive" size={20} />
             </Group>
           )}
         </Group>
@@ -90,6 +94,19 @@ export function AdvisoryCard({
         </Box>
 
         <Group gap="md" mt="sm">
+          {downloadJar && (
+            <Button
+              variant="outline"
+              component="a"
+              href={downloadJar.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              leftSection={<Icon name="download" />}
+              onClick={trackSecurityAdvisoryDownloadClicked}
+            >
+              {t`Download v${downloadJar.version}`}
+            </Button>
+          )}
           {!acknowledged && onAcknowledge && (
             <Tooltip
               label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
@@ -129,4 +146,32 @@ export function AdvisoryCard({
       </Stack>
     </Card>
   );
+}
+
+function getSeverityColor({
+  isAffecting,
+  severity,
+}: {
+  isAffecting: boolean;
+  severity: AdvisorySeverity;
+}): BadgeColor {
+  if (!isAffecting) {
+    return "neutral";
+  }
+
+  return match(severity)
+    .with("critical", () => "negative" as const)
+    .with("high", () => "negative" as const)
+    .with("medium", () => "warning" as const)
+    .with("low", () => "positive" as const)
+    .exhaustive();
+}
+
+function getSeverityLabel(severity: AdvisorySeverity): string {
+  return match(severity)
+    .with("critical", () => t`Critical`)
+    .with("high", () => t`High`)
+    .with("medium", () => t`Medium`)
+    .with("low", () => t`Low`)
+    .exhaustive();
 }

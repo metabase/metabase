@@ -54,6 +54,7 @@ export const HeadingNodeView = ({
       getPos={getPos}
       hideMenus={extension.options.editorContext === "comments"}
     >
+      {/* Unjustified type cast. FIXME */}
       <NodeViewContent<ElementType> as={levelNodeMap[level as Level] ?? "h1"} />
     </BlockShell>
   );

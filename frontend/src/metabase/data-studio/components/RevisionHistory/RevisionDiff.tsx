@@ -62,9 +62,9 @@ function DiffIcon({ before, after }: { before: unknown; after: unknown }) {
     return <Icon name="pencil" size={12} c="text-secondary" />;
   }
   if (before != null) {
-    return <Icon name="dash" size={12} c="error" />;
+    return <Icon name="dash" size={12} c="feedback-negative" />;
   }
-  return <Icon name="add" size={12} c="success" />;
+  return <Icon name="add" size={12} c="feedback-positive" />;
 }
 
 function getPropertyLabel(property: string, definitionLabel: string): string {

@@ -36,7 +36,7 @@ const swcJestTransform = [
 
 const baseConfig = {
   transform: {
-    "^.+\\.[jt]sx?$": swcJestTransform,
+    "^.+\\.m?[jt]sx?$": swcJestTransform,
   },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
@@ -66,6 +66,7 @@ const baseConfig = {
     "sdk-iframe-embedding-ee-plugins":
       "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.

@@ -250,9 +250,11 @@ export const versionRequirements: Record<
   57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   58: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
-  60: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
-  61: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
-  62: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  60: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  61: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  62: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  63: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  64: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -315,28 +317,6 @@ export const getMilestoneName = (version: string) => {
 
   return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
 };
-
-// pre-release: v58.0-beta
-// major: v58.0
-// minor: v58.1
-// patch: v58.1.1
-const getSimpleVersion = (version: string) => {
-  const { major, minor, patch } = getVersionParts(version)
-
-  if (patch) {
-    return `v${major}.${minor}.${patch}`;
-  }
-
-  if (minor) {
-    return `v${major}.${minor}`;
-  }
-
-  return `v${major}.0`;
-}
-
-export const getLinearReleaseName = (version: string) => {
-  return getSimpleVersion(version);
-}
 
 // for auto-setting milestones, we don't ever want to auto-set a patch milestone
 // which we release VERY rarely

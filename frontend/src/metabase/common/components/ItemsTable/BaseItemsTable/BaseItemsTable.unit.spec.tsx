@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -8,6 +7,7 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
+import { Route } from "metabase/router";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

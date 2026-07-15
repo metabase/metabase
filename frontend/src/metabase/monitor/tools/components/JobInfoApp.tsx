@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -12,6 +11,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Ellipsified, Flex, Stack } from "metabase/ui";
 import type { Job } from "metabase-types/api";
 

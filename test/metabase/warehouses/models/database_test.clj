@@ -708,20 +708,6 @@
         (testing ":write_data_details :auth-provider is keywordized"
           (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
-(deftest user-may-not-update-sample-database-test
-  (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                    :is_sample true
-                                                                    :name      "Sample Database"
-                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
-    (testing " updating the engine of a sample database is not allowed"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
-    (testing " updating other attributes of a sample database is allowed"
-      (t2/update! :model/Database id {:name "My New Name"})
-      (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
-
 (driver/register! ::test, :abstract? true)
 
 (deftest preserve-driver-namespaces-test

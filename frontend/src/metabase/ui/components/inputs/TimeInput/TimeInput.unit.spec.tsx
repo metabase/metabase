@@ -48,6 +48,7 @@ describe("TimeInput", () => {
     const input = screen.getByLabelText("Time");
     await userEvent.type(input, "10:20");
 
+    // Unjustified type cast. FIXME
     const time = onChange.mock.lastCall[0] as Date;
     expect(time.getHours()).toBe(10);
     expect(time.getMinutes()).toBe(20);
@@ -62,6 +63,7 @@ describe("TimeInput", () => {
     await userEvent.type(input, "12:");
     await userEvent.tab();
 
+    // Unjustified type cast. FIXME
     const time = onChange.mock.lastCall[0] as Date;
     expect(time.getHours()).toBe(10);
     expect(time.getMinutes()).toBe(20);

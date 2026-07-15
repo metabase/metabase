@@ -466,7 +466,7 @@
         field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
     (t2/select-one :model/Field field-q)))
 
-(defmethod serdes/dependencies "Field" [field]
+(defmethod serdes/deserialization-dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]
     #{[db-path]}))
 

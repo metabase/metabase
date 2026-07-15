@@ -1,7 +1,8 @@
 import { Group } from "@visx/group";
-import { init } from "echarts";
+import { init } from "echarts/core";
 
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
@@ -13,6 +14,8 @@ import { LEGEND_ITEM_MARGIN_RIGHT_GRID } from "../Legend/constants";
 import type { StaticChartProps } from "../StaticVisualization";
 
 import { getPieChartLegend, getPieChartSideLegend } from "./legend";
+
+registerEChartsModules();
 
 function renderPieSvg(
   option: ReturnType<typeof getPieChartOption>,
@@ -26,7 +29,12 @@ function renderPieSvg(
     height: side,
   });
   chart.setOption(option);
-  return sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook ?? false);
+  const chartSvg = sanitizeSvgForBatik(
+    chart.renderToSVGString(),
+    isStorybook ?? false,
+  );
+  chart.dispose();
+  return chartSvg;
 }
 
 export function PieChart({

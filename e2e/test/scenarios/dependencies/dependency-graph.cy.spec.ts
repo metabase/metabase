@@ -135,6 +135,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
+        // Unjustified type cast. FIXME
         cy.findByPlaceholderText(/Search/).type(itemName as string);
         cy.findByText(/results for/).should("be.visible");
         cy.findByTestId("search-scope-selector")

@@ -15,6 +15,15 @@
   (mt/with-dynamic-fn-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
     (thunk)))
 
+(defn- tool-part
+  "A stored v2 tool part in `output-available` state."
+  [tool-name call-id input output]
+  {:type         (str "tool-" tool-name)
+   :toolCallId   call-id
+   :state        "output-available"
+   :input        input
+   :output       output})
+
 ;;; ------------------------- happy paths -------------------------
 
 (deftest create-sql-query-row-test
@@ -22,20 +31,16 @@
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 7
-                    :data [{:type "tool-input"
-                            :id "call-1"
-                            :function "create_sql_query"
-                            :arguments {:database_id 1
-                                        :sql_query "SELECT * FROM orders JOIN products ON ..."}}
-                           {:type "tool-output"
-                            :id "call-1"
-                            :result {:output "<result>...</result>"
-                                     :structured-output {:query-id      "qid-1"
-                                                         :query-content "SELECT * FROM orders JOIN products ON ..."
-                                                         :query         {:database 1
-                                                                         :type     :native
-                                                                         :native   {:query "SELECT * FROM orders JOIN products ON ..."}}
-                                                         :database      1}}}]}])]
+                    :data [(tool-part "create_sql_query" "call-1"
+                                      {:database_id 1
+                                       :sql_query "SELECT * FROM orders JOIN products ON ..."}
+                                      {:output "<result>...</result>"
+                                       :structured_output {:query-id      "qid-1"
+                                                           :query-content "SELECT * FROM orders JOIN products ON ..."
+                                                           :query         {:database 1
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM orders JOIN products ON ..."}}
+                                                           :database      1}})]}])]
         (is (= 1 (count rows)))
         (let [row (first rows)]
           (is (= "create_sql_query" (:tool row)))
@@ -53,20 +58,16 @@
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 8
-                    :data [{:type "tool-input"
-                            :id "call-2"
-                            :function "edit_sql_query"
-                            :arguments {:query_id "qid-1"
-                                        :checklist "..."
-                                        :edits     [{:old_string "1" :new_string "2"}]}}
-                           {:type "tool-output"
-                            :id "call-2"
-                            :result {:structured-output {:query-id      "qid-1"
-                                                         :query-content "SELECT 2 FROM orders"
-                                                         :query         {:database 1
-                                                                         :type     :native
-                                                                         :native   {:query "SELECT 2 FROM orders"}}
-                                                         :database      1}}}]}])
+                    :data [(tool-part "edit_sql_query" "call-2"
+                                      {:query_id "qid-1"
+                                       :checklist "..."
+                                       :edits     [{:old_string "1" :new_string "2"}]}
+                                      {:structured_output {:query-id      "qid-1"
+                                                           :query-content "SELECT 2 FROM orders"
+                                                           :query         {:database 1
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT 2 FROM orders"}}
+                                                           :database      1}})]}])
             row  (first rows)]
         (is (= "edit_sql_query" (:tool row)))
         (is (= "SELECT 2 FROM orders" (:sql row)))
@@ -77,20 +78,16 @@
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 9
-                    :data [{:type "tool-input"
-                            :id "call-3"
-                            :function "replace_sql_query"
-                            :arguments {:query_id  "qid-1"
-                                        :checklist "..."
-                                        :new_query "SELECT 3"}}
-                           {:type "tool-output"
-                            :id "call-3"
-                            :result {:structured-output {:query-id      "qid-1"
-                                                         :query-content "SELECT 3"
-                                                         :query         {:database 1
-                                                                         :type     :native
-                                                                         :native   {:query "SELECT 3"}}
-                                                         :database      1}}}]}])
+                    :data [(tool-part "replace_sql_query" "call-3"
+                                      {:query_id  "qid-1"
+                                       :checklist "..."
+                                       :new_query "SELECT 3"}
+                                      {:structured_output {:query-id      "qid-1"
+                                                           :query-content "SELECT 3"
+                                                           :query         {:database 1
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT 3"}}
+                                                           :database      1}})]}])
             row  (first rows)]
         (is (= "replace_sql_query" (:tool row)))
         (is (= "SELECT 3" (:sql row)))))))
@@ -100,19 +97,15 @@
     (fn []
       (let [legacy-query {:database 7 :type :query :query {:source-table 5}}
             rows         (analytics.queries/messages->generated-queries
-                          ;; Notebook tool persists structured-output WITHOUT a top-level
+                          ;; Notebook tool persists structured output WITHOUT a top-level
                           ;; :database key — the db id lives inside :query.
                           [{:id 10
-                            :data [{:type "tool-input"
-                                    :id "call-4"
-                                    :function "construct_notebook_query"
-                                    :arguments {:reasoning "show me orders"
-                                                :query     {:query_type "raw"
-                                                            :source     {:table_id 5}}}}
-                                   {:type "tool-output"
-                                    :id "call-4"
-                                    :result {:structured-output {:query-id "qid-2"
-                                                                 :query    legacy-query}}}]}])
+                            :data [(tool-part "construct_notebook_query" "call-4"
+                                              {:reasoning "show me orders"
+                                               :query     {:query_type "raw"
+                                                           :source     {:table_id 5}}}
+                                              {:structured_output {:query-id "qid-2"
+                                                                   :query    legacy-query}})]}])
             row          (first rows)]
         (is (= "construct_notebook_query" (:tool row)))
         (is (= "notebook" (:query_type row)))
@@ -133,60 +126,64 @@
                                  :source-table 5}]}
               rows  (analytics.queries/messages->generated-queries
                      [{:id 11
-                       :data [{:type "tool-input"
-                               :id "call-5"
-                               :function "construct_notebook_query"
-                               :arguments {:reasoning "test"
-                                           :query     {:query_type "raw" :source {:table_id 5}}}}
-                              {:type "tool-output"
-                               :id "call-5"
-                               :result {:structured-output {:query-id "qid-3"
-                                                            :query    mbql5}}}]}])
+                       :data [(tool-part "construct_notebook_query" "call-5"
+                                         {:reasoning "test"
+                                          :query     {:query_type "raw" :source {:table_id 5}}}
+                                         {:structured_output {:query-id "qid-3"
+                                                              :query    mbql5}})]}])
               row   (first rows)]
           (is (= "notebook" (:query_type row)))
           (is (= mbql5 (:mbql row)))
           (is (= 1 (:database_id row))))))))
 
+(deftest migrated-rows-use-kebab-structured-output-alias-test
+  (testing "rows migrated from v1 carry :structured-output (kebab) inside :output; the extractor reads both"
+    (with-stubbed-tables! []
+      (fn []
+        (let [rows (analytics.queries/messages->generated-queries
+                    [{:id 17
+                      :data [(tool-part "create_sql_query" "call-kebab"
+                                        {:database_id 1 :sql_query "SELECT 1"}
+                                        {:output "<result>...</result>"
+                                         :structured-output {:query-id      "qid-k"
+                                                             :query-content "SELECT 1"
+                                                             :database      1}})]}])]
+          (is (= ["qid-k"] (map :query_id rows))))))))
+
 ;;; ------------------------- filtered-out cases -------------------------
 
-(deftest tool-input-without-output-is-filtered-test
+(deftest unresolved-tool-part-is-filtered-test
   (with-stubbed-tables! []
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 12
-                    :data [{:type "tool-input"
-                            :id "orphan"
-                            :function "create_sql_query"
-                            :arguments {:database_id 1 :sql_query "SELECT 1"}}]}])]
+                    :data [{:type         "tool-create_sql_query"
+                            :toolCallId   "orphan"
+                            :state        "input-available"
+                            :input        {:database_id 1 :sql_query "SELECT 1"}}]}])]
         (is (= [] rows))))))
 
-(deftest tool-output-with-error-is-filtered-test
+(deftest errored-tool-part-is-filtered-test
   (with-stubbed-tables! []
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 13
-                    :data [{:type "tool-input"
-                            :id "call-err"
-                            :function "create_sql_query"
-                            :arguments {:database_id 1 :sql_query "SELECT 1"}}
-                           {:type "tool-output"
-                            :id "call-err"
-                            :error "exploded"}]}])]
+                    :data [{:type         "tool-create_sql_query"
+                            :toolCallId   "call-err"
+                            :state        "output-error"
+                            :input        {:database_id 1 :sql_query "SELECT 1"}
+                            :errorText    "exploded"}]}])]
         (is (= [] rows))))))
 
-(deftest tool-output-without-structured-is-filtered-test
-  (testing "tools that hit a validation error return :output but no :structured-output"
+(deftest tool-part-without-structured-is-filtered-test
+  (testing "tools that hit a validation error return :output but no structured output"
     (with-stubbed-tables! []
       (fn []
         (let [rows (analytics.queries/messages->generated-queries
                     [{:id 14
-                      :data [{:type "tool-input"
-                              :id "call-bad"
-                              :function "create_sql_query"
-                              :arguments {:database_id 1 :sql_query "SELEKT bad"}}
-                             {:type "tool-output"
-                              :id "call-bad"
-                              :result {:output "<result>SQL query construction failed.</result>"}}]}])]
+                      :data [(tool-part "create_sql_query" "call-bad"
+                                        {:database_id 1 :sql_query "SELEKT bad"}
+                                        {:output "<result>SQL query construction failed.</result>"})]}])]
           (is (= [] rows)))))))
 
 (deftest non-query-tool-calls-are-skipped-test
@@ -194,110 +191,45 @@
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 15
-                    :data [{:type "tool-input"
-                            :id "call-search"
-                            :function "search"
-                            :arguments {:q "foo"}}
-                           {:type "tool-output"
-                            :id "call-search"
-                            :result {:rows [1 2 3]}}
-                           {:type "tool-input"
-                            :id "call-sql"
-                            :function "create_sql_query"
-                            :arguments {:database_id 1 :sql_query "SELECT 1 FROM orders"}}
-                           {:type "tool-output"
-                            :id "call-sql"
-                            :result {:structured-output {:query-id      "qid-x"
-                                                         :query-content "SELECT 1 FROM orders"
-                                                         :query         {:database 1 :type :native :native {:query "SELECT 1 FROM orders"}}
-                                                         :database      1}}}]}])]
+                    :data [(tool-part "search" "call-search" {:q "foo"} {:output "rows"})
+                           (tool-part "create_sql_query" "call-sql"
+                                      {:database_id 1 :sql_query "SELECT 1 FROM orders"}
+                                      {:structured_output {:query-id      "qid-x"
+                                                           :query-content "SELECT 1 FROM orders"
+                                                           :query         {:database 1 :type :native :native {:query "SELECT 1 FROM orders"}}
+                                                           :database      1}})]}])]
         (is (= 1 (count rows)))
         (is (= "create_sql_query" (-> rows first :tool)))))))
 
-(deftest slackbot-shape-blocks-are-filtered-test
-  (testing "legacy slackbot rows wrote :_type 'TOOL_CALL' blocks with no recoverable structured-output;
-            the :type filter excludes them and the extractor yields nothing for those historical rows"
+(deftest non-tool-parts-are-skipped-test
+  (testing "text and data parts pass through the extractor without producing rows"
     (with-stubbed-tables! []
       (fn []
-        (let [rows (analytics.queries/messages->generated-queries
-                    [{:id 16
-                      :data [{:role       "assistant"
-                              :_type      "TOOL_CALL"
-                              :tool_calls [{:id        "slack-call-1"
-                                            :name      "create_sql_query"
-                                            :arguments {:database_id 1 :sql_query "SELECT 1"}}]}
-                             {:role         "tool"
-                              :_type        "TOOL_RESULT"
-                              :tool_call_id "slack-call-1"
-                              :content      "<result>...</result>"}]}])]
-          (is (= [] rows)))))))
-
-(deftest slackbot-native-shape-blocks-are-extracted-test
-  (testing "going-forward slackbot rows are persisted via finalize-assistant-turn!, so they carry
-            the same :type 'tool-input'/'tool-output' block shape as in-app rows and the
-            analytics extractor handles them identically"
-    (with-stubbed-tables! ["orders"]
-      (fn []
-        (let [data [{:type "tool-input"
-                     :id "call-search"
-                     :function "search"
-                     :arguments {:query "orders"}}
-                    {:type "tool-output"
-                     :id "call-search"
-                     :result {:output "<result>orders</result>"}}
-                    {:type "tool-input"
-                     :id "call-sql"
-                     :function "create_sql_query"
-                     :arguments {:database_id 1 :sql_query "SELECT 1 FROM orders"}}
-                    {:type "tool-output"
-                     :id "call-sql"
-                     :result {:output            "<result>sql</result>"
-                              :structured-output {:query-id      "qid-slack"
-                                                  :query-content "SELECT 1 FROM orders"
-                                                  :query         {:database 1
-                                                                  :type     :native
-                                                                  :native   {:query "SELECT 1 FROM orders"}}
-                                                  :database      1}}}]
-              message {:id 200 :data data}]
-          (testing "count-tool-invocations reaches tool names directly by :function"
-            (is (= 1 (analytics.queries/count-tool-invocations [message] "search")))
-            (is (= 1 (analytics.queries/count-tool-invocations
-                      [message] metabot.tools/query-generation-tool-names))))
-          (testing "messages->generated-queries surfaces the SQL tool call"
-            (let [rows (analytics.queries/messages->generated-queries [message])]
-              (is (= 1 (count rows)))
-              (is (= "create_sql_query" (-> rows first :tool)))
-              (is (= "qid-slack" (-> rows first :query_id)))
-              (is (= "SELECT 1 FROM orders" (-> rows first :sql))))))))))
+        (is (= [] (analytics.queries/messages->generated-queries
+                   [{:id 16
+                     :data [{:type "text" :text "hi"}
+                            {:type "data-navigate_to" :data "/question/1"}]}])))))))
 
 ;;; ------------------------- aggregation -------------------------
 
 (deftest flattens-across-messages-preserving-order-test
   (with-stubbed-tables! ["t"]
     (fn []
-      (let [base-output (fn [qid sql]
-                          {:type "tool-output"
-                           :id   (str "call-" qid)
-                           :result {:structured-output {:query-id      qid
-                                                        :query-content sql
-                                                        :query         {:database 1
-                                                                        :type     :native
-                                                                        :native   {:query sql}}
-                                                        :database      1}}})
-            base-input  (fn [qid sql]
-                          {:type "tool-input"
-                           :id   (str "call-" qid)
-                           :function "create_sql_query"
-                           :arguments {:database_id 1 :sql_query sql}})
-            rows        (analytics.queries/messages->generated-queries
-                         [{:id 100
-                           :data [(base-input "a" "SELECT 1")
-                                  (base-output "a" "SELECT 1")]}
-                          {:id 101
-                           :data [(base-input "b" "SELECT 2")
-                                  (base-output "b" "SELECT 2")
-                                  (base-input "c" "SELECT 3")
-                                  (base-output "c" "SELECT 3")]}])]
+      (let [sql-part (fn [qid sql]
+                       (tool-part "create_sql_query" (str "call-" qid)
+                                  {:database_id 1 :sql_query sql}
+                                  {:structured_output {:query-id      qid
+                                                       :query-content sql
+                                                       :query         {:database 1
+                                                                       :type     :native
+                                                                       :native   {:query sql}}
+                                                       :database      1}}))
+            rows     (analytics.queries/messages->generated-queries
+                      [{:id 100
+                        :data [(sql-part "a" "SELECT 1")]}
+                       {:id 101
+                        :data [(sql-part "b" "SELECT 2")
+                               (sql-part "c" "SELECT 3")]}])]
         (is (= ["a" "b" "c"] (map :query_id rows)))
         (is (= [100 101 101] (map :message_id rows)))))))
 
@@ -309,33 +241,29 @@
 ;;; ------------------------- count-tool-invocations -------------------------
 
 (deftest count-tool-invocations-test
-  (testing "sums matching tool-input blocks across messages, including errored calls"
-    ;; Mix within-message and across-messages, plus an errored and an unrelated tool.
+  (testing "sums matching tool parts across messages, regardless of how the call resolved"
     (is (= 4 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "tool-input" :function "search" :id "a"}
-                             {:type "tool-output" :id "a" :error "boom"}        ; errored still counts
-                             {:type "tool-input" :function "search" :id "b"}]}
-               {:id 2 :data [{:type "tool-input" :function "create_sql_query" :id "c"} ; ignored tool
-                             {:type "tool-input" :function "search" :id "d"}
-                             {:type "tool-input" :function "search" :id "e"}]}]
+              [{:id 1 :data [{:type "tool-search" :toolCallId "a" :state "output-error"
+                              :input {} :errorText "boom"}              ; errored still counts
+                             {:type "tool-search" :toolCallId "b" :state "input-available"
+                              :input {}}]}
+               {:id 2 :data [(tool-part "create_sql_query" "c" {} {})    ; ignored tool
+                             (tool-part "search" "d" {} {})
+                             (tool-part "search" "e" {} {})]}]
               "search"))))
-  (testing "returns 0 for inputs that contain no matching tool-input blocks"
+  (testing "returns 0 for inputs that contain no matching tool parts"
     (are [messages] (zero? (analytics.queries/count-tool-invocations messages "search"))
       []
       [{:id 1 :data nil}]
       [{:id 1 :data []}]
       [{:id 1 :data [{:type "text" :text "hi"}]}]
-      [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "x"}]}]
-      ;; Slackbot-shaped blocks lack `:type` and are intentionally skipped.
-      [{:id 1 :data [{:role "assistant"
-                      :_type "TOOL_CALL"
-                      :tool_calls [{:id "slack-1" :name "search"}]}]}]))
-  (testing "accepts a set of tool names; a block counts if its :function is in the set"
+      [{:id 1 :data [(tool-part "create_sql_query" "x" {} {})]}]))
+  (testing "accepts a set of tool names; a part counts if its name is in the set"
     (is (= 5 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "tool-input" :function "create_sql_query" :id "a"}
-                             {:type "tool-input" :function "edit_sql_query" :id "b"}
-                             {:type "tool-input" :function "construct_notebook_query" :id "c"}]}
-               {:id 2 :data [{:type "tool-input" :function "replace_sql_query" :id "d"}
-                             {:type "tool-input" :function "create_sql_query" :id "e"}
-                             {:type "tool-input" :function "search" :id "f"}]}]             ; non-query tool
+              [{:id 1 :data [(tool-part "create_sql_query" "a" {} {})
+                             (tool-part "edit_sql_query" "b" {} {})
+                             (tool-part "construct_notebook_query" "c" {} {})]}
+               {:id 2 :data [(tool-part "replace_sql_query" "d" {} {})
+                             (tool-part "create_sql_query" "e" {} {})
+                             (tool-part "search" "f" {} {})]}]             ; non-query tool
               metabot.tools/query-generation-tool-names)))))

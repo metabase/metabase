@@ -1,12 +1,15 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -24,6 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -278,6 +282,14 @@
                  (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
+(defn- query-not-runnable-explanation
+  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
+  explanation of why; nil when the query is runnable."
+  [pmbql-query]
+  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
+      (me/humanize explanation))))
+
 (defn execute-representations-query
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
 
@@ -302,6 +314,11 @@
     5. Sanity-check the post-repair shape against the portable repair schema.
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
+    6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
+       ([[query-not-runnable-explanation]]), then run the FE expression editor's own
+       diagnostics over every custom column / aggregation / filter
+       ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
+       `:agent-error?` - success on a query the editor rejects is BOT-1442.
     7. Export that final numeric pMBQL back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
@@ -340,6 +357,18 @@
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
+                                                 (pr-str why))
+                                            {:agent-error? true
+                                             :error        :query-not-runnable
+                                             :status-code  400})))
+            ;; The FE expression editor rejects some shapes the (type-check-suppressed) canRun
+            ;; gate above accepts - `offset` in a filter, window functions nested in
+            ;; aggregations, cyclic expression refs, type-incompatible arguments. Must run
+            ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
+            ;; argument against the same schema.
+            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]

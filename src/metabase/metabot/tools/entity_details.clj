@@ -656,7 +656,11 @@
                       (let [card    (t2/hydrate (metabot.tools.u/get-card report-id)
                                                 :average_query_time)
                             mp      (lib-be/application-database-metadata-provider (:database_id card))
-                            details (card-details card mp options)]
+                            ;; The select-keys below drops :related_tables and :metrics, so don't compute them. On
+                            ;; wide-FK source tables the related-tables cost can be substantial (metabase#76493).
+                            details (card-details card mp (assoc options
+                                                                 :with-related-tables? false
+                                                                 :with-metrics? false))]
                         (-> details
                             ;; `:query_json` is intentionally part of the slim payload here:
                             ;; it's what `question->xml` renders inside `<metabase_question>`

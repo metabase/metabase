@@ -134,6 +134,7 @@ export function DataFieldPopover({
           <IconButtonWrapper
             className={S.DataStepIconButton}
             style={
+              // Unjustified type cast. FIXME
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
               } as CSSProperties

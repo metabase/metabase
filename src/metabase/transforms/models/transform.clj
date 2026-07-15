@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -175,6 +176,10 @@
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
                           (transforms-base.i/target-db-id transform))]
+    ;; A source or target edit may change the output columns, and we can't cheaply tell, so invalidate conservatively:
+    ;; the next run re-applies the managed indexes against the new schema and fails if a column is gone.
+    (when (and target-changed? (not mi/*deserializing?*))
+      (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
@@ -394,6 +399,20 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method indexes
+  :indexes
+  "Fetch the table indexes that belong to each transform"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          idx-mappings  (group-by :transform_id
+                                  (filter table-index/applicable?
+                                          (t2/select :model/TableIndex
+                                                     :transform_id [:in transform-ids]
+                                                     {:order-by [[:index_name :asc]]})))]
+      (for [transform transforms]
+        (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
+
 (mi/define-batched-hydration-method table-with-db-and-fields
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
@@ -468,9 +487,10 @@
                                                                                   (m/update-existing :database_id import-maybe-int-database-fk))))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
-(defmethod serdes/dependencies "Transform"
+(defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
   (set
    (concat
@@ -480,7 +500,7 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source))))
+    (serdes/mbql-deps false source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))

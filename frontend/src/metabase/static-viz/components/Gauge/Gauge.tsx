@@ -67,7 +67,7 @@ export default function Gauge({
     formattedValue,
     GAUGE_INNER_RADIUS,
   );
-  const outlineColor = getColor("white");
+  const outlineColor = getColor("core-white");
 
   return (
     <svg

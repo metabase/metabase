@@ -1049,8 +1049,8 @@ export function formatDateTimeRangeWithUnit(
   // Use custom format specs for week unit when date_style is provided
   if (unit === "week" && options.date_style && options.type === "cell") {
     const customSpecs = getWeekFormatSpecsWithDateStyle(
-      options.date_style as string,
-      (options.date_separator as string) || "/",
+      options.date_style,
+      options.date_separator || "/",
     );
     specs = customSpecs;
   }
@@ -1348,15 +1348,17 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
+      // Unjustified type cast. FIXME
       options.date_style as string,
       unit,
-      options.date_separator as string,
+      options.date_separator,
       options.weekday_enabled,
     );
   }
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
+      // Unjustified type cast. FIXME
       options.time_style as string,
       unit,
       options.time_enabled,

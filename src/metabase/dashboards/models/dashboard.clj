@@ -445,21 +445,27 @@
                :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
-  [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
+  [allow-int-ids? {:keys [action_id card_id parameter_mappings visualization_settings series]}]
   (set
    (concat
-    (mapcat serdes/mbql-deps parameter_mappings)
-    (serdes/visualization-settings-deps visualization_settings)
+    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
+    (serdes/visualization-settings-deps allow-int-ids? visualization_settings)
     (when card_id   #{[{:model "Card" :id card_id}]})
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
-(defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id dashcards parameters]}]
-  (->> (map serdes-deps-dashcard dashcards)
+(defn- dashboard-deps
+  "The serdes dependencies of a Dashboard as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined — the
+  ingested shape, which the raw path hydrates first. `allow-int-ids?` selects raw-appdb vs serialized ref semantics. Shared by
+  [[serdes/deserialization-dependencies]] (allow-int-ids? false) and [[serdes/serialization-dependencies]] (allow-int-ids? true)."
+  [allow-int-ids? {:keys [collection_id dashcards parameters]}]
+  (->> (map #(serdes-deps-dashcard allow-int-ids? %) dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (serdes/parameters-deps parameters))))
+       (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+
+(defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
+  (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
@@ -492,6 +498,13 @@
      ;; parameter with values_source_type = "card" will depend on a card
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
+
+(defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
+  ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
+  ;; expects, then reuse the same walk as deserialization.
+  (dashboard-deps true (-> dashboard
+                           (t2/hydrate :dashcards)
+                           (update :dashcards #(t2/hydrate % :series)))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -12,5 +12,9 @@ Here is some information about the user:
 
 {{ viewing_context|safe }}
 {% endif %}
+{% if recent_views %}
+
+{{ recent_views|safe }}
+{% endif %}
 
 </context>

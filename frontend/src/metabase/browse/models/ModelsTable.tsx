@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { type MouseEvent, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/common/collections/utils";
@@ -21,6 +20,7 @@ import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Ellipsified,
   FixedSizeIcon,

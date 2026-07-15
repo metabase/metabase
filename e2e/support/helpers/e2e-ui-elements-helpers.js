@@ -31,7 +31,7 @@ export function menu() {
 }
 
 export function modal(options = {}) {
-  return cy.get(".mb-mantine-Modal-content[role='dialog']", options);
+  return cy.get("[role='dialog'][aria-modal='true']", options);
 }
 
 export function tooltip() {

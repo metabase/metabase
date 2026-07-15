@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
@@ -10,6 +9,7 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
@@ -25,7 +25,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/fields/:fieldId" component={TableFieldsPage} />
       <Route path=":tableId/segments" component={TableSegmentsPage} />
       <Route path=":tableId/segments/new" component={IsAdmin}>
-        <IndexRoute component={PublishedTableNewSegmentPage} />
+        <Route index component={PublishedTableNewSegmentPage} />
       </Route>
       <Route
         path=":tableId/segments/:segmentId"
@@ -40,12 +40,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           path=":tableId/segments/:segmentId/dependencies"
           component={PublishedTableSegmentDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
       <Route path=":tableId/measures" component={TableMeasuresPage} />
       <Route path=":tableId/measures/new" component={IsAdmin}>
-        <IndexRoute component={PublishedTableNewMeasurePage} />
+        <Route index component={PublishedTableNewMeasurePage} />
       </Route>
       <Route
         path=":tableId/measures/:measureId"
@@ -60,12 +60,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           path=":tableId/measures/:measureId/dependencies"
           component={PublishedTableMeasureDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":tableId/dependencies" component={TableDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
     </Route>

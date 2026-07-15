@@ -1,0 +1,198 @@
+## Collapse redundant table-level data_permissions rows into db-level rows (#76077).
+##
+## A bug wrote one 'blocked' view-data row per table even when the db-level row was already 'blocked',
+## ballooning data_permissions into millions of redundant rows. Two steps:
+##   1. For each (group, db) with no db-level view-data row, whose table-level view-data rows are all
+##      'blocked' and cover every active table: insert the equivalent db-level row.
+##   2. Drop every table-level view-data row made redundant by an equal-value db-level row.
+## Only view-data/blocked is safe to collapse; all other combos are left untouched.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  # Step 1 originally shipped as v62.2026-07-07T00:00:00, which timed out on large instances (its plan
+  # was O(rows x databases) on postgres). The changeSets below replace it under new ids; this DELETE just
+  # removes the retired changeSet's stale changelog entry from instances that already ran it. For them the
+  # replacements re-collapse already-collapsed data, which is a cheap no-op.
+  - changeSet:
+      id: v62.2026-07-14T00:00:00
+      author: ranquild
+      comment: Retire the timeout-prone original of the collapse changeSets below (#76077)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v62.2026-07-07T00:00:00';
+      rollback: # not necessary
+
+  # Step 1. Aggregate to (group_id, db_id) first, then join. Coverage is counted in rows, not DISTINCT
+  # tables — equivalent unless duplicate rows exist, which the app never writes. Postgres runs the
+  # staged, parallel version in the changeSets below instead.
+  - changeSet:
+      id: v62.2026-07-14T00:00:01
+      author: ranquild
+      dbms: mysql,mariadb,h2
+      comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
+              SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
+              FROM (
+                SELECT dp.group_id, dp.db_id,
+                       MIN(dp.perm_value) AS min_value,
+                       MAX(dp.perm_value) AS max_value,
+                       COUNT(*) AS covered_rows,
+                       COUNT(it.id) AS inactive_rows
+                FROM data_permissions dp
+                LEFT JOIN metabase_table it ON it.id = dp.table_id AND it.active = FALSE
+                WHERE dp.perm_type = 'perms/view-data'
+                  AND dp.table_id IS NOT NULL
+                GROUP BY dp.group_id, dp.db_id
+              ) agg
+              JOIN (SELECT db_id, COUNT(*) AS n FROM metabase_table WHERE active = TRUE GROUP BY db_id) tc
+                ON tc.db_id = agg.db_id
+              WHERE agg.min_value = 'blocked'
+                AND agg.max_value = 'blocked'
+                AND agg.covered_rows - agg.inactive_rows = tc.n
+                AND NOT EXISTS (
+                  SELECT 1 FROM data_permissions dbp
+                  WHERE dbp.group_id = agg.group_id
+                    AND dbp.db_id = agg.db_id
+                    AND dbp.perm_type = 'perms/view-data'
+                    AND dbp.table_id IS NULL);
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  # Step 1 for postgres. CREATE TABLE AS gets a parallel plan (INSERT ... SELECT and DISTINCT
+  # aggregates do not), so the one heavy pass over data_permissions runs on all available workers.
+  - changeSet:
+      id: v62.2026-07-14T00:00:02
+      author: ranquild
+      dbms: postgresql
+      comment: Stage per group-and-database aggregates of table-level view-data permissions (#76077)
+      changes:
+        - sql:
+            sql: >-
+              SET LOCAL max_parallel_workers_per_gather = 8;
+              CREATE TABLE data_permissions_collapse_agg AS
+              SELECT dp.group_id, dp.db_id,
+                     COUNT(*) AS covered_rows,
+                     COUNT(it.id) AS inactive_rows,
+                     MIN(dp.perm_value) AS min_value,
+                     MAX(dp.perm_value) AS max_value
+              FROM data_permissions dp
+              LEFT JOIN metabase_table it ON it.id = dp.table_id AND it.active = FALSE
+              WHERE dp.perm_type = 'perms/view-data'
+                AND dp.table_id IS NOT NULL
+              GROUP BY dp.group_id, dp.db_id;
+      rollback: # not necessary; the staging table is dropped at the end of this migration
+
+  - changeSet:
+      id: v62.2026-07-14T00:00:03
+      author: ranquild
+      dbms: postgresql
+      comment: Analyze the staged collapse aggregates (#76077)
+      changes:
+        - sql:
+            sql: ANALYZE data_permissions_collapse_agg;
+      rollback: # not necessary
+
+  # NOT IN evaluates as one hashed subplan instead of an index probe per staged row.
+  - changeSet:
+      id: v62.2026-07-14T00:00:04
+      author: ranquild
+      dbms: postgresql
+      comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
+              SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
+              FROM data_permissions_collapse_agg agg
+              JOIN (SELECT db_id, COUNT(*) AS n FROM metabase_table WHERE active = TRUE GROUP BY db_id) tc
+                ON tc.db_id = agg.db_id
+              WHERE agg.min_value = 'blocked'
+                AND agg.max_value = 'blocked'
+                AND agg.covered_rows - agg.inactive_rows = tc.n
+                AND (agg.group_id, agg.db_id) NOT IN (
+                  SELECT dbp.group_id, dbp.db_id FROM data_permissions dbp
+                  WHERE dbp.perm_type = 'perms/view-data'
+                    AND dbp.table_id IS NULL);
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-14T00:00:05
+      author: ranquild
+      dbms: postgresql
+      comment: Drop the staged collapse aggregates (#76077)
+      changes:
+        - sql:
+            sql: DROP TABLE data_permissions_collapse_agg;
+      rollback: # not necessary
+
+  # Step 2. A row-by-row DELETE of millions of rows is too slow, so: stage the surviving rows,
+  # truncate data_permissions, reload. One changeSet per step, so a failed run resumes where it stopped.
+  - changeSet:
+      id: v62.2026-07-07T00:00:01
+      author: ranquild
+      comment: Create the staging table that will hold the surviving data_permissions rows (#76077)
+      changes:
+        # createTable (not raw SQL) so Liquibase adds MySQL/MariaDB's ENGINE/charset clauses.
+        - createTable:
+            tableName: data_permissions_collapse_keep
+            remarks: Transient staging table holding the data_permissions rows to keep while the table is collapsed; dropped at the end of this migration
+            columns:
+              - column: {name: id, type: int, remarks: Copy of data_permissions.id}
+              - column: {name: group_id, type: int, remarks: Copy of data_permissions.group_id}
+              - column: {name: perm_type, type: varchar(64), remarks: Copy of data_permissions.perm_type}
+              - column: {name: db_id, type: int, remarks: Copy of data_permissions.db_id}
+              - column: {name: schema_name, type: varchar(254), remarks: Copy of data_permissions.schema_name}
+              - column: {name: table_id, type: int, remarks: Copy of data_permissions.table_id}
+              - column: {name: perm_value, type: varchar(64), remarks: Copy of data_permissions.perm_value}
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:02
+      author: ranquild
+      comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO data_permissions_collapse_keep (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
+              SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
+              FROM data_permissions dp
+              LEFT JOIN data_permissions dbp
+                ON dp.perm_type = 'perms/view-data' AND dp.table_id IS NOT NULL
+               AND dbp.group_id = dp.group_id AND dbp.db_id = dp.db_id
+               AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
+               AND dbp.table_id IS NULL
+              WHERE dbp.id IS NULL;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:03
+      author: ranquild
+      comment: Empty data_permissions before reloading only the surviving rows (#76077)
+      changes:
+        - sql:
+            sql: TRUNCATE TABLE data_permissions;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:04
+      author: ranquild
+      comment: Reload the surviving data_permissions rows (#76077)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
+              SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
+              FROM data_permissions_collapse_keep;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:05
+      author: ranquild
+      comment: Drop the staging table used to collapse data_permissions (#76077)
+      changes:
+        - sql:
+            sql: DROP TABLE data_permissions_collapse_keep;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49

@@ -196,8 +196,10 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText(/Email/).type(email);
 
       // Add user to Administrators group
-      H.modal().findByText("Default").click();
+      H.modal().findByRole("combobox", { name: "Groups" }).click();
       H.popover().findByText("Administrators").click();
+      // dismiss the open dropdown so it doesn't cover the submit button
+      H.modal().findByText("Create user").click();
 
       clickButton("Create");
 
