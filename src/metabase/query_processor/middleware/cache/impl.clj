@@ -46,8 +46,7 @@
 (defn- freeze!
   [^OutputStream os obj]
   (log/tracef "Freezing %s" (pr-str obj))
-  (nippy/freeze-to-out! os obj)
-  (.flush os))
+  (nippy/freeze-to-out! os obj))
 
 (defn do-with-serialization
   "Create output streams for serializing QP results and invoke `f`, a function of the form
@@ -58,9 +57,12 @@
   will catch any exceptions thrown during serialization; these will be thrown later when invoking `result-fn`. After
   the first exception `in-fn` will no-op for all subsequent calls.
 
-  When you have serialized *all* objects, call `result-fn` to get the serialized byte array. If an error was
-  encountered during serialization (such as the serialized bytes being longer than `max-bytes`), `result-fn` will
-  throw an Exception rather than returning a byte array; be sure to handle this case.
+  When you have serialized *all* objects, call `result-fn` to finish the GZIP stream and get the serialized byte
+  array. If an error was encountered during serialization (such as the serialized bytes being longer than
+  `max-bytes`), `result-fn` will throw an Exception rather than returning a byte array; be sure to handle this case.
+
+  Compression is deliberately not sync-flushed per object: every sync flush is a native `Deflater` call in a JNI
+  critical region, which on JDK <= 21 (no G1 region pinning, see JEP 423) stalls GC via the GCLocker.
 
     (do-with-serialization
       (fn [in result]
@@ -74,7 +76,7 @@
    (with-open [bos (ByteArrayOutputStream.)]
      (let [os    (-> (max-bytes-output-stream max-bytes bos)
                      BufferedOutputStream.
-                     (GZIPOutputStream. true)
+                     GZIPOutputStream.
                      DataOutputStream.)
            error (atom nil)]
        (try
@@ -90,9 +92,11 @@
               (when @error
                 (throw @error))
               (log/trace "Getting result byte array")
+              ;; finish the stream (drain the deflater, write the GZIP trailer); may throw past the byte limit
+              (.close os)
               (.toByteArray bos)))
          ;; this is done manually instead of `with-open` because it might throw an Exception when we close it if it's
-         ;; past the byte limit; that's fine and we can ignore it
+         ;; past the byte limit; that's fine and we can ignore it. Re-closing after `result-fn` is a no-op.
          (finally
            (u/ignore-exceptions (.close os))))))))
 
