@@ -276,9 +276,6 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
