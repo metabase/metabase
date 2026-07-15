@@ -2,6 +2,7 @@
   "Typed schema generation for tables, fields, segments and measures."
   (:require
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.api.common :as common]
@@ -92,25 +93,50 @@
     (catch Exception _
       nil)))
 
+(defn- measure-result-columns
+  "Returns result columns for table measures with one definition query and metadata provider."
+  [database-id measures]
+  (let [measure-ids (into [] (keep :id) measures)]
+    (when (seq measure-ids)
+      (let [definition-by-measure-id (into {}
+                                           (map (juxt :id :definition))
+                                           (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))]
+        (try
+          (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
+            (into {}
+                  (keep (fn [{:keys [id]}]
+                          (when-let [definition (get definition-by-measure-id id)]
+                            [id (schema.common/aggregation-result-column-with-metadata-provider metadata-provider definition)])))
+                  measures))
+          ;; Result-column inference is best effort; callers fall back to an unknown column.
+          (catch Exception _
+            {}))))))
+
 (defn measure-schema
   "Returns the schema for a measure."
-  [table-id database-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
-  (m/assoc-some
-   {:type    "measure"
-    :key     (common/generated-key (or display-name name) id)
-    :id      id
-    :tableId table-id
-    :name    name
-    :columns [(or (some-> (measure-result-column database-id id) common/column-schema)
-                  (fallback-measure-column {:name (or display-name name)}))]}
-   :entityId (or portable_entity_id portable-entity-id)
-   :description description))
+  ([table-id database-id measure]
+   (measure-schema table-id database-id (measure-result-column database-id (:id measure)) measure))
+  ([table-id _database-id result-column {:keys [id name description display-name portable-entity-id portable_entity_id]}]
+   (m/assoc-some
+    {:type    "measure"
+     :key     (common/generated-key (or display-name name) id)
+     :id      id
+     :tableId table-id
+     :name    name
+     :columns [(or (some-> result-column common/column-schema)
+                   (fallback-measure-column {:name (or display-name name)}))]}
+    :entityId (or portable_entity_id portable-entity-id)
+    :description description)))
 
 (defn table-schema
   "Returns the schema for a table."
   [{:keys [id name description display_name database_id database_name database_schema portable_entity_id fields segments measures]}]
-  (let [segments-map (common/keyed-map (map #(segment-schema id %) segments))
-        measures-map (common/keyed-map (map #(measure-schema id database_id %) measures))]
+  (let [segments-map                 (common/keyed-map (map #(segment-schema id %) segments))
+        measure-result-column-by-id  (measure-result-columns database_id measures)
+        measures-map                 (common/keyed-map (map #(measure-schema id database_id
+                                                                             (get measure-result-column-by-id (:id %))
+                                                                             %)
+                                                            measures))]
     (m/assoc-some
      {:type         "table"
       :key          (common/generated-key (or display_name name) id)
@@ -125,18 +151,36 @@
      :segments (not-empty segments-map)
      :measures (not-empty measures-map))))
 
+(defn- table-details-error-message
+  [table error-message]
+  (format "Failed to build schema details for table \"%s\" (table %s): %s"
+          (or (:name table) "Untitled")
+          (:id table)
+          (or error-message "unknown error")))
+
+(defn- table-details-error-data
+  [table error-data]
+  (m/assoc-some
+   {:table-id   (:id table)
+    :table-name (:name table)}
+   :status-code (:status-code error-data)))
+
 (defn- table-details
   [table]
-  (some-> (entity-details/get-table-details
-           {:entity-type          :table
-            :entity-id            (:id table)
-            :with-fields?         true
-            :with-field-values?   false
-            :with-related-tables? false
-            :with-metrics?        false
-            :with-measures?       true
-            :with-segments?       true})
-          :structured-output))
+  (let [response (entity-details/get-table-details
+                  {:entity-type          :table
+                   :entity-id            (:id table)
+                   :with-fields?         true
+                   :with-field-values?   false
+                   :with-related-tables? false
+                   :with-metrics?        false
+                   :with-measures?       true
+                   :with-segments?       true})]
+    (or (:structured-output response)
+        (let [error-message (:output response)]
+          (throw (ex-info (table-details-error-message table error-message)
+                          (assoc (table-details-error-data table response)
+                                 :error-message error-message)))))))
 
 (defn table-schemas
   "Returns table schemas for selected table rows."

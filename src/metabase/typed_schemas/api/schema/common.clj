@@ -30,16 +30,27 @@
                     :order-by [[:name :asc] [:id :asc]]})
         (filter mi/can-read?))))
 
+(defn aggregation-result-column-with-metadata-provider
+  "Returns an aggregation result column using an existing metadata provider."
+  [metadata-provider query-definition]
+  (try
+    (let [query              (lib/query metadata-provider query-definition)
+          aggregation-column (m/find-first #(= (:lib/source %) :source/aggregations)
+                                           (lib/returned-columns query))]
+      (when aggregation-column
+        (metabot.tools.u/->result-column query aggregation-column)))
+    ;; Result-column inference is best effort; callers fall back to an unknown column.
+    (catch Exception _
+      nil)))
+
 (defn aggregation-result-column
   "Returns the first aggregation result column for a saved query
    definition, for metrics and measures."
   [database-id query-definition]
   (try
-    (let [metadata-provider  (lib-be/application-database-metadata-provider database-id)
-          query              (lib/query metadata-provider query-definition)
-          aggregation-column (m/find-first #(= (:lib/source %) :source/aggregations)
-                                           (lib/returned-columns query))]
-      (when aggregation-column
-        (metabot.tools.u/->result-column query aggregation-column)))
+    (aggregation-result-column-with-metadata-provider
+     (lib-be/application-database-metadata-provider database-id)
+     query-definition)
+    ;; Result-column inference is best effort; callers fall back to an unknown column.
     (catch Exception _
       nil)))

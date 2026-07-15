@@ -1,7 +1,12 @@
 (ns metabase.typed-schemas.api.schema.table-test
   (:require
    [clojure.test :refer :all]
-   [metabase.typed-schemas.api.schema.table :as schema.table]))
+   [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.test :as mt]
+   [metabase.typed-schemas.api.schema.common :as schema.common]
+   [metabase.typed-schemas.api.schema.table :as schema.table]
+   [toucan2.core :as t2]))
 
 (def ^:private created-at-field
   {:id           42
@@ -84,3 +89,37 @@
       (is (= (assoc total-revenue-schema
                     :columns [{:type "column", :name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}])
              (schema.table/measure-schema 10 2 total-revenue-measure))))))
+
+(deftest table-schemas-surface-detail-error-responses-test
+  (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                              (constantly {:output "Not found."
+                                           :status-code 404})]
+    (let [exception (try
+                      (doall (schema.table/table-schemas [{:id 10 :name "Orders"}]))
+                      (catch clojure.lang.ExceptionInfo exception
+                        exception))]
+      (is (instance? clojure.lang.ExceptionInfo exception))
+      (is (= {:table-id      10
+              :table-name    "Orders"
+              :status-code   404
+              :error-message "Not found."}
+             (ex-data exception))))))
+
+;; Batch measure definitions to avoid N+1 queries.
+(deftest table-schema-bulk-loads-measure-definitions-test
+  (let [measure-select-count     (atom 0)
+        metadata-provider-count (atom 0)
+        measures                 [{:id 1 :name "Total Revenue"}
+                                  {:id 2 :name "Average Revenue"}]]
+    (with-redefs [lib-be/application-database-metadata-provider (fn [_database-id]
+                                                                  (swap! metadata-provider-count inc)
+                                                                  :metadata-provider)
+                  schema.common/aggregation-result-column-with-metadata-provider (constantly nil)
+                  t2/select (fn [columns & _args]
+                              (when (= columns [:model/Measure :id :definition])
+                                (swap! measure-select-count inc)
+                                [{:id 1 :definition [:aggregation 1]}
+                                 {:id 2 :definition [:aggregation 2]}]))]
+      (schema.table/table-schema (assoc orders-table :measures measures))
+      (is (= 1 @measure-select-count))
+      (is (= 1 @metadata-provider-count)))))

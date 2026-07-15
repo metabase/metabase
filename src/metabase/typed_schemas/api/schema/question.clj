@@ -8,14 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- schema-card-type-name
-  [card]
-  (some-> (:type card) name))
-
 (defn- question-details-error-message
   [card error-message]
-  (format "Failed to build schema details for %s \"%s\" (card %s): %s"
-          (or (schema-card-type-name card) "card")
+  (format "Failed to build schema details for question \"%s\" (card %s): %s"
           (or (:name card) "Untitled")
           (:id card)
           (or error-message "unknown error")))
@@ -29,26 +24,31 @@
    :status-code (:status-code error-data)))
 
 (defn- question-details
-  "Returns card details for a saved question."
-  [card]
-  (let [response (try
-                   (entity-details/get-report-details {:report-id             (:id card)
-                                                       :with-field-values?    false
-                                                       :with-related-tables?  false
-                                                       :with-metrics?         false
-                                                       :with-measures?        false
-                                                       :with-segments?        false})
-                   (catch Exception exception
-                     (throw (ex-info (question-details-error-message card (ex-message exception))
-                                     (assoc (question-details-error-data card (ex-data exception))
-                                            :cause-message (ex-message exception))
-                                     exception))))]
-    (or (:structured-output response)
-        (let [error-message (:output response)]
-          (throw (ex-info (question-details-error-message card error-message)
-                          (assoc (question-details-error-data card response)
-                                 :error-message error-message
-                                 :response response)))))))
+  "Returns saved-question details in the selected-card order."
+  [cards]
+  (let [details-by-card-id (into {}
+                                 (mapcat (fn [[database-id database-cards]]
+                                           (mapv (fn [card details]
+                                                   (try
+                                                     [(:id card)
+                                                      (assoc details
+                                                             :result-columns (:fields details)
+                                                             :display (:display card))]
+                                                     (catch Exception exception
+                                                       (throw (ex-info (question-details-error-message card (ex-message exception))
+                                                                       (assoc (question-details-error-data card (ex-data exception))
+                                                                              :cause-message (ex-message exception))
+                                                                       exception)))))
+                                                 database-cards
+                                                 (entity-details/cards-details
+                                                  :question database-id database-cards
+                                                  {:with-field-values?    false
+                                                   :with-related-tables?  false
+                                                   :with-metrics?         false
+                                                   :with-measures?        false
+                                                   :with-segments?        false})))
+                                         (group-by :database_id cards)))]
+    (mapv details-by-card-id (map :id cards))))
 
 (defn question-schema
   "Returns the schema for a saved question."
@@ -69,7 +69,5 @@
   ([database-ids]
    (question-schemas database-ids nil))
   ([database-ids collection-ids]
-   (for [card (schema.common/select-schema-cards :question database-ids collection-ids)
-         :let [details (question-details card)]
-         :when details]
-     (question-schema details))))
+   (let [cards (schema.common/select-schema-cards :question database-ids collection-ids)]
+     (mapv question-schema (question-details cards)))))
