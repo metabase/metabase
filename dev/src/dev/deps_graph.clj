@@ -98,7 +98,10 @@
   [zloc :- ::zloc]
   (when-let [symbol-loc (z/find-depth-first zloc #(and (= (z/tag %) :token)
                                                        (symbol? (z/sexpr %))
-                                                       (not= (z/sexpr %) 'quote)))]
+                                                       (not= (z/sexpr %) 'quote)
+                                                       ;; in a threaded form like (-> 'ns requiring-resolve)
+                                                       ;; the require symbol is a sibling, not a namespace
+                                                       (not (require-symbols (z/sexpr %)))))]
     (let [symb (z/sexpr symbol-loc)]
       (if (qualified-symbol? symb)
         (symbol (namespace symb))
