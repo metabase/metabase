@@ -4,7 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { Box, Flex, Loader, Stack, Title } from "metabase/ui";
+import { Badge, Box, Flex, Group, Loader, Stack, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,
   useListDataAppsQuery,
@@ -42,9 +42,11 @@ export const ManageDataAppsPage = () => {
 
   return (
     <SettingsPageWrapper>
-      <Title order={1} style={{ height: "2.5rem" }}>
-        {t`Data apps`}
-      </Title>
+      <Group gap="sm" align="center">
+        <Title order={1}>{t`Data apps`}</Title>
+
+        <Badge>{t`Beta`}</Badge>
+      </Group>
 
       <DataAppsBanner />
 
