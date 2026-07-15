@@ -9,12 +9,7 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  IndexRoute,
-  Navigate,
-  Route,
-  type RouteComponent,
-} from "metabase/router";
+import { Navigate, Route, type RouteComponent } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
@@ -42,7 +37,7 @@ export function getDataStudioRoutes(
   return (
     <Route component={CanAccessDataStudio}>
       <Route path="data-studio" component={DataStudioLayout}>
-        <IndexRoute component={DataStudioIndexRedirect} />
+        <Route index component={DataStudioIndexRedirect} />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes(IsAdmin)}
