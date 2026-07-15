@@ -48,18 +48,23 @@ type TestPlugin = {
   configureServer: (server: FakeServer) => Promise<() => void>;
 };
 
-function makePlugin(allowedHosts: string[] = []): TestPlugin {
+const APP_SLUG = "test-app";
+
+function makePlugin(appSlug: string, allowedHosts: string[] = []): TestPlugin {
   // Vite declares every hook on `Plugin` as an `ObjectHook` union (a function or
   // a `{ handler }` object) bound to Rollup's plugin context. The tests call the
   // hooks we return as plain functions, which no assignable type expresses.
-  return dataAppSandboxDevPlugin(allowedHosts) as unknown as TestPlugin;
+  return dataAppSandboxDevPlugin(
+    appSlug,
+    allowedHosts,
+  ) as unknown as TestPlugin;
 }
 
 describe("dataAppSandboxDevPlugin", () => {
   afterEach(() => jest.clearAllMocks());
 
   it("only applies to the dev server", () => {
-    const plugin = makePlugin();
+    const plugin = makePlugin(APP_SLUG);
 
     expect(plugin.name).toBe("metabase-data-app-dev");
     expect(plugin.apply).toBe("serve");
@@ -67,7 +72,7 @@ describe("dataAppSandboxDevPlugin", () => {
 
   describe("virtual modules", () => {
     const setup = (allowedHosts: string[] = []) => {
-      return { plugin: makePlugin(allowedHosts) };
+      return { plugin: makePlugin(APP_SLUG, allowedHosts) };
     };
 
     it("resolves the dev-entry and config virtual ids to synthetic ids", () => {
@@ -105,6 +110,7 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(source).toContain(
         `export const allowedHosts = ${JSON.stringify(["https://api.example.com"])};`,
       );
+      expect(source).toContain(`export const appSlug = "test-app";`);
       expect(source).toContain(
         `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
       );
@@ -147,7 +153,8 @@ describe("dataAppSandboxDevPlugin", () => {
 
       // `configureServer` returns a hook Vite runs after its own middlewares;
       // call it so the document (index.html) middleware is registered too.
-      const registerLateMiddleware = await makePlugin().configureServer(server);
+      const registerLateMiddleware =
+        await makePlugin(APP_SLUG).configureServer(server);
       registerLateMiddleware();
 
       return { server };

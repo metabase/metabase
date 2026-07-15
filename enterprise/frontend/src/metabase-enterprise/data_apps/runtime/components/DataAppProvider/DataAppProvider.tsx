@@ -1,10 +1,11 @@
 import createCache from "@emotion/cache";
 import { CacheProvider, Global } from "@emotion/react";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { setDataApp } from "metabase/embedding/config";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
@@ -18,6 +19,8 @@ import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 // in the host document, not the iframe.
 
 interface DataAppProviderProps {
+  appName: string;
+  isDevApp?: boolean;
   providerProps?: DataAppMetabaseProviderProps;
   children?: ReactNode;
 }
@@ -34,8 +37,11 @@ interface DataAppProviderProps {
  * session cookie; auth is already established.
  */
 export const DataAppProvider = (props: DataAppProviderProps) => {
-  const { children, providerProps } = props;
+  const { children, providerProps, appName, isDevApp } = props;
   const { theme } = providerProps ?? {};
+
+  // Configure the data-app request headers before any child renders. This must happen during the first render
+  useState(() => setDataApp(appName, { isDev: isDevApp }));
 
   // Swap the SDK's default red error alert for a calm, neutral empty state,
   // unless the app ships its own `errorComponent`.

@@ -131,6 +131,7 @@
                     :started_at       true
                     :running_time     true
                     :embedding_client nil
+                    :embedding_client_identifier nil
                     :embedding_hostname nil
                     :embedding_path nil
                     :embedding_route nil

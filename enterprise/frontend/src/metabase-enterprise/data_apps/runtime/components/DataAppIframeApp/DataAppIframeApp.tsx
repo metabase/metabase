@@ -86,7 +86,7 @@ function BundleHost({ name }: { name: string }) {
   }
 
   return (
-    <DataAppProvider providerProps={data?.providerProps}>
+    <DataAppProvider appName={name} providerProps={data?.providerProps}>
       {content}
     </DataAppProvider>
   );
