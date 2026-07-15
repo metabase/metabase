@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.experiment :as experiment]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
@@ -117,3 +118,16 @@
   :visibility :admin
   :export?    true
   :feature    :audit-app)
+
+(defsetting experiments-enabled
+  (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")
+  :type       :boolean
+  :default    false
+  :doc        false
+  :visibility :admin
+  :export?    false
+  :audit      :getter)
+
+;; Wire the setting into the experiment machinery, which sits below the settings framework in the module
+;; graph. The fn is called on every experiment invocation, so toggling the setting takes effect immediately.
+(experiment/set-experiments-enabled-fn! experiments-enabled)

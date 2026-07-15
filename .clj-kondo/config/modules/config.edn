@@ -3035,7 +3035,7 @@
                      util.config
                      util.graph}
    :api  :any
-   :uses #{settings util.classloader util.config}}
+   :uses #{util.classloader util.config}}
 
   util.classloader
   {:team "DevEx"
