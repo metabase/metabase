@@ -1,14 +1,10 @@
-import type { Location } from "history";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-import { useAsyncFn, useMount } from "react-use";
+import { useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseQuery } from "metabase/common/hooks";
-import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
@@ -17,14 +13,13 @@ import type {
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import { useGetImpersonationQuery } from "metabase-enterprise/api";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
-import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import {
   DataPermission,
   DataPermissionValue,
-  type Impersonation,
   type UserAttributeKey,
 } from "metabase-types/api";
 
@@ -32,10 +27,7 @@ import { ImpersonationModalView } from "./ImpersonationModalView";
 
 interface ImpersonationModalProps {
   params: ImpersonationModalParams;
-  location: Location;
-  route: {
-    path: string;
-  };
+  onClose: () => void;
 }
 
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
@@ -48,30 +40,10 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
   };
 };
 
-const ImpersonationModalInner = ({
-  route,
+export const ImpersonationModal = ({
   params,
-  location,
+  onClose,
 }: ImpersonationModalProps) => {
-  const [
-    {
-      loading: isImpersonationLoading,
-      value: impersonation,
-      error: impersonationError,
-    },
-    fetchImpersonation,
-  ] = useAsyncFn(
-    async (
-      groupId: number,
-      databaseId: number,
-    ): Promise<Impersonation | undefined> =>
-      ImpersonationApi.get({
-        db_id: databaseId,
-        group_id: groupId,
-      }),
-    [],
-  );
-
   const { groupId, databaseId } = parseParams(params);
 
   const {
@@ -87,14 +59,19 @@ const ImpersonationModalInner = ({
     getImpersonation(databaseId, groupId),
   );
 
+  const {
+    data: impersonation,
+    isLoading: isImpersonationLoading,
+    error: impersonationError,
+  } = useGetImpersonationQuery(
+    { db_id: databaseId, group_id: groupId },
+    { skip: Boolean(draftImpersonation) },
+  );
+
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
 
   const dispatch = useDispatch();
-
-  const close = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
@@ -121,21 +98,13 @@ const ImpersonationModalInner = ({
         );
       }
 
-      close();
+      onClose();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [onClose, databaseId, dispatch, groupId, selectedAttribute],
   );
-
-  const handleCancel = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
-  }, [dispatch, route, location]);
 
   useMount(() => {
     dispatch(fetchUserAttributes());
-
-    if (!draftImpersonation) {
-      fetchImpersonation(groupId, databaseId);
-    }
   });
 
   const isLoading =
@@ -156,9 +125,7 @@ const ImpersonationModalInner = ({
       attributes={attributes}
       database={database}
       onSave={handleSave}
-      onCancel={handleCancel}
+      onCancel={onClose}
     />
   );
 };
-
-export const ImpersonationModal = withRouter(ImpersonationModalInner);

@@ -122,12 +122,29 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id"
-  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Delete a Workspace. Deprovisions all databases first (blocking)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  :- [:map
+      [:id ms/PositiveInt]
+      [:deleted :boolean]
+      [:message {:optional true} :string]
+      [:orphaned_resources {:optional true}
+       [:sequential [:map
+                     [:workspace_database_id ms/PositiveInt]
+                     [:database_id ms/PositiveInt]
+                     [:driver :keyword]
+                     [:schema :string]
+                     [:user :string]
+                     [:reason {:optional true} [:maybe :string]]]]]]
+  "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation
+  first (blocking). Refuses with a 409 if any database is still `:provisioning`/
+  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are
+  left in the warehouse and only their app-DB rows are removed. If the warehouse was
+  unreachable for some `:provisioned` databases, the response includes
+  `:orphaned_resources` and a `:message` describing the inert schema/user objects
+  left behind for manual cleanup."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
   (api/write-check :model/Workspace id)
-  (ws/delete-workspace! id)
-  {:id id :deleted true})
+  (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

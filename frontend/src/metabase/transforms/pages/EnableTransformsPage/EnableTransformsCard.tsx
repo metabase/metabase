@@ -128,7 +128,7 @@ const SimpleCard = ({
   title: string;
   description: string;
 }) => (
-  <Card bg="background-secondary" shadow="none">
+  <Card bg="background_page-secondary" shadow="none">
     <Group wrap="nowrap" align="start" gap="sm">
       <Icon name={icon} c="core-brand" size={16} flex="0 0 1rem" />
       <Stack gap="xs">

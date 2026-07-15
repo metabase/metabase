@@ -65,6 +65,40 @@
   :encryption :no
   :audit      :getter)
 
+(defn- strip-scheme
+  [s]
+  (if-let [idx (str/index-of s "://")]
+    (subs s (+ idx 3))
+    s))
+
+(defn- origin-has-real-path?
+  "True if `entry` (a single CORS origin, optionally `scheme://`-prefixed) has a path component beyond
+   an optional bare trailing slash, e.g. `http://localhost:6274/sse` (but not `http://localhost:6274/`)."
+  [entry]
+  (let [without-scheme (strip-scheme entry)
+        slash-idx      (str/index-of without-scheme "/")]
+    (boolean (and slash-idx
+                  (< (inc slash-idx) (count without-scheme))))))
+
+(defn- validate-no-origin-paths!
+  "Throws if any space-separated entry in `origins-raw` has a path component. CORS origins are
+   scheme + host + port only, so a path pasted into this setting (e.g. `http://localhost:6274/sse`)
+   wouldn't do what an admin might expect (only the origin is honored, not the path) — better to
+   reject it outright than silently drop it and leave the setting looking saved."
+  [origins-raw]
+  (when-let [bad-entries (->> (str/split (or origins-raw "") #"\s+")
+                              (filter not-empty)
+                              (filter origin-has-real-path?)
+                              not-empty)]
+    (throw (ex-info (str "CORS origins must not include a path: " (str/join ", " bad-entries))
+                    {:status-code 400}))))
+
+(defn- -mcp-apps-cors-custom-origins!
+  "The setter for [[mcp-apps-cors-custom-origins]]."
+  [new-value]
+  (validate-no-origin-paths! new-value)
+  (setting/set-value-of-type! :string :mcp-apps-cors-custom-origins new-value))
+
 (defsetting mcp-apps-cors-custom-origins
   (deferred-tru "Custom CORS origins for self-hosted MCP clients, space-separated.")
   :type       :string
@@ -72,7 +106,8 @@
   :visibility :admin
   :export?    false
   :encryption :no
-  :audit      :getter)
+  :audit      :getter
+  :setter     #'-mcp-apps-cors-custom-origins!)
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 

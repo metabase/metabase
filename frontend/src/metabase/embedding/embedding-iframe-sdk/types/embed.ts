@@ -1,6 +1,4 @@
 import type { CollectionBrowserListColumns } from "embedding-sdk-bundle/components/public/CollectionBrowser";
-import type { MetabaseError } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type {
   EntityTypeFilterKeys,
   MetabaseAuthMethod,
@@ -9,6 +7,8 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
+import type { MetabaseError } from "embedding-sdk-shared/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeQuestionEmbedSettings,

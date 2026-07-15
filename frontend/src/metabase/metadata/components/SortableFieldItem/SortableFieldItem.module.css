@@ -16,7 +16,7 @@
 
   &:hover {
     &:not(.active) {
-      background-color: var(--mb-color-background-hover) !important;
+      background-color: var(--mb-color-background_surface-hover) !important;
     }
 
     .grabber {

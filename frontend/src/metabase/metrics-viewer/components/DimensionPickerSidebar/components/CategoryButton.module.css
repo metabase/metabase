@@ -20,7 +20,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-info);
+  background-color: var(--mb-color-background_page-tertiary);
   color: var(--mb-color-icon-primary);
 }
 
@@ -31,14 +31,14 @@
 
   &.selected {
     .categoryItem {
-      background-color: var(--mb-color-background-selected);
+      background-color: var(--mb-color-background_surface-selected);
       color: var(--mb-color-text-brand);
     }
   }
 
   &:not(.selected):hover {
     .categoryItem {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
@@ -50,12 +50,12 @@
   }
 
   .settingsButton:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
     color: var(--mb-color-text-brand);
   }
 
   &.expanded .settingsButton {
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 }
 

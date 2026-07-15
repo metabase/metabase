@@ -39,7 +39,7 @@ export function BreakoutLegend() {
                   {group.header}
                 </Title>
                 {group.subtitle && (
-                  <Text size="sm" c="text-tertiary" lh={1.3}>
+                  <Text size="sm" c="text-disabled" lh={1.3}>
                     {group.subtitle}
                   </Text>
                 )}

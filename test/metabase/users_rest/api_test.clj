@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
@@ -25,7 +26,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections))
+  (fixtures/initialize :test-users-personal-collections :notifications))
 
 (def ^:private user-defaults
   (delay
@@ -828,6 +829,19 @@
                     (:user_group_memberships resp)))
             (is (true? (:is_superuser resp)))))))))
 
+(deftest create-user-invite-target-validation-test
+  (testing "POST /api/user rejects a malformed invite_target"
+    (let [base {:first_name "Cam" :last_name "Era" :email (mt/random-email)}]
+      (testing "type outside the dashboard/question enum"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "collection" :id 1 :name "Q3"})))
+      (testing "non-positive id"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 0 :name "Q3"})))
+      (testing "blank name"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 1 :name ""}))))))
+
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
     (mt/with-premium-features #{}
@@ -931,7 +945,8 @@
 (deftest create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
-      (is (=? {:errors {:email "Email address already in use."}}
+      (is (=? {:errors     {:email "Email address already in use."}
+               :error_code "email-already-in-use"}
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "Something"
                                      :last_name "Random"
@@ -1760,3 +1775,32 @@
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
     (mt/user-http-request :crowberto :post 404
                           "user/999999/password-reset-url")))
+
+(deftest create-user-without-names-test
+  (testing "POST /api/user succeeds when first and last name are omitted (#22754)"
+    (mt/with-model-cleanup [:model/User]
+      (mt/with-fake-inbox
+        (let [email (mt/random-email)
+              resp  (mt/user-http-request :crowberto :post 200 "user" {:email email})]
+          (is (=? {:first_name nil
+                   :last_name  nil
+                   :email      email}
+                  resp)))))))
+
+(deftest update-blank-name-rejected-test
+  (testing "PUT /api/user/:id rejects a blank/whitespace first_name (#46449)"
+    (mt/with-temp [:model/User {id :id} {}]
+      (let [resp (mt/user-http-request :crowberto :put 400 (str "user/" id) {:first_name " "})]
+        (is (contains? (:errors resp) :first_name))))))
+
+(deftest invite-email-links-to-password-reset-test
+  (testing "POST /api/user with SMTP configured sends an invite email linking to the set-a-password flow (#23630)"
+    (mt/with-model-cleanup [:model/User]
+      (notification.tu/with-send-notification-sync
+        (mt/with-fake-inbox
+          (let [email (mt/random-email)]
+            (mt/user-http-request :crowberto :post 200 "user"
+                                  {:first_name "Inv" :last_name "Itee" :email email})
+            (let [body (-> @mt/inbox (get email) first :body first :content)]
+              (is (some? body))
+              (is (re-find #"/auth/reset_password/" body)))))))))

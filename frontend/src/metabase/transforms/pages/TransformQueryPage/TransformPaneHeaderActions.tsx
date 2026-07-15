@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

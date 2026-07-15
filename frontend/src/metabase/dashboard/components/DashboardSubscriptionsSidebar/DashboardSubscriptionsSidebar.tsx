@@ -116,6 +116,7 @@ const getEditingPulseWithDefaults = (
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
+  // Unjustified type cast. FIXME
   formInput: getPulseFormInput(state) as ChannelApiResponse,
   user: getUser(state),
 });
@@ -344,6 +345,7 @@ function DashboardSubscriptionsSidebarInner({
       return;
     }
 
+    // Unjustified type cast. FIXME
     const cleanedPulse = cleanPulse(pulse, formInput.channels as ChannelSpecs);
     cleanedPulse.name = dashboard.name;
 

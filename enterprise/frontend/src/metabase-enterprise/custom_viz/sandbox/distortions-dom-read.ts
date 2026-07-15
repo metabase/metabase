@@ -48,6 +48,7 @@ export function getSafeSandboxDomNode(
 
 function getOwnerElement(node: Node): Element | null {
   if (node.nodeType === Node.ELEMENT_NODE) {
+    // Unjustified type cast. FIXME
     return node as Element;
   }
 
@@ -66,6 +67,7 @@ function getOwnerElement(node: Node): Element | null {
 // "nothing focused inside my React tree" rather than a fake element.
 export function activeElementDistortion(pluginId: CustomVizPluginId) {
   return function activeElement(this: Document): Element | null {
+    // Unjustified type cast. FIXME
     const el = ACTIVE_ELEMENT_GETTER!.call(this) as Element | null;
     if (!el) {
       return null;
@@ -84,24 +86,6 @@ export function isDomNode(obj: unknown): obj is Node {
     }
   }
   return false;
-}
-
-function describeNode(node: Node): string {
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const el = node as Element;
-    const tag = el.nodeName.toLowerCase();
-    if (el.id) {
-      return `<${tag} id="${el.id}">`;
-    }
-    const testId = el.getAttribute("data-testid");
-    if (testId) {
-      return `<${tag} data-testid="${testId}">`;
-    }
-    return `<${tag}>`;
-  }
-  // For non-Elements, `nodeName` is the canonical descriptor (e.g.
-  // `#text`, `#comment`, `#document`, `#document-fragment`).
-  return `<${node.nodeName.toLowerCase()}>`;
 }
 
 function createDecoyForNode(node: Node): Node {
@@ -129,8 +113,6 @@ function makeDecoyNode(pluginId: CustomVizPluginId, node: Node): Node {
   if (decoy === node) {
     return node;
   }
-  console.error(
-    `[plugin ${pluginId}] swapped out-of-scope ${describeNode(node)} with decoy`,
-  );
+
   return decoy;
 }

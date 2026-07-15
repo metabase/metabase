@@ -1,20 +1,30 @@
 import * as d3 from "d3";
 import type { Feature, Position } from "geojson";
-import L from "leaflet";
 
 // getCanonicalRowKey lives in a Leaflet-free module so the static-viz bundle can use it; re-exported
 // here to keep existing import sites working.
 export { getCanonicalRowKey } from "./region-codes";
 
-export function computeMinimalBounds(features: Feature[]) {
-  const points = getAllFeaturesPoints(features);
-  const [west, east] = d3.extent(points, (d) => d[0]);
-  const [north, south] = d3.extent(points, (d) => d[1]);
+export type BoundsCoordinates = {
+  northEast: { lat: number; lng: number };
+  southWest: { lat: number; lng: number };
+};
 
-  return L.latLngBounds(
-    L.latLng(south ?? 0, west ?? 0), // SW
-    L.latLng(north ?? 0, east ?? 0), // NE
-  );
+// Leaflet-free bounds calculation, so this module (and eager consumers such as
+// the geojson API) stay out of the leaflet bundle. Leaflet consumers turn these
+// plain coordinates into an `L.LatLngBounds` where they need one.
+export function computeMinimalBoundsCoordinates(
+  features: Feature[],
+): BoundsCoordinates {
+  const points = getAllFeaturesPoints(features);
+  const [minLng, maxLng] = d3.extent(points, (d) => d[0]);
+  const [minLat, maxLat] = d3.extent(points, (d) => d[1]);
+
+  // Matches the normalized corners that `L.latLngBounds` would produce.
+  return {
+    southWest: { lat: minLat ?? 0, lng: minLng ?? 0 },
+    northEast: { lat: maxLat ?? 0, lng: maxLng ?? 0 },
+  };
 }
 
 export function getAllFeaturesPoints(features: Feature[]): Position[] {

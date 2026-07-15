@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useContext, useEffect, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Select, type SelectProps, Stack } from "metabase/ui";
@@ -9,6 +9,7 @@ import {
 } from "metabase/visualizations/lib/settings/widgets";
 
 import S from "./ChartSettingSelect.module.css";
+import { WidgetPopoverPortalContext } from "./WidgetPopoverPortalContext";
 
 export type ChartSettingSelectValue = string | number | boolean | null;
 
@@ -27,6 +28,7 @@ type ChartSettingSelectProps = Pick<
   | "pl"
   | "pr"
   | "rightSection"
+  | "variant"
   | "w"
 > & {
   footer?: ReactNode;
@@ -63,8 +65,31 @@ export const ChartSettingSelect = ({
   rightSectionWidth,
   searchProp,
   value = null,
+  variant,
   w,
 }: ChartSettingSelectProps) => {
+  const popoverPortal = useContext(WidgetPopoverPortalContext);
+  const comboboxProps: SelectProps["comboboxProps"] = popoverPortal
+    ? {
+        keepMounted: false,
+        withinPortal: true,
+        portalProps: { target: popoverPortal.dropdownTarget },
+      }
+    : { withinPortal: false, floatingStrategy: "absolute" };
+
+  const [dropdownOpened, setDropdownOpened] = useState(
+    Boolean(defaultDropdownOpened),
+  );
+  const scrollContainer = popoverPortal?.scrollContainer;
+  useEffect(() => {
+    if (!scrollContainer || !dropdownOpened) {
+      return;
+    }
+    const close = () => setDropdownOpened(false);
+    scrollContainer.addEventListener("scroll", close, { passive: true });
+    return () => scrollContainer.removeEventListener("scroll", close);
+  }, [scrollContainer, dropdownOpened]);
+
   const disabled =
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
@@ -107,15 +132,13 @@ export const ChartSettingSelect = ({
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={(v) => {
         onChange(
+          // Unjustified type cast. FIXME
           v == null ? null : (decodeWidgetValue(v) as ChartSettingSelectValue),
         );
       }}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       searchable={!!searchProp}
-      comboboxProps={{
-        withinPortal: false,
-        floatingStrategy: "fixed",
-      }}
+      comboboxProps={comboboxProps}
       leftSection={resolvedLeftSection}
       leftSectionWidth={icon != null ? iconWidth : undefined}
       rightSection={rightSection}
@@ -127,9 +150,15 @@ export const ChartSettingSelect = ({
           ? { "--chart-setting-select-input-padding-right": inputPaddingRight }
           : undefined
       }
-      defaultDropdownOpened={defaultDropdownOpened}
+      defaultDropdownOpened={popoverPortal ? undefined : defaultDropdownOpened}
+      dropdownOpened={popoverPortal ? dropdownOpened : undefined}
+      onDropdownOpen={popoverPortal ? () => setDropdownOpened(true) : undefined}
+      onDropdownClose={
+        popoverPortal ? () => setDropdownOpened(false) : undefined
+      }
       pl={pl}
       pr={pr}
+      variant={variant}
       w={w}
     />
   );

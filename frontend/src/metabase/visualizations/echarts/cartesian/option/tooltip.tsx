@@ -7,10 +7,7 @@ import { getTooltipModel } from "metabase/visualizations/visualizations/Cartesia
 import type { CardDisplayType } from "metabase-types/api";
 
 import { getTooltipBaseOption } from "../../tooltip";
-import {
-  GOAL_LINE_SERIES_ID,
-  TIMELINE_EVENT_SERIES_ID,
-} from "../constants/dataset";
+import { GOAL_LINE_SERIES_ID } from "../constants/dataset";
 import type { BaseCartesianChartModel, DataKey } from "../model/types";
 
 interface ChartItemTooltip {
@@ -63,10 +60,7 @@ export const getTooltipOption = (
 
       const { dataIndex, seriesId } = params;
 
-      if (
-        seriesId === TIMELINE_EVENT_SERIES_ID ||
-        seriesId === GOAL_LINE_SERIES_ID
-      ) {
+      if (seriesId === GOAL_LINE_SERIES_ID) {
         return "";
       }
 

@@ -1,11 +1,11 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link/Link";
+import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import {
   canArchive,
+  formatCreatorMessage,
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
@@ -60,7 +60,7 @@ export const NotificationCard = ({
       align="center"
       px="lg"
       py="md"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {entityLink ? (
@@ -103,7 +103,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
@@ -113,7 +113,7 @@ export const NotificationCard = ({
           className={S.icon}
           name="close"
           size={16}
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />

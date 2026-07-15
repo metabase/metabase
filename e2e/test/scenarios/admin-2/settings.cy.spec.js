@@ -230,7 +230,7 @@ describe("scenarios > admin > settings", () => {
       .as("timezoneSelect")
       .clear()
       .type("Centr");
-    cy.findByRole("listbox").findByText("US/Central").click();
+    H.selectDropdown().findByText("US/Central").click();
     cy.wait("@reportTimezone");
     cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
@@ -521,17 +521,13 @@ describe("scenarios > admin > settings > email settings", () => {
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
       cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          // in an actual pro-cloud instance this gets configured via env vars
-          res.body["email-configured?"] = true;
-          return res.body;
-        });
-      });
       cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
+      // A real pro-cloud instance configures email via env vars; set the SMTP host so
+      // email-configured? is true (avoids a session/properties intercept that flakes on reload).
+      H.updateSetting("email-smtp-host", "smtp.example.test");
       H.resetSnowplow();
       H.enableTracking();
     });
@@ -916,9 +912,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.button("Load").click();
     cy.wait("@getGeoJson");
     cy.findByTestId("map-region-key-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.button("Add map").click();
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");

@@ -8,7 +8,7 @@ import {
   useListCollectionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";
@@ -447,11 +447,13 @@ function Row(props: RowProps) {
   // `type` tells us what `item` is, but TS can't correlate independent props
   if (props.type === "collection") {
     const CollectionRow = PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection;
+    // Unjustified type cast. FIXME
     return CollectionRow ? (
       <CollectionRow {...props} item={props.item as Collection} />
     ) : null;
   }
   if (props.type === "snippet") {
+    // Unjustified type cast. FIXME
     return <SnippetRow {...props} item={props.item as NativeQuerySnippet} />;
   }
   return null;

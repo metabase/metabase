@@ -98,6 +98,11 @@
                (let [text-measure (measure text)]
                  (cond
                    ;; Single text exceeds the limit - skip it with warning
+                   ;; TODO (Chris 2026-06-29) -- silently dropping an over-budget doc here is a poor default —
+                   ;; it vanishes from the index with only a warning. Make the over-budget policy a per-call
+                   ;; option (:truncate / :skip / :error, likely truncate-by-default eventually) and check what
+                   ;; the ai-service path does, which bypasses create-batches entirely.
+                   ;; https://linear.app/metabase/issue/BOT-1742
                    (> text-measure threshold)
                    (do
                      (log/warn
@@ -396,6 +401,28 @@
   {:provider (semantic-settings/ee-embedding-provider)
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
+
+(defmulti embedding-supported?
+  "Whether `embedding-model`'s provider is *configured* to compute embeddings — the endpoint/credentials it
+  needs are present. This is a config-presence check, not a liveness probe: a set URL whose service is down
+  (or a stopped ollama) still reads as supported and surfaces at call time. Dispatches on provider,
+  mirroring [[get-embedding]] and the config each provider's impl resolves; a new provider — including a
+  future in-process embedder — adds a method. The `:default` is false, so an unrecognized provider gates
+  callers off safely."
+  {:arglists '([embedding-model])} dispatch-provider)
+
+(defmethod embedding-supported? :default [_] false)
+
+(defmethod embedding-supported? "ai-service" [_]
+  (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
+               (not-empty (llm.settings/ai-service-base-url)))))
+
+(defmethod embedding-supported? "openai" [_]
+  (boolean (not-empty (semantic-settings/openai-api-key))))
+
+;; ollama's endpoint is hardcoded (localhost:11434) with no setting to check, so config-presence is always
+;; true — consistent with ai-service/openai, which likewise check for a configured URL, not a live server.
+(defmethod embedding-supported? "ollama" [_] true)
 
 (defn- calc-token-metrics
   [texts]

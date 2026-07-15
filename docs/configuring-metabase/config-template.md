@@ -157,6 +157,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
@@ -170,6 +171,8 @@ config:
     humanization-strategy: simple
     index-update-thread-count: 2
     install-analytics-database: true
+    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
+    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
     jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
@@ -219,6 +222,8 @@ config:
     metabot-enabled: true
     metabot-recent-views-enabled: true
     metabot-slack-signing-secret: null
+    mfa-challenge-signing-key: null
+    mfa-enforcement: 'off'
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -237,8 +242,12 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-caching-max-concurrent-writes: 0
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
+    queue-backend: quartz
+    queue-max-retries: 5
+    queue-no-listener-max-age-ms: 86400000
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
@@ -275,6 +284,7 @@ config:
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
+    scan-max-fields-per-table: 10000
     scim-enabled: null
     sdk-encryption-validation-key: null
     search-language: null
@@ -313,11 +323,12 @@ config:
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
+    sync-max-fields-per-table: 10000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
     transform-run-job-sql-concurrency: 3
     transform-timeout: 240
-    transforms-enabled: false
+    transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
     usage-metadata-enabled: false

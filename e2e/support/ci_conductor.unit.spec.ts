@@ -1,3 +1,7 @@
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { extractFailedTests, resolveScreenshotPath } from "./ci_conductor";
 
 // jest.mock is hoisted; the mocked default must be referenced via a `mock`-
@@ -47,6 +51,7 @@ const spec = {
 const makeResults = (
   overrides: Partial<CypressCommandLine.RunResult>,
 ): CypressCommandLine.RunResult =>
+  // Unjustified type cast. FIXME
   ({
     error: null,
     tests: [],
@@ -72,6 +77,7 @@ const test = (
 // Build a `results.screenshots`-shaped array from bare paths (the only field we
 // read). Cypress leaves `name` null for automatic failure shots.
 const screenshotsFromPaths = (...paths: string[]) =>
+  // Unjustified type cast. FIXME
   paths.map((path) => ({
     path,
   })) as unknown as CypressCommandLine.RunResult["screenshots"];
@@ -382,6 +388,10 @@ describe("reportFailedTestsToConductor", () => {
       REPO_ID: "123",
       GITHUB_RUN_ID: "456",
       GITHUB_RUN_ATTEMPT: "2",
+      // Cleared explicitly: the resolve-job-id action exports a real JOB_ID to
+      // $GITHUB_ENV, so on CI this var is present in the ambient process env.
+      // This case asserts the null-job_id path, so it must not inherit it.
+      JOB_ID: undefined,
       CYPRESS_RETRIES: "1",
       COMMIT_SHA: "abc123",
       TARGET_BRANCH: "master",
@@ -526,6 +536,7 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -577,6 +588,7 @@ describe("reportFailedTestsToConductor", () => {
 
     await reportFailedTestsToConductor(oneTest);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("500"));
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -640,6 +652,110 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
+    (console.error as jest.Mock).mockRestore();
+  });
+});
+
+describe("recordFailedTestsForQuarantine", () => {
+  const failuresFile = join(tmpdir(), `q-failures-${process.pid}.jsonl`);
+
+  afterEach(() => {
+    if (existsSync(failuresFile)) {
+      rmSync(failuresFile);
+    }
+  });
+
+  // The recorder reads QUARANTINE_FAILURES_FILE at import time, so point it at
+  // a temp file by re-importing the module with that env applied.
+  const load = () => loadConductor({ QUARANTINE_FAILURES_FILE: failuresFile });
+
+  const readLines = () =>
+    readFileSync(failuresFile, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+  it("records only ultimate failures (not flakes or passes), one per line", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    const results = makeResults({
+      tests: [
+        test(["scenarios > foo", "passes"], ["passed"]),
+        test(["scenarios > foo", "flakes then passes"], ["failed", "passed"]),
+        test(["scenarios > foo", "stays broken"], ["failed", "failed"], "boom"),
+      ],
+    });
+
+    recordFailedTestsForQuarantine(extractFailedTests(spec, results));
+
+    expect(readLines()).toEqual([
+      {
+        test_name: "stays broken",
+        test_path: "scenarios > foo",
+        file_path: "e2e/test/scenarios/foo/foo.cy.spec.ts",
+      },
+    ]);
+  });
+
+  it("appends across calls so the whole job's failures accumulate", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({ tests: [test(["A", "one"], ["failed", "failed"], "x")] }),
+      ),
+    );
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({ tests: [test(["B", "two"], ["failed", "failed"], "y")] }),
+      ),
+    );
+
+    expect(readLines().map((t) => t.test_name)).toEqual(["one", "two"]);
+  });
+
+  it("writes nothing when there are no ultimate failures", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({
+          tests: [
+            test(["A", "ok"], ["passed"]),
+            test(["A", "flaky"], ["failed", "passed"]),
+          ],
+        }),
+      ),
+    );
+
+    expect(existsSync(failuresFile)).toBe(false);
+  });
+
+  it("never throws when the file can't be written", async () => {
+    // A NUL byte in the path makes the fs calls throw; the recorder must swallow it.
+    const { recordFailedTestsForQuarantine } = await loadConductor({
+      QUARANTINE_FAILURES_FILE: "/tmp/\0/nope.jsonl",
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(() =>
+      // Unjustified type cast. FIXME
+      recordFailedTestsForQuarantine([
+        {
+          name: "n",
+          path: "p",
+          file: "f",
+          status: "failure",
+          attempts: [{ state: "failed" }],
+        },
+      ] as Parameters<typeof recordFailedTestsForQuarantine>[0]),
+    ).not.toThrow();
+
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 });

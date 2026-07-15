@@ -173,7 +173,7 @@ function CustomMcpOriginsSection() {
         onBlur={handleBlur}
         placeholder="https://*.example.com"
       />
-      <Text c="text-tertiary" fz="sm" mt="xs">
+      <Text c="text-disabled" fz="sm" mt="xs">
         {t`Changes will take effect within one minute.`}
       </Text>
     </Box>

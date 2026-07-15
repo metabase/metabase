@@ -1,5 +1,5 @@
 .BehaviorOptionIcon {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 
   .Icon {
     color: var(--mb-color-text-primary-inverse);

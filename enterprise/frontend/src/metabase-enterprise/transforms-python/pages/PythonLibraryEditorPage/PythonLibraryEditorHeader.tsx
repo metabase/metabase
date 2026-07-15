@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

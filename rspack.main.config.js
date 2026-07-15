@@ -10,6 +10,9 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 const {
   COMPRESSION_CONFIG,
 } = require("./frontend/build/shared/rspack/compression");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -67,7 +70,13 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
+        plugins: [
+          ["@swc/plugin-emotion", { sourceMap: isDevMode }],
+          // instrumentation slows builds significantly and should only run in the nightly coverage CI job.
+          ...(process.env.INSTRUMENT_COVERAGE === "true"
+            ? [["swc-plugin-coverage-instrument", {}]]
+            : []),
+        ],
       },
     },
 
@@ -113,7 +122,6 @@ const config = {
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
     "app-embed-mcp": "./app-embed-mcp.tsx",
-    "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
 
@@ -261,6 +269,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -275,31 +284,31 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
+      chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
+      chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-sdk.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed-mcp"],
+      chunks: ["vendor", "styles", "app-embed-mcp"],
       template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
 
       // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),

@@ -6,9 +6,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -515,3 +517,137 @@
                                          :value  :week}]})]
       (is (=? ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
               (first (mt/rows (mt/process-query query))))))))
+
+(deftest ^:parallel param-targeting-explicit-join-column-test
+  (testing "a param with a :dimension target carrying {:join-alias …} compiles to a filter on the explicitly-joined column (#43799)"
+    (let [mp        meta/metadata-provider
+          products  (meta/table-metadata :products)
+          base      (lib/query mp (meta/table-metadata :orders))
+          query     (lib/join base (-> (lib/join-clause products (lib/suggested-join-conditions base products))
+                                       (lib/with-join-alias "Products")
+                                       (lib/with-join-fields :all)))
+          title-col (m/find-first #(and (= (:id %) (meta/id :products :title))
+                                        (= (:lib/join-alias %) "Products"))
+                                  (lib/visible-columns query))]
+      (is (=? {:query {:filter [:= [:field (meta/id :products :title) {:join-alias "Products"}] "Google"]}}
+              (expand-parameters
+               (-> (lib.convert/->legacy-MBQL query)
+                   (assoc :parameters
+                          [{:type   :string/=
+                            :value  ["Google"]
+                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref title-col))]}]))))))))
+
+(deftest ^:parallel boolean-mbql-parameter-test
+  (testing "a boolean/= param mapped to a boolean expression column expands to an equality filter on that expression"
+    (let [mp    meta/metadata-provider
+          query (as-> (lib/query mp (meta/table-metadata :products)) q
+                  (lib/expression q "Bool" (lib/= (meta/field-metadata :products :id) 1))
+                  (lib/with-fields q [(meta/field-metadata :products :id)
+                                      (m/find-first #(= (:lib/expression-name %) "Bool")
+                                                    (lib/visible-columns q))]))]
+      (doseq [v [true false]]
+        (testing (format "value = %s" (pr-str v))
+          (is (=? {:query {:filter [:= [:expression "Bool" {:base-type :type/Boolean}] v]}}
+                  (expand-parameters
+                   (-> (lib.convert/->legacy-MBQL query)
+                       (assoc :parameters
+                              [{:type   :boolean/=
+                                :value  [v]
+                                :target [:dimension (lib.convert/->legacy-MBQL (lib/expression-ref query "Bool"))]}]))))))))))
+
+(deftest ^:parallel duplicate-temporal-unit-params-same-breakout-test
+  ;; NOTE: this pins CURRENT product behavior. The documented intent for #44684 is for the LAST param to take priority
+  ;; (which would yield :year here), but that is not what the product does today for two params on the *same* breakout.
+  (testing (str "two temporal-unit params on the same breakout: the FIRST matching param wins (:quarter) as a mechanical"
+                " consequence of sequential expansion — each param retargets by matching the breakout's current unit, so"
+                " once the first changes :month to :quarter the second (still targeting :month) no longer matches and is"
+                " a no-op (#44684)")
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          month-ref  (fn [] (lib.convert/->legacy-MBQL (lib/with-temporal-bucket (lib/ref created-at) :month)))
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month)))]
+      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :quarter}]]}}
+              (expand-parameters
+               (-> (lib.convert/->legacy-MBQL query)
+                   (assoc :parameters
+                          [{:type :temporal-unit, :target [:dimension (month-ref)], :value :quarter}
+                           {:type :temporal-unit, :target [:dimension (month-ref)], :value :year}]))))))))
+
+(deftest ^:parallel temporal-unit-param-disambiguates-same-column-breakouts-test
+  (testing "two temporal-unit params retarget only the breakout matching their current unit (#46536, #46776)"
+    (let [mp            meta/metadata-provider
+          created-at    (meta/field-metadata :orders :created-at)
+          bucket        (fn [u] (lib/with-temporal-bucket created-at u))
+          ;; parameter :target dimensions carry LEGACY field refs even inside an MBQL 5 stage
+          legacy-bucket (fn [u] (lib.convert/->legacy-MBQL (lib/ref (bucket u))))
+          query         (-> (lib/query mp (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (bucket :year))
+                            (lib/breakout (bucket :month))
+                            (lib/update-query-stage
+                             0 assoc :parameters
+                             [{:type   :temporal-unit
+                               :value  "quarter"
+                               :target [:dimension (legacy-bucket :year) {}]}
+                              {:type   :temporal-unit
+                               :value  "week"
+                               :target [:dimension (legacy-bucket :month) {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
+                                    [:field {:temporal-unit :week}    (meta/id :orders :created-at)]]}]}
+              (expand-parameters query))))))
+
+(deftest ^:parallel bigint-number-operators-test
+  (testing "number operator params preserve type/BigInteger values without collapsing to a double (#5816)"
+    (let [mp     meta/metadata-provider
+          big    (biginteger "9223372036854775808")
+          id-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :orders :id)))]
+      (doseq [[ptype value expected]
+              [[:number/!=      [big]   [:!= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
+               [:number/>=      [big]   [:>= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
+               [:number/<=      [big]   [:<= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
+               [:number/between [0 big] [:between [:field (meta/id :orders :id) {:base-type :type/BigInteger}] 0 big]]]]
+        (testing (pr-str ptype)
+          (is (=? {:query {:filter expected}}
+                  (expand-parameters
+                   (-> (lib.convert/->legacy-MBQL (lib/query mp (meta/table-metadata :orders)))
+                       (assoc :parameters
+                              [{:type   ptype
+                                :value  value
+                                :target [:dimension id-ref]}]))))))))))
+
+(deftest ^:parallel two-params-same-column-conjunction-test
+  (testing "two params mapped to the same column AND-combine (intersection)"
+    (let [mp      meta/metadata-provider
+          cat-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :products :category)))]
+      (is (=? {:query {:filter [:and
+                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Doohickey" "Gizmo"]
+                                [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Gadget"]]}}
+              (expand-parameters
+               (-> (lib.convert/->legacy-MBQL (-> (lib/query mp (meta/table-metadata :products))
+                                                  (lib/aggregate (lib/count))))
+                   (assoc :parameters
+                          [{:type   :string/=
+                            :value  ["Doohickey" "Gizmo"]
+                            :target [:dimension cat-ref]}
+                           {:type   :string/=
+                            :value  ["Gadget"]
+                            :target [:dimension cat-ref]}]))))))))
+
+(deftest ^:parallel temporal-unit-allowlist-not-enforced-at-execution-test
+  (testing "a :temporal_units allow-list on the parameter is not enforced when expanding the query"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          month-ref  (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month)))]
+      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :year}]]}}
+              (expand-parameters
+               (-> (lib.convert/->legacy-MBQL query)
+                   (assoc :parameters
+                          [{:type           :temporal-unit
+                            :target         [:dimension month-ref]
+                            :value          :year
+                            :temporal_units [:month :quarter]}]))))))))

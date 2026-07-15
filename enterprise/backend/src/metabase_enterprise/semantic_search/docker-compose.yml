@@ -1,3 +1,8 @@
+# Dev harness for a DEDICATED pgvector database (MB_PGVECTOR_DB_URL). A dedicated database is not
+# required: when MB_PGVECTOR_DB_URL is unset and the application database is Postgres with the pgvector
+# extension available, semantic search automatically runs against the app db — its tables live in a
+# dedicated `semantic_search` schema and share the app-db connection pool (so heavy reindexing competes
+# with regular app-db traffic; use a dedicated database when that matters).
 version: '3.8'
 
 services:

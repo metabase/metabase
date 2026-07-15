@@ -242,6 +242,13 @@
   "Like [[user-http-request]] but instead of calling the app handler, this makes an actual http request."
   (partial user-request client/real-client))
 
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-real-request-full-response
+  "Like [[user-real-request]] but returns the full HTTP response map instead of just the body. Useful for
+  tests that need the underlying `:http-client` (e.g. to forcibly close the connection and simulate a client
+  disconnect on a streaming response)."
+  (partial user-request client/client-real-response))
+
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "\nwith test user %s\n" user-kwd)
     (request/with-current-user (some-> user-kwd user->id)

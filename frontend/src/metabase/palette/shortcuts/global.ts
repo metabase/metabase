@@ -16,7 +16,7 @@ export const globalShortcuts = {
       return t`Create a native query`;
     },
     get keywords() {
-      return t`add native query, add SQL, create SQL, new SQL`;
+      return t`add native query, add SQL, create SQL`;
     },
     shortcut: ["c n"],
     shortcutGroup: "global" as const,

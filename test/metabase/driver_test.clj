@@ -89,10 +89,12 @@
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
         (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
                         :tables
+                        (into [])
                         (some :schema)))))
       (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
+                       (into [])
                        (some :schema))))))))
 
 (defn- basic-db-definition [database-name]
@@ -433,19 +435,18 @@
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
-#_(deftest ^:parallel data-editing-requires-describe-features-test
-    (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
-      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-        (testing "describe-default-expr feature"
-          (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
-              (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
-        (testing "describe-is-generated feature"
-          (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
-              (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
-        (testing "describe-is-nullable feature"
-          (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
-              (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
+(deftest ^:parallel data-editing-requires-describe-features-test
+  (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "describe-default-expr feature"
+        (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+            (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
+      (testing "describe-is-generated feature"
+        (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+            (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
+      (testing "describe-is-nullable feature"
+        (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+            (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
 
 (deftest query-driver-success-metrics-test
   (mt/test-drivers (mt/normal-drivers)

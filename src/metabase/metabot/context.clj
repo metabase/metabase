@@ -11,9 +11,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.premium-features.core :as premium-features]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -123,17 +123,30 @@
         (when (lib/native-only-query? normalized-query)
           normalized-query)))))
 
+(defn- table-stub
+  "Reference to a table used by a viewing-context item.
+
+  Excludes columns. [[metabase.metabot.agent.user-context/format-entity]] only reads `:type` and `:id` and calculates
+  column details via [[metabase.metabot.tools.entity-details/get-table-details]], so fetching columns here is wasted
+  work. On large, highly-connected schemas it can contribute to heap exhaustion (metabase#76493).
+  `:name`/`:database_schema`/`:description` are kept for the `format-simple-entity` fallback"
+  [{:keys [id name schema description]}]
+  {:id id
+   :type :table
+   :name name
+   :database_schema schema
+   :description description})
+
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
-   Removes duplicate tables by id while preserving first occurrence order."
+  "Get database tables formatted for metabot context. Only includes tables used in the query.
+  Removes duplicate tables by id while preserving first occurrence order."
   [{:keys [query]}]
   (try
     (if query
-      (let [used-tables (table-utils/used-tables query)
-            tables (table-utils/enhanced-database-tables (:database query)
-                                                         {:priority-tables used-tables
-                                                          :all-tables-limit (count used-tables)})]
-        (m/distinct-by :id tables))
+      (into []
+            (comp (m/distinct-by :id)
+                  (map table-stub))
+            (table-utils/used-tables query))
       [])
     (catch Exception e
       (log/error e "Error getting database tables for context")
@@ -154,10 +167,7 @@
   [{:keys [database-id table-ids]}]
   (try
     (when (and database-id (seq table-ids))
-      (when-let [tables (not-empty (table-utils/used-tables-from-ids database-id table-ids))]
-        (table-utils/enhanced-database-tables database-id
-                                              {:priority-tables tables
-                                               :all-tables-limit (count tables)})))
+      (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
     (catch Exception e
       (log/error e "Error getting Python transform tables for context")
       [])))
@@ -179,7 +189,7 @@
         [database-id table-ids]))))
 
 (defn- mbql-source-tables-for-context
-  "Get source tables for an MBQL query, formatted for metabot context (with :type, :display_name, :fields, etc.).
+  "Get source tables for an MBQL query, formatted for metabot context.
 
   Uses a direct table lookup without native-query permission checks. The user is already
   viewing these tables in the notebook editor, so they have at least query-builder access.
@@ -187,16 +197,15 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (t2/select [:model/Table :id :name :schema]
+    (let [raw-tables (t2/select [:model/Table :id :name :schema :description]
                                 :db_id database-id
                                 :id [:in table-ids]
                                 :active true
-                                :visibility_type nil)
-          tables     (when (seq raw-tables)
-                       (table-utils/enhanced-database-tables database-id
-                                                             {:priority-tables  raw-tables
-                                                              :all-tables-limit (count raw-tables)}))]
-      (m/distinct-by :id tables))
+                                :visibility_type nil)]
+      (into []
+            (comp (m/distinct-by :id)
+                  (map table-stub))
+            raw-tables))
     (catch Exception e
       (log/error e "Error getting MBQL source tables for context")
       nil)))
@@ -255,62 +264,48 @@
                                       [metabot-id :entity-id]
                                       metabot-id))))
 
-(defn- verified-only?
-  [metabot]
-  (and (:use_verified_content metabot)
-       (premium-features/has-feature? :content-verification)))
-
-(defn- batch-verified-ids
-  "Of the given `ids`, return the set whose most-recent ModerationReview for `item-type` has status \"verified\"."
-  [ids item-type]
-  (if (empty? ids)
-    #{}
-    (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                      :moderated_item_id   [:in ids]
-                      :moderated_item_type item-type
-                      :most_recent         true
-                      :status              "verified")))
-
-(defn- filter-recents-to-verified
-  "Drop card/dataset/metric/dashboard recents that aren't verified. Tables (and any other
-  non-moderatable model) pass through unchanged."
+(defn- filter-recents-to-curated
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
+  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
+  from the canonical rule and doesn't depend on the search index."
   [recents]
-  (let [card-like-ids       (->> recents
-                                 (filter #(#{:card :dataset :metric} (:model %)))
-                                 (map :id))
-        dashboard-ids       (->> recents
-                                 (filter #(= :dashboard (:model %)))
-                                 (map :id))
-        verified-cards      (batch-verified-ids card-like-ids "card")
-        verified-dashboards (batch-verified-ids dashboard-ids "dashboard")]
-    (filter (fn [{:keys [id model]}]
-              (case model
-                (:card :dataset :metric) (contains? verified-cards id)
-                :dashboard               (contains? verified-dashboards id)
-                true))
-            recents)))
+  (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
+    (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
+
+(def ^:private profiles-excluding-recent-views
+  "Profiles for which recent views are never injected.
+
+  The nlq profile discovers data through the curated library tool rather than general instance search, so arbitrary
+  recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
+  general-search fallback keeps the external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for
+  a direct request.)  The slackbot and document-generate-content profiles historically did not include recent views,
+  so we preserve that behavior."
+  #{:nlq :nlq-fallback :slackbot :document-generate-content})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
   (Excludes collections and documents for now, which aren't searchable by Metabot.)
 
-  When `metabot-id` is provided and the metabot has `use_verified_content` enabled (and the
-  `:content-verification` premium feature is active), filters out unverified cards/datasets/metrics
-  /dashboards before taking the top 5. Tables are not moderatable and always pass through."
-  [context {:keys [metabot-id] :as _opts}]
+  When `metabot-id` is provided and the metabot has `use_verified_content` enabled, filters recents down
+  to curated content (verified, official-collection, library/published, or authoritative) before taking
+  the top 5, matching how search filters answer sources.
+
+  Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."
+  [context {:keys [metabot-id profile-id] :as _opts}]
   (try
-    ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
+    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so recent
     ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
-    (if-not (metabot.settings/metabot-recent-views-enabled?)
+    (if (or (not (metabot.settings/metabot-recent-views-enabled?))
+            (contains? profiles-excluding-recent-views profile-id))
       (dissoc context :user_recently_viewed)
       (assoc context :user_recently_viewed
              (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
                                                                 [:views :selections]
                                                                 {:models [:card :dataset :metric :dashboard :table]}))
                    recents (cond->> recents
-                             (verified-only? (get-metabot metabot-id))
-                             filter-recents-to-verified)]
+                             (:use_verified_content (get-metabot metabot-id))
+                             filter-recents-to-curated)]
                (mapv (fn [item]
                        (let [item-type
                              (case (:model item)

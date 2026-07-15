@@ -25,10 +25,9 @@
   {:arglists '([cached])}
   (comp type :results))
 
-;; H2 returns a blob type
-(defmethod results-as-bytes org.h2.jdbc.JdbcBlob
-  [{:keys [^org.h2.jdbc.JdbcBlob results]}]
-  (.getBytes results 1 (.length results)))
+(defmethod results-as-bytes java.sql.Blob
+  [{:keys [^java.sql.Blob results]}]
+  (.getBytes results 1 (int (.length results))))
 
 ;; MySQL/Mariadb/Postgresql return a byte array
 (defmethod results-as-bytes :default
@@ -84,15 +83,15 @@
 
   Updates the raw table, not the `:model/QueryCache` model: the model's `:hook/updated-at-timestamped?` before-update
   hook makes toucan2 run a non-atomic SELECT-then-UPDATE-by-PK, which would move the conditional lease check into the
-  SELECT and let two processes both win. The raw table keeps this a single atomic conditional UPDATE; we set
-  `updated_at` ourselves in place of the hook."
+  SELECT and let two processes both win. The raw table keeps this a single atomic conditional UPDATE, which also means
+  the hook does not run -- so `updated_at` is left alone. That is intentional: `updated_at` means \"when the results
+  blob was last written\", read that way by [[cache-fresh?]], [[purge-old-cache-entries!]], and the EE refresh
+  scheduler; bumping it here would let a crashed refresh silently extend the row's freshness (#76856)."
   [query-hash lease-ms]
-  (let [now (t/offset-date-time)]
-    (pos? (t2/update! (t2/table-name :model/QueryCache)
-                      {:query_hash                                         query-hash
-                       [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
-                      {:refresh_started_at now
-                       :updated_at         now}))))
+  (pos? (t2/update! (t2/table-name :model/QueryCache)
+                    {:query_hash                                         query-hash
+                     [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
+                    {:refresh_started_at (t/offset-date-time)})))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."

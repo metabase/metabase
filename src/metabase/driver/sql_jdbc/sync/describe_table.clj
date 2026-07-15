@@ -365,8 +365,34 @@
   [_driver _db & _args]
   identity)
 
+(defn limit-fields-per-table-xf
+  "Stateful transducer that caps streamed `describe-fields` rows to at most `limit` per table -- a hard, O(1)-memory
+  per-table field cap (no buffering, no window functions). Rows must arrive contiguous by table, which the
+  `describe-fields` contract guarantees (ordered by `table-schema`, `table-name`); within a table the first `limit`
+  rows are kept and the rest dropped as they stream. [[describe-fields]] passes
+  [[metabase.driver.settings/sync-max-fields-per-table]] as `limit`, and the sync layer treats a table that comes back
+  with exactly that many fields as having hit the cap (see `metabase.sync.sync-metadata.fields/limit-fields-to-sync`)."
+  [limit]
+  (fn [rf]
+    (let [current (volatile! ::none)
+          n       (volatile! 0)]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result row]
+         (let [table [(:table-schema row) (:table-name row)]]
+           (when-not (= table @current)
+             (vreset! current table)
+             (vreset! n 0))
+           (vswap! n inc)
+           (if (<= @n limit)
+             (rf result row)
+             result)))))))
+
 (defn describe-fields
-  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData. The
+  result is hard-capped to [[metabase.driver.settings/sync-max-fields-per-table]] fields per table (see
+  [[limit-fields-per-table-xf]])."
   [driver db & {:keys [schema-names table-names] :as args}]
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
@@ -382,6 +408,7 @@
       (eduction
        (comp
         (m/mapply describe-fields-pre-process-xf driver db args)
+        (limit-fields-per-table-xf (driver.settings/sync-max-fields-per-table))
         (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
 

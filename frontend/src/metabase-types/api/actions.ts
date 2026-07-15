@@ -213,7 +213,7 @@ export interface GetActionRequest {
 }
 
 export interface ExecuteActionRequest {
-  id: WritebackActionId;
+  id: WritebackActionId | BaseEntityId;
   parameters: ParametersForActionExecution;
 }
 

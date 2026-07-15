@@ -22,7 +22,6 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -288,7 +287,8 @@
   ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
   ;; TODO we should handle the MySQL and MariaDB flavors here too
   (or (instance? PSQLException (ex-cause e))
-      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+      (= mdb/jdbc-sql-syntax-error-exception-classname
+         (some-> e ex-cause class .getName))))
 
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"
@@ -342,8 +342,15 @@
                 nil)))))))
 
 (defn- batch-update!
-  "Create the given search index entries in bulk. Commits after each batch"
-  [context documents]
+  "Create the given search index entries in bulk. Commits after each batch.
+
+  `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
+  [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
+  initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
+  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
+  in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
+  rebuild stays current."
+  [reindex-table documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -355,15 +362,20 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+  (let [reindexing? (some? reindex-table)
         do-writes   (fn []
-                      (let [entries         (map document->entry documents)
-                            ;; No need to update the active index if we are doing a full index, as this table will be
-                            ;; swapped out soon. Most updates would be no-ops anyway.
-                            active-updated  (when-not (and reindexing? (pending-table))
-                                              (safe-batch-upsert! :active active-table entries))
-                            pending-updated (safe-batch-upsert! :pending pending-table entries)]
-                        (when (or active-updated pending-updated)
+                      (let [entries (map document->entry documents)
+                            updated (if reindexing?
+                                      ;; Full reindex: write only to the table captured for the whole run, so a
+                                      ;; transiently-blanked tracking atom can't redirect writes into the live
+                                      ;; active table (which would silently drop documents from the new index).
+                                      (safe-batch-upsert! :pending (constantly reindex-table) entries)
+                                      ;; Incremental / in-place: dual-write so an in-progress rebuild stays
+                                      ;; current. Either table may legitimately be absent.
+                                      (let [active-updated  (safe-batch-upsert! :active active-table entries)
+                                            pending-updated (safe-batch-upsert! :pending pending-table entries)]
+                                        (or active-updated pending-updated)))]
+                        (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
                               (t2/query ["commit"]))
@@ -379,10 +391,17 @@
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
-    (transduce (comp (partition-all insert-batch-size)
-                     (map (partial batch-update! context)))
-               (partial merge-with +)
-               document-reducible)))
+    (let [reindexing?   (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
+          ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
+          ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
+          ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
+          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
+          ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
+          reindex-table (when reindexing? (or (pending-table) (active-table)))]
+      (transduce (comp (partition-all insert-batch-size)
+                       (map (partial batch-update! reindex-table)))
+                 (partial merge-with +)
+                 document-reducible))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))

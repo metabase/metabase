@@ -10,7 +10,7 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
 
   &:hover {

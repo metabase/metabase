@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   setupBillingEndpoints,
   setupBugReportingDetailsEndpoint,
@@ -11,6 +9,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { TransformsUpsellPage } from "./TransformsUpsellPage";

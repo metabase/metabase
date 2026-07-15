@@ -11,6 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -23,6 +24,8 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -442,21 +445,27 @@
                :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
-  [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
+  [allow-int-ids? {:keys [action_id card_id parameter_mappings visualization_settings series]}]
   (set
    (concat
-    (mapcat serdes/mbql-deps parameter_mappings)
-    (serdes/visualization-settings-deps visualization_settings)
+    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
+    (serdes/visualization-settings-deps allow-int-ids? visualization_settings)
     (when card_id   #{[{:model "Card" :id card_id}]})
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
-(defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id dashcards parameters]}]
-  (->> (map serdes-deps-dashcard dashcards)
+(defn- dashboard-deps
+  "The serdes dependencies of a Dashboard as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined — the
+  ingested shape, which the raw path hydrates first. `allow-int-ids?` selects raw-appdb vs serialized ref semantics. Shared by
+  [[serdes/deserialization-dependencies]] (allow-int-ids? false) and [[serdes/serialization-dependencies]] (allow-int-ids? true)."
+  [allow-int-ids? {:keys [collection_id dashcards parameters]}]
+  (->> (map #(serdes-deps-dashcard allow-int-ids? %) dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (serdes/parameters-deps parameters))))
+       (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+
+(defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
+  (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
@@ -490,6 +499,13 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+(defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
+  ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
+  ;; expects, then reuse the same walk as deserialization.
+  (dashboard-deps true (-> dashboard
+                           (t2/hydrate :dashcards)
+                           (update :dashcards #(t2/hydrate % :series)))))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "dashboard"
@@ -503,6 +519,7 @@
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified       [:= "verified" :mr.status]
+                  :official-collection [:= "official" :collection.authority_level]
                   :view-count     true
                   :created-at     true
                   :updated-at     true
@@ -532,3 +549,35 @@
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(defmethod staleness/find-stale-query :model/Dashboard
+  [_model args]
+  {:select [:report_dashboard.id
+            [(h2x/literal "Dashboard") :model]
+            [:report_dashboard.name :name]
+            [:last_viewed_at :last_used_at]]
+   :from :report_dashboard
+   :left-join [:pulse [:and
+                       [:= :pulse.archived false]
+                       [:= :pulse.dashboard_id :report_dashboard.id]]
+               :collection [:= :collection.id :report_dashboard.collection_id]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
+   :where [:and
+           [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
+           [:= :report_dashboard.archived false]
+           [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_dashboard.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_dashboard.public_uuid nil])
+           [:or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_dashboard.collection_id nil])
+            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})

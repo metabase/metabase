@@ -3,7 +3,9 @@ import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Dispatch } from "metabase/redux/store";
 import type {
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -20,7 +22,9 @@ const noopCustomVizIcon = (
 const getDefaultPluginCustomViz = () => ({
   // Admin settings pages
   ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
   CustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
   CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
 
   // Hooks & functions
@@ -28,6 +32,7 @@ const getDefaultPluginCustomViz = () => ({
     loading: false,
   }),
   useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
+    // Unjustified type cast. FIXME
     ({ plugins: undefined, isLoading: false }) as {
       plugins: CustomVizPluginRuntime[] | undefined;
       isLoading: boolean;
@@ -38,9 +43,33 @@ const getDefaultPluginCustomViz = () => ({
       cacheBustSuffix?: string;
       onInfo?: (message: string) => void;
     },
+    // Unjustified type cast. FIXME
   ) => null as string | null,
-  getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
-    undefined as string | undefined,
+  /**
+   * Load (and register) the plugin backing a `custom:*` display, if it is
+   * installed and enabled. Resolves to the registered display identifier, or
+   * null when the plugin is unavailable. No-op in OSS.
+   */
+  loadCustomVizPluginForDisplay: async (
+    _dispatch: Dispatch,
+    _display: string,
+  ): Promise<VisualizationDisplay | null> => null,
+  getPluginAssetUrl: (
+    _pluginId: CustomVizPluginId,
+    _assetPath: string | null,
+    // Unjustified type cast. FIXME
+  ) => undefined as string | undefined,
+
+  // Only the SDK really implements these: its icon `<img>` is cross-origin and
+  // can't carry the session header, so the sdk fetches the asset with auth, hands back
+  // a `blob:` url, and revokes it via `releaseCustomVizAsset`. The main app just
+  // builds a plain url.
+  resolveCustomVizAssetUrl: (
+    _pluginId: CustomVizPluginId,
+    _assetPath: string | null | undefined,
+  ): Promise<string | undefined> => Promise.resolve(undefined),
+  releaseCustomVizAsset: (_pluginId: CustomVizPluginId) => {},
+
   useCustomVizPluginsIcon: () => noopCustomVizIcon,
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations

@@ -30,6 +30,15 @@ For Metabase to use your driver, all you need to do is put the driver JAR you bu
 
 You can change the plugin directory by setting the [environment variable][env-var] `MB_PLUGINS_DIR`.
 
+## Remove a driver
+
+To remove a driver module from Metabase:
+
+1. Delete the driver's folder from `modules/drivers`.
+2. Delete the driver's dependency entry from `modules/drivers/deps.edn`.
+
+You can't remove the Postgres, H2, or MySQL drivers, because Metabase needs them for application databases.
+
 ## Example module directory
 
 Let's take a high-level look at the [SQLite driver](https://github.com/metabase/metabase/tree/master/modules/drivers/sqlite):

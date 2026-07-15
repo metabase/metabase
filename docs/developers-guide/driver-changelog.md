@@ -4,7 +4,44 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.0
+
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
+
+- Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
+  distribution keys, clustering, etc.). New driver feature flags:
+
+  - `:index/fetch` -- the driver can read the indexes that physically exist on a table. Implemented by Postgres,
+    ClickHouse, and Redshift.
+
+  - `:index/standalone-create` -- the driver can create an index on a transform's target table as a standalone
+    statement after the table is created. Implemented by Postgres.
+
+  - `:index/inline-create` -- the driver inlines an index into the table-creation statement itself (e.g. Redshift
+    `SORTKEY`) rather than creating it afterwards. Such drivers render the index from the `:indexes` key of the
+    transform details when they build the creation statement: in `metabase.driver/compile-transform` (the CTAS for a
+    SQL transform) and/or `metabase.driver/create-table!` (the CREATE TABLE for a Python transform). Implemented by
+    Redshift.
+
+  New driver methods:
+
+  - `metabase.driver/fetch-table-indexes` `[driver database schema table]` -- reads a table's physical indexes,
+    returning them as a vector of normalized index maps. Drivers declaring `:index/fetch` implement it; the default
+    implementation throws.
+
+  - `metabase.driver/supported-index-methods` `[driver database]` -- returns the index methods the driver supports as
+    a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
+    `{}`.
+
+  - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
+    the DDL statement(s) that create it.
+
 ## Metabase 0.63.0
+
+- `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
+  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support

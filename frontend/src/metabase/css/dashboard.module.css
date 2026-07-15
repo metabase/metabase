@@ -41,12 +41,12 @@
 
 .PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card {
-  box-shadow: 3px 3px 8px var(--mb-color-shadow);
+  box-shadow: 3px 3px 8px var(--mb-color-shadow-default);
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {
@@ -60,7 +60,7 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--mb-color-background-tertiary) !important;
+  background-color: var(--mb-color-background_page-tertiary) !important;
   border: 1px solid var(--mb-color-core-brand);
 }
 
@@ -99,15 +99,15 @@
   height: 8px;
   bottom: 6px;
   right: 6px;
-  border-bottom: 2px solid var(--mb-color-border);
-  border-right: 2px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border-neutral);
+  border-right: 2px solid var(--mb-color-border-neutral);
   border-bottom-right-radius: 2px;
   transition: opacity 0.2s;
   opacity: 0.01;
 }
 
 .DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .DashEditing .DashCard:hover :global(.react-resizable-handle::after) {
@@ -124,7 +124,7 @@
 /* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--mb-color-background-secondary) !important;
+  background-color: var(--mb-color-background_page-secondary) !important;
   transition: all 0.15s linear;
 }
 

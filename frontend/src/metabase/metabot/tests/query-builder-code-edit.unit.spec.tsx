@@ -79,12 +79,11 @@ describe("query builder code edits from omnibot", () => {
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
-      callbacks?.onStartMessagePart?.({ messageId: "msg_test_code_edit" });
+      callbacks?.onStart?.({ type: "start", messageId: "msg_test_code_edit" });
       callbacks?.onTextPart?.("Reviewing the query.");
       callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
+        type: "data-code_edit",
+        data: {
           buffer_id: "qb",
           mode: "rewrite",
           value: SUGGESTED_SQL,
@@ -95,12 +94,10 @@ describe("query builder code edits from omnibot", () => {
         aborted: false,
         toolCalls: [],
         data: [],
-        text: null,
-        parts: [],
-        history: [],
       };
     });
 
+    // Unjustified type cast. FIXME
     const storeInitialState = createMockState({
       currentUser: createMockUser(),
       settings: mockSettings({
@@ -121,9 +118,10 @@ describe("query builder code edits from omnibot", () => {
         <QuerySuggestionProbe question={question} />
       </MetabotProvider>,
       {
-        storeInitialState: storeInitialState as any,
+        storeInitialState: storeInitialState,
       },
     );
+    // Unjustified type cast. FIXME
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
       dispatch: ThunkDispatch<State, void, AnyAction>;
       getState: () => State;
@@ -139,6 +137,7 @@ describe("query builder code edits from omnibot", () => {
         sendAgentRequest({
           agentId: "omnibot",
           message: "Please rewrite this query",
+          // Unjustified type cast. FIXME
           conversation_id: conversationId as string,
           context: {
             user_is_viewing: [
@@ -160,8 +159,6 @@ describe("query builder code edits from omnibot", () => {
             current_time_with_timezone: "2026-03-04T00:00:00Z",
             capabilities: [],
           },
-          history: [],
-          state: {},
         }),
       );
     });
@@ -185,7 +182,7 @@ describe("query builder code edits from omnibot", () => {
         expect.objectContaining({
           type: "data_part",
           externalId: "msg_test_code_edit",
-          part: expect.objectContaining({ type: "code_edit" }),
+          part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
     );

@@ -1,7 +1,7 @@
-import { IndexRoute } from "react-router";
+import { Route } from "metabase/router";
 
 import { SchemaViewerPage } from "./pages/SchemaViewerPage";
 
 export function getDataStudioSchemaViewerRoutes() {
-  return <IndexRoute component={SchemaViewerPage} />;
+  return <Route index component={SchemaViewerPage} />;
 }

@@ -171,6 +171,7 @@ export const PublicOrEmbeddedQuestion = ({
         throw { status: 404 };
       }
 
+      // Unjustified type cast. FIXME
       const newResult = (await fetchDataOrError(resultPromise)) as
         | Dataset
         | { error: unknown };
@@ -179,6 +180,7 @@ export const PublicOrEmbeddedQuestion = ({
       if (typeof newResult.error === "object") {
         dispatch(setErrorPage(newResult.error));
       } else {
+        // Unjustified type cast. FIXME
         setResult(newResult as Dataset);
       }
     } catch (error) {

@@ -511,7 +511,7 @@ For interactive filters, you can pass initial parameter values via the `initial-
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-embedding-secret-key). The secret key tells Metabase that the request can be trusted. Note that this secret key is shared for all guest embeds, so whoever has access to that key will have access to all embedded artifacts.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](../questions/visualizations/drill-through.md) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
 ## Using guest embeds with the SDK
 
@@ -527,7 +527,7 @@ Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
 - [Database routing](../permissions/database-routing.md)
-- [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
+- [Drill-through](../questions/visualizations/drill-through.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
 - [AI chat](./sdk/ai-chat.md)

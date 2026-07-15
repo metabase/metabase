@@ -10,6 +10,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -46,15 +48,15 @@
 
 ;;; ------------------------------------------------- Transform Type Predicates -------------------------------------------------
 
-(defn transform-type
-  "Get the type of a transform"
-  [transform]
-  (-> transform :source :type keyword))
+(defn- type-is?
+  "True if `m`'s keywordized `:type` equals `t`."
+  [m t]
+  (= t (keyword (:type m))))
 
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
   [transform]
-  (= :query (transform-type transform)))
+  (type-is? (:source transform) :query))
 
 (defn native-query-transform?
   "Check if this is a native query transform.
@@ -64,16 +66,73 @@
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
 
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (type-is? (:source transform) :python))
+
+(defn table-target?
+  "True if `transform` writes to a plain table, recreated on every run."
+  [transform]
+  (type-is? (:target transform) :table))
+
+(defn incremental-target?
+  "True if `transform` writes to an incremental table."
+  [transform]
+  (type-is? (:target transform) :table-incremental))
+
+(defn merge-target?
+  "True if `transform`'s target uses the merge strategy."
+  [transform]
+  (type-is? (get-in transform [:target :target-incremental-strategy]) :merge))
+
+(defn checkpoint-source?
+  "True if `transform`'s source uses the checkpoint strategy."
+  [transform]
+  (type-is? (get-in transform [:source :source-incremental-strategy]) :checkpoint))
+
+(defn transform-source-database
+  "Get the source database from a transform"
+  [transform]
+  (cond
+    (query-transform? transform)  (-> transform :source :query :database)
+    (python-transform? transform) (-> transform :source :source-database)))
+
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires when `last_checkpoint_value` is nil (first run, or after the before-update hook clears the watermark on
+  a `checkpoint-filter-field-id` change), or when pending index changes require rebuilding the table to apply
+  physical index state.
+
+  The pending-changes check reads the app DB, so execution computes this once
+  (see [[metabase.transforms.execute]]) and stashes it as `:full-incremental-run?` on the transform; when that
+  key is present it is returned as-is, keeping the answer stable for the whole run."
+  [{:keys [id] :as transform}]
+  (if (contains? transform :full-incremental-run?)
+    (:full-incremental-run? transform)
+    (and (incremental-target? transform)
+         (or (nil? (:last_checkpoint_value transform))
+             (table-index/pending-changes-for-transform? id)))))
+
+(defn full-create-run?
+  "True when this run (re)creates the target table -- a plain `:table` run or a full-reset incremental run -- so
+  index requests are applied and verified."
+  [transform]
+  (or (table-target? transform)
+      (full-incremental-run? transform)))
+
+;;; ------------------------------------------------- Table Template Tags -------------------------------------------------
+
 (defn table-template-tag-name
   "Return the name (key) of the table template tag in `query` that refers to `table-id`, or nil.
 
   This is the table variable the incremental range filter is injected into (see
   `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
   [query table-id]
-  (some (fn [[k v]]
-          (when (and (#{:table "table"} (:type v))
-                     (or (nil? table-id) (= table-id (:table-id v))))
-            k))
+  (some (fn [{tag-name :name, :as tag}]
+          (when (and (#{:table "table"} (:type tag))
+                     (or (nil? table-id) (= table-id (:table-id tag))))
+            tag-name))
         (lib/template-tags query)))
 
 (defn incremental-table-tag-name
@@ -90,18 +149,6 @@
         table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
     (table-template-tag-name (:query source) table-id)))
 
-(defn python-transform?
-  "Check if this is a Python transform."
-  [transform]
-  (= :python (transform-type transform)))
-
-(defn transform-source-database
-  "Get the source database from a transform"
-  [transform]
-  (case (transform-type transform)
-    :query (-> transform :source :query :database)
-    :python (-> transform :source :source-database)))
-
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
 
 (defn normalize-transform
@@ -109,7 +156,7 @@
   This should be called on transforms before processing them to ensure queries are in the expected format."
   [transform]
   (if (and (map? transform)
-           (= (:type transform) "transform")
+           (type-is? transform :transform)
            (get-in transform [:source :query]))
     (update-in transform [:source :query] lib-be/normalize-query)
     transform))
@@ -119,13 +166,13 @@
   Throws if the source type cannot be detected.
   Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [source]
-  (case (keyword (:type source))
-    :python :python
-    :query  (if (lib/native-only-query? (:query source))
-              :native
-              :mbql)
-    (throw (ex-info (str "Unknown transform source type: " (:type source))
-                    {:source source}))))
+  (cond
+    (type-is? source :python) :python
+    (type-is? source :query)  (if (lib/native-only-query? (:query source))
+                                :native
+                                :mbql)
+    :else (throw (ex-info (str "Unknown transform source type: " (:type source))
+                          {:source source}))))
 
 ;;; ------------------------------------------------- Feature Checks -------------------------------------------------
 
@@ -197,16 +244,6 @@
   [base-type]
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
-
-(defn full-incremental-run?
-  "True when an incremental transform should drop-and-recreate the target rather than append.
-  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
-  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
-  change. Stays true across failed attempts since the predicate only inspects
-  `:last_checkpoint_value`."
-  [{:keys [target last_checkpoint_value]}]
-  (and (= :table-incremental (keyword (:type target)))
-       (nil? last_checkpoint_value)))
 
 (defn- encode-checkpoint-value [v]
   (if (number? v)
@@ -298,7 +335,13 @@
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
     (lib.util/update-query-stage
      query 0
-     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
+     update :template-tags
+     (fn [template-tags]
+       (mapv (fn [tag]
+               (cond-> tag
+                 (= (:name tag) tag-name)
+                 (assoc :source-filters filters)))
+             template-tags)))))
 
 (mu/defn get-source-range-params :- [:maybe ::transforms-base.schema/source-range-params]
   "Returns information on the incremental range filters that ought to be applied to a source query.
@@ -310,23 +353,25 @@
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
-  [{:keys [source target] :as transform}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
-    (when (and (= "table-incremental" (:type target))
+    (when (and (incremental-target? transform)
                (native-query-transform? transform)
-               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]
         (throw (ex-info msg {:transform-message msg}))))
-    (when (and (= "table-incremental" (:type target))
+    (when (and (incremental-target? transform)
                (not checkpoint-filter-field-id))
       (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
                                "Please select a checkpoint field in the transform settings."))]
         (throw (ex-info msg {:transform-message msg}))))
     (when checkpoint-filter-field-id
-      (let [{:keys [last_checkpoint_value]} transform
+      (let [{:keys [last_checkpoint_value]} (cond-> transform
+                                              (full-incremental-run? transform)
+                                              (assoc :last_checkpoint_value nil))
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
@@ -487,16 +532,38 @@
     ;; TODO this should probably be a function in the sync module
     (t2/update! :model/Table (:id table) {:active false})))
 
+(defn- isolated-drop-target
+  "Resolve `target` to the physical warehouse table to drop.
+
+  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
+  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
+  drop must hit that copy — not the canonical table. Looks the copy up via the general
+  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
+  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
+  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
+  the hook returns nil and `target` is dropped unchanged."
+  [db-id target]
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
+    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
+      (assoc target :schema (or schema db) :name name)
+      target)))
+
 (defn delete-target-table!
-  "Delete the target table of a transform and sync it from the app db."
+  "Drop a transform's output table and deactivate its app-db Table row.
+
+  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
+  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
+  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
+  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
+  sync surfaces. Off-workspace the two are identical."
   [{:keys [id target], :as transform}]
   (when target
-    (let [target (update target :type keyword)
-          database-id (transforms-base.i/target-db-id transform)]
+    (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
-          (do
-            (driver/drop-transform-target! driver database target)
+          (let [drop-target (->> (update target :type keyword)
+                                 (isolated-drop-target database-id))]
+            (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
             (deactivate-table! database target))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
@@ -519,7 +586,10 @@
   [:map
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
-   [:primary-key {:optional true} [:sequential :string]]])
+   [:primary-key {:optional true} [:sequential :string]]
+   ;; Inline indexes to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
+   ;; drivers that don't inline anything ignore it. Populated from a transform's declared indexes by the manager.
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
@@ -537,9 +607,9 @@
                                                        (driver/type->database-type driver :type/Text))))]
                                      [name db-type]))
                                  columns)
-        primary-key-opts (select-keys table-schema [:primary-key])]
+        opts (select-keys table-schema [:primary-key :indexes])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
-    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+    (driver/create-table! driver database-id table-name column-definitions opts)))
 
 (defn drop-table!
   "Drop a table in the database."
@@ -556,6 +626,79 @@
 
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
+(defn- mark-index-failed!
+  "Best-effort: flag the request for `index` (located by its canonical name) failed, with the error message."
+  [transform-id index ^Throwable t]
+  (when transform-id
+    (t2/update! :model/TableIndex
+                :transform_id transform-id :index_name (reconcile/index-name index)
+                {:status :failed :error_message (ex-message t) :last_executed_at :%now})))
+
+(defn- apply-standalone-indexes!
+  "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
+  table creation, so they're filtered out here. Each create uses `:if-not-exists`, so re-applying is a no-op. On a
+  per-index DDL throw, marks the request failed (when `:transform-id` is set) and re-throws."
+  [database {:keys [indexes schema transform-id] table-name :name}]
+  (let [driver     (:engine database)
+        methods    (driver/supported-index-methods driver database)
+        standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
+    (when (seq standalone)
+      (let [conn-spec (driver/connection-spec driver database)]
+        (doseq [index standalone]
+          (try
+            ;; Force the canonical name so the DDL matches the stored `index_name` / match key.
+            (driver/execute-raw-queries! driver conn-spec
+                                         (driver/compile-create-index driver schema table-name
+                                                                      (assoc index
+                                                                             :if-not-exists true
+                                                                             :name (reconcile/index-name index))))
+            (catch Throwable t
+              (mark-index-failed! transform-id index t)
+              (throw t))))))))
+
+(defn apply-target-indexes!
+  "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
+  recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
+  failure fails the run record."
+  [transform]
+  (when (and (seq (:indexes (:target transform)))
+             (full-create-run? transform))
+    (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
+      (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
+
+(defn- apply-index-outcomes!
+  "Write a [[reconcile/classify-index-outcomes]] result back: drop the removed rows, and move the rest to their new
+  status (one update per outcome), keeping `error_message` in step with the transition."
+  [by-outcome]
+  (doseq [[status rows] by-outcome]
+    (if (= :delete-row status)
+      (t2/delete! :model/TableIndex :id [:in (map :id rows)])
+      (t2/update! :model/TableIndex :id [:in (map :id rows)]
+                  (cond-> {:status           status
+                           :last_executed_at :%now}
+                    (= status :succeeded)
+                    (assoc :error_message nil)
+                    (= status :failed)
+                    (assoc :error_message "Index was not found on the target table after the transform ran."))))))
+
+(defn verify-managed-indexes!
+  "Reconcile each index request against what's physically in the warehouse and set its `:status`.
+  Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
+  [transform]
+  (when (full-create-run? transform)
+    (let [target  (:target transform)
+          managed (if (contains? target :index-request-ids)
+                    (table-index/select-for-verification (:id transform) (:index-request-ids target))
+                    (table-index/select-for-transform (:id transform)))]
+      (when-let [managed (seq managed)]
+        (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+              {:keys [schema] table-name :name} (:target transform)]
+          (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
+            (apply-index-outcomes!
+             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))
+            (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
+                       schema table-name (count managed))))))))
+
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
 
@@ -563,11 +706,11 @@
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
-   - Create/drop secondary indexes
 
    This is called after the core execution completes. Callers that use
    `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
-   to preserve the correct order of operations."
+   to preserve the correct order of operations. (Standalone indexes are applied earlier, by
+   `apply-target-indexes!`, so a failure there still fails the run.)"
   [transform opts]
   (let [{:keys [target]} transform
         {:keys [publish-events?]
@@ -578,6 +721,13 @@
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
+    ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
+    ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
+    (try
+      (driver/refresh-table-stats! (:engine database) database (:schema target) (:name target)
+                                   (keyword (:type target)))
+      (catch Throwable t
+        (log/warnf t "refresh-table-stats! failed for %s.%s" (:schema target) (:name target))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete
@@ -592,6 +742,28 @@
   [transform]
   (t2/select-one :model/Table :transform_id (:id transform)))
 
+(defn merge-target-unique-key
+  "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
+  [transform]
+  (when (merge-target? transform)
+    (not-empty (mapv :name (get-in transform [:target :target-incremental-strategy :unique-key])))))
+
+(defn target-column-names
+  "Physical column names of a transform's synced target table, ordered by position, or nil."
+  [transform]
+  (when-let [table (output-table transform)]
+    (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
+                                 :table_id (:id table) :active true
+                                 {:order-by [[:position :asc]]}))))
+
+(defn validate-merge-unique-key!
+  "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
+  [unique-key columns]
+  (when-let [missing (not-empty (remove (set columns) unique-key))]
+    (let [msg (i18n/tru "Merge unique key references columns not present in the target: {0}"
+                        (str/join ", " missing))]
+      (throw (ex-info msg {:transform-message msg}))))
+  unique-key)
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------

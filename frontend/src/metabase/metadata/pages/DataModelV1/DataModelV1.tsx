@@ -96,9 +96,9 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="background-secondary" data-testid="data-model" h="100%">
+    <Flex bg="background_page-secondary" data-testid="data-model" h="100%">
       <Stack
-        bg="background-primary"
+        bg="background_page-primary"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}

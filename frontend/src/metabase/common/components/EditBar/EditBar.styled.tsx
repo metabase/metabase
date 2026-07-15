@@ -30,12 +30,14 @@ export const Title = styled.span`
 `;
 
 /* restyles metabase/ui buttons for the colored bar: filled = primary, subtle = secondary */
-export const ButtonsContainer = styled.div<{ admin: boolean }>`
+export const ButtonsContainer = styled("div", {
+  shouldForwardProp: isPropValid,
+})<{ admin: boolean }>`
   display: flex;
 
   button[data-variant] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: ${() => alpha("background-primary", 0.1)};
+    background-color: ${() => alpha("background_page-primary", 0.1)};
     border: none;
     font-size: 1em;
     margin-left: 0.75em;
@@ -43,7 +45,7 @@ export const ButtonsContainer = styled.div<{ admin: boolean }>`
 
   button[data-variant="filled"] {
     color: ${(props) => color(props.admin ? "text-primary" : "core-brand")};
-    background-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background_page-primary);
   }
 
   button[data-variant]:hover {

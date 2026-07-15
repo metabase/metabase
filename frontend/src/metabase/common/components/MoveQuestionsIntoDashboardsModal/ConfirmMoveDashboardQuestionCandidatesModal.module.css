@@ -19,16 +19,16 @@
 
 .tableHeader {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .modalFooter {
   flex-shrink: 0;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .tbody {
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
   overflow-y: auto;
   /* magic numbers:
    * 90dvh as modal has 5dvh padding on top/bottom

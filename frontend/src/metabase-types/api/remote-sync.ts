@@ -145,6 +145,17 @@ export type RemoteSyncTaskStatus =
 
 export type RemoteSyncTaskType = "import" | "export" | null;
 
+/**
+ * Structured result of a completed sync task. The UI renders it to a localized message; unrecognized
+ * shapes fall back to generic copy, so this union can grow without breaking older/newer clients.
+ */
+export type RemoteSyncOutcome =
+  | { kind: "pulled"; count: number; branch: string }
+  | { kind: "pull-skipped" }
+  | { kind: "pushed"; count: number; branch: string }
+  | { kind: "push-skipped" }
+  | { kind: "merged"; pulled: number; pushed: number; branch: string };
+
 export type RemoteSyncTask = {
   id: number;
   sync_task_type: RemoteSyncTaskType;
@@ -154,6 +165,7 @@ export type RemoteSyncTask = {
   ended_at: string | null;
   last_progress_report_at: string | null;
   error_message: string | null;
+  outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;
   conflicts?: string[];
 };
@@ -161,7 +173,7 @@ export type RemoteSyncTask = {
 export type RemoteSyncConflictVariant =
   | "push" // Conflict when pushing (need to pull from remote first)
   | "pull" // Conflict when pulling (need to sync local changes)
-  | "switch-branch" // Conflict when switching branches
+  | "switch-branch" // Local changes present when switching branches (Settings panel)
   | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {

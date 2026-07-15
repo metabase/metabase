@@ -1,17 +1,22 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.string :as str]
+   [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
+   [metabase.search.debug :as search.debug]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.startup.core :as startup]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -25,6 +30,8 @@
 (p/import-vars
  [search.config
   SearchableModel]
+ [search.debug
+  diagnose]
  [search.engine
   model-set]
  [search.impl
@@ -81,17 +88,46 @@
 
 (defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+  ;; Can the engine serve queries: in-place always can, indexed engines only while their index is maintained.
+  (if (= :ok (search.engine/engine-status (keyword "search.engine" engine)))
+    1
+    0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
 
+(defn check-for-removed-env-vars!
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is still set, naming the exact
+  MB_SEARCH_ENGINE value the switch would have fallen back to when semantic is now serving search."
+  []
+  ;; An empty value is "explicitly unset" per the usual env-var semantics, so only a non-blank value trips this.
+  (when-not (str/blank? (env/env :mb-semantic-search-enabled))
+    (let [engines           (search.engine/supported-engines)
+          semantic-serving? (= :search.engine/semantic (first engines))
+          fallback          (when semantic-serving? (second engines))]
+      (throw (ex-info
+              (cond
+                fallback
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                     (name fallback))
+
+                semantic-serving?
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
+
+                :else
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
+              {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
+
+(defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
+  (check-for-removed-env-vars!))
+
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
-  (when (supports-index?)
+  (search.engine/log-resolution!)
+  (when-let [engines (seq (search.engine/active-engines))]
     (log/info "Initializing search indexes")
     (tracing/with-span :search "search.init-index" {}
       (lib-be/with-metadata-provider-cache
@@ -100,7 +136,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/init! e opts)))
                 duration (u/since-ms timer)]
             (if (seq report)
@@ -117,7 +153,7 @@
             (throw e)))))))
 
 (defn- reindex-logic! [opts]
-  (when (supports-index?)
+  (when-let [engines (seq (search.engine/active-engines))]
     (tracing/with-span :search "search.reindex" {}
       (lib-be/with-metadata-provider-cache
         (try
@@ -125,7 +161,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/reindex! e opts)))
                 duration (u/since-ms timer)]
             (analytics/inc! :metabase-search/index-reindex-ms duration)

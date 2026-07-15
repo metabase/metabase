@@ -11,6 +11,7 @@ import {
 import type { GroupProps, PaperProps } from "metabase/ui";
 import { Group, Paper } from "metabase/ui";
 
+// Unjustified type cast. FIXME
 export const SearchResultsContainer = styled(Paper)<PaperProps>`
   display: flex;
   flex-direction: column;
@@ -26,7 +27,7 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 
 const selectedStyles = css`
   color: var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 `;
@@ -34,7 +35,7 @@ const selectedStyles = css`
 export const SearchDropdownFooter = styled(Group, {
   shouldForwardProp: (propName) => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 
   ${({ isSelected }) => isSelected && selectedStyles}
   &:hover {

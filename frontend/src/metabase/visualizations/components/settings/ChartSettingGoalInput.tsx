@@ -106,7 +106,7 @@ export const ChartSettingGoalInput = ({
 
   if (isColumnReference) {
     return (
-      <Group className={S.root} bg="background-primary" align="center">
+      <Group className={S.root} bg="background_page-primary" align="center">
         <TextInput
           id={id}
           value={selectedColumn?.label || value}
@@ -123,7 +123,7 @@ export const ChartSettingGoalInput = ({
   }
 
   return (
-    <Group className={S.root} bg="background-primary" align="center">
+    <Group className={S.root} bg="background_page-primary" align="center">
       <NumberInput
         ref={numberInputRef}
         id={id}

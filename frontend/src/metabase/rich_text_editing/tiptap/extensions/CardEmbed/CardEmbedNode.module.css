@@ -5,7 +5,7 @@
 }
 
 .cardEmbed {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
   margin: 1rem 0;
   user-select: none;
@@ -17,7 +17,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   overflow: hidden;
 }
 
@@ -87,6 +87,6 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }

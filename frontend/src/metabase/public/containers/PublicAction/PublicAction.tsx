@@ -41,6 +41,7 @@ function PublicAction({ action, publicId, onError }: Props) {
         );
         setSubmitted(true);
       } catch (error) {
+        // Unjustified type cast. FIXME
         onError(error as AppErrorDescriptor);
       }
     },
@@ -54,7 +55,11 @@ function PublicAction({ action, publicId, onError }: Props) {
   return (
     <FormContainer>
       <FormTitle>{action.name}</FormTitle>
-      <ActionForm action={action} onSubmit={handleSubmit} />
+      <ActionForm
+        action={action}
+        submitButtonFullWidth
+        onSubmit={handleSubmit}
+      />
     </FormContainer>
   );
 }

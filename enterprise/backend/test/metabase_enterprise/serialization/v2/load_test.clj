@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log.capture :as log.capture]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -321,6 +320,57 @@
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
+(deftest model-result-metadata-id-roundtrips-test
+  (testing "GHY-3946: deserializing a model re-derives its result_metadata :id from the query when the underlying Fields are already present, so a filter mapped to the model column keeps its value dropdown; overrides are preserved"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serialize a model whose CATEGORY column carries a user override"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "models")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (ts/create! :model/Card
+                          :type            :model
+                          :name            "Products Model"
+                          :collection_id   (:id coll)
+                          :database_id     (:id db)
+                          :table_id        (:id table)
+                          :query_type      :query
+                          :dataset_query   {:type     :query
+                                            :query    {:source-table (:id table)}
+                                            :database (:id db)}
+                          :result_metadata [{:name "category" :display_name "Custom Category"
+                                             :base_type :type/Text :semantic_type :type/Category
+                                             :id (:id field) :field_ref [:field (:id field) nil]
+                                             :table_id (:id table)}])
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+        (testing "the serialized model column keeps its user override"
+          (let [card (first (filter #(= "Products Model" (:name %)) (by-model @serialized "Card")))
+                cat  (first (filter #(= "category" (:name %)) (:result_metadata card)))]
+            (is (some? cat))
+            (is (= "Custom Category" (:display_name cat)))))
+        (testing "loading re-derives the local :id when the data model already exists on the destination"
+          (ts/with-db dest-db
+            ;; the data model is already present on the destination (and at different IDs than the source)
+            (ts/create! :model/Database :name "decoy")
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (let [dest-card (t2/select-one :model/Card :name "Products Model")
+                    cat       (first (filter #(= "category" (:name %)) (:result_metadata dest-card)))]
+                (is (number? (:id cat))
+                    "model column kept a numeric :id link after the round-trip")
+                (is (= (:id field) (:id cat))
+                    "model column :id points at the dest Field id")
+                (is (= "Custom Category" (:display_name cat))
+                    "user override on the column survived the round-trip")))))))))
+
 (deftest card-with-unexported-table-and-field-test
   (testing "a Card referencing a Table/Field absent from the bundle still loads by synthesizing inactive rows"
     (let [serialized (atom nil)]
@@ -559,7 +609,7 @@
                     derived-measure))
             (is (= #{[{:id "my-db", :model "Database"}]
                      [{:id (:entity_id @msr1s), :model "Measure"}]}
-                   (serdes/mbql-deps (:definition derived-measure))))))
+                   (serdes/mbql-deps false (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
           (ts/with-db dest-db
             (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
@@ -1196,10 +1246,58 @@
                                                  :entity_id     "0123456789abcdef_0123"
                                                  :name          "Some card"
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
-                                                 :visualization_settings {}}])]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"was not found"
-                                  (serdes.load/load-metabase! ingestion)))))))))
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))]
+            (is (some? e))
+            (is (re-find #"was not found" (ex-message e)))
+            (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
+              (is (= {:model "Database" :id "bad-db"}
+                     (select-keys (ex-data e) [:model :id])))
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:referrer (ex-data e)))))
+            ;; attaching the referrer must not nest the original beneath itself: error reporting renders the
+            ;; whole cause chain, and a self-nested exception prints the same message twice
+            (testing "attaching the referrer does not duplicate the error through the cause chain"
+              (is (nil? (ex-cause e))))))
+        ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
+        ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
+        ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own
+        ;; top-level `table_id` cannot be used here: `populate-query-fields` recomputes it from `dataset_query`.)
+        (testing "a result_metadata table_id naming an absent database names the database and the card (GHY-3992)"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta     [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at      (t/instant)
+                                                 :creator_id      "glee@rush.yyz"
+                                                 :database_id     "my-db"
+                                                 :dataset_query   {:database "my-db"
+                                                                   :type     :query
+                                                                   :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display         :table
+                                                 :entity_id       "0123456789abcdef_0123"
+                                                 :name            "Some card"
+                                                 :result_metadata [{:name      "STATE"
+                                                                    :base_type :type/Text
+                                                                    :table_id  ["absent-db" nil "CUSTOMERS"]}]
+                                                 :table_id        ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))
+                root      (->> (iterate ex-cause e)
+                               (take-while some?)
+                               (some #(when (= :metabase.models.serialization.resolve.db/database-not-found
+                                               (:error (ex-data %)))
+                                        %)))]
+            (is (some? e))
+            (testing "the root cause carries the missing database name"
+              (is (some? root))
+              (is (= "absent-db" (:db-name (ex-data root)))))
+            (testing "the outer load-failure names the card that failed to load"
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:entity (ex-data e)))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
@@ -1228,7 +1326,7 @@
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (=? {:stages [{:lib/type      :mbql.stage/native
-                             :template-tags {"snippet: things" {:snippet-id (:entity_id @snippet1s)}}}]}
+                             :template-tags [{:name "snippet: things", :snippet-id (:entity_id @snippet1s)}]}]}
                   (:dataset_query @extracted))))
         (testing "when loading"
           (let [new-eid   (u/generate-nano-id)
@@ -1943,32 +2041,6 @@
       (testing "absent :entity_id also works"
         (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
         (is (= 4 (coll-count)))))))
-
-(deftest warn-if-version-mismatch-test
-  (ts/with-dbs [source-db dest-db dest-db2 dest-db3]
-    (ts/with-db source-db
-      (mt/with-temp [:model/Collection _ {:name "col-1"}]
-        (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
-          (ts/with-db dest-db
-            (testing "logs a warning when version in serdes/meta differs from current version"
-              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
-                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                  (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
-                  (is (some #(str/includes? % "Version mismatch loading") (messages)))
-                  (is (= 1 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
-                      "Should log a version mismatch warning only once per load")))))
-          (ts/with-db dest-db2
-            (testing "No warnings when version in serdes/meta matches current version"
-              (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                (serdes.load/load-metabase! (ingestion-in-memory extract))
-                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))))))
-          (ts/with-db dest-db3
-            (testing "No warnings when entities have no :metabase_version (eg. legacy exports or Settings)"
-              (let [no-version-extract (map #(dissoc % :metabase_version) extract)]
-                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                  (serdes.load/load-metabase! (ingestion-in-memory no-version-extract))
-                  (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
-                      "Missing :metabase_version should be treated as unknown, not as a mismatch"))))))))))
 
 (deftest import-published-table-with-existing-database-test
   (testing "Importing a published table works when database already exists on target"

@@ -2,15 +2,16 @@
   --border-size: 1px;
   --border-size-medium: 2px;
   --border-style: solid;
-  --border-color: var(--mb-color-border);
+  --border-color: var(--mb-color-border-neutral);
 }
 
 .bordered {
-  border: var(--border-size) var(--border-style) var(--mb-color-border);
+  border: var(--border-size) var(--border-style) var(--mb-color-border-neutral);
 }
 
 .borderBottom {
-  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -19,7 +20,8 @@
 }
 
 .borderTop {
-  border-top: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-top: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 /* ensure that a border-top item inside of a bordered element won't double up */
@@ -28,7 +30,8 @@
 }
 
 .borderRowDivider {
-  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .borderRowDivider:last-child {
@@ -36,15 +39,17 @@
 }
 
 .borderRight {
-  border-right: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-right: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .borderLeft {
-  border-left: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-left: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .borderSuccess {
-  border-color: var(--mb-color-success) !important;
+  border-color: var(--mb-color-feedback-positive) !important;
 }
 
 .borderBrand {

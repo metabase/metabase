@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { FormSwitch } from "metabase/forms";
 import {
   Box,
@@ -159,7 +159,7 @@ export function GroupMappingsWidgetView({
       </Group>
 
       <Flex
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="md"
         direction="column"
         w="100%"
@@ -231,7 +231,7 @@ export function GroupMappingsWidgetView({
         )}
       </Flex>
       {saveError && (
-        <Text c="error" fw="bold" m="sm">
+        <Text c="feedback-negative" fw="bold" m="sm">
           {saveError}
         </Text>
       )}

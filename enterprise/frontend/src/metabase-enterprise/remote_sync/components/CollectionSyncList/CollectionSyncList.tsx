@@ -108,13 +108,13 @@ export const CollectionSyncList = ({
   if (isLoading) {
     return (
       <Flex justify="center" py="lg">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Flex>
     );
   }
 
   if (error) {
-    return <Text c="error">{error}</Text>;
+    return <Text c="feedback-negative">{error}</Text>;
   }
 
   if (!syncRows.length) {

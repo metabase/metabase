@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Metabase Modules Graph</title>
+<style>
+html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+#app { display:flex; height:100vh; overflow:hidden; }
+#cy { flex:1 1 auto; min-height:0; min-width:0; background:#fafafa; }
+#side { width:340px; height:100vh; box-sizing:border-box; border-left:1px solid #ddd; background:#fff; padding:12px; overflow:auto; font-size:13px; }
+#side h2 { margin:8px 0 4px; font-size:14px; }
+#side h3 { margin:10px 0 4px; font-size:12px; color:#666; text-transform:uppercase; letter-spacing:.04em; }
+#side .pill { display:inline-block; padding:2px 6px; background:#eef; border-radius:4px; margin-right:4px; font-size:11px; }
+#toolbar { padding:8px; border-bottom:1px solid #ddd; background:#fff; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+#toolbar input[type=text] { padding:4px 8px; border:1px solid #ccc; border-radius:4px; min-width:240px; }
+#toolbar button { padding:4px 10px; border:1px solid #ccc; background:#f7f7f7; border-radius:4px; cursor:pointer; }
+#toolbar button:hover { background:#eee; }
+#wrap { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; min-width:0; overflow:hidden; }
+.muted { color:#888; font-size:11px; }
+ul { margin:4px 0; padding-left:18px; }
+li { margin:2px 0; cursor:pointer; }
+li:hover { background:#f4f4f4; }
+code { background:#f4f4f4; padding:1px 4px; border-radius:3px; font-size:12px; }
+</style>
+<script src="https://unpkg.com/cytoscape@3.30.1/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/webcola@3.4.0/WebCola/cola.min.js"></script>
+<script src="https://unpkg.com/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
+</head>
+<body>
+<div id="app">
+<div id="wrap">
+<div id="toolbar">
+<input id="focus" type="text" list="modlist" placeholder="focus module…"/>
+<datalist id="modlist"></datalist>
+<div id="focusChips" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+<label class="muted">degree
+<select id="degree">
+<option value="1" selected>1</option>
+<option value="2">2</option>
+</select>
+</label>
+<button id="clear-focus">clear focus</button>
+<button id="reset-state" title="clear localStorage + URL hash">reset</button>
+<button id="collapse-all">collapse all</button>
+<button id="expand-all">expand all</button>
+<button id="relayout">re-layout (cola)</button>
+<span class="muted" id="stats"></span>
+<span class="muted" id="debug" style="color:#c33"></span>
+<span class="muted">shift-click a module to refocus · right-click for menu · double-click to expand api ns</span>
+</div>
+<div id="cy"></div>
+</div>
+<div id="side">
+<h2>Metabase Modules</h2>
+<div class="muted">Select a module to focus its 1-degree neighborhood.</div>
+<details id="hiddenWrap" style="margin:8px 0;">
+<summary class="muted" style="cursor:pointer">hidden modules (<span id="hiddenCount">0</span>)</summary>
+<div style="margin-top:6px;"><strong class="muted">hide by team</strong></div>
+<div id="teamChips" style="display:flex; gap:4px; flex-wrap:wrap; margin:4px 0;"></div>
+<div style="margin-top:6px;"><strong class="muted">hide by name/regex</strong></div>
+<div id="hiddenPanel" style="margin-top:4px;"></div>
+<div class="muted" style="margin-top:4px">one entry per line. <code>re:</code> prefix = regex, <code>team:</code> prefix = team. example: <code>re:^enterprise/</code></div>
+<textarea id="hiddenEditor" rows="5" style="width:100%; box-sizing:border-box; font:12px/1.4 monospace;"></textarea>
+<button id="hiddenSave" style="margin-top:4px">save</button>
+<button id="hiddenClear">clear all</button>
+</details>
+<div id="detail"></div>
+</div>
+</div>
+<script>
+try { cytoscape.use(cytoscapeCola); } catch (e) {}
+const teamColors = {};
+const palette = ['#6aa7e8','#e8a06a','#7bcf8a','#cf7bba','#cfc27b','#7bcfc6','#cf7b7b','#a07bcf','#9ccf7b','#cfb37b'];
+function colorFor(team) {
+if (!teamColors[team]) teamColors[team] = palette[Object.keys(teamColors).length % palette.length];
+return teamColors[team];
+}
+const cy = cytoscape({
+container: document.getElementById('cy'),
+elements: { nodes: [], edges: [] },
+wheelSensitivity: 0.2,
+style: [
+{ selector: 'node[type="module"]',
+style: {
+'background-color': (ele) => colorFor(ele.data('team')),
+'background-opacity': 0.22,
+'border-width': 1,
+'border-color': (ele) => colorFor(ele.data('team')),
+'label': 'data(label)',
+'font-size': 18,
+'font-weight': 700,
+'color': '#111',
+'text-outline-width': 3,
+'text-outline-color': '#fff',
+'text-outline-opacity': 1,
+'text-valign': 'top',
+'text-halign': 'center',
+'text-margin-y': -6,
+'padding': '12px',
+'shape': 'round-rectangle',
+'min-width': 30,
+'min-height': 30,
+} },
+{ selector: 'node[type="module"]:childless',
+style: {
+'background-opacity': 0.85,
+'width':  (ele) => Math.max(36, Math.min(180, Math.sqrt(ele.data('loc') || 0) * 1.4)),
+'height': (ele) => Math.max(36, Math.min(180, Math.sqrt(ele.data('loc') || 0) * 1.4)),
+} },
+{ selector: 'node[type="ns"]',
+style: {
+'background-color': '#fff', 'border-width': 1, 'border-color': '#888',
+'label': 'data(label)', 'font-size': 9, 'text-valign': 'center', 'text-halign': 'center',
+'shape': 'round-rectangle', 'padding': '4px', 'width': 160, 'height': 18,
+} },
+{ selector: 'edge',
+style: {
+'curve-style': 'unbundled-bezier',
+// single control point offset ~tan(20°)/2 of chord length; use a constant proxy that
+// looks like ~20° bend at typical edge lengths.
+'control-point-distances': [50],
+'control-point-weights':   [0.5],
+'width': 1,
+'line-color': '#aaa',
+'target-arrow-color': '#aaa',
+'target-arrow-shape': 'triangle',
+'arrow-scale': 1.8,
+'opacity': 0.7,
+} },
+{ selector: 'edge[?aggregate]',
+style: {
+'width': (ele) => Math.min(10, 1 + Math.log2((ele.data('weight') || 1) + 1) * 1.6),
+'line-color': '#666',
+'target-arrow-color': '#666',
+'opacity': 0.85,
+'label': (ele) => (ele.data('weight') > 1 ? String(ele.data('weight')) : ''),
+'font-size': 9,
+'color': '#444',
+'text-background-color': '#fff',
+'text-background-opacity': 0.85,
+'text-background-padding': 2,
+} },
+{ selector: '.focused', style: { 'border-color': '#e25', 'border-width': 3 } },
+{ selector: 'edge.focused',
+style: { 'line-color': '#e25', 'target-arrow-color': '#e25', 'width': 2, 'opacity': 1 } },
+],
+});
+// Expand/collapse is fully server-side now (focusOn refetches based on `expandedModules`).
+// Skipping the expand-collapse plugin removes the +/- cue + the cxttap interceptor it installs.
+// DIY right-click context menu. Lighter than cytoscape-context-menus plugin and avoids the
+// double-register noise across hot reloads.
+const ctxMenu = document.createElement('div');
+ctxMenu.id = 'ctxmenu';
+ctxMenu.style.cssText = 'position:fixed;display:none;background:#fff;border:1px solid #ccc;' +
+'box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:13px;z-index:9999;min-width:180px;';
+document.body.appendChild(ctxMenu);
+function showCtxMenu(x, y, items) {
+clear(ctxMenu);
+items.forEach(([label, fn]) => {
+const item = mk('div', null, label);
+item.style.cssText = 'padding:6px 12px;cursor:pointer;';
+item.onmouseenter = () => item.style.background = '#eef';
+item.onmouseleave = () => item.style.background = '';
+item.onclick = () => { hideCtxMenu(); fn(); };
+ctxMenu.appendChild(item);
+});
+ctxMenu.style.left = x + 'px';
+ctxMenu.style.top  = y + 'px';
+ctxMenu.style.display = 'block';
+}
+function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+document.addEventListener('click', hideCtxMenu);
+function focusOnAt(label, deg) {
+document.getElementById('degree').value = String(deg);
+focusOn(label);
+}
+function toggleExpanded(label) {
+if (expandedModules.has(label)) expandedModules.delete(label);
+else expandedModules.add(label);
+writeUrlState();
+refetch();
+}
+function openGithub(url) { if (url) window.open(url, '_blank', 'noopener'); }
+function hideLabel(label) {
+hiddenLabels.add(label);
+saveHidden();
+writeUrlState();
+renderHiddenPanel();
+refetch();
+}
+function handleModuleCxt(evt) {
+const n = evt.target;
+const label = n.data('label');
+const pos = evt.originalEvent;
+console.log('cxt module', label);
+const expanded = expandedModules.has(label);
+const isFocused = focusedLabels.has(label);
+const items = [
+['focus only this  (1°)',  () => { document.getElementById('degree').value = '1'; focusOn(label, 'replace'); }],
+['focus only this  (2°)',  () => { document.getElementById('degree').value = '2'; focusOn(label, 'replace'); }],
+];
+if (isFocused) items.push(['remove from focus', () => focusOn(label, 'remove')]);
+else           items.push(['add to focus',      () => focusOn(label, 'add')]);
+items.push(
+[expanded ? 'collapse api namespaces' : 'expand api namespaces',
+() => toggleExpanded(label)],
+['hide this module', () => hideLabel(label)],
+['show details', () => renderDetail(n)],
+['open on github ↗', () => openGithub(n.data('githubUrl'))],
+);
+showCtxMenu(pos.clientX, pos.clientY, items);
+}
+cy.on('cxttapstart', 'node[type="module"]', (e) => console.log('cxttapstart', e.target.data('label')));
+cy.on('cxttap',      'node[type="module"]', (e) => console.log('cxttap',      e.target.data('label')));
+cy.on('cxttapend',   'node[type="module"]', handleModuleCxt);
+// Fallback: native contextmenu on the canvas. Cytoscape's cxttap detection sometimes wedges after
+// a drag (the renderer keeps a stale grab state). The native event always fires.
+document.getElementById('cy').addEventListener('contextmenu', (ev) => {
+ev.preventDefault();
+const rect = ev.currentTarget.getBoundingClientRect();
+const pos  = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+// Convert page coords to cytoscape model coords via pan/zoom.
+const pan = cy.pan(), zoom = cy.zoom();
+const model = { x: (pos.x - pan.x) / zoom, y: (pos.y - pan.y) / zoom };
+// Walk nodes from top to find the one under the cursor (small N, cheap).
+const hit = cy.nodes().filter(n => {
+const bb = n.boundingBox();
+return model.x >= bb.x1 && model.x <= bb.x2 && model.y >= bb.y1 && model.y <= bb.y2;
+}).last();
+if (hit && !hit.empty()) {
+console.log('native ctx -> ', hit.data('label'));
+if (hit.data('type') === 'module') {
+handleModuleCxt({target: hit, originalEvent: ev});
+} else if (hit.data('type') === 'ns') {
+handleNsCxt({target: hit, originalEvent: ev});
+}
+} else {
+hideCtxMenu();
+}
+});
+function handleNsCxt(evt) {
+const n = evt.target;
+const parentLabel = n.data('module');
+const pos = evt.originalEvent;
+console.log('cxt ns', n.data('label'));
+showCtxMenu(pos.clientX, pos.clientY, [
+['focus parent module  (1°)', () => focusOnAt(parentLabel, 1)],
+['focus parent module  (2°)', () => focusOnAt(parentLabel, 2)],
+['show details', () => renderDetail(n)],
+['open on github ↗', () => openGithub(n.data('githubUrl'))],
+]);
+}
+cy.on('cxttapend', 'node[type="ns"]', handleNsCxt);
+function runLayout() {
+const rect = document.getElementById('cy').getBoundingClientRect();
+const dbg = document.getElementById('debug');
+dbg.textContent = '[cy ' + Math.round(rect.width) + 'x' + Math.round(rect.height) + ', ' +
+cy.nodes().length + 'n ' + cy.edges().length + 'e]';
+if (rect.width < 10 || rect.height < 10) {
+dbg.textContent += ' container too small';
+return;
+}
+try {
+if (currentLayout) { try { currentLayout.stop(); } catch (_) {} }
+currentLayout = cy.layout({
+name: 'cola',
+animate: true,
+maxSimulationTime: 4000,
+refresh: 1,
+// bigger nodeSpacing = more repulsion / breathing room between nodes
+nodeSpacing: (node) => (node.data('type') === 'module' ? 80 : 20),
+// Heavily-used pairs sit closer (shorter spring); rare pairs sit farther apart.
+edgeLength: (edge) => {
+const w = edge.data('weight') || 1;
+return Math.max(220, 500 - Math.log2(w + 1) * 50);
+},
+randomize: true,
+fit: true,
+padding: 80,
+avoidOverlap: true,
+handleDisconnected: true,
+});
+currentLayout.one('layoutstop', () => {
+pendingSurvivors.forEach(n => { try { n.unlock(); } catch (_) {} });
+pendingSurvivors = [];
+});
+currentLayout.run();
+} catch (e) {
+console.error('layout failed', e);
+dbg.textContent = 'layout failed: ' + e.message + ' — falling back to grid';
+try { cy.layout({name: 'grid', fit: true, padding: 30}).run(); } catch (e2) { console.error(e2); }
+}
+}
+let currentLayout = null;
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function mk(tag, attrs, ...kids) {
+const el = document.createElement(tag);
+for (const k in (attrs || {})) {
+if (k === 'class') el.className = attrs[k];
+else if (k.startsWith('on')) el[k] = attrs[k];
+else el.setAttribute(k, attrs[k]);
+}
+for (const kid of kids) {
+if (kid == null) continue;
+el.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+}
+return el;
+}
+// Focus is now a SET. Single-focus is just |focusedLabels| == 1.
+let focusedLabels = new Set();
+let expandedModules = new Set();   // module labels w/ api-ns children visible
+let modulesIndex = {};   // label -> {label, team, apiCount}
+function loadFocus() {
+try {
+const raw = JSON.parse(localStorage.getItem('moduleVizFocus') || '[]');
+if (Array.isArray(raw)) focusedLabels = new Set(raw);
+} catch (e) {}
+}
+function saveFocus() {
+localStorage.setItem('moduleVizFocus', JSON.stringify([...focusedLabels]));
+}
+loadFocus();
+// --- URL state -------------------------------------------------------------
+// The URL hash mirrors focusedLabels/degree/expandedModules/hiddenLabels so:
+//   * back/forward buttons replay focus changes
+//   * deep links work (paste URL, get same view)
+// localStorage stays the stickiness-across-sessions fallback when no hash is present.
+function readUrlState() {
+const hash = (location.hash || '').replace(/^#/, '');
+if (!hash) return null;
+const params = new URLSearchParams(hash);
+return {
+focus:    (params.get('focus')    || '').split(',').filter(Boolean),
+degree:   parseInt(params.get('degree')  || '1', 10) || 1,
+expanded: (params.get('expanded') || '').split(',').filter(Boolean),
+hidden:   (params.get('hidden')   || '').split(',').filter(Boolean),
+};
+}
+let suppressHistoryWrite = false;
+function writeUrlState() {
+if (suppressHistoryWrite) return;
+const params = new URLSearchParams();
+if (focusedLabels.size)   params.set('focus',    [...focusedLabels].join(','));
+const deg = document.getElementById('degree') && document.getElementById('degree').value;
+if (deg && deg !== '1')   params.set('degree',   deg);
+if (expandedModules.size) params.set('expanded', [...expandedModules].join(','));
+const hid = hiddenQueryParam();
+if (hid)                  params.set('hidden',   hid);
+const next = '#' + params.toString();
+if (next === location.hash) return;
+history.pushState(null, '', next);
+}
+function applyUrlState(s) {
+if (!s) return false;
+suppressHistoryWrite = true;
+try {
+focusedLabels   = new Set(s.focus);
+expandedModules = new Set(s.expanded);
+// Hidden: each token is either a literal label or `re:<pattern>`.
+hiddenLabels   = new Set();
+hiddenPatterns = [];
+hiddenTeams    = new Set();
+s.hidden.forEach(tok => {
+if (tok.startsWith('re:')) {
+const pat = tok.slice(3);
+try { hiddenPatterns.push({pattern: pat, re: new RegExp(pat)}); } catch (e) {}
+} else if (tok.startsWith('team:')) {
+hiddenTeams.add(tok.slice(5));
+} else hiddenLabels.add(tok);
+});
+saveFocus(); saveHidden();
+const degEl = document.getElementById('degree');
+if (degEl) degEl.value = String(s.degree || 1);
+} finally {
+suppressHistoryWrite = false;
+}
+return true;
+}
+window.addEventListener('popstate', () => {
+applyUrlState(readUrlState());
+renderFocusChips();
+renderHiddenPanel();
+if (focusedLabels.size) refetch();
+else clearFocus();
+});
+let pendingSurvivors = [];         // nodes locked for the current layout run
+let inflightFocus = null;          // AbortController for the current /api/focus fetch
+// Hidden modules: exact-match labels + regex strings. Persisted to localStorage so it survives
+// reloads. The server applies these as a pre-BFS filter so 2-degree views don't sprout via a
+// module the user explicitly hid.
+let hiddenLabels   = new Set();
+let hiddenPatterns = [];           // array of {pattern: string, re: RegExp}
+let hiddenTeams    = new Set();    // exact team names
+function loadHidden() {
+try {
+const raw = JSON.parse(localStorage.getItem('moduleVizHidden') || '{}');
+hiddenLabels   = new Set(raw.labels   || []);
+hiddenPatterns = (raw.patterns || []).map(p => ({pattern: p, re: new RegExp(p)}));
+hiddenTeams    = new Set(raw.teams    || []);
+} catch (e) { console.warn('loadHidden failed', e); }
+}
+function saveHidden() {
+localStorage.setItem('moduleVizHidden', JSON.stringify({
+labels:   [...hiddenLabels],
+patterns: hiddenPatterns.map(p => p.pattern),
+teams:    [...hiddenTeams],
+}));
+}
+function hiddenQueryParam() {
+// Comma-joined: bare labels, re:<pat> for regex, team:<name> for teams.
+return [
+...[...hiddenLabels],
+...hiddenPatterns.map(p => 're:'   + p.pattern),
+...[...hiddenTeams].map(t  => 'team:' + t),
+].join(',');
+}
+loadHidden();
+function hiddenLines() {
+return [
+...[...hiddenLabels],
+...hiddenPatterns.map(p => 're:'   + p.pattern),
+...[...hiddenTeams].map(t  => 'team:' + t),
+];
+}
+function renderTeamChips() {
+const wrap = document.getElementById('teamChips');
+if (!wrap) return;
+clear(wrap);
+const teams = [...new Set(Object.values(modulesIndex).map(m => m.team).filter(Boolean))].sort();
+teams.forEach(team => {
+const on = hiddenTeams.has(team);
+const chip = mk('button',
+{style:
+'cursor:pointer; padding:2px 6px; border-radius:10px; font-size:11px; ' +
+'border:1px solid ' + (on ? '#e25' : '#aaa') + '; ' +
+'background:'  + (on ? '#fce4e4' : '#fff') + '; ' +
+'color:'       + (on ? '#a00' : '#333') + '; ' +
+'text-decoration:' + (on ? 'line-through' : 'none') + ';'},
+team);
+chip.onclick = () => {
+if (hiddenTeams.has(team)) hiddenTeams.delete(team);
+else hiddenTeams.add(team);
+saveHidden();
+writeUrlState();
+renderTeamChips();
+renderHiddenPanel();
+refetch();
+};
+wrap.appendChild(chip);
+});
+}
+function renderHiddenPanel() {
+const panel = document.getElementById('hiddenPanel');
+const editor = document.getElementById('hiddenEditor');
+const count = document.getElementById('hiddenCount');
+if (!panel) return;
+clear(panel);
+const lines = hiddenLines();
+count.textContent = String(lines.length);
+editor.value = lines.join('\n');
+if (lines.length === 0) {
+panel.appendChild(mk('div', {class: 'muted'}, 'nothing hidden'));
+return;
+}
+const ul = mk('ul', {style: 'list-style:none; padding-left:0; margin:0;'});
+lines.forEach(line => {
+const li = mk('li', {style: 'display:flex; gap:6px; align-items:center; padding:2px 0;'});
+const btn = mk('button', {style: 'font-size:11px; padding:0 4px; cursor:pointer;'}, '×');
+btn.onclick = () => {
+if (line.startsWith('re:')) {
+const pat = line.slice(3);
+hiddenPatterns = hiddenPatterns.filter(p => p.pattern !== pat);
+} else if (line.startsWith('team:')) {
+hiddenTeams.delete(line.slice(5));
+} else {
+hiddenLabels.delete(line);
+}
+saveHidden();
+writeUrlState();
+renderHiddenPanel();
+renderTeamChips();
+refetch();
+};
+li.appendChild(btn);
+li.appendChild(mk('code', null, line));
+ul.appendChild(li);
+});
+panel.appendChild(ul);
+}
+function applyHiddenEditor() {
+const editor = document.getElementById('hiddenEditor');
+const lines = editor.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+hiddenLabels = new Set();
+hiddenPatterns = [];
+hiddenTeams = new Set();
+lines.forEach(line => {
+if (line.startsWith('re:')) {
+const pat = line.slice(3);
+try { hiddenPatterns.push({pattern: pat, re: new RegExp(pat)}); }
+catch (e) { console.warn('bad regex', pat, e); }
+} else if (line.startsWith('team:')) {
+hiddenTeams.add(line.slice(5));
+} else {
+hiddenLabels.add(line);
+}
+});
+saveHidden();
+writeUrlState();
+renderHiddenPanel();
+refetch();
+}
+async function fetchModules() {
+console.log('fetchModules start');
+try {
+const r = await fetch('/api/modules');
+console.log('fetchModules response status', r.status);
+const list = await r.json();
+console.log('fetchModules got', list.length, 'modules');
+modulesIndex = Object.fromEntries(list.map(m => [m.label, m]));
+const dl = document.getElementById('modlist');
+clear(dl);
+list.forEach(m => dl.appendChild(mk('option', {value: m.label})));
+renderModuleList(list);
+renderTeamChips();
+console.log('fetchModules done');
+// URL hash beats localStorage on first paint. applyUrlState was called pre-fetch but we
+// re-validate now that modulesIndex is populated.
+const urlState = readUrlState();
+if (urlState) applyUrlState(urlState);
+if (focusedLabels.size === 0) {
+// Auto-focus: pick the module w/ the LARGEST edgeCount that is still <= 50.
+const candidates = list.filter(m => (m.edgeCount || 0) <= 50);
+const pick = candidates.sort((a, b) => (b.edgeCount || 0) - (a.edgeCount || 0))[0];
+if (pick) {
+console.log('auto-focus', pick.label, 'edgeCount', pick.edgeCount);
+focusOn(pick.label);
+}
+} else {
+renderFocusChips();
+renderHiddenPanel();
+refetch();
+}
+} catch (e) {
+console.error('fetchModules failed', e);
+}
+}
+function renderModuleList(list) {
+const el = document.getElementById('detail');
+clear(el);
+el.appendChild(mk('h3', null, 'all modules (' + list.length + ')'));
+const ul = mk('ul');
+list.forEach(m => {
+ul.appendChild(mk('li', {onclick: () => focusOn(m.label)},
+m.label + ' ', mk('span', {class:'muted'}, m.team)));
+});
+el.appendChild(ul);
+}
+function currentDegree() {
+return parseInt(document.getElementById('degree').value, 10) || 1;
+}
+function updateFocusSet(labels, mode) {
+const arr = Array.isArray(labels) ? labels : [labels];
+switch (mode) {
+case 'add':
+arr.forEach(l => modulesIndex[l] && focusedLabels.add(l));
+break;
+case 'remove':
+arr.forEach(l => focusedLabels.delete(l));
+break;
+case 'toggle':
+arr.forEach(l => {
+if (!modulesIndex[l]) return;
+if (focusedLabels.has(l)) focusedLabels.delete(l);
+else focusedLabels.add(l);
+});
+break;
+case 'replace':
+default:
+focusedLabels = new Set(arr.filter(l => modulesIndex[l]));
+break;
+}
+saveFocus();
+writeUrlState();
+}
+// Backward-compatible single-arg form ('focusOn(label)' = replace w/ that label) + optional mode.
+async function focusOn(labelOrLabels, mode) {
+updateFocusSet(labelOrLabels, mode || 'replace');
+if (focusedLabels.size === 0) {
+cy.elements().remove();
+document.getElementById('stats').textContent = '';
+renderFocusChips();
+renderModuleListIfNeeded();
+return;
+}
+// Snapshot positions of every node currently in cy so survivors stay put across the refetch.
+const oldPositions = {};
+cy.nodes().forEach(n => {
+const p = n.position();
+oldPositions[n.data('id')] = { x: p.x, y: p.y };
+});
+document.getElementById('focus').value = [...focusedLabels].join(', ');
+renderFocusChips();
+try {
+const deg = currentDegree();
+const exp = [...expandedModules].join(',');
+const hid = hiddenQueryParam();
+const fs  = [...focusedLabels].join(',');
+const url = '/api/focus?m=' + encodeURIComponent(fs) + '&degree=' + deg +
+(exp ? '&expanded=' + encodeURIComponent(exp) : '') +
+(hid ? '&hidden='   + encodeURIComponent(hid) : '');
+if (inflightFocus) inflightFocus.abort();
+inflightFocus = new AbortController();
+const r = await fetch(url, {signal: inflightFocus.signal});
+inflightFocus = null;
+const sub = await r.json();
+console.log('focus', fs, 'degree', deg, 'expanded=', exp, 'nodes=', sub.nodes.length, 'edges=', sub.edges.length);
+cy.batch(() => {
+cy.elements().remove();
+const modNodes = sub.nodes.filter(n => n.data.type === 'module');
+const nsNodes  = sub.nodes.filter(n => n.data.type === 'ns');
+cy.add(modNodes);
+cy.add(nsNodes);
+cy.add(sub.edges);
+});
+// Unlock any leftover survivors from a prior interrupted layout before we lock the new set.
+pendingSurvivors.forEach(n => { try { if (n && n.unlock) n.unlock(); } catch (_) {} });
+pendingSurvivors = [];
+// Restore positions for survivors; new nodes get whatever cola decides. Re-query by id since
+// cy.elements().remove() + cy.add() produces fresh node refs.
+const survivors = [];
+Object.keys(oldPositions).forEach(id => {
+const n = cy.getElementById(id);
+if (!n.empty()) {
+n.position(oldPositions[id]);
+n.lock();
+survivors.push(n);
+}
+});
+pendingSurvivors = survivors;
+document.getElementById('debug').textContent =
+'cy: ' + cy.nodes().length + ' nodes · ' + cy.edges().length + ' edges';
+console.log('cy now has', cy.nodes().length, 'nodes', cy.edges().length, 'edges');
+// Mark every focused module + the edges that touch any focused module.
+focusedLabels.forEach(label => {
+const node = cy.getElementById('mod:' + label);
+if (!node.empty()) node.addClass('focused');
+});
+cy.edges().forEach(e => {
+if (focusedLabels.has(e.data('sourceModule')) || focusedLabels.has(e.data('targetModule'))) {
+e.addClass('focused');
+}
+});
+runLayout();
+// Sidebar detail: if exactly one focused, show it; otherwise show a summary.
+if (focusedLabels.size === 1) {
+const only = cy.getElementById('mod:' + [...focusedLabels][0]);
+if (!only.empty()) renderDetail(only);
+} else {
+renderFocusSummary();
+}
+document.getElementById('stats').textContent =
+sub.stats.moduleCount + ' modules · ' + sub.stats.edgeCount + ' edges' +
+(sub.stats.rawEdges ? ' (raw ' + sub.stats.rawEdges + ')' : '') +
+' · ' + sub.degree + '-deg · expanded: ' + (sub.expanded.length || 0);
+} catch (e) {
+if (e.name === 'AbortError') return;   // user clicked again before we finished
+console.error('focusOn failed', e);
+}
+}
+function clearFocus() {
+focusedLabels = new Set();
+saveFocus();
+document.getElementById('focus').value = '';
+document.getElementById('stats').textContent = '';
+cy.elements().remove();
+renderFocusChips();
+// Don't auto-load the full graph — it's the hairball we're trying to avoid.
+fetchModules();
+}
+function refetch() {
+if (focusedLabels.size > 0) focusOn([...focusedLabels], 'replace');
+}
+function renderFocusSummary() {
+const el = document.getElementById('detail');
+if (!el) return;
+clear(el);
+el.appendChild(mk('h2', null, focusedLabels.size + ' focused modules'));
+const ul = mk('ul');
+[...focusedLabels].sort().forEach(label => {
+const li = mk('li', {style: 'display:flex; gap:6px; align-items:center;'});
+const link = mk('a', {href: '#'}, label);
+link.onclick = (e) => { e.preventDefault(); focusOn(label, 'replace'); };
+const x = mk('button', {style: 'font-size:11px; cursor:pointer'}, 'remove');
+x.onclick = () => focusOn(label, 'remove');
+li.appendChild(link);
+li.appendChild(x);
+ul.appendChild(li);
+});
+el.appendChild(ul);
+}
+function renderFocusChips() {
+const wrap = document.getElementById('focusChips');
+if (!wrap) return;
+clear(wrap);
+[...focusedLabels].sort().forEach(label => {
+const chip = mk('span', {style:
+'display:inline-flex; align-items:center; gap:4px; padding:2px 6px; ' +
+'background:#fce4e4; border:1px solid #e25; border-radius:10px; font-size:12px;'},
+label);
+const x = mk('button', {style: 'border:0; background:transparent; cursor:pointer; padding:0;'}, '×');
+x.onclick = () => focusOn(label, 'remove');
+chip.appendChild(x);
+wrap.appendChild(chip);
+});
+}
+function renderModuleListIfNeeded() {
+// After clearing focus we want the sidebar to fall back to the module list.
+fetch('/api/modules').then(r => r.json()).then(renderModuleList);
+}
+function renderDetail(node) {
+const el = document.getElementById('detail');
+clear(el);
+const d = node.data();
+if (d.type === 'module') {
+const consumers = cy.edges('[targetModule="' + d.module + '"]');
+const producers = cy.edges('[sourceModule="' + d.module + '"]');
+const byNs = {};
+consumers.forEach(e => {
+const ns = e.data('targetNs') || '(module)';
+(byNs[ns] ||= new Set()).add(e.data('sourceModule'));
+});
+const usesBy = {};
+producers.forEach(e => {
+const m = e.data('targetModule');
+(usesBy[m] ||= new Set()).add(e.data('targetNs') || '(any)');
+});
+el.appendChild(mk('h2', null, d.label));
+el.appendChild(mk('div', null,
+mk('span', {class:'pill'}, 'team: ' + d.team),
+mk('span', {class:'pill'}, 'api: ' + d.apiCount)));
+el.appendChild(mk('h3', null, 'used by → which api ns'));
+if (Object.keys(byNs).length === 0) {
+el.appendChild(mk('p', {class:'muted'}, 'no external consumers'));
+} else {
+Object.entries(byNs).sort().forEach(([ns, set]) => {
+el.appendChild(mk('div', null, mk('code', null, ns)));
+const ul = mk('ul');
+[...set].sort().forEach(m => {
+ul.appendChild(mk('li', {onclick: () => focusOn(m)}, m));
+});
+el.appendChild(ul);
+});
+}
+el.appendChild(mk('h3', null, 'uses → others'));
+if (Object.keys(usesBy).length === 0) {
+el.appendChild(mk('p', {class:'muted'}, 'depends on nothing external'));
+} else {
+Object.entries(usesBy).sort().forEach(([m, set]) => {
+el.appendChild(mk('div', null, mk('strong', {onclick: () => focusOn(m)}, m)));
+const ul = mk('ul');
+[...set].sort().forEach(ns => ul.appendChild(mk('li', null, mk('code', null, ns))));
+el.appendChild(ul);
+});
+}
+if (d.friends && d.friends.length) {
+el.appendChild(mk('h3', null, 'friends'));
+const ul = mk('ul');
+d.friends.forEach(f => ul.appendChild(mk('li', null, f)));
+el.appendChild(ul);
+}
+} else if (d.type === 'ns') {
+const consumers = cy.edges('[targetNs="' + d.label + '"][targetModule="' + d.module + '"]');
+const set = new Set();
+consumers.forEach(e => set.add(e.data('sourceModule')));
+el.appendChild(mk('h2', null, mk('code', null, d.label)));
+el.appendChild(mk('div', {class:'muted'}, 'API namespace of ', mk('strong', null, d.module)));
+el.appendChild(mk('h3', null, 'used by'));
+if (set.size === 0) {
+el.appendChild(mk('p', {class:'muted'}, 'no external consumers'));
+} else {
+const ul = mk('ul');
+[...set].sort().forEach(m => ul.appendChild(mk('li', {onclick: () => focusOn(m)}, m)));
+el.appendChild(ul);
+}
+}
+}
+cy.on('tap', 'node', (evt) => {
+const n = evt.target;
+if (n.data('type') === 'module' && evt.originalEvent) {
+const ev = evt.originalEvent;
+// Shift  = toggle in focus set; Cmd/Ctrl = remove; otherwise just show details.
+if (ev.shiftKey)       return focusOn(n.data('label'), 'toggle');
+if (ev.metaKey || ev.ctrlKey) return focusOn(n.data('label'), 'remove');
+}
+renderDetail(n);
+});
+cy.on('dbltap', 'node[type="module"]', (evt) => {
+toggleExpanded(evt.target.data('label'));
+});
+document.getElementById('focus').addEventListener('change', (e) => {
+const v = e.target.value.trim();
+if (!v) clearFocus(); else focusOn(v);
+});
+document.getElementById('clear-focus').onclick = clearFocus;
+document.getElementById('reset-state').onclick = () => {
+try { localStorage.clear(); } catch (_) {}
+history.replaceState(null, '', location.pathname);
+location.reload();
+};
+document.getElementById('degree').addEventListener('change', () => {
+writeUrlState();
+refetch();
+});
+document.getElementById('collapse-all').onclick = () => {
+expandedModules.clear();
+refetch();
+};
+document.getElementById('expand-all').onclick = () => {
+// Expand every currently visible module.
+cy.nodes('[type="module"]').forEach(n => expandedModules.add(n.data('label')));
+refetch();
+};
+document.getElementById('relayout').onclick     = () => runLayout();
+document.getElementById('hiddenSave').onclick  = applyHiddenEditor;
+document.getElementById('hiddenClear').onclick = () => {
+hiddenLabels = new Set(); hiddenPatterns = []; hiddenTeams = new Set();
+saveHidden(); writeUrlState(); renderHiddenPanel(); renderTeamChips();
+refetch();
+};
+renderHiddenPanel();
+fetchModules();
+</script>
+</body>
+</html>

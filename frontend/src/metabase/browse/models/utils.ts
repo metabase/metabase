@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getCollectionPathAsString } from "metabase/collections/utils";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
 import type {
   RecentItem,
   SearchResult,

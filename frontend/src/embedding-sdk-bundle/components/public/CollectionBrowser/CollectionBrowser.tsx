@@ -21,7 +21,7 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
@@ -166,7 +166,7 @@ export const CollectionBrowserInner = ({
         return;
       }
 
-      setInternalCollectionId(item.id as CollectionId);
+      setInternalCollectionId(item.id);
     }
   };
 

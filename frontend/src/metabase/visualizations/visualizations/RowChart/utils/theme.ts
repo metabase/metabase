@@ -19,7 +19,7 @@ export const useRowChartTheme = (
 
     return {
       axis: {
-        color: color("border"),
+        color: color("border-neutral"),
         ticks: {
           size: cartesian.label.fontSize,
           weight: 400,
@@ -49,7 +49,7 @@ export const useRowChartTheme = (
         family: fontFamily,
       },
       grid: {
-        color: color("border-subtle"),
+        color: color("border-neutral-subtle"),
       },
     };
   }, [theme, fontFamily, isDashboard]);

@@ -4,14 +4,14 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
@@ -153,7 +153,7 @@ function InnerSavedEntityPicker({
     }
     // Tree erases node ids to string | number, but a selected collection
     // node's id is always a CollectionId.
-    setSelectedCollectionId(collection.id as CollectionId);
+    setSelectedCollectionId(collection.id);
   }, []);
 
   return (

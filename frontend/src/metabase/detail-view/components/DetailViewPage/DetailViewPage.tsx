@@ -57,14 +57,14 @@ export function DetailViewPage({
 
   return (
     <Stack
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="object-detail"
       gap={0}
       mih="100%"
     >
       {headerColumns.length > 0 && (
         <Box
-          bg="background-primary"
+          bg="background_page-primary"
           className={S.header}
           pl={rem(paddingLeft)}
           pr="xl"
@@ -89,7 +89,7 @@ export function DetailViewPage({
       >
         <Group
           align="flex-start"
-          bg="background-primary"
+          bg="background_page-primary"
           flex="1"
           p="xl"
           pl={rem(paddingLeft)}

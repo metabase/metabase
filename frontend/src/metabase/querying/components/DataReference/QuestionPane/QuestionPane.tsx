@@ -27,6 +27,7 @@ import { NodeListTitleText } from "../NodeList";
 import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
+  UniqueFieldId,
 } from "../types";
 
 import S from "./QuestionPane.module.css";
@@ -78,6 +79,8 @@ export const QuestionPane = ({
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const lastEditInfo = question.lastEditInfo();
+
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -118,7 +121,7 @@ export const QuestionPane = ({
             {collection?.name ?? t`Our analytics`}
           </Box>
         </Flex>
-        {question.lastEditInfo() && (
+        {lastEditInfo && (
           <Flex
             color="text-secondary"
             align="center"
@@ -128,11 +131,7 @@ export const QuestionPane = ({
             <Icon className={S.QuestionPaneIcon} name="calendar" />
             <Box component="span" ml="sm" fw="normal">
               {jt`Last edited ${(
-                <DateTime
-                  key="day"
-                  unit="day"
-                  value={question.lastEditInfo().timestamp}
-                />
+                <DateTime key="day" unit="day" value={lastEditInfo.timestamp} />
               )}`}
             </Box>
           </Flex>
@@ -144,7 +143,10 @@ export const QuestionPane = ({
               onItemClick({
                 type: "field",
                 id:
-                  typeof field.id === "number" ? field.id : field.getUniqueId(),
+                  typeof field.id === "number"
+                    ? field.id
+                    : // Unjustified type cast. FIXME
+                      (field.getUniqueId() as UniqueFieldId),
               });
             }}
           />

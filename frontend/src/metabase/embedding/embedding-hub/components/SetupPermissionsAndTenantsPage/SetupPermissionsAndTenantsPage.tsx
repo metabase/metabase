@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import {
   type CreatedTenantData,
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
+import { Link } from "metabase/router";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 import type { DataSegregationStrategy } from "metabase-types/api";
 

@@ -1,6 +1,5 @@
 const { H } = cy;
 
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -10,97 +9,14 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
-import type { GroupPermissions, NativePermissions } from "metabase-types/api";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-  PEOPLE,
-} = SAMPLE_DATABASE;
-
-describe("issue 47988", () => {
-  const model1Details: StructuredQuestionDetails = {
-    name: "M1",
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          "source-table": PRODUCTS_ID,
-          alias: "Products",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          fields: "all",
-        },
-      ],
-    },
-  };
-
-  const model2Details: StructuredQuestionDetails = {
-    name: "M2",
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          "source-table": PRODUCTS_ID,
-          alias: "Products",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-          ],
-          fields: "all",
-        },
-        {
-          "source-table": REVIEWS_ID,
-          alias: "Reviews",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, null],
-            ["field", REVIEWS.PRODUCT_ID, { "join-alias": "Reviews" }],
-          ],
-          fields: "all",
-        },
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to execute a query with joins to the same table in base queries (metabase#47988)", () => {
-    H.createQuestion(model1Details);
-    H.createQuestion(model2Details);
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("M1").click();
-    });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("M2").click();
-    });
-    H.visualize();
-    H.tableInteractive().should("be.visible");
-  });
-});
-
+const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("issue 46221", () => {
   const modelDetails: NativeQuestionDetails = {
     name: "46221",
     native: { query: "select 42" },
     type: "model",
-    collection_id: FIRST_COLLECTION_ID as number,
+    collection_id: FIRST_COLLECTION_ID,
   };
 
   beforeEach(() => {
@@ -211,7 +127,7 @@ describe("issue 37300", () => {
       cy.findByText("ID").should("be.visible");
       cy.findByText("Ean").should("be.visible");
 
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
     });
   });
 });
@@ -436,43 +352,6 @@ describe("issue 56775", () => {
     H.getNotebookStep("data").findByText("Products").should("be.visible");
   });
 });
-
-describe("issue 57359", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should not break the model when editing metadata (metabase#57359)", () => {
-    cy.log("create a question with two joins without running the query");
-    H.openOrdersTable({ mode: "notebook" });
-    cy.wrap([1, 2]).each(() => {
-      H.join();
-      H.miniPicker().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Products").click();
-      });
-    });
-    H.saveQuestion("Q1");
-
-    cy.log("turn the question into a model");
-    H.openQuestionActions("Turn into a model");
-    H.modal().button("Turn this into a model").click();
-    cy.wait("@updateCard");
-
-    cy.log("edit query metadata");
-    H.openQuestionActions("Edit metadata");
-    H.waitForLoaderToBeRemoved();
-    H.openColumnOptions("Product ID");
-    H.renameColumn("Product ID", "Product ID2");
-    H.saveMetadataChanges();
-
-    cy.log("make sure the query is run successfully");
-    H.tableInteractive().should("be.visible");
-  });
-});
-
 describe("issue 55486", () => {
   const MODEL_NAME = "Model 55486";
 
@@ -554,78 +433,6 @@ describe("Issue 30712", () => {
     cy.findByTestId("run-button").should("be.visible");
   });
 });
-
-describe("issue 60930", () => {
-  const modelDetails: StructuredQuestionDetails = {
-    name: "Model",
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          "source-table": PRODUCTS_ID,
-          alias: "Products",
-          strategy: "left-join",
-          fields: "all",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
-            [
-              "field",
-              PRODUCTS.ID,
-              { "base-type": "type/BigInteger", "join-alias": "Products" },
-            ],
-          ],
-        },
-        {
-          "source-table": REVIEWS_ID,
-          alias: "Reviews",
-          strategy: "left-join",
-          fields: "all",
-          condition: [
-            "=",
-            ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
-            [
-              "field",
-              REVIEWS.PRODUCT_ID,
-              { "base-type": "type/Integer", "join-alias": "Reviews" },
-            ],
-          ],
-        },
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not apply model metadata overrides to incorrect columns after changes in the query (metabase#60930)", () => {
-    cy.log("create a model");
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-
-    cy.log("override the column name");
-    H.openQuestionActions("Edit metadata");
-    H.waitForLoaderToBeRemoved();
-    H.openColumnOptions("Products → ID");
-    H.renameColumn("Products → ID", "ID2");
-    H.saveMetadataChanges();
-    H.tableInteractive().findByText("ID2").should("exist");
-
-    cy.log("remove the ID2 column from the query");
-    H.openQuestionActions("Edit query definition");
-    H.getNotebookStep("join", { index: 0 })
-      .findByLabelText("Pick columns")
-      .click();
-    H.popover().findByLabelText("Select all").click();
-    H.saveMetadataChanges();
-    H.tableInteractive().findByText("ID2").should("not.exist");
-  });
-});
-
 describe("Issue 56913", () => {
   beforeEach(() => {
     H.restore();
@@ -671,41 +478,6 @@ describe("Issue 56913", () => {
       .should("be.visible");
   });
 });
-
-describe("issue 45919", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow to query a model with a hidden column", () => {
-    cy.log("create a new model with result_metadata");
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use the notebook editor")
-      .click();
-    H.popover().findByText("Sample Database").click();
-    H.popover().findByText("People").click();
-    H.runButtonOverlay().click();
-    H.tableInteractive().should("be.visible");
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    cy.findByTestId("save-question-modal").button("Save").click();
-    H.queryBuilderHeader().should("be.visible");
-    H.tableInteractiveHeader().findByText("Password").should("be.visible");
-
-    cy.log("hide the Password field");
-    cy.request("PUT", `/api/field/${PEOPLE.PASSWORD}`, {
-      visibility_type: "sensitive",
-    });
-
-    cy.log("the query should succeed, and the Password field should be hidden");
-    H.queryBuilderHeader().button("Refresh").click();
-    H.tableInteractive().should("be.visible");
-    H.tableInteractiveHeader().findByText("Password").should("not.exist");
-    H.tableInteractiveHeader().findByText("Email").should("be.visible");
-  });
-});
-
 describe("issue 50915", () => {
   beforeEach(() => {
     H.restore();
@@ -776,11 +548,20 @@ describe("issue 38747", () => {
     H.popover().findByText("Entity Key").click();
     H.datasetEditBar().button("Save").click();
 
+    cy.intercept("POST", "/api/card").as("createModel");
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
-      waitForAnimations: false,
-    });
+    // Wait for the model to be created and its query to resolve before
+    // interacting with the table, otherwise the click can race the table
+    // rendering/animating in after the redirect to the model view.
+    cy.wait("@createModel");
+    cy.wait("@modelQuery");
+    H.tableInteractive().should("be.visible");
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" })
+      .should("be.visible")
+      .click({ waitForAnimations: false });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");
@@ -789,97 +570,6 @@ describe("issue 38747", () => {
       "Vendor is Nolan-Wolff",
     );
     H.tableInteractive().should("have.attr", "data-rows-count", "1");
-  });
-});
-
-describe("issue 67680", () => {
-  function setTablePermissions(createQueriesPermission: NativePermissions) {
-    const permissions: GroupPermissions = {
-      [SAMPLE_DB_ID]: {
-        "view-data": {
-          public: {
-            [ORDERS_ID]: DataPermissionValue.BLOCKED,
-            [PRODUCTS_ID]: DataPermissionValue.UNRESTRICTED,
-          },
-        },
-        "create-queries": createQueriesPermission,
-      },
-    };
-    cy.updatePermissionsGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: permissions,
-      [USER_GROUPS.DATA_GROUP]: permissions,
-      [USER_GROUPS.COLLECTION_GROUP]: permissions,
-    });
-  }
-
-  function setTablePermissionsWithCreateQueries() {
-    setTablePermissions(DataPermissionValue.QUERY_BUILDER);
-  }
-
-  function setTablePermissionsWithoutCreateQueries() {
-    setTablePermissions(DataPermissionValue.NO);
-  }
-
-  function updateModelSourceTableWithResultMetadata() {
-    H.visitModel(ORDERS_MODEL_ID);
-    H.openQuestionActions("Edit query definition");
-    H.getNotebookStep("data").findByText("Orders").click();
-    H.popover().findByText("Products").click();
-    H.runButtonInOverlay().click();
-    H.tableInteractiveHeader().findByText("Category").should("be.visible");
-    H.saveMetadataChanges();
-  }
-
-  function updateModelSourceTableWithoutResultMetadata() {
-    H.visitModel(ORDERS_MODEL_ID);
-    H.openQuestionActions("Edit query definition");
-    H.getNotebookStep("data").findByText("Orders").click();
-    H.popover().findByText("Products").click();
-    H.saveMetadataChanges();
-  }
-
-  function verifyNormalUserCanAccessModel() {
-    cy.signInAsNormalUser();
-    H.visitModel(ORDERS_MODEL_ID);
-    H.assertQueryBuilderRowCount(200);
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  describe("when the user has create queries permission", () => {
-    beforeEach(() => {
-      setTablePermissionsWithCreateQueries();
-    });
-
-    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
-      updateModelSourceTableWithResultMetadata();
-      verifyNormalUserCanAccessModel();
-    });
-
-    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
-      updateModelSourceTableWithoutResultMetadata();
-      verifyNormalUserCanAccessModel();
-    });
-  });
-
-  describe("when the user does not have create queries permission", () => {
-    beforeEach(() => {
-      setTablePermissionsWithoutCreateQueries();
-    });
-
-    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
-      updateModelSourceTableWithResultMetadata();
-      verifyNormalUserCanAccessModel();
-    });
-
-    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
-      updateModelSourceTableWithoutResultMetadata();
-      verifyNormalUserCanAccessModel();
-    });
   });
 });
 

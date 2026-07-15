@@ -100,7 +100,7 @@
   "Output-token ceiling for a single generation. The answer itself is tiny, but reasoning models spend output tokens
   reasoning *before* emitting the forced structured_output tool call, so the cap must leave room for that or the call
   returns no tool call.  Non-reasoning providers stop well under this, so the higher ceiling costs them nothing."
-  2048)
+  4096)
 
 (defn- call-llm
   "Make a structured LLM call for example question generation.
@@ -152,12 +152,22 @@
 (def ^:private max-batch-size 10)
 
 (defn- process-batch-parallel
-  "Process items in parallel batches, matching Python's asyncio.gather behavior."
+  "Process items in parallel batches, matching Python's asyncio.gather behavior.
+  Returns one result per item, in order (callers zip positionally): `{:ok <result>}` on success, or
+  `{:error <throwable>}` when generation threw. [[generate-example-questions]] decides what to do with
+  failures — drop them when there are partial successes, or rethrow when nothing was produced."
   [items generate-fn]
   (vec
    (mapcat
     (fn [batch]
-      (let [futures (mapv #(future (generate-fn %)) batch)]
+      (let [futures (mapv (fn [item]
+                            (future
+                              (try
+                                {:ok (generate-fn item)}
+                                (catch Throwable e
+                                  (log/warn e "Example question generation failed for one item")
+                                  {:error e}))))
+                          batch)]
         (mapv deref futures)))
     (partition-all max-batch-size items))))
 
@@ -175,14 +185,25 @@
   (log/info "Generating example questions natively"
             {:table-count  (count (:tables payload))
              :metric-count (count (:metrics payload))})
-  (let [table-questions  (if (seq (:tables payload))
-                           (process-batch-parallel (:tables payload) generate-table-questions)
-                           [])
-        metric-questions (if (seq (:metrics payload))
-                           (process-batch-parallel (:metrics payload) generate-metric-questions)
-                           [])]
+  (let [table-results  (if (seq (:tables payload))
+                         (process-batch-parallel (:tables payload) generate-table-questions)
+                         [])
+        metric-results (if (seq (:metrics payload))
+                         (process-batch-parallel (:metrics payload) generate-metric-questions)
+                         [])
+        all-results    (concat table-results metric-results)
+        errors         (keep :error all-results)
+        produced       (transduce (comp (keep :ok) (map (comp count :questions)))
+                                  + 0 all-results)
+        ->questions    (fn [r] (or (:ok r) {:questions []}))]
+    ;; If failures left us with nothing usable, surface the original error instead of an empty result —
+    ;; otherwise the caller's delete+generate transaction commits and wipes existing prompts. Rethrow
+    ;; the first failure so its message/cause is preserved. Partial successes (produced > 0) go through.
+    (when (and (seq errors) (zero? produced))
+      (throw (first errors)))
     (log/info "Native example question generation complete"
-              {:table-results  (count table-questions)
-               :metric-results (count metric-questions)})
-    {:table_questions  table-questions
-     :metric_questions metric-questions}))
+              {:table-results (count table-results)
+               :metric-results (count metric-results)
+               :failures (count errors)})
+    {:table_questions  (mapv ->questions table-results)
+     :metric_questions (mapv ->questions metric-results)}))

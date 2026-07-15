@@ -1,12 +1,10 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { Modal } from "metabase/common/components/Modal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
@@ -16,6 +14,9 @@ import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
+import EditEventModal from "metabase/query_builder/components/timelines/containers/EditEventModal";
+import MoveEventModal from "metabase/query_builder/components/timelines/containers/MoveEventModal";
+import NewEventModal from "metabase/query_builder/components/timelines/containers/NewEventModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import {
   getQuestionWithoutComposing,
@@ -26,10 +27,8 @@ import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import { Text } from "metabase/ui";
+import { push } from "metabase/router";
+import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
@@ -282,19 +281,37 @@ export function QueryModals({
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (
-        <Modal small onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="md"
+          withCloseButton={false}
+          padding={0}
+        >
           <NewDatasetModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <ImpossibleToCreateModelModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.NEW_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <NewEventModal
             cardId={question.id()}
             collectionId={question.collectionId()}
@@ -304,13 +321,25 @@ export function QueryModals({
       );
     case MODAL_TYPES.EDIT_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <EditEventModal eventId={modalContext} onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.MOVE_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <MoveEventModal
             eventId={modalContext}
             collectionId={question.collectionId()}

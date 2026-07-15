@@ -26,8 +26,6 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
-import type { SelectOption as LegacySelectOption } from "../Select";
-
 import { DynamicWidthSelect } from "./DynamicWidthSelect";
 import {
   PickerRow,
@@ -77,7 +75,9 @@ const DEFAULT_DAY = "mon";
 /**
  * Transforms legacy Select data format to Mantine Select data format
  */
-function toMantineData(options: LegacySelectOption[]): SelectOption[] {
+type LegacyScheduleOption = { name?: string; value: string | number };
+
+function toMantineData(options: LegacyScheduleOption[]): SelectOption[] {
   return options.map((option) => ({
     label: option.name ?? "",
     value: option.value.toString(),
@@ -176,6 +176,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           onChange={(value) =>
             this.handleChangeProperty(
               "schedule_frame",
+              // Unjustified type cast. FIXME
               value as ScheduleFrameType,
             )
           }
@@ -211,6 +212,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           minButtonWidth={110}
           value={schedule.schedule_day ?? ""}
           onChange={(value) =>
+            // Unjustified type cast. FIXME
             this.handleChangeProperty("schedule_day", value as ScheduleDayType)
           }
           data={toMantineData(getDayOfWeekOptions())}
@@ -221,6 +223,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 
   renderMinutePicker() {
     const { schedule } = this.props;
+    // Unjustified type cast. FIXME
     const minuteOfHour = isNaN(schedule.schedule_minute as number)
       ? 0
       : (schedule.schedule_minute ?? 0);
@@ -247,6 +250,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
   renderHourPicker() {
     const { schedule, timezone, textBeforeSendTime } = this.props;
 
+    // Unjustified type cast. FIXME
     const hourOfDay = isNaN(schedule.schedule_hour as number)
       ? 8
       : schedule.schedule_hour || 0;
@@ -316,7 +320,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             minButtonWidth={110}
             value={scheduleType}
             onChange={(value) =>
-              this.handleChangeProperty("schedule_type", value as ScheduleType)
+              this.handleChangeProperty("schedule_type", value)
             }
             data={scheduleOptions.map((scheduleOption) => ({
               label:

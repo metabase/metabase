@@ -27,6 +27,10 @@
 (set! *warn-on-reflection* true)
 
 (defmulti ^:private check-permissions-for-model
+  "Whether the current user (per `search-ctx`) may see `search-result`, applying the per-model post-query
+  permission rules. The query already filters most rows out in SQL; this catches the archived-write check and the
+  table / indexed-entity special cases. Used in the [[search]] pipeline and, via [[check-result-permissions]], by
+  the search debug API."
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
@@ -194,6 +198,7 @@
         (dissoc
          :all-scores
          :dataset_query
+         :document
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -242,6 +247,9 @@
 (defmethod search.engine/model-set :default [search-ctx]
   (search.engine/model-set (apply-default-engine search-ctx)))
 
+(defmethod search.engine/diagnose :default [search-ctx expected-model expected-id]
+  (search.engine/diagnose (apply-default-engine search-ctx) expected-model expected-id))
+
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
@@ -265,9 +273,14 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
+   [:vector-search-ef-search             {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-max-scan-tuples       {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-explain?              {:optional true} [:maybe boolean?]]
+   [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
+   [:curated                             {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
@@ -304,10 +317,15 @@
            offset
            search-engine
            vector-search-strategy
+           vector-search-ef-search
+           vector-search-max-scan-tuples
+           vector-search-explain?
+           vector-search-force-index?
            search-native-query
            search-string
            table-db-id
            verified
+           curated
            non-temporal-dim-ids
            has-temporal-dim
            weights]} :- ::search-context.input]
@@ -348,8 +366,13 @@
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
+                 (some? vector-search-ef-search)             (assoc :vector-search-ef-search vector-search-ef-search)
+                 (some? vector-search-max-scan-tuples)       (assoc :vector-search-max-scan-tuples vector-search-max-scan-tuples)
+                 (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
+                 (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
@@ -388,6 +411,12 @@
         (update :archived_directly bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
+
+(defn check-result-permissions
+  "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
+  `results` produces). Returns a boolean. Public for the search debug API."
+  [search-ctx result]
+  (check-permissions-for-model search-ctx (normalize-result result)))
 
 (defn- add-can-write [search-ctx row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])

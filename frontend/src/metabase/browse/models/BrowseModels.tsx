@@ -7,7 +7,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -39,6 +38,7 @@ import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
 import { trackNewModelInitiated } from "./analytics";
 import type { ModelFilterSettings, ModelResult } from "./types";
+import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
 const {
@@ -218,6 +218,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
         },
   );
 
+  // Unjustified type cast. FIXME
   const models = modelsResult.data?.data as ModelResult[] | undefined;
 
   const recentsCap = getMaxRecentModelCount(models?.length ?? 0);

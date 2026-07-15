@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -616,6 +617,30 @@
                              &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
              (map :lib/desired-column-alias (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
+
+(deftest ^:parallel dont-show-remap-target-columns-from-source-card-test
+  (testing "Remapped columns from source cards don't show up in the \"select specific columns\" picker (#74177)"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/remap-metadata-provider (meta/id :orders :user-id) (meta/id :people :email))
+                 (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title)))
+          card-query (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (meta/field-metadata :orders :user-id))
+                         (lib/breakout (meta/field-metadata :orders :product-id)))
+          cols (lib/returned-columns card-query -1 -1 {:include-remaps? true})
+          remap-to->remap-from (into {} (keep (fn [col]
+                                                (when-let [field-id (get-in col [:lib/external-remap :field-id])]
+                                                  [field-id (:name col)])))
+                                     cols)
+          result-md (mapv (fn [col]
+                            (cond-> col
+                              (remap-to->remap-from (:id col)) (assoc :remapped-from (remap-to->remap-from (:id col)))))
+                          cols)
+          card-mp (lib.tu/metadata-provider-with-card-from-query mp 1 card-query {:result-metadata result-md})
+          query (lib/query card-mp (lib.metadata/card card-mp 1))]
+      (is (= ["USER_ID" "PRODUCT_ID" "count"]
+             (map :name (lib.field/fieldable-columns query 0))
+             (map :name (lib/returned-columns query 0)))))))
 
 (deftest ^:parallel propagate-binning-info-test
   (testing "binning info from previous stages should get propagated"

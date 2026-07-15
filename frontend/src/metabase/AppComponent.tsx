@@ -26,6 +26,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
+import { useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
@@ -34,6 +35,7 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
+import { trackPageView } from "./analytics";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -101,6 +103,7 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
   const applicationName = useSelector(getApplicationName);
+  const { pathname } = useLocation();
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
@@ -108,6 +111,10 @@ function App({
   useEffect(() => {
     initializeIframeResizer();
   }, []);
+
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
 
   return (
     <ErrorBoundary onError={onError}>

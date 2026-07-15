@@ -97,7 +97,7 @@ export function Header({
             disabled={!canUndo}
             onClick={undo}
             leftSection={
-              <Icon name="undo" c={canUndo ? "none" : "text-tertiary"} />
+              <Icon name="undo" c={canUndo ? "none" : "text-disabled"} />
             }
           />
         </Tooltip>
@@ -108,7 +108,7 @@ export function Header({
             disabled={!canRedo}
             onClick={redo}
             leftSection={
-              <Icon name="redo" c={canRedo ? "unset" : "text-tertiary"} />
+              <Icon name="redo" c={canRedo ? "unset" : "text-disabled"} />
             }
           />
         </Tooltip>
