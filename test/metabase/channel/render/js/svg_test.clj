@@ -115,6 +115,18 @@
         ;; Observed ~2x cheaper; assert a generous 25% floor so the timing test stays robust to noise.
         (is (< warm (* 0.75 cold)))))))
 
+(deftest ^:mb/slow untrusted-context-loads-slim-bundle-test
+  (testing "the untrusted isolate pool loads the slim custom-viz bundle, exposing the interface surface it needs"
+    (js.svg/do-with-untrusted-static-viz-context
+     (fn [^Context ctx]
+       (doseq [fn-name ["RenderChart" "initializeContext" "registerCustomVizPlugin"]]
+         (is (= "function" (.asString (.eval ctx "js" (str "typeof StaticViz." fn-name))))
+             (str "slim bundle should expose StaticViz." fn-name)))
+       ;; LegacyRenderChart is only exported by the full bundle (only the trusted pool's gauge/funnel
+       ;; entrypoints call it), so its absence proves the slim bundle is what got loaded here.
+       (is (= "undefined" (.asString (.eval ctx "js" "typeof StaticViz.LegacyRenderChart")))
+           "the full static-viz bundle (LegacyRenderChart present) leaked into the untrusted pool")))))
+
 (deftest ^:mb/slow untrusted-static-viz-context-is-pooled-test
   (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
     ;; Regression guard: the previous fresh-context-per-render path re-parsed the ~16MB bundle every render

@@ -1,9 +1,13 @@
+// Deep import (not the metabase/plugins barrel): this module is loaded by the
+// static-viz bundles, which must not drag the app UI stack in via the barrel.
+import { PLUGIN_CUSTOM_VIZ_STATIC } from "metabase/plugins/oss/custom-viz-static";
 import MetabaseSettings from "metabase/utils/settings";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   defineSetting,
   getCustomPluginIdentifier,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
@@ -33,5 +37,19 @@ export function registerCustomVizPlugin(factory: any, identifier: string) {
   });
   if (!visualizations.has(display)) {
     registerVisualization(Component);
+  }
+}
+
+/**
+ * Activate the EE custom-viz registry for static (GraalJS SSR) rendering. The
+ * static-render counterpart of custom_viz/index's initializePlugin, kept separate
+ * so the static-viz bundles don't pull in the interactive admin pages.
+ */
+export function initializeStaticVizPlugin() {
+  if (hasPremiumFeature("custom-viz")) {
+    Object.assign(PLUGIN_CUSTOM_VIZ_STATIC, {
+      customVizRegistry,
+      registerCustomVizPlugin,
+    });
   }
 }

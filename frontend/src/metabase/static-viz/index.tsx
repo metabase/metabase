@@ -2,15 +2,12 @@ import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
-import React from "react";
-import * as jsxRuntime from "react/jsx-runtime";
 import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -18,75 +15,46 @@ import {
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
+import {
+  type RenderChartOptions,
+  applyRenderChartSettings,
+  getRawSeriesWithDashcardSettings,
+  initializeStaticVizContext,
+  installStaticVizApi,
+  registerCustomVizPlugin,
+} from "metabase/static-viz/lib/entry-shared";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
-import type { ColorPalette } from "metabase/ui/colors/types";
 import { updateStartOfWeek } from "metabase/utils/i18n";
-import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
-import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+// Deep imports (not the metabase/visualizer/utils barrel) so the static-viz
+// bundle doesn't drag the visualizer's app-side dependencies in via the barrel.
+import { createDataSource } from "metabase/visualizer/utils/data-source";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
 import {
-  createDataSource,
-  getVisualizationColumns,
-  mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
-} from "metabase/visualizer/utils";
-import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
+} from "metabase/visualizer/utils/split-series";
 import type {
   Card,
-  ColumnSettings,
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
-  DayOfWeekId,
-  FormattingSettings,
   GeoJSONData,
   RawSeries,
-  SettingKey,
-  TokenFeatures,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
-type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
-  __METABASE_VIZ_API__?: Omit<
-    NonNullable<Window["__METABASE_VIZ_API__"]>,
-    // unsupported in static viz
-    "measureText" | "measureTextHeight" | "measureTextWidth"
-  >;
-};
-
-// Expose React, jsxRuntime, and utils for custom viz bundles that reference
-// window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
-(window as StaticVizApiWindow).__METABASE_VIZ_API__ = {
-  React,
-  jsxRuntime,
-  columnTypes: customVizColumnTypes,
-  formatValue: (value: unknown, options?: ColumnSettings) => {
-    const result = internalFormatValue(value, { ...options, jsx: false });
-    return String(result ?? "");
-  },
-};
+installStaticVizApi();
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
 
-export type RenderChartOptions = {
-  tokenFeatures: TokenFeatures;
-  applicationColors: ColorPalette;
-  customFormatting: FormattingSettings;
-  startOfWeek: DayOfWeekId | null | undefined;
-  locale?: string | null;
-  // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
-  // chart legends
-  width?: number;
-  height?: number;
-  // When true, width/height are treated as the exact output box
-  fitWithinBounds?: boolean;
-};
+export type { RenderChartOptions };
+export { registerCustomVizPlugin };
 
 type RenderChartDashcardSettings = DashCardVisualizationSettings & {
   visualization?: VisualizerVizDefinition;
@@ -102,22 +70,6 @@ export function LegacyRenderChart(
   return ReactDOMServer.renderToStaticMarkup(
     <LegacyStaticChart type={type} options={options} />,
   );
-}
-
-function getRawSeriesWithDashcardSettings(
-  rawSeries: RawSeries,
-  dashcardSettings: DashCardVisualizationSettings,
-): RawSeries {
-  return rawSeries.map((series, index) => {
-    const isMainCard = index === 0;
-    if (isMainCard) {
-      return {
-        ...series,
-        card: extendCardWithDashcardSettings(series.card, dashcardSettings),
-      };
-    }
-    return series;
-  });
 }
 
 function getVisualizerRawSeries(
@@ -152,29 +104,12 @@ function getVisualizerRawSeries(
   ];
 }
 
-export function registerCustomVizPlugin(
-  factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
-  identifier: string,
-) {
-  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier);
-}
-
 /**
  * Initialize the static viz context: set settings and apply enterprise overrides.
  * Must be called before registerCustomVizPlugin so that the EE registry is active.
  */
 export function initializeContext(options: RenderChartOptions) {
-  MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
-  MetabaseSettings.set("site-locale", options.locale ?? "en");
-
-  if (typeof enterpriseOverrides === "function") {
-    enterpriseOverrides();
-  }
+  initializeStaticVizContext(options, enterpriseOverrides);
 }
 
 export function RenderChart(
@@ -182,17 +117,7 @@ export function RenderChart(
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
-  MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
-
-  if (typeof enterpriseOverrides === "function") {
-    enterpriseOverrides();
-  }
-
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
+  applyRenderChartSettings(options, enterpriseOverrides);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,

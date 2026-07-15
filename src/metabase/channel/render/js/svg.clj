@@ -28,25 +28,40 @@
 
 (set! *warn-on-reflection* true)
 
-;; the bundle path goes through webpack. Changes require a `bun run build-static-viz`
+;; the bundle paths go through webpack. Changes require a `bun run build-static-viz`
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
+
+;; slim custom-viz-only bundle for the untrusted plugin isolate: the same render interface, but without the
+;; built-in chart implementations (ECharts/visx), which that isolate never renders. Cuts the isolate's
+;; cold-parse time and heap pressure. Built alongside [[bundle-path]] by `bun run build-static-viz`.
+(def ^:private custom-viz-bundle-path
+  "frontend_client/app/dist/lib-static-viz-custom.bundle.js")
 
 ;; the interface file does not go through webpack. Feel free to quickly change as needed and then re-require this
 ;; namespace to redef the `context`.
 (def ^:private interface-path
   "frontend_shared/static_viz_interface.js")
 
-(defn- load-viz-bundle [^Context context]
-  ;; make sure people don't try to load the static viz bundle as a side-effect of loading namespaces, because it might
-  ;; not have been built! If it's not built, we want to be able to give people a meaningful error (see the fixture
-  ;; in [[metabase.channel.render.js.svg-test]]) rather than have the test runner fail to start with a meaningless
-  ;; compilation error.
-  (when config/tests-available?
-    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)"))
-  (doto context
-    (js.engine/load-resource bundle-path)
-    (js.engine/load-resource interface-path)))
+(defn- load-viz-bundle
+  ([^Context context]
+   (load-viz-bundle context bundle-path))
+  ([^Context context ^String viz-bundle-path]
+   ;; make sure people don't try to load the static viz bundle as a side-effect of loading namespaces, because it might
+   ;; not have been built! If it's not built, we want to be able to give people a meaningful error (see the fixture
+   ;; in [[metabase.channel.render.js.svg-test]]) rather than have the test runner fail to start with a meaningless
+   ;; compilation error.
+   (when config/tests-available?
+     ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)"))
+   (doto context
+     (js.engine/load-resource viz-bundle-path)
+     (js.engine/load-resource interface-path))))
+
+(defn- load-custom-viz-bundle
+  "Load the slim custom-viz-only static-viz bundle (plus the interface file) into `context`. Only the untrusted
+  isolate path uses this; the trusted in-process pool loads the full bundle."
+  [^Context context]
+  (load-viz-bundle context custom-viz-bundle-path))
 
 (def ^:private ^Pool static-viz-context-pool
   "Pool of Truffle JS engine objects. They are not thread-safe, so the access to them has to be carefully managed
@@ -114,9 +129,12 @@
 
 (def ^:private ^Pool untrusted-static-viz-context-pool
   "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
-  [[static-viz-context-pool]] but for the isolate path. Pooling is the whole point: the ~16MB static-viz bundle
-  is parsed *once* per pooled context (a >10s cold parse, far worse on CPU-throttled hardware) and reused across
-  renders, instead of the old unpooled path that re-parsed on every render (the 55s pulse-test regression).
+  [[static-viz-context-pool]] but for the isolate path, and loads the slim custom-viz-only bundle
+  ([[custom-viz-bundle-path]]) instead of the full one — this pool only ever renders `custom:` cards, so the
+  built-in chart stack would be pure parse-time/heap dead weight. Pooling is still the point: the bundle is
+  parsed *once* per pooled context (a multi-second cold parse, far worse on CPU-throttled hardware) and reused
+  across renders, instead of the old unpooled path that re-parsed on every render (the 55s pulse-test
+  regression).
 
   Capped at 1 context: each holds the bundle plus up to a 512MB isolate heap, and native isolate memory is what
   previously OOM-killed the server, so we keep exactly one and let `execute-fn-name`'s per-context lock serialize
@@ -130,11 +148,11 @@
   (let [base-controller (Pools/utilizationController 1.0 1 1)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Cold-parses the ~16MB static-viz bundle into a fresh isolate; logged with timing because this
+               ;; Cold-parses the slim custom-viz bundle into a fresh isolate; logged with timing because this
                ;; is the dominant per-context cost and explains slow first/regenerated renders.
                (let [start (System/nanoTime)
-                     ctx   (load-viz-bundle (js.engine/untrusted-plugin-context js.engine/pool-max-cpu-time))]
-                 (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed bundle) in %.0fms"
+                     ctx   (load-custom-viz-bundle (js.engine/untrusted-plugin-context js.engine/pool-max-cpu-time))]
+                 (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed slim bundle) in %.0fms"
                             (/ (- (System/nanoTime) start) 1e6))
                  [ctx (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))]))
              (destroy [_ _ [^Context ctx _expiry]]
@@ -158,12 +176,12 @@
 
 (defn do-with-untrusted-static-viz-context
   "Impl for [[with-untrusted-static-viz-context]]. Acquires a pooled `SandboxPolicy/UNTRUSTED` isolate context
-  ([[untrusted-static-viz-context-pool]]) with the static-viz bundle already loaded, runs `f`, then releases it
+  ([[untrusted-static-viz-context-pool]]) with the slim custom-viz bundle already loaded, runs `f`, then releases it
   back to the pool. In dev, uses a fresh context each time (mirrors [[do-with-static-viz-context]]). A context
   cancelled by exhausting its cumulative `sandbox.MaxCPUTime` is disposed (not released) so the pool regenerates."
   [f]
   (if config/is-dev?
-    (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
+    (let [^Context context (load-custom-viz-bundle (js.engine/untrusted-plugin-context))]
       (try
         (f context)
         (finally

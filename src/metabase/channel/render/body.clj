@@ -497,16 +497,19 @@
     :svg  (png->rendered-part render-type (js.svg/svg-string->bytes content))))
 
 (defn- custom-viz-bundles
-  "If the card has a custom:* display type, resolve the plugin's JS bundle for static rendering."
-  [card]
-  (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (if-let [content (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
-                             custom-viz-plugin/resolve-bundle
-                             :content)]
-      (do (log/debugf "custom-viz: resolved bundle for plugin %s (%d chars)" identifier (count content))
-          [{:identifier identifier :source content}])
-      (log/warnf "custom-viz: no enabled plugin/bundle found for %s; static render will fall back to table"
-                 identifier))))
+  "If the card has a custom:* display type, resolve the plugin's JS bundle for static rendering. Returns nil for
+  visualizer dashcards: they render as the visualizer's built-in display even when the underlying card is a custom
+  viz, and the untrusted isolate's slim bundle has no built-in charts."
+  [card dashcard]
+  (when-not (render.util/is-visualizer-dashcard? dashcard)
+    (when-let [identifier (render.util/custom-viz-identifier (:display card))]
+      (if-let [content (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
+                               custom-viz-plugin/resolve-bundle
+                               :content)]
+        (do (log/debugf "custom-viz: resolved bundle for plugin %s (%d chars)" identifier (count content))
+            [{:identifier identifier :source content}])
+        (log/warnf "custom-viz: no enabled plugin/bundle found for %s; static render will fall back to table"
+                   identifier)))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -520,7 +523,7 @@
         viz-settings     (or (get dashcard :visualization_settings)
                              (get card :visualization_settings))
         {:keys [content] :as result} (js.svg/*javascript-visualization* cards-with-data viz-settings
-                                                                        (custom-viz-bundles card))]
+                                                                        (custom-viz-bundles card dashcard))]
     ;; If the custom viz plugin didn't define a StaticVisualizationComponent, RenderChart returns an
     ;; empty string. Fall back to table rendering.
     (if (and (render.util/custom-viz-display? (:display card))

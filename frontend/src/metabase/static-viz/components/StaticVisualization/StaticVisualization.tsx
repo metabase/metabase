@@ -1,4 +1,6 @@
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+// Deep import (not the metabase/plugins barrel) so the static-viz bundle doesn't
+// drag the whole app UI stack in via the barrel's other plugin modules.
+import { PLUGIN_CUSTOM_VIZ_STATIC } from "metabase/plugins/oss/custom-viz-static";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -74,7 +76,7 @@ export const StaticVisualization = ({
   }
 
   if (typeof display === "string" && display.startsWith("custom:")) {
-    const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
+    const customViz = PLUGIN_CUSTOM_VIZ_STATIC.customVizRegistry.get(display);
     if (customViz?.StaticVisualizationComponent) {
       const { StaticVisualizationComponent } = customViz;
       return (
