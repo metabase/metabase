@@ -60,12 +60,3 @@ You answer analytical questions and help users find existing content. When a req
 
 {{ custom_instructions|safe }}
 {% endif %}
-
-<<<METABOT_CACHE_BREAKPOINT>>>
-
-# Important Context
-
-{% if recent_views %}
-
-{{ recent_views|safe }}
-{% endif %}

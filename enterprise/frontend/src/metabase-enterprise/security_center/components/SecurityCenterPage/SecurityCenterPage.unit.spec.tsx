@@ -171,6 +171,67 @@ describe("SecurityCenterPage", () => {
     expect(advisoryLink).toHaveAttribute("target", "_blank");
   });
 
+  it("renders a single download button for the fix matching the instance's major version", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "active",
+        affected_versions: [
+          { min: "0.58.0", fixed: "0.58.11" },
+          { min: "0.59.0", fixed: "0.59.11" },
+        ],
+        download_jar_urls: [
+          { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.58.11")).not.toBeInTheDocument();
+    const downloadButton = screen.getByRole("link", {
+      name: /Download v0.59.11/,
+    });
+    expect(downloadButton).toHaveAttribute(
+      "href",
+      "https://downloads.example.com/59.jar",
+    );
+    expect(downloadButton).toHaveAttribute("target", "_blank");
+  });
+
+  it("does not render a download button when there is no matching download url", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "active",
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
+  });
+
+  it("does not render a download button when the instance is not affected", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "not_affected",
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
+  });
+
   it("calls acknowledgeAdvisory when dismiss button is clicked", async () => {
     const advisories = [
       createAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
