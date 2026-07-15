@@ -6,7 +6,7 @@ import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Tenant } from "metabase-types/api";
+import type { GroupInfo, Tenant } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTenant,
@@ -42,6 +42,7 @@ interface SetupOpts {
   hideNameFields?: boolean;
   hideAttributes?: boolean;
   tokenFeatures?: Parameters<typeof createMockTokenFeatures>[0];
+  groups?: GroupInfo[];
 }
 
 const setup = ({
@@ -53,11 +54,10 @@ const setup = ({
   hideNameFields = false,
   hideAttributes = false,
   tokenFeatures = { sandboxes: true, tenants: true },
+  groups = GROUPS,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
-
-  fetchMock.get("path:/api/permissions/group", GROUPS);
 
   setupTenantEntpoints(tenants);
 
@@ -81,6 +81,7 @@ const setup = ({
       external={external}
       hideNameFields={hideNameFields}
       hideAttributes={hideAttributes}
+      groups={groups}
     />,
     {
       storeInitialState: state,
@@ -402,6 +403,28 @@ describe("UserForm", () => {
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
+    });
+
+    it("scopes the picker to provided groups without fetching the full list", async () => {
+      setup({
+        // Unjustified type cast. FIXME
+        initialValues: {} as typeof USER,
+        groups: [createMockGroup({ id: 7, name: "scoped" })],
+      });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "scoped" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "foo" }),
+      ).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/permissions/group")).toBe(
+        false,
+      );
     });
   });
 

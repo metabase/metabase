@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { GroupsMultiSelect } from "metabase/common/components/GroupsMultiSelect";
@@ -22,7 +21,7 @@ import {
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { GroupId, User, UserId } from "metabase-types/api";
+import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -37,6 +36,7 @@ const externalUserSchema = localUserSchema.shape({
 interface FormGroupsWidgetProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   external?: boolean;
+  groups?: GroupInfo[];
 }
 
 const FormGroupsWidget = ({
@@ -45,15 +45,12 @@ const FormGroupsWidget = ({
   style,
   title = t`Groups`,
   external,
+  groups,
 }: FormGroupsWidgetProps) => {
   const [{ value: formValue }, , { setValue }] =
     useField<{ id: GroupId; is_group_manager?: boolean }[]>(name);
 
-  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
-    tenancy: external ? "external" : "internal",
-  });
-
-  if (isLoading || !groups) {
+  if (!groups) {
     return null;
   }
 
@@ -124,6 +121,7 @@ interface UserFormProps {
   userId?: UserId | null;
   hideNameFields?: boolean;
   hideAttributes?: boolean;
+  groups?: GroupInfo[];
 }
 
 export const UserForm = ({
@@ -136,6 +134,7 @@ export const UserForm = ({
   userId,
   hideNameFields = false,
   hideAttributes = false,
+  groups,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -179,6 +178,7 @@ export const UserForm = ({
             name="user_group_memberships"
             external={external}
             title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
+            groups={groups}
           />
           {external && (
             <PLUGIN_TENANTS.FormTenantWidget

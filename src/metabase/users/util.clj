@@ -72,7 +72,14 @@
               "tenant_id"
               (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id
+    ;; internal users always belong to All Users; tolerate pickers that send only the additional groups
+    (let [all-users-id           (u/the-id (perms/all-users-group))
+          user-group-memberships (cond-> user-group-memberships
+                                   (and user-group-memberships
+                                        (nil? tenant-id)
+                                        (not-any? #(= (:id %) all-users-id) user-group-memberships))
+                                   (conj {:id all-users-id}))
+          new-user-id (u/the-id
                        (notification/with-skip-sending-notification (boolean tenant-id)
                          (user/create-and-invite-user!
                           (-> attributes

@@ -775,6 +775,38 @@
                 (is (= [{:id (:id (perms-group/all-users))}]
                        (:user_group_memberships resp)))))))))))
 
+(deftest create-user-implies-all-users-membership-test
+  (testing "POST /api/user"
+    (testing "memberships that omit the All Users group still work: All Users is implied for internal users"
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/PermissionsGroup group {:name "Invite Scope Group"}]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                               {:email                  (mt/random-email)
+                                                :user_group_memberships [{:id (u/the-id group)}]})]
+                (is (= #{(:id (perms-group/all-users)) (u/the-id group)}
+                       (set (map :id (:user_group_memberships resp)))))))))))
+    (testing "an empty memberships list is tolerated"
+      (mt/with-premium-features #{}
+        (mt/with-model-cleanup [:model/User]
+          (mt/with-fake-inbox
+            (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                             {:email                  (mt/random-email)
+                                              :user_group_memberships []})]
+              (is (= [{:id (:id (perms-group/all-users))}]
+                     (:user_group_memberships resp))))))))
+    (testing "the union also holds on the EE advanced-permissions membership path"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/PermissionsGroup group {:name "Invite Scope Group EE"}]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                               {:email                  (mt/random-email)
+                                                :user_group_memberships [{:id (u/the-id group)}]})]
+                (is (= #{(:id (perms-group/all-users)) (u/the-id group)}
+                       (set (map :id (:user_group_memberships resp)))))))))))))
+
 (deftest ^:parallel create-user-non-superuser-test
   (testing "POST /api/user"
     (testing "Check that non-superusers are denied access"

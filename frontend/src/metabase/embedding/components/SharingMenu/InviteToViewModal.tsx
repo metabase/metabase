@@ -1,7 +1,11 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useCreateUserMutation } from "metabase/api";
+import {
+  skipToken,
+  useCreateUserMutation,
+  useListInviteGroupsQuery,
+} from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import {
   trackInviteToViewOpened,
@@ -11,12 +15,22 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { UserForm } from "metabase/common/components/UserForm";
 import { useSetting, useToast } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
-import { Button, Group, Icon, Modal, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Center,
+  Group,
+  Icon,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
-import type { InviteTarget, User } from "metabase-types/api";
+import type { InviteGroup, InviteTarget, User } from "metabase-types/api";
 
 interface InviteToViewModalProps {
   title: string;
@@ -52,6 +66,15 @@ export const InviteToViewModal = ({
   useEffect(() => {
     trackInviteToViewOpened({ triggeredFrom, targetId });
   }, [triggeredFrom, targetId]);
+
+  // The scoped list changes whenever collection permissions do, so refetch on every open.
+  const { data: inviteGroups, isFetching: isFetchingGroups } =
+    useListInviteGroupsQuery(
+      inviteTarget
+        ? { type: inviteTarget.type, id: inviteTarget.id }
+        : skipToken,
+      { refetchOnMountOrArgChange: true },
+    );
 
   const createInvitedUser = async (
     values: Partial<User>,
@@ -112,10 +135,19 @@ export const InviteToViewModal = ({
         onClose={onClose}
       />
     );
+  } else if (isFetchingGroups) {
+    body = (
+      <Center py="xl">
+        <Loader />
+      </Center>
+    );
   } else {
     body = (
       <UserForm
-        initialValues={{}}
+        initialValues={{
+          user_group_memberships: getDefaultInviteMemberships(inviteGroups),
+        }}
+        groups={inviteGroups}
         submitText={t`Send invitation`}
         onCancel={onClose}
         onSubmit={
@@ -132,6 +164,17 @@ export const InviteToViewModal = ({
       {body}
     </Modal>
   );
+};
+
+// preselect All Users when it has access, otherwise the sole candidate, otherwise leave it to the admin
+const getDefaultInviteMemberships = (groups: InviteGroup[] | undefined) => {
+  if (!groups) {
+    return undefined;
+  }
+  const defaultGroup =
+    groups.find(isDefaultGroup) ??
+    (groups.length === 1 ? groups[0] : undefined);
+  return defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : [];
 };
 
 const EmailSetupPrompt = ({

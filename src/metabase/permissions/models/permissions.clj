@@ -273,6 +273,21 @@
                     {:metabase.collections.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
+(mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
+  "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
+  `collection-id`, or for the Root Collection when `collection-id` is `nil`. Reflects explicit grant rows only, so
+  groups whose access is implicit don't appear: the Administrators group never does (it has no stored collection
+  rows in normal operation), and collections that don't use grant rows at all (personal collections and their
+  descendants, trash) return an empty set."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (let [collection-or-root (or collection-id
+                               {:metabase.collections.models.collection.root/is-root? true})]
+    (or (t2/select-fn-set :group_id :model/Permissions
+                          {:where [:in :object
+                                   [(permissions.path/collection-read-path collection-or-root)
+                                    (permissions.path/collection-readwrite-path collection-or-root)]]})
+        #{})))
+
 (doto :perms/use-parent-collection-perms
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))

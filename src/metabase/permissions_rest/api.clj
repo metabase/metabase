@@ -218,6 +218,38 @@
            (t2/hydrate :members)
            (maybe-fix-name (setting/get :use-tenants)))))
 
+(api.macros/defendpoint :get "/invite-groups"
+  :- [:sequential [:map {:closed true}
+                   [:id               ms/PositiveInt]
+                   [:name             ms/NonBlankString]
+                   [:magic_group_type [:maybe [:= perms/all-users-magic-group-type]]]]]
+  "Return the invitable internal permission groups with read access to the collection of a shareable item (a `dashboard`
+  or a `question`), for scoping the \"invite someone to view\" group picker. Only regular groups and the All Users group
+  (identified by its `magic_group_type`) are returned; the Administrators group, tenant groups, and other system-managed
+  groups such as Data Analysts are excluded. Superuser-only, like the invite action itself (and because group names are
+  otherwise only revealed to admins and group managers)."
+  [_route-params
+   {:keys [id] item-type :type} :- [:map
+                                    [:type [:enum "dashboard" "question"]]
+                                    [:id   ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [model     (case item-type
+                    "dashboard" :model/Dashboard
+                    "question"  :model/Card)
+        item      (api/read-check model id)
+        group-ids (perms/collection-read-access-group-ids (:collection_id item))]
+    (if (empty? group-ids)
+      []
+      (->> (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
+                      {:where    [:and
+                                  [:in :id group-ids]
+                                  [:not :is_tenant_group]
+                                  [:or [:= :magic_group_type nil]
+                                   [:= :magic_group_type perms/all-users-magic-group-type]]]
+                       :order-by [:%lower.name]})
+           (maybe-fix-names)
+           (mapv #(select-keys % [:id :name :magic_group_type]))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

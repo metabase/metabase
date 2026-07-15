@@ -2,10 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { InviteTarget } from "metabase-types/api";
-import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
+import type { InviteGroup, InviteTarget } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
 
@@ -15,10 +15,9 @@ const { trackUserInvited, trackInviteToViewOpened } = jest.requireMock(
   "metabase/common/analytics",
 );
 
-const GROUPS = [
-  createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
-  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
-  createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
+const INVITE_GROUPS: InviteGroup[] = [
+  { id: 1, name: "All Users", magic_group_type: "all-internal-users" },
+  { id: 3, name: "foo", magic_group_type: null },
 ];
 
 const TITLE = "Invite someone to view this dashboard";
@@ -39,6 +38,7 @@ interface SetupOpts {
   ssoEnabled?: boolean;
   passwordLoginEnabled?: boolean;
   createError?: boolean;
+  inviteGroups?: InviteGroup[];
 }
 
 const setup = ({
@@ -47,10 +47,11 @@ const setup = ({
   ssoEnabled = false,
   passwordLoginEnabled = true,
   createError = false,
+  inviteGroups = INVITE_GROUPS,
 }: SetupOpts = {}) => {
   const onClose = jest.fn();
 
-  fetchMock.get("path:/api/permissions/group", GROUPS);
+  fetchMock.get("path:/api/permissions/invite-groups", inviteGroups);
   fetchMock.post(
     "path:/api/user",
     createError
@@ -91,6 +92,14 @@ const submitInvite = async (email: string) => {
   await userEvent.click(
     screen.getByRole("button", { name: "Send invitation" }),
   );
+};
+
+const getCreateUserRequestBody = async () => {
+  const call = fetchMock.callHistory.calls("path:/api/user", {
+    method: "POST",
+  })[0];
+  // fetch-mock types the captured body as BodyInit, but hands back a promise of the JSON string
+  return JSON.parse(await (call.options?.body as unknown as Promise<string>));
 };
 
 describe("InviteToViewModal", () => {
@@ -182,14 +191,87 @@ describe("InviteToViewModal", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
-    const call = fetchMock.callHistory.calls("path:/api/user", {
-      method: "POST",
-    })[0];
-    const body = JSON.parse(
-      // Unjustified type cast. FIXME
-      await (call.options?.body as unknown as Promise<string>),
-    );
+    const body = await getCreateUserRequestBody();
     expect(body.invite_target).toEqual(INVITE_TARGET);
+  });
+
+  describe("group picker scoping (UXW-4533)", () => {
+    it("preselects All Users when it has access to the item", async () => {
+      const { onClose } = setup();
+
+      expect(
+        within(await screen.findByRole("list")).getByText("All Users"),
+      ).toBeInTheDocument();
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toEqual([
+        { id: 1, is_group_manager: false },
+      ]);
+    });
+
+    it("preselects the sole candidate when All Users has no access", async () => {
+      const { onClose } = setup({
+        inviteGroups: [{ id: 3, name: "foo", magic_group_type: null }],
+      });
+
+      expect(
+        within(await screen.findByRole("list")).getByText("foo"),
+      ).toBeInTheDocument();
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toEqual([
+        { id: 3, is_group_manager: false },
+      ]);
+    });
+
+    it("preselects nothing when there are several candidates", async () => {
+      const { onClose } = setup({
+        inviteGroups: [
+          { id: 3, name: "foo", magic_group_type: null },
+          { id: 4, name: "bar", magic_group_type: null },
+        ],
+      });
+
+      const pills = within(await screen.findByRole("list"));
+      expect(pills.queryByText("foo")).not.toBeInTheDocument();
+      expect(pills.queryByText("bar")).not.toBeInTheDocument();
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toEqual([]);
+    });
+
+    it("only offers the groups with access in the picker", async () => {
+      setup({
+        inviteGroups: [
+          { id: 3, name: "foo", magic_group_type: null },
+          { id: 4, name: "bar", magic_group_type: null },
+        ],
+      });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "foo" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "bar" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "All Users" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Administrators" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("tracks invite_to_view_opened when the modal opens", () => {

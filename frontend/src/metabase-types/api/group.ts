@@ -45,6 +45,17 @@ export type BaseGroupInfo = {
   is_tenant_group?: boolean;
 };
 
+export type InviteGroup = {
+  id: GroupId;
+  name: string;
+  magic_group_type: "all-internal-users" | null;
+};
+
+export type ListInviteGroupsRequest = {
+  type: "dashboard" | "question";
+  id: number;
+};
+
 export type ListUserMembershipsResponse = Record<UserId, Membership[]>;
 
 export type CreateMembershipRequest = {
