@@ -11,6 +11,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defn index-dimension-targets
+  "Map of `{dimension_id → target}` from a metric's `dimension_mappings`. Prefer this when
+  resolving many dims against the same mappings; [[find-dimension-target]] for a single id."
+  [dimension-mappings]
+  (into {} (map (juxt :dimension_id :target)) dimension-mappings))
+
 (defn find-dimension-target
   "Look up the MBQL `target` for a dimension by ID inside a metric's snapshotted
   `dimension_mappings`. Returns nil when the dim has no mapping on this metric."
@@ -98,6 +104,21 @@
   into a well-formed MBQL 5 ref."
   [target]
   (metrics/normalize-target-ref target))
+
+(defn target-field-id
+  "Integer Field id from a (possibly JSON-decoded) mapping/filter target, or nil when the
+  target is missing, name-based, or not a `:field` ref."
+  [target]
+  (when target
+    (try
+      (let [ref-clause (normalize-target-ref target)]
+        (when (and (vector? ref-clause)
+                   (= :field (first ref-clause))
+                   (>= (count ref-clause) 3))
+          (let [id-or-name (nth ref-clause 2)]
+            (when (pos-int? id-or-name)
+              id-or-name))))
+      (catch Exception _ nil))))
 
 (defn extract-default-temporal-breakout-col
   "If the metric Card's `dataset_query` carries a temporal breakout (its default

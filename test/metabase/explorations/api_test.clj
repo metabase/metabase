@@ -2648,6 +2648,47 @@
                                           {:order-by [[:position :desc] [:id :desc]]})]
             (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
                 "top-level follow-up names all filters as Metric → Column: Value")))))))
+
+(deftest explore-further-disambiguates-same-named-filter-dimensions-test
+  (testing "POST /:id/explore-further qualifies ambiguous explore-filter dimension_names with the dim's group"
+    (with-redefs [card/*syncing-metric-dimensions* true]
+      (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
+            orders-created "00000000-0000-0000-0000-00000000bbbb"
+            users-field    (mt/id :venues :latitude)
+            orders-field   (mt/id :venues :longitude)]
+        (mt/with-temp
+          [:model/User u {:email "explore-further-ambig@example.com"}
+           :model/Card metric (assoc (venues-metric-card (:id u))
+                                     :name "Revenue"
+                                     :dimensions
+                                     [{:id users-created  :name "LATITUDE"  :display_name "Created At"
+                                       :group {:id "g-users"  :type "main"       :display_name "Users"}}
+                                      {:id orders-created :name "LONGITUDE" :display_name "Created At"
+                                       :group {:id "g-orders" :type "connection" :display_name "Orders"}}])]
+          (let [body      {:name       "ambig drill"
+                           :metrics    [{:card_id (:id metric)
+                                         :dimension_mappings
+                                         [{:dimension_id users-created  :table_id (mt/id :venues)
+                                           :target ["field" {} users-field]}
+                                          {:dimension_id orders-created :table_id (mt/id :venues)
+                                           :target ["field" {} orders-field]}]}]
+                           :dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                        {:dimension_id orders-created :display_name "Created At"}]}
+                created   (create-exploration! u body)
+                expl-id   (:id created)
+                page-id   (->> created :threads first :blocks first :pages
+                               (some #(when (= "Users → Created At" (:name %)) (:id %))))
+                _         (is (some? page-id) "find the users-created page by its disambiguated name")
+                filter    {:field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
+                hydrated  (explore-further-and-hydrate! u expl-id page-id [filter])
+                new-thread (->> hydrated :threads (sort-by :position) last)
+                persisted  (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
+            (is (= "Revenue → Users → Created At: 40.7" (:name new-thread))
+                "thread name uses the group-qualified filter dimension label")
+            (is (= "Users → Created At"
+                   (:dimension_name (first (:explore_filters (first (:metrics persisted))))))
+                "persisted explore_filters carry the group-qualified dimension_name")))))))
+
 ;;; |                                 Create-time reference permission checks                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
