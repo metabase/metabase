@@ -37,7 +37,7 @@ If your admin has turned on [two-factor authentication](./two-factor-authenticat
 2. Confirm your password.
 3. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
 4. Enter the six-digit code from the app.
-5. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-rcover-codes), the old codes will no longer work.
+5. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-recovery-codes), the old codes will no longer work.
 
 ### Logging in with two-factor authentication
 

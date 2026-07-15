@@ -33,7 +33,7 @@ Metabase doesn't support SMS codes or hardware keys (passkeys, U2F, or WebAuthn)
 
 ## Before you turn on two-factor authentication
 
-### If you're self-hosting Metbase, set an encryption key
+### If you're self-hosting Metabase, set an encryption key
 
 Set the [`MB_ENCRYPTION_SECRET_KEY`](../databases/encrypting-details-at-rest.md) environment variable so Metabase encrypts authenticator secrets at rest. If you turn on 2FA without it, Metabase shows a warning on the settings page.
 
