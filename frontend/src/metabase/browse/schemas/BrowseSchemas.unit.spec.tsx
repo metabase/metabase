@@ -117,9 +117,6 @@ describe("BrowseSchemas name-based permalinks", () => {
   });
 
   describe("when the database can't be resolved", () => {
-    // Exact (case-sensitive) name matching is covered by findDatabaseByName's
-    // tests; this only needs to prove the component renders not-found when the
-    // database can't be resolved, which the unknown-name case already does.
     it("shows a not-found page for an unknown name", async () => {
       setup({
         databases: [createMockDatabase({ id: 7, name: "Sales" })],

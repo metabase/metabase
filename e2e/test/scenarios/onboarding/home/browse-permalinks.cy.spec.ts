@@ -72,10 +72,7 @@ describe("browse > name-based urls > tables", () => {
     cy.visit("/browse/databases/Sample%20Database/schema/PUBLIC/table/ORDERS");
 
     cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
-    cy.location("pathname").should(
-      "match",
-      new RegExp(`^/table/${ORDERS_ID}(-|$)`),
-    );
+    cy.location("pathname").should("eq", `/table/${ORDERS_ID}-orders`);
   });
 
   it("shows not-found for a user without access to the table", () => {

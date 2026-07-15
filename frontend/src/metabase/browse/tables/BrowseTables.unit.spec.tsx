@@ -62,15 +62,9 @@ describe("BrowseTables name-based schema permalinks", () => {
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
     });
-
-    // Name collisions (lowest-id wins) are owned by findDatabaseByName's own
-    // tests in common/utils/database.unit.spec.ts; not re-tested per component.
   });
 
   describe("when the database can't be resolved", () => {
-    // Exact (case-sensitive) name matching is covered by findDatabaseByName's
-    // tests; this only needs to prove the component renders not-found when the
-    // database can't be resolved, which the unknown-name case already does.
     it("shows a not-found page for an unknown database name", async () => {
       setup({
         databases: [createMockDatabase({ id: 7, name: "Sales" })],
@@ -94,8 +88,6 @@ describe("BrowseTables name-based schema permalinks", () => {
 
   describe("when the schema's tables can't be read", () => {
     it("shows an error when the user can see the database but not the schema's tables", async () => {
-      // A schema with no tables the user may read is a 404 from the tables
-      // endpoint (api/check-404), which surfaces as a generic error.
       fetchMock.get("path:/api/database/7/schema/PUBLIC", 404);
       setup({
         databases: [createMockDatabase({ id: 7, name: "Sales" })],

@@ -43,10 +43,7 @@ describe("BrowseDatabases", () => {
     }
   });
 
-  describe("opening a database from its card", () => {
-    // Clicking a database card must land the user on that database. Rendering the
-    // destination route too lets these assert where the user ends up, rather than
-    // what the link's href happens to be.
+  describe("opening a database through the UI", () => {
     const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
       setupDatabasesEndpoints(databases);
       return renderWithProviders(
@@ -107,8 +104,7 @@ describe("BrowseDatabases", () => {
     );
 
     it("opens a database whose name starts with a digit", async () => {
-      // "7-sales" as a url segment would be read back as database 7, so the card
-      // has to reach database 3 some other way.
+      // "7-sales" as a url segment would be read back as database 7
       const { history } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(3, "7-sales", ["ONE", "TWO"]),
       ]);
