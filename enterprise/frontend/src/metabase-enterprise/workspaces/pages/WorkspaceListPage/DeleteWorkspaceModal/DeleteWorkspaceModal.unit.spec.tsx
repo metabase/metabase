@@ -17,15 +17,11 @@ import {
 
 import { DeleteWorkspaceModal } from "./DeleteWorkspaceModal";
 
-const ORPHAN_MESSAGE = "Connection refused";
-
 function setup({
   withError = false,
-  withOrphans = false,
   databases = [],
 }: {
   withError?: boolean;
-  withOrphans?: boolean;
   databases?: WorkspaceDatabase[];
 } = {}) {
   const workspace = createMockWorkspace({
@@ -37,21 +33,6 @@ function setup({
 
   if (withError) {
     setupDeleteWorkspaceEndpointError(workspace.id);
-  } else if (withOrphans) {
-    setupDeleteWorkspaceEndpoint(workspace.id, {
-      deleted: false,
-      message: ORPHAN_MESSAGE,
-      orphaned_resources: [
-        {
-          workspace_database_id: 1,
-          database_id: 2,
-          driver: "postgres",
-          schema: "mb_iso_1",
-          user: "mb_iso_1",
-          reason: "Connection refused",
-        },
-      ],
-    });
   } else {
     setupDeleteWorkspaceEndpoint(workspace.id);
   }
@@ -124,20 +105,6 @@ describe("DeleteWorkspaceModal", () => {
       ).toBe(true);
     });
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
-  });
-
-  it("should warn and keep the workspace when teardown fails (deleted: false)", async () => {
-    const { onDelete, onClose } = setup({ withOrphans: true });
-
-    await clickDelete();
-
-    expect(
-      await screen.findByText(
-        /Couldn't delete the workspace: Connection refused/i,
-      ),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(onDelete).not.toHaveBeenCalled();
   });
 
   it("should show an error message and not call the callback when the request fails", async () => {

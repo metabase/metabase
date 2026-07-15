@@ -36,28 +36,3 @@ export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
 };
-
-export type OrphanedWorkspaceResource = {
-  workspace_database_id: number;
-  database_id: DatabaseId;
-  // Absent when the teardown failed before the warehouse identifiers were known
-  // (e.g. a lock timeout).
-  driver?: string;
-  schema?: string | null;
-  user?: string | null;
-  reason?: string | null;
-};
-
-export type DeleteWorkspaceRequest = {
-  id: WorkspaceId;
-};
-
-export type DeleteWorkspaceResponse = {
-  id: WorkspaceId;
-  deleted: boolean;
-  // Present only when some databases' warehouse teardown failed: the workspace is
-  // kept (`deleted: false`) so the delete can be retried, and `message` carries
-  // the joined failure reasons.
-  message?: string;
-  orphaned_resources?: OrphanedWorkspaceResource[];
-};

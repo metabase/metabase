@@ -68,6 +68,24 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("Postgres")).toBeInTheDocument();
   });
 
+  it("marks databases that are not provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        id: 1,
+        name: "My workspace",
+        databases: [
+          createMockWorkspaceDatabase({
+            database_id: 10,
+            status: "unprovisioned",
+            database: createMockDatabase({ id: 10, name: "Postgres" }),
+          }),
+        ],
+      }),
+    });
+
+    expect(screen.getByText("Postgres (not provisioned)")).toBeInTheDocument();
+  });
+
   it("offers a config download link in the menu", async () => {
     setup();
     await userEvent.click(

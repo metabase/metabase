@@ -121,30 +121,16 @@
     (t2/update! :model/Workspace :id id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
-(api.macros/defendpoint :delete "/:id"
-  :- [:map {:closed true}
-      [:id ms/PositiveInt]
-      [:deleted :boolean]
-      [:message {:optional true} :string]
-      [:orphaned_resources {:optional true}
-       [:sequential [:map {:closed true}
-                     [:workspace_database_id ms/PositiveInt]
-                     [:database_id ms/PositiveInt]
-                     [:driver {:optional true} :keyword]
-                     [:schema {:optional true} [:maybe :string]]
-                     [:user {:optional true} [:maybe :string]]
-                     [:reason {:optional true} [:maybe :string]]]]]]
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a Workspace. Tears down every database's warehouse isolation first
   (blocking, any state). Each database is either fully torn down (its row is
-  deleted) or kept; when any teardown fails the workspace is kept too and the
-  response is `{:deleted false}` with `:orphaned_resources` listing the
-  databases whose teardown must be retried and a `:message` of the joined
-  failure reasons."
+  deleted) or kept; when any teardown fails the workspace is kept too — with the
+  failed rows, so the delete can be retried — and the combined failure is
+  returned as the error. 204 on success, no response body."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (let [{:keys [orphaned_resources] :as result} (ws/delete-workspace! id)]
-    (cond-> (assoc result :id id)
-      orphaned_resources (assoc :orphaned_resources (mapv #(dissoc % :status) orphaned_resources)))))
+  (ws/delete-workspace! id)
+  nil)
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

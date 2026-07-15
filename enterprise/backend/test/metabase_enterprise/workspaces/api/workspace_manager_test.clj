@@ -48,8 +48,7 @@
               (is (=? [{:id ws-id}]
                       (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/"))))
             (testing "delete"
-              (is (=? {:id ws-id :deleted true}
-                      (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id))))
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
               (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
 (deftest delete-workspace-pending-databases-test
@@ -63,12 +62,11 @@
                                                   {:name "Pending" :database_ids [db-id]})
                 wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
             (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioning})
-            (is (=? {:id ws-id :deleted true}
-                    (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id))))
+            (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
 (deftest delete-workspace-teardown-failure-test
-  (testing "DELETE keeps the workspace and reports :deleted false when a teardown fails"
+  (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
@@ -82,16 +80,12 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
           (with-redefs [provisioning/dispatching-provisioner boom]
-            (is (=? {:id                 ws-id
-                     :deleted            false
-                     :orphaned_resources [{:database_id db-id :reason "Connection refused"}]
-                     :message            "Connection refused"}
-                    (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id)))))
+            (is (=? {:message "Connection refused"}
+                    (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
           (testing "the workspace survives and a retry deletes it"
             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-              (is (=? {:id ws-id :deleted true}
-                      (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id)))))
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
 (deftest create-workspace-with-database-ids-test

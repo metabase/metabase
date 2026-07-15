@@ -672,20 +672,18 @@
                           (ws/clear-instance-workspace!)
                           (t2/update! :model/Database (:id ws-db) {:details admin-details})
                           ;; Cleanup tries [[ws/delete-workspace!]] first. A failed warehouse
-                          ;; teardown no longer throws — it returns `{:deleted false}` and keeps
-                          ;; the workspace + rows for retry. For test cleanup we don't retry:
-                          ;; fall back to force-clearing the rows so `mt/with-temp Database`
-                          ;; cleanup can complete. Real fix for the Redshift destroy fragility
-                          ;; is tracked separately.
-                          (let [delete-result (try (ws/delete-workspace! ws-id)
-                                                   (catch Throwable t
-                                                     (log/warn t "delete-workspace! threw; force-clearing WSD")
-                                                     {:deleted false}))]
-                            (when-not (:deleted delete-result)
-                              (log/warnf "delete-workspace! left workspace %d behind (%s); force-clearing WSD"
-                                         ws-id (pr-str (:message delete-result)))
-                              (doseq [wsd (t2/select :model/WorkspaceDatabase :workspace_id ws-id)]
-                                (t2/delete! :model/WorkspaceDatabase :id (:id wsd)))
+                          ;; teardown throws and keeps the workspace + rows for retry. For test
+                          ;; cleanup we don't retry: fall back to force-clearing the rows so
+                          ;; `mt/with-temp Database` cleanup can complete. Real fix for the
+                          ;; Redshift destroy fragility is tracked separately.
+                          (let [deleted? (try (ws/delete-workspace! ws-id)
+                                              true
+                                              (catch Throwable t
+                                                (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
+                                                           ws-id)
+                                                false))]
+                            (when-not deleted?
+                              (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
                               (t2/delete! :model/Workspace :id ws-id)))))))
                   (finally
                     (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)

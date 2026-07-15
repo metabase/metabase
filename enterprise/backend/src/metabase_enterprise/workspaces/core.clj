@@ -43,6 +43,8 @@
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn engine-namespace-positions
   "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
    `:schema` AST slots for a Table row in `database`. `table` is optional; pass
@@ -200,20 +202,42 @@
 
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
-(defn- teardown-workspace-databases!
-  "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking,
-  continuing past failures so each row gets its attempt. Rows whose teardown
-  succeeds are deleted immediately (progress is persisted per row, so an instance
-  crash midway loses nothing); rows whose teardown fails are kept. Returns the
-  vector of failure maps (see [[provisioning/teardown-workspace-database!]])."
-  [workspace-id]
-  (->> (t2/select :model/WorkspaceDatabase :workspace_id workspace-id)
-       (mapv #(provisioning/teardown-workspace-database! % provisioning/dispatching-provisioner))
-       (filterv #(= :failure (:status %)))))
+(defn- combined-exception
+  "One exception carrying every failure in `throwables`: the first is the cause,
+  the rest are attached as suppressed (the JDK mechanism for multiple failures
+  on one throwable). The message is the messages the databases returned, joined
+  into one line."
+  ^Throwable [throwables]
+  (let [^Throwable ex (ex-info (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
+                               {}
+                               (first throwables))]
+    (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
+    ex))
 
-(defn- teardown-failures-message
-  [failures]
-  (str/join "; " (map :reason failures)))
+(defn- provision-workspace-databases!
+  "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
+  (blocking), failing fast on the first error."
+  [ws]
+  (doseq [{wsd-id :id} (:databases ws)]
+    (provisioning/provision-single! wsd-id)))
+
+(defn- teardown-workspace-databases!
+  "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
+  Mirrors [[provision-workspace-databases!]], but continues past failures so each
+  row gets its attempt: rows whose teardown succeeds are deleted immediately
+  (progress is persisted per row, so an instance crash midway loses nothing);
+  rows whose teardown fails are kept. Throws the combined failures when any
+  teardown failed."
+  [workspace-id]
+  (let [failures (into []
+                       (keep (fn [wsd]
+                               (try
+                                 (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
+                                 nil
+                                 (catch Throwable t t))))
+                       (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))]
+    (when (seq failures)
+      (throw (combined-exception failures)))))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -227,10 +251,11 @@
    of warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
-   every database is torn down, rows whose teardown succeeds are deleted, rows
-   whose teardown fails are kept (`:unprovisioned`), and the Workspace row is
-   deleted only when no database row remains — otherwise it is kept so the leak
-   stays visible and the delete can be retried."
+   every database is torn down; when the cleanup removes everything, the Workspace
+   row is deleted and the provisioning error is rethrown; when the cleanup itself
+   fails, the workspace is kept — and returned like a successful create — with the
+   failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
+   be retried via delete. Callers detect that case from the databases' statuses."
   [{:keys [name creator_id database_ids]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
@@ -242,17 +267,15 @@
                                                 :creator_id creator_id
                                                 :databases  databases})]
     (try
-      (doseq [{wsd-id :id} (:databases ws)]
-        (provisioning/provision-single! wsd-id))
+      (provision-workspace-databases! ws)
       (catch Throwable t
-        (let [failures (teardown-workspace-databases! (:id ws))]
-          (if (seq failures)
-            (throw (ex-info (teardown-failures-message failures)
-                            {:workspace_id       (:id ws)
-                             :orphaned_resources failures}
-                            t))
-            (do (workspace/delete-workspace! (:id ws))
-                (throw t))))))
+        (let [cleaned-up? (try
+                            (teardown-workspace-databases! (:id ws))
+                            true
+                            (catch Throwable _ false))]
+          (when cleaned-up?
+            (workspace/delete-workspace! (:id ws))
+            (throw t)))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
@@ -260,18 +283,13 @@
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
   either fully torn down (warehouse footprint confirmed gone, row deleted) or
   kept. Every database gets its teardown attempt even when earlier ones fail; if
-  any of them fail, the workspace is kept alongside the failed rows so the delete
-  can be retried. Progress is persisted per row, so an instance crash midway
-  loses nothing.
-
-  Returns `{:deleted true}` on clean teardown, or `{:deleted false
-  :orphaned_resources [...] :message ..}` when some databases could not be torn
-  down. App-DB `TableRemapping` rows are always cleared, so query routing is
-  never left dangling."
+  any of them fail, the workspace is kept alongside the failed rows and one
+  exception combining all the failures is thrown, so the delete can be retried.
+  Progress is persisted per row, so an instance crash midway loses nothing.
+  App-DB `TableRemapping` rows are always cleared, so query routing is never
+  left dangling. Returns nil."
   [id]
   (assert-workspace-exists id)
-  (let [failures (teardown-workspace-databases! id)]
-    (if (seq failures)
-      {:deleted false :orphaned_resources failures :message (teardown-failures-message failures)}
-      (do (workspace/delete-workspace! id)
-          {:deleted true}))))
+  (teardown-workspace-databases! id)
+  (workspace/delete-workspace! id)
+  nil)

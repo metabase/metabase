@@ -77,17 +77,19 @@ type WorkspaceDatabaseItemProps = {
 function WorkspaceDatabaseItem({
   workspaceDatabase,
 }: WorkspaceDatabaseItemProps) {
-  const { database } = workspaceDatabase;
+  const { database, status } = workspaceDatabase;
 
   if (database == null) {
     return null;
   }
 
+  const isProvisioned = status === "provisioned";
+
   return (
-    <Box c="text-secondary" lh="1rem">
+    <Box c={isProvisioned ? "text-secondary" : "error"} lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
-        {database.name}
+        {isProvisioned ? database.name : t`${database.name} (not provisioned)`}
       </Group>
     </Box>
   );

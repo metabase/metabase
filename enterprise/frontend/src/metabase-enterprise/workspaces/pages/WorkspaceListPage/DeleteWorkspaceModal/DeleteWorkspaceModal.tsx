@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormErrorMessage,
@@ -72,7 +71,6 @@ function DeleteWorkspaceForm({
   onClose,
 }: DeleteWorkspaceFormProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
-  const [sendToast] = useToast();
   // The list page omits databases, so fetch the hydrated workspace to learn which
   // databases are still provisioning/deprovisioning. Skipped while the modal is closed.
   const { data: hydratedWorkspace, isLoading } = useGetWorkspaceQuery(
@@ -85,23 +83,11 @@ function DeleteWorkspaceForm({
   );
   const hasPendingDatabases = pendingDatabases.length > 0;
 
+  // On teardown failure the backend keeps the workspace and responds with an
+  // error, which the form surfaces; the delete can simply be retried.
   const handleSubmit = async () => {
-    const result = await deleteWorkspace({ id: workspace.id }).unwrap();
-    if (result.deleted) {
-      onDelete();
-      return;
-    }
-    // Teardown failed for some databases: the workspace is kept so the delete
-    // can be retried once the warehouse is reachable again.
-    sendToast({
-      message: result.message
-        ? t`Couldn't delete the workspace: ${result.message}`
-        : t`Couldn't delete the workspace. Please try again.`,
-      icon: "warning",
-      toastColor: "feedback-negative",
-      timeout: null,
-    });
-    onClose();
+    await deleteWorkspace(workspace.id).unwrap();
+    onDelete();
   };
 
   return (
