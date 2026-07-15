@@ -2,7 +2,6 @@ import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
 
-
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
