@@ -17,7 +17,7 @@ JAVA_OPTS="${JAVA_OPTS} --enable-native-access=ALL-UNNAMED"
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseZGC"
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseCompactObjectHeaders"
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseDynamicNumberOfGCThreads"
-JAVA_OPTS="${JAVA_OPTS} -XX:ZUncommit"
+JAVA_OPTS="${JAVA_OPTS} -XX:+ZUncommit"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
