@@ -143,14 +143,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     dispatch(cancelInflightAgentRequests(agentId));
   }, [dispatch, agentId]);
 
-  const resetConversation = useCallback(() => {
+  const createNewConversation = useCallback(() => {
     dispatch(resetConversationAction({ agentId }));
   }, [agentId, dispatch]);
 
   const loadConversation = useCallback(
-    (conversationId: string) => {
-      dispatch(loadConversationAction({ agentId, conversationId }));
-    },
+    (conversationId: string) =>
+      dispatch(loadConversationAction({ agentId, conversationId })),
     [agentId, dispatch],
   );
 
@@ -161,7 +160,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     visible,
     setVisible,
     setProfileOverride,
-    resetConversation,
+    createNewConversation,
     loadConversation,
     submitInput,
     retryMessage,

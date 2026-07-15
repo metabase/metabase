@@ -1,9 +1,17 @@
+import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
-import { screen } from "__support__/ui";
-import { getMetabotVisible } from "metabase/metabot/state";
+import { screen, waitFor } from "__support__/ui";
+import {
+  getMetabotConversationId,
+  getMetabotVisible,
+} from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockLocation } from "metabase/redux/store/mocks";
+import {
+  createMockMetabotConversation,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import {
   enterChatMessage,
@@ -13,6 +21,14 @@ import {
 } from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
+
+const askPageRouting = {
+  routing: {
+    locationBeforeTransitions: createMockLocation({
+      pathname: "/question/ask",
+    }),
+  },
+};
 
 const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -133,5 +149,65 @@ describe("MetabotAsk", () => {
     expect(
       screen.queryByTestId("metabot-conversation-history"),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not show the conversation history control for a non-internal/nlq profile", async () => {
+    const state = getMetabotInitialState();
+    const ask = state.conversations.ask;
+    if (!ask) {
+      throw new Error("Expected ask conversation");
+    }
+    ask.profileOverride = "sql";
+
+    setupMetabotAsk({ metabotInitialState: state });
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-conversation-history"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("navigates to the conversation route after the first message", async () => {
+    const { store, history } = setupMetabotAsk({
+      withRouter: true,
+      initialRoute: "/question/ask",
+      storeInitialState: askPageRouting,
+    });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    const askId = getMetabotConversationId(store.getState(), "ask");
+
+    await enterChatMessage("Who is your favorite?");
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe(
+        `/metabot/conversation/${askId}`,
+      );
+    });
+  });
+
+  it("navigates to the selected conversation from history", async () => {
+    const { history } = setupMetabotAsk({
+      withRouter: true,
+      initialRoute: "/question/ask",
+      storeInitialState: askPageRouting,
+      conversations: [
+        createMockMetabotConversation({
+          conversation_id: "past-conversation-id",
+          title: "Earlier question",
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      await screen.findByTestId("metabot-conversation-history"),
+    );
+    await userEvent.click(await screen.findByText("Earlier question"));
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/metabot/conversation/past-conversation-id",
+      );
+    });
   });
 });

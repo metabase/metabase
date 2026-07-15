@@ -27,6 +27,7 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   MetabotConversation,
   MetabotInfo,
@@ -211,6 +212,8 @@ export function setup(
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
     conversations?: MetabotConversation[];
+    withRouter?: boolean;
+    initialRoute?: string;
   } | void,
 ) {
   const settings = mockSettings({
@@ -234,6 +237,8 @@ export function setup(
     storeInitialState = {},
     customReducers,
     conversations = [],
+    withRouter = false,
+    initialRoute,
   } = options || {};
 
   fetchMock.get(
@@ -247,27 +252,37 @@ export function setup(
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint(conversations);
 
-  const { store, rerender } = renderWithProviders(
-    <MetabotProvider>{ui}</MetabotProvider>,
-    {
-      storeInitialState: createMockState({
-        ...storeInitialState,
-        settings: {
-          ...settings,
-          ...(storeInitialState.settings ?? {}),
-        },
-        currentUser: currentUser ? currentUser : undefined,
-        metabot: metabotInitialState,
-      }),
-      customReducers: {
-        ...customReducers,
-        metabot: metabotReducer,
+  const content =
+    withRouter && initialRoute ? (
+      <Route
+        path={initialRoute}
+        component={() => <MetabotProvider>{ui}</MetabotProvider>}
+      />
+    ) : (
+      <MetabotProvider>{ui}</MetabotProvider>
+    );
+
+  const { store, rerender, history } = renderWithProviders(content, {
+    storeInitialState: createMockState({
+      ...storeInitialState,
+      settings: {
+        ...settings,
+        ...(storeInitialState.settings ?? {}),
       },
+      currentUser: currentUser ? currentUser : undefined,
+      metabot: metabotInitialState,
+    }),
+    customReducers: {
+      ...customReducers,
+      metabot: metabotReducer,
     },
-  );
+    withRouter,
+    ...(initialRoute ? { initialRoute } : {}),
+  });
 
   return {
     rerender,
+    history,
     conversationIds: Object.keys(metabotInitialState.conversations),
     // Unjustified type cast. FIXME
     store: store as Omit<typeof store, "getState"> & {

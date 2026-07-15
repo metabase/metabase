@@ -807,10 +807,10 @@ export const loadConversation = createAsyncThunk(
     // as we do not want to record it as an aborted response.
 
     const { data: detail, error } = await dispatch(
-      metabotApi.endpoints.getMetabotConversationDetail.initiate(
-        conversationId,
-        { forceRefetch: true, subscribe: false },
-      ),
+      metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
+        forceRefetch: true,
+        subscribe: false,
+      }),
     );
 
     if (error || !detail) {

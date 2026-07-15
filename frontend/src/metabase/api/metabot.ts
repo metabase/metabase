@@ -55,10 +55,7 @@ export const metabotApi = Api.injectEndpoints({
         url: `/api/metabot/conversations/${conversationId}/title`,
       }),
     }),
-    getMetabotConversationDetail: builder.query<
-      MetabotConversationDetail,
-      string
-    >({
+    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
       query: (conversationId) => ({
         method: "GET",
         url: `/api/metabot/conversations/${conversationId}`,
@@ -195,8 +192,8 @@ export const metabotApi = Api.injectEndpoints({
 export const {
   useGetMetabotSettingsQuery,
   useGetMetabotConversationTitleQuery,
-  useGetMetabotConversationDetailQuery,
-  useLazyGetMetabotConversationDetailQuery,
+  useGetMetabotConversationQuery,
+  useLazyGetMetabotConversationQuery,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,

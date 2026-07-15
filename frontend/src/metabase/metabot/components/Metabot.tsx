@@ -26,6 +26,7 @@ import {
 } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
 import { MetabotChat } from "./MetabotChat";
@@ -65,7 +66,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   const dispatch = useDispatch();
 
   const handleNewConversation = () => {
-    metabot.resetConversation();
+    metabot.createNewConversation();
     dispatch(
       metabotApi.util.invalidateTags([
         idTag("metabot-prompt-suggestions", metabot.metabotId),
@@ -91,7 +92,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
           </ActionIcon>
         </Tooltip>
       )}
-      {isConfigured && (
+      {isConfigured && isHistoryEnabledProfile(metabot.profile) && (
         <MetabotConversationHistory
           profileId={metabot.profile}
           activeConversationId={metabot.conversationId}

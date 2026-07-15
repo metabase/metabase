@@ -198,7 +198,7 @@ export const MetabotChat = ({
               {/* long convo warning */}
               {metabot.isLongConversation && (
                 <MetabotResetLongChatButton
-                  onResetConversation={metabot.resetConversation}
+                  onResetConversation={metabot.createNewConversation}
                 />
               )}
             </Box>

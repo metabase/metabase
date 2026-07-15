@@ -82,6 +82,10 @@ export const METABOT_PROFILE_OVERRIDES = {
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
+export const isHistoryEnabledProfile = (
+  profile: MetabotProfileId | undefined,
+) => profile === undefined || profile === "nlq";
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
