@@ -269,7 +269,7 @@
       (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
       (is (= {} result)))))
 
-(deftest ^:sequential transform-deps-from-graph-test
+(deftest ^:sequential transform-table-deps-test
   (mt/with-premium-features #{:dependencies}
     (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
       (let [mp (mt/metadata-provider)]
@@ -288,7 +288,7 @@
                                                                   :body            "def transform(orders):\n    return orders"}}]
           (deps.tu/synchronously-run-backfill!)
           (let [ids    [plain-tf card-tf python-tf]
-                result (dependencies/transform-deps-from-graph ids)]
+                result (dependencies/transform-table-deps ids)]
             (testing "fresh, table-only transforms come back in table-dependencies format"
               (is (= #{{:table (mt/id :orders)}} (get result plain-tf))))
             (testing "python transforms with resolved source tables come from the graph too"
@@ -297,6 +297,6 @@
               (is (not (contains? result card-tf))))
             (testing "transforms whose analysis is stale are left to the live computation"
               (deps.status/mark-stale! :transform [plain-tf])
-              (is (not (contains? (dependencies/transform-deps-from-graph ids) plain-tf))))
+              (is (not (contains? (dependencies/transform-table-deps ids) plain-tf))))
             (testing "never-analyzed transform ids are not returned"
-              (is (empty? (dependencies/transform-deps-from-graph [Integer/MAX_VALUE]))))))))))
+              (is (empty? (dependencies/transform-table-deps [Integer/MAX_VALUE]))))))))))

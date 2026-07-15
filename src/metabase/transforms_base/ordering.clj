@@ -63,17 +63,15 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
-(defenterprise transform-deps-from-graph
+(defenterprise transform-table-deps
   "Bulk lookup of transform table dependencies from the EE dependency graph.
 
   Takes transform ids and returns a map of `{transform-id deps}` in
   [[transforms-base.i/table-dependencies]] format, covering only the transforms whose graph data
   is fresh and complete enough to stand in for a live computation. Ids absent from the returned
-  map must be computed live.
-
-  OSS fallback: `nil` — the dependency graph is EE-only."
+  map must be computed live."
   metabase-enterprise.dependencies.core
-  [_transform-ids]
+  [_]
   nil)
 
 (defn live-table-dependencies
@@ -161,7 +159,7 @@
         output-tables (output-table-map all-transforms)
         target-refs   (target-ref-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)
-        graph-deps    (transform-deps-from-graph all-ids)]
+        graph-deps    (transform-table-deps all-ids)]
     (loop [visited   {}
            not-found #{}
            failed    #{}
@@ -241,7 +239,7 @@
         ;; The transform under test is being edited, so any graph data for it reflects the old
         ;; source — always recompute it live against the proposed source. Every other transform
         ;; can use its graph deps when available.
-        graph-deps       (transform-deps-from-graph (->> transforms (keep :id) (remove #{transform-id})))
+        graph-deps       (transform-table-deps (->> transforms (keep :id) (remove #{transform-id})))
         db-transforms    (filter #(= (:source_database_id %) db-id) transforms)
         output-tables    (output-table-map db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)

@@ -146,7 +146,7 @@
 
 ;;; --------------------------------------- Transform execution ordering ---------------------------------------
 
-(defenterprise transform-deps-from-graph
+(defenterprise transform-table-deps
   "Bulk lookup of transform table dependencies from the dependency graph.
 
   Only transforms whose dependency analysis is fresh (see [[deps.status/fresh-entity-ids]]) are
