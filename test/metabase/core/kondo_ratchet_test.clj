@@ -72,7 +72,10 @@
     [:all]              "  ^:clj-kondo/ignore (foo)"
     ;; lookalikes that must NOT count
     []                  "#_:clj-kondo/ignore-my-advice"
-    []                  "(defn foo [x] (inc x))"))
+    []                  "(defn foo [x] (inc x))"
+    ;; ignore forms inside strings and comments don't count either
+    []                  "(def s \"#_{:clj-kondo/ignore [:in-a-string]}\")"
+    []                  ";; #_{:clj-kondo/ignore [:commented-out]}"))
 
 (deftest ^:parallel scan-test
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
@@ -162,10 +165,11 @@
                           i          (range n)]
                       {:file "f.clj", :line (inc i), :linters [linter]})]
     (is (= ["seeded :new at 9"
+            "WARNING: :void has no inline ignores -- nothing to seed"
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"]
            (kondo-ratchet/change-report {:ignore-counts {:lower 5, :over 5, :gone 5, :same 4}}
                                         occurrences
-                                        [:new]))
+                                        [:new :void]))
         "an untouched budget (:same) earns no line")))

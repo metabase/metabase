@@ -5,6 +5,7 @@
   `metabase.core.kondo-ratchet-test` fails when they drift from the tree;
   `./bin/mage fix-kondo-ratchets` lowers budgets, never raises them.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
+  {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -78,10 +79,12 @@
 
 (defn line-linters
   "Linter keywords suppressed by inline ignore forms on `line`.
-  The bare vector-less form counts as `:all`."
+  The bare vector-less form counts as `:all`.
+  Like [[scan]], ignore forms inside string literals or line comments don't count."
   [line]
-  (concat (mapcat (comp linter-keywords second) (re-seq vector-form-re line))
-          (repeat (count (re-seq bare-form-re line)) :all)))
+  (let [masked (mask-strings-and-comments line)]
+    (concat (mapcat (comp linter-keywords second) (re-seq vector-form-re masked))
+            (repeat (count (re-seq bare-form-re masked)) :all))))
 
 (defn- offset->line
   "1-based line number of character offset `i` in `content`."
@@ -211,8 +214,11 @@
   [{:keys [ignore-counts]} occurrences seeded]
   (let [actual (actual-counts occurrences)]
     (concat
-     (for [linter seeded]
-       (format "seeded %s at %d" linter (get actual linter 0)))
+     (for [linter seeded
+           :let   [n (get actual linter 0)]]
+       (if (pos? n)
+         (format "seeded %s at %d" linter n)
+         (format "WARNING: %s has no inline ignores -- nothing to seed" linter)))
      (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
            :let            [n (get actual linter 0)]
            :when           (not= n budget)]
@@ -239,11 +245,8 @@
          text        (render {:ignore-counts (lowered-counts ignore-counts actual seeded)})
          file        (io/file ratchets-file)
          old         (when (.exists file) (slurp file))]
-     #_{:clj-kondo/ignore [:discouraged-var]}
      (run! println (change-report ratchets occurrences seeded))
      (if (= old text)
-       #_{:clj-kondo/ignore [:discouraged-var]}
        (println "unchanged")
        (do (spit file text)
-           #_{:clj-kondo/ignore [:discouraged-var]}
            (println (str "wrote " ratchets-file)))))))
