@@ -25,6 +25,21 @@
            (kondo-ratchet/over-budget (:ignore-counts (kondo-ratchet/read-ratchets))
                                       (kondo-ratchet/scan))))))
 
+(deftest ^:parallel budgets-are-tight-locally-test
+  ;; CI allows slack: the kondo-ratchets-update workflow lowers budgets on master after each merge, so PRs
+  ;; that remove ignores don't have to touch the file. Locally the fix is instant, so keep the file tight.
+  (when-not (System/getenv "CI")
+    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " exceed the actual ignore counts.\n"
+                  "Run `./bin/mage fix-kondo-ratchets` to tighten them (takes a couple of seconds).")
+      (let [recorded  (:ignore-counts (kondo-ratchet/read-ratchets))
+            tightened (kondo-ratchet/lowered-counts recorded (kondo-ratchet/actual-counts (kondo-ratchet/scan)))]
+        (is (= {}
+               (into {}
+                     (keep (fn [[linter budget]]
+                             (when (not= budget (get tightened linter 0))
+                               [linter {:recorded budget, :should-be (get tightened linter 0)}])))
+                     recorded)))))))
+
 (deftest ^:parallel ratchets-file-normalized-test
   (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
                 " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the formatting.")
