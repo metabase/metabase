@@ -63,14 +63,12 @@
             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
                                                                   :definition "foobar"})))
     (testing "definition must specify a source table"
-      (testing "an empty definition has no source table, so the permission check fails"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :crowberto :post 403 "measure" {:name       "abc"
-                                                                     :definition {}}))))
-      (testing "an MBQL4 fragment without :source-table cannot be converted to a query"
-        (is (= "Measure definition must specify a source table."
-               (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                     :definition {:aggregation [[:count]]}})))))))
+      (is (= "Measure definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                   :definition {}})))
+      (is (= "Measure definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                   :definition {:aggregation [[:count]]}}))))))
 
 (deftest create-measure-test
   (testing "POST /api/measure"
@@ -121,8 +119,8 @@
     (testing "an updated definition must still specify a source table"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :crowberto :put 403 (str "measure/" id)
+        (is (= "Measure definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "measure/" id)
                                      {:revision_message "no more source table"
                                       :definition       {}})))))
     (testing "a definition that moves the Measure to another table keeps table_id in sync"

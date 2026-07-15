@@ -7,12 +7,10 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
@@ -20,32 +18,19 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-(defn- normalize-input-definition
-  "Normalize a segment definition from the API to an MBQL5 query.
-
-  Accepts MBQL4 definitions for Cypress e2e test support:
-  - MBQL5 full queries (passed through)
-  - MBQL4 full queries (converted to MBQL5)
-  - MBQL4 fragments (wrapped in full query, then converted to MBQL5); the fragment must
-    include `:source-table` so the table can be derived"
+(defn- definition-table-id
+  "Derive the source table ID from a segment definition, or throw a 400 if it has none. Handles MBQL5 and legacy full
+  queries as well as MBQL4 fragments (which carry `:source-table` directly)."
   [definition]
-  (if (seq definition)
-    (let [normalized (-> (case (lib/normalized-mbql-version definition)
-                           (:mbql-version/mbql5 :mbql-version/legacy)
-                           definition
-                           ;; default: MBQL4 fragment - wrap it in a full query
-                           (let [table-id    (:source-table definition)
-                                 _           (api/check-400 (pos-int? table-id)
-                                                            (tru "Segment definition must specify a source table."))
-                                 database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-                             {:database database-id
-                              :type     :query
-                              :query    definition}))
-                         lib-be/normalize-query)]
-      (api/check-400 (mr/validate ::segments.schema/segment normalized)
-                     (tru "Invalid segment definition."))
-      normalized)
-    {}))
+  (api/check-400 (when (seq definition)
+                   (case (lib/normalized-mbql-version definition)
+                     (:mbql-version/mbql5 :mbql-version/legacy)
+                     (lib/primary-source-table-id (lib-be/normalize-query definition))
+                     ;; default: MBQL4 fragment
+                     (let [table-id (:source-table definition)]
+                       (when (pos-int? table-id)
+                         table-id))))
+                 (tru "Segment definition must specify a source table.")))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
@@ -57,10 +42,11 @@
                                                        [:definition  ms/Map]
                                                        [:description {:optional true} [:maybe :string]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
-  (let [definition (normalize-input-definition definition)]
-    (api/create-check :model/Segment (assoc body :definition definition))
+  (let [table-id (definition-table-id definition)]
+    (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
                    (first (t2/insert-returning-instances! :model/Segment
+                                                          :table_id    table-id
                                                           :creator_id  api/*current-user-id*
                                                           :name        name
                                                           :description description
@@ -99,17 +85,20 @@
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
   event and returns updated/hydrated Segment."
   [id {:keys [revision_message], :as body}]
-  (api/write-check :model/Segment id)
-  (let [clean-body (u/select-keys-when body
+  (let [existing   (api/write-check :model/Segment id)
+        clean-body (u/select-keys-when body
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
-        new-body   (cond-> (dissoc clean-body :revision_message)
-                     (contains? clean-body :definition) (update :definition normalize-input-definition))
-        changes    (not-empty new-body)]
-    ;; The write-check above covers the existing definition; if the definition is changing, make sure the user could
-    ;; also create a Segment with the new one (it might implicitly move the Segment to another table).
+        new-body   (dissoc clean-body :revision_message)
+        changes    (when-not (= new-body existing)
+                     new-body)]
+    ;; An updated definition must still specify a source table; if it implicitly moves the Segment to a different
+    ;; table, the write-check above checked the old table, so also make sure the user could create a Segment on the
+    ;; new one.
     (when-let [definition (:definition new-body)]
-      (api/create-check :model/Segment {:definition definition}))
+      (let [new-table-id (definition-table-id definition)]
+        (when (not= new-table-id (:table_id existing))
+          (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Segment id changes))
     (u/prog1 (hydrated-segment id)

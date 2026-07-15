@@ -2,9 +2,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.models.segment-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -15,13 +12,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- mbql5-venues-definition
-  "An MBQL5 segment definition filtering the venues table."
-  []
-  (let [mp    (lib-be/application-database-metadata-provider (mt/id))
-        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-    (lib/filter query (lib/> (lib.metadata/field mp (mt/id :venues :price)) 2))))
 
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Segment definitions should get normalized to MBQL 5"
@@ -246,7 +236,8 @@
   (testing "Superusers can create segments"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
-                                                 :definition (mbql5-venues-definition)}))))))
+                                                 :table_id (mt/id :venues)
+                                                 :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))
 
 (deftest can-create?-analyst-unrestricted-test
   (testing "Data analysts with unrestricted view-data can create segments"
@@ -257,7 +248,8 @@
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
-                                                     :definition (mbql5-venues-definition)}))))))))
+                                                     :table_id (mt/id :venues)
+                                                     :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
 
 (deftest can-create?-analyst-restricted-test
   (testing "Data analysts without unrestricted view-data cannot create segments"
@@ -265,10 +257,12 @@
       (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}]
         (session/with-current-user analyst-id
           (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
-                                                      :definition (mbql5-venues-definition)}))))))))
+                                                      :table_id (mt/id :venues)
+                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
 
 (deftest can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create segments"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
-                                                  :definition (mbql5-venues-definition)}))))))
+                                                  :table_id (mt/id :venues)
+                                                  :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))

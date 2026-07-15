@@ -256,6 +256,7 @@ describe("scenarios > filters > bulk filtering", () => {
         description: "All orders with a total under $100.",
         definition: {
           "source-table": ORDERS_ID,
+          aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
@@ -265,6 +266,7 @@ describe("scenarios > filters > bulk filtering", () => {
         description: "All orders with a discount",
         definition: {
           "source-table": ORDERS_ID,
+          aggregation: [["count"]],
           filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
         },
       });

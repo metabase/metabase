@@ -56,6 +56,13 @@
         lib-be/normalize-query)
     {}))
 
+(defn- definition-table-id
+  "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
+  [normalized-definition]
+  (api/check-400 (when (seq normalized-definition)
+                   (lib/primary-source-table-id normalized-definition))
+                 (tru "Measure definition must specify a source table.")))
+
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
@@ -64,8 +71,9 @@
                                                        [:name        ms/NonBlankString]
                                                        [:definition  ms/Map]
                                                        [:description {:optional true} [:maybe :string]]]]
-  (let [normalized-definition (normalize-input-definition definition)]
-    (api/create-check :model/Measure (assoc body :definition normalized-definition))
+  (let [normalized-definition (normalize-input-definition definition)
+        table-id (definition-table-id normalized-definition)]
+    (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
                    (first (t2/insert-returning-instances! :model/Measure
                                                           :creator_id  api/*current-user-id*
@@ -99,17 +107,24 @@
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
   event and returns updated/hydrated Measure."
   [id {:keys [revision_message], :as body}]
-  (api/write-check :model/Measure id)
-  (let [clean-body (u/select-keys-when body
+  (let [existing   (api/write-check :model/Measure id)
+        clean-body (u/select-keys-when body
                                        :present #{:description}
                                        :non-nil #{:archived :definition :name})
-        new-body   (cond-> (dissoc clean-body :revision_message)
-                     (contains? clean-body :definition) (update :definition normalize-input-definition))
-        changes    (not-empty new-body)]
-    ;; The write-check above covers the existing definition; if the definition is changing, make sure the user could
-    ;; also create a Measure with the new one (it might implicitly move the Measure to another table).
-    (when-let [definition (:definition new-body)]
-      (api/create-check :model/Measure {:definition definition}))
+        new-def    (when-let [def (:definition clean-body)]
+                     (normalize-input-definition def))
+        new-body   (merge
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
+        changes    (when-not (= new-body existing)
+                     new-body)]
+    ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
+    ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
+    ;; new one.
+    (when new-def
+      (let [new-table-id (definition-table-id new-def)]
+        (when (not= new-table-id (:table_id existing))
+          (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Measure id changes))
     (u/prog1 (hydrated-measure id)

@@ -73,50 +73,50 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- definition-source-table
-  "The source Table of a Segment `definition`, derived with [[lib/primary-source-table-id]]. Returns nil when the
-  definition has no source table."
-  [definition]
-  (some->> (when (seq definition)
-             (lib/primary-source-table-id definition))
-           (t2/select-one :model/Table :id)))
-
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (if-let [table (definition-source-table (:definition instance))]
-     (mi/can-read? table)
-     false))
+   (let [table (:table (t2/hydrate instance :table))]
+     (mi/can-read? table)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(defn- can-manage-segment-with-definition?
-  "Segments can be created/edited by
-  a) superusers
-  b) OR data analysts with unrestricted view-data permissions
-  But ONLY if the source table derived from the definition exists and is editable (not in a remote-synced collection
-  in read-only mode)."
-  [definition]
-  (boolean
-   (and (or (mi/superuser?) api/*is-data-analyst?*)
-        (when-let [table (definition-source-table definition)]
-          (and (or (mi/superuser?)
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
+(defmethod mi/can-write? :model/Segment
+  ([instance]
+   (let [table (or (:table instance)
+                   (t2/select-one :model/Table :id (:table_id instance)))]
+     (and (or (mi/superuser?)
+              (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
                     :perms/view-data
                     :unrestricted
                     (:db_id table)
-                    (u/the-id table)))
-               (remote-sync/table-editable? table))))))
-
-(defmethod mi/can-write? :model/Segment
-  ([instance]
-   (can-manage-segment-with-definition? (:definition instance)))
+                    (u/the-id table))))
+          (remote-sync/table-editable? table))))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
+;; Segments can be created by
+;; a) superusers
+;; b) OR data analysts with unrestricted view-data permissions
+;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Segment
   [_model instance]
-  (can-manage-segment-with-definition? (:definition instance)))
+  (let [table (or (:table instance)
+                  (t2/select-one :model/Table :id (:table_id instance)))]
+    (and (or (mi/superuser?)
+             (and api/*is-data-analyst?*
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
+         (remote-sync/table-editable? table))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Batched hydration for :can_write on segments. First hydrates :table for all segments,

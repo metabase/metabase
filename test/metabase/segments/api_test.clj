@@ -74,14 +74,12 @@
             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
                                                                   :definition "foobar"})))
     (testing "definition must specify a source table"
-      (testing "an empty definition has no source table, so the permission check fails"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :crowberto :post 403 "segment" {:name       "abc"
-                                                                     :definition {}}))))
-      (testing "an MBQL4 fragment without :source-table cannot be converted to a query"
-        (is (= "Segment definition must specify a source table."
-               (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
-                                                                     :definition {:filter [:> [:field (mt/id :users :id) nil] 0]}})))))))
+      (is (= "Segment definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                   :definition {}})))
+      (is (= "Segment definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                   :definition {:filter [:> [:field (mt/id :users :id) nil] 0]}}))))))
 
 (deftest create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
@@ -118,15 +116,6 @@
                                       {:name       "A Segment"
                                        :definition (definition-fn (mt/id :users :id) 20)})))))))
 
-(deftest create-segment-rejects-aggregation-test
-  (testing "POST /api/segment rejects definitions with an :aggregation (segments cannot have one)"
-    (is (= "Invalid segment definition."
-           (mt/user-http-request :crowberto :post 400 "segment"
-                                 {:name       "Fragment with aggregation"
-                                  :definition {:source-table (mt/id :users)
-                                               :aggregation  [[:count]]
-                                               :filter       [:> [:field (mt/id :users :id) nil] 0]}})))))
-
 ;; ## PUT /api/segment
 
 (deftest update-permissions-test
@@ -158,8 +147,8 @@
     (testing "an updated definition must still specify a source table"
       (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :users)
                                                   :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :crowberto :put 403 (str "segment/" id)
+        (is (= "Segment definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "segment/" id)
                                      {:revision_message "no more source table"
                                       :definition       {}})))))
     (testing "a definition that moves the Segment to another table keeps table_id in sync"
