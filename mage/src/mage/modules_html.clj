@@ -109,6 +109,8 @@ main{flex:1;display:flex;min-height:0}
 .badge.ent{background:var(--accent-soft);color:var(--accent)}
 .badge.star{color:var(--uses);border:1px solid var(--uses);padding:0 4px}
 .mini{font-size:10.5px;color:var(--ink-soft);margin-left:2px}
+.cnt-in{color:var(--usedby);font-weight:600}
+.cnt-out{color:var(--uses);font-weight:600}
 .dep-mark{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-left:3px;vertical-align:middle}
 .dep-mark.uses{background:var(--uses)}
 .dep-mark.usedby{background:var(--usedby)}
@@ -232,7 +234,7 @@ for(const t of TEAMS){
 }
 const hint=document.createElement('span');
 hint.style.cssText='margin-left:auto;color:var(--ink-soft);font-size:11.5px';
-hint.innerHTML=`each module shows <span class=mono>N&#8594;</span> uses <span class=mono>N&#8592;</span> used-by · select one to trace deps`;
+hint.innerHTML=`each row: <span class=mono><span class=cnt-in>used-by</span> →●→ <span class=cnt-out>uses</span></span> (● = the module) · select one to trace deps`;
 legend.appendChild(hint);
 
 // ---- tree rendering ------------------------------------------------------
@@ -308,8 +310,10 @@ function render(){
       if(m&&m.enterprise){ const b=document.createElement('span'); b.className='badge ent'; b.textContent='EE'; row.appendChild(b); }
       if(m&&m['ns-prefix']){ const b=document.createElement('span'); b.className='badge star'; b.textContent='∗'; b.title='namespaces not yet moved: '+m['ns-prefix']; row.appendChild(b); }
       if(m){ const c=document.createElement('span'); c.className='mini';
-        c.textContent=`${m.uses.length}→ ${m['used-by'].length}←`;
-        c.title=`${m.uses.length} uses · ${m['used-by'].length} used-by`; row.appendChild(c); }
+        const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
+        const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
+        c.append(inN, ' →●→ ', outN);   // used-by → (this module) → uses
+        c.title=`${m['used-by'].length} used by · uses ${m.uses.length}`; row.appendChild(c); }
       appendDepMarks(row, m);
 
       const kidsBox=document.createElement('div');
