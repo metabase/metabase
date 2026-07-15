@@ -23,6 +23,12 @@ export {
   withRouter,
 } from "react-router";
 
+// v3's own path matcher, used to work out how much of the URL each matched route
+// accounts for. Its pattern syntax has corners a hand-rolled parser gets wrong
+// (optional groups like `database(/:databaseId)`, splats), so the engine's
+// matcher is the only safe reader of it. Goes away with the engine swap.
+export { matchPattern } from "react-router/lib/PatternUtils";
+
 export type {
   InjectedRouter,
   LinkProps as RouterLinkProps,

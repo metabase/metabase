@@ -15,9 +15,9 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/common/collections/utils";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -112,66 +112,70 @@ export function initializePlugin() {
     PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
     PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
 
-    PLUGIN_TENANTS.userStrategyRoute = (
-      <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
+    PLUGIN_TENANTS.userStrategyRoute = modalRoute(
+      "user-strategy",
+      EditUserStrategyModal,
+      { noWrap: true },
     );
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
         <Route index component={TenantsListingApp} />
         <Route path="" component={TenantsListingApp}>
-          <ModalRoute path="new" modal={NewTenantModal} noWrap />
-          <ModalRoute
-            path="user-strategy"
-            modal={EditUserStrategyModal}
-            noWrap
-          />
+          {modalRoute("new", NewTenantModal, { noWrap: true })}
+          {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
           <Route index component={ExternalGroupsListingApp} />
           <Route path=":groupId" component={ExternalGroupDetailApp} />
         </Route>
         <Route path="people" component={ExternalPeopleListingApp}>
-          <ModalRoute
-            path="new"
-            modal={(props) => <NewUserModal {...props} external />}
-            noWrap
-          />
+          {modalRoute(
+            "new",
+            (props) => (
+              <NewUserModal {...props} external />
+            ),
+            {
+              noWrap: true,
+            },
+          )}
           <Route path=":userId">
             <Route index component={redirect("/admin/people/tenants/people")} />
-            <ModalRoute
-              path="edit"
-              modal={(props) => <EditUserModal {...props} external />}
-              noWrap
-            />
-            <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
-            <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
-            <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-            <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+            {modalRoute(
+              "edit",
+              (props) => (
+                <EditUserModal {...props} external />
+              ),
+              { noWrap: true },
+            )}
+            {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
+            {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
+            {modalRoute("success", UserSuccessModal, { noWrap: true })}
+            {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes()}</Fragment>
             ))}
           </Route>
         </Route>
         <Route path=":tenantId" component={TenantsListingApp}>
-          <ModalRoute
-            path="edit"
+          {modalRoute(
+            "edit",
             // @ts-expect-error - params prop can't be inferred
-            modal={EditTenantModal}
-            noWrap
-          />
-          <ModalRoute
-            path="deactivate"
+            EditTenantModal,
+            { noWrap: true },
+          )}
+          {modalRoute(
+            "deactivate",
             // @ts-expect-error - params prop can't be inferred
-            modal={TenantActivationModal}
-            noWrap
-          />
-          <ModalRoute
-            path="reactivate"
+            TenantActivationModal,
+            { noWrap: true },
+          )}
+          {modalRoute(
+            "reactivate",
             // @ts-expect-error - params prop can't be inferred
-            modal={TenantActivationModal}
-            noWrap
-          />
+            TenantActivationModal,
+            { noWrap: true },
+          )}
         </Route>
       </>
     );

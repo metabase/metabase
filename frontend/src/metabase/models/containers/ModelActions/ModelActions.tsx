@@ -111,7 +111,7 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
+      {/* Required for rendering child modal routes */}
       {children}
     </>
   );

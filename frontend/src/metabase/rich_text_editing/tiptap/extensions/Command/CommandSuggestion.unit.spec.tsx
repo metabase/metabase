@@ -16,7 +16,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SettingsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,

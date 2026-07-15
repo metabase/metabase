@@ -1,6 +1,6 @@
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 import { Route, redirect } from "metabase/router";
 import {
@@ -16,16 +16,8 @@ export const getRoutes = () => {
   return (
     <Route path="/model/:slug/detail">
       <Route path="actions" component={ModelActions}>
-        <ModalRoute
-          path="new"
-          modal={ActionCreatorModal}
-          modalProps={modalProps}
-        />
-        <ModalRoute
-          path=":actionId"
-          modal={ActionCreatorModal}
-          modalProps={modalProps}
-        />
+        {modalRoute("new", ActionCreatorModal, { modalProps })}
+        {modalRoute(":actionId", ActionCreatorModal, { modalProps })}
       </Route>
       <Route path=":rowId" component={ModelDetailPage} />
       <Route index component={redirect("actions")} />

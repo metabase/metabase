@@ -21,6 +21,7 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
@@ -34,7 +35,6 @@ import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
@@ -137,11 +137,9 @@ export const getRoutes = (store: AppStore) => {
           <Route path="trash" component={TrashCollectionLanding} />
 
           <Route path="document/:entityId" component={DocumentPageOuter}>
-            <ModalRoute
-              path="comments/:childTargetId"
-              modal={CommentsSidesheet}
-              noWrap
-            />
+            {modalRoute("comments/:childTargetId", CommentsSidesheet, {
+              noWrap: true,
+            })}
           </Route>
 
           <Route
@@ -177,13 +175,13 @@ export const getRoutes = (store: AppStore) => {
           </Route>
 
           <Route path="collection/:slug" component={CollectionLanding}>
-            <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
-            <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />
-            <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-            <ModalRoute
-              path="move-questions-dashboard"
-              modal={MoveQuestionsIntoDashboardsModal}
-            />
+            {modalRoute("move", MoveCollectionModal, { noWrap: true })}
+            {modalRoute("archive", ArchiveCollectionModal, { noWrap: true })}
+            {modalRoute("permissions", CollectionPermissionsModal)}
+            {modalRoute(
+              "move-questions-dashboard",
+              MoveQuestionsIntoDashboardsModal,
+            )}
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
@@ -207,21 +205,11 @@ export const getRoutes = (store: AppStore) => {
           />
 
           <Route path="dashboard/:slug" component={DashboardApp}>
-            <ModalRoute
-              path="move"
-              modal={DashboardMoveModalConnected}
-              noWrap
-            />
-            <ModalRoute
-              path="copy"
-              modal={DashboardCopyModalConnected}
-              noWrap
-            />
-            <ModalRoute
-              path="archive"
-              modal={ArchiveDashboardModalConnected}
-              noWrap
-            />
+            {modalRoute("move", DashboardMoveModalConnected, { noWrap: true })}
+            {modalRoute("copy", DashboardCopyModalConnected, { noWrap: true })}
+            {modalRoute("archive", ArchiveDashboardModalConnected, {
+              noWrap: true,
+            })}
           </Route>
 
           <Route path="/question">

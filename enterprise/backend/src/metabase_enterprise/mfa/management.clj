@@ -46,6 +46,14 @@
    [[(throttlers throttler-key) api/*current-user-id*]]
    f))
 
+(premium-features/defenterprise reset-mfa-throttlers-for-testing!
+  "EE implementation: clear the accumulated state of the MFA management throttlers
+  (enroll/disable/regenerate). Only for the testing API — see [[metabase.testing-api.api]]."
+  :feature :none
+  []
+  (doseq [throttler (vals throttlers)]
+    (reset! (:attempts throttler) nil)))
+
 (defn- verify-user-password
   "Re-verify the signed-in user's first-factor password, dispatched by how they authenticate:
   against the local hash for password users, by LDAP bind for LDAP-only users.
