@@ -331,8 +331,6 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 You can export the entire dashboard as PDF, or export results of individual questions on the dashboard. See [Exporting results](../questions/exporting-results.md).
 
-To get a PDF of a dashboard delivered on a schedule, [attach a PDF to a dashboard subscription](./subscriptions.md#attach-a-pdf-of-the-dashboard).
-
 ## Configuring a dashboard through its URL
 
 You can amend the URL of a dashboard to automatically enter fullscreen or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
