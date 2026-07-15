@@ -235,39 +235,88 @@
           (remove still-needed)
           exempt)))
 
+(def ^:private kondo-config-file
+  ".clj-kondo/config.edn")
+
+(defn- suppressed-in
+  "How many warnings one linter's config map waives: 1 for a `{:level :off}` switch, one per excluded
+  item, and one per nested per-var or per-namespace `:off`."
+  [cfg]
+  (if-not (map? cfg)
+    0
+    (+ (if (= (:level cfg) :off) 1 0)
+       (let [excl (:exclude cfg)]
+         (if (coll? excl) (count excl) 0))
+       (count (filter #(and (map? %) (= (:level %) :off))
+                      (vals (dissoc cfg :level :exclude)))))))
+
+(defn config-suppressions
+  "Per-linter counts of config-level suppressions in `config` (default: `.clj-kondo/config.edn`):
+  top-level `:linters` entries plus every `:config-in-ns` group.
+  Entries that add discouragements or turn linters on count nothing — only weakening counts."
+  ([]
+   (config-suppressions (edn/read-string (slurp kondo-config-file))))
+  ([config]
+   (let [counts (fn [linters-map]
+                  (into {}
+                        (for [[linter cfg] linters-map
+                              :let  [n (suppressed-in cfg)]
+                              :when (pos? n)]
+                          [linter n])))]
+     (apply merge-with +
+            (counts (:linters config))
+            (for [[_group group-cfg] (:config-in-ns config)]
+              (counts (:linters group-cfg)))))))
+
+(defn config-drift
+  "Linters whose config-suppression count differs from its budget (absent = 0, either side).
+  Returns `{linter {:recorded _, :actual _}}`."
+  [recorded actual]
+  (sorted-by-str
+   (for [linter (into (set (keys actual)) (keys recorded))
+         :let   [budget (get recorded linter 0)
+                 n      (get actual linter 0)]
+         :when  (not= budget n)]
+     [linter {:recorded budget, :actual n}])))
+
 (defn read-ratchets
   "Parsed contents of [[ratchets-file]], with empty defaults when the file doesn't exist."
   []
-  (merge {:ignore-counts {}, :comment-exempt #{}}
+  (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
          (when (.exists (io/file ratchets-file))
            (edn/read-string (slurp ratchets-file)))))
 
 (def ^:private header
-  (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
-       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when an\n"
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
+       ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
+       ";; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an\n"
        ";; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
-       ";; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the\n"
-       ";; exemptions is a hand edit to defend in your PR.\n"
+       ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
+       ";; widening the exemptions is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
+(defn- render-counts
+  [counts indent]
+  (if (empty? counts)
+    "{}"
+    (let [entries (sort-by (comp str first) counts)
+          width   (apply max (map (comp count str first) entries))]
+      (str "{"
+           (str/join (str "\n" indent)
+                     (for [[linter n] entries]
+                       (format (str "%-" width "s %d") (str linter) n)))
+           "}"))))
+
 (defn render
-  "Text of the ratchets file for the `{:ignore-counts _, :comment-exempt _}` map `ratchets`.
+  "Text of the ratchets file for the `{:ignore-counts _, :config-counts _, :comment-exempt _}` map.
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
-  [{:keys [ignore-counts comment-exempt]}]
+  [{:keys [ignore-counts config-counts comment-exempt]}]
   (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
         exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
-         "{:ignore-counts  "
-         (if (empty? ignore-counts)
-           "{}"
-           (let [entries (sort-by (comp str first) ignore-counts)
-                 width   (apply max (map (comp count str first) entries))]
-             (str "{"
-                  (str/join (str "\n" counts-indent)
-                            (for [[linter n] entries]
-                              (format (str "%-" width "s %d") (str linter) n)))
-                  "}")))
+         "{:ignore-counts  " (render-counts ignore-counts counts-indent)
+         "\n :config-counts  " (render-counts config-counts counts-indent)
          "\n :comment-exempt "
          (if (empty? comment-exempt)
            "#{}"
@@ -298,7 +347,7 @@
 (defn change-report
   "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
   anything over budget."
-  [{:keys [ignore-counts comment-exempt]} occurrences seeded]
+  [{:keys [ignore-counts config-counts comment-exempt]} occurrences config-actual seeded]
   (let [actual (actual-counts occurrences)]
     (concat
      (for [linter seeded
@@ -317,6 +366,12 @@
      (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
        (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
                linter n linter))
+     (for [[linter {:keys [recorded actual]}] (config-drift config-counts config-actual)]
+       (cond
+         (zero? actual)       (format "dropped config %s (no suppressions left)" linter)
+         (< actual recorded)  (format "lowered config %s %d -> %d" linter recorded actual)
+         :else                (format "WARNING: config suppressions for %s are over budget (%d recorded, %d actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
+                                      linter recorded actual)))
      (for [linter (stale-exemptions comment-exempt occurrences)]
        (format "unexempted %s (all its ignores are justified now)" linter)))))
 
@@ -327,15 +382,17 @@
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts comment-exempt] :as ratchets} (read-ratchets)
-         occurrences (scan)
-         seeded      (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
-         actual      (actual-counts occurrences)
-         text        (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
-                              :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
-         file        (io/file ratchets-file)
-         old         (when (.exists file) (slurp file))]
-     (run! println (change-report ratchets occurrences seeded))
+   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)
+         occurrences   (scan)
+         seeded        (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+         actual        (actual-counts occurrences)
+         config-actual (config-suppressions)
+         text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                                :config-counts  (lowered-counts config-counts config-actual [])
+                                :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
+         file          (io/file ratchets-file)
+         old           (when (.exists file) (slurp file))]
+     (run! println (change-report ratchets occurrences config-actual seeded))
      (if (= old text)
        (println "unchanged")
        (do (spit file text)
