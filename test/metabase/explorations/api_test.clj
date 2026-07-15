@@ -6,23 +6,16 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.documents.core :as documents]
-   [metabase.explorations.api :as explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
-   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.scope :as scope]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
@@ -57,27 +50,6 @@
   "Execute `body` with any sample-database metric cards temporarily archived."
   [& body]
   `(do-with-sample-metrics-archived (fn [] ~@body)))
-
-(defn- do-with-ai-summary-available!
-  "Run `thunk` with the conditions under which AI Summary are generated:
-  AI features + Metabot enabled, an LLM provider configured, and the current user
-  holding the metabot permission. Needed because a clean test instance has no
-  provider key (so `current-user-can-create-ai-summary?` is false by default) and, on instances
-  with the `:ai-controls` feature, a fresh user lacks `:permission/metabot-other-tools`
-  (which `current-user-can-create-ai-summary?` now also requires) — in either case the placeholder
-  document would not be created."
-  [thunk]
-  (mt/with-temporary-setting-values [ai-features-enabled? true
-                                     metabot-enabled?     true]
-    (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                                scope/resolve-user-permissions (constantly scope/all-yes-permissions)]
-      (thunk))))
-
-(defmacro with-ai-summary-available
-  "Execute `body` with AI Summary generation enabled (see
-  [[do-with-ai-summary-available!]])."
-  [& body]
-  `(do-with-ai-summary-available! (fn [] ~@body)))
 
 (defn- finalize-queries!
   "For each pending ExplorationQuery row that has no dataset_query yet, build and
@@ -863,28 +835,6 @@
               (is (= orig-tid (:id planned)))
               (is (pos? (count (:queries planned)))))))))))
 
-(deftest exploration-restart-resets-ai-summary-doc-test
-  (testing "POST /:id/restart swaps the AI Summary doc back to the Analysis-underway placeholder"
-    (with-ai-summary-available
-      (mt/with-temp [:model/User u {:email "rs-summary@example.com"}]
-        (let [created (mt/user-http-request u :post 200 "exploration" {:name "x"})
-              expl-id (:id created)
-              doc-id  (-> created :threads first :ai_summary_document_id)]
-          (is (some? doc-id) "an AI Summary placeholder doc is created up-front")
-          ;; Simulate a finished run: overwrite the placeholder with a real summary.
-          (t2/update! :model/Document doc-id
-                      {:document {:type "doc"
-                                  :content [{:type "paragraph"
-                                             :content [{:type "text" :text "Old summary"}]}]}})
-          (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
-          (let [persisted (t2/select-one-fn :document :model/Document :id doc-id)
-                all-text  (->> persisted
-                               (tree-seq map? :content)
-                               (keep :text)
-                               (apply str))]
-            (is (str/includes? all-text "Analysis underway")
-                "the doc body is reset to the placeholder")))))))
-
 (deftest exploration-restart-permissions-test
   (testing "Only a user with write access can restart an exploration"
     (mt/with-temp [:model/User owner {:email "rs-owner@example.com"}
@@ -1257,118 +1207,6 @@
             qid  (-> resp :threads first :queries first :id)]
         (mt/user-http-request other :get 403 (format "exploration/query/%d" qid))))))
 
-(deftest exploration-append-records-stored-result-use-test
-  (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
-    (mt/with-temp [:model/User u {:email "append-use@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp   (create-exploration! u
-                                        {:name "append-use"
-                                         :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :venues) :target ["field" {} (mt/id :venues :price)]}]}]
-                                         :dimensions [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]})
-            tid    (-> resp :threads first :id)
-            qid    (-> resp :threads first :queries first :id)
-            qp-out {:status :completed
-                    :data   {:cols [{:name "x" :source :breakout}
-                                    {:name "y" :source :aggregation}]
-                             :rows [["a" 3] ["b" 1]]}
-                    :row_count 2}]
-        (store-fake-result! qid qp-out)
-        (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
-        (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                       :exploration_query_id qid)
-              doc-id (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
-                         first :id)
-              before (t2/select :model/StoredResultUse :stored_result_id sr-id)
-              doc    (mt/user-http-request u :post 200
-                                           (format "exploration/thread/%d/documents/%d/append" tid doc-id)
-                                           {:exploration_query_ids [qid]})
-              card-id (-> (t2/select-one-fn :document :model/Document :id (:id doc))
-                          :content last :content first :attrs :id)
-              use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id :card_id card-id)]
-          (is (empty? before)
-              "no card-use row exists before the append")
-          (is (some? use-row)
-              "appending records a stored_result_use row for the source snapshot — the GC chain reaches the source even through the new composite snapshot in-between")
-          (is (nil? (:exploration_id use-row))
-              "the card-use row has no exploration_id"))))))
-
-(deftest exploration-append-rolls-back-on-failure-test
-  (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
-    (mt/with-temp [:model/User u {:email "append-rollback@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp   (create-exploration! u
-                                        {:name "append-rollback"
-                                         :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                         :dimensions [{:dimension_id "d1"}]})
-            tid    (-> resp :threads first :id)
-            qid    (-> resp :threads first :queries first :id)
-            qp-out {:status :completed
-                    :data   {:cols [{:name "x" :source :breakout}
-                                    {:name "y" :source :aggregation}]
-                             :rows [["a" 3] ["b" 1]]}
-                    :row_count 2}]
-        (store-fake-result! qid qp-out)
-        (mark-done! qid)
-        (let [doc-id (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
-                         first :id)
-              doc    (t2/select-one :model/Document :id doc-id)]
-          ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
-          ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
-          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
-            (is (thrown? Throwable
-                         (eqr/create-ephemeral-card-for-exploration-queries!
-                          [qid] doc-id (:collection_id doc) u {}))))
-          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
-              "only the source snapshot remains — no composite StoredResult leaks from the rolled-back append")
-          (is (zero? (t2/count :model/Card :document_id doc-id))
-              "no ephemeral Card leaks from the rolled-back append")
-          (is (zero? (t2/count :model/StoredResultUse :stored_result_id
-                               (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                                 :exploration_query_id qid)))
-              "no stored_result_use rows leak from the rolled-back append"))))))
-
-(deftest exploration-append-single-query-reuses-source-snapshot-test
-  (testing "A single-query append reuses the source stored_result instead of duplicating its bytes into a fresh row"
-    (mt/with-temp [:model/User u {:email "append-single@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp   (create-exploration! u
-                                        {:name "append-single"
-                                         :metrics [{:card_id (:id metric)
-                                                    :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                         :dimensions [{:dimension_id "d1"}]})
-            tid    (-> resp :threads first :id)
-            qid    (-> resp :threads first :queries first :id)
-            qp-out {:status :completed
-                    :data   {:cols [{:name "x" :source :breakout}
-                                    {:name "y" :source :aggregation}]
-                             :rows [["a" 3] ["b" 1]]}
-                    :row_count 2}]
-        (store-fake-result! qid qp-out)
-        (mark-done! qid)
-        ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
-        (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                          :exploration_query_id qid)
-              doc-id    (-> (mt/user-http-request u :get 200 (str "exploration/thread/" tid "/documents"))
-                            first :id)
-              doc       (t2/select-one :model/Document :id doc-id)
-              ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
-              ;; the real create-card! / stored_result write path.
-              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
-                          (eqr/create-ephemeral-card-for-exploration-queries!
-                           [qid] doc-id (:collection_id doc) u {}))
-              use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
-          (is (= src-sr-id (:stored-result-id result))
-              "the embed points back at the source stored_result rather than a fresh copy")
-          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
-              "only the reused source snapshot exists — no duplicate composite StoredResult is created for a single-query embed")
-          (is (= [src-sr-id] (mapv :stored_result_id use-rows))
-              "exactly one stored_result_use row, pointing at the source snapshot"))))))
-
 (deftest exploration-page-starred-roundtrip-test
   (testing "PUT /page/:id/starred sets the flag both ways; reflected in GET /:id"
     (mt/with-temp [:model/User u {:email "page-mark@example.com"}
@@ -1472,145 +1310,6 @@
   (testing "PUT with a nonexistent page id returns 404"
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
-
-(deftest exploration-create-auto-creates-scratchpad-document-test
-  (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
-    (with-ai-summary-available
-      (mt/with-temp [:model/User u {:email "scratchpad-auto@example.com"}]
-        (let [resp       (mt/user-http-request u :post 200 "exploration" {:name "x"})
-              tid        (-> resp :threads first :id)
-              docs       (t2/select :model/Document :exploration_thread_id tid)
-              scratchpad (some #(when (= "Scratchpad" (:name %)) %) docs)]
-          (is (= #{"Scratchpad" "AI Summary"} (set (map :name docs))))
-          (is (some? scratchpad))
-          (is (= (:id u) (:creator_id scratchpad))))))))
-
-(deftest exploration-create-skips-ai-summary-doc-when-metabot-disabled-test
-  (testing "POST / does NOT create the AI Summary placeholder when Metabot is disabled (UXW-4121)"
-    (mt/with-temporary-setting-values [metabot-enabled? false]
-      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
-        (mt/with-temp [:model/User u {:email "ai-disabled-create@example.com"}]
-          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
-                tid  (-> resp :threads first :id)
-                docs (t2/select :model/Document :exploration_thread_id tid)]
-            (is (= #{"Scratchpad"} (set (map :name docs)))
-                "only the Scratchpad doc is created; no AI Summary placeholder")))))))
-
-(deftest exploration-create-skips-ai-summary-doc-when-llm-not-configured-test
-  (testing "POST / does NOT create the AI Summary placeholder when no LLM provider is configured (UXW-4121)"
-    (mt/with-temporary-setting-values [ai-features-enabled? true
-                                       metabot-enabled?     true]
-      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
-        (mt/with-temp [:model/User u {:email "llm-unconfigured-create@example.com"}]
-          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
-                tid  (-> resp :threads first :id)
-                docs (t2/select :model/Document :exploration_thread_id tid)]
-            (is (= #{"Scratchpad"} (set (map :name docs)))
-                "only the Scratchpad doc is created; no AI Summary placeholder")))))))
-
-(deftest exploration-create-skips-ai-summary-doc-when-creator-lacks-permission-test
-  (testing "POST / does NOT create the AI Summary placeholder when the creator lacks :permission/metabot-other-tools (UXW-4120)"
-    (mt/with-temporary-setting-values [ai-features-enabled? true
-                                       metabot-enabled?     true]
-      (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
-                                  scope/resolve-user-permissions
-                                  (fn [_uid] (assoc scope/all-yes-permissions
-                                                    :permission/metabot-other-tools :no))]
-        (mt/with-temp [:model/User u {:email "ai-noperm-create@example.com"}]
-          (let [resp (mt/user-http-request u :post 200 "exploration" {:name "x"})
-                tid  (-> resp :threads first :id)
-                docs (t2/select :model/Document :exploration_thread_id tid)]
-            (is (= #{"Scratchpad"} (set (map :name docs)))
-                "only the Scratchpad doc is created; no AI Summary placeholder for a permission-restricted creator")))))))
-
-(deftest exploration-documents-list-and-create-test
-  (testing "GET/POST /thread/:thread-id/documents list and create empty documents with auto-named Scratchpad"
-    (with-ai-summary-available
-      (mt/with-temp [:model/User u {:email "docs-api@example.com"}]
-        (let [exp     (mt/user-http-request u :post 200 "exploration" {:name "doc host"})
-              tid     (-> exp :threads first :id)
-              url     (str "exploration/thread/" tid "/documents")
-              initial (mt/user-http-request u :get 200 url)]
-          (is (= ["Scratchpad" "AI Summary"] (mapv :name initial))
-              "Listing returns the auto-created Scratchpad + AI Summary docs")
-          (let [d2 (mt/user-http-request u :post 200 url {})]
-            (is (= "Scratchpad 2" (:name d2)))
-            (is (= tid (:exploration_thread_id d2)))
-            (is (= {:type "doc" :content []} (:document (t2/select-one :model/Document :id (:id d2))))))
-          (let [d3 (mt/user-http-request u :post 200 url {})]
-            (is (= "Scratchpad 3" (:name d3))))
-          (let [after (mt/user-http-request u :get 200 url)]
-            (is (= #{"Scratchpad" "AI Summary" "Scratchpad 2" "Scratchpad 3"} (set (map :name after))))))))))
-
-(deftest exploration-documents-next-document-name-skips-gaps-test
-  (testing "Auto-naming picks max+1 even with gaps and ignores unrelated docs"
-    (mt/with-temp [:model/User u {:email "naming@example.com"}]
-      (let [exp (mt/user-http-request u :post 200 "exploration" {:name "naming"})
-            tid (-> exp :threads first :id)
-            url (str "exploration/thread/" tid "/documents")]
-        (t2/insert! :model/Document {:name "Scratchpad 5"
-                                     :document {:type "doc" :content []}
-                                     :content_type "application/json+vnd.prose-mirror"
-                                     :creator_id (:id u)
-                                     :exploration_thread_id tid})
-        (t2/insert! :model/Document {:name "Notes"
-                                     :document {:type "doc" :content []}
-                                     :content_type "application/json+vnd.prose-mirror"
-                                     :creator_id (:id u)
-                                     :exploration_thread_id tid})
-        (is (= "Scratchpad 6" (:name (mt/user-http-request u :post 200 url {}))))))))
-
-(deftest exploration-documents-permissions-test
-  (testing "Other users can't list or add documents on someone else's exploration thread"
-    (mt/with-temp [:model/User owner {:email "doc-owner@example.com"}
-                   :model/User other {:email "doc-other@example.com"}]
-      (let [exp (mt/user-http-request owner :post 200 "exploration"
-                                      {:name "private"
-                                       :collection_id (:id (collection/user->personal-collection (:id owner)))})
-            tid (-> exp :threads first :id)
-            url (str "exploration/thread/" tid "/documents")]
-        (mt/user-http-request other :get 403 url)
-        (mt/user-http-request other :post 403 url {})))))
-
-(deftest ^:parallel page-url-test
-  (testing "page-url builds a research deep link to a page by id"
-    (is (= "/question/research/7/page/42"
-           (explorations.blocks/page-url 7 42)))))
-
-(deftest ^:parallel append-chart-nodes-test
-  (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"
-    (let [result (#'explorations.api/append-chart-nodes
-                  {:type "doc" :content []}
-                  77
-                  99
-                  "/question/research/7/page/42")
-          embed  (first (:content result))]
-      (is (= "doc" (:type result)))
-      (is (= 1 (count (:content result))))
-      (is (= {:type    "resizeNode"
-              :content [{:type  "cardEmbed"
-                         :attrs {:id 77
-                                 :name nil
-                                 :stored_result_id 99
-                                 :chart_href "/question/research/7/page/42"}}]}
-             embed))))
-  (testing "tolerates a missing/non-doc root by starting from an empty doc"
-    (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x")]
-      (is (= "doc" (:type result)))
-      (is (= 1 (count (:content result))))))
-  (testing "appends after existing content, preserving order"
-    (let [existing {:type "doc" :content [{:type "paragraph" :content []}]}
-          result   (#'explorations.api/append-chart-nodes existing 1 1 "/x")]
-      (is (= 2 (count (:content result))))
-      (is (= {:type "paragraph" :content []} (first (:content result))))))
-  (testing "when `chart-href` is nil, the :chart_href key is omitted from :attrs"
-    (let [result (#'explorations.api/append-chart-nodes
-                  {:type "doc" :content []}
-                  77 99 nil)
-          attrs  (-> result :content first :content first :attrs)]
-      (is (false? (contains? attrs :chart_href)))
-      (testing "and no other override attrs leak in (cardEmbed stays minimal)"
-        (is (false? (contains? attrs :dataset_query)))))))
 
 (deftest exploration-cascade-delete-test
   (testing "Deleting an exploration cascades to threads, selections, and queries"
@@ -1983,98 +1682,6 @@
           (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
                                 {:collection_id (:id dest)}))))))
 
-(deftest exploration-put-cascades-collection-id-to-thread-documents-test
-  (testing "Moving an exploration rewrites :collection_id on every doc attached to its threads."
-    (mt/with-temp [:model/Collection src  {}
-                   :model/Collection dest {}
-                   :model/Exploration e   {:name          "cascade"
-                                           :creator_id    (mt/user->id :crowberto)
-                                           :collection_id (:id src)}
-                   :model/ExplorationThread t1 {:exploration_id (:id e) :position 0}
-                   :model/ExplorationThread t2 {:exploration_id (:id e) :position 1}
-                   :model/Document d1 {:name "doc-on-t1"
-                                       :document {:type "doc" :content []}
-                                       :content_type "application/json+vnd.prose-mirror"
-                                       :creator_id (mt/user->id :crowberto)
-                                       :collection_id (:id src)
-                                       :exploration_thread_id (:id t1)}
-                   :model/Document d2 {:name "doc-on-t2"
-                                       :document {:type "doc" :content []}
-                                       :content_type "application/json+vnd.prose-mirror"
-                                       :creator_id (mt/user->id :crowberto)
-                                       :collection_id (:id src)
-                                       :exploration_thread_id (:id t2)}]
-      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
-                            {:collection_id (:id dest)})
-      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d1))))
-      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id d2)))))))
-
-(deftest exploration-put-archive-cascades-to-thread-documents-test
-  (testing "Archiving an exploration cascade-archives its thread docs, except user-archived ones."
-    (mt/with-temp [:model/Collection c {}
-                   :model/Exploration e {:name "to-archive"
-                                         :creator_id    (mt/user->id :crowberto)
-                                         :collection_id (:id c)}
-                   :model/ExplorationThread th {:exploration_id (:id e) :position 0}
-                   :model/Document live {:name "live-doc"
-                                         :document {:type "doc" :content []}
-                                         :content_type "application/json+vnd.prose-mirror"
-                                         :creator_id (mt/user->id :crowberto)
-                                         :collection_id (:id c)
-                                         :exploration_thread_id (:id th)}
-                   :model/Document user-archived {:name "user-archived"
-                                                  :document {:type "doc" :content []}
-                                                  :content_type "application/json+vnd.prose-mirror"
-                                                  :creator_id (mt/user->id :crowberto)
-                                                  :collection_id (:id c)
-                                                  :exploration_thread_id (:id th)
-                                                  :archived true
-                                                  :archived_directly true}]
-      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
-                            {:archived true})
-      (testing "live doc is cascade-archived (archived_directly=false marks it as cascade)"
-        (let [d (t2/select-one :model/Document :id (:id live))]
-          (is (true?  (:archived d)))
-          (is (false? (:archived_directly d)))))
-      (testing "user-archived doc is left alone"
-        (let [d (t2/select-one :model/Document :id (:id user-archived))]
-          (is (true? (:archived d)))
-          (is (true? (:archived_directly d))))))))
-
-(deftest exploration-put-unarchive-cascades-to-thread-documents-test
-  (testing "Unarchiving restores cascade-archived docs but leaves user-archived docs archived."
-    (mt/with-temp [:model/Collection c {}
-                   :model/Exploration e {:name "to-unarchive"
-                                         :creator_id    (mt/user->id :crowberto)
-                                         :collection_id (:id c)
-                                         :archived      true
-                                         :archived_directly true}
-                   :model/ExplorationThread th {:exploration_id (:id e) :position 0}
-                   :model/Document cascade-doc {:name "cascade-doc"
-                                                :document {:type "doc" :content []}
-                                                :content_type "application/json+vnd.prose-mirror"
-                                                :creator_id (mt/user->id :crowberto)
-                                                :collection_id (:id c)
-                                                :exploration_thread_id (:id th)
-                                                :archived true
-                                                :archived_directly false}
-                   :model/Document user-archived {:name "user-archived"
-                                                  :document {:type "doc" :content []}
-                                                  :content_type "application/json+vnd.prose-mirror"
-                                                  :creator_id (mt/user->id :crowberto)
-                                                  :collection_id (:id c)
-                                                  :exploration_thread_id (:id th)
-                                                  :archived true
-                                                  :archived_directly true}]
-      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
-                            {:archived false})
-      (testing "cascade-archived doc is restored"
-        (is (false? (t2/select-one-fn :archived :model/Document :id (:id cascade-doc)))))
-      (testing "user-archived doc stays archived"
-        (let [d (t2/select-one :model/Document :id (:id user-archived))]
-          (is (true? (:archived d)))
-          (is (true? (:archived_directly d))))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Routed-database metrics                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2216,11 +1823,6 @@
               {:model model :model_id id :user_id user-id :object {}
                :timestamp ts :is_creation false :is_reversion false :most_recent false}))
 
-(defn- mine-names
-  "Names in the order `GET /mine` returns them for `user`."
-  [user & opts]
-  (mapv :name (:data (apply mt/user-http-request user :get 200 "exploration/mine" opts))))
-
 (defn- m-index-by
   "Index a `GET /mine` response's `:data` rows by `:name`."
   [resp]
@@ -2260,29 +1862,6 @@
             (is (= 2 (:total resp))))
           (testing "rows don't leak the internal total_count column"
             (is (not (contains? (get by-name "created-by-me") :total_count)))))))))
-
-(deftest mine-ordering-composes-document-edits-test
-  (testing "GET /mine sorts by the caller's most-recent touch, counting scratchpad/document edits"
-    (mt/with-temp [:model/User       me {:email "mine-order@example.com"}
-                   :model/Collection coll {:name "order-coll"}
-                   ;; created-only: only touch is creation (no revisions)
-                   :model/Exploration _created-only {:name "created-only" :creator_id (:id me) :collection_id (:id coll)}
-                   ;; meta-edited: a later Exploration revision
-                   :model/Exploration meta-edited {:name "meta-edited" :creator_id (:id me) :collection_id (:id coll)}
-                   ;; doc-edited: a still-later Document (scratchpad) revision, even though its own
-                   ;; Exploration row was never edited after creation
-                   :model/Exploration doc-edited {:name "doc-edited" :creator_id (:id me) :collection_id (:id coll)}
-                   :model/ExplorationThread thread {:exploration_id (:id doc-edited) :position 0}
-                   :model/Document doc {:name "sp" :document {:type "doc" :content []}
-                                        :content_type documents/prose-mirror-content-type
-                                        :creator_id (:id me) :collection_id (:id coll)
-                                        :exploration_thread_id (:id thread)}]
-      (let [now (t/offset-date-time)]
-        (touch-revision! "Exploration" (:id meta-edited) (:id me) (t/plus now (t/days 1)))
-        (touch-revision! "Document"     (:id doc)         (:id me) (t/plus now (t/days 2))))
-      (testing "doc edit (newest touch) sorts above the metadata edit, which sorts above created-only"
-        (is (= ["doc-edited" "meta-edited" "created-only"]
-               (mine-names me)))))))
 
 (deftest mine-pagination-test
   (testing "GET /mine pages with a stable order and a post-filter total"

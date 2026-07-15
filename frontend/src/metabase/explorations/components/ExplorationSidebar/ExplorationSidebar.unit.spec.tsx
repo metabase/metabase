@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-
 import {
   fireEvent,
   renderWithProviders,
@@ -13,7 +12,6 @@ import {
 import {
   createBlock,
   createExploration,
-  createExplorationDocument,
   createPage,
   createQuery,
 } from "metabase/explorations/test-utils";
@@ -22,7 +20,6 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   ExplorationBlockNode,
-  ExplorationDocument,
   ExplorationQuery,
   ExplorationThread,
 } from "metabase-types/api";
@@ -55,15 +52,11 @@ function getSidebarTestContext(
   };
 }
 
-type TestSelectedEntityId =
-  | { type: "page"; id: string }
-  | { type: "document"; id: number }
-  | null;
+type TestSelectedEntityId = { type: "page"; id: string } | null;
 
 interface SetupOpts {
   queries: ExplorationQuery[];
   blocks?: ExplorationBlockNode[];
-  documents?: ExplorationDocument[];
   thread?: Partial<ExplorationThread>;
   selectedQueryId?: number | null;
   selectedEntityId?: TestSelectedEntityId;
@@ -75,7 +68,6 @@ interface SetupOpts {
 function setup({
   queries,
   blocks,
-  documents,
   thread,
   selectedQueryId = null,
   selectedEntityId,
@@ -98,7 +90,6 @@ function setup({
   const exploration = createExploration({
     queries,
     blocks,
-    documents,
     prompt,
     thread,
   });
@@ -776,56 +767,6 @@ describe("ExplorationSidebar", () => {
     expect(
       within(getRow("Revenue by channel")).getByLabelText("Stopped"),
     ).toBeInTheDocument();
-  });
-
-  it("shows a stopped icon for a canceled AI summary document", async () => {
-    const aiSummaryDocument = createExplorationDocument({
-      id: 42,
-      name: "AI Summary",
-    });
-
-    setup({
-      queries: [],
-      blocks: [],
-      documents: [aiSummaryDocument],
-      thread: {
-        ai_summary_document_id: aiSummaryDocument.id,
-        canceled_at: "2026-04-30T00:01:00Z",
-        completed_at: "2026-04-30T00:01:00Z",
-      },
-    });
-
-    await userEvent.click(
-      screen.getByRole("group", { name: /Initial investigation/ }),
-    );
-
-    expect(
-      within(getRow("AI Summary")).getByLabelText("Stopped"),
-    ).toBeInTheDocument();
-  });
-
-  it("marks the AI summary document row as busy while it is generating", async () => {
-    const aiSummaryDocument = createExplorationDocument({
-      id: 42,
-      name: "AI Summary",
-    });
-
-    setup({
-      queries: [],
-      blocks: [],
-      documents: [aiSummaryDocument],
-      thread: {
-        ai_summary_document_id: aiSummaryDocument.id,
-        completed_at: null,
-        canceled_at: null,
-      },
-    });
-
-    await userEvent.click(
-      screen.getByRole("group", { name: /Initial investigation/ }),
-    );
-
-    expect(getRow("AI Summary")).toHaveAttribute("aria-busy", "true");
   });
 
   it("links each row to the selected entity URL", () => {

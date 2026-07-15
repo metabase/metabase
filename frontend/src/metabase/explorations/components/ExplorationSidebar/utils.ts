@@ -5,7 +5,6 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
   Comment,
-  DocumentId,
   Exploration,
   ExplorationId,
   ExplorationPageNodeId,
@@ -57,15 +56,7 @@ export function isHiddenTreeItem(
   return isExplorationTreePage(node) && node.data?.hidden === true;
 }
 
-export interface ExplorationTreeDocument {
-  type: "document";
-  id: DocumentId;
-  status: ExplorationQueryStatus;
-  parent_id: string | number;
-  isAiSummary: boolean;
-}
-
-export type ExplorationTreeItem = ExplorationTreePage | ExplorationTreeDocument;
+export type ExplorationTreeItem = ExplorationTreePage;
 
 export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
 
@@ -97,13 +88,6 @@ export function getExplorationSidebarTree(
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
     .map((thread, index) => {
       const children = getExplorationQueryTree(thread, treeItemFilter);
-      const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
-      if (
-        aiSummaryDocumentNode != null &&
-        treeItemFilter(aiSummaryDocumentNode)
-      ) {
-        children.push(aiSummaryDocumentNode);
-      }
       return {
         id: thread.id,
         name: getExplorationThreadName(thread, index),
@@ -292,45 +276,6 @@ function compareExplorationTreeHeadings(
   return diff;
 }
 
-function getAISummaryDocumentNode(
-  thread: ExplorationThread,
-): ITreeNodeItem<ExplorationTreeDocument> | null {
-  const aiSummaryDocument = thread.documents?.find(
-    (document) => document.id === thread.ai_summary_document_id,
-  );
-  if (!aiSummaryDocument) {
-    return null;
-  }
-  return {
-    id: aiSummaryDocument.id,
-    name: aiSummaryDocument.name,
-    icon: "document",
-    data: {
-      type: "document",
-      id: aiSummaryDocument.id,
-      status: getExplorationDocumentStatus(aiSummaryDocument.id, thread),
-      parent_id: thread.id,
-      isAiSummary: true,
-    },
-  };
-}
-
-function getExplorationDocumentStatus(
-  documentId: DocumentId,
-  thread: ExplorationThread,
-) {
-  if (documentId !== thread.ai_summary_document_id) {
-    return "done";
-  }
-  if (thread.canceled_at != null) {
-    return "canceled";
-  }
-  if (thread.completed_at != null) {
-    return "done";
-  }
-  return "running";
-}
-
 export function getExplorationThreadName(
   thread: ExplorationThread,
   index: number,
@@ -356,7 +301,7 @@ export function flattenTree(
   }
   return result.filter(
     (node): node is ITreeNodeItem<ExplorationTreeItem> =>
-      node.data?.type === "document" || node.data?.type === "page",
+      node.data?.type === "page",
   );
 }
 

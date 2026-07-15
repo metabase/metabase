@@ -3712,42 +3712,4 @@
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
           (is (some? item))
-          (is (nil? (:last-edit-info item))))))
-    (testing "Document attached to an exploration thread bumps the exploration's last-edit-info"
-      (mt/with-temp [:model/Collection        coll   {}
-                     :model/Exploration       e      {:name          "DocBumped"
-                                                      :creator_id    (mt/user->id :crowberto)
-                                                      :collection_id (:id coll)}
-                     :model/ExplorationThread thread {:exploration_id (:id e)
-                                                      :position       0}
-                     :model/Document          doc    {:name                  "notes"
-                                                      :collection_id         (:id coll)
-                                                      :creator_id            (mt/user->id :crowberto)
-                                                      :exploration_thread_id (:id thread)
-                                                      :document              {:type "doc" :content []}}]
-        ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
-        ;; Insert directly so we control timestamps — within a `with-temp` transaction
-        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
-        ;; identical timestamps and tiebreak non-deterministically.
-        (let [t (java.time.OffsetDateTime/now)]
-          (t2/insert! :model/Revision
-                      {:model     "Exploration"
-                       :model_id  (:id e)
-                       :user_id   (mt/user->id :crowberto)
-                       :object    (revision/serialize-instance :model/Exploration (:id e)
-                                                               (t2/select-one :model/Exploration :id (:id e)))
-                       :timestamp (.minusSeconds t 60)
-                       :is_creation true})
-          (t2/insert! :model/Revision
-                      {:model     "Document"
-                       :model_id  (:id doc)
-                       :user_id   (mt/user->id :rasta)
-                       :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
-                       :timestamp t}))
-        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
-                                                                  (str "collection/" (:id coll) "/items")))
-                                     (:id e))]
-          (is (some? item))
-          (is (= (mt/user->id :rasta)
-                 (-> item :last-edit-info :id))))))))
+          (is (nil? (:last-edit-info item))))))))

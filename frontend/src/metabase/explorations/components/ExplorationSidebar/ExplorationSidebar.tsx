@@ -18,7 +18,6 @@ import type {
 import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
 import { useToast } from "metabase/common/hooks";
 import {
-  trackExplorationAISummaryOpened,
   trackExplorationRestarted,
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
@@ -146,22 +145,11 @@ export function ExplorationSidebar({
         direction,
       );
       if (nextItem != null && nextItem.id !== selectedEntityId.id) {
-        if (
-          nextItem.data?.type !== "page" &&
-          nextItem.data?.type !== "document"
-        ) {
+        if (nextItem.data?.type !== "page") {
           return;
         }
-        if (nextItem.data.type === "page") {
-          setSelectedEntityId({ type: "page", id: nextItem.data.page_id });
-        } else if (nextItem.data.type === "document") {
-          setSelectedEntityId({ type: "document", id: nextItem.data.id });
-        }
-        if (nextItem.data.type === "page") {
-          trackExplorationVisualizationChanged(exploration.id, "keyboard");
-        } else if (nextItem.data.isAiSummary) {
-          trackExplorationAISummaryOpened(exploration.id);
-        }
+        setSelectedEntityId({ type: "page", id: nextItem.data.page_id });
+        trackExplorationVisualizationChanged(exploration.id, "keyboard");
         event.preventDefault();
         shouldScrollSelectionRef.current = true;
         setExpandedIds(
@@ -574,9 +562,7 @@ interface ExplorationTreeItemProps extends ExplorationTreeNodeProps {
 function isExplorationTreeItemProps(
   props: ExplorationTreeNodeProps,
 ): props is ExplorationTreeItemProps {
-  return (
-    props.item.data?.type === "document" || props.item.data?.type === "page"
-  );
+  return props.item.data?.type === "page";
 }
 
 function ExplorationTreeItem({
@@ -600,12 +586,8 @@ function ExplorationTreeItem({
   }, [isSelected, shouldScrollSelectionRef]);
 
   const handleClick = useCallback(() => {
-    if (!isSelected) {
-      if (item.data?.type === "page") {
-        trackExplorationVisualizationChanged(explorationId, "click");
-      } else if (item.data?.isAiSummary) {
-        trackExplorationAISummaryOpened(explorationId);
-      }
+    if (!isSelected && item.data?.type === "page") {
+      trackExplorationVisualizationChanged(explorationId, "click");
     }
   }, [isSelected, item.data, explorationId]);
 
@@ -613,10 +595,10 @@ function ExplorationTreeItem({
     return null;
   }
 
-  const entityId: SelectedEntityId =
-    item.data.type === "page"
-      ? { type: "page", id: item.data.page_id }
-      : { type: "document", id: item.data.id };
+  const entityId: SelectedEntityId = {
+    type: "page",
+    id: item.data.page_id,
+  };
 
   const iconProps: IconProps = {
     color: isSelected ? "brand" : "icon-secondary",

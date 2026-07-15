@@ -1,25 +1,20 @@
 import type { Location } from "history";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
-import { c, t } from "ttag";
 
 import {
   useGetExplorationQuery,
   useListCommentsQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { Api } from "metabase/api/api";
-import { idTag } from "metabase/api/tags";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { type Route, push } from "metabase/router";
+import { push } from "metabase/router";
 import { Box, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  DocumentId,
   Exploration,
   ExplorationPageNode,
   ExplorationPageNodeId,
@@ -30,11 +25,6 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import { trackExplorationAISummaryOpened } from "../analytics";
-import {
-  ExplorationDocument as ExplorationDocumentComponent,
-  type ExplorationDocumentWithIsAiSummary,
-} from "../components/ExplorationDocument";
 import {
   ExplorationSidebar,
   ExplorationTitle,
@@ -68,11 +58,9 @@ interface ExplorationPageQuery {
 interface ExplorationPageProps {
   params: {
     id: string;
-    entityType?: "document" | "page";
+    entityType?: "page";
     entityId?: string;
-    childTargetId?: string;
   };
-  route: Route;
   location: Location<ExplorationPageQuery>;
   children?: React.ReactNode;
 }
@@ -84,10 +72,8 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   // Keep polling while either:
   //   (a) any individual query is still running, OR
   //   (b) the thread has been started but isn't fully complete yet — the
-  //       backend's `completed_at` is set only after the post-query
-  //       AI Summary handler has written its document. While the handler
-  //       runs we want the placeholder "Analysis underway" doc to get
-  //       swapped for the real one in the sidebar, which only happens via
+  //       backend only sets `completed_at` once its post-query handling
+  //       finishes, and we want the sidebar to pick up that final state via
   //       a poll refresh. Draft threads (no `started_at`) don't trigger
   //       polling — they have nothing in flight.
   return exploration.threads.some(
@@ -97,21 +83,15 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
-interface SelectedDocumentId {
-  type: "document";
-  id: DocumentId;
-}
-
 interface SelectedPageId {
   type: "page";
   id: ExplorationPageNodeId;
 }
 
-export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
+export type SelectedEntityId = SelectedPageId;
 
 export function ExplorationPage({
   params,
-  route,
   location,
   children,
 }: ExplorationPageProps) {
@@ -183,8 +163,6 @@ export function ExplorationPage({
     };
   }, [dispatch]);
 
-  const [sendToast] = useToast();
-
   const { data: allTimelines = [] } = useListTimelinesQuery({
     include: "events",
   });
@@ -244,70 +222,10 @@ export function ExplorationPage({
       // Page ids are opaque strings (the page's numeric PK stringified, the
       // same value comments anchor to) — we URL-encode them on push and
       // decode them here.
-      if (params.entityType === "page") {
-        return { type: "page", id: decodeURIComponent(params.entityId) };
-      }
-      return { type: params.entityType, id: Number(params.entityId) };
+      return { type: "page", id: decodeURIComponent(params.entityId) };
     }
     return pickInitialSidebarEntity(tree);
   }, [params.entityType, params.entityId, tree]);
-
-  // AI Summary generates its document asynchronously: the FE shows a
-  // placeholder "Analysis underway…" Document while the worker runs, and
-  // the worker UPDATES that same Document in place when generation
-  // finishes. Polling the exploration is enough to see the thread's
-  // `completed_at` flip, but the cached document body (served by RTKQ's
-  // `getDocument`) is independent of that response — so a user already
-  // viewing the AI Summary doc would otherwise keep seeing the
-  // placeholder until they hard-refreshed. Watch for the null → non-null
-  // transition on `completed_at` for each thread and:
-  //   1. Invalidate the AI Summary document tag. RTKQ refetches
-  //      the body for an active subscription (the open editor) and marks
-  //      inactive cache entries stale.
-  //   2. Always surface a toast that the analysis is ready — even when the
-  //      user is currently viewing the placeholder, since the swap happens
-  //      via a cache refetch and is otherwise easy to miss. When the user
-  //      is already on the doc the toast omits the `View` action (no place
-  //      to go).
-  const prevThreadCompletedAt = useRef<Map<number, string | null>>(new Map());
-  useEffect(() => {
-    const threads = exploration?.threads;
-    if (!threads) {
-      return;
-    }
-    for (const thread of threads) {
-      const prev = prevThreadCompletedAt.current.get(thread.id);
-      const justCompleted = prev === null && thread.completed_at != null;
-      prevThreadCompletedAt.current.set(thread.id, thread.completed_at);
-      if (!justCompleted || thread.canceled_at != null) {
-        continue;
-      }
-      const autoDoc = thread.documents?.find(
-        (d) => d.id === thread.ai_summary_document_id,
-      );
-      if (!autoDoc) {
-        continue;
-      }
-      dispatch(Api.util.invalidateTags([idTag("document", autoDoc.id)]));
-      const viewingThisDoc =
-        selectedEntityId?.type === "document" &&
-        selectedEntityId.id === autoDoc.id;
-      sendToast({
-        icon: "document",
-        message: c("{0} is the name of the document that is now ready to view")
-          .t`${autoDoc.name} ready`,
-        ...(viewingThisDoc
-          ? {}
-          : {
-              actionLabel: t`View`,
-              action: () => {
-                trackExplorationAISummaryOpened(exploration.id);
-                setSelectedEntityId({ type: "document", id: autoDoc.id });
-              },
-            }),
-      });
-    }
-  }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -401,35 +319,10 @@ export function ExplorationPage({
     [dispatch, location.pathname, location.search],
   );
 
-  const documentIdToDocument: Map<
-    DocumentId,
-    ExplorationDocumentWithIsAiSummary
-  > = useMemo(() => {
-    return new Map(
-      (exploration?.threads ?? []).flatMap((thread) =>
-        (thread.documents ?? []).map((document) => [
-          document.id,
-          {
-            ...document,
-            isAiSummary: document.id === thread.ai_summary_document_id,
-            isCanceled:
-              document.id === thread.ai_summary_document_id &&
-              thread.canceled_at != null,
-          },
-        ]),
-      ),
-    );
-  }, [exploration]);
-
-  const selectedDocument = useMemo(() => {
-    return selectedEntityId?.type === "document"
-      ? documentIdToDocument.get(selectedEntityId.id)
-      : undefined;
-  }, [selectedEntityId, documentIdToDocument]);
-
   const isCommentsSidebarOpen = location.query?.comments === "true";
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
-  // documents use a different comments component and URL structure
+  // The comments sidesheet is rendered by a nested route (`comments/:childTargetId`)
+  // as `children`, distinct from the query-param chart comments sidebar above.
   const isCommentsSidesheetOpen = Boolean(children);
 
   if (isLoading || error) {
@@ -488,21 +381,9 @@ export function ExplorationPage({
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
             />
           )}
-          {selectedDocument && (
-            <ExplorationDocumentComponent
-              explorationId={exploration.id}
-              document={selectedDocument}
-              childTargetId={params.childTargetId}
-              route={route}
-              locationSearch={location.search}
-              isCommentsSidesheetOpen={isCommentsSidesheetOpen}
-            />
+          {!selectedPage && hasUnsettledQueries(exploration) && (
+            <ExplorationChartAreaSkeleton />
           )}
-          {!selectedPage &&
-            !selectedDocument &&
-            hasUnsettledQueries(exploration) && (
-              <ExplorationChartAreaSkeleton />
-            )}
         </Group>
       </Stack>
       {isCommentsSidesheetOpen && <Box bg="background-primary">{children}</Box>}

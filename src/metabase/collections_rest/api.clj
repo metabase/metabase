@@ -338,7 +338,6 @@
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions?     :boolean]
-   [:show-exploration-documents?   :boolean]
    [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
@@ -423,7 +422,7 @@
               :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
+  [_ collection {:keys [archived? pinned-state]}]
   (-> {:select [:document.id
                 :document.name
                 :document.collection_id
@@ -449,12 +448,7 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]
-               ;; Hide thread-attached documents - similar to Dashboard Questions, they're not visible in the
-               ;; collection, but only through the Exploration they're in. Callers that want them (e.g. the
-               ;; Trash view, embedding SDK) pass show-exploration-documents? to opt in.
-               (when-not show-exploration-documents?
-                 [:= :document.exploration_thread_id nil])]}
+               [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod ^:private post-process-collection-children :exploration
@@ -469,32 +463,20 @@
               :can_write :can_restore :can_delete))
 
 (def ^:private exploration-recent-edits-subquery
-  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
-  ;; revisions of any Document attached to one of its threads. `rn = 1` picks the winner.
-  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
-  ;; attached Documents, so "Last edited" must reflect both sources.
+  ;; Per-exploration latest edit, from the Exploration's own metadata revisions.
+  ;; `rn = 1` picks the winner.
   {:select [:exploration_id
             :timestamp
             :user_id
             [[:over [[:row_number] {:partition-by [:exploration_id]
                                     :order-by     [[:timestamp :desc]]}]] :rn]]
-   :from   [[{:union-all
-              [{:select [[:r.model_id :exploration_id]
-                         [:r.timestamp :timestamp]
-                         [:r.user_id   :user_id]]
-                :from   [[:revision :r]]
-                :where  [:and
-                         [:= :r.model (h2x/literal "Exploration")]
-                         [:= :r.most_recent true]]}
-               {:select [[:et.exploration_id :exploration_id]
-                         [:r.timestamp       :timestamp]
-                         [:r.user_id         :user_id]]
-                :from   [[:revision :r]]
-                :join   [[:document :d]           [:= :d.id :r.model_id]
-                         [:exploration_thread :et] [:= :et.id :d.exploration_thread_id]]
-                :where  [:and
-                         [:= :r.model (h2x/literal "Document")]
-                         [:= :r.most_recent true]]}]}
+   :from   [[{:select [[:r.model_id :exploration_id]
+                       [:r.timestamp :timestamp]
+                       [:r.user_id   :user_id]]
+              :from   [[:revision :r]]
+              :where  [:and
+                       [:= :r.model (h2x/literal "Exploration")]
+                       [:= :r.most_recent true]]}
              :all_edits]]})
 
 (defmethod collection-children-query :exploration
@@ -1435,19 +1417,18 @@
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions show_exploration_documents]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe Models]]
-                                                                     [:collection_type             {:optional true} CollectionType]
-                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                     [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+           show_dashboard_questions]} :- [:map
+                                          [:models                      {:optional true} [:maybe Models]]
+                                          [:collection_type             {:optional true} CollectionType]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1458,7 +1439,6 @@
      {:archived?                   (boolean archived)
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
-      :show-exploration-documents? (boolean show_exploration_documents)
       :collection-type             collection_type
       :include-library?            include_library
       :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
@@ -1742,22 +1722,20 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
-           show_dashboard_questions show_exploration_documents]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe Models]]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:show_exploration_documents  {:default false} [:maybe ms/BooleanValue]]]]
+           show_dashboard_questions]} :- [:map
+                                          [:models                      {:optional true} [:maybe Models]]
+                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check :model/Collection resolved-id)]
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions?   show_dashboard_questions
-                                   :show-exploration-documents? show_exploration_documents
                                    :models                      model-kwds
                                    :include-library?             true
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))

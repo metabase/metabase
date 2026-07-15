@@ -96,7 +96,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_thread_id})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -107,7 +107,6 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
-   :exploration-thread-id   :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -149,7 +148,6 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
-         :exploration-thread-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker

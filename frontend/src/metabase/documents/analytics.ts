@@ -1,7 +1,7 @@
 import { trackSimpleEvent } from "metabase/analytics";
 import type { Document, DocumentId } from "metabase-types/api";
 
-export type DocumentTriggerSource = "standalone" | "exploration";
+export type DocumentTriggerSource = "standalone";
 
 export const trackDocumentCreated = (
   documentId: DocumentId,

@@ -4,7 +4,6 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
   createBlock,
   createExploration,
-  createExplorationDocument,
   createPage,
   createQuery,
   createThread,
@@ -479,48 +478,6 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
   });
 });
 
-describe("getExplorationSidebarTree AI summary document status", () => {
-  function aiSummaryDocumentStatus(
-    tree: ReturnType<typeof getExplorationSidebarTree>,
-  ) {
-    const doc = tree[0]?.children?.find(
-      (node) => node.data?.type === "document" && node.data.isAiSummary,
-    );
-    return doc?.data?.type === "document" ? doc.data.status : undefined;
-  }
-
-  function buildTree(threadOverrides: Parameters<typeof createExploration>[0]) {
-    return getAllTabExplorationSidebarTree({
-      queries: [],
-      blocks: [],
-      documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
-      ...threadOverrides,
-    });
-  }
-
-  it("is running while the AI summary document is generating", () => {
-    const tree = buildTree({
-      thread: {
-        ai_summary_document_id: 99,
-        completed_at: null,
-        canceled_at: null,
-      },
-    });
-    expect(aiSummaryDocumentStatus(tree)).toBe("running");
-  });
-
-  it("is done once the AI summary document has finished", () => {
-    const tree = buildTree({
-      thread: {
-        ai_summary_document_id: 99,
-        completed_at: "2026-04-30T00:01:00Z",
-        canceled_at: null,
-      },
-    });
-    expect(aiSummaryDocumentStatus(tree)).toBe("done");
-  });
-});
-
 describe("getExplorationSidebarTree last-activity timestamps", () => {
   function headingData(node: ITreeNodeItem<ExplorationTreeNode> | undefined) {
     return node?.data?.type === "heading" ? node.data : undefined;
@@ -665,43 +622,6 @@ describe("getExplorationSidebarTabsInfo", () => {
       });
 
       expect(getFilteredSidebarTree(exploration, "stars")).toEqual([]);
-    });
-
-    it("excludes AI summary documents", () => {
-      const exploration = createExploration({
-        queries: [starredQuery],
-        blocks: [
-          createBlock({
-            id: BLOCK_ID,
-            name: "Revenue",
-            position: 0,
-            pages: [
-              createPage({
-                id: STARRED_PAGE_ID,
-                name: "Starred",
-                position: 0,
-                query_ids: [starredQuery.id],
-                starred: true,
-              }),
-            ],
-          }),
-        ],
-        documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
-        thread: { ai_summary_document_id: 99 },
-      });
-
-      expect(getFilteredSidebarTree(exploration, "stars")).toEqual([
-        expect.objectContaining({
-          children: [
-            expect.objectContaining({
-              id: String(BLOCK_ID),
-              children: [
-                expect.objectContaining({ id: String(STARRED_PAGE_ID) }),
-              ],
-            }),
-          ],
-        }),
-      ]);
     });
   });
 

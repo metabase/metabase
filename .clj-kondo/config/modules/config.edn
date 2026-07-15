@@ -1026,7 +1026,6 @@
            app-db
            collections
            contextual-interestingness
-           documents
            events
            interestingness
            lib
@@ -1050,7 +1049,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
-                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse

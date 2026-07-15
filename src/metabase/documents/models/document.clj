@@ -34,45 +34,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defonce ^{:private true
-           :doc "Predicate gating a document's *content* (not merely its existence) below
-                 collection-read, for documents whose rendered body embeds data the viewer may not
-                 be entitled to see. Installed at init.
-
-                 The only user today is `explorations`: an AI-Summary document belongs to an
-                 exploration thread (the `:exploration_thread_id` FK on this table) and embeds
-                 verbatim — possibly sandboxed/impersonated/routed — result values, so a
-                 collaborator whose data-access lens differs from the creator's must not read it.
-
-                 `documents` can't call the consumer directly — the module graph runs one way
-                 (`explorations -> documents`) — so the consumer registers a callback here."}
-  doc-content-visibility-fn
-  (atom (fn [_doc] true)))
-
-(defn register-doc-content-visibility-fn!
-  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes a document and returns whether the current user may see its
-  rendered content."
-  [f]
-  (reset! doc-content-visibility-fn f))
-
-;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
-;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
-;; narrower than collection access.
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
-        (boolean (@doc-content-visibility-fn instance))))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
-
-(defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
-        (boolean (@doc-content-visibility-fn instance))))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
-
 (def DocumentName
   "Validations for the name of a document"
   (mu/with-api-error-message
@@ -191,7 +152,6 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
-           :exploration-thread-id :exploration_thread_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
@@ -279,7 +239,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :exploration_thread_id]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
