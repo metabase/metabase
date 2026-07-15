@@ -349,6 +349,27 @@ const rules = [
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
   },
+  // formatting is a leaf utility module. Most of it lived at the lib tier
+  // before it was unified here, and it must stay importable from anywhere -
+  // so nothing app-ward may leak into it. The only exceptions are the JSX
+  // glue (common links) and the SDK link handling in ui.tsx.
+  {
+    from: ["shared/formatting"],
+    disallow: ["shared/*"],
+    message:
+      "formatting is a leaf module - value formatting must not depend on app code (only common/embedding-sdk JSX glue is allowed)",
+  },
+  {
+    from: ["shared/formatting"],
+    allow: [
+      "shared/formatting",
+      "shared/common",
+      "shared/embedding-sdk",
+      "shared/embedding-sdk-shared",
+      // specs only: SDK plugin setup for testing the ui.tsx link renderer
+      "shared/embedding-sdk-window-bridge",
+    ],
+  },
   {
     from: ["feature/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
