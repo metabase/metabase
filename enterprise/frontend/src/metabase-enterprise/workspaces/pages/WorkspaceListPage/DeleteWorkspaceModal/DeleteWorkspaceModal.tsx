@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -19,34 +20,31 @@ import {
   useDeleteWorkspaceMutation,
   useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import type { Workspace, WorkspaceId } from "metabase-types/api";
 
 import { isPending } from "../../../utils";
 
 export type DeleteWorkspaceModalProps = {
-  workspace: Workspace;
-  opened: boolean;
+  workspaceId: WorkspaceId;
   onDelete: () => void;
   onClose: () => void;
 };
 
 export function DeleteWorkspaceModal({
-  workspace,
-  opened,
+  workspaceId,
   onDelete,
   onClose,
 }: DeleteWorkspaceModalProps) {
   return (
     <Modal
       title={t`Delete this workspace?`}
-      opened={opened}
+      opened
       padding="xl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <DeleteWorkspaceForm
-        workspace={workspace}
-        opened={opened}
+      <DeleteWorkspaceLoader
+        workspaceId={workspaceId}
         onDelete={onDelete}
         onClose={onClose}
       />
@@ -54,34 +52,54 @@ export function DeleteWorkspaceModal({
   );
 }
 
+type DeleteWorkspaceLoaderProps = {
+  workspaceId: WorkspaceId;
+  onDelete: () => void;
+  onClose: () => void;
+};
+
+function DeleteWorkspaceLoader({
+  workspaceId,
+  onDelete,
+  onClose,
+}: DeleteWorkspaceLoaderProps) {
+  // The list page omits databases, so fetch the hydrated workspace to learn which
+  // databases are still provisioning/deprovisioning.
+  const {
+    data: workspace,
+    isLoading,
+    error,
+  } = useGetWorkspaceQuery(workspaceId);
+
+  if (isLoading || error != null || workspace == null) {
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <DeleteWorkspaceForm
+      workspace={workspace}
+      onDelete={onDelete}
+      onClose={onClose}
+    />
+  );
+}
+
 type DeleteWorkspaceFormProps = {
   workspace: Workspace;
-  opened: boolean;
   onDelete: () => void;
   onClose: () => void;
 };
 
 function DeleteWorkspaceForm({
   workspace,
-  opened,
   onDelete,
   onClose,
 }: DeleteWorkspaceFormProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
-  // The list page omits databases, so fetch the hydrated workspace to learn which
-  // databases are still provisioning/deprovisioning. Skipped while the modal is closed.
-  const { data: hydratedWorkspace, isLoading } = useGetWorkspaceQuery(
-    workspace.id,
-    { skip: !opened },
-  );
-
-  const pendingDatabases = (hydratedWorkspace?.databases ?? []).filter(
-    isPending,
-  );
+  const databases = workspace.databases ?? [];
+  const pendingDatabases = databases.filter(isPending);
   const hasPendingDatabases = pendingDatabases.length > 0;
 
-  // On teardown failure the backend keeps the workspace and responds with an
-  // error, which the form surfaces; the delete can simply be retried.
   const handleSubmit = async () => {
     await deleteWorkspace(workspace.id).unwrap();
     onDelete();
@@ -117,7 +135,6 @@ function DeleteWorkspaceForm({
               label={t`Delete workspace`}
               variant="filled"
               color="feedback-negative"
-              disabled={isLoading}
             />
           </Group>
         </Stack>

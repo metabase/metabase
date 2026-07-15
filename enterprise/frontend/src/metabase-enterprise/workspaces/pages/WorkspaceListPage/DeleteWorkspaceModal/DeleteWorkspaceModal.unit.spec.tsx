@@ -43,8 +43,7 @@ function setup({
   renderWithProviders(
     <>
       <DeleteWorkspaceModal
-        workspace={workspace}
-        opened
+        workspaceId={workspace.id}
         onDelete={onDelete}
         onClose={onClose}
       />

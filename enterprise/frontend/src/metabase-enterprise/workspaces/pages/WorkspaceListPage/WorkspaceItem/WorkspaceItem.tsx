@@ -158,12 +158,13 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         onRename={closeRename}
         onClose={closeRename}
       />
-      <DeleteWorkspaceModal
-        workspace={workspace}
-        opened={isDeleteOpen}
-        onDelete={closeDelete}
-        onClose={closeDelete}
-      />
+      {isDeleteOpen && (
+        <DeleteWorkspaceModal
+          workspaceId={workspace.id}
+          onDelete={closeDelete}
+          onClose={closeDelete}
+        />
+      )}
     </>
   );
 }
