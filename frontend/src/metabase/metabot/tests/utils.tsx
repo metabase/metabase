@@ -145,7 +145,12 @@ export const lastReqBody = async (
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
   // The client calls `fetch(new Request(url, init))`, so the body lives on the
   // Request object rather than a separate init arg.
-  const [request] = agentSpy.mock.lastCall ?? [];
+  const [request] =
+    agentSpy.mock.calls.findLast(
+      ([req]) =>
+        req instanceof Request &&
+        req.url.includes("/api/metabot/agent-streaming"),
+    ) ?? [];
   // Unjustified type cast. FIXME
   return JSON.parse(await (request as Request).clone().text());
 };
@@ -212,6 +217,7 @@ export function setup(
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
     conversations?: MetabotConversation[];
+    conversationTitle?: string | null;
     withRouter?: boolean;
     initialRoute?: string;
   } | void,
@@ -222,24 +228,35 @@ export function setup(
 
   setupEnterprisePlugins();
 
-  const _metabotState = getMetabotInitialState();
-  const metabotState = assocIn(
-    _metabotState,
-    ["conversations", "omnibot", "visible"],
-    true,
-  );
-
   const {
     ui = <Metabot />,
     currentUser = createMockUser(),
-    metabotInitialState = metabotState,
+    metabotInitialState,
     promptSuggestions = [],
     storeInitialState = {},
     customReducers,
     conversations = [],
+    conversationTitle = "Test Conversation Title",
     withRouter = false,
     initialRoute,
   } = options || {};
+
+  const visibleState = assocIn(
+    getMetabotInitialState(),
+    ["conversations", "omnibot", "visible"],
+    true,
+  );
+  const metabotState =
+    metabotInitialState ??
+    Object.keys(visibleState.conversations).reduce(
+      (state, agentId) =>
+        assocIn(
+          state,
+          ["conversations", agentId, "title"],
+          conversationTitle || undefined, // setting a default avoids constant title polling
+        ),
+      visibleState,
+    );
 
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
@@ -270,7 +287,7 @@ export function setup(
         ...(storeInitialState.settings ?? {}),
       },
       currentUser: currentUser ? currentUser : undefined,
-      metabot: metabotInitialState,
+      metabot: metabotState,
     }),
     customReducers: {
       ...customReducers,
@@ -283,7 +300,7 @@ export function setup(
   return {
     rerender,
     history,
-    conversationIds: Object.keys(metabotInitialState.conversations),
+    conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
     store: store as Omit<typeof store, "getState"> & {
       getState: () => State;

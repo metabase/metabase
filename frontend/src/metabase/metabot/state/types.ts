@@ -10,9 +10,7 @@ import type {
 
 export type MetabotDataPart = Exclude<
   KnownDataPart,
-  | { type: "data-state" }
-  | { type: "data-chat-title" }
-  | { type: "data-chat-title-pending" }
+  { type: "data-state" } | { type: "data-chat-title" }
 >;
 
 export type MetabotDataPartMetadata = {

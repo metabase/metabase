@@ -43,7 +43,6 @@ export const knownDataPartTypes = [
   "data-adhoc_viz",
   "data-static_viz",
   "data-chat-title",
-  "data-chat-title-pending",
 ] as const satisfies readonly KnownDataPart["type"][];
 
 export type AdhocVizValue = {
@@ -81,8 +80,7 @@ export type KnownDataPart =
   | { type: "data-generated_entity"; data: GeneratedEntity }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
-  | { type: "data-chat-title"; data: string }
-  | { type: "data-chat-title-pending"; data: { conversation_id: string } };
+  | { type: "data-chat-title"; data: string };
 
 export const isKnownDataPart = (part: {
   type: string;

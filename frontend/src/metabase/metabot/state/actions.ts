@@ -48,6 +48,7 @@ import {
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
+  getMetabotConversationTitle,
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
@@ -477,7 +478,10 @@ export const sendAgentRequest = createAsyncThunk<
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
-    let pendingTitleConversationId: string | undefined;
+    const hadTitleBeforeTurn = Boolean(
+      getMetabotConversationTitle(getState(), agentId),
+    );
+
     try {
       // store error object streamed across the wire
       let streamedError: MetabotAgentTurnError | undefined;
@@ -507,9 +511,6 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatchToConvo(
                   setConversationTitle({ agentId, title: part.data }),
                 );
-              })
-              .with({ type: "data-chat-title-pending" }, (part) => {
-                pendingTitleConversationId = part.data.conversation_id;
               })
               .with({ type: "data-todo_list" }, (part) => {
                 pushDataPart({ type: "data_part", part });
@@ -658,12 +659,13 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
-      if (pendingTitleConversationId && !receivedTitle) {
+      const shoudlPollForTitle = !receivedTitle && !hadTitleBeforeTurn;
+      if (shoudlPollForTitle) {
         void pollConversationTitle({
           dispatch,
           getState,
           agentId,
-          conversationId: pendingTitleConversationId,
+          conversationId: request.conversation_id,
         });
       }
 

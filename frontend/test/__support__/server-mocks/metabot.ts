@@ -6,6 +6,7 @@ import fetchMock, {
 import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   MetabotConversation,
+  MetabotConversationTitleResponse,
   MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
@@ -57,6 +58,17 @@ export function setupListMetabotConversationsEndpoint(
       offset: 0,
     },
     { name: "metabot-conversations-list" },
+  );
+}
+
+export function setupGetMetabotConversationTitleEndpoint(
+  response: MetabotConversationTitleResponse,
+) {
+  fetchMock.removeRoute("metabot-conversation-title");
+  fetchMock.get(
+    "express:/api/metabot/conversations/:conversationId/title",
+    response,
+    { name: "metabot-conversation-title" },
   );
 }
 

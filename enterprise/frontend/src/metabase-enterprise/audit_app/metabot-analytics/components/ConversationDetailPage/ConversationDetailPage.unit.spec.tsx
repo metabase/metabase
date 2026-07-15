@@ -149,7 +149,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 
-  it("shows an in-progress row with a reachable pager while a regeneration streams", async () => {
+  it("shows the loading state with a reachable pager while a regeneration streams", async () => {
     setup(
       createConversation([
         userMessage("u1", null, "count orders"),
@@ -159,9 +159,8 @@ describe("ConversationDetailPage", () => {
     );
 
     expect(
-      await screen.findByTestId("metabot-response-in-progress"),
+      await screen.findByTestId("metabot-response-loader"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Response in progress/)).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
     const [, inProgressElement] = screen.getAllByTestId("metabot-chat-message");
@@ -175,7 +174,7 @@ describe("ConversationDetailPage", () => {
 
     expect(screen.getByText("first try")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("metabot-response-in-progress"),
+      screen.queryByTestId("metabot-response-loader"),
     ).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });

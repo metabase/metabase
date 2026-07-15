@@ -32,7 +32,7 @@ import type {
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
-import { createMessageId } from "./utils";
+import { createMessageId, hasInProgressMessage } from "./utils";
 
 export const metabot = createSlice({
   name: "metabase/metabot",
@@ -351,7 +351,7 @@ export const metabot = createSlice({
         convo.activeToolCalls = activeToolCalls ?? [];
         convo.conversationId = conversationId ?? uuid();
         convo.title = title;
-        convo.isProcessing = false;
+        convo.isProcessing = hasInProgressMessage(messages ?? []);
         convo.stateBeforeTurn = undefined;
         convo.pendingMessageExternalId = undefined;
 

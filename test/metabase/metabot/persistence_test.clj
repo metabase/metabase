@@ -129,6 +129,26 @@
     (is (= "hello!" (:message (nth result 1))))
     (is (= {:output "ok"} (json/decode+kw (:result (nth result 2)))))))
 
+(deftest ^:parallel messages->chat-messages-active-placeholder-test
+  (testing "an in-flight assistant placeholder becomes a trailing turn_in_progress message"
+    (let [result (metabot-persistence/messages->chat-messages
+                  [{:role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :role :assistant :external_id "a1"
+                    :created_at (t/offset-date-time) :finished nil :data []}])]
+      (is (= ["user" "agent"] (map :role result)))
+      (is (= ["text" "turn_in_progress"] (map :type result)))
+      (is (= "a1" (:externalId (second result)))))))
+
+(deftest ^:parallel messages->chat-messages-stale-placeholder-test
+  (testing "a placeholder past the grace window is an aborted (finished=false) turn, not in-progress"
+    (let [result (metabot-persistence/messages->chat-messages
+                  [{:role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :role :assistant :external_id "a1"
+                    :created_at (t/minus (t/offset-date-time) (t/hours 1))
+                    :finished nil :data []}])]
+      (is (not-any? #(= "turn_in_progress" (:type %)) result))
+      (is (false? (:finished (last result)))))))
+
 (deftest ^:parallel messages->flat-messages-test
   (let [deleted-at (t/offset-date-time)
         messages   (metabot-persistence/messages->flat-messages
@@ -507,9 +527,10 @@
     (let [recent (java.time.OffsetDateTime/now)
           stale  (.minusHours recent 2)
           base   {:role :assistant :data [] :error nil}]
-      (testing "finished=nil + recent created_at → filtered"
-        (is (= [] (metabot-persistence/messages->chat-messages
-                   [(assoc base :finished nil :created_at recent)]))))
+      (testing "finished=nil + recent created_at → in-progress turn"
+        (is (=? [{:type "turn_in_progress" :role "agent"}]
+                (metabot-persistence/messages->chat-messages
+                 [(assoc base :finished nil :created_at recent)]))))
       (testing "finished=nil + stale created_at → not filtered (renders aborted stub)"
         (is (=? [{:type "text" :message "" :finished false}]
                 (metabot-persistence/messages->chat-messages
@@ -992,10 +1013,10 @@
           (is (true? (:finished row))
               "an errored turn still finalizes as finished"))))))
 
-(deftest messages-chat-messages-skips-in-flight-placeholders-test
+(deftest messages-chat-messages-in-flight-placeholders-test
   (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)
-            are filtered out of the chat-message conversion, so a mid-stream read does not
-            render a stub 'Response was interrupted' alert"
+            become a trailing turn_in_progress message, so a resumed mid-stream read
+            renders a 'Response in progress…' row"
     (let [recent      (java.time.OffsetDateTime/now)
           ;; Comfortably outside the grace window so the test isn't sensitive
           ;; to the exact value of `placeholder-grace-period-ms`.
@@ -1004,9 +1025,10 @@
           stale-stub  {:role :assistant :data [] :finished nil :error nil :created_at stale}
           user-msg    {:role :user :data [{:type "text" :text "hi"}]}
           done-asst   {:role :assistant :data [{:type "text" :text "done"}] :finished true}]
-      (testing "in-flight placeholder is skipped; surrounding messages still render"
-        (is (= ["hi" "done"]
-               (mapv :message (metabot-persistence/messages->chat-messages [user-msg done-asst placeholder])))))
+      (testing "in-flight placeholder renders as turn_in_progress; surrounding messages still render"
+        (let [out (metabot-persistence/messages->chat-messages [user-msg done-asst placeholder])]
+          (is (= ["hi" "done" nil] (mapv :message out)))
+          (is (= ["text" "text" "turn_in_progress"] (mapv :type out)))))
       (testing "stale placeholder (older than grace window) still renders as the aborted-turn stub"
         (let [out (metabot-persistence/messages->chat-messages [user-msg stale-stub])]
           (is (= 2 (count out)))

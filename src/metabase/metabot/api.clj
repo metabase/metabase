@@ -166,24 +166,17 @@
            (reduced acc)))))))
 
 (defn- inject-title-events-xf
+  "Emit a `data-chat-title` SSE event inline the moment the title becomes
+   available mid-stream. If it isn't ready by the time the stream ends, nothing
+   is emitted and the client polls the title endpoint on its own."
   [title-job conversation-id]
   (let [title-emitted? (volatile! false)]
     (mapcat
      (fn [line]
-       (cond
-         (not title-job)
+       (if (or (not title-job)
+               @title-emitted?
+               (= self.core/done-sse-line line))
          [line]
-
-         (= self.core/done-sse-line line)
-         (if-let [event (when-not @title-emitted?
-                          (conversation-title/poll-title-event title-job conversation-id))]
-           [(self.core/format-sse-event event) line]
-           [line])
-
-         @title-emitted?
-         [line]
-
-         :else
          (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
            (do (vreset! title-emitted? true)
                [line (self.core/format-sse-event event)])
@@ -341,8 +334,9 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           state     (metabot.persistence/conversation-state live)
-          title-job (conversation-title/ensure-title!
-                     conversation_id profile-id (metabot.persistence/first-user-message-content live))]
+          first-msg (or (metabot.persistence/first-user-message-content live)
+                        (:content message))
+          title-job (conversation-title/ensure-title! conversation_id profile-id first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id

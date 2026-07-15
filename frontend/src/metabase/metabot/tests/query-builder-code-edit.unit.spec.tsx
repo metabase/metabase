@@ -2,6 +2,7 @@ import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupGetMetabotConversationTitleEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -63,6 +64,7 @@ describe("query builder code edits from omnibot", () => {
     setupEnterprisePlugins();
     mockedAiStreamingQuery.mockReset();
     jest.mocked(findMatchingInflightAiStreamingRequests).mockReturnValue([]);
+    setupGetMetabotConversationTitleEndpoint({ status: "ready", title: "X" });
     fetchMock.get(
       "path:/api/metabot/permissions/user-permissions",
       createMockUserMetabotPermissions(),

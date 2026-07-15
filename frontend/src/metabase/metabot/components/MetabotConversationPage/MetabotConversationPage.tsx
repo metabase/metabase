@@ -8,13 +8,20 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { setConversationSnapshot } from "metabase/metabot/state";
+import {
+  getIsConversationInProgress,
+  setConversationSnapshot,
+} from "metabase/metabot/state";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Navigate } from "metabase/router";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
+
+// While a resumed conversation's latest turn is still streaming (owned by
+// another session), re-fetch on this cadence until it finishes.
+export const IN_PROGRESS_POLL_MS = 2500;
 
 export const MetabotConversationPage = ({
   params: { convoId: urlConvoId },
@@ -26,12 +33,18 @@ export const MetabotConversationPage = ({
   const { conversationId } = useMetabotAgent("ask");
 
   const isSettingsLoading = useSelector(getSettingsLoading);
+  const isInProgress = useSelector((state) =>
+    getIsConversationInProgress(state, "ask"),
+  );
 
   const isConvoLoaded = conversationId === urlConvoId;
 
   const { currentData: conversation, isError } = useGetMetabotConversationQuery(
     urlConvoId,
-    { skip: !canUseNlq || isConvoLoaded },
+    {
+      skip: !canUseNlq || (isConvoLoaded && !isInProgress),
+      pollingInterval: isInProgress ? IN_PROGRESS_POLL_MS : 0,
+    },
   );
 
   useEffect(

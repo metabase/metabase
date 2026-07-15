@@ -1,8 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
-import fetchMock from "fetch-mock";
 import { createDraft } from "immer";
 
-import { waitFor } from "__support__/ui";
 import {
   type MetabotState,
   activateSuggestedTransform,
@@ -20,8 +18,6 @@ import {
   getMetabotInitialState,
   getRequestConversation,
 } from "../state/reducer-utils";
-
-import { enterChatMessage, mockAgentEndpoint, setup } from "./utils";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -256,87 +252,6 @@ describe("metabot reducer", () => {
       const convo = store.getState().metabot.conversations.ask;
       expect(convo).toBeDefined();
       expect(convo?.profileOverride).toBe(METABOT_PROFILE_OVERRIDES.NLQ);
-    });
-  });
-
-  describe("streamed conversation title", () => {
-    it("stores the title on the conversation", async () => {
-      const { store } = setup();
-      mockAgentEndpoint({
-        events: [{ type: "data-chat-title", data: "Orders by Month" }],
-      });
-
-      await enterChatMessage("Show orders by month");
-
-      await waitFor(() => {
-        expect(store.getState().metabot.conversations.omnibot?.title).toBe(
-          "Orders by Month",
-        );
-      });
-    });
-
-    it("polls for a title after a pending title event", async () => {
-      const { store } = setup();
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-
-      if (!conversationId) {
-        throw new Error("Expected omnibot conversation id");
-      }
-
-      fetchMock.get(`path:/api/metabot/conversations/${conversationId}/title`, {
-        status: 200,
-        body: { status: "ready", title: "Orders by Month" },
-      });
-      mockAgentEndpoint({
-        events: [
-          {
-            type: "data-chat-title-pending",
-            data: { conversation_id: conversationId },
-          },
-        ],
-      });
-
-      await enterChatMessage("Show orders by month");
-
-      await waitFor(() => {
-        expect(store.getState().metabot.conversations.omnibot?.title).toBe(
-          "Orders by Month",
-        );
-      });
-    });
-
-    it("keeps the conversation untitled when pending title polling reports missing", async () => {
-      const { store } = setup();
-      const conversationId =
-        store.getState().metabot.conversations.omnibot?.conversationId;
-
-      if (!conversationId) {
-        throw new Error("Expected omnibot conversation id");
-      }
-
-      const titlePath = `path:/api/metabot/conversations/${conversationId}/title`;
-      fetchMock.get(titlePath, {
-        status: 200,
-        body: { status: "missing", title: null },
-      });
-      mockAgentEndpoint({
-        events: [
-          {
-            type: "data-chat-title-pending",
-            data: { conversation_id: conversationId },
-          },
-        ],
-      });
-
-      await enterChatMessage("Show orders by month");
-
-      await waitFor(() => {
-        expect(fetchMock.callHistory.calls(titlePath)).toHaveLength(1);
-      });
-      expect(store.getState().metabot.conversations.omnibot?.title).toBe(
-        undefined,
-      );
     });
   });
 

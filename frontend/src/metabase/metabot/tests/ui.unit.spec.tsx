@@ -1,6 +1,7 @@
 /* eslint-disable jest/expect-expect */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
@@ -12,7 +13,10 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import {
+  createConversation,
+  getMetabotInitialState,
+} from "metabase/metabot/state/reducer-utils";
 import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
 import {
@@ -399,7 +403,8 @@ describe("metabot > ui", () => {
 
   describe("conversation title", () => {
     it("shows a placeholder title once a message is sent, then the generated title when it arrives", async () => {
-      setup();
+      // start untitled so the placeholder is what shows first
+      setup({ conversationTitle: null });
 
       // no title before any messages are sent
       expect(
@@ -429,6 +434,51 @@ describe("metabot > ui", () => {
       // the generated title replaces the placeholder once it arrives
       await waitFor(() =>
         expect(queryChatTitle()).toHaveTextContent("Orders by Month"),
+      );
+    });
+
+    it("polls for the title when the stream ends without one", async () => {
+      const conversationId = "abcdabcd-abcd-abcd-abcd-abcdabcdabcd";
+      setup({
+        metabotInitialState: assocIn(
+          getMetabotInitialState(),
+          ["conversations", "omnibot"],
+          createConversation("omnibot", { conversationId, visible: true }),
+        ),
+      });
+
+      // the title isn't ready by the time the stream ends, and the stream
+      // carries no title event at all — the FE must poll for it on its own
+      let titleReady = false;
+      fetchMock.removeRoute("metabot-conversation-title");
+      fetchMock.get(
+        `path:/api/metabot/conversations/${conversationId}/title`,
+        () =>
+          titleReady
+            ? { status: "ready", title: "Orders by Month" }
+            : { status: "pending", title: null },
+        { name: "metabot-conversation-title" },
+      );
+
+      mockAgentEndpoint({
+        stream: createMockSSEStream(
+          (async function* () {
+            yield { type: "text-delta", id: "t1", delta: "On it" };
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Show me orders by month");
+
+      // a muted placeholder shows while the title is polled for
+      expect(await chatTitle()).toHaveTextContent("New conversation");
+
+      // the next poll resolves with the generated title
+      titleReady = true;
+
+      await waitFor(
+        () => expect(queryChatTitle()).toHaveTextContent("Orders by Month"),
+        { timeout: 5000 },
       );
     });
   });
@@ -482,13 +532,15 @@ describe("metabot > ui", () => {
     });
 
     it("filters conversations by the current agent's profile", async () => {
-      const metabotInitialState = getMetabotInitialState();
-      const omnibotConversation = metabotInitialState.conversations.omnibot;
-      if (!omnibotConversation) {
-        throw new Error("Expected omnibot conversation");
-      }
-      omnibotConversation.visible = true;
-      omnibotConversation.profileOverride = "sql";
+      const metabotInitialState = assocIn(
+        assocIn(
+          getMetabotInitialState(),
+          ["conversations", "omnibot", "visible"],
+          true,
+        ),
+        ["conversations", "omnibot", "profileOverride"],
+        "nlq",
+      );
 
       setup({ metabotInitialState });
 
@@ -504,7 +556,7 @@ describe("metabot > ui", () => {
       const { url } = fetchMock.callHistory.calls(
         "path:/api/metabot/conversations",
       )[0];
-      expect(url).toContain("profile_id=sql");
+      expect(url).toContain("profile_id=nlq");
     });
 
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
@@ -641,6 +693,7 @@ describe("metabot > ui", () => {
 
     it("shows an error toast and keeps the current chat when loading fails", async () => {
       setup({
+        conversationTitle: null,
         ui: (
           <>
             <Metabot />

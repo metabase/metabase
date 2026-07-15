@@ -20,6 +20,7 @@ import type {
   MetabotChatMessage,
   MetabotUserChatMessage,
 } from "./types";
+import { hasInProgressMessage } from "./utils";
 
 /*
  * Top Level Selectors
@@ -208,6 +209,11 @@ export const getMessageIdToRewind = createSelector(
 export const getIsProcessing = createSelector(
   getMetabotConversation,
   (convo) => convo.isProcessing,
+);
+
+export const getIsConversationInProgress = createSelector(
+  getMessages,
+  hasInProgressMessage,
 );
 
 export const getMetabotRequestState = createSelector(

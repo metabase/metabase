@@ -88,9 +88,6 @@ describe("MetabotAsk", () => {
       await screen.findByText("Who is your favorite?"),
     ).toBeInTheDocument();
     expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
-    expect(await screen.findByTestId("metabot-chat-title")).toHaveTextContent(
-      "New conversation",
-    );
     expect(screen.queryByText(greetingTitle)).not.toBeInTheDocument();
   });
 

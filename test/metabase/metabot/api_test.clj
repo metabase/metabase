@@ -92,35 +92,6 @@
                             :data_version 2}]
                           messages)))))))))))
 
-(deftest native-agent-streaming-title-pending-test
-  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
-    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                            (mut/mock-llm-response
-                                                             [{:type :start :id "msg-1"}
-                                                              {:type :text :text "Hello from native agent!"}]))
-                                    conversation-title/ensure-title! (constantly
-                                                                      {:status :pending
-                                                                       :future (java.util.concurrent.CompletableFuture.)})]
-          (mt/with-model-cleanup [:model/MetabotMessage
-                                  [:model/MetabotConversation :created_at]]
-            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                                 {:message         "Test native streaming"
-                                                  :context         {}
-                                                  :conversation_id conversation-id
-                                                  :state           {}})
-                  lines    (->> (str/split-lines response)
-                                (filter #(str/starts-with? % "data: ")))
-                  events   (->> lines
-                                (remove #(= "data: [DONE]" %))
-                                (mapv #(json/decode+kw (subs % 6))))]
-              (is (= "data: [DONE]" (last lines)))
-              (is (= ["finish-step" "finish" "data-chat-title-pending"] (mapv :type (take-last 3 events))))
-              (is (=? {:type "data-chat-title-pending"
-                       :data {:conversation_id conversation-id}}
-                      (last events))))))))))
-
 (deftest emits-title-event-inline-when-ready-during-stream-test
   (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
     (let [conversation-id (str (random-uuid))
@@ -142,21 +113,6 @@
                        {:status :pending :future title-future}
                        conversation-id)
                    lines))))))
-
-(deftest emits-data-chat-title-pending-when-title-not-ready-by-stream-end-test
-  (testing "when the title is still not ready as the stream ends, emit data-chat-title-pending instead of the real data-chat-title"
-    (let [conversation-id (str (random-uuid))
-          title-future    (java.util.concurrent.CompletableFuture.) ; never completed
-          text-line       (self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta "Hello"})
-          pending-line    (self.core/format-sse-event {:type "data-chat-title-pending"
-                                                       :data {:conversation_id conversation-id}})
-          out             (into [] (#'api/inject-title-events-xf
-                                    {:status :pending :future title-future}
-                                    conversation-id)
-                                [text-line self.core/done-sse-line])]
-      (is (= [text-line pending-line self.core/done-sse-line] out))
-      (is (not-any? #(str/includes? % "\"data-chat-title\"") out)
-          "the real title event is never emitted once the stream has finished"))))
 
 (deftest conversation-title-generation-persists-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]

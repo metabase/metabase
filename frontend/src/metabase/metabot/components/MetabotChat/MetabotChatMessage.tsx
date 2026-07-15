@@ -69,7 +69,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
-    .with({ type: "turn_in_progress" }, () => true)
+    .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -233,14 +233,12 @@ export const AgentMessage = ({
           />
         ))
         .with({ type: "turn_in_progress" }, () => (
-          <Flex align="center" gap="sm" className={Styles.message}>
-            <Loader
-              type="dots"
-              size="sm"
-              data-testid="metabot-response-in-progress"
-            />
-            <Text c="text-secondary">{t`Response in progress…`}</Text>
-          </Flex>
+          <Loader
+            type="dots"
+            size="lg"
+            color="core-brand"
+            data-testid="metabot-response-loader"
+          />
         ))
         .exhaustive()}
       {!hideActions && (

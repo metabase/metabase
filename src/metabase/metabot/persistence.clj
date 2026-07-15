@@ -704,23 +704,32 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
+(defn- turn-in-progress-message
+  "Synthetic chat message emitted for an assistant row that is still streaming
+  (an active placeholder). The FE renders it as a 'Response in progress…' row."
+  [row]
+  (cond-> {:id   (or (:external_id row) (str (:id row)))
+           :role "agent"
+           :type "turn_in_progress"}
+    (:external_id row) (assoc :externalId (:external_id row))))
+
 (defn messages->chat-messages
   "Convert a seq of `MetabotMessage` model instances into a flat vector of `MetabotChatMessage` maps.
-  In-flight placeholder rows (assistant rows still streaming) are always
-  skipped. Errored pairs are dropped unless `:include-errored? true`."
+  In-flight placeholder rows (assistant rows still streaming) become a trailing
+  `turn_in_progress` message. Errored pairs are dropped unless `:include-errored? true`."
   ([messages] (messages->chat-messages messages nil))
   ([messages {:keys [include-errored?]}]
-   (let [active (remove placeholder-still-active? messages)]
-     (->> (if include-errored? active (drop-errored-pairs active))
-          (into [] (mapcat message->chat-messages))))))
+   (into []
+         (mapcat (fn [message]
+                   (if (placeholder-still-active? message)
+                     [(turn-in-progress-message message)]
+                     (message->chat-messages message))))
+         (if include-errored? messages (drop-errored-pairs messages)))))
 
 (defn- row->flat-messages
   [row parent-id]
   (let [messages (if (placeholder-still-active? row)
-                   [(cond-> {:id   (or (:external_id row) (str (:id row)))
-                             :role "agent"
-                             :type "turn_in_progress"}
-                      (:external_id row) (assoc :externalId (:external_id row)))]
+                   [(turn-in-progress-message row)]
                    (message->chat-messages row))]
     (reduce (fn [[messages parent-id] message]
               (let [message (assoc message :parent_message_id parent-id)]

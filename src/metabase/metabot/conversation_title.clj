@@ -243,12 +243,3 @@
   (when-let [title (or (:title title-job)
                        (completed-future-title (:future title-job) conversation-id))]
     {:type "data-chat-title" :data title}))
-
-(defn poll-title-event
-  "A `data-chat-title-pending` SSE event telling the client to poll for the
-   title after the stream ends, emitted when a title job was started but the
-   title was not streamed inline. Returns nil when no title job was started."
-  [title-job conversation-id]
-  (when (:future title-job)
-    {:type "data-chat-title-pending"
-     :data {:conversation_id conversation-id}}))

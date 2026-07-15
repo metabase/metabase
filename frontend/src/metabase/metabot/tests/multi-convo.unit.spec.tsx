@@ -1,5 +1,6 @@
 import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 
+import { setupGetMetabotConversationTitleEndpoint } from "__support__/server-mocks";
 import { act, renderHookWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 
@@ -95,6 +96,7 @@ describe("multi-convo support", () => {
   });
 
   it("should be able to reset a conversation", async () => {
+    setupGetMetabotConversationTitleEndpoint({ status: "ready", title: "T" });
     const { hook, store } = setup({ agentIds: ["test_1"] });
     mockAgentEndpoint({
       events: [

@@ -9,7 +9,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -20,7 +20,10 @@ import { MetabotProvider } from "../../context";
 import { getMetabotConversationId, metabotReducer } from "../../state";
 import { getMetabotInitialState } from "../../state/reducer-utils";
 
-import { MetabotConversationPage } from "./MetabotConversationPage";
+import {
+  IN_PROGRESS_POLL_MS,
+  MetabotConversationPage,
+} from "./MetabotConversationPage";
 
 const ASYNC_TIMEOUT = 3000;
 const CONVERSATION_ROUTE = "/metabot/conversation/:convoId";
@@ -99,7 +102,29 @@ const setup = ({
   );
 };
 
+const inProgressDetail = () =>
+  createMockMetabotConversationDetail({
+    conversation_id: CONVERSATION_ID,
+    messages: [
+      { id: "m1", role: "user", type: "text", message: "Loaded question" },
+      { id: "m2", role: "agent", type: "turn_in_progress" },
+    ],
+  });
+
+const finishedDetail = () =>
+  createMockMetabotConversationDetail({
+    conversation_id: CONVERSATION_ID,
+    messages: [
+      { id: "m1", role: "user", type: "text", message: "Loaded question" },
+      { id: "m3", role: "agent", type: "text", message: "Here is the answer" },
+    ],
+  });
+
 describe("MetabotConversationPage", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("shows a loader (not the greeting) while resuming, then the messages", async () => {
     fetchMock.removeRoute("test-conversation-detail");
     fetchMock.get(
@@ -183,5 +208,63 @@ describe("MetabotConversationPage", () => {
     expect(history?.getCurrentLocation().pathname).toBe(
       Urls.metabotConversation(CONVERSATION_ID),
     );
+  });
+
+  it("disables the input and shows the loading state when resuming a mid-response conversation", async () => {
+    fetchMock.removeRoute("test-conversation-detail");
+    fetchMock.get(detailPath(CONVERSATION_ID), inProgressDetail(), {
+      name: "test-conversation-detail",
+    });
+
+    setup({
+      metabotInitialState: createAskState({
+        conversationId: OTHER_CONVERSATION_ID,
+      }),
+    });
+
+    expect(await screen.findByText("Loaded question")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-response-loader"),
+    ).toBeInTheDocument();
+    // the responding state turns the send button into a stop button
+    expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-send-message"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("polls until the in-flight turn finishes, then re-enables the input", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+
+    let callCount = 0;
+    fetchMock.removeRoute("test-conversation-detail");
+    fetchMock.get(
+      detailPath(CONVERSATION_ID),
+      () => {
+        callCount += 1;
+        return callCount === 1 ? inProgressDetail() : finishedDetail();
+      },
+      { name: "test-conversation-detail" },
+    );
+
+    setup({
+      metabotInitialState: createAskState({
+        conversationId: OTHER_CONVERSATION_ID,
+      }),
+    });
+
+    expect(
+      await screen.findByTestId("metabot-response-loader"),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(IN_PROGRESS_POLL_MS + 100);
+    });
+
+    expect(await screen.findByText("Here is the answer")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-response-loader"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
 });
