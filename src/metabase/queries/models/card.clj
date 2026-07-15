@@ -346,25 +346,35 @@
 
 (mu/defn populate-query-fields
   "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
-  from query definition when inserting/updating a Card."
-  [{query :dataset_query, :as card} :- ::queries.schema/card]
-  (merge
-   card
-   (when (and (seq query) (map? query))
-     (merge
-      ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
-      {:source_card_id (source-card-id query)}
-      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-        ;; TODO -- not sure `query_type` is actually used for anything important anyway
-        (let [query-type (if (query/query-is-native? query)
-                           :native
-                           :query)]
-          (merge
-           {:query_type (keyword query-type)}
-           (when database-id
-             {:database_id database-id})
-           (when table-id
-             {:table_id table-id}))))))))
+  from query definition when inserting/updating a Card.
+
+  `clear-stale-table-id?` (default true) controls whether a nil derived table id overwrites an existing `:table_id`.
+  Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
+  a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
+  deleted)."
+  ([card]
+   (populate-query-fields card true))
+  ([{query :dataset_query, :as card} :- ::queries.schema/card
+    clear-stale-table-id? :- :boolean]
+   (merge
+    card
+    (when (and (seq query) (map? query))
+      (merge
+       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
+       {:source_card_id (source-card-id query)}
+       (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+         ;; TODO -- not sure `query_type` is actually used for anything important anyway
+         (let [query-type (if (query/query-is-native? query)
+                            :native
+                            :query)]
+           (merge
+            {:query_type (keyword query-type)}
+            ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
+            ;; native SQL), same as :source_card_id above
+            (when (or table-id clear-stale-table-id?)
+              {:table_id table-id})
+            (when database-id
+              {:database_id database-id})))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -855,8 +865,9 @@
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
-        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
-        populate-query-fields
+        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
+        ;; Only allow it to nil out a stale table_id when the query itself is changing.
+        (populate-query-fields (contains? changes :dataset_query))
         (pre-update changes)
         maybe-populate-initially-published-at)))
 
