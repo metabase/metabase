@@ -15,9 +15,17 @@
   (publish!          [this queue-name payload]
     "Publishes a payload to the given queue. `payload` is an opaque, already-encoded string.
     The backend stores/transports it without looking inside.")
-  (fetch!            [this available-queue-names]
-    "Fetches up to one batch per given queue. Returns a seq of
-    `{:queue :payload :batch-id}` maps (or nil/empty when there's nothing to do).")
+  (fetch!            [this queue->free-slots]
+    "Fetches work for the queues in `queue->free-slots`, a map of queue name → how many batches this
+    node may take for it right now. Fetch no more than that many per queue: the count is the node's
+    remaining capacity, and anything beyond it must be left in the store for a node that can actually
+    run it.
+
+    A count of `nil` means the queue declared no `:max-concurrent-batches` and is therefore unbounded:
+    take as many as you have. Queues already at capacity aren't in the map at all, so a count is
+    never zero.
+
+    Returns a seq of `{:queue :payload :batch-id}` maps (or nil/empty when there's nothing to do).")
   (queue-depths      [this]
     "Returns a seq of `{:channel :status :count}` maps describing current queue depth.")
   (batch-successful! [this queue-name batch-id]
