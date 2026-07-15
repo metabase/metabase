@@ -196,6 +196,7 @@ export function createMockTransformGraphRun(
     entity_id: 1,
     name: "Graph run",
     direction: null,
+    transform_count: null,
     run_method: "manual",
     status: "succeeded",
     is_active: false,

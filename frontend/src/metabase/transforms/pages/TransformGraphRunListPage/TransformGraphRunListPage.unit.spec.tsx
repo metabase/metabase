@@ -68,6 +68,7 @@ const DAG_RUN = createMockTransformGraphRun({
   entity_id: 12,
   name: "Customers deduped",
   direction: "upstream",
+  transform_count: 5,
   status: "failed",
 });
 
@@ -83,9 +84,8 @@ describe("TransformGraphRunListPage", () => {
     setup({ runs: [JOB_RUN, DAG_RUN, TRANSFORM_RUN] });
 
     expect(await screen.findByText("Hourly refresh")).toBeInTheDocument();
-    expect(
-      screen.getByText("Upstream → Customers deduped"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("4 dependencies")).toBeInTheDocument();
+    expect(screen.getByText("Customers deduped")).toBeInTheDocument();
     expect(screen.getByText("Products normalized")).toBeInTheDocument();
 
     const table = screen.getByRole("treegrid", { name: "Runs" });
@@ -125,6 +125,7 @@ describe("TransformGraphRunListPage", () => {
       entity_id: null,
       name: "Removed seed",
       direction: "upstream",
+      transform_count: 3,
       status: "succeeded",
     });
     setupListDagRunTransformRunsEndpoint(205, [
@@ -136,7 +137,7 @@ describe("TransformGraphRunListPage", () => {
     ]);
     setup({ runs: [deletedDagRun] });
 
-    await userEvent.click(await screen.findByText("Upstream → Removed seed"));
+    await userEvent.click(await screen.findByText("Removed seed"));
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
 
@@ -162,9 +163,7 @@ describe("TransformGraphRunListPage", () => {
     ]);
     setup({ runs: [DAG_RUN] });
 
-    await userEvent.click(
-      await screen.findByText("Upstream → Customers deduped"),
-    );
+    await userEvent.click(await screen.findByText("Customers deduped"));
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
     expect(

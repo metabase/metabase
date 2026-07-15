@@ -427,6 +427,7 @@ export type TransformGraphRun = {
   entity_id: number | null;
   name: string | null;
   direction: TransformDagDirection | null;
+  transform_count: number | null;
   run_method: TransformRunMethod | null;
   status: TransformRunStatus | null;
   is_active: boolean | null;

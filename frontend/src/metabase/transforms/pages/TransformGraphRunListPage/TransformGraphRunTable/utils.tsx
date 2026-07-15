@@ -1,5 +1,6 @@
 import type { SortingState } from "@tanstack/react-table";
-import { c, t } from "ttag";
+import type { ReactNode } from "react";
+import { msgid, ngettext, t } from "ttag";
 
 import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
 import {
@@ -13,7 +14,9 @@ import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
   Ellipsified,
+  Flex,
   Group,
+  Icon,
   SortableHeaderPill,
   Text,
   Tooltip,
@@ -36,16 +39,93 @@ export function isDeletedRun(run: TransformGraphRun): boolean {
   return run.entity_id == null;
 }
 
+// For a DAG run: how many dependencies (upstream) / dependents (downstream) the
+// reprocess ran — the plan size minus the seed transform. null for job/standalone
+// runs, or DAG runs predating the transform_count column (render the plain name).
+function dagDependencyCount(run: TransformGraphRun): number | null {
+  if (run.run_type !== "dag" || run.transform_count == null) {
+    return null;
+  }
+  const count = run.transform_count - 1;
+  return count > 0 ? count : null;
+}
+
+function dependenciesText(count: number): string {
+  return ngettext(msgid`${count} dependency`, `${count} dependencies`, count);
+}
+
+function dependentsText(count: number): string {
+  return ngettext(msgid`${count} dependent`, `${count} dependents`, count);
+}
+
+// Plain-text run identity — used for the Run column value and the sidebar title.
 export function formatRunName(run: TransformGraphRun): string {
   const name = run.name ?? t`Deleted`;
-  if (run.run_type === "dag") {
-    return run.direction === "upstream"
-      ? c("{0} is a transform name; a run of it plus its upstream dependencies")
-          .t`Upstream → ${name}`
-      : c("{0} is a transform name; a run of it plus its downstream dependents")
-          .t`${name} → Downstream`;
+  const count = dagDependencyCount(run);
+  if (count == null) {
+    return name;
   }
-  return name;
+  return run.direction === "upstream"
+    ? `${dependenciesText(count)} › ${name}`
+    : `${name} › ${dependentsText(count)}`;
+}
+
+// The seed transform / job name, greyed when the underlying entity was deleted.
+function renderRunEntityName(run: TransformGraphRun): ReactNode {
+  const name = run.name ?? t`Deleted`;
+  if (!isDeletedRun(run)) {
+    return <Ellipsified fw="bold">{name}</Ellipsified>;
+  }
+  return (
+    <Ellipsified>
+      <Tooltip label={t`${name} has been deleted`}>
+        <Text c="text-disabled" component="span" display="inline" fs="italic">
+          {name}
+        </Text>
+      </Tooltip>
+    </Ellipsified>
+  );
+}
+
+function renderRunName(run: TransformGraphRun): ReactNode {
+  const name = renderRunEntityName(run);
+  const count = dagDependencyCount(run);
+  if (count == null) {
+    return name;
+  }
+  const chevron = (
+    <Icon name="chevronright" c="icon-secondary" size={8} aria-hidden />
+  );
+  const countText = (
+    <Text component="span" c="text-secondary" style={{ whiteSpace: "nowrap" }}>
+      {run.direction === "upstream"
+        ? dependenciesText(count)
+        : dependentsText(count)}
+    </Text>
+  );
+  return (
+    <Flex
+      component="span"
+      display="inline-flex"
+      align="center"
+      gap="xs"
+      miw={0}
+    >
+      {run.direction === "upstream" ? (
+        <>
+          {countText}
+          {chevron}
+          {name}
+        </>
+      ) : (
+        <>
+          {name}
+          {chevron}
+          {countText}
+        </>
+      )}
+    </Flex>
+  );
 }
 
 export function formatRunType(run: TransformGraphRun): string {
@@ -58,26 +138,7 @@ function getRunColumn(): TreeTableColumnDef<TransformGraphRun> {
     header: t`Run`,
     width: 320,
     accessorFn: (run) => formatRunName(run),
-    cell: ({ row, getValue }) => {
-      const value = String(getValue());
-      if (!isDeletedRun(row.original)) {
-        return <Ellipsified>{value}</Ellipsified>;
-      }
-      return (
-        <Ellipsified>
-          <Tooltip label={t`${value} has been deleted`}>
-            <Text
-              c="text-disabled"
-              component="span"
-              display="inline"
-              fs="italic"
-            >
-              {value}
-            </Text>
-          </Tooltip>
-        </Ellipsified>
-      );
-    },
+    cell: ({ row }) => renderRunName(row.original),
   };
 }
 
