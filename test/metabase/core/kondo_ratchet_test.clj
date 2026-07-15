@@ -64,6 +64,8 @@
     [:a :b :c]          "#_{:clj-kondo/ignore [:a :b]} x #_{:clj-kondo/ignore [:c]}"
     [:metabase/modules] "   ^{:clj-kondo/ignore [:metabase/modules]}"
     [:deprecated-var]   "#_ {:clj-kondo/ignore [:deprecated-var]} (old-fn)"
+    [:attr-map]         "(ns b {:clj-kondo/ignore [:attr-map]})"
+    [:extra]            "#_{:clj-kondo/ignore [:extra] :reason 1}"
     ;; vector-less forms suppress everything -> :all
     [:all]              "  #_:clj-kondo/ignore"
     [:all]              "  #_ :clj-kondo/ignore (foo)"
@@ -89,15 +91,20 @@
                "(defn i [] 4) #_{:clj-kondo/ignore [:trailing]} ;; trailing needs suppressing here\n"
                ";; #_{:clj-kondo/ignore [:commented-out]}\n"
                "(defn j [] 5)\n"))
-    (spit (io/file dir "b.clj") "(ns b)\n(defn k [] 6)\n")
-    (let [occurrences (kondo-ratchet/scan [(.getPath dir)])]
+    (spit (io/file dir "b.clj")
+          (str "(ns b {:clj-kondo/ignore [:attr-map]})\n"
+               "#_{:clj-kondo/ignore [:extra] :reason \"legacy\"}\n"
+               "(defn k [] 6)\n"))
+    (let [occurrences (sort-by (juxt :file :line) (kondo-ratchet/scan [(.getPath dir)]))]
       (is (= [{:file (.getPath (io/file dir "a.clj")), :line 2,  :linters [:x :y]}
               {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all]}
               {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line]}
-              {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing]}]
+              {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing]}
+              {:file (.getPath (io/file dir "b.clj")), :line 1,  :linters [:attr-map]}
+              {:file (.getPath (io/file dir "b.clj")), :line 2,  :linters [:extra]}]
              occurrences)
-          "strings and commented-out forms don't count; multi-line vectors do")
-      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1}
+          "strings and commented-out forms don't count; multi-line vectors, attr-maps, and extra keys do")
+      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :attr-map 1, :extra 1}
              (kondo-ratchet/actual-counts occurrences))))))
 
 ;;;; ---------------------------------------------------------------------------

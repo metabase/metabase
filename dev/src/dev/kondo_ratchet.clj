@@ -26,10 +26,12 @@
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
-;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`; the vector may span lines. The closing brace is
-;; optional so a map with extra keys after the vector still counts, but removal spans the whole form.
+;; `#_{... [:some-linter]}`, `^{... [:some-linter]}`, and the prefix-less attr-map form
+;; `(ns foo {... [:some-linter]})`; the vector may span lines. The lazy tail after the vector runs to the
+;; map's own closing brace, so extra keys still count and removal spans the whole form; a nested-brace
+;; value stops the match at the vector instead.
 (def ^:private vector-form-re
-  (re-pattern (str "(?:#_|\\^)\\s*\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\]\\s*\\}?")))
+  (re-pattern (str "(?:(?:#_|\\^)\\s*)?\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\](?:[^{}]*?\\})?")))
 
 ;; Bare `#_kw` / `^kw` with no linter vector: suppresses every linter on the next form.
 (def ^:private bare-form-re

@@ -37,6 +37,7 @@
                  :redundant-fn-wrapper                                                1
                  :redundant-nested-call                                               1
                  :syntax                                                              2
+                 :unquote-not-syntax-quoted                                           1
                  :unresolved-namespace                                                5
                  :unresolved-require                                                  1
                  :unresolved-symbol                                                   4
@@ -44,6 +45,7 @@
                  :unsorted-required-namespaces                                        1
                  :unused-alias                                                        1
                  :unused-binding                                                      9
+                 :unused-excluded-var                                                 2
                  :unused-namespace                                                    1
                  :unused-private-var                                                  9
                  :unused-value                                                        1}}
