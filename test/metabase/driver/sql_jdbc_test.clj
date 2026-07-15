@@ -74,8 +74,8 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel invalid-ssh-credentials-test
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?

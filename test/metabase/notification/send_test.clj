@@ -529,7 +529,6 @@
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
               ;; dispatcher worker thread — see note above
-              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [notification.send/send-notification-sync!
                             (fn [notification]
                               (if (= "F" (:test-value notification))

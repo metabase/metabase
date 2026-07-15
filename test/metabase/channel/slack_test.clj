@@ -323,7 +323,7 @@
   (notification.tu/with-send-notification-sync
     (mt/with-temporary-setting-values [slack-app-token    "test-token"
                                        admin-email         nil
-                                       #_:clj-kondo/ignore slack-token-valid? true]
+                                       slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
                                      (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}

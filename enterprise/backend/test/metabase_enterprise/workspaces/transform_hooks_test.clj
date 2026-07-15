@@ -93,7 +93,6 @@
   (wired in `transforms.execute/execute!`), so the captured target reflects the post-rewrite
   state — the question this helper answers is 'what does the per-type method actually see?'."
   [captured-atom body-fn]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (with-redefs [transforms.i/execute! (fn [transform _opts]
                                         (reset! captured-atom transform)
                                         {:status :succeeded})]

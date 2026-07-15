@@ -287,7 +287,7 @@
             (when-not (instance? clojure.lang.ExceptionInfo result)
               (let [q          (get-in result [:structured-output :query])
                     ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     #_{:clj-kondo/ignore [:discouraged-var]}
+                    legacy
                     (lib/->legacy-MBQL q)
                     rebuilt    (try (lib/query mp legacy)
                                     (catch clojure.lang.ExceptionInfo e e))]

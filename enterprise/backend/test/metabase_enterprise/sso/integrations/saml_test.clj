@@ -1126,7 +1126,6 @@
                        (is (not (successful-login? response))))))
                  (testing "an existing user also fails to log in"
                    ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
-                   #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                    (with-redefs [saml.p/saml-response->attributes
                                  (fn [_]
                                    {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email

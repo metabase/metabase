@@ -265,7 +265,6 @@
       (f model))))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions
   "Execute `body` with newly created Actions.
   `binding-forms-and-options-maps` is a vector of even number of elements, binding and options-map,
@@ -327,7 +326,6 @@
     (thunk)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
@@ -335,7 +333,6 @@
   `(do-with-actions-set! (data/id) true (fn [] ~@body)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-disabled!` and remove the `:clj-kondo/ignore`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-disabled
   "Execute `body` with Actions disabled for the current test Database."
   {:style/indent 0}
@@ -343,7 +340,6 @@
   `(do-with-actions-set! (data/id) false (fn [] ~@body)))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
   {:style/indent 0}

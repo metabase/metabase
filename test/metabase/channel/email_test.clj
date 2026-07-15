@@ -81,7 +81,6 @@
         (f)))))
 
 ;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username` and
   `email-smtp-password` (which will cause [[metabase.channel.settings/email-configured?]] to return `true`, and execute
@@ -96,7 +95,6 @@
   {:style/indent 0}
   `(do-with-fake-inbox! (fn [] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-expected-messages
   "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
   are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages

@@ -57,7 +57,6 @@
           (f))))))
 
 ;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe and remove the Kondo ignore rule below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
   events are parsed and added to the fake collector.
