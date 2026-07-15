@@ -291,6 +291,7 @@
    [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
    [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
+   [:download_jar_urls {:optional true} [:maybe [:sequential [:map [:version :string] [:url :string]]]]]
    [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
    [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
    [:published_at      :any]

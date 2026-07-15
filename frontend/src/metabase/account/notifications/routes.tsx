@@ -1,4 +1,4 @@
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 
 import { HelpModal } from "./components/HelpModal";
@@ -11,22 +11,13 @@ import { UnsubscribePulseModal } from "./containers/UnsubscribePulseModal";
 export function getNotificationRoutes() {
   return (
     <Route path="notifications" component={NotificationsApp}>
-      <ModalRoute path="help" modal={HelpModal} />
-      <ModalRoute
-        path="alert/:alertId/archive"
-        modal={DeleteAlertModal}
-        noWrap
-      />
-      <ModalRoute path="pulse/:pulseId/archive" modal={ArchivePulseModal} />
-      <ModalRoute
-        path="alert/:alertId/unsubscribe"
-        modal={UnsubscribeAlertModal}
-        noWrap
-      />
-      <ModalRoute
-        path="pulse/:pulseId/unsubscribe"
-        modal={UnsubscribePulseModal}
-      />
+      {modalRoute("help", HelpModal)}
+      {modalRoute("alert/:alertId/archive", DeleteAlertModal, { noWrap: true })}
+      {modalRoute("pulse/:pulseId/archive", ArchivePulseModal)}
+      {modalRoute("alert/:alertId/unsubscribe", UnsubscribeAlertModal, {
+        noWrap: true,
+      })}
+      {modalRoute("pulse/:pulseId/unsubscribe", UnsubscribePulseModal)}
     </Route>
   );
 }
