@@ -19,13 +19,15 @@
   - metabase://dashboard/{id} - Dashboard details"
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,10 +63,27 @@
                         ;; Handle field IDs with slashes (e.g., c75/17)
                         (str/join "/" (drop 3 parts)))}))
 
+(defn- check-resource-database
+  "Require that a resource's backing database is addressable as a Metabot resource.
+   Routed destination databases are routing internals here: users should navigate via
+   the router database, not direct destination-backed resource URIs."
+  [db-id]
+  (when db-id
+    (warehouses/get-database db-id)))
+
+(defn- check-table-resource-database [table-id]
+  (when-let [table (api/read-check :model/Table table-id)]
+    (check-resource-database (:db_id table))))
+
+(defn- check-card-resource-database [card-id]
+  (when-let [card (api/read-check :model/Card card-id)]
+    (check-resource-database (:database_id card))))
+
 (defn- fetch-table-resource
   "Fetch table resource based on URI components."
   [{:keys [resource-id sub-resource sub-resource-id]}]
   (let [table-id (parse-long resource-id)]
+    (check-table-resource-database table-id)
     (cond
       ;; metabase://table/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
@@ -103,6 +122,7 @@
   (let [resource-id* (parse-long resource-id)
         resource-type* (keyword resource-type)]
     (assert (#{:question :model} resource-type*))
+    (check-card-resource-database resource-id*)
     (cond
       ;; metabase://<model,question>/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
@@ -141,6 +161,7 @@
   "Fetch metric resource based on URI components."
   [{:keys [resource-id sub-resource sub-resource-id]}]
   (let [metric-id (parse-long resource-id)]
+    (check-card-resource-database metric-id)
     (cond
       ;; metabase://metric/123/dimensions/DIMENSION_ID
       (and (= sub-resource "dimensions") sub-resource-id)

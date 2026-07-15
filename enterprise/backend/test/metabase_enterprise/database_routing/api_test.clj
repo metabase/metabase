@@ -1,8 +1,11 @@
 (ns metabase-enterprise.database-routing.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -204,6 +207,30 @@
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/syncable_schemas")))
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
+
+(deftest routed-destination-database-names-are-hidden-in-metabot-resources
+  (mt/with-temp [:model/Database {router-id :id} {:name "Postgres Router"}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                 :model/Database {selected-destination-id :id} {:name "customer-a"
+                                                                :router_database_id router-id}
+                 :model/Database {other-destination-id :id} {:name "customer-b"
+                                                             :router_database_id router-id}
+                 :model/Table {selected-table-id :id} {:db_id selected-destination-id :active true}
+                 :model/Table {other-table-id :id} {:db_id other-destination-id :active true}]
+    (met/with-user-attributes! :rasta {"db_name" "customer-a"}
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "a table on a sibling destination cannot be read by URI and leaks no destination names"
+          (let [{:keys [output resources]} (read-resource/read-resource
+                                            {:uris [(str "metabase://table/" other-table-id)]})]
+            (is (some? (-> resources first :error)))
+            (is (not (str/includes? output "customer-a")))
+            (is (not (str/includes? output "customer-b")))))
+        (testing "a table on the current user's routed destination cannot be read by URI either"
+          (let [{:keys [output resources]} (read-resource/read-resource
+                                            {:uris [(str "metabase://table/" selected-table-id)]})]
+            (is (some? (-> resources first :error)))
+            (is (not (str/includes? output "customer-a")))
+            (is (not (str/includes? output "customer-b")))))))))
 
 (deftest destination-databases-excluded-from-permissions-graph
   (mt/with-temp [:model/Database {db-id :id} {}
