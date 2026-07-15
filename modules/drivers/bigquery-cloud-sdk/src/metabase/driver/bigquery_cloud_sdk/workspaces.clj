@@ -2,7 +2,7 @@
   "BigQuery workspace isolation: per-workspace service accounts, IAM bindings,
    and dataset ACLs that gate read/write access to isolated datasets. Loaded
    for side-effects by `metabase.driver.bigquery-cloud-sdk` to register the
-   `driver/{init,grant,check,destroy}-workspace-isolation*` multimethod
+   `driver/{init,grant,destroy}-workspace-isolation*` multimethod
    implementations."
   (:refer-clojure :exclude [some not-empty])
   (:require
@@ -10,10 +10,8 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [some not-empty]])
   (:import
@@ -34,8 +32,6 @@
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
-
-(defn- quote-schema [s] (sql.u/quote-name :bigquery-cloud-sdk :schema s))
 
 (defn create-dataset!
   "Create `dataset-name` in `project-id` via `client`. Idempotent — no-op when
@@ -70,8 +66,6 @@
                ^"[Lcom.google.cloud.bigquery.BigQuery$DatasetDeleteOption;"
                (into-array BigQuery$DatasetDeleteOption
                            [(BigQuery$DatasetDeleteOption/deleteContents)])))))
-
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
 
 (defn- sa-propagation-error?
   "True for the GCP race where an API call references a service account that was
@@ -642,40 +636,3 @@
                             :impersonate-service-account ws-sa-email}})
       (finally
         (.close iam-client)))))
-
-(defmethod driver/check-isolation-permissions :bigquery-cloud-sdk
-  [driver database test-table]
-  ;; BigQuery uses GCP IAM APIs instead of SQL, so we can't use transaction rollback.
-  ;; We run the actual init/grant/destroy operations and clean up immediately.
-  (let [test-workspace {:id   perm-check-workspace-id
-                        :name "_mb_perm_check_"}]
-    (driver.conn/with-admin-connection
-      (try
-        (let [init-result (try
-                            (driver/init-workspace-isolation! driver database test-workspace)
-                            (catch Exception e
-                              (throw (ex-info (tru "Failed to initialize workspace isolation: {0}" (ex-message e))
-                                              {:step :init} e))))
-              workspace-with-details (merge test-workspace init-result)]
-          (when test-table
-            (try
-              ;; `grant-workspace-read-access!` takes a vector of schema-name strings.
-              ;; Pass the test-table's dataset.
-              (driver/grant-workspace-read-access! driver database workspace-with-details
-                                                   [(:schema test-table)])
-              (catch Exception e
-                (throw (ex-info (tru "Failed to grant read access to dataset {0}: {1}"
-                                     (quote-schema (:schema test-table)) (ex-message e))
-                                {:step :grant :table test-table} e)))))
-          (try
-            (driver/destroy-workspace-isolation! driver database workspace-with-details)
-            (catch Exception e
-              (throw (ex-info (tru "Failed to destroy workspace isolation: {0}" (ex-message e))
-                              {:step :destroy} e)))))
-        nil
-        (catch Exception e
-          (ex-message e))
-        (finally
-          (try
-            (driver/destroy-workspace-isolation! driver database test-workspace)
-            (catch Exception _ nil)))))))

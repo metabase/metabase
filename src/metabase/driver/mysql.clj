@@ -32,7 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -1396,59 +1396,6 @@
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
-
-;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
-;; to manually clean up after testing rather than relying on transaction rollback.
-(def ^:private perm-check-workspace-id "-1337")
-
-(defmethod driver/check-isolation-permissions :mysql
-  [driver database test-table]
-  (let [test-workspace {:id   perm-check-workspace-id
-                        :name "_mb_perm_check_"}]
-    (driver.conn/with-admin-connection
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database
-       {:write? true}
-       (fn [^Connection _conn]
-         (let [result (try
-                        (let [init-result (try
-                                            (driver/init-workspace-isolation! driver database test-workspace)
-                                            (catch Exception e
-                                              (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
-                                                                   (ex-message e))
-                                                              {:step :init} e))))
-                              workspace-with-details (merge test-workspace init-result)]
-                          (when test-table
-                            (try
-                              ;; `grant-workspace-read-access!` takes a vector of
-                              ;; schema-name strings. MySQL has no schema layer; each
-                              ;; entry is interpreted as a database name. `test-table`'s
-                              ;; `:schema` from the caller IS the MySQL database name.
-                              (driver/grant-workspace-read-access! driver database workspace-with-details
-                                                                   [(:schema test-table)])
-                              (catch Exception e
-                                (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
-                                                     (quote-schema (:schema test-table)) (ex-message e))
-                                                {:step :grant :table test-table} e)))))
-                          (try
-                            (driver/destroy-workspace-isolation! driver database workspace-with-details)
-                            (catch Exception e
-                              (throw (ex-info (tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
-                                                   (ex-message e))
-                                              {:step :destroy} e))))
-                          nil)
-                        (catch Exception e
-                          ;; On failure, attempt cleanup
-                          (try
-                            (driver/destroy-workspace-isolation! driver database
-                                                                 (merge test-workspace
-                                                                        {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
-                                                                         :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
-                            (catch Exception _cleanup-error
-                              nil))
-                          (ex-message e)))]
-           result))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |
