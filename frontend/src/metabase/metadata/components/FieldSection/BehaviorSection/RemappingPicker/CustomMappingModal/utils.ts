@@ -1,4 +1,6 @@
-import type { Mapping } from "./types";
+import type { RowValue } from "metabase-types/api";
+
+import type { DraftMapping, Mapping } from "./types";
 
 export function areMappingsEqual(a: Mapping, b: Mapping): boolean {
   return (
@@ -6,25 +8,15 @@ export function areMappingsEqual(a: Mapping, b: Mapping): boolean {
   );
 }
 
-export function fillMissingMappings(mappings: Mapping): Mapping {
-  const remappings = new Map(
-    [...mappings].map(([original, mappedOrUndefined]) => {
-      // Use currently the original value as the "default custom mapping" as the current backend implementation
-      // requires that all original values must have corresponding mappings
-
-      // Additionally, the defensive `.toString` ensures that the mapped value definitely will be string
-      const mappedString =
-        mappedOrUndefined !== undefined
-          ? mappedOrUndefined.toString()
-          : original === null
-            ? "null"
-            : original.toString();
-
-      return [original, mappedString];
-    }),
+export function fillMissingMappings(mappings: DraftMapping): Mapping {
+  // The backend requires every original value to have a mapping, so default unset labels
+  // (undefined, or null from legacy data) to the original value as a string.
+  return new Map(
+    [...mappings].map(([original, label]): [RowValue, string] => [
+      original,
+      label ?? String(original),
+    ]),
   );
-
-  return remappings;
 }
 
 export function getHasEmptyValues(mapping: Mapping): boolean {

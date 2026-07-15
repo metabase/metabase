@@ -47,8 +47,8 @@ describe("parameters/utils/operators", () => {
             type: "number/between",
           }),
         );
-        expect(operator2.name).toEqual("contains");
-        expect(operator3.name).toEqual("between");
+        expect(operator2?.name).toEqual("contains");
+        expect(operator3?.name).toEqual("between");
       });
     });
 
@@ -59,7 +59,7 @@ describe("parameters/utils/operators", () => {
             createMockUiParameter({
               type: "location/city",
             }),
-          ).name,
+          )?.name,
         ).toBe("=");
 
         expect(
@@ -67,7 +67,7 @@ describe("parameters/utils/operators", () => {
             createMockUiParameter({
               type: "category",
             }),
-          ).name,
+          )?.name,
         ).toBe("=");
       });
     });

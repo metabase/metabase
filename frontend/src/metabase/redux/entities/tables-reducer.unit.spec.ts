@@ -1,39 +1,33 @@
 import { cardCreated, cardUpdated } from "metabase/redux/cards";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { tablesReducer } from "./tables-reducer";
 
 describe("tablesReducer", () => {
   describe("saved questions virtual table sync", () => {
-    function getQuestion({
-      id = 5,
-      name = "Q1",
-      collection = null,
-      dataset_query = { database: 1 },
-      archived = false,
-    } = {}) {
-      const question = {
-        id,
-        name,
-        collection,
-        dataset_query,
-        archived,
-      };
+    function getQuestion(opts: Partial<Card> = {}) {
+      const question = createMockCard({
+        id: 5,
+        name: "Q1",
+        collection: null,
+        database_id: 1,
+        archived: false,
+        ...opts,
+      });
       return {
         question,
         virtualTable: convertSavedQuestionToVirtualTable(question),
       };
     }
 
-    function getCreateAction(question: unknown) {
-      // Unjustified type cast. FIXME
-      return cardCreated(question as Card);
+    function getCreateAction(question: Card) {
+      return cardCreated(question);
     }
 
-    function getUpdateAction(question: unknown) {
-      // Unjustified type cast. FIXME
-      return cardUpdated(question as Card);
+    function getUpdateAction(question: Card) {
+      return cardUpdated(question);
     }
 
     it("should add saved question to tables state on CREATE", () => {

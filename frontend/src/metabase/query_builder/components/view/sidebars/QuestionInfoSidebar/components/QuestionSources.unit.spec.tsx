@@ -12,7 +12,10 @@ import { Route } from "metabase/router";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, NormalizedTable } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { QuestionSources } from "./QuestionSources";
 
@@ -109,6 +112,7 @@ describe("QuestionSources", () => {
     const sourceCard = createMockCard({
       name: "My Source Question",
       id: 2,
+      database_id: SAMPLE_DB_ID,
     });
 
     await setup({ card, sourceCard });

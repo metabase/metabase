@@ -1,4 +1,4 @@
-import type { Card, CardType } from "./card";
+import type { Card, CardId, CardType } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
@@ -10,6 +10,8 @@ import type { UserId, UserInfo } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
+// The precise form of a virtual saved-question table id (see getQuestionVirtualTableId).
+export type VirtualCardId = `card__${CardId}`;
 export type TableId = ConcreteTableId | VirtualTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 

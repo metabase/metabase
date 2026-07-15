@@ -5,10 +5,14 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { is403Error } from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
-import { getRemappings } from "metabase-lib/v1/queries/utils/field";
+import {
+  fieldValuesToMap,
+  getFieldValues,
+} from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
 
+import type { DraftMapping } from "./CustomMappingModal";
 import type { RemappingValue } from "./DisplayValuesPicker";
 
 export { is403Error };
@@ -32,7 +36,7 @@ export function getOptions(
     options.push("foreign");
   }
 
-  if (hasMappableNumeralValues(fieldValues)) {
+  if (hasOnlyMappableNumeralValues(fieldValues)) {
     options.push("custom");
   }
 
@@ -66,25 +70,22 @@ function getTableFields(table: Table | undefined): Field[] {
   return table?.fields ?? [];
 }
 
-function hasMappableNumeralValues(
+// Custom remapping is only offered when every value is numeric (or null) and there's at least one.
+function hasOnlyMappableNumeralValues(
   fieldValues: FieldValue[] | undefined,
 ): boolean {
-  const remapping = getFieldRemappedValues(fieldValues);
-
-  // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
-  // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
+  const values = getFieldValues({ values: fieldValues });
   return (
-    remapping.size > 0 &&
-    [...remapping.keys()].every(
-      (key) => typeof key === "number" || key === null,
-    )
+    values.length > 0 &&
+    values.every(([key]) => typeof key === "number" || key === null)
   );
 }
 
+// Seed for the custom-mapping editor: value -> label, labels unset until the admin fills them.
 export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
-): Map<number, string> {
-  return new Map(getRemappings({ values: fieldValues }));
+): DraftMapping {
+  return fieldValuesToMap(getFieldValues({ values: fieldValues }));
 }
 
 /**
