@@ -326,8 +326,8 @@
 
 (defn- workspace-user-spec
   "JDBC spec that connects as the workspace's isolated user."
-  [driver details ws-with-details]
-  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details))))
+  [driver details workspace]
+  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details workspace))))
 
 (deftest ^:synchronized workspace-isolation-perms-test
   ;; BigQuery isn't a JDBC driver (its workspace isolation goes through GCP IAM
@@ -351,16 +351,16 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-permstest-" run-id)}
-            ws-with-details (with-isolation-details driver database workspace)]
+            workspace    (with-isolation-details driver database workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
-          (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (workspace-user-spec driver details ws-with-details)
-                out-schema      (:schema ws-with-details)
+          (driver/init-workspace-isolation! driver database workspace)
+          (let [user-spec       (workspace-user-spec driver details workspace)
+                out-schema      (:schema workspace)
                 out             (qualify driver out-schema out-name)]
-            (driver/grant-workspace-read-access! driver database ws-with-details
+            (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
             (testing "workspace user can SELECT from a granted input table"
               (is (= [{:id 1 :v "a"}]
@@ -420,7 +420,7 @@
               ;; must not change the workspace user's perms — they still SELECT and
               ;; still cannot INSERT. Catches both noisy re-grant failures and silent
               ;; privilege escalation in re-grant code paths.
-              (driver/grant-workspace-read-access! driver database ws-with-details
+              (driver/grant-workspace-read-access! driver database workspace
                                                    [in-schema])
               (is (= [{:id 1 :v "a"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src " ORDER BY id")])))
@@ -452,14 +452,14 @@
               ;; assert that the cleanup actually happened. Drivers' destroy impls are
               ;; idempotent (`IF EXISTS` everywhere), so the `finally` calling destroy
               ;; a second time is a no-op.
-              (driver/destroy-workspace-isolation! driver database ws-with-details)
+              (driver/destroy-workspace-isolation! driver database workspace)
               (verify-jdbc-destroy! driver admin-spec user-spec out-schema)))
           (finally
             ;; Always attempt destroy first — drivers' impls are idempotent (`IF EXISTS`
             ;; everywhere) so this is safe whether init succeeded fully, partially, or
             ;; not at all. Catch+log so a destroy failure doesn't shadow the real
             ;; test failure.
-            (try (driver/destroy-workspace-isolation! driver database ws-with-details)
+            (try (driver/destroy-workspace-isolation! driver database workspace)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during test cleanup"
                               driver)))
@@ -514,8 +514,8 @@
                           :name (str "wsd-A-" ws-a-id)}
             ws-b         {:id   (Long/parseLong ws-b-id 16)
                           :name (str "wsd-B-" ws-b-id)}
-            ws-a-full    (with-isolation-details driver database ws-a)
-            ws-b-full    (with-isolation-details driver database ws-b)]
+            ws-a         (with-isolation-details driver database ws-a)
+            ws-b         (with-isolation-details driver database ws-b)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema-a)
           (maybe-create-input-namespace! admin-spec driver database in-schema-b)
@@ -527,19 +527,19 @@
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-b src-b-name)
                                           " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database ws-a-full)
-          (driver/init-workspace-isolation! driver database ws-b-full)
-          (let [user-a-spec  (workspace-user-spec driver details ws-a-full)
-                user-b-spec  (workspace-user-spec driver details ws-b-full)
-                out-a-schema (:schema ws-a-full)
-                out-b-schema (:schema ws-b-full)
+          (driver/init-workspace-isolation! driver database ws-a)
+          (driver/init-workspace-isolation! driver database ws-b)
+          (let [user-a-spec  (workspace-user-spec driver details ws-a)
+                user-b-spec  (workspace-user-spec driver details ws-b)
+                out-a-schema (:schema ws-a)
+                out-b-schema (:schema ws-b)
                 b-secret-fq  (qualify driver out-b-schema b-secret)
                 sneaky-fq    (qualify driver out-b-schema sneaky-name)]
             ;; Each workspace is granted access only to its own input namespace —
             ;; A's grant must not let A read src-b in B's namespace, and vice-versa.
-            (driver/grant-workspace-read-access! driver database ws-a-full
+            (driver/grant-workspace-read-access! driver database ws-a
                                                  [in-schema-a])
-            (driver/grant-workspace-read-access! driver database ws-b-full
+            (driver/grant-workspace-read-access! driver database ws-b
                                                  [in-schema-b])
             ;; B populates its own output schema with a table A should never reach.
             (jdbc/execute! user-b-spec [(str "CREATE TABLE " b-secret-fq
@@ -595,11 +595,11 @@
                     (format "A unexpectedly enumerates B's table %s.%s in catalog. visible=%s"
                             out-b-schema b-secret visible)))))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database ws-a-full)
+            (try (driver/destroy-workspace-isolation! driver database ws-a)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for ws-A on %s during cross-workspace test cleanup"
                               driver)))
-            (try (driver/destroy-workspace-isolation! driver database ws-b-full)
+            (try (driver/destroy-workspace-isolation! driver database ws-b)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for ws-B on %s during cross-workspace test cleanup"
                               driver)))
@@ -635,8 +635,8 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-collision-" run-id)}
-            ws-with-details (with-isolation-details driver database workspace)
-            out-schema   (:schema ws-with-details)]
+            workspace    (with-isolation-details driver database workspace)
+            out-schema   (:schema workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
@@ -644,15 +644,15 @@
           ;; Pre-create the output namespace at exactly the name init will target,
           ;; before init runs.
           (maybe-create-input-namespace! admin-spec driver database out-schema)
-          (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (workspace-user-spec driver details ws-with-details)
+          (driver/init-workspace-isolation! driver database workspace)
+          (let [user-spec       (workspace-user-spec driver details workspace)
                 out             (qualify driver out-schema out-name)]
-            (driver/grant-workspace-read-access! driver database ws-with-details
+            (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
             (testing "init succeeded against the pre-existing namespace"
               ;; init returns nil under the new contract; getting here without a
               ;; throw is the success signal. Sanity-check the details it ran with.
-              (is (some? (:schema ws-with-details))))
+              (is (some? (:schema workspace))))
             (testing "workspace user has full read+write access to its output namespace post-collision"
               (jdbc/execute! user-spec [(str "CREATE TABLE " out " (id INT, v VARCHAR(8))" (create-table-tail driver))])
               (jdbc/execute! user-spec [(str "INSERT INTO " out " VALUES (1, 'a')")])
@@ -666,7 +666,7 @@
                                   (str "INSERT INTO " src " VALUES (2, 'b')")
                                   :insert-input-after-collision)))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database ws-with-details)
+            (try (driver/destroy-workspace-isolation! driver database workspace)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during collision test cleanup"
                               driver)))
@@ -701,17 +701,17 @@
             src-b        (qualify driver in-schema src-b-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-grantaccum-" run-id)}
-            ws-with-details (with-isolation-details driver database workspace)]
+            workspace    (with-isolation-details driver database workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-a " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (workspace-user-spec driver details ws-with-details)]
+          (driver/init-workspace-isolation! driver database workspace)
+          (let [user-spec       (workspace-user-spec driver details workspace)]
             ;; First grant: only A.
-            (driver/grant-workspace-read-access! driver database ws-with-details
+            (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
             (testing "after first grant, A is readable and B is not"
               (is (= [{:id 1 :v "a"}]
@@ -727,7 +727,7 @@
                                     :select-b-before-grant)))
             ;; Second grant: only B. The additive contract means A's grant must
             ;; still be in effect afterward.
-            (driver/grant-workspace-read-access! driver database ws-with-details
+            (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
             (testing "after second grant, both A and B are readable (A's grant accumulated)"
               (is (= [{:id 1 :v "a"}]
@@ -735,7 +735,7 @@
               (is (= [{:id 1 :v "b"}]
                      (jdbc/query user-spec [(str "SELECT id, v FROM " src-b)])))))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database ws-with-details)
+            (try (driver/destroy-workspace-isolation! driver database workspace)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during grant-accumulation test cleanup"
                               driver)))
@@ -809,7 +809,7 @@
             secret-tbl   (str "secret_" run-id)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-crossdb-" run-id)}
-            ws-with-details (with-isolation-details driver database workspace)
+            workspace    (with-isolation-details driver database workspace)
             second-db-created? (atom false)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
@@ -820,16 +820,16 @@
           (reset! second-db-created? true)
           (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
             (jdbc/execute! admin-spec [sql]))
-          (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (workspace-user-spec driver details ws-with-details)]
-            (driver/grant-workspace-read-access! driver database ws-with-details
+          (driver/init-workspace-isolation! driver database workspace)
+          (let [user-spec       (workspace-user-spec driver details workspace)]
+            (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
             (testing "workspace user denied SELECT against a fully-qualified table in another database"
               (expect-sql-denied! user-spec
                                   (str "SELECT id, secret FROM " (second-db-qualified driver other-db secret-tbl))
                                   :select-other-database)))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database ws-with-details)
+            (try (driver/destroy-workspace-isolation! driver database workspace)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during cross-database test cleanup"
                               driver)))
@@ -906,18 +906,18 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-public-" run-id)}
-            ws-with-details (with-isolation-details driver database workspace)
-            ws-fragment  (:schema ws-with-details)]
+            workspace    (with-isolation-details driver database workspace)
+            ws-fragment  (:schema workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (driver/init-workspace-isolation! driver database ws-with-details)
-          (driver/grant-workspace-read-access! driver database ws-with-details
+          (driver/init-workspace-isolation! driver database workspace)
+          (driver/grant-workspace-read-access! driver database workspace
                                                [in-schema])
           (testing "no leakage to default principal after init+grant"
             ;; Search both the workspace-namespace name and the workspace-user
             ;; name fragment, since per-driver grants can land on either.
-            (let [user-fragment (get-in ws-with-details [:database_details :user])
+            (let [user-fragment (get-in workspace [:database_details :user])
                   leaks         (atom #{})]
               (doseq [fragment [ws-fragment user-fragment]]
                 (when-let [pre-sql (public-grant-pre-query-sql driver)]
@@ -932,7 +932,7 @@
                   (format "PUBLIC / anonymous principal unexpectedly has grants on workspace resources: %s"
                           @leaks))))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database ws-with-details)
+            (try (driver/destroy-workspace-isolation! driver database workspace)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during public-grant test cleanup"
                               driver)))
@@ -1005,14 +1005,14 @@
             ;; Details are pure computation, so build the full ws map before the
             ;; `try` — the `finally` destroy always has real identifiers to work
             ;; with even if init never ran or only partially succeeded.
-            ws-a-full  (with-isolation-details driver database ws-a)]
+            ws-a       (with-isolation-details driver database ws-a)]
         (try
-          (driver/init-workspace-isolation! driver database ws-a-full)
+          (driver/init-workspace-isolation! driver database ws-a)
           ;; MySQL: the workspace user's JDBC handshake needs access to the
           ;; bound DB (see [[reuse-bound-db-as-input?]]), which comes from a
           ;; read grant.
           (when (reuse-bound-db-as-input? driver)
-            (driver/grant-workspace-read-access! driver database ws-a-full
+            (driver/grant-workspace-read-access! driver database ws-a
                                                  [(-> database :details :db)]))
           ;; The ticket's failure shape is a caller that CAN create schemas but
           ;; CANNOT create users: postgres/redshift check CREATE at the database
@@ -1031,7 +1031,7 @@
                                                (driver.u/workspace-isolation-user-name ws-a))]))
           (jdbc/execute! admin-spec [(create-input-namespace-sql driver b-ns)])
           (mt/with-temp [:model/Database low-priv-db {:engine  driver
-                                                      :details (merge details (:database_details ws-a-full))}]
+                                                      :details (merge details (:database_details ws-a))}]
             ;; The password is generated by `workspace-isolation-details`, so
             ;; compute ws-b's details inside the instrumented redef.
             (let [thrown (with-redefs [driver.u/random-workspace-password
@@ -1055,7 +1055,7 @@
                   ;; ws-a's password is also live here — it authenticates the
                   ;; low-priv pool, and connection failures can stash details
                   ;; maps in ex-data.
-                  (doseq [pw (cons (get-in ws-a-full [:database_details :password]) @generated)
+                  (doseq [pw (cons (get-in ws-a [:database_details :password]) @generated)
                           :when (some? pw)]
                     (is (not (str/includes? text pw))
                         (str "workspace password leaked into exception text:\n" text)))
@@ -1089,7 +1089,7 @@
                                                       (or (:dbname details) (:db details))
                                                       (driver.u/workspace-isolation-user-name ws-a))])
                    (catch Throwable _ nil)))
-            (try (driver/destroy-workspace-isolation! driver database ws-a-full)
+            (try (driver/destroy-workspace-isolation! driver database ws-a)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
                               driver)))))))))
