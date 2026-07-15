@@ -29,6 +29,9 @@ jobs:
       - name: Lower ignore budgets to match the source tree
         run: ./bin/mage fix-kondo-ratchets
       - name: Commit to the PR branch if any budget decreased
+        env:
+          # via env rather than inline: branch names are untrusted input (actionlint [expression])
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           if git diff --quiet .clj-kondo/ratchets.edn; then
             echo "budgets already tight"
@@ -38,4 +41,4 @@ jobs:
           git config --global user.email "github-automation@metabase.com"
           git add .clj-kondo/ratchets.edn
           git commit -m "Ratchet down kondo ignore budgets" --no-verify
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          git push origin "HEAD:$PR_BRANCH"
