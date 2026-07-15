@@ -21,7 +21,7 @@ export function getDataStudioDependencyRoutes() {
 export function getDataStudioDependencyDiagnosticsRoutes() {
   return (
     <>
-      <Route index component={redirect("broken")} />
+      <Route index element={redirect("broken")} />
       <Route
         path="broken"
         element={<RoutedBrokenDependencyDiagnosticsPage />}

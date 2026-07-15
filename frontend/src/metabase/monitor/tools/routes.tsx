@@ -11,7 +11,7 @@ const RoutedTaskRunDetailsPage = withRouteProps(TaskRunDetailsPage);
 
 export const getTasksRoutes = () => (
   <>
-    <Route index component={redirect("list")} />
+    <Route index element={redirect("list")} />
     <Route path="list" element={<RoutedTaskListPage />} />
     <Route path="list/:taskId" element={<RoutedTaskDetailsPage />} />
     <Route path="runs" element={<TaskRunsPage />} />

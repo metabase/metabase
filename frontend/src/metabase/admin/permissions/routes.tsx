@@ -22,10 +22,10 @@ const RoutedCollectionPermissionsPage = withRouteProps(
 
 const getRoutes = () => (
   <Route>
-    <Route index component={redirect("data")} />
+    <Route index element={redirect("data")} />
 
     <Route path="data" element={<RoutedDataPermissionsPage />}>
-      <Route index component={redirect("group")} />
+      <Route index element={redirect("group")} />
 
       <Route
         path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
