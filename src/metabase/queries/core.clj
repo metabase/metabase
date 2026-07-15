@@ -52,10 +52,7 @@
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!]
  [metabase.queries.cached-result
-  allowed-chart-sorts
-  assert-can-view-cached-result!
-  viewer-can-view-cached-result?
-  cached-dataset])
+  assert-can-view-cached-result!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

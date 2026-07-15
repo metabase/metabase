@@ -1899,7 +1899,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
-                    :model/StoredResult
                     :model/Table}}
 
   query-permissions
@@ -1942,7 +1941,6 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
-              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.store
               metabase.query-processor.streaming
