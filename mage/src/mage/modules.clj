@@ -370,29 +370,37 @@
     (str parent-dir
          (ns-prefix->test-path-fragment ns-fragment))))
 
-(defn- module->owned-dirs
-  "Existing src and test directories `module` contributes, in CODEOWNERS pattern form (repo-relative,
-  no leading slash), src first. Directories missing on disk are skipped."
+(defn- module->owned-paths
+  "Existing src and test paths `module` contributes, in CODEOWNERS pattern form (repo-relative, no leading
+  slash), src first. Each tree contributes its directory plus the root namespace file beside it — e.g.
+  `src/metabase/query_processor.clj` next to `src/metabase/query_processor/` — since a bare directory
+  pattern doesn't match that sibling file. Paths missing on disk are skipped."
   [modules-config module]
-  (into []
-        (filter #(.isDirectory (io/file ^String %)))
-        [(module->src-path-prefix modules-config module)
-         (module->test-path-prefix modules-config module)]))
+  (let [src   (module->src-path-prefix modules-config module)
+        test  (module->test-path-prefix modules-config module)
+        dir?  (fn [p] (when (.isDirectory (io/file ^String p)) p))
+        file? (fn [p] (when (.isFile (io/file ^String p)) p))]
+    (into []
+          (keep identity)
+          (concat [(dir? src)]
+                  (map #(file? (str src %)) backend-test-source-file-extensions)
+                  [(dir? test)]
+                  (map #(file? (str test "_test" %)) backend-test-source-file-extensions)))))
 
 (defn- codeowners-stanza-lines
-  "Lines for one module's stanza: a `# module (team)` header then one line per owned directory.
-  `nil` when `dirs` is empty. Lines are live when the team has an `assignee` and the module isn't
+  "Lines for one module's stanza: a `# module (team)` header then one line per owned path.
+  `nil` when `paths` is empty. Lines are live when the team has an `assignee` and the module isn't
   suppressed; otherwise commented out, keeping the handle when known so they're ready to uncomment."
-  [{:keys [module team handle suppress? dirs]}]
-  (when (seq dirs)
+  [{:keys [module team handle suppress? paths]}]
+  (when (seq paths)
     (let [active? (and (some? handle) (not suppress?))
           note    (cond
                     active?       nil
                     suppress?     "suppressed via :suppress-codeowners"
                     (nil? handle) "no :assignee in team.json")
           header  (format "# %s (%s%s)" (name module) team (if note (str ", " note) ""))
-          body    (for [dir dirs
-                        :let [line (str dir (when handle (str " " handle)))]]
+          body    (for [path paths
+                        :let [line (str path (when handle (str " " handle)))]]
                     (if active? line (str "# " line)))]
       (into [header] body))))
 
@@ -406,7 +414,7 @@
       :team      (:team cfg)
       :handle    (get assignees (:team cfg))
       :suppress? (boolean (:suppress-codeowners cfg))
-      :dirs      (module->owned-dirs modules-config module)})))
+      :paths     (module->owned-paths modules-config module)})))
 
 (defn- codeowners-block
   "Generated block as one string, marker to marker. One stanza per module, sorted by source path so a

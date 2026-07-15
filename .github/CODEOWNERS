@@ -300,6 +300,7 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 # transforms.inspector (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/transforms_inspector
 # enterprise/backend/test/metabase_enterprise/transforms_inspector
+# enterprise/backend/test/metabase_enterprise/transforms_inspector_test.clj
 
 # transforms.python (Graphy, suppressed via :suppress-codeowners)
 # enterprise/backend/src/metabase_enterprise/transforms_python @metabase/graphy
@@ -426,6 +427,7 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 
 # util.config (DevEx, no :assignee in team.json)
 # src/metabase/config
+# test/metabase/config_test.clj
 
 # content-translation (UX West, no :assignee in team.json)
 # src/metabase/content_translation
@@ -464,7 +466,9 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 
 # driver (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/driver @metabase/core-backend-querying-platform
+# src/metabase/driver.clj @metabase/core-backend-querying-platform
 # test/metabase/driver @metabase/core-backend-querying-platform
+# test/metabase/driver_test.clj @metabase/core-backend-querying-platform
 
 # query-processor.driver-api (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/driver_api @metabase/core-backend-querying-platform
@@ -555,11 +559,15 @@ test/metabase/lib @metabase/core-backend-querying-platform
 
 # lib.metadata (Querying Platform)
 src/metabase/lib/metadata @metabase/core-backend-querying-platform
+src/metabase/lib/metadata.cljc @metabase/core-backend-querying-platform
 test/metabase/lib/metadata @metabase/core-backend-querying-platform
+test/metabase/lib/metadata_test.cljc @metabase/core-backend-querying-platform
 
 # lib.schema (Querying Platform)
 src/metabase/lib/schema @metabase/core-backend-querying-platform
+src/metabase/lib/schema.cljc @metabase/core-backend-querying-platform
 test/metabase/lib/schema @metabase/core-backend-querying-platform
+test/metabase/lib/schema_test.cljc @metabase/core-backend-querying-platform
 
 # lib.be (Querying Platform)
 src/metabase/lib_be @metabase/core-backend-querying-platform
@@ -604,6 +612,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # models (DevEx, no :assignee in team.json)
 # src/metabase/models
 # test/metabase/models
+# test/metabase/models_test.clj
 
 # mq (UX West, no :assignee in team.json)
 # src/metabase/mq
@@ -678,6 +687,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 
 # query-processor (Querying Platform)
 src/metabase/query_processor @metabase/core-backend-querying-platform
+src/metabase/query_processor.clj @metabase/core-backend-querying-platform
 test/metabase/query_processor @metabase/core-backend-querying-platform
 
 # query-processor.cache-backend (Querying Platform)
@@ -782,6 +792,7 @@ test/metabase/query_processor/middleware/cache_backend @metabase/core-backend-qu
 # task (UX West, no :assignee in team.json)
 # src/metabase/task
 # test/metabase/task
+# test/metabase/task_test.clj
 
 # task.history (UX West, no :assignee in team.json)
 # src/metabase/task_history
@@ -857,7 +868,9 @@ test/metabase/query_processor/middleware/cache_backend @metabase/core-backend-qu
 
 # util (DevEx, no :assignee in team.json)
 # src/metabase/util
+# src/metabase/util.cljc
 # test/metabase/util
+# test/metabase/util_test.cljc
 
 # core.version (UX West, no :assignee in team.json)
 # src/metabase/version
