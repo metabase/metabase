@@ -37,19 +37,6 @@ databaseChangeLog:
                 'v62.2026-07-14T00:00:05');
       rollback: # not necessary
 
-## Recovery notes for instances where a retired changeSet failed mid-run:
-##
-##   * If data_permissions is empty and data_permissions_collapse_keep still exists, the upgrade died
-##     between the retired TRUNCATE and reload steps. Restore before letting users back in:
-##
-##       INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
-##       SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
-##       FROM data_permissions_collapse_keep;
-##
-##   * Leftover data_permissions_collapse_keep / data_permissions_collapse_agg tables are otherwise just
-##     stale copies; drop them: DROP TABLE IF EXISTS data_permissions_collapse_keep;
-##                              DROP TABLE IF EXISTS data_permissions_collapse_agg;
-##
 ## Manual collapse (PostgreSQL). One statement, so it is atomic; it is also idempotent, safe to run (and
 ## to cancel) while Metabase is up, and strictly semantics-preserving: for every (group, database) whose
 ## table-level view-data rows are all 'blocked' and cover every active table, it inserts the equivalent
