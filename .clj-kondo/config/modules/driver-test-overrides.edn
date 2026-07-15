@@ -31,6 +31,7 @@
    geojson
    initialization-status
    interestingness
+   lib.types
    login-history
    mcp
    mcp.oauth-server
@@ -60,7 +61,6 @@
    tiles
    timeline
    tracing
-   types
    users
    util
    version
