@@ -3,16 +3,14 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-07-08T00:00:00
+      id: v64.2026-07-14T00:00:00
       author: sloansparger
-      comment: Rename metabot_conversation.summary to title
+      comment: Drop v_metabot_conversations before renaming summary to title
       changes:
-        - sql: DROP VIEW IF EXISTS v_metabot_conversations
-        - renameColumn:
-            tableName: metabot_conversation
-            oldColumnName: summary
-            newColumnName: title
-            columnDataType: ${text.type}
+        - sql:
+            dbms: h2,mysql,mariadb,postgresql
+            sql: DROP VIEW IF EXISTS v_metabot_conversations
+      rollback:
         - sqlFile:
             dbms: postgresql
             path: ../instance_analytics_views/metabot_conversations/v4/postgres-metabot_conversations.sql
@@ -25,22 +23,42 @@ databaseChangeLog:
             dbms: h2
             path: ../instance_analytics_views/metabot_conversations/v4/h2-metabot_conversations.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.2026-07-14T00:00:01
+      author: sloansparger
+      comment: Rename metabot_conversation.summary to title
+      changes:
+        - renameColumn:
+            tableName: metabot_conversation
+            oldColumnName: summary
+            newColumnName: title
+            columnDataType: ${text.type}
       rollback:
-        - sql: DROP VIEW IF EXISTS v_metabot_conversations
         - renameColumn:
             tableName: metabot_conversation
             oldColumnName: title
             newColumnName: summary
             columnDataType: ${text.type}
+
+  - changeSet:
+      id: v64.2026-07-14T00:00:02
+      author: sloansparger
+      comment: Recreate v_metabot_conversations using title
+      changes:
         - sqlFile:
             dbms: postgresql
-            path: ../instance_analytics_views/metabot_conversations/v3/postgres-metabot_conversations.sql
+            path: ../instance_analytics_views/metabot_conversations/v5/postgres-metabot_conversations.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
-            path: ../instance_analytics_views/metabot_conversations/v3/mysql-metabot_conversations.sql
+            path: ../instance_analytics_views/metabot_conversations/v5/mysql-metabot_conversations.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: h2
-            path: ../instance_analytics_views/metabot_conversations/v3/h2-metabot_conversations.sql
+            path: ../instance_analytics_views/metabot_conversations/v5/h2-metabot_conversations.sql
             relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: h2,mysql,mariadb,postgresql
+            sql: DROP VIEW IF EXISTS v_metabot_conversations

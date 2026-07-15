@@ -5,6 +5,7 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
+  setupGetMetabotConversationTitleEndpoint,
   setupListMetabotConversationsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -56,8 +57,10 @@ export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
-export const conversationTitle = () => screen.findByTestId("metabot-conversation-title");
-export const queryConversationTitle = () => screen.queryByTestId("metabot-conversation-title");
+export const conversationTitle = () =>
+  screen.findByTestId("metabot-conversation-title");
+export const queryConversationTitle = () =>
+  screen.queryByTestId("metabot-conversation-title");
 export const chatMessages = () =>
   screen.findAllByTestId("metabot-chat-message");
 export const lastChatMessage = async () => (await chatMessages()).at(-1);
@@ -268,6 +271,11 @@ export function setup(
   );
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint(conversations);
+  setupGetMetabotConversationTitleEndpoint(
+    conversationTitle
+      ? { status: "ready", title: conversationTitle }
+      : { status: "pending", title: null },
+  );
 
   const content =
     withRouter && initialRoute ? (

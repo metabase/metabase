@@ -5,7 +5,7 @@ SELECT
     c.id                                                              AS conversation_id,
     c.created_at,
     c.user_id,
-    c.summary,
+    c.title,
     COALESCE(u.first_name || ' ' || u.last_name, u.email)             AS user_display_name,
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
@@ -92,4 +92,4 @@ LEFT JOIN (
     GROUP BY conversation_id
 ) a ON a.conversation_id = c.id
 LEFT JOIN tenant t ON t.id = a.tenant_id
-GROUP BY c.id, c.created_at, c.user_id, c.summary, u.first_name, u.last_name, u.email;
+GROUP BY c.id, c.created_at, c.user_id, c.title, u.first_name, u.last_name, u.email;

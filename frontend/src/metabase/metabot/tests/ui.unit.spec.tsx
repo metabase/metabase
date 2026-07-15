@@ -32,8 +32,8 @@ import {
   assertNotVisible,
   assertVisible,
   chat,
-  conversationTitle,
   closeChatButton,
+  conversationTitle,
   createMockSSEStream,
   createPauses,
   enterChatMessage,
@@ -61,7 +61,9 @@ describe("metabot > ui", () => {
 
     expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
     expect(screen.queryByTestId("metabot-chat-header")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-conversation-title")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-conversation-title"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-new-conversation"),
     ).not.toBeInTheDocument();
@@ -477,7 +479,8 @@ describe("metabot > ui", () => {
       titleReady = true;
 
       await waitFor(
-        () => expect(queryConversationTitle()).toHaveTextContent("Orders by Month"),
+        () =>
+          expect(queryConversationTitle()).toHaveTextContent("Orders by Month"),
         { timeout: 5000 },
       );
     });

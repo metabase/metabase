@@ -5,6 +5,7 @@
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent
@@ -116,7 +117,9 @@
 (defn- generate!
   "Generate and persist a title for `conversation-id`, returning it only if it was saved."
   [conversation-id profile-id message]
-  (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
+  (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id))
+             ;; titles must respect the usage limit too, like metabot.self/call-llm
+             (not (metabot.usage/check-usage-limits!)))
     (let [response (metabot.self/call-llm-structured
                     (metabot.settings/llm-metabot-provider)
                     [{:role "system" :content title-system-prompt}
@@ -182,13 +185,13 @@
       (log-queue-full conversation-id)
       nil)))
 
-(defn ^Future submit!
+(defn submit!
   "Start title generation on a bounded background executor. Returns a Future or nil.
 
   Only one title job runs per conversation at a time. The returned future watches
   the real generation work and completes after the title succeeds, fails, or
   times out; the SSE stream must never block on it."
-  [conversation-id profile-id message]
+  ^Future [conversation-id profile-id message]
   (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
     (locking in-flight-title-jobs
       (or (running-job conversation-id)

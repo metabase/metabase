@@ -72,7 +72,9 @@ describe("MetabotAsk", () => {
     expect(await screen.findByText("Show me all orders")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-conversation-title")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-conversation-title"),
+    ).not.toBeInTheDocument();
     expect(getMetabotVisible(store.getState(), "omnibot")).toBe(false);
   });
 
@@ -99,9 +101,9 @@ describe("MetabotAsk", () => {
 
     await enterChatMessage("Show orders by month");
 
-    expect(await screen.findByTestId("metabot-conversation-title")).toHaveTextContent(
-      "Orders by Month",
-    );
+    expect(
+      await screen.findByTestId("metabot-conversation-title"),
+    ).toHaveTextContent("Orders by Month");
   });
 
   it("shows the AI provider setup notice in the greeting when not configured", async () => {
