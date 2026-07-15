@@ -220,11 +220,18 @@
 
   `:max-file-test-namespaces` and `:max-file-deftests` are the worst-case selective-CI cost of touching
   a single source file — see [[max-test-blast-radius]]. They fall when a cut shrinks some module's
-  dependent set, but ordinary test-writing inside the blob pushes them back up."
+  dependent set, but ordinary test-writing inside the blob pushes them back up.
+
+  `:fast?` skips the metrics that scan test-file contents (currently the `:max-file-*` pair) — handy at
+  the REPL. `module-stats.edn` always carries the full set; never sync it from a fast run."
   ([]
+   (module-boundary-stats nil))
+  ([opts]
    (let [config (kondo-config)]
-     (module-boundary-stats (dependencies (build-prefix->module config)) config)))
+     (module-boundary-stats (dependencies (build-prefix->module config)) config opts)))
   ([deps config]
+   (module-boundary-stats deps config nil))
+  ([deps config {:keys [fast?]}]
    (let [values      (vals config)
          declared    (set (keys config))
          api-sizes   (keep (fn [{:keys [api]}]
@@ -236,26 +243,27 @@
          ns-scc      (largest-cyclic-scc (into {}
                                                (map (fn [{ns-sym :namespace, required :deps}]
                                                       [ns-sym (into #{} (map :namespace) required)]))
-                                               deps))
-         test-blast  (max-test-blast-radius deps config)]
-     {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
-      :largest-api        (reduce max 0 api-sizes)
-      :largest-ns-scc     (count ns-scc)
-      :largest-scc-modules (count module-scc)
-      :largest-scc-namespaces (count (filter #(contains? module-scc (:module %)) deps))
-      :max-file-deftests  (:deftests test-blast)
-      :max-file-test-namespaces (:test-namespaces test-blast)
-      :module-count       (count config)
-      :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
-      :ns-prefix-overrides (count (filter (fn [[m {:keys [ns-prefix]}]]
-                                            (and ns-prefix
-                                                 (not= ns-prefix (default-ns-prefix m))))
-                                          config))
-      :parent-team-mismatches (count (filter (fn [m]
-                                               (when-let [parent (module-parent declared m)]
-                                                 (not= (module-team config m) (module-team config parent))))
-                                             declared))
-      :total-api          (reduce + 0 api-sizes)})))
+                                               deps))]
+     (cond-> {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
+              :largest-api        (reduce max 0 api-sizes)
+              :largest-ns-scc     (count ns-scc)
+              :largest-scc-modules (count module-scc)
+              :largest-scc-namespaces (count (filter #(contains? module-scc (:module %)) deps))
+              :module-count       (count config)
+              :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
+              :ns-prefix-overrides (count (filter (fn [[m {:keys [ns-prefix]}]]
+                                                    (and ns-prefix
+                                                         (not= ns-prefix (default-ns-prefix m))))
+                                                  config))
+              :parent-team-mismatches (count (filter (fn [m]
+                                                       (when-let [parent (module-parent declared m)]
+                                                         (not= (module-team config m)
+                                                               (module-team config parent))))
+                                                     declared))
+              :total-api          (reduce + 0 api-sizes)}
+       (not fast?) (merge (let [test-blast (max-test-blast-radius deps config)]
+                            {:max-file-deftests        (:deftests test-blast)
+                             :max-file-test-namespaces (:test-namespaces test-blast)}))))))
 
 (defn module-boundary-ratchets
   "Committed exact ratchets for [[module-boundary-debt]]."
