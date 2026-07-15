@@ -31,6 +31,7 @@
             [:job_id :entity_id]
             [:job_name :entity_name]
             [nil :direction]
+            [nil :transform_count]
             :run_method
             :status :is_active :start_time :end_time :message
             [nil :user_id]]
@@ -50,6 +51,7 @@
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
+            :transform_count
             [[:inline "manual"] :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
@@ -68,6 +70,7 @@
             [:transform_id :entity_id]
             [:transform_name :entity_name]
             [nil :direction]
+            [nil :transform_count]
             :run_method
             :status :is_active :start_time :end_time :message
             :user_id]

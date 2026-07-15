@@ -53,6 +53,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: transform_count
+                  type: int
+                  remarks: Number of transforms the run's plan selected to run, for display in run listings
+                  constraints:
+                    nullable: true
+              - column:
                   name: status
                   type: varchar(50)
                   remarks: Current status of the run (started, succeeded, failed, timeout, canceled)

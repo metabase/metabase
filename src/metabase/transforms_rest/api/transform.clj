@@ -234,14 +234,15 @@
   "One row of the unified runs listing: a job run, a manual DAG-reprocess run, or a standalone
   transform run (one not belonging to a job/DAG run). Identified by `(run_type, id)`; `entity_id`
   is the id of the associated job/transform (nil if it was deleted) and `name` its name — live if
-  it still exists, otherwise the name snapshotted at run start. `direction` is set only for DAG
-  runs."
+  it still exists, otherwise the name snapshotted at run start. `direction` and `transform_count`
+  (the number of transforms the run's plan selected to run) are set only for DAG runs."
   [:map {:closed true}
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]
    [:entity_id [:maybe pos-int?]]
    [:name [:maybe [:or :string LocalizedString]]]
    [:direction [:maybe [:enum :upstream :downstream]]]
+   [:transform_count [:maybe pos-int?]]
    [:run_method [:maybe :keyword]]
    [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
    [:is_active [:maybe :boolean]]

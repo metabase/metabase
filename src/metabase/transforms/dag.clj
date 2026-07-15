@@ -106,9 +106,9 @@
 (defn- start-dag-run-unless-racing!
   "Insert the DAG run row, or return nil if a concurrent trigger for the same seed transform won
   the `(source_transform_id, is_active)` uniqueness race."
-  [transform-id direction user-id]
+  [transform-id direction user-id transform-count]
   (try
-    (dag-run/start-dag-run! transform-id direction user-id)
+    (dag-run/start-dag-run! transform-id direction user-id transform-count)
     (catch Exception e
       (when-not (transforms.u/duplicate-key-violation? e)
         (throw e)))))
@@ -135,7 +135,8 @@
           (do (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
               (some-> start-promise (deliver nil))
               nil)
-          (if-let [{run-id :id} (start-dag-run-unless-racing! transform-id direction user-id)]
+          (if-let [{run-id :id} (start-dag-run-unless-racing! transform-id direction user-id
+                                                              (count transform-ids))]
             (do (some-> start-promise (deliver [:started run-id]))
                 (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
                                                                     :transform/direction (name direction)
