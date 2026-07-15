@@ -125,7 +125,7 @@ main{flex:1;display:flex;min-height:0}
   <div class=stats id=stats></div>
   <div class=grow></div>
   <div class=search>
-    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx=11 cy=11 r=7/><path d='m21 21-4.3-4.3'/></svg>
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>
     <input id=q type=search placeholder='Filter modules…' autocomplete=off spellcheck=false>
   </div>
   <button class=ghost id=expand>Expand all</button>

@@ -458,7 +458,8 @@
         (if-let [out (:output options)]
           (do (spit out html)
               (println (c/green (str "Wrote " out " (" (count modules-config) " modules)"))))
-          (print html))
+          (do (print html)
+              (flush)))                 ; u/exit throws for bb to catch; flush or stdout truncates
         (u/exit 0))
       (let [tree    (module-display-tree modules-config)
             roots   (cond->> (sorted-children tree)
