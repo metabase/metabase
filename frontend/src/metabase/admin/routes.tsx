@@ -28,11 +28,11 @@ import {
   EmbeddingSettings,
   GuestEmbedsSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import { Help } from "metabase/monitor/tools/components/Help";
 import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
@@ -174,25 +174,17 @@ export const getRoutes = (
             </Route>
 
             <Route path="" component={PeopleListingApp}>
-              <ModalRoute path="new" modal={NewUserModal} noWrap />
+              {modalRoute("new", NewUserModal, { noWrap: true })}
               {PLUGIN_TENANTS.userStrategyRoute}
             </Route>
 
             <Route path=":userId" component={PeopleListingApp}>
               <IndexRedirect to="/admin/people" />
-              <ModalRoute path="edit" modal={EditUserModal} noWrap />
-              <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-              <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
-              <ModalRoute
-                path="deactivate"
-                modal={UserActivationModal}
-                noWrap
-              />
-              <ModalRoute
-                path="reactivate"
-                modal={UserActivationModal}
-                noWrap
-              />
+              {modalRoute("edit", EditUserModal, { noWrap: true })}
+              {modalRoute("success", UserSuccessModal, { noWrap: true })}
+              {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
+              {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
+              {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
               {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
                 <Fragment key={index}>{getRoutes()}</Fragment>
               ))}
@@ -335,27 +327,21 @@ export const getRoutes = (
               component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
             />
             <Route path="model-caching" component={ModelCachePage}>
-              <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+              {modalRoute(":jobId", ModelCacheRefreshJobModal)}
             </Route>
             <Route path="help" component={Help}>
-              {PLUGIN_SUPPORT.isEnabled && (
-                <ModalRoute
-                  modal={PLUGIN_SUPPORT.GrantAccessModal}
-                  path="grant-access"
-                />
-              )}
+              {PLUGIN_SUPPORT.isEnabled &&
+                modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
             <Route path="notifications">{getNotificationsRoutes()}</Route>
             <Route path="jobs" component={JobInfoApp}>
-              <ModalRoute
-                path=":jobKey"
-                modal={JobTriggersModal}
-                modalProps={{ size: "85%" }}
-              />
+              {modalRoute(":jobKey", JobTriggersModal, {
+                modalProps: { size: "85%" },
+              })}
             </Route>
             <Route path="logs" component={Logs}>
-              <ModalRoute path="levels" modal={LogLevelsModal} />
+              {modalRoute("levels", LogLevelsModal)}
             </Route>
             {PLUGIN_DEPENDENCIES.isEnabled && (
               <Route
