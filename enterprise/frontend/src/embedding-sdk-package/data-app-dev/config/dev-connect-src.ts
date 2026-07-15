@@ -38,11 +38,11 @@ export function readAllowedHosts(appRoot: string): string[] {
   }
 
   if (!hosts.every(isString)) {
-    const nonString = hosts.filter((host) => !isString(host));
+    const nonString = hosts.find((host) => !isString(host));
 
     throw new Error(
       `${manifestPath}: every "allowed_hosts" entry must be a string, got ${JSON.stringify(
-        nonString[0],
+        nonString,
       )}.`,
     );
   }
