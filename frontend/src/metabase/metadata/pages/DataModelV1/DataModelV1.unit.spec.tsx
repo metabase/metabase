@@ -218,7 +218,7 @@ async function setup({
     <>
       <Route path="notAdmin" component={OtherComponent} />
       <Route path="admin/datamodel">
-        <Route index component={redirect("database")} />
+        <Route index element={redirect("database")} />
         <Route path="database" component={DataModelV1} />
         <Route path="database/:databaseId" component={DataModelV1} />
         <Route

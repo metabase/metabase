@@ -256,7 +256,7 @@ async function setup({
     <>
       <Route path="notData" component={OtherComponent} />
       <Route path="data-studio/data">
-        <Route index component={redirect("database")} />
+        <Route index element={redirect("database")} />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
         <Route
@@ -265,7 +265,7 @@ async function setup({
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={redirect(
+          element={redirect(
             "database/:databaseId/schema/:schemaId/table/:tableId/details",
           )}
         />

@@ -62,7 +62,7 @@ export const getSettingsRoutes = (
         </AdminSettingsLayout>
       }
     >
-      <Route index component={redirect("general")} />
+      <Route index element={redirect("general")} />
       <Route path="general" element={<GeneralSettingsPage />} />
       <Route path="updates" element={<UpdatesSettingsPage />} />
       <Route path="email" element={<EmailSettingsPage />} />

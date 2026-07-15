@@ -224,7 +224,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <Route index component={redirect("actions")} />
+        <Route index element={redirect("actions")} />
         <Route path="actions" element={<RoutedModelActions />}>
           {modalRoute("new", ActionCreator, {
             modalProps: { transitionProps: { duration: 0 } },

@@ -95,7 +95,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/details",
         )}
       />
@@ -109,13 +109,13 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/details",
         )}
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        component={redirect(
+        element={redirect(
           "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
         )}
       />
