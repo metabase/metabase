@@ -488,6 +488,10 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
