@@ -26,7 +26,6 @@
    documents
    eid-translation
    embedding
-   entity-retrieval
    events
    formatter
    geojson
@@ -47,6 +46,7 @@
    remote-sync
    request
    search
+   search.entity-retrieval
    server
    session
    settings

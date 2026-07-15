@@ -927,12 +927,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
-  entity-retrieval
-  {:team "Metabot"
-   :api  #{metabase.entity-retrieval.core
-           metabase.entity-retrieval.mirror}
-   :uses #{premium-features}
-   :model-imports #{:model/OsiAiContext}}
 
   events
   {:team "DevEx"
@@ -1300,7 +1294,6 @@
               config
               documents
               driver
-              entity-retrieval
               interestingness
               lib
               lib.agent-lib
@@ -1320,6 +1313,7 @@
               query-processor
               request
               search
+              search.entity-retrieval
               server
               settings
               sql-tools
@@ -1582,9 +1576,9 @@
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
-           entity-retrieval
            models
            request
+           search.entity-retrieval
            util}
    :model-exports #{:model/OsiAiContext}
    :model-imports #{:model/Card
@@ -2098,6 +2092,7 @@
 
   search
   {:team "UX West"
+   :module-exports #{search.entity-retrieval}
    :api  #{metabase.search.api
            metabase.search.appdb.scoring
            metabase.search.config
@@ -2137,6 +2132,14 @@
                     :model/Dashboard
                     :model/Table
                     :model/User}}
+
+  search.entity-retrieval
+  {:team "Metabot"
+   :ns-prefix "metabase.entity-retrieval"
+   :api  #{metabase.entity-retrieval.core
+           metabase.entity-retrieval.mirror}
+   :uses #{premium-features}
+   :model-imports #{:model/OsiAiContext}}
 
 
   segments
@@ -2992,7 +2995,7 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
-           enterprise/semantic-search
+           enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
    :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
@@ -3195,8 +3198,8 @@
            startup
            task
            util
-           enterprise/embeddings
-           enterprise/semantic-search}
+           enterprise/search.embeddings
+           enterprise/search.semantic}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3326,29 +3329,7 @@
                     :model/Table
                     :model/Tenant}}
 
-  enterprise/embeddings
-  {:team "Metabot"
-   :api  #{metabase-enterprise.embeddings.client}
-   ;; Temporary: the impl currently delegates back into semantic-search until
-   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
-   ;; make token tracking a hook). Drop this dep once the relocation lands.
-   :uses #{enterprise/semantic-search}}
 
-  enterprise/entity-retrieval
-  {:team "Metabot"
-   :api  #{metabase-enterprise.entity-retrieval.init}
-   :uses #{analytics.interface
-           collections
-           entity-retrieval
-           premium-features
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/Card
-                    :model/Measure
-                    :model/OsiAiContext
-                    :model/Segment
-                    :model/Table}}
 
   enterprise/erd
   {:team "Gadget"
@@ -3623,35 +3604,42 @@
 
   enterprise/search
   {:team "UX West"
+   :module-exports #{enterprise/search.embeddings
+                     enterprise/search.entity-retrieval
+                     enterprise/search.semantic}
    :api  #{}
    :uses #{premium-features
            search}}
 
-  enterprise/security-center
-  {:team "Gadget"
-   :api  #{metabase-enterprise.security-center.api
-           metabase-enterprise.security-center.init}
-   :uses #{analytics
-           analytics.interface
-           api
-           app-db
-           channel
-           config
-           driver
-           events
-           models
-           notification
-           permissions
-           premium-features
-           settings
-           system
-           task
-           util}
-   :model-exports #{:model/SecurityAdvisory}
-   :model-imports #{:model/User}}
-
-  enterprise/semantic-search
+  enterprise/search.embeddings
   {:team "Metabot"
+   :ns-prefix "metabase-enterprise.embeddings"
+   :api  #{metabase-enterprise.embeddings.client}
+   ;; Temporary: the impl currently delegates back into semantic-search until
+   ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
+   ;; make token tracking a hook). Drop this dep once the relocation lands.
+   :uses #{enterprise/search.semantic}}
+
+  enterprise/search.entity-retrieval
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.entity-retrieval"
+   :api  #{metabase-enterprise.entity-retrieval.init}
+   :uses #{analytics.interface
+           collections
+           premium-features
+           search.entity-retrieval
+           task
+           util
+           enterprise/search.semantic}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
+
+  enterprise/search.semantic
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.semantic-search"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
@@ -3679,6 +3667,30 @@
    :model-imports #{:model/Collection
                     :model/Dashboard
                     :model/Table}}
+
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           analytics.interface
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
+
 
   enterprise/serialization
   {:team "Graphy"
