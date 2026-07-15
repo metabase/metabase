@@ -33,7 +33,7 @@ export const loadSettings = createAction<Settings>(
   "metabase/settings/LOAD_SETTINGS",
 );
 
-interface UpdateUserSettingProps<K extends keyof UserSettings> {
+export interface UpdateUserSettingProps<K extends keyof UserSettings> {
   key: K;
   value: UserSettings[K];
   shouldRefresh?: boolean;

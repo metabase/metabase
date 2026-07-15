@@ -21,7 +21,7 @@ export type DashboardSidebarName =
   | "info"
   | "analyze";
 
-interface BaseSidebarState {
+export interface BaseSidebarState {
   name?: DashboardSidebarName;
   props: Record<string, unknown> & {
     dashcardId?: DashCardId;

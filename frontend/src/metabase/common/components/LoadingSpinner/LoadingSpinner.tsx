@@ -3,7 +3,7 @@ import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import S from "./LoadingSpinner.module.css";
 
-interface Props {
+export interface Props {
   className?: string;
   size?: number;
   borderWidth?: number;

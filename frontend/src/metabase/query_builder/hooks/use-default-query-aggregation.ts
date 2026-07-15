@@ -8,7 +8,12 @@ export const useDefaultQueryAggregation = ({
   query: initialQuery,
   onQueryChange,
   stageIndex,
-}: UpdateQueryHookProps) => {
+}: UpdateQueryHookProps): {
+  query: Lib.Query;
+  hasAggregations: boolean;
+  onUpdateQuery: (nextQuery: Lib.Query) => void;
+  onAggregationChange: (nextQuery: Lib.Query) => void;
+} => {
   const [hasDefaultAggregation, setHasDefaultAggregation] = useState(() =>
     shouldAddDefaultAggregation(initialQuery, stageIndex),
   );

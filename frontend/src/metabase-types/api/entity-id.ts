@@ -21,9 +21,9 @@ const NANOID_ALPHABET = /^[\-_0-9a-zA-Z]+$/;
 
 export const NANOID_LENGTH = 21;
 
-declare const __brand: unique symbol;
-type Brand<T, B> = T & { readonly [__brand]: B };
-type NanoID = Brand<string, "NanoID">;
+export declare const __brand: unique symbol;
+export type Brand<T, B> = T & { readonly [__brand]: B };
+export type NanoID = Brand<string, "NanoID">;
 export type BaseEntityId = NanoID;
 
 export const isBaseEntityID = (id: unknown): id is BaseEntityId => {

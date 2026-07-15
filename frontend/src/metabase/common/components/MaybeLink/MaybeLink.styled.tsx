@@ -8,7 +8,7 @@ import type { LinkProps } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link";
 import { maybeColor } from "metabase/ui/utils/colors";
 
-interface RawMaybeLinkProps {
+export interface RawMaybeLinkProps {
   to?: string;
   activeColor?: string;
   inactiveColor?: string;

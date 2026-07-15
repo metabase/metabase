@@ -149,14 +149,14 @@ export const uploadFile = createThunkAction(
     },
 );
 
-interface UploadStartPayload {
+export interface UploadStartPayload {
   id: number;
   name: string;
   collectionId?: CollectionId;
   tableId?: TableId;
 }
 
-interface UploadEndPayload {
+export interface UploadEndPayload {
   id: number;
 }
 

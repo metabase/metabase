@@ -9,7 +9,9 @@ import { color } from "metabase/ui/utils/colors";
 
 import type { MarkdownProps } from "./Markdown";
 
-export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
+export const MarkdownRoot: FC<MarkdownProps> = styled(
+  getComponent(ReactMarkdown),
+)<MarkdownProps>`
   color: ${(props) => (props.c ? color(props.c) : "inherit")};
   ${(props) =>
     props.lineClamp &&

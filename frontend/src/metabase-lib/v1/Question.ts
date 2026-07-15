@@ -119,7 +119,7 @@ class Question {
   /**
    * returns the card but normalizes the dataset_query field.
    */
-  cardWithNormalizedQuery() {
+  cardWithNormalizedQuery(): Card {
     return {
       ...this.card(),
       dataset_query: Lib.toJsQuery(this.query()),
