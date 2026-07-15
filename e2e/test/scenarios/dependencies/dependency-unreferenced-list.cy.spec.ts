@@ -83,6 +83,19 @@ const ENTITY_NAMES = [
   ...SNIPPET_NAMES,
 ];
 
+// The unreferenced list also contains inactive tables of the shared writable DB
+// (tables dropped by other specs stay visible on purpose — see #77714), so the
+// full list can exceed one page. Tests that need to see all of the entities
+// created by this spec at once narrow the list down with this search term,
+// which matches every entity name above except the table's.
+const ENTITY_SEARCH_TERM = "for";
+const SEARCHABLE_ENTITY_NAMES = [
+  ...MODEL_NAMES,
+  ...SEGMENT_NAMES,
+  ...METRIC_NAMES,
+  ...SNIPPET_NAMES,
+];
+
 const MODELS_SORTED_BY_NAME = [
   MODEL_FOR_DASHBOARD_CARD,
   MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
@@ -124,11 +137,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
       setupEntities();
       waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
+      checkList({ visibleEntities: [TABLE_DISPLAY_NAME] });
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
     });
 
     it("should not show referenced entities", () => {
@@ -187,7 +198,8 @@ describe("scenarios > dependencies > unreferenced list", () => {
       setupEntities();
       waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: ENTITY_NAMES });
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
 
       H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Model").click();
@@ -232,6 +244,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
       setupEntities();
       waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -340,6 +353,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         fields: ["ID", "UUID"],
       });
 
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
       H.DependencyDiagnostics.list()
         .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
         .click();
