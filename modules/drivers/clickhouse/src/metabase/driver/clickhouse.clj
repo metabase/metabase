@@ -564,6 +564,10 @@
          (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                               (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
                                       quoted-user (:password read-user))
+                              ;; the user may survive a failed teardown; without this it would keep
+                              ;; its old password while the new one gets persisted
+                              (format "ALTER USER %s IDENTIFIED BY '%s'"
+                                      quoted-user (:password read-user))
                               ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
                               ;; owner auto-privileges, so grant each verb explicitly):
                               ;;   SELECT       - read its own tables

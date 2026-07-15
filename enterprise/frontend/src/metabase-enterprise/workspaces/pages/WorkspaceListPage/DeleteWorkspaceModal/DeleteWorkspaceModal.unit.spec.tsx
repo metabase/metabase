@@ -17,8 +17,7 @@ import {
 
 import { DeleteWorkspaceModal } from "./DeleteWorkspaceModal";
 
-const ORPHAN_MESSAGE =
-  'Workspace 1 was deleted, but warehouse cleanup failed for 1 database(s). These resources were left in place and may need to be removed manually:\n  - database 2 (postgres): schema "mb_iso_1", user "mb_iso_1" — not removed because: Connection refused';
+const ORPHAN_MESSAGE = "Connection refused";
 
 function setup({
   withError = false,
@@ -40,6 +39,7 @@ function setup({
     setupDeleteWorkspaceEndpointError(workspace.id);
   } else if (withOrphans) {
     setupDeleteWorkspaceEndpoint(workspace.id, {
+      deleted: false,
       message: ORPHAN_MESSAGE,
       orphaned_resources: [
         {
@@ -98,7 +98,7 @@ describe("DeleteWorkspaceModal", () => {
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
   });
 
-  it("should list pending databases and delete with ignore-pending when confirmed", async () => {
+  it("should list pending databases and delete when confirmed", async () => {
     const { onDelete } = setup({
       databases: [
         createMockWorkspaceDatabase({
@@ -120,23 +120,24 @@ describe("DeleteWorkspaceModal", () => {
       expect(
         fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
           method: "DELETE",
-          query: { "ignore-pending": "true" },
         }),
       ).toBe(true);
     });
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
   });
 
-  it("should warn about orphaned warehouse resources but still delete when teardown partly fails", async () => {
-    const { onDelete } = setup({ withOrphans: true });
+  it("should warn and keep the workspace when teardown fails (deleted: false)", async () => {
+    const { onDelete, onClose } = setup({ withOrphans: true });
 
     await clickDelete();
 
     expect(
-      await screen.findByText(/warehouse cleanup failed/i),
+      await screen.findByText(
+        /Couldn't delete the workspace: Connection refused/i,
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Connection refused/i)).toBeInTheDocument();
-    await waitFor(() => expect(onDelete).toHaveBeenCalled());
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onDelete).not.toHaveBeenCalled();
   });
 
   it("should show an error message and not call the callback when the request fails", async () => {

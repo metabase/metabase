@@ -145,6 +145,13 @@
         (subs 0 (min 30 (count sa-id)))
         u/lower-case-en)))
 
+(defn- ws-service-account-email
+  "The email that identifies a workspace's service account. The single source of
+   the SA identity — create, delete, and the persisted `:database_details` must
+   all agree on it."
+  [workspace ^String project-id]
+  (format "%s@%s.iam.gserviceaccount.com" (ws-service-account-id workspace) project-id))
+
 (defn- with-sa-propagation-retry!
   "Run `f` (a no-arg fn), retrying when GCP rejects it because a freshly-created
    workspace SA isn't yet visible to the API being called. Used for IAM bindings
@@ -473,8 +480,7 @@
 (defn- ws-delete-service-account!
   "Delete a service account for a workspace. Idempotent - does nothing if SA doesn't exist."
   [^IAMClient iam-client ^String project-id workspace]
-  (let [sa-id    (ws-service-account-id workspace)
-        sa-email (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+  (let [sa-email (ws-service-account-email workspace project-id)
         sa-name  (format "projects/%s/serviceAccounts/%s" project-id sa-email)]
     (when (ws-service-account-exists? iam-client project-id sa-email)
       (log/infof "Deleting service account %s" sa-email)
@@ -534,7 +540,7 @@
    side, and `metabase.test.data.bigquery-cloud-sdk` for the cleanup loop."
   [^IAMClient iam-client ^String project-id workspace]
   (let [sa-id        (ws-service-account-id workspace)
-        sa-email     (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
+        sa-email     (ws-service-account-email workspace project-id)
         project-name (format "projects/%s" project-id)
         description  (ws-sa-description (java.time.Instant/now))]
     ;; Check if already exists first
@@ -598,7 +604,7 @@
   [_driver database workspace]
   (let [details    (driver.conn/effective-details database)
         project-id (bigquery.common/get-project-id details)
-        sa-email   (format "%s@%s.iam.gserviceaccount.com" (ws-service-account-id workspace) project-id)]
+        sa-email   (ws-service-account-email workspace project-id)]
     {:schema           (driver.u/workspace-isolation-namespace-name workspace)
      :database_details {:user                        sa-email
                         :impersonate-service-account sa-email}}))

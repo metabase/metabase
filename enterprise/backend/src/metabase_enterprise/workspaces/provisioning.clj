@@ -84,6 +84,19 @@
   [workspace-database-id & body]
   `(do-with-workspace-database-lock ~workspace-database-id (fn [] ~@body)))
 
+(defn- wsd-iso-workspace
+  "The synthetic workspace map from which all warehouse identifiers for a
+  WorkspaceDatabase row are derived. Every provision/deprovision/teardown path
+  must build the exact same map — teardown recomputes what provision computed."
+  [workspace-database-id]
+  {:id workspace-database-id :name (str "wsd-" workspace-database-id)})
+
+(defn- throwable->reason
+  "Failure-map `:reason`: the message the database/driver returned, falling back
+  to the exception class for message-less throwables."
+  [^Throwable t]
+  (or (ex-message t) (str (class t))))
+
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
 (defn provision-workspace-database!
@@ -101,7 +114,7 @@
                           {:id workspace-database-id :status (:status wsd)})))
         (let [db         (t2/select-one :model/Database :id (:database_id wsd))
               driver     (driver.u/database->driver db)
-              workspace  {:id workspace-database-id :name (str "wsd-" workspace-database-id)}
+              workspace  (wsd-iso-workspace workspace-database-id)
               ws-details (merge workspace (details provisioner driver db workspace))
               schemas    (vec (:input_schemas wsd))]
           (try
@@ -141,10 +154,9 @@
                           {:id workspace-database-id :status (:status wsd)})))
         (let [db        (t2/select-one :model/Database :id (:database_id wsd))
               driver    (driver.u/database->driver db)
-              workspace {:id               workspace-database-id
-                         :name             (str "wsd-" workspace-database-id)
-                         :schema           (:output_namespace wsd)
-                         :database_details (:database_details wsd)}]
+              workspace (assoc (wsd-iso-workspace workspace-database-id)
+                               :schema           (:output_namespace wsd)
+                               :database_details (:database_details wsd))]
           (try
             (destroy! provisioner driver db workspace)
             (finally
@@ -225,8 +237,9 @@
   its row. Used by the delete path and by create-workspace cleanup. Works from ANY
   state: the per-row cluster lock is taken first, so in-flight
   provisioning/deprovisioning on another node completes before we touch anything
-  (or the lock times out and this throws), and the row is re-read under the lock
-  so we see whatever that work persisted. Identifiers are the persisted ones, or
+  (or the lock times out and the teardown is reported as a failure), and the row
+  is re-read under the lock so we see whatever that work persisted. Identifiers
+  are the persisted ones, or
   recomputed deterministically from the row id via the provisioner's `details`
   ([[metabase.driver/workspace-isolation-details]]) for a crashed `:provisioning`
   row that never recorded anything.
@@ -240,50 +253,59 @@
   the iso namespace are ALWAYS cleared — stale remappings would rewrite queries
   to a dropped schema and 500 the QP.
 
-  Returns `{:status :success}` when the warehouse objects were dropped (or the row
-  was already gone), or `{:status :failure :workspace_database_id .. :database_id ..
-  :driver .. :schema .. :user .. :reason ..}` when the teardown failed and the row
-  was kept."
+  Never throws: any failure — lock timeout, identifier computation, the destroy
+  itself — is returned as data. Returns `{:status :success}` when the warehouse
+  objects were dropped (or the row was already gone), or `{:status :failure
+  :workspace_database_id .. :database_id .. :reason ..}` (plus `:driver`,
+  `:schema` and `:user` when the failure happened late enough to know them) when
+  the teardown failed and the row was kept."
   [wsd provisioner]
-  (with-workspace-database-lock (:id wsd)
-    (if-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
-      (let [db         (t2/select-one :model/Database :id (:database_id wsd))
-            driver     (driver.u/database->driver db)
-            iso-ws     {:id (:id wsd) :name (str "wsd-" (:id wsd))}
-            computed   (details provisioner driver db iso-ws)
-            schema     (or (not-empty (:output_namespace wsd))
-                           (:schema computed))
-            db-details (if (seq (:database_details wsd))
-                         (:database_details wsd)
-                         (:database_details computed))
-            user       (:user db-details)
-            workspace  (assoc iso-ws :schema schema :database_details db-details)
-            result     (try
-                         (destroy! provisioner driver db workspace)
-                         {:status :success}
-                         (catch Throwable t
-                           (log/warnf t (str "Workspace database %d: teardown of schema \"%s\" / user \"%s\" "
-                                             "on database %d failed; keeping the row so it can be retried")
-                                      (:id wsd) schema user (:database_id wsd))
-                           {:status                :failure
-                            :workspace_database_id (:id wsd)
-                            :database_id           (:database_id wsd)
-                            :driver                driver
-                            :schema                schema
-                            :user                  user
-                            :reason                (ex-message t)}))]
-        ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
-        ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
-        ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
-        ;; (mirrors `deprovision-workspace-database!`).
-        (binding [t2.connection/*current-connectable* nil]
-          (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))
-        (if (= :success (:status result))
-          (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
-          (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                      {:output_namespace "" :database_details {} :status :unprovisioned}))
-        result)
-      {:status :success})))
+  (try
+    (with-workspace-database-lock (:id wsd)
+      (if-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
+        (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+              driver     (driver.u/database->driver db)
+              iso-ws     (wsd-iso-workspace (:id wsd))
+              computed   (delay (details provisioner driver db iso-ws))
+              schema     (or (not-empty (:output_namespace wsd))
+                             (:schema @computed))
+              db-details (if (seq (:database_details wsd))
+                           (:database_details wsd)
+                           (:database_details @computed))
+              user       (or (:user db-details)
+                             (driver.u/workspace-isolation-user-name iso-ws))
+              workspace  (assoc iso-ws :schema schema :database_details db-details)
+              result     (try
+                           (destroy! provisioner driver db workspace)
+                           {:status :success}
+                           (catch Throwable t
+                             (log/warnf t (str "Workspace database %d: teardown of schema \"%s\" / user \"%s\" "
+                                               "on database %d failed; keeping the row so it can be retried")
+                                        (:id wsd) schema user (:database_id wsd))
+                             {:status                :failure
+                              :workspace_database_id (:id wsd)
+                              :database_id           (:database_id wsd)
+                              :driver                driver
+                              :schema                schema
+                              :user                  user
+                              :reason                (throwable->reason t)}))]
+          ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
+          ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
+          ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
+          ;; (mirrors `deprovision-workspace-database!`).
+          (binding [t2.connection/*current-connectable* nil]
+            (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))
+          (if (= :success (:status result))
+            (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
+            (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
+                        {:output_namespace "" :database_details {} :status :unprovisioned}))
+          result)
+        {:status :success}))
+    (catch Throwable t
+      {:status                :failure
+       :workspace_database_id (:id wsd)
+       :database_id           (:database_id wsd)
+       :reason                (throwable->reason t)})))
 
 (defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to

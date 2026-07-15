@@ -94,7 +94,7 @@
                          (grant!   [_ _ _ _ _] nil)
                          (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
             (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (thrown-with-msg? ExceptionInfo #"cleanup could not remove everything"
+              (is (thrown-with-msg? ExceptionInfo #"warehouse down"
                                     (ws/create-workspace! {:name         "Wedged"
                                                            :creator_id   (mt/user->id :crowberto)
                                                            :database_ids [db-id]}))))
@@ -204,8 +204,7 @@
                   :user                  "stub_user"
                   :reason                "Connection refused"}]
                 (:orphaned_resources result)))
-        (is (re-find #"were kept" (:message result)))
-        (is (re-find #"Connection refused" (:message result)))
+        (is (= "Connection refused" (:message result)))
         (testing "retrying the delete once the warehouse is reachable finishes the job"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (is (= {:deleted true} (ws/delete-workspace! (:id ws)))))

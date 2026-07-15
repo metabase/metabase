@@ -1208,6 +1208,10 @@
                      (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
                      (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
                              quoted-user (:password read-user) quoted-role)
+                     ;; the user may survive a failed teardown; without this it would keep
+                     ;; its old password while the new one gets persisted
+                     (format "ALTER USER %s SET PASSWORD = '%s'"
+                             quoted-user (:password read-user))
                      (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
           (jdbc/execute! conn-spec [sql]))
         (catch Throwable t

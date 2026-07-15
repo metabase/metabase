@@ -1180,6 +1180,9 @@
       (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
                                 "CREATE LOGIN %s WITH PASSWORD = N'%s'")
                            escaped-username quoted-user escaped-password)
+                   ;; the login may survive a failed teardown; without this it would keep
+                   ;; its old password while the new one gets persisted
+                   (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
                    (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
                            escaped-username quoted-user quoted-user)
                    (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"

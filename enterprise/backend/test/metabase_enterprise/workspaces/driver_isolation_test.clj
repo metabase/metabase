@@ -314,6 +314,19 @@
   []
   (subs (str (random-uuid)) 0 8))
 
+(defn- with-isolation-details
+  "Merge [[driver/workspace-isolation-details]] into `workspace`. Details are pure
+   computation, so tests build the full workspace map before the `try` — the
+   `finally` destroy then always has real identifiers to clean up with, even when
+   init never ran or only partially succeeded."
+  [driver database workspace]
+  (merge workspace (driver/workspace-isolation-details driver database workspace)))
+
+(defn- workspace-user-spec
+  "JDBC spec that connects as the workspace's isolated user."
+  [driver details ws-with-details]
+  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details))))
+
 (deftest ^:synchronized workspace-isolation-perms-test
   ;; BigQuery isn't a JDBC driver (its workspace isolation goes through GCP IAM
   ;; rather than SQL ACLs), so it's covered by `workspace-isolation-perms-bigquery-test`
@@ -336,15 +349,13 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-permstest-" run-id)}
-            ws-with-details (merge workspace
-                                   (driver/workspace-isolation-details driver database workspace))]
+            ws-with-details (with-isolation-details driver database workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
           (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-details    (merge details (:database_details ws-with-details))
-                user-spec       (sql-jdbc.conn/connection-details->spec driver user-details)
+          (let [user-spec       (workspace-user-spec driver details ws-with-details)
                 out-schema      (:schema ws-with-details)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database ws-with-details
@@ -501,11 +512,8 @@
                           :name (str "wsd-A-" ws-a-id)}
             ws-b         {:id   (Long/parseLong ws-b-id 16)
                           :name (str "wsd-B-" ws-b-id)}
-            ;; Details are pure computation, so build the full ws maps before the
-            ;; `try` — same finally-always-has-identifiers rationale as in the
-            ;; single-workspace test.
-            ws-a-full    (merge ws-a (driver/workspace-isolation-details driver database ws-a))
-            ws-b-full    (merge ws-b (driver/workspace-isolation-details driver database ws-b))]
+            ws-a-full    (with-isolation-details driver database ws-a)
+            ws-b-full    (with-isolation-details driver database ws-b)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema-a)
           (maybe-create-input-namespace! admin-spec driver database in-schema-b)
@@ -519,8 +527,8 @@
                                           " VALUES (1, 'b')")])
           (driver/init-workspace-isolation! driver database ws-a-full)
           (driver/init-workspace-isolation! driver database ws-b-full)
-          (let [user-a-spec  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-a-full)))
-                user-b-spec  (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-b-full)))
+          (let [user-a-spec  (workspace-user-spec driver details ws-a-full)
+                user-b-spec  (workspace-user-spec driver details ws-b-full)
                 out-a-schema (:schema ws-a-full)
                 out-b-schema (:schema ws-b-full)
                 b-secret-fq  (qualify driver out-b-schema b-secret)
@@ -625,11 +633,7 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-collision-" run-id)}
-            ;; Details are pure computation, so build the full ws map before the
-            ;; `try` — the `finally` destroy always has real identifiers to work
-            ;; with even if init never ran or only partially succeeded.
-            ws-with-details (merge workspace
-                                   (driver/workspace-isolation-details driver database workspace))
+            ws-with-details (with-isolation-details driver database workspace)
             out-schema   (:schema ws-with-details)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
@@ -639,7 +643,7 @@
           ;; before init runs.
           (maybe-create-input-namespace! admin-spec driver database out-schema)
           (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))
+          (let [user-spec       (workspace-user-spec driver details ws-with-details)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database ws-with-details
                                                  [in-schema])
@@ -695,11 +699,7 @@
             src-b        (qualify driver in-schema src-b-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-grantaccum-" run-id)}
-            ;; Details are pure computation, so build the full ws map before the
-            ;; `try` — the `finally` destroy always has real identifiers to work
-            ;; with even if init never ran or only partially succeeded.
-            ws-with-details (merge workspace
-                                   (driver/workspace-isolation-details driver database workspace))]
+            ws-with-details (with-isolation-details driver database workspace)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-a " (id INT, v VARCHAR(8))" (create-table-tail driver))])
@@ -707,7 +707,7 @@
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
           (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
+          (let [user-spec       (workspace-user-spec driver details ws-with-details)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! driver database ws-with-details
                                                  [in-schema])
@@ -807,11 +807,7 @@
             secret-tbl   (str "secret_" run-id)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-crossdb-" run-id)}
-            ;; Details are pure computation, so build the full ws map before the
-            ;; `try` — the `finally` destroy always has real identifiers to work
-            ;; with even if init never ran or only partially succeeded.
-            ws-with-details (merge workspace
-                                   (driver/workspace-isolation-details driver database workspace))
+            ws-with-details (with-isolation-details driver database workspace)
             second-db-created? (atom false)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
@@ -823,7 +819,7 @@
           (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
             (jdbc/execute! admin-spec [sql]))
           (driver/init-workspace-isolation! driver database ws-with-details)
-          (let [user-spec       (sql-jdbc.conn/connection-details->spec driver (merge details (:database_details ws-with-details)))]
+          (let [user-spec       (workspace-user-spec driver details ws-with-details)]
             (driver/grant-workspace-read-access! driver database ws-with-details
                                                  [in-schema])
             (testing "workspace user denied SELECT against a fully-qualified table in another database"
@@ -908,11 +904,7 @@
             src          (qualify driver in-schema src-name)
             workspace    {:id   (Long/parseLong run-id 16)
                           :name (str "wsd-public-" run-id)}
-            ;; Details are pure computation, so build the full ws map before the
-            ;; `try` — the `finally` destroy always has real identifiers to work
-            ;; with even if init never ran or only partially succeeded.
-            ws-with-details (merge workspace
-                                   (driver/workspace-isolation-details driver database workspace))
+            ws-with-details (with-isolation-details driver database workspace)
             ws-fragment  (:schema ws-with-details)]
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)

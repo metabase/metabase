@@ -86,21 +86,22 @@ function DeleteWorkspaceForm({
   const hasPendingDatabases = pendingDatabases.length > 0;
 
   const handleSubmit = async () => {
-    const result = await deleteWorkspace({
-      id: workspace.id,
-      ignorePending: hasPendingDatabases,
-    }).unwrap();
-    // The workspace is deleted even when warehouse teardown partly fails; warn the
-    // admin so the leftover schema/user objects can be removed manually.
-    if (result.orphaned_resources?.length) {
-      sendToast({
-        message: result.message,
-        icon: "warning",
-        toastColor: "feedback-negative",
-        timeout: null,
-      });
+    const result = await deleteWorkspace({ id: workspace.id }).unwrap();
+    if (result.deleted) {
+      onDelete();
+      return;
     }
-    onDelete();
+    // Teardown failed for some databases: the workspace is kept so the delete
+    // can be retried once the warehouse is reachable again.
+    sendToast({
+      message: result.message
+        ? t`Couldn't delete the workspace: ${result.message}`
+        : t`Couldn't delete the workspace. Please try again.`,
+      icon: "warning",
+      toastColor: "feedback-negative",
+      timeout: null,
+    });
+    onClose();
   };
 
   return (
@@ -110,7 +111,7 @@ function DeleteWorkspaceForm({
           {hasPendingDatabases ? (
             <Stack gap="sm">
               <Text>
-                {t`Some of this workspace's databases are still being set up or torn down. Deleting now will remove the workspace, but their temporary database users and schemas will be left in place and must be removed manually:`}
+                {t`Some of this workspace's databases are still being set up or torn down. Deleting will wait for that work to finish, then remove the workspace along with its temporary database users and schemas:`}
               </Text>
               <List>
                 {pendingDatabases.map((workspaceDatabase) => (

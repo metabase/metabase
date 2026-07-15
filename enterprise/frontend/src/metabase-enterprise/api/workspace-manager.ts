@@ -54,10 +54,9 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       DeleteWorkspaceResponse,
       DeleteWorkspaceRequest
     >({
-      query: ({ id, ignorePending }) => ({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/ee/workspace-manager/${id}`,
-        params: ignorePending ? { "ignore-pending": true } : undefined,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),

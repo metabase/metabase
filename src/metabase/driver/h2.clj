@@ -772,6 +772,9 @@
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+                      ;; the user may survive a failed teardown; without this it would keep
+                      ;; its old password while the new one gets persisted
+                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username password)
                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                       (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
            (.addBatch ^Statement stmt ^String sql))

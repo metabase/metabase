@@ -39,7 +39,6 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -172,9 +171,9 @@
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
 (defn- assert-workspace-exists [workspace-id]
-  (or (workspace/get-workspace workspace-id)
-      (throw (ex-info "Workspace not found"
-                      {:status-code 404 :workspace_id workspace-id}))))
+  (when-not (t2/exists? :model/Workspace :id workspace-id)
+    (throw (ex-info "Workspace not found"
+                    {:status-code 404 :workspace_id workspace-id}))))
 
 (defn- assert-database-exists [database-id]
   (or (t2/select-one :model/Database :id database-id)
@@ -209,26 +208,12 @@
   vector of failure maps (see [[provisioning/teardown-workspace-database!]])."
   [workspace-id]
   (->> (t2/select :model/WorkspaceDatabase :workspace_id workspace-id)
-       (mapv (fn [wsd]
-               (try
-                 (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
-                 (catch Throwable t
-                   (log/warnf t "Teardown of WorkspaceDatabase %d failed" (:id wsd))
-                   {:status                :failure
-                    :workspace_database_id (:id wsd)
-                    :database_id           (:database_id wsd)
-                    :reason                (ex-message t)}))))
+       (mapv #(provisioning/teardown-workspace-database! % provisioning/dispatching-provisioner))
        (filterv #(= :failure (:status %)))))
 
 (defn- teardown-failures-message
-  [workspace-id failures]
-  (str (format "Teardown failed for %d database(s) of workspace %d. "
-               (count failures) workspace-id)
-       "The workspace and these databases were kept so the teardown can be retried:\n"
-       (str/join "\n"
-                 (for [{:keys [database_id driver schema user reason]} failures]
-                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — teardown failed because: %s"
-                           database_id (some-> driver name) schema user reason)))))
+  [failures]
+  (str/join "; " (map :reason failures)))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -262,13 +247,10 @@
       (catch Throwable t
         (let [failures (teardown-workspace-databases! (:id ws))]
           (if (seq failures)
-            (let [message (teardown-failures-message (:id ws) failures)]
-              (log/warn message)
-              (throw (ex-info (str "Workspace provisioning failed, and cleanup could not remove everything it had created. "
-                                   message)
-                              {:workspace_id       (:id ws)
-                               :orphaned_resources failures}
-                              t)))
+            (throw (ex-info (teardown-failures-message failures)
+                            {:workspace_id       (:id ws)
+                             :orphaned_resources failures}
+                            t))
             (do (workspace/delete-workspace! (:id ws))
                 (throw t))))))
     (workspace/get-workspace (:id ws))))
@@ -290,8 +272,6 @@
   (assert-workspace-exists id)
   (let [failures (teardown-workspace-databases! id)]
     (if (seq failures)
-      (let [message (teardown-failures-message id failures)]
-        (log/warn message)
-        {:deleted false :orphaned_resources failures :message message})
+      {:deleted false :orphaned_resources failures :message (teardown-failures-message failures)}
       (do (workspace/delete-workspace! id)
           {:deleted true}))))

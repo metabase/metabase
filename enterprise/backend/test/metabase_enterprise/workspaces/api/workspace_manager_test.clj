@@ -85,7 +85,7 @@
             (is (=? {:id                 ws-id
                      :deleted            false
                      :orphaned_resources [{:database_id db-id :reason "Connection refused"}]
-                     :message            #".*were kept.*"}
+                     :message            "Connection refused"}
                     (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id)))))
           (testing "the workspace survives and a retry deletes it"
             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
