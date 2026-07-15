@@ -42,8 +42,13 @@
   (setting/writable-settings))
 
 (def ^:private kebab-cased-keyword
-  "Keyword that can be transformed from \"a_b\" -> :a-b"
-  [:keyword {:decode/json #(keyword (u/->kebab-case-en %))}])
+  "Keyword that can be transformed from \"a_b\" -> :a-b. A name that is already a registered
+   setting is taken verbatim: the kebab conversion splits letter-digit boundaries (\"v2\" ->
+   \"v-2\"), so it would corrupt setting names that contain digits, like `mcp-v2-enabled`."
+  [:keyword {:decode/json #(let [k (keyword %)]
+                             (if (setting/registered? k)
+                               k
+                               (keyword (u/->kebab-case-en %))))}])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
