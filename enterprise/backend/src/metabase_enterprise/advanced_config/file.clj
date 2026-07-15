@@ -161,9 +161,11 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [paths-to-try (or (some-> (get *env* :mb-config-file-path) u.files/get-path list)
-                         [(u.files/get-path (System/getProperty "user.dir") "config.yml")
-                          (u.files/get-path (System/getProperty "user.dir") "config.yaml")])]
+  (let [configured-path (get *env* :mb-config-file-path)
+        paths-to-try    (if-not (str/blank? configured-path)
+                          [configured-path]
+                          [(u.files/get-path (System/getProperty "user.dir") "config.yml")
+                           (u.files/get-path (System/getProperty "user.dir") "config.yaml")])]
     (if-let [path* (first (filter u.files/exists? paths-to-try))]
       (do
         (log/info (u/format-color :magenta
