@@ -20,7 +20,10 @@ import {
  * `component` or `element`. `element` is bridged to a v3 `component` that renders
  * it and exposes the matched child through `<Outlet/>`.
  */
-export type RouteElementProps = RouteProps & {
+// `component` is intentionally omitted: routes must use `element={<X/>}`. The
+// bridge still sets a `component` on the built v3 route config internally, and
+// the raw v3 `Route` (ReactRouterRoute) remains for the facade's own bootstrap.
+export type RouteElementProps = Omit<RouteProps, "component"> & {
   index?: boolean;
   element?: ReactNode;
 };

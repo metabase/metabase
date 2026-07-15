@@ -23,7 +23,7 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
-import { withRouter } from "metabase/router";
+import { Outlet, withRouter } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
@@ -35,7 +35,6 @@ import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
-  children: React.ReactNode;
   params: { databaseId: string };
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
@@ -49,7 +48,6 @@ const mapDispatchToProps = {
 };
 
 function DatabaseEditAppInner({
-  children,
   params,
   updateDatabase,
   deleteDatabase,
@@ -157,7 +155,7 @@ function DatabaseEditAppInner({
           </LoadingAndErrorWrapper>
         </Box>
       </ErrorBoundary>
-      {children}
+      <Outlet />
       {fromEmbeddingSetupGuide && (
         <ReturnToSetupGuideModal
           opened={showReturnModal}

@@ -6,7 +6,7 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { createMockAppState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { IndexRoute, Route } from "metabase/router";
 
 import PublicApp from "./PublicApp";
 
@@ -29,16 +29,15 @@ function setup({
   const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
 
   renderWithProviders(
-    <Route
-      path="/public/dashboard/:id"
-      component={(props) => (
-        <PublicApp {...props}>
+    <Route path="/public/dashboard/:id" element={<PublicApp />}>
+      <IndexRoute
+        element={
           <SyncedEmbedFrame {...embedFrameProps}>
             <h1 data-testid="test-content">Test</h1>
           </SyncedEmbedFrame>
-        </PublicApp>
-      )}
-    />,
+        }
+      />
+    </Route>,
     {
       mode: "public",
       initialRoute: `/public/dashboard/UUID${hash}`,

@@ -7,7 +7,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route } from "metabase/router";
+import { IndexRoute, Route, withRouteProps } from "metabase/router";
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -20,6 +20,8 @@ import {
 import PublicApp from "../PublicApp";
 
 import PublicAction from "./PublicActionLoader";
+
+const RoutedPublicAction = withRouteProps(PublicAction);
 
 const TEST_PUBLIC_ID = "test-public-id";
 
@@ -75,14 +77,9 @@ async function setup({
   });
 
   renderWithProviders(
-    <Route
-      path="/public/action/:uuid"
-      component={(props) => (
-        <PublicApp {...props}>
-          <PublicAction {...props} />
-        </PublicApp>
-      )}
-    />,
+    <Route path="/public/action/:uuid" element={<PublicApp />}>
+      <IndexRoute element={<RoutedPublicAction />} />
+    </Route>,
     {
       mode: "public",
       initialRoute: `/public/action/${TEST_PUBLIC_ID}`,
