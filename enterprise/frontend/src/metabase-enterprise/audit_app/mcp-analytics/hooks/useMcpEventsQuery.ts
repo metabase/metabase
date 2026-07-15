@@ -31,6 +31,8 @@ export function useMcpEventsQuery(
   );
 
   const { data, isFetching } = useGetAdhocQueryQuery(
+    // The hook requires an argument, but the request is skipped when `jsQuery` is
+    // null, so this placeholder query is never actually executed.
     jsQuery ?? ({} as LegacyDatasetQuery),
     { skip: !jsQuery },
   );
