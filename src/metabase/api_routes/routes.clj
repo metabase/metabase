@@ -38,6 +38,7 @@
    [metabase.login-history.api]
    [metabase.mcp.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
@@ -105,6 +106,7 @@
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
+         metabase.mcp.v2.api/keep-me
          metabase.oauth-server.api.admin/keep-me
          metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
@@ -211,7 +213,12 @@
    ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
    "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
-   "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
+   ;; Route-map dispatch matches one path segment at a time, so `/metabase-mcp/v2` needs its own
+   ;; sub-entry; anything else under `/metabase-mcp` falls through to the v1 handler.
+   "/metabase-mcp"         (handlers/routes
+                            (handlers/route-map-handler
+                             {"/v2" (metabase.mcp.v2.api/+mcp-v2-enabled metabase.mcp.v2.api/handler)})
+                            (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler))
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)

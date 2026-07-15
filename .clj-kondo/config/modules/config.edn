@@ -1260,7 +1260,8 @@
            metabase.mcp.callback-api
            metabase.mcp.core
            metabase.mcp.init
-           metabase.mcp.usage}
+           metabase.mcp.usage
+           metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
@@ -1268,6 +1269,7 @@
            api
            app-db
            config
+           eid-translation
            llm
            metabot
            oauth-server
@@ -1277,7 +1279,8 @@
            session
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/Collection}}
 
   measures
   {:team "Graphy"
@@ -1302,6 +1305,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings}
    :friends #{agent-api

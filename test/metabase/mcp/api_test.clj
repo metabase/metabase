@@ -14,6 +14,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.mcp.transport :as mcp.transport]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
    [metabase.system.settings :as system.settings]
@@ -272,7 +273,7 @@
 
 (deftest ^:parallel eval-session-override-test
   (testing "the x-eval-session-id header is honored only when it's a safe trace-file name"
-    (let [override #'mcp.api/eval-session-override]
+    (let [override #'mcp.transport/eval-session-override]
       (testing "a bare uuid (what the harness mints) is honored"
         (is (= "1ae768c9-5773-48dd-afca-c75780dae84c"
                (override {:headers {"x-eval-session-id" "1ae768c9-5773-48dd-afca-c75780dae84c"}}))))
@@ -1342,7 +1343,7 @@
 
 (defn- dispatch-initialized-request [msg token-scopes]
   (let [session-id (str (random-uuid))]
-    (#'mcp.api/dispatch-request msg session-id token-scopes nil nil)))
+    (#'mcp.transport/dispatch-request #'mcp.api/dispatch-method msg session-id token-scopes nil nil)))
 
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
@@ -1385,7 +1386,8 @@
   (testing "resources/list omits scoped resources the caller cannot access"
     (with-scoped-test-resource!
       (fn []
-        (let [response (#'mcp.api/dispatch-request
+        (let [response (#'mcp.transport/dispatch-request
+                        #'mcp.api/dispatch-method
                         (jsonrpc-request "resources/list")
                         "session-id"
                         #{"agent:other"}
@@ -1399,7 +1401,8 @@
   (testing "resources/list includes scoped resources for callers with matching scope"
     (with-scoped-test-resource!
       (fn []
-        (let [response (#'mcp.api/dispatch-request
+        (let [response (#'mcp.transport/dispatch-request
+                        #'mcp.api/dispatch-method
                         (jsonrpc-request "resources/list")
                         "session-id"
                         #{"agent:search"}
@@ -1555,7 +1558,7 @@
   (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
     (let [[session-id _] (initialize!)]
       ;; Replace throttler after initialization so the handshake doesn't consume attempts
-      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
+      (with-redefs [mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
         ;; First request succeeds (consumes the single attempt)
         (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
                                          {"mcp-session-id" session-id}))))

@@ -73,6 +73,12 @@
   []
   (protected-resource-metadata "/api/mcp"))
 
+(api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp/v2"
+  :- resource-metadata-response-schema
+  "Returns OAuth Protected Resource Metadata (RFC 9728) for the v2 MCP endpoint."
+  []
+  (protected-resource-metadata "/api/metabase-mcp/v2"))
+
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
 ;; request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617). Advertise the
 ;; canonical `/api/metabase-mcp` resource, matching the URL clients are now told to use.
