@@ -159,10 +159,16 @@
   env/env)
 
 (defn- path
-  "Path for the YAML config file Metabase should use for initialization and Settings values."
+  "Path for the YAML config file Metabase should use for initialization and Settings values.
+
+  A blank `MB_CONFIG_FILE_PATH` counts as unset, consistent with [[metabase.config.core/config-str]]. (On JDK 25+ an
+  empty path \"exists\" — it resolves to the current directory — so without this we would try to parse the current
+  directory as YAML and fail to boot.)"
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
+  (let [env-path (get *env* :mb-config-file-path)
+        path*    (or (when-not (str/blank? env-path)
+                       (u.files/get-path env-path))
+                     (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
     (if (u.files/exists? path*)
       (log/info (u/format-color :magenta
                                 "Found config file at path %s; Metabase will be initialized with values from this file"
