@@ -14,7 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";

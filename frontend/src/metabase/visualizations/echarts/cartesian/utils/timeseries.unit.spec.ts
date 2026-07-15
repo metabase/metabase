@@ -19,7 +19,7 @@ import {
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 import {
   type DateTimeAbsoluteUnit,
@@ -43,6 +43,7 @@ function createMockChartMeasurements(
       yTicksWidthLeft: 0,
       yTicksWidthRight: 0,
       xTicksHeight: 0,
+      xTickWidthCap: 0,
       firstXTickWidth: 0,
       lastXTickWidth: 0,
     },

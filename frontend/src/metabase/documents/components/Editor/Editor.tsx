@@ -20,7 +20,6 @@ import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/C
 import { CommandSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
-import DropCursorS from "metabase/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
@@ -43,6 +42,7 @@ import { Box, Center, Loader } from "metabase/ui";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";
 import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 

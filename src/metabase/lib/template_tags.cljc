@@ -8,14 +8,14 @@
 
 (mu/defn template-tags->card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
   "Returns the card IDs from the template tags map."
-  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
-  (->> (vals template-tags)
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tags]]
+  (->> template-tags
        (into #{} (keep :card-id))
        not-empty))
 
 (mu/defn template-tags->snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
   "Returns the snippet IDs from the template tags map."
-  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
-  (->> (vals template-tags)
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tags]]
+  (->> template-tags
        (into #{} (keep :snippet-id))
        not-empty))

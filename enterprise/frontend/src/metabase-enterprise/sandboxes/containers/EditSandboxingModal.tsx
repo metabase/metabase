@@ -6,7 +6,7 @@ import {
   useListUserAttributesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";

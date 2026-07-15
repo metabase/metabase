@@ -43,7 +43,6 @@ import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
-  EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
@@ -389,7 +388,6 @@ export const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
-  loading,
   disabled,
 }: {
   name: string;
@@ -406,7 +404,6 @@ export const EntityItem = ({
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
-  loading?: boolean;
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
@@ -436,7 +433,6 @@ export const EntityItem = ({
 
       <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
-        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

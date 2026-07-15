@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -77,19 +77,14 @@ export function initializePlugin() {
     ];
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
-      <ModalRoute
-        key="impersonated/group/:groupId"
-        path="impersonated/group/:groupId"
-        modal={ImpersonationModal}
-      />,
+      modalRoute("impersonated/group/:groupId", ImpersonationModal),
     );
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES.push(
-      <ModalRoute
-        key="impersonated/database/:impersonatedDatabaseId"
-        path="impersonated/database/:impersonatedDatabaseId"
-        modal={ImpersonationModal}
-      />,
+      modalRoute(
+        "impersonated/database/:impersonatedDatabaseId",
+        ImpersonationModal,
+      ),
     );
 
     PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = (
