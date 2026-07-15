@@ -1,9 +1,10 @@
 (ns dev.kondo-ratchet
   "Ratchet on inline kondo ignore forms.
 
-  Per-linter budgets live in `.clj-kondo/ratchets.edn`.
-  `metabase.core.kondo-ratchet-test` fails when they drift from the tree;
-  `./bin/mage fix-kondo-ratchets` lowers budgets, never raises them.
+  Per-linter budgets live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
+  need a justification comment.
+  `metabase.core.kondo-ratchet-test` fails when either drifts from the tree;
+  `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
@@ -102,6 +103,26 @@
                           :linters (if bare? [:all] (vec (linter-keywords (.group m 1))))}))
         acc))))
 
+;; A justifying comment has words in it; a bare `;;` section divider does not.
+(def ^:private substantive-comment-re
+  #";+\s*\S*[A-Za-z].*")
+
+(defn- justified?
+  "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
+  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line."
+  [content start end]
+  (let [line-num   (offset->line content start)
+        lines      (str/split-lines content)
+        after      (let [line-end (str/index-of content "\n" end)]
+                     (subs content end (or line-end (count content))))
+        prev-lines (->> (take (dec line-num) lines)
+                        reverse
+                        (drop-while str/blank?))]
+    (boolean (or (when-let [i (str/index-of after ";")]
+                   (re-matches substantive-comment-re (str/trim (subs after i))))
+                 (when-let [prev (first prev-lines)]
+                   (re-matches substantive-comment-re (str/trim prev)))))))
+
 (defn ignore-matches
   "Inline ignore matches in `content`, in file order:
   `{:start _, :end _, :line _, :linters [...]}` with character offsets and a 1-based line.
@@ -115,7 +136,7 @@
 
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
-  Returns `{:file \"src/...\", :line 42, :linters [...]}` maps.
+  Returns `{:file \"src/...\", :line 42, :linters [...], :justified? true}` maps.
   Forms inside string literals or line comments don't count."
   ([]
    (scan source-roots))
@@ -127,9 +148,10 @@
          :let  [content (slurp f)]
          :when (str/includes? content ignore-marker)
          m     (ignore-matches content)]
-     {:file    (.getPath f)
-      :line    (:line m)
-      :linters (:linters m)})))
+     {:file       (.getPath f)
+      :line       (:line m)
+      :linters    (:linters m)
+      :justified? (justified? content (:start m) (:end m))})))
 
 (defn actual-counts
   "Per-linter occurrence counts for `occurrences`, as returned by [[scan]]."
@@ -158,28 +180,47 @@
                                        (take 5)
                                        vec)))]))))
 
+(defn unjustified
+  "Occurrences that need a justification comment but lack one: not [[justified?]], and suppressing at
+  least one linter outside the `exempt` set."
+  [exempt occurrences]
+  (for [{:keys [linters justified?] :as occurrence} occurrences
+        :when (and (not justified?)
+                   (seq (remove exempt linters)))]
+    occurrence))
+
+(defn stale-exemptions
+  "Linters in `exempt` that no longer have any unjustified ignore, so the exemption can go."
+  [exempt occurrences]
+  (let [still-needed (set (mapcat :linters (unjustified #{} occurrences)))]
+    (into (sorted-set-by #(compare (str %1) (str %2)))
+          (remove still-needed)
+          exempt)))
+
 (defn read-ratchets
   "Parsed contents of [[ratchets-file]], with empty defaults when the file doesn't exist."
   []
-  (merge {:ignore-counts {}}
+  (merge {:ignore-counts {}, :comment-exempt #{}}
          (when (.exists (io/file ratchets-file))
            (edn/read-string (slurp ratchets-file)))))
 
 (def ^:private header
   (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
-       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; local test runs do it\n"
-       ";; automatically. Raising a budget, or adding one for a new linter (`--seed`), is a hand edit\n"
-       ";; to defend in your PR.\n"
+       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when a\n"
+       ";; linter outside :comment-exempt has an ignore with no explanatory comment above (or trailing) it.\n"
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
+       ";; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the\n"
+       ";; exemptions is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn render
-  "Text of the ratchets file for the `{:ignore-counts _}` map `ratchets`.
+  "Text of the ratchets file for the `{:ignore-counts _, :comment-exempt _}` map `ratchets`.
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
-  [{:keys [ignore-counts]}]
-  (let [counts-indent (apply str (repeat (count "{:ignore-counts {") \space))]
+  [{:keys [ignore-counts comment-exempt]}]
+  (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
+        exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
-         "{:ignore-counts "
+         "{:ignore-counts  "
          (if (empty? ignore-counts)
            "{}"
            (let [entries (sort-by (comp str first) ignore-counts)
@@ -189,6 +230,13 @@
                             (for [[linter n] entries]
                               (format (str "%-" width "s %d") (str linter) n)))
                   "}")))
+         "\n :comment-exempt "
+         (if (empty? comment-exempt)
+           "#{}"
+           (str "#{"
+                (str/join (str "\n" exempt-indent)
+                          (sort-by str comment-exempt))
+                "}"))
          "}\n")))
 
 (defn lowered-counts
@@ -210,8 +258,9 @@
         recorded))
 
 (defn change-report
-  "The lines [[fix!]] prints: lowered/dropped/seeded budgets, plus warnings for anything over budget."
-  [{:keys [ignore-counts]} occurrences seeded]
+  "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
+  anything over budget."
+  [{:keys [ignore-counts comment-exempt]} occurrences seeded]
   (let [actual (actual-counts occurrences)]
     (concat
      (for [linter seeded
@@ -229,20 +278,23 @@
                               linter budget n linter)))
      (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
        (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
-               linter n linter)))))
+               linter n linter))
+     (for [linter (stale-exemptions comment-exempt occurrences)]
+       (format "unexempted %s (all its ignores are justified now)" linter)))))
 
 (defn fix!
-  "Rewrite [[ratchets-file]]: lower budgets and normalize formatting.
+  "Rewrite [[ratchets-file]]: lower budgets, drop stale comment exemptions, normalize formatting.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
   Prints the [[change-report]], or `unchanged` on a no-op."
   ([]
    (fix! nil))
   ([{:keys [seed]}]
-   (let [{:keys [ignore-counts] :as ratchets} (read-ratchets)
+   (let [{:keys [ignore-counts comment-exempt] :as ratchets} (read-ratchets)
          occurrences (scan)
          seeded      (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
          actual      (actual-counts occurrences)
-         text        (render {:ignore-counts (lowered-counts ignore-counts actual seeded)})
+         text        (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                              :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
          file        (io/file ratchets-file)
          old         (when (.exists file) (slurp file))]
      (run! println (change-report ratchets occurrences seeded))
