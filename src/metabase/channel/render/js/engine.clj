@@ -98,12 +98,22 @@
   "Conservative reserve (bytes) for process memory that is neither the JVM max heap nor the isolate heap:
   metaspace, code cache, thread stacks, direct byte buffers (e.g. Batik image buffers), and the GraalVM
   host-side runtime. Subtracted from the pod memory limit when sizing the isolate so their sum stays under the
-  cgroup ceiling. Deliberately generous — underestimating risks an OOM-kill of the whole pod."
-  (* 512 1024 1024))
+  cgroup ceiling. Kept generous (underestimating risks an OOM-kill of the whole pod) but not so large that a
+  big `-Xmx` starves the isolate below a renderable size — see [[isolate-heap-bytes]]. The remaining slack is
+  covered by [[isolate-memory-safety-margin-ratio]] on top of this."
+  (* 384 1024 1024))
 
 (def ^:private isolate-memory-safety-margin-ratio
   "Fraction of the pod memory limit kept free as headroom, on top of the explicit reserves."
-  0.15)
+  0.12)
+
+(def ^:private isolate-nonheap-reserve-bytes
+  "Headroom (bytes) kept between the per-context `sandbox.MaxHeapMemory` and the engine-wide
+  `engine.MaxIsolateMemory` for the isolate's own non-guest-heap memory (code cache, metadata, GC
+  bookkeeping). GraalVM requires `MaxHeapMemory` strictly below `MaxIsolateMemory`; the untrusted pool holds
+  exactly one context (see `metabase.channel.render.js.svg`), so the single context's guest heap gets the whole
+  isolate minus this reserve — no need to halve the isolate for a second context that never exists."
+  (* 96 1024 1024))
 
 (def ^:private target-max-isolate-memory-bytes
   "Isolate heap cap used when the pod can afford it. The ~16MB static-viz bundle plus a real render peak at
@@ -145,9 +155,10 @@
           iso-bytes    (if pod-limit
                          (isolate-heap-bytes pod-limit jvm-max-heap)
                          target-max-isolate-memory-bytes)
-          ;; per-context heap must be < engine-wide isolate memory; half keeps the invariant and matches the
-          ;; historical 1GB / 512MB pairing.
-          heap-bytes   (quot iso-bytes 2)
+          ;; per-context heap must be < engine-wide isolate memory. The pool holds exactly one context, so give
+          ;; that single context the whole isolate minus a small non-heap reserve rather than halving it (the
+          ;; old iso/2 needlessly capped guest heap at 50% for a second context that never exists).
+          heap-bytes   (- iso-bytes isolate-nonheap-reserve-bytes)
           config       {:max-isolate-memory (bytes->mb-option iso-bytes)
                         :max-heap-memory    (bytes->mb-option heap-bytes)}]
       (when (and pod-limit (<= iso-bytes min-max-isolate-memory-bytes))
