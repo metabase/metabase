@@ -28,7 +28,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in]])
   (:import
-   (java.util.concurrent Semaphore)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
@@ -46,15 +45,6 @@
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
-
-(def ^:dynamic *write-permits*
-  "Semaphore capping concurrent cache writes ([[cache/query-caching-max-concurrent-writes]]) so a burst of cache misses
-  can't spike CPU/memory with unbounded concurrent result serialization. When exhausted, queries run normally but skip
-  caching that run. nil (the setting is unset or not a positive integer) means no limit. The root value is a delay so
-  the setting isn't read at namespace load (AOT-safe) -- deref with `force`. Bind a bare `Semaphore` in tests."
-  (delay (let [n (cache/query-caching-max-concurrent-writes)]
-           (when (pos-int? n)
-             (Semaphore. n)))))
 
 (def ^:private purge-interval-seconds
   "How often, at most, to purge cache entries older than [[cache/query-caching-max-ttl]]. Purging on every save is
@@ -136,19 +126,17 @@
      (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
            min-duration-ms (:min-duration-ms strategy 0)
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
-           ;; doesn't get re-run at full cost on every request. *result-fn* is nil when the run skipped serialization
-           ;; because the concurrent cache-write limit was reached.
-           eligible?       (> duration-ms min-duration-ms)
-           stored?         (boolean (and eligible? *result-fn*))]
+           ;; doesn't get re-run at full cost on every request
+           eligible?       (> duration-ms min-duration-ms)]
        (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
                   (i/short-hex-hash query-hash)
                   (u/format-milliseconds duration-ms)
                   (u/format-milliseconds min-duration-ms)
                   (if eligible? "eligible" "not eligible"))
-       (when stored?
+       (when eligible?
          (cache-results! query-hash))
        (rf (cond-> result
-             (map? result) (update :cache/details assoc :hash query-hash :stored stored?)))))
+             (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
 
     ([acc row]
      (add-object-to-cache! row)
@@ -269,32 +257,9 @@
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- reduce-with-serialization!
-  "Reduce with `orig-reduce`, serializing every reduced object into the current cache entry -- unless the concurrent
-  cache-write limit ([[*write-permits*]]) is reached, in which case reduce without serializing: that run just isn't
-  cached ([[*result-fn*]] stays nil, so [[save-results-xform]] reports `:stored false` and skips the save)."
-  [orig-reduce rff metadata rows]
-  (let [^Semaphore permits (force *write-permits*)]
-    (if (and permits (not (.tryAcquire permits)))
-      (do (log/throttle (u/minutes->ms 1)
-                        (log/warn "Not caching results: the concurrent cache-write limit was reached"))
-          (orig-reduce rff metadata rows))
-      (try
-        (impl/do-with-serialization
-         (fn [in-fn result-fn]
-           (binding [*in-fn*     in-fn
-                     *result-fn* result-fn]
-             (orig-reduce rff metadata rows))))
-        (finally
-          (some-> permits .release))))))
-
 (defn- run-and-cache!
   "Run `query` through `qp` and save the results to the cache (if eligible). Used on a cache miss, or when this process
-  holds the stale-while-revalidate refresh lease.
-
-  Serialization holds a [[*write-permits*]] permit, scoped to the reduce so warehouse wait time doesn't consume the
-  budget. When none is available the query still runs and returns results, they just aren't written to the cache (a
-  refresh lease this process holds then just expires and a later run refreshes the entry)."
+  holds the stale-while-revalidate refresh lease."
   [qp query query-hash cache-strategy rff]
   (let [start-time-ns (System/nanoTime)
         orig-reduce   qp.pipeline/*reduce*]
@@ -302,7 +267,11 @@
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
                                      {:post [(some? %)]}
-                                     (reduce-with-serialization! orig-reduce rff metadata rows))]
+                                     (impl/do-with-serialization
+                                      (fn [in-fn result-fn]
+                                        (binding [*in-fn*     in-fn
+                                                  *result-fn* result-fn]
+                                          (orig-reduce rff metadata rows)))))]
       (qp query
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))

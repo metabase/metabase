@@ -7,6 +7,7 @@
    [metabase.mq.payload :as payload]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.polling :as q.polling]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.test-util :as mq.tu]
@@ -104,7 +105,43 @@
           (mq/put q "msg1")
           (mq/put q "msg2"))
         (mq.tu/flush! test-mq)
-        (is (= ["msg1" "msg2"] @heard-messages))))))
+        ;; delivery, not order — see `every-message-is-delivered-test`. Exclusivity buys mutual
+        ;; exclusion, not FIFO.
+        (is (= #{"msg1" "msg2"} (set @heard-messages)))))))
+
+(deftest exclusive-queue-is-serialized-by-the-memory-backend-test
+  (testing "an :exclusive queue runs one batch at a time on the memory backend too.
+
+            Exclusivity is a *backend* guarantee, and each backend implements its own: Quartz uses
+            @DisallowConcurrentExecution on the job class; the memory backend never fetches a second
+            batch for a queue that already has one in flight. The shared poll driver knows nothing
+            about the flag. Before the memory backend implemented it, an :exclusive queue serialized on
+            Quartz and meant nothing at all here — it only *looked* right because the driver happened
+            to deliver one batch per channel at a time."
+    (q.polling/start-worker-pool!)
+    (mq.tu/with-test-mq [_test-mq]
+      (let [queue-name :queue/exclusive-serialization-test
+            in-flight  (atom 0)
+            peak       (atom 0)
+            arrived    (atom 0)
+            release    (CountDownLatch. 1)]
+        (q.registry/register-queue! queue-name {:transactional :try :exclusive true :max-batch-messages 1})
+        (mq.tu/listen! queue-name (fn [_]
+                                    (swap! peak max (swap! in-flight inc))
+                                    (swap! arrived inc)
+                                    (.await release)
+                                    (swap! in-flight dec)))
+        (mq/with-queue queue-name [q]
+          (mq/put q "a")
+          (mq/put q "b")
+          (mq/put q "c"))
+        (is (true? (mq.tu/wait-for! #(= 1 @arrived) 5000)))
+        (is (nil? (mq.tu/wait-for! #(> @arrived 1) 500))
+            "no second batch is fetched while the first is in flight")
+        (.countDown release)
+        (is (true? (mq.tu/wait-for! #(= 3 @arrived) 5000)) "all three still get delivered")
+        (is (= 1 @peak) "never more than one batch in the listener at a time")
+        (mq/unlisten! queue-name)))))
 
 (deftest batch-listen-exclusive-test
   (let [heard-batches (atom [])]
@@ -253,7 +290,17 @@
           (mq.tu/flush! test-mq)
           (is (= ["a" "b" "c"] @heard) "all delivered after flush"))))))
 
-(deftest fifo-ordering-test
+(deftest every-message-is-delivered-test
+  ;; Deliberately NOT an ordering test. The MQ promises at-least-once delivery, not FIFO: Quartz fires
+  ;; a queue's batches on its worker threads and explicitly does not fire them in submission order, and
+  ;; an uncapped queue runs them concurrently. The poll driver used to deliver one batch at a time,
+  ;; which made ordering *look* guaranteed if you only ever tested against the memory backend — a
+  ;; guarantee no other backend has ever offered. Asserting it here would pin a memory-only behavior
+  ;; and re-introduce exactly the cross-backend divergence `:max-concurrent-batches` exists to remove.
+  ;;
+  ;; A queue that genuinely needs serialized delivery must say so: `:max-concurrent-batches 1` (per
+  ;; node) or `:exclusive true` (cluster-wide). Even then, order is not promised — only mutual
+  ;; exclusion.
   (let [received (atom [])]
     (mq.tu/with-test-mq [test-mq]
       {:queue/test (fn [message] (swap! received conj message))}
@@ -261,40 +308,66 @@
         (mq/with-queue :queue/test [q]
           (mq/put q i)))
       (mq.tu/flush! test-mq)
-      (testing "All messages are delivered in order"
-        (is (= (range 10) @received))))))
+      (testing "every published message is delivered exactly once (in some order)"
+        (is (= (set (range 10)) (set @received)))
+        (is (= 10 (count @received)))))))
 
-(deftest exclusive-queue-single-active-handler-test
-  "Verifies that submit-delivery! returns false for a channel that already has an
-   active handler, enforcing at-most-one concurrent delivery per channel."
-  (q.polling/start-worker-pool!)
-  (mq.tu/with-test-mq [_test-mq]
-    (let [queue-name :queue/exclusive-concurrency-test
-          started    (CountDownLatch. 1)   ; counted down once the worker thread enters the listener
-          release    (CountDownLatch. 1)]  ; blocks the listener until the test releases it
-      (mq.tu/listen! queue-name
-                     (fn [_] (.countDown started) (.await release)))
-      (testing "First submission succeeds and marks the channel as busy"
-        (is (true? (q.polling/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil)))
+(deftest submit-delivery-counts-the-batch-against-the-node-test
+  (testing "a submitted batch counts against the node's :max-concurrent-batches from hand-off until it
+            finishes, which is what makes the queue report itself at capacity and stop fetching more"
+    (q.polling/start-worker-pool!)
+    (mq.tu/with-test-mq [_test-mq]
+      (let [queue-name :queue/capped-concurrency-test
+            started    (CountDownLatch. 1)   ; counted down once the worker thread enters the listener
+            release    (CountDownLatch. 1)]  ; blocks the listener until the test releases it
+        (q.registry/register-queue! queue-name {:transactional :try :max-concurrent-batches 1})
+        (mq.tu/listen! queue-name
+                       (fn [_] (.countDown started) (.await release)))
+        (q.polling/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil)
         (is (.await started 5 TimeUnit/SECONDS) "worker thread started and entered the listener")
-        (is (true? (q.polling/channel-busy? queue-name))))
-      (testing "Second submission returns false while channel is busy"
-        (is (false? (q.polling/submit-delivery! queue-name (payload/encode ["msg2"]) nil nil))))
-      (.countDown release) ; Release the listener
-      (testing "Channel is no longer busy after delivery completes"
-        (is (true? (mq.tu/wait-for! #(not (q.polling/channel-busy? queue-name)) 5000))
-            "active-handlers clears once delivery completes"))
-      (mq/unlisten! queue-name))))
+        (is (true? (q.concurrency/working? queue-name)))
+        (is (true? (q.concurrency/at-capacity? queue-name))
+            "at its cap of 1 — so the poll loop will fetch nothing more for this queue")
+        (.countDown release) ; Release the listener
+        (is (true? (mq.tu/wait-for! #(not (q.concurrency/working? queue-name)) 5000))
+            "the in-flight count returns to zero once delivery completes")
+        (is (false? (q.concurrency/at-capacity? queue-name))
+            "and the queue can be fetched for again")
+        (mq/unlisten! queue-name)))))
+
+(deftest uncapped-queue-submits-without-limit-test
+  (testing "a queue that declares no :max-concurrent-batches is unbounded — the same as on Quartz.
+            The poll driver used to serialize it one-batch-at-a-time, which made the *same* queue
+            config mean different things depending on which backend was running."
+    (q.polling/start-worker-pool!)
+    (mq.tu/with-test-mq [_test-mq]
+      (let [queue-name :queue/uncapped-concurrency-test
+            in-listener (CountDownLatch. 3)
+            release     (CountDownLatch. 1)]
+        (mq.tu/listen! queue-name (fn [_] (.countDown in-listener) (.await release)))
+        (dotimes [i 3]
+          (q.polling/submit-delivery! queue-name (payload/encode [(str "msg" i)]) nil nil))
+        (is (.await in-listener 5 TimeUnit/SECONDS)
+            "all three deliveries are in the listener at the same time")
+        (is (false? (q.concurrency/at-capacity? queue-name))
+            "and it is never at capacity, however many are working — that is what uncapped means")
+        (.countDown release)
+        (is (true? (mq.tu/wait-for! #(not (q.concurrency/working? queue-name)) 5000)))
+        (mq/unlisten! queue-name)))))
 
 (deftest submit-delivery-frees-slot-when-pool-unavailable-test
-  (testing "if submitting to the worker pool fails (e.g. pool not running), the channel slot is
-            released rather than left permanently busy — otherwise the queue would silently stop
-            delivering forever"
-    (with-redefs [q.polling/worker-pool     (atom nil) ; deref/.submit NPEs
-                  q.polling/active-handlers (atom {})]
-      (let [queue-name :queue/submit-failure-test]
-        (is (thrown? Exception
-                     (q.polling/submit-delivery! queue-name (payload/encode ["x"]) nil nil))
-            "the submit failure propagates to the caller")
-        (is (false? (q.polling/channel-busy? queue-name))
-            "the channel is not left marked busy after the failed submit")))))
+  (testing "if submitting to the worker pool fails (e.g. pool not running), the claimed slot is
+            released rather than held forever — otherwise a capped queue would sit permanently at
+            capacity and silently stop delivering"
+    (binding [q.concurrency/*in-flight* (atom {})
+              q.registry/*queues*       (atom {})]
+      (with-redefs [q.polling/worker-pool (atom nil)] ; deref/.submit NPEs
+        (let [queue-name :queue/submit-failure-test]
+          (q.registry/register-queue! queue-name {:transactional :try :max-concurrent-batches 1})
+          (is (thrown? Exception
+                       (q.polling/submit-delivery! queue-name (payload/encode ["x"]) nil nil))
+              "the submit failure propagates to the caller")
+          (is (false? (q.concurrency/working? queue-name))
+              "the slot claimed for the failed submit was given back")
+          (is (false? (q.concurrency/at-capacity? queue-name))
+              "so the queue can still deliver"))))))

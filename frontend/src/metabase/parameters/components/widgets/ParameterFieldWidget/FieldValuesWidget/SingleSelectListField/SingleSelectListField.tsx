@@ -4,11 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { Flex, Input, TextInput } from "metabase/ui";
+import { Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -48,7 +47,6 @@ const SingleSelectListField = ({
   placeholder = t`Find...`,
   onSearchChange,
   isDashboardFilter,
-  isLoading,
   checkedColor,
 }: SingleSelectListFieldProps) => {
   const normalizedValue = useMemo(
@@ -118,7 +116,7 @@ const SingleSelectListField = ({
   }, [debouncedFilter, sortedOptions, isFilterInValues, tc]);
 
   const shouldShowEmptyState =
-    filter.length > 0 && !isLoading && filteredOptions.length === 0;
+    filter.length > 0 && filteredOptions.length === 0;
 
   const onClickOption = (option: any) => {
     if (selectedValue !== option) {
@@ -189,33 +187,25 @@ const SingleSelectListField = ({
         </EmptyStateContainer>
       )}
 
-      {isLoading && (
-        <Flex p="md" align="center" justify="center">
-          <LoadingSpinner size={24} />
-        </Flex>
-      )}
-
-      {!isLoading && (
-        <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.map((option) => (
-            <OptionContainer key={String(option[0])}>
-              <OptionItem
-                data-testid={`${option[0]}-filter-value`}
-                selectedColor={
-                  (checkedColor ?? isDashboardFilter)
-                    ? "var(--mb-color-background_surface-selected)"
-                    : "var(--mb-color-core-filter)"
-                }
-                selected={selectedValue === option[0]}
-                onClick={() => onClickOption(option[0])}
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                {optionRenderer(option)}
-              </OptionItem>
-            </OptionContainer>
-          ))}
-        </OptionsList>
-      )}
+      <OptionsList isDashboardFilter={isDashboardFilter}>
+        {filteredOptions.map((option) => (
+          <OptionContainer key={String(option[0])}>
+            <OptionItem
+              data-testid={`${option[0]}-filter-value`}
+              selectedColor={
+                (checkedColor ?? isDashboardFilter)
+                  ? "var(--mb-color-background_surface-selected)"
+                  : "var(--mb-color-core-filter)"
+              }
+              selected={selectedValue === option[0]}
+              onClick={() => onClickOption(option[0])}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {optionRenderer(option)}
+            </OptionItem>
+          </OptionContainer>
+        ))}
+      </OptionsList>
     </>
   );
 };
