@@ -1,3 +1,15 @@
+# .github/workflows/team-issues-slack-notification.yml
+#
+# Posts newly team-labeled bugs to the team's Slack channel (e.g.
+# #team-graphy-bugs), now including a link to the synced Linear issue.
+#
+# Changes from the current version:
+# - Checks out .github/scripts so we can reuse find-linear-issue.js
+# - The message-building step now queries Linear (via attachmentsForURL)
+#   with a short retry, and appends "Linear: <link|ID>" when found
+# - Degrades gracefully: if no Linear issue is attached (or the API is
+#   down), the message posts without the Linear issue link
+
 name: Team Issues Slack Notification
 
 on:
@@ -14,12 +26,52 @@ jobs:
        ( contains(github.event.issue.labels.*.name, 'Type:Bug') ||
          contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
     steps:
-      - name: Setting title
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Build Slack message (with Linear link if available)
         uses: actions/github-script@v9
         id: vars
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
           script: |
-            core.setOutput('issue_title', JSON.stringify(${{ toJson(github.event.issue.title) }} + '\n' + ${{ toJson(github.event.issue.html_url) }}));
+            const { findLinearIssue } = require('./.github/scripts/find-linear-issue.js');
+
+            const title = context.payload.issue.title;
+            const issueUrl = context.payload.issue.html_url;
+
+            let text = title + '\n' + issueUrl;
+
+            // The Linear issue is usually already synced by the time the
+            // team label lands at triage, but retry briefly just in case.
+            try {
+              const delaysSeconds = [0, 15, 30];
+              let result = null;
+
+              for (const delay of delaysSeconds) {
+                if (delay) await new Promise((r) => setTimeout(r, delay * 1000));
+                result = await findLinearIssue({
+                  githubIssueUrl: issueUrl,
+                  linearApiKey: process.env.LINEAR_API_KEY,
+                });
+                if (result.success) break;
+              }
+
+              if (result && result.success) {
+                const id = result.issue; // e.g. "GIT-1234"
+                text += `\nLinear: <https://linear.app/metabase/issue/${id}|${id}>`;
+              } else {
+                core.info(`No Linear issue found for ${issueUrl}; posting without link.`);
+              }
+            } catch (e) {
+              // Never block the notification on a Linear lookup failure
+              core.warning(`Linear lookup failed: ${e.message}`);
+            }
+
+            core.setOutput('message', JSON.stringify(text));
+
       - name: Extracting team name
         id: team_name
         env:
@@ -55,7 +107,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ${{ steps.vars.outputs.issue_title }}
+                    "text": ${{ steps.vars.outputs.message }}
                   }
                 }
               ]
