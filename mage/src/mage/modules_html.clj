@@ -417,16 +417,18 @@ function applySelected(id){   // id may be null; updates tree + detail, never to
   renderDetail();
 }
 function select(id){   // user selection → push a history entry
+  endKbRun();          // a committed (click/chip/Escape) selection ends any in-flight arrow run
   applySelected(selected===id ? null : id);
   syncHash(true);
 }
 let kbRunTimer=null;
+function endKbRun(){ clearTimeout(kbRunTimer); kbRunTimer=null; }
 function keyboardSelect(id){   // coalesce a run of arrow moves into one history entry ending at the resting selection
   const startOfRun = kbRunTimer===null;
   applySelected(id);
   syncHash(startOfRun);        // push on the first move of a run, replace as it continues
   clearTimeout(kbRunTimer);
-  kbRunTimer=setTimeout(()=>{ kbRunTimer=null; }, 500);
+  kbRunTimer=setTimeout(endKbRun, 500);
 }
 function renderDetail(){
   if(!selected){ detailEl.classList.remove('show'); detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
@@ -524,7 +526,7 @@ document.addEventListener('keydown', e=>{
   }
 });
 // deep-link: sync selection to the URL hash on load / back-forward, incl. empty hash → deselect
-window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); const id=(h&&byId[h])?h:null; if(id!==selected) applySelected(id); });
+window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); const id=(h&&byId[h])?h:null; if(id!==selected){ endKbRun(); applySelected(id); } });
 
 // fully expanded by default
 expandAll();
