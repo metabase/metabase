@@ -25,6 +25,8 @@ The theme only applies to your account. The theme doesn't apply to chart colors 
 
 You can change your password here. Note that if your Metabase uses Single Sign-On (SSO), your administrator will have disabled this password section, as your identity provider will manage logins.
 
+If you log in through LDAP, you won't see this password section either, since your directory manages your password. You may get a **Security** tab to enroll in 2FA if your admin has [turned it on](./two-factor-authentication.md#two-factor-authentication-and-ldap).
+
 If you're having trouble logging in, see our [People can't log into Metabase](../troubleshooting-guide/cant-log-in.md).
 
 ## Two-factor authentication

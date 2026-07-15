@@ -7,9 +7,9 @@ summary: Add a second step to logins by having people confirm their identity wit
 
 {% include plans-blockquote.html feature="Two-factor authentication" %}
 
-Two-factor authentication (2FA) adds a second step to signing in. On top of their email and password, people confirm their identity with a time-based code from an authenticator app, so a stolen password isn't enough to get into an account.
+Two-factor authentication (2FA) adds a second step to signing in. On top of people's email and password logins, they'll have to confirm their identity with a time-based code from an authenticator app.
 
-Metabase's native 2FA only applies to password logins and LDAP. 2FA for SSO is managed through your identity provider.
+Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single Sign-on (SSO) via JWT, SAML, or OIDC is managed through your identity provider.
 
 ## Turn on two-factor authentication
 
@@ -21,7 +21,7 @@ An admin can turn 2FA on for your Metabase, and people opt in from their own [ac
 
 Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll.
 
-If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set it to `optional` to let people enroll, or `off` to turn 2FA off.
+If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.
 
 ## Supported methods
 
