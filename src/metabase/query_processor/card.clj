@@ -341,11 +341,9 @@
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
         ;; if the merged viz settings reference other cards for dynamic goals, run those queries and inject
-        ;; their values under `data.referenced_cards`. Wrapping the qp (rather than the `:make-run`) covers
-        ;; every card/dashcard/embed/public endpoint, since they all funnel through here.
-        qp          (if (or (:graph.goal_value merged-viz) (:gauge.segments merged-viz) (:scalar.segments merged-viz))
-                      (qp.referenced-cards/wrap-qp-for-card qp merged-viz)
-                      qp)
+        ;; their values under `data.referenced_cards`; a no-op otherwise. Wrapping the qp (rather than the
+        ;; `:make-run`) covers every card/dashcard/embed/public endpoint, since they all funnel through here.
+        qp          (qp.referenced-cards/wrap-qp-for-card qp merged-viz)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)
