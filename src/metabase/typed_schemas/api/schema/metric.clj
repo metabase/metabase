@@ -22,7 +22,8 @@
   "Returns metric details with queryable dimensions for schema generation."
   [card]
   (-> (entity-details/get-metric-details {:metric-id                       (:id card)
-                                          :with-default-temporal-breakout? true
+                                          ;; The typed schema does not use the default temporal dimension.
+                                          :with-default-temporal-breakout? false
                                           :with-field-values?              false
                                           :with-queryable-dimensions?      true
                                           :with-segments?                  false})

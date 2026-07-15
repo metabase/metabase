@@ -1,6 +1,7 @@
 (ns metabase.typed-schemas.api.schema.metric-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.typed-schemas.api.schema.metric :as schema.metric]
@@ -48,6 +49,14 @@
   (testing "stage source-card emits sourceCardId"
     (is (= 42 (#'schema.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
+
+(deftest metric-details-skips-default-temporal-breakout-test
+  (mt/with-dynamic-fn-redefs [entity-details/get-metric-details
+                              (fn [options]
+                                (is (false? (:with-default-temporal-breakout? options)))
+                                {:structured-output {:id 247}})]
+    (is (= {:id 247}
+           (#'schema.metric/metric-details {:id 247})))))
 
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
