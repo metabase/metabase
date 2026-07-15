@@ -147,10 +147,10 @@
    :uses #{api
            app-db
            collections
-           config
            events
            models
-           util}
+           util
+           util.config}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -174,7 +174,6 @@
            api.eid-translation
            app-db
            appearance
-           config
            core.version
            driver
            lib.be
@@ -187,7 +186,8 @@
            sso
            system
            task
-           util}
+           util
+           util.config}
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
@@ -248,11 +248,11 @@
            metabase.api.util
            metabase.api.util.handlers}
    :uses #{api-scope
-           config
            events
            models
            settings
-           util}
+           util
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -338,11 +338,11 @@
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
-           classloader
-           config
            connection-pool
            task
-           util}
+           util
+           util.classloader
+           util.config}
    :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
@@ -447,12 +447,12 @@
    :uses #{analytics
            api
            app-db
-           config
            driver
            permissions
            premium-features
            settings
-           util}
+           util
+           util.config}
    :model-imports #{:model/Database}}
 
   cache
@@ -462,14 +462,14 @@
            metabase.cache.init}
    :uses #{api
            app-db
-           config
            events
            models
            permissions
            premium-features
            request
            settings
-           util}
+           util
+           util.config}
    :model-exports #{:model/CacheConfig :model/QueryCache}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -496,7 +496,6 @@
            app-db
            appearance
            collections
-           config
            dashboards
            driver
            events
@@ -520,7 +519,8 @@
            task
            tiles
            timeline
-           util}
+           util
+           util.config}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/DashboardCard
@@ -529,12 +529,6 @@
                     :model/PulseChannel
                     :model/User}}
 
-  classloader
-  {:team "DevEx"
-   :api  #{metabase.classloader.core
-           metabase.classloader.init}
-   :uses #{util}}
-
   cloud-migration
   {:team "UX West"
    :api  #{metabase.cloud-migration.api
@@ -542,14 +536,14 @@
            metabase.cloud-migration.init}
    :uses #{api
            app-db
-           config
            core.cmd
            models
            premium-features
            settings
            store-api
            task
-           util}
+           util
+           util.config}
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
@@ -571,14 +565,14 @@
            api-keys
            app-db
            audit-app
-           config
            events
            models
            permissions
            premium-features
            remote-sync
            search
-           util}
+           util
+           util.config}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -646,12 +640,6 @@
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
-  config
-  {:team "DevEx"
-   :api  #{metabase.config.core}
-   :uses #{}}
-
-  ;; this is not actually a real module, but comes from one of our libraries.
   connection-pool
   {:team "UX West"
    :api  #{metabase.connection-pool}
@@ -691,14 +679,14 @@
    :uses #{api
            api-routes
            app-db
-           classloader
-           config
            models
            query-processor
            search
            settings
            sso.auth-identity
-           util}
+           util
+           util.classloader
+           util.config}
    :model-imports :bypass}
 
 
@@ -713,11 +701,11 @@
    :ns-prefix "metabase.version"
    :api  #{metabase.version.core
            metabase.version.init}
-   :uses #{config
-           settings
+   :uses #{settings
            system
            task
-           util}}
+           util
+           util.config}}
 
   dashboards
   {:team "UX West"
@@ -733,7 +721,6 @@
            app-db
            audit-app
            collections
-           config
            embedding
            events
            lib
@@ -748,7 +735,8 @@
            settings
            staleness
            sync
-           util}
+           util
+           util.config}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -886,8 +874,6 @@
            app-db
            appearance
            auth-provider
-           classloader
-           config
            events
            lib
            lib.be
@@ -901,6 +887,8 @@
            system
            tracing
            util
+           util.classloader
+           util.config
            warehouses
            warehouses.schema
            workspaces}
@@ -987,10 +975,10 @@
            metabase.geojson.init
            metabase.geojson.settings}
    :uses #{api
-           config
            permissions
            settings
-           util}}
+           util
+           util.config}}
 
   glossary
   {:team "Gadget"
@@ -1058,12 +1046,12 @@
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.walk}
-   :uses #{config
-           lib.legacy-mbql
+   :uses #{lib.legacy-mbql
            lib.metadata
            lib.schema
            lib.types
            util
+           util.config
            util.graph}
    :friends #{query-processor}}     ;; Necessarily manipulates MBQL; the one irreducible friend edge -- lib and the QP are one MBQL subsystem.
 
@@ -1124,12 +1112,12 @@
            metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
            metabase.lib.metadata.result-metadata}
-   :uses #{config
-           lib
+   :uses #{lib
            lib.legacy-mbql
            lib.schema
            lib.types
-           util}}
+           util
+           util.config}}
 
   lib.metric
   {:team "UX West"
@@ -1208,10 +1196,10 @@
            metabase.logger.init}
    :uses #{analytics
            api
-           classloader
-           config
            permissions
-           util}}
+           util
+           util.classloader
+           util.config}}
 
   mcp
   {:team "Metabot"
@@ -1225,7 +1213,6 @@
                     :model/McpToolCallLog}
    :uses #{api
            app-db
-           config
            mcp.oauth-server
            metabot.agent-api
            metabot.llm
@@ -1235,7 +1222,8 @@
            session
            settings
            system
-           util}}
+           util
+           util.config}}
 
   mcp.oauth-server
   {:team "UX West"
@@ -1294,7 +1282,6 @@
               audit-app
               channel
               collections
-              config
               documents
               driver
               interestingness
@@ -1327,6 +1314,7 @@
               transforms
               transforms.base
               util
+              util.config
               warehouses}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
@@ -1493,13 +1481,13 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
-           classloader
            lib
            lib.legacy-mbql
            lib.metadata
            lib.schema
            settings
-           util}
+           util
+           util.classloader}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1542,7 +1530,6 @@
            app-db
            appearance
            channel
-           config
            dashboards
            driver
            embedding
@@ -1562,7 +1549,8 @@
            task.history
            tracing
            users
-           util}
+           util
+           util.config}
    :model-exports #{:model/Notification :model/NotificationHandler :model/NotificationRecipient}
    :model-imports #{:model/Card
                     :model/Channel
@@ -1603,7 +1591,6 @@
            metabase.parameters.shared}
    :uses #{api
            app-db
-           classloader
            lib
            lib.be
            lib.metadata
@@ -1611,6 +1598,7 @@
            models
            query-processor
            util
+           util.classloader
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -1627,7 +1615,6 @@
            app-db
            audit-app
            collections
-           config
            events
            lib.schema
            models
@@ -1636,6 +1623,7 @@
            settings
            tracing
            util
+           util.config
            enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -1672,9 +1660,7 @@
   plugins
   {:team "DevEx"
    :api  #{metabase.plugins.core}
-   :uses #{classloader
-           driver
-           util}}
+   :uses #{driver util util.classloader}}
 
   premium-features
   {:team "UX West"
@@ -1685,15 +1671,15 @@
            analytics.internal-stats
            api
            app-db
-           classloader
-           config
            events
            metabot.llm
            settings
            startup
            task
            tracing
-           util}
+           util
+           util.classloader
+           util.config}
    :model-imports #{:model/User}}
 
   product-feedback
@@ -1704,11 +1690,11 @@
            api
            app-db
            channel
-           config
            premium-features
            settings
            task
-           util}
+           util
+           util.config}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Database
@@ -1756,9 +1742,7 @@
    :uses #{api
            app-db
            channel
-           classloader
            collections
-           config
            driver
            embedding
            events
@@ -1773,6 +1757,8 @@
            task.history
            tracing
            util
+           util.classloader
+           util.config
            enterprise/permissions
            enterprise/permissions.sandbox}
    :model-exports #{:model/Pulse
@@ -1803,7 +1789,6 @@
            cache
            channel
            collections
-           config
            content-verification
            dashboards
            documents
@@ -1829,6 +1814,7 @@
            sync
            sync.analyze
            util
+           util.config
            util.graph
            warehouses.schema}
    :model-exports #{:model/Card
@@ -1942,7 +1928,6 @@
            audit-app
            batch-processing
            cache
-           config
            dashboards
            driver
            events
@@ -1969,6 +1954,7 @@
            tracing
            users
            util
+           util.config
            workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
@@ -1992,8 +1978,6 @@
            api
            app-db
            appearance
-           classloader
-           config
            connection-pool
            database-routing
            events
@@ -2011,6 +1995,8 @@
            system
            upload
            util
+           util.classloader
+           util.config
            warehouses.schema
            warehouses.secrets}}
 
@@ -2040,14 +2026,14 @@
            metabase.request.user-agent}
    :uses #{analytics.interface
            api
-           config
            embedding
            permissions
            premium-features
            session
            settings
            users
-           util}
+           util
+           util.config}
    :model-imports #{:model/User}}
 
   revisions
@@ -2056,14 +2042,14 @@
            metabase.revisions.core
            metabase.revisions.init}
    :uses #{api
-           config
            dashboards
            events
            lib.schema
            models
            queries
            query-permissions
-           util}
+           util
+           util.config}
    :model-exports #{:model/Revision}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -2114,7 +2100,6 @@
            appearance
            audit-app
            collections
-           config
            events
            lib
            lib.be
@@ -2129,7 +2114,8 @@
            task
            tracing
            transforms
-           util}
+           util
+           util.config}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2177,7 +2163,6 @@
            api-keys
            app-db
            appearance
-           config
            core.initialization-status
            driver
            embedding
@@ -2194,6 +2179,7 @@
            tracing
            users
            util
+           util.config
            enterprise/custom-viz-plugin
            enterprise/sso}
    :model-imports #{:model/Session}}
@@ -2208,7 +2194,6 @@
    :uses #{api
            app-db
            channel
-           config
            events
            request
            settings
@@ -2217,7 +2202,8 @@
            system
            task
            tracing
-           util}
+           util
+           util.config}
    :model-exports #{:model/Session}
    :model-imports #{:model/AuthIdentity :model/User}}
 
@@ -2243,11 +2229,11 @@
            metabase.settings.init}
    :uses #{api
            app-db
-           config
            events
            models
            premium-features
            util
+           util.config
            enterprise/permissions}
    :model-exports #{:model/Setting}}
 
@@ -2266,9 +2252,9 @@
    :api  #{metabase.setup.core
            metabase.setup.init}
    :uses #{app-db
-           config
            settings
-           util}
+           util
+           util.config}
    :model-imports #{:model/User}}
 
   setup.rest
@@ -2317,7 +2303,6 @@
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
-              config
               permissions
               premium-features
               request
@@ -2325,7 +2310,8 @@
               settings
               sso.auth-identity
               system
-              util}
+              util
+              util.config}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
@@ -2357,9 +2343,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{config
-           settings
-           util}}
+   :uses #{settings util util.config}}
 
   sync
   {:team "Graphy"
@@ -2375,7 +2359,6 @@
            api
            app-db
            audit-app
-           config
            database-routing
            driver
            events
@@ -2392,6 +2375,7 @@
            task.history
            tracing
            util
+           util.config
            warehouses
            warehouses.schema
            workspaces}
@@ -2404,12 +2388,12 @@
   {:team "Graphy"
    :ns-prefix "metabase.analyze"
    :api  #{metabase.analyze.core}
-   :uses #{config
-           lib.schema
+   :uses #{lib.schema
            models
            query-processor
            sync
-           util}
+           util
+           util.config}
    :model-imports #{:model/Field :model/Table}}
 
   system
@@ -2424,9 +2408,9 @@
    :api  #{metabase.task.bootstrap
            metabase.task.core}
    :uses #{app-db
-           classloader
            tracing
-           util}}
+           util
+           util.classloader}}
 
   task.history
   {:team "UX West"
@@ -2435,7 +2419,6 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
-           config
            models
            permissions
            premium-features
@@ -2444,7 +2427,8 @@
            run-tracking
            task
            tracing
-           util}
+           util
+           util.config}
    :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
@@ -2456,7 +2440,6 @@
    :uses #{analytics
            api
            app-db
-           config
            lib
            lib.be
            lib.schema
@@ -2464,7 +2447,8 @@
            permissions
            premium-features
            search
-           util}
+           util
+           util.config}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -2508,11 +2492,11 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{config
-           events
+   :uses #{events
            settings
            task
-           util}}
+           util
+           util.config}}
 
   transforms
   {:team "Graphy"
@@ -2693,9 +2677,9 @@
    :api  #{metabase.user-key-value.api
            metabase.user-key-value.init}
    :uses #{api
-           config
            lib.schema
-           util}}
+           util
+           util.config}}
 
   users
   {:team "UX West"
@@ -2711,7 +2695,6 @@
            api
            batch-processing
            channel
-           config
            events
            models
            notification
@@ -2722,6 +2705,7 @@
            system
            users.tenants
            util
+           util.config
            enterprise/permissions}
    :model-exports #{:model/User :model/UserParameterValue}
    :model-imports #{:model/AuthIdentity
@@ -2738,7 +2722,6 @@
    :uses #{api
            appearance
            collections
-           config
            events
            models
            permissions
@@ -2750,6 +2733,7 @@
            users
            users.tenants
            util
+           util.config
            enterprise/permissions}
    :model-imports #{:model/AuthIdentity
                     :model/Card
@@ -2767,12 +2751,29 @@
 
   util
   {:team "DevEx"
-   :module-exports #{util.graph}
+   :module-exports #{util.classloader
+                     util.config
+                     util.graph}
    :api  :any
-   :uses #{classloader
-           config
-           settings
-           system}}
+   :uses #{settings
+           system
+           util.classloader
+           util.config}}
+
+  util.classloader
+  {:team "DevEx"
+   :ns-prefix "metabase.classloader"
+   :api  #{metabase.classloader.core
+           metabase.classloader.init}
+   :uses #{util}}
+
+  util.config
+  {:team "DevEx"
+   :ns-prefix "metabase.config"
+   :api  #{metabase.config.core}
+   :uses #{}}
+
+  ;; this is not actually a real module, but comes from one of our libraries.
 
   util.graph
   {:team "Graphy"
@@ -2815,9 +2816,7 @@
    :uses #{analytics
            api
            app-db
-           classloader
            collections
-           config
            database-routing
            driver
            events
@@ -2835,6 +2834,8 @@
            sync
            upload
            util
+           util.classloader
+           util.config
            warehouses
            warehouses.schema
            warehouses.secrets
@@ -3052,7 +3053,6 @@
    :uses #{api
            app-db
            audit-app
-           classloader
            driver
            lib
            lib.metadata
@@ -3068,6 +3068,7 @@
            sync
            users
            util
+           util.classloader
            enterprise/serialization}
    :model-imports #{:model/AuditLog
                     :model/Card
@@ -3213,13 +3214,13 @@
            metabase-enterprise.custom-viz-plugin.init
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
-           config
            events
            models
            premium-features
            server
            settings
-           util}
+           util
+           util.config}
    :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/data-studio
@@ -3241,7 +3242,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3251,6 +3251,7 @@
            query-processor
            settings
            util
+           util.config
            warehouses
            warehouses.schema
            workspaces}
@@ -3307,8 +3308,7 @@
    :ns-prefix "metabase-enterprise.checker"
    ;; todo: add ability to prevent usage (transitive even) of app db
    :api  #{}
-   :uses #{classloader
-           lib
+   :uses #{lib
            lib.metadata
            lib.schema
            models
@@ -3316,6 +3316,7 @@
            query-processor
            sql-tools
            util
+           util.classloader
            enterprise/dependencies}
    :model-imports #{:model/Database}}
 
@@ -3467,7 +3468,6 @@
            app-db
            audit-app
            collections
-           config
            driver
            metabot
            models
@@ -3476,6 +3476,7 @@
            startup
            task
            util
+           util.config
            enterprise/search.embeddings
            enterprise/search.semantic}
    :model-imports #{:model/Card
@@ -3687,7 +3688,6 @@
            api
            app-db
            collections
-           config
            connection-pool
            events
            metabot
@@ -3699,7 +3699,8 @@
            settings
            task
            tracing
-           util}
+           util
+           util.config}
    :model-imports #{:model/Collection
                     :model/Dashboard
                     :model/Table}}
@@ -3713,7 +3714,6 @@
            api
            app-db
            channel
-           config
            driver
            events
            models
@@ -3723,7 +3723,8 @@
            settings
            system
            task
-           util}
+           util
+           util.config}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
@@ -3896,7 +3897,6 @@
    :uses #{analytics.interface
            api
            app-db
-           config
            driver
            events
            lib
@@ -3909,7 +3909,8 @@
            tracing
            transforms
            transforms.base
-           util}
+           util
+           util.config}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field

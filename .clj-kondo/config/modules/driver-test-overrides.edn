@@ -19,9 +19,7 @@
    auth-provider
    batch-processing
    channel
-   classloader
    collections
-   config
    content-verification
    core.initialization-status
    core.version
@@ -65,6 +63,8 @@
    tracing
    users
    util
+   util.classloader
+   util.config
    warehouses.schema
    warehouses.secrets
    workspaces

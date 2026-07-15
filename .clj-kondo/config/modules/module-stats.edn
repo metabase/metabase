@@ -6,7 +6,7 @@
  :max-file-deftests 17540
  :max-file-test-namespaces 1388
  :module-count 199
- :module-exports 65
- :ns-prefix-overrides 75
+ :module-exports 67
+ :ns-prefix-overrides 77
  :parent-team-mismatches 26
  :total-api 561}
