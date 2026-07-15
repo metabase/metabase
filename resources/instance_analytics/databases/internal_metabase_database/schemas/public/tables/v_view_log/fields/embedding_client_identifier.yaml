@@ -10,7 +10,7 @@ semantic_type: type/Category
 position: 20
 custom_position: 0
 database_position: 20
-has_field_values: none
+has_field_values: auto-list
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
 - {id: public, model: Schema}
