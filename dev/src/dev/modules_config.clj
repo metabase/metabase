@@ -290,10 +290,11 @@
   design; keeping them exact here means a `fix-modules-config` run leaves the tree test-clean without a
   separate updater step. Ratchet violations still fail the test — those need a real fix or a hand edit."
   []
-  (when-not (= (deps-graph/committed-module-boundary-stats) (deps-graph/module-boundary-stats))
-    (deps-graph/write-module-boundary-stats!)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "Synced module-stats.edn")))
+  (let [stats (deps-graph/module-boundary-stats)]
+    (when-not (= (deps-graph/committed-module-boundary-stats) stats)
+      (deps-graph/write-module-boundary-stats! stats)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Synced module-stats.edn"))))
 
 (defn update-config!
   "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted, then

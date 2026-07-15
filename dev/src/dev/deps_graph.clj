@@ -268,15 +268,17 @@
   (edn/read-string (slurp module-boundary-stats-path)))
 
 (defn write-module-boundary-stats!
-  "Sync `module-stats.edn` to the current config. Unlike the ratchets, stats move freely in both
-  directions; the committed file exists so the movement shows up in PR diffs — one metric per line so
-  each movement diffs on its own."
-  []
-  (spit module-boundary-stats-path
-        (str "{"
-             (str/join "\n " (for [[k v] (into (sorted-map) (module-boundary-stats))]
-                               (str k " " v)))
-             "}\n")))
+  "Sync `module-stats.edn` to `stats` (freshly computed when not given). Unlike the ratchets, stats move
+  freely in both directions; the committed file exists so the movement shows up in PR diffs — one metric
+  per line so each movement diffs on its own."
+  ([]
+   (write-module-boundary-stats! (module-boundary-stats)))
+  ([stats]
+   (spit module-boundary-stats-path
+         (str "{"
+              (str/join "\n " (for [[k v] (into (sorted-map) stats)]
+                                (str k " " v)))
+              "}\n"))))
 
 (defn lowered-module-boundary-ratchets
   "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
@@ -311,10 +313,11 @@
               (str (pr-str (into (sorted-map) updated)) \newline))
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))
-    (when-not (= (committed-module-boundary-stats) (module-boundary-stats))
-      (write-module-boundary-stats!)
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (println "Synced module-boundary stats in" module-boundary-stats-path))))
+    (let [stats (module-boundary-stats)]
+      (when-not (= (committed-module-boundary-stats) stats)
+        (write-module-boundary-stats! stats)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "Synced module-boundary stats in" module-boundary-stats-path)))))
 
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
