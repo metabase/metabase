@@ -8,6 +8,7 @@
   is the same dirigiste `Pool` the GraalVM static-viz contexts use, with the same semantics: 0-3 arrays, each held
   exclusively from [[acquire]] to [[release]], idle arrays dropped after ~10 minutes."
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
@@ -47,8 +48,11 @@
   render through)."
   ^BufferedImage [^long w ^long h]
   (if (> (* w h) (long array-pixels))
-    (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB)
+    (do
+      (analytics/inc! :metabase-static-viz/image-buffer-unpooled)
+      (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
     (let [^"[I" backing (.acquire array-pool pool-key)]
+      (analytics/inc! :metabase-static-viz/image-buffer-pooled)
       (java.util.Arrays/fill backing 0 (int (* w h)) (int 0))
       (wrap-array backing w h))))
 
