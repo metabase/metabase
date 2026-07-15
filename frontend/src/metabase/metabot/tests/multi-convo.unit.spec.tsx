@@ -1,13 +1,23 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+import fetchMock from "fetch-mock";
 
 import { setupGetMetabotConversationTitleEndpoint } from "__support__/server-mocks";
 import { act, renderHookWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
 
 import { useMetabotAgentsManager } from "../hooks";
-import { type MetabotAgentId, getMessages, submitInput } from "../state";
+import {
+  type MetabotAgentId,
+  getMessages,
+  metabotActions,
+  submitInput,
+} from "../state";
 
 import { mockAgentEndpoint } from "./utils";
+
+const titlePath = (conversationId: string) =>
+  `path:/api/metabot/conversations/${conversationId}/title`;
 
 function setup(
   options: {
@@ -25,7 +35,7 @@ function setup(
   // Unjustified type cast. FIXME
   const store = _store as Omit<typeof _store, "getState" | "dispatch"> & {
     getState: () => State;
-    dispatch: ThunkDispatch<State, void, AnyAction>;
+    dispatch: ThunkDispatch<State, void, UnknownAction>;
   };
 
   return {
@@ -47,6 +57,10 @@ const input: Input = {
 };
 
 describe("multi-convo support", () => {
+  afterEach(() => {
+    fetchMock.removeRoutes();
+  });
+
   it("should support being able to hold two conversations at once", async () => {
     // ARRANGE
     const { store } = setup({ agentIds: ["test_1", "test_2"] });
@@ -124,5 +138,70 @@ describe("multi-convo support", () => {
     expect(hook.current.activeAgentIds).toContain("test_1");
     await act(() => hook.current.destroyAgent({ agentId: "test_1" }));
     expect(hook.current.activeAgentIds).not.toContain("test_1");
+  });
+
+  it("does not poll for a title on a profile without title UI", async () => {
+    setupGetMetabotConversationTitleEndpoint({
+      status: "pending",
+      title: null,
+    });
+    const { store } = setup({ agentIds: ["sql"] });
+    const conversationId = checkNotNull(
+      store.getState().metabot.conversations.sql,
+    ).conversationId;
+    mockAgentEndpoint({
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "response" },
+        { type: "text-end", id: "t1" },
+      ],
+    });
+
+    await act(async () => {
+      await store.dispatch(
+        submitInput({ ...input, message: "fix my sql", agentId: "sql" }),
+      );
+    });
+
+    expect(getMessages(store.getState(), "sql")).toHaveLength(2);
+    expect(fetchMock.callHistory.calls(titlePath(conversationId))).toHaveLength(
+      0,
+    );
+  });
+
+  it("does not start a second title poll while one is already in flight", async () => {
+    setupGetMetabotConversationTitleEndpoint({
+      status: "pending",
+      title: null,
+    });
+    const { store } = setup({ agentIds: ["test_1"] });
+    const conversationId = checkNotNull(
+      store.getState().metabot.conversations.test_1,
+    ).conversationId;
+    store.dispatch(
+      metabotActions.setIsPollingForTitle({
+        agentId: "test_1",
+        isPollingForTitle: true,
+      }),
+    );
+
+    mockAgentEndpoint({
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "response" },
+        { type: "text-end", id: "t1" },
+      ],
+    });
+
+    await act(async () => {
+      await store.dispatch(
+        submitInput({ ...input, message: "test", agentId: "test_1" }),
+      );
+    });
+
+    expect(getMessages(store.getState(), "test_1")).toHaveLength(2);
+    expect(fetchMock.callHistory.calls(titlePath(conversationId))).toHaveLength(
+      0,
+    );
   });
 });

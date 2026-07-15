@@ -124,6 +124,7 @@ export type MetabotReactionsState = {
 export interface MetabotConverstationState {
   conversationId: string;
   title: string | undefined;
+  isPollingForTitle: boolean;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;

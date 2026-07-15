@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupGetMetabotConversationTitleEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
@@ -38,11 +36,13 @@ function setup({
   });
 
   setupUserMetabotPermissionsEndpoint();
-  // clicking "Explain this chart" runs a turn, which polls for the title
-  setupGetMetabotConversationTitleEndpoint({ status: "missing", title: null });
   setupEnterprisePlugins();
 
-  const metabotState = getMetabotInitialState();
+  const metabotState = assocIn(
+    getMetabotInitialState(),
+    ["conversations", "omnibot", "title"],
+    "Chart analysis",
+  );
 
   renderWithProviders(
     <MetabotProvider>

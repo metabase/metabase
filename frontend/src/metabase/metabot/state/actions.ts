@@ -36,7 +36,11 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
+import {
+  METABOT_ERR_MSG,
+  type MetabotProfileId,
+  isHistoryEnabledProfile,
+} from "../constants";
 import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
 
 import { metabot } from "./reducer";
@@ -45,6 +49,7 @@ import {
   getDebugMode,
   getDeveloperMessage,
   getIsCurrentConversation,
+  getIsPollingForTitle,
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
@@ -85,6 +90,7 @@ export const {
   destroyAgent,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
+  setIsPollingForTitle,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -104,37 +110,44 @@ const pollConversationTitle = async ({
   agentId,
   conversationId,
 }: PollConversationTitleOptions) => {
-  const result = await retry(
-    async () => {
-      const result = await dispatch(
-        metabotApi.endpoints.getMetabotConversationTitle.initiate(
-          conversationId,
-          { forceRefetch: true, subscribe: false },
-        ),
-      );
+  dispatch(setIsPollingForTitle({ agentId, isPollingForTitle: true }));
+  try {
+    const result = await retry(
+      async () => {
+        const result = await dispatch(
+          metabotApi.endpoints.getMetabotConversationTitle.initiate(
+            conversationId,
+            { forceRefetch: true, subscribe: false },
+          ),
+        );
 
-      if (result.data?.status === "pending") {
-        throw TITLE_PENDING;
-      }
+        if (result.data?.status === "pending") {
+          throw TITLE_PENDING;
+        }
 
-      return result;
-    },
-    {
-      maxRetries: TITLE_POLL_MAX_ATTEMPTS - 1,
-      shouldRetry: (error) => error === TITLE_PENDING,
-      delayMs: () => TITLE_POLL_INTERVAL_MS,
-    },
-  ).catch(() => null);
+        return result;
+      },
+      {
+        maxRetries: TITLE_POLL_MAX_ATTEMPTS - 1,
+        shouldRetry: (error) => error === TITLE_PENDING,
+        delayMs: () => TITLE_POLL_INTERVAL_MS,
+      },
+    ).catch(() => null);
 
-  if (result?.data?.status !== "ready") {
-    return;
+    if (result?.data?.status !== "ready") {
+      return;
+    }
+
+    const convo = getMetabotConversation(getState(), agentId);
+    if (convo.conversationId === conversationId) {
+      dispatch(setConversationTitle({ agentId, title: result.data.title }));
+    }
+    dispatch(
+      metabotApi.util.invalidateTags([listTag("metabot-conversations")]),
+    );
+  } finally {
+    dispatch(setIsPollingForTitle({ agentId, isPollingForTitle: false }));
   }
-
-  const convo = getMetabotConversation(getState(), agentId);
-  if (convo.conversationId === conversationId) {
-    dispatch(setConversationTitle({ agentId, title: result.data.title }));
-  }
-  dispatch(metabotApi.util.invalidateTags([listTag("metabot-conversations")]));
 };
 
 type HandledResponseError = {
@@ -659,8 +672,12 @@ export const sendAgentRequest = createAsyncThunk<
         });
       }
 
-      const shoudlPollForTitle = !receivedTitle && !hadTitleBeforeTurn;
-      if (shoudlPollForTitle) {
+      const shouldPollForTitle =
+        !receivedTitle &&
+        !hadTitleBeforeTurn &&
+        !getIsPollingForTitle(getState(), agentId) &&
+        isHistoryEnabledProfile(request.profile_id);
+      if (shouldPollForTitle) {
         void pollConversationTitle({
           dispatch,
           getState,

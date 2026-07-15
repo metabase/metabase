@@ -124,6 +124,11 @@ export const getMetabotConversationTitle = createSelector(
   (convo) => convo.title,
 );
 
+export const getIsPollingForTitle = createSelector(
+  getMetabotConversation,
+  (convo) => convo.isPollingForTitle,
+);
+
 export const getDeveloperMessage = createSelector(
   getMetabotConversation,
   (convo) => convo.experimental.developerMessage,

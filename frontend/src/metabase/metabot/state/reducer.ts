@@ -69,6 +69,11 @@ export const metabot = createSlice({
         convo.title = action.payload.title;
       },
     ),
+    setIsPollingForTitle: convoReducer(
+      (convo, action: ConvoPayloadAction<{ isPollingForTitle: boolean }>) => {
+        convo.isPollingForTitle = action.payload.isPollingForTitle;
+      },
+    ),
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
