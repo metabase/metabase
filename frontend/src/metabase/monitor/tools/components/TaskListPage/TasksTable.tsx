@@ -144,7 +144,8 @@ function getColumns(
       width: "auto",
       minWidth: 200,
       maxAutoWidth: 230,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (task) => task.task,
       cell: ({ row }) => <Text fw="bold">{row.original.task}</Text>,
     },
@@ -154,7 +155,8 @@ function getColumns(
       width: "auto",
       minWidth: 120,
       maxAutoWidth: 240,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (task) =>
         task.db_id !== null ? (databaseByID[task.db_id]?.name ?? "") : "",
       cell: ({ row }) => {
@@ -172,7 +174,8 @@ function getColumns(
       width: "auto",
       minWidth: 120,
       maxAutoWidth: 240,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (task) =>
         task.db_id !== null ? (databaseByID[task.db_id]?.engine ?? "") : "",
       cell: ({ row }) => {
@@ -246,7 +249,8 @@ function getColumns(
       header: t`Status`,
       width: "auto",
       minWidth: 100,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (task) => task.status,
       cell: ({ row }) => <TaskStatusBadge task={row.original} />,
     },

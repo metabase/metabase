@@ -76,6 +76,15 @@
    [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
    [:started-at  {:optional true} ms/NonBlankString]])
 
+(def ^:private run-sort-columns
+  "Columns that runs can be sorted by. `:entity_name` and `:task_count` are derived via joins in [[runs-order-by]]."
+  #{:started_at :ended_at :run_type :status :entity_name :task_count})
+
+(mr/def ::RunSortParams
+  [:map
+   [:sort_column    {:default :started_at} (into [:enum] run-sort-columns)]
+   [:sort_direction {:default :desc}       [:enum :asc :desc]]])
+
 (mr/def ::TaskRun
   [:map
    [:id          ms/PositiveInt]
@@ -193,18 +202,43 @@
       {:where (into [:and] conditions)}
       {})))
 
+(defn- runs-order-by
+  "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name` LEFT JOINs
+  the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped `task_history` subquery.
+  Derived-column variants keep the selected shape to `task_run.*` and add a deterministic `[:id :desc]` secondary key."
+  [{col :sort_column dir :sort_direction}]
+  (let [secondary [:task_run.id :desc]]
+    (case col
+      :entity_name
+      {:select    [:task_run.*]
+       :left-join [[:metabase_database :sort_db]  [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
+                   [:report_card :sort_card]       [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
+                   [:report_dashboard :sort_dash]  [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
+       :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] dir] secondary]}
+
+      :task_count
+      {:select    [:task_run.*]
+       :left-join [[{:select   [:run_id [[:count :*] :task_count]]
+                     :from     [:task_history]
+                     :group-by [:run_id]}
+                    :sort_tc]
+                   [:= :sort_tc.run_id :task_run.id]]
+       :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] dir] secondary]}
+
+      {:order-by [[col dir] secondary]})))
+
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
   [_
-   params :- [:maybe ::RunFilterParams]]
+   params :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
   (perms/check-has-application-permission :monitoring)
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
         offset       (request/offset)
         runs         (t2/select :model/TaskRun (merge where-clause
+                                                      (runs-order-by params)
                                                       (when limit {:limit limit})
-                                                      (when offset {:offset offset})
-                                                      {:order-by [[:started_at :desc]]}))]
+                                                      (when offset {:offset offset})))]
     {:total  (t2/count :model/TaskRun where-clause)
      :limit  limit
      :offset offset

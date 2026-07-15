@@ -20,7 +20,14 @@ export interface Task {
   run_id: number | null;
 }
 
-export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
+export type ListTasksSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "duration"
+  | "task"
+  | "status"
+  | "db_name"
+  | "db_engine";
 
 export type ListTasksRequest = {
   status?: TaskStatus;
@@ -105,13 +112,22 @@ export type TaskRunStartedAtParam =
   | TaskRunDateFilterOption
   | `${TaskRunDateFilterOption}~`;
 
+export type ListTaskRunsSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "run_type"
+  | "status"
+  | "entity_name"
+  | "task_count";
+
 export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
   status?: TaskRunStatus;
   "started-at"?: TaskRunStartedAtParam;
-} & PaginationRequest;
+} & PaginationRequest &
+  Partial<SortingOptions<ListTaskRunsSortColumn>>;
 
 export type ListTaskRunsResponse = {
   data: TaskRun[];

@@ -15,6 +15,10 @@ export const TASK_SORT_COLUMNS = [
   "started_at",
   "ended_at",
   "duration",
+  "task",
+  "status",
+  "db_name",
+  "db_engine",
 ] satisfies readonly ListTasksSortColumn[];
 
 const DEFAULT_SORT_COLUMN: ListTasksSortColumn = "started_at";

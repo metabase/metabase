@@ -485,31 +485,20 @@ describe("TaskListPage", () => {
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
     });
-
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
+    expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-    ]);
+    );
     const startedAtHeader = await screen.findByRole("columnheader", {
       name: /Started at/,
     });
-
-    expect(startedAtHeader).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: /Ended at/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: /Duration/ }),
-    ).toBeInTheDocument();
     expect(startedAtHeader).toHaveAttribute("aria-sort", "descending");
     expect(
       within(startedAtHeader).getByRole("img", { name: "chevrondown icon" }),
     ).toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("");
 
+    // clicking the active sorted column toggles its direction
     await userEvent.click(startedAtHeader);
-
     await waitFor(() => {
       expect(
         screen.getByRole("columnheader", { name: /Started at/ }),
@@ -520,96 +509,13 @@ describe("TaskListPage", () => {
         screen.getByRole("columnheader", { name: /Started at/ }),
       ).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-    ]);
+    );
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
     expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
-
-    await userEvent.click(
-      screen.getByRole("columnheader", { name: /Ended at/ }),
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("columnheader", { name: /Ended at/ }),
-      ).toHaveAttribute("aria-sort", "ascending");
-    });
-    expect(
-      within(screen.getByRole("columnheader", { name: /Ended at/ })).getByRole(
-        "img",
-        { name: "chevronup icon" },
-      ),
-    ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
-    ]);
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-    expect(history?.getCurrentLocation().search).toEqual(
-      "?sort_column=ended_at&sort_direction=asc",
-    );
-
-    await userEvent.click(
-      screen.getByRole("columnheader", { name: /Duration/ }),
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("columnheader", { name: /Duration/ }),
-      ).toHaveAttribute("aria-sort", "ascending");
-    });
-    expect(
-      within(screen.getByRole("columnheader", { name: /Duration/ })).getByRole(
-        "img",
-        { name: "chevronup icon" },
-      ),
-    ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
-    ).toEqual([
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
-      "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
-    ]);
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-    expect(history?.getCurrentLocation().search).toEqual(
-      "?sort_column=duration&sort_direction=asc",
-    );
-  });
-
-  it("should toggle sort direction when clicking the active sorted column", async () => {
-    const { history } = setup({
-      tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
-    });
-
-    const startedAtHeader = await screen.findByRole("columnheader", {
-      name: /Started at/,
-    });
-    expect(startedAtHeader).toHaveAttribute("aria-sort", "descending");
-
-    await userEvent.click(startedAtHeader);
-    await waitFor(() => {
-      expect(
-        screen.getByRole("columnheader", { name: /Started at/ }),
-      ).toHaveAttribute("aria-sort", "ascending");
-    });
-    expect(getLastTaskCallUrl()).toEqual(
-      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
-    );
 
     await userEvent.click(
       screen.getByRole("columnheader", { name: /Started at/ }),
@@ -619,11 +525,6 @@ describe("TaskListPage", () => {
         screen.getByRole("columnheader", { name: /Started at/ }),
       ).toHaveAttribute("aria-sort", "descending");
     });
-    expect(
-      within(
-        screen.getByRole("columnheader", { name: /Started at/ }),
-      ).getByRole("img", { name: "chevrondown icon" }),
-    ).toBeInTheDocument();
     expect(getLastTaskCallUrl()).toEqual(
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     );
@@ -631,6 +532,41 @@ describe("TaskListPage", () => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
     expect(history?.getCurrentLocation().search).toEqual("");
+
+    // every sortable column drives the request and URL state
+    const cases: { header: RegExp; column: string }[] = [
+      { header: /Ended at/, column: "ended_at" },
+      { header: /Duration/, column: "duration" },
+      { header: /Task/, column: "task" },
+      { header: /DB Name/, column: "db_name" },
+      { header: /DB Engine/, column: "db_engine" },
+      { header: /Status/, column: "status" },
+    ];
+
+    for (const { header, column } of cases) {
+      await userEvent.click(screen.getByRole("columnheader", { name: header }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("columnheader", { name: header }),
+        ).toHaveAttribute("aria-sort", "ascending");
+      });
+      expect(
+        within(screen.getByRole("columnheader", { name: header })).getByRole(
+          "img",
+          { name: "chevronup icon" },
+        ),
+      ).toBeInTheDocument();
+      expect(getLastTaskCallUrl()).toEqual(
+        `http://localhost/api/task?limit=50&offset=0&sort_column=${column}&sort_direction=asc`,
+      );
+      act(() => {
+        jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+      });
+      expect(history?.getCurrentLocation().search).toEqual(
+        `?sort_column=${column}&sort_direction=asc`,
+      );
+    }
   });
 
   it("should navigate to task details when a row is clicked", async () => {
