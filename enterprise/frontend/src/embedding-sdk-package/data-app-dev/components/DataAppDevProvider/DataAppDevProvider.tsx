@@ -20,8 +20,7 @@ export type DataAppDevProviderProps = MetabaseProviderProps & {
  * executions are attributed to the app (as "data-app-preview") instead of the
  * React SDK.
  *
- * Only works on the local Vite dev server; throws elsewhere so it can't ship
- * in place of `MetabaseProvider`.
+ * Intended only for the local Vite dev server.
  */
 export const DataAppDevProvider = ({
   appSlug,
