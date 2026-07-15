@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.impl :as plugins]
+   [metabase.query-processor :as qp]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -50,6 +51,43 @@
   (t2/select-one :model/Field :name field-name, :table_id (u/the-id (table db table-name))))
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
+
+(deftest migrate-sample-database-engine-in-place-downgrade-test
+  (testing "On launch, a SQLite sample database left by a newer version is converted to H2 in place: every
+           Database/Table/Field id is kept, so sample and user content survive and still query."
+    (mt/with-model-cleanup [:model/Database :model/Card]
+      ;; Fake the post-downgrade state with raw SQL (this version has no SQLite driver): a SQLite sample DB
+      ;; whose ORDERS table + TOTAL field the newer version synced (schema nil), and a user question on it.
+      (t2/query {:insert-into :metabase_database
+                 :values [{:name "Sample Database" :engine "sqlite" :is_sample true :details "{}"
+                           :created_at :%now :updated_at :%now}]})
+      (let [db-id (t2/select-one-pk :model/Database :is_sample true :engine "sqlite")]
+        (t2/query {:insert-into :metabase_table
+                   :values [{:db_id db-id :name "ORDERS" :schema nil :active true :created_at :%now :updated_at :%now}]})
+        (let [orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")]
+          (t2/query {:insert-into :metabase_field
+                     :values [{:table_id orders-id :name "TOTAL" :base_type "type/Float" :database_type "REAL"
+                               :position 0 :created_at :%now :updated_at :%now}]})
+          (let [total-id (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
+                card     (t2/insert-returning-instance! :model/Card
+                                                        {:name "user q" :database_id db-id :table_id orders-id
+                                                         :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
+                                                         :dataset_query {:database db-id :type :query
+                                                                         :query {:source-table orders-id
+                                                                                 :aggregation [[:sum [:field total-id nil]]]}}})]
+            ;; ---- the conversion under test (via the real startup entry point) ----
+            (#'sample-data/update-sample-database-if-needed! (t2/select-one :model/Database :id db-id))
+            (testing "the database record is now H2"
+              (is (= :h2 (:engine (t2/select-one :model/Database :id db-id)))))
+            (testing "the ORDERS table + TOTAL field keep their ids, now with schema = PUBLIC"
+              (is (= orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")))
+              (is (= "PUBLIC"  (t2/select-one-fn :schema :model/Table :id orders-id)))
+              (is (= total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL"))))
+            (testing "the user card survives with its id and still queries the (now H2) sample DB"
+              (is (t2/exists? :model/Card :id (:id card)))
+              (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card :id (:id card))))]
+                (is (= :completed (:status result)))
+                (is (pos? (count (mt/rows result))))))))))))
 
 (def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest.*")
 

@@ -637,3 +637,17 @@
                 :lib.convert/converted? true
                 :lib/metadata           (lib.metadata.cached-provider/cached-metadata-provider mp)}
                (lib.query/query mp query)))))))
+#?(:clj
+   (deftest ^:synchronized query-from-legacy-error-containment-test
+     (let [legacy {:database (meta/id), :type :query, :query {:source-table (meta/id :venues)}}]
+       (testing "an AssertionError thrown while converting a legacy query is contained (wrapped)"
+         ;; ->pMBQL is a multimethod, which with-dynamic-fn-redefs refuses; plain with-redefs is required here.
+         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+         (with-redefs [lib.convert/->pMBQL (fn [& _] (throw (AssertionError. "boom")))]
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error creating query from legacy query"
+                                 (lib/query meta/metadata-provider legacy)))))
+       (testing "a fatal Error thrown while converting a legacy query propagates unwrapped"
+         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+         (with-redefs [lib.convert/->pMBQL (fn [& _] (throw (Error. "boom")))]
+           (is (thrown? Error
+                        (lib/query meta/metadata-provider legacy))))))))

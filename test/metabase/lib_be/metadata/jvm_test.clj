@@ -269,3 +269,19 @@
               (lib.metadata/table mp (:id buyer))))
       (is (=? {:database-partitioned true}
               (lib.metadata/field mp (:id buyer-id)))))))
+
+(deftest metadatas-vm-error-propagates-test
+  (testing "a VM Error thrown during a metadata fetch propagates unwrapped"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          e  (Error. "boom")]
+      (mt/with-dynamic-fn-redefs [t2/select (fn [& _] (throw e))]
+        (is (identical? e
+                        (try
+                          (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id #{Integer/MAX_VALUE}})
+                          nil
+                          (catch Error actual actual)))))))
+  (testing "an Exception thrown during a metadata fetch is wrapped with the metadata spec"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-dynamic-fn-redefs [t2/select (fn [& _] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error fetching metadata with spec"
+                              (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id #{Integer/MAX_VALUE}})))))))

@@ -635,16 +635,28 @@
       (pre-update-check-sandbox-constraints card changes)
       (assert-valid-type card))))
 
+(defn- metadata-provider-fetch?
+  "Whether `card` was selected as one of the lib metadata-provider models (`:metadata/card`, `:metadata/metric`, ...)
+  rather than as `:model/Card`. Those models `derive` from `:model/Card`, so this after-select runs for them too."
+  [card]
+  (= "metadata" (some-> (t2/model card) namespace)))
+
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
 
   Some users were missing description that was present in v1 metric API responses. This new key compensates for that.
 
   This function is used in `t2/define-after-select :model/Card`. Metadata provider caching should be considered when
-  fetching multiple metric cards having common database, as done in eg. dashboard API context."
+  fetching multiple metric cards having common database, as done in eg. dashboard API context.
+
+  Metadata-provider fetches must be skipped: nothing consumes `:query_description` on lib metadata, and computing it
+  resolves the metric's own `:metric` refs through the metadata provider, whose card fetches re-enter this
+  after-select — with a cycle in the metric reference graph the recursion is unbounded and overflows the stack
+  (#74954)."
   [card]
   (if-not (and (map? card)
                (= :metric (:type card))
+               (not (metadata-provider-fetch? card))
                (-> card :dataset_query not-empty)
                (-> card :database_id))
     card
