@@ -147,7 +147,7 @@ function getColumns(
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (task) => task.task,
-      cell: ({ row }) => <Text fw="bold">{row.original.task}</Text>,
+      cell: ({ row }) => <Text>{row.original.task}</Text>,
     },
     {
       id: "db_name",

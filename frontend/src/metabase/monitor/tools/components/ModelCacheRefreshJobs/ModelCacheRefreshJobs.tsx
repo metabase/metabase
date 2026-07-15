@@ -156,9 +156,7 @@ function getColumns(
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (job) => job.card_name,
-      cell: ({ row }) => (
-        <Ellipsified fw="bold">{row.original.card_name}</Ellipsified>
-      ),
+      cell: ({ row }) => <Ellipsified>{row.original.card_name}</Ellipsified>,
     },
     {
       id: "collection",

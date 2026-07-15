@@ -145,7 +145,7 @@ function getColumns(): TreeTableColumnDef<TaskRun>[] {
       sortDescFirst: false,
       accessorFn: (taskRun) => taskRun.run_type,
       cell: ({ row }) => (
-        <Text fw="bold">{formatTaskRunType(row.original.run_type)}</Text>
+        <Text>{formatTaskRunType(row.original.run_type)}</Text>
       ),
     },
     {
