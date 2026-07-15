@@ -23,7 +23,7 @@
    (java.time Instant)
    (java.util Date Properties)
    (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)
-   (org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException Scheduler Trigger TriggerBuilder)
+   (org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException JobKey Scheduler Trigger TriggerBuilder)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -529,7 +529,7 @@
     (let [scheduler (task/scheduler)
           capped    (keyword "queue" (str "quartz-wake-capped-" (random-uuid)))
           uncapped  (keyword "queue" (str "quartz-wake-uncapped-" (random-uuid)))
-          nudge-key @#'q.quartz/nudge-job-key]
+          ^JobKey nudge-key @#'q.quartz/nudge-job-key]
       (reset! @#'q.quartz/nudge-job-ensured? false)
       (q.registry/register-queue! capped {:transactional :try :max-concurrent-batches 1})
       (q.registry/register-queue! uncapped {:transactional :try})
