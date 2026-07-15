@@ -155,6 +155,7 @@
          "lint-migrations-file-test"
          "main-test" ; bin/release-list
          "metabase.deps-edn-test"
+         "metabase.dev." ; tests for dev/src tooling, which lives outside the module system
          "metabase.driver."
          "metabase.test."
          "metabase.test.data."
