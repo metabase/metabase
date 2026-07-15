@@ -58,15 +58,32 @@
   (boolean (and (seq linters)
                 (every? #(= (namespace %) "clojure-lsp") linters))))
 
+(defn- names-lsp?
+  "Does the ignore form suppress any linter kondo doesn't run, so a re-lint could not fully restore it?"
+  [linters]
+  (boolean (some #(= (namespace %) "clojure-lsp") linters)))
+
 (defn- remove-ignores-at
   "The inline ignore forms that start on the 1-based `rows` of `text`, removed.
-  Forms that are [[lsp-only?]] survive: kondo flagged the row for a co-located ignore, not for them.
+  Forms that name any clojure-lsp/* linter survive ([[names-lsp?]]): the verify pass could never restore
+  that half of the suppression. Forms whose matched span has unbalanced braces (nested maps the regex
+  can't span) are skipped and reported under `:skipped` rather than corrupted.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows one space.
-  Returns `{:text _, :sites [{:row _, :linters _} ...]}` — the post-removal row of the form each ignore
-  covered and the linters it named, so a verifying re-lint can tell exposed findings apart from
-  unrelated pre-existing ones."
+  Returns `{:text _, :sites [{:row _, :linters _} ...], :skipped [rows...]}` — `:sites` carries the
+  post-removal row of the form each ignore covered and the linters it named, so a verifying re-lint can
+  tell exposed findings apart from unrelated pre-existing ones."
   [text rows]
   (let [rowset (set rows)
+        masked (kondo-ratchet/mask-strings-and-comments text)
+        balanced? (fn [{:keys [start end]}]
+                    (let [span (subs masked start end)]
+                      (= (count (filter #{\{} span))
+                         (count (filter #{\}} span)))))
+        {removable true, unbalanced false}
+        (group-by balanced?
+                  (->> (kondo-ratchet/ignore-matches text)
+                       (filter (comp rowset :line))
+                       (remove (comp names-lsp? :linters))))
         result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
                          (let [before     (subs text 0 start)
                                after      (subs text end)
@@ -89,14 +106,12 @@
                                                         linters]))))
                        {:text text, :deletions []}
                        ;; bottom-up so earlier offsets stay valid
-                       (sort-by :start >
-                                (->> (kondo-ratchet/ignore-matches text)
-                                     (filter (comp rowset :line))
-                                     (remove (comp lsp-only? :linters)))))]
-    {:text  (:text result)
-     :sites (for [[line _ linters] (:deletions result)]
-              {:row     (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result)))
-               :linters linters})}))
+                       (sort-by :start > removable))]
+    {:text    (:text result)
+     :sites   (for [[line _ linters] (:deletions result)]
+                {:row     (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result)))
+                 :linters linters})
+     :skipped (map :line unbalanced)}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
@@ -119,9 +134,12 @@
       (let [files       (vec (sort (distinct (map :filename candidates))))
             sites       (into {}
                               (for [[file file-candidates] (group-by :filename candidates)]
-                                (let [{:keys [text sites]} (remove-ignores-at (slurp file)
-                                                                              (map :row file-candidates))]
+                                (let [{:keys [text sites skipped]} (remove-ignores-at (slurp file)
+                                                                                      (map :row file-candidates))]
                                   (spit file text)
+                                  (doseq [row skipped]
+                                    (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
+                                                     file row)))
                                   [file sites])))
             near-sites  (fn [{:keys [filename row]}]
                           (filter #(<= (abs (- row (:row %))) 5) (sites filename)))
