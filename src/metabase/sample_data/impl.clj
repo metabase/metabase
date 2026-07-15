@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.driver.util :as driver.u]
    [metabase.plugins.core :as plugins]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
@@ -117,6 +118,23 @@
     :h2     "PUBLIC"
     :sqlite nil))
 
+(defn- settings-sans-unsupported-features
+  "The database's settings with feature-gated toggles the new `engine` can't support turned off, or nil when
+  nothing needs to change. Leaving one enabled would make the Database model's before-update reject the
+  engine change (e.g. `:database-enable-actions` when migrating to SQLite, which doesn't support actions)."
+  [engine database]
+  (let [disabled (into {}
+                       (keep (fn [[setting feature]]
+                               (when (and (get-in database [:settings setting])
+                                          (not (driver.u/supports? engine feature database)))
+                                 [setting false])))
+                       {:database-enable-actions       :actions
+                        :database-enable-table-editing :actions/data-editing})]
+    (when (seq disabled)
+      (log/warnf "Disabling %s on the sample database: not supported by engine %s"
+                 (str/join ", " (map name (keys disabled))) engine)
+      (merge (:settings database) disabled))))
+
 (defn- migrate-sample-database-engine-in-place!
   "The only app-db differences between the H2 and
   SQLite sample databases are the Database record's engine/details and the tables' schema (H2 = \"PUBLIC\",
@@ -126,9 +144,12 @@
   remapping, deletion, or re-seeding."
   [engine old-sample-db]
   (log/infof "Migrating sample database engine from %s to %s in place" (:engine old-sample-db) engine)
-  (let [details (try-to-extract-sample-database! engine)]
+  (let [details  (try-to-extract-sample-database! engine)
+        settings (settings-sans-unsupported-features engine old-sample-db)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/Database (:id old-sample-db) {:engine engine, :details details})
+      (t2/update! :model/Database (:id old-sample-db)
+                  (cond-> {:engine engine, :details details}
+                    settings (assoc :settings settings)))
       (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
