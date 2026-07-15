@@ -15,7 +15,7 @@ import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
-import { isProvisioned } from "../../../utils";
+import { getWorkspaceDatabaseName, isProvisioned } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
@@ -92,17 +92,11 @@ function WorkspaceProvisioningWarning() {
 function WorkspaceDatabaseItem({
   workspaceDatabase,
 }: WorkspaceDatabaseItemProps) {
-  const { database } = workspaceDatabase;
-
-  if (database == null) {
-    return null;
-  }
-
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
-        {database.name}
+        {getWorkspaceDatabaseName(workspaceDatabase)}
       </Group>
     </Box>
   );

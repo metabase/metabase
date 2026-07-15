@@ -1,4 +1,13 @@
+import { t } from "ttag";
+
 import type { WorkspaceDatabase } from "metabase-types/api";
+
+export function getWorkspaceDatabaseName(workspaceDatabase: WorkspaceDatabase) {
+  return (
+    workspaceDatabase.database?.name ??
+    t`Database ${workspaceDatabase.database_id}`
+  );
+}
 
 export function isProvisioned(workspaceDatabase: WorkspaceDatabase) {
   return workspaceDatabase.status === "provisioned";

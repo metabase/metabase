@@ -47,7 +47,7 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText(/^Created /)).toBeInTheDocument();
   });
 
-  it("renders only hydrated databases", () => {
+  it("renders databases, falling back to the id when not hydrated", () => {
     setup({
       workspace: createMockWorkspace({
         id: 1,
@@ -66,6 +66,7 @@ describe("WorkspaceItem", () => {
     });
 
     expect(screen.getByText("Postgres")).toBeInTheDocument();
+    expect(screen.getByText("Database 20")).toBeInTheDocument();
   });
 
   it("warns when a database is not provisioned", () => {

@@ -22,7 +22,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceId } from "metabase-types/api";
 
-import { isPending } from "../../../utils";
+import { getWorkspaceDatabaseName, isPending } from "../../../utils";
 
 export type DeleteWorkspaceModalProps = {
   workspaceId: WorkspaceId;
@@ -117,8 +117,7 @@ function DeleteWorkspaceForm({
               <List>
                 {pendingDatabases.map((workspaceDatabase) => (
                   <List.Item key={workspaceDatabase.database_id}>
-                    {workspaceDatabase.database?.name ??
-                      t`Database ${workspaceDatabase.database_id}`}
+                    {getWorkspaceDatabaseName(workspaceDatabase)}
                   </List.Item>
                 ))}
               </List>
