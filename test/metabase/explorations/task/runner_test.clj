@@ -4,6 +4,7 @@
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.query-plan]
    [metabase.explorations.task.runner :as runner]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.lib.core :as lib]
@@ -18,8 +19,6 @@
    (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private run-one-iteration! #'runner/run-one-iteration!)
 
 (defn- temp-thread!
   ([user-id] (temp-thread! user-id nil))
@@ -57,18 +56,15 @@
                                           :position              0})))
 
 (defn- drain-until-terminal!
-  "Repeatedly call `run-one-iteration!` until the row with `row-id` reaches a terminal state, or
-  `max-iters` is exhausted. Necessary because other concurrent tests may have their own pending
-  rows that get processed first."
-  [row-id max-iters]
-  (loop [n max-iters]
-    (when (zero? n)
-      (throw (ex-info "ran out of iterations waiting for row" {:row-id row-id})))
-    (run-one-iteration!)
-    (let [r (t2/select-one :model/ExplorationQuery :id row-id)]
-      (if (#{"done" "error"} (:status r))
-        r
-        (recur (dec n))))))
+  "Run `row-id` the way its queue does: execute it, and if it throws, record the terminal `error`
+  that `:queue/exploration-query`'s listener writes for a message that fails every attempt.
+  Returns the final row."
+  [row-id]
+  (try
+    (runner/run-query! row-id)
+    (catch Throwable e
+      (runner/fail-query! row-id (ex-message e))))
+  (t2/select-one :model/ExplorationQuery :id row-id))
 
 (defn- stored-result-for
   "Fetch the stored_result row linked from the EQR for `eq-id`. Returns nil when nothing
@@ -85,7 +81,7 @@
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
-            final  (drain-until-terminal! (:id row) 10)
+            final  (drain-until-terminal! (:id row))
             result (t2/select-one :model/ExplorationQueryResult
                                   :exploration_query_id (:id row))
             sr     (stored-result-for (:id row))]
@@ -108,7 +104,7 @@
             expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id (:id thread))
             row     (pending-query! (:id thread) (:id card)
                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
-            _       (drain-until-terminal! (:id row) 10)
+            _       (drain-until-terminal! (:id row))
             sr-id   (:stored_result_id (t2/select-one :model/ExplorationQueryResult
                                                       :exploration_query_id (:id row)))
             use-row (t2/select-one :model/StoredResultUse :stored_result_id sr-id)]
@@ -125,7 +121,7 @@
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
-            _      (drain-until-terminal! (:id row) 10)
+            _      (drain-until-terminal! (:id row))
             result (t2/select-one :model/ExplorationQueryResult
                                   :exploration_query_id (:id row))
             score  (:interestingness_score result)]
@@ -144,7 +140,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
         (mt/with-dynamic-fn-redefs [explorations.interestingness/qp-result->chart-config
                                     (fn [& _] (throw (ex-info "boom" {})))]
-          (let [final  (drain-until-terminal! (:id row) 10)
+          (let [final  (drain-until-terminal! (:id row))
                 result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))
                 sr     (stored-result-for (:id row))]
@@ -165,7 +161,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
         (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
                                     (fn [_inputs] {:score 0.73})]
-          (drain-until-terminal! (:id row) 10)
+          (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
             (is (= 0.73 (:contextual_interestingness_score result)))))))))
@@ -182,7 +178,7 @@
             calls  (atom 0)]
         (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
                                     (fn [_inputs] (swap! calls inc) {:score 0.99})]
-          (drain-until-terminal! (:id row) 10)
+          (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
             (is (nil? (:contextual_interestingness_score result)))
@@ -199,7 +195,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))]
         (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
                                     (fn [& _] (throw (ex-info "boom" {})))]
-          (let [final  (drain-until-terminal! (:id row) 10)
+          (let [final  (drain-until-terminal! (:id row))
                 result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))
                 sr     (stored-result-for (:id row))]
@@ -231,7 +227,7 @@
                                                 :permission/metabot-other-tools    :no})
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
-          (drain-until-terminal! (:id row) 10)
+          (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
             (is (zero? @llm-calls)
@@ -257,7 +253,7 @@
                                                 :permission/metabot-other-tools    :yes})
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
-          (drain-until-terminal! (:id row) 10)
+          (drain-until-terminal! (:id row))
           (is (zero? @llm-calls)
               "LLM must not be invoked when creator lacks base :permission/metabot"))))))
 
@@ -277,7 +273,7 @@
                                     (fn [] "you've hit your AI usage limit")
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
-          (drain-until-terminal! (:id row) 10)
+          (drain-until-terminal! (:id row))
           (let [result (t2/select-one :model/ExplorationQueryResult
                                       :exploration_query_id (:id row))]
             (is (zero? @llm-calls)
@@ -294,7 +290,7 @@
             row    (pending-query! (:id thread) (:id card)
                                    {:database 999999 :type :query
                                     :query {:source-table 1 :aggregation [[:count]]}})
-            final  (drain-until-terminal! (:id row) 10)]
+            final  (drain-until-terminal! (:id row))]
         (is (= "error" (:status final)))
         (is (some? (:error_message final)))
         (is (some? (:finished_at final)))
@@ -346,16 +342,7 @@
                                 :position              0})]
         (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
                                     (fn [_ _] 0.71)]
-          (run-one-iteration!)
-          ;; If the iteration picked up a different unrelated row first (e.g. a leftover
-          ;; pending query from another test), drain a few more times until ours is scored.
-          (loop [n 5]
-            (when (and (pos? n)
-                       (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
-                                        :exploration_query_id (:id q)
-                                        :timeline_id (:id tl))))
-              (run-one-iteration!)
-              (recur (dec n)))))
+          (runner/score-pair! (:id q) (:id tl)))
         (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
                                     :exploration_query_id (:id q)
                                     :timeline_id (:id tl))]
@@ -377,14 +364,7 @@
                                 :position              0})]
         (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
                                     (fn [_ _] (throw (ex-info "boom" {})))]
-          (run-one-iteration!)
-          (loop [n 5]
-            (when (and (pos? n)
-                       (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
-                                        :exploration_query_id (:id q)
-                                        :timeline_id (:id tl))))
-              (run-one-iteration!)
-              (recur (dec n)))))
+          (runner/score-pair! (:id q) (:id tl)))
         (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
                                     :exploration_query_id (:id q)
                                     :timeline_id (:id tl))]
@@ -406,56 +386,65 @@
                                 :position              0})]
         (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
                                     (fn [_ _] 0.5)]
-          (dotimes [_ 6] (run-one-iteration!)))
+          ;; at-least-once: the same pair can be delivered repeatedly
+          (dotimes [_ 6] (runner/score-pair! (:id q) (:id tl))))
         (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
                            :exploration_query_id (:id q)
                            :timeline_id (:id tl))))))))
 
-(deftest timeline-iteration-reclaims-stale-rows-test
-  (testing "A claim row left in the in-flight state (scored_at=NULL) past the cutoff is reclaimed and re-scored"
+(deftest timeline-iteration-takes-over-an-unscored-row-test
+  (testing "A pair reserved but left unscored (its delivery crashed) is scored in place on redelivery,
+            with no duplicate row — no stale-claim window to wait out any more"
     (mt/with-temp [:model/User u {:email "ti-runner-stale@example.com"}
                    :model/Card card {:type :metric :creator_id (:id u)
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                    :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
-      (let [thread     (temp-thread! (:id u))
-            q          (done-query-with-fake-result! (:id thread) (:id card))
-            _link      (t2/insert! :model/ExplorationThreadTimeline
-                                   {:exploration_thread_id (:id thread)
-                                    :timeline_id           (:id tl)
-                                    :position              0})
-            ;; Simulate a worker that died mid-score by manually planting a row whose
-            ;; created_at is well past the stale cutoff and whose scored_at is still NULL.
-            stale-row  (first (t2/insert-returning-instances!
-                               :model/ExplorationQueryTimelineInterestingness
-                               {:exploration_query_id (:id q)
-                                :timeline_id          (:id tl)}))
-            _backdate  (t2/update! :model/ExplorationQueryTimelineInterestingness (:id stale-row)
-                                   {:created_at (.minusMinutes (OffsetDateTime/now) 10)
-                                    :scored_at  nil})]
+      (let [thread    (temp-thread! (:id u))
+            q         (done-query-with-fake-result! (:id thread) (:id card))
+            _link     (t2/insert! :model/ExplorationThreadTimeline
+                                  {:exploration_thread_id (:id thread)
+                                   :timeline_id           (:id tl)
+                                   :position              0})
+            ;; a worker that reserved the pair and died before scoring it
+            orphan    (first (t2/insert-returning-instances!
+                              :model/ExplorationQueryTimelineInterestingness
+                              {:exploration_query_id (:id q)
+                               :timeline_id          (:id tl)}))
+            _unscored (t2/update! :model/ExplorationQueryTimelineInterestingness (:id orphan)
+                                  {:scored_at nil})]
         (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
                                     (fn [_ _] 0.42)]
-          (run-one-iteration!)
-          ;; Drain any unrelated leftover work from earlier tests.
-          (loop [n 5]
-            (let [{:keys [scored_at]} (t2/select-one :model/ExplorationQueryTimelineInterestingness
-                                                     :id (:id stale-row))]
-              (when (and (pos? n) (nil? scored_at))
-                (run-one-iteration!)
-                (recur (dec n))))))
-        (let [reclaimed (t2/select-one :model/ExplorationQueryTimelineInterestingness
-                                       :id (:id stale-row))]
+          (runner/score-pair! (:id q) (:id tl)))
+        (let [reclaimed (t2/select-one :model/ExplorationQueryTimelineInterestingness :id (:id orphan))]
           (is (= 0.42 (:interestingness_score reclaimed))
-              "stale row was reclaimed and rescored in place")
+              "the orphaned reservation was scored in place")
           (is (some? (:scored_at reclaimed))))
         (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
                            :exploration_query_id (:id q)
                            :timeline_id (:id tl)))
-            "no duplicate row was inserted alongside the reclaimed one")))))
+            "no duplicate row was inserted alongside it")))))
+
+(deftest fail-pair-writes-the-unscored-sentinel-test
+  (testing "When the queue gives up on a pair, fail-pair! records the null-score sentinel so the
+            pair stops blocking its thread's completion gate"
+    (mt/with-temp [:model/User u {:email "ti-runner-failpair@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        (is (= (:id thread) (runner/fail-pair! (:id q) (:id tl))))
+        (let [sentinel (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                      :exploration_query_id (:id q) :timeline_id (:id tl))]
+          (is (some? sentinel))
+          (is (nil? (:interestingness_score sentinel)))
+          (is (some? (:scored_at sentinel))
+              "scored_at is set, so the completion gate no longer waits on this pair"))))))
 
 ;; ---------------------------- Cancellation guards ----------------------------
 
-(def ^:private claim-pending-query #'runner/claim-pending-query)
-(def ^:private claim-unplanned-thread! #'runner/claim-unplanned-thread!)
 (def ^:private claim-analysis-if-ready! #'runner/claim-analysis-if-ready!)
 (def ^:private canceled-mid-plan-cleanup! #'runner/canceled-mid-plan-cleanup!)
 
@@ -467,8 +456,9 @@
     (t2/update! :model/ExplorationThread thread-id
                 {:canceled_at now :completed_at now})))
 
-(deftest claim-pending-query-skips-canceled-thread-test
-  (testing "A pending EQ whose owning thread has canceled_at set is invisible to the claim query"
+(deftest run-query-skips-canceled-thread-test
+  (testing "A delivered query whose thread was canceled after the message was published is a no-op:
+            it must not run, and the row is left for the cancel flip rather than being executed"
     (mt/with-temp [:model/User u {:email "cancel-claim@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
@@ -477,20 +467,62 @@
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         (cancel-thread! (:id thread))
-        (let [claimed (claim-pending-query)]
-          (is (or (nil? claimed) (not= (:id row) (:id claimed)))
-              "claim-pending-query must not return a row on a canceled thread"))))))
+        (is (nil? (runner/run-query! (:id row)))
+            "run-query! must not execute a query on a canceled thread")
+        (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+            "no result was written")))))
 
-(deftest claim-unplanned-thread-skips-canceled-test
-  (testing "An unplanned, started, canceled thread is not claimed by the planner"
+(deftest run-query-is-idempotent-under-redelivery-test
+  (testing "at-least-once: re-delivering a query that already ran is a no-op — it does not run twice
+            or write a second exploration_query_result (which is 1:1 with the query)"
+    (mt/with-temp [:model/User u {:email "redeliver@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        (is (= (:id thread) (runner/run-query! (:id row))) "first delivery runs it")
+        (is (nil? (runner/run-query! (:id row))) "redelivery is a no-op")
+        (is (nil? (runner/run-query! (:id row))))
+        (is (= "done" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
+        (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+            "exactly one result row, despite three deliveries")))))
+
+(deftest overlapping-runs-persist-exactly-one-result-test
+  (testing "when two deliveries overlap, both run the warehouse query but only one persists: the
+            loser is a benign no-op (same answer, wasted warehouse time), not an error, and no
+            second exploration_query_result is written"
+    (mt/with-temp [:model/User u {:email "overlap@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+            ;; both deliveries got past the `pending` gate and each ran the query
+            computed-a (#'runner/compute-query-result row)
+            computed-b (#'runner/compute-query-result row)
+            now        (OffsetDateTime/now)]
+        (is (true? (#'runner/persist-query-result! row now computed-a))
+            "the first writer persists")
+        (is (false? (#'runner/persist-query-result! row now computed-b))
+            "the second writer finds the query already completed and discards its duplicate")
+        (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
+            "exactly one result row")
+        (is (= "done" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))))))
+
+(deftest plan-thread-skips-canceled-test
+  (testing "A started thread that was canceled before its plan message was delivered is not planned"
     (mt/with-temp [:model/User u {:email "cancel-plan@example.com"}]
-      (let [thread (temp-thread! (:id u))]
+      (let [thread (temp-thread! (:id u))
+            called (atom 0)]
         (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
         (cancel-thread! (:id thread))
-        ;; Other tests may have unplanned threads in flight; just assert ours isn't picked.
-        (let [claimed (claim-unplanned-thread!)]
-          (is (not= (:id thread) claimed)
-              "canceled threads must not be claimed for planning"))))))
+        (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
+                                    (fn [_] (swap! called inc) :ok)]
+          (is (false? (runner/plan-thread! (:id thread)))))
+        (is (zero? @called) "the planner (and its LLM call) must not run for a canceled thread")))))
 
 (deftest claim-analysis-skips-canceled-test
   (testing "claim-analysis-if-ready! refuses to CAS analysis_started_at on a canceled thread,
@@ -536,51 +568,79 @@
         (is (= "pending" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
             "pending EQ on a live thread must be left alone")))))
 
-;; ---------------------------- Planner crash recovery (fix #5) ----------------------------
+;; ---------------------------- Planner idempotency & crash recovery ----------------------------
 
-(deftest claim-stale-unplanned-thread-reclaims-crashed-plan-test
-  (testing "Fix #5: a thread claimed for planning past the cutoff that still has no query rows
-            (pod crashed mid-plan) is reclaimable; one that already produced query rows is not."
-    (mt/with-temp [:model/User u {:email "plan-stale@example.com"}
+(deftest plan-thread-skips-an-already-planned-thread-test
+  (testing "at-least-once: a redelivered plan message does not re-plan a thread that already has
+            query rows — that check is the idempotency gate, and it replaces the old CAS claim"
+    (mt/with-temp [:model/User u {:email "plan-idem@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
-      (let [old        (.minusMinutes (OffsetDateTime/now) 30)
-            crashed    (temp-thread! (:id u))   ; claimed long ago, produced no rows ⇒ crashed mid-plan
-            progressed (temp-thread! (:id u))]  ; claimed long ago, but produced a row ⇒ not crashed
-        (t2/update! :model/ExplorationThread (:id crashed)
-                    {:started_at old :query_plan_started_at old})
-        (t2/update! :model/ExplorationThread (:id progressed)
-                    {:started_at old :query_plan_started_at old})
-        (pending-query! (:id progressed) (:id card)
+      (let [thread (temp-thread! (:id u))
+            called (atom 0)]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
-        ;; Reclaim loop; tolerates unrelated claimable threads being returned first.
-        (loop [n 10]
-          (let [c (claim-unplanned-thread!)]
-            (when (and (pos? n) (not= (:id crashed) c))
-              (recur (dec n)))))
-        (let [crashed-after    (t2/select-one :model/ExplorationThread :id (:id crashed))
-              progressed-after (t2/select-one :model/ExplorationThread :id (:id progressed))
-              recent-threshold (.minusMinutes (OffsetDateTime/now) 5)]
-          (is (.isAfter ^OffsetDateTime (:query_plan_started_at crashed-after) recent-threshold)
-              "crashed-mid-plan thread was reclaimed (query_plan_started_at bumped to ~now)")
-          (is (.isBefore ^OffsetDateTime (:query_plan_started_at progressed-after) recent-threshold)
-              "a thread that already produced query rows must NOT be reclaimed"))))))
+        (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
+                                    (fn [_] (swap! called inc) :ok)]
+          (is (false? (runner/plan-thread! (:id thread))))
+          (is (false? (runner/plan-thread! (:id thread)))))
+        (is (zero? @called)
+            "the planner must not run again for a thread that already produced query rows")))))
 
-(deftest claim-unplanned-thread-ignores-fresh-in-flight-plan-test
-  (testing "Fix #5: a recent (in-flight) planning claim with no rows is NOT stale-reclaimed."
-    (mt/with-temp [:model/User u {:email "plan-inflight@example.com"}]
-      (let [recent   (.minusMinutes (OffsetDateTime/now) 1)
-            in-flight (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id in-flight)
-                    {:started_at recent :query_plan_started_at recent})
-        ;; The claim must never return our in-flight thread (recent qps is neither NULL nor stale).
-        (dotimes [_ 5]
-          (is (not= (:id in-flight) (claim-unplanned-thread!))
-              "an in-flight (recent) planning claim must not be reclaimed"))
-        (is (.isBefore ^OffsetDateTime (:query_plan_started_at (t2/select-one :model/ExplorationThread :id (:id in-flight)))
-                       (.minusSeconds (OffsetDateTime/now) 30))
-            "in-flight thread's query_plan_started_at is untouched")))))
+(deftest plan-thread-replans-after-a-crashed-plan-test
+  (testing "A thread whose planner crashed before producing any rows is simply planned again when
+            the queue redelivers its message — no stale-claim window to wait out"
+    (mt/with-temp [:model/User u {:email "plan-crash@example.com"}]
+      (let [thread (temp-thread! (:id u))
+            called (atom 0)]
+        ;; a planner that claimed this thread long ago and died before inserting anything
+        (t2/update! :model/ExplorationThread (:id thread)
+                    {:started_at            (.minusMinutes (OffsetDateTime/now) 30)
+                     :query_plan_started_at (.minusMinutes (OffsetDateTime/now) 30)})
+        (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
+                                    (fn [_] (swap! called inc) :ok)]
+          (is (true? (runner/plan-thread! (:id thread)))
+              "the redelivered message re-plans it"))
+        (is (= 1 @called))))))
+
+(deftest fail-plan-records-the-terminal-planning-failure-test
+  (testing "when the queue gives up on planning, fail-plan! writes the same terminal state the
+            planner's own failure path does — transcript + terminal stamp — so the client stops
+            polling and the failure is diagnosable"
+    (mt/with-temp [:model/User u {:email "fail-plan@example.com"}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (runner/fail-plan! (:id thread) "the queue gave up")
+        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+          (is (some? (:completed_at after))
+              "the thread is terminally stamped, so the client stops polling")
+          (is (some? (:analysis_started_at after))
+              "and the AI-summary machinery can't claim a thread that never planned")
+          (is (= :error (:outcome (:query_plan_transcript after)))
+              "the transcript records the terminal outcome")
+          (is (= "the queue gave up" (:error (:query_plan_transcript after)))
+              "with the error that exhausted the retries"))))))
+
+(deftest fail-plan-leaves-a-planned-thread-alone-test
+  (testing "a thread that already has query rows was successfully planned — a failing *duplicate*
+            plan delivery must not stamp 'planning failed' over work that is genuinely in flight"
+    (mt/with-temp [:model/User u {:email "fail-plan-dup@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (pending-query! (:id thread) (:id card)
+                        (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+        (runner/fail-plan! (:id thread) "a duplicate delivery ran out of retries")
+        (let [after (t2/select-one :model/ExplorationThread :id (:id thread))]
+          (is (nil? (:completed_at after))
+              "the thread is not completed out from under its pending queries")
+          (is (nil? (:analysis_started_at after)))
+          (is (nil? (:query_plan_transcript after))
+              "and no failure transcript is written — planning did not fail"))))))
 
 ;; ---------------------------- Queue metrics (fix #4) ----------------------------
 

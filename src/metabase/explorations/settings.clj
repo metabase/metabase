@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting explorations-worker-count
-  (deferred-tru "Number of concurrent background workers draining the explorations queue. Ignored on H2 (which is hardcoded to 1 because it lacks SKIP LOCKED).")
+  (deferred-tru "How many exploration queries a single Metabase node runs at once.")
   :type       :integer
   :default    2
   :visibility :internal

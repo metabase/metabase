@@ -1,36 +1,23 @@
 (ns metabase.explorations.task.runner
-  "Background worker that drains pending `:model/ExplorationQuery` rows. Each iteration claims one
-  row with `FOR UPDATE SKIP LOCKED`, runs the snapshotted MBQL through the QP, writes the
-  serialized result to `:model/ExplorationQueryResult`, and commits the whole thing in a single
-  transaction. Crash recovery is automatic: a JVM kill drops the connection, the DB rolls back
-  the tx, and the row is left as `pending` for another worker to pick up.
+  "The work an exploration does in the background, as three plain functions:
 
-  Each iteration also handles per-`(query, timeline)` interestingness scoring: when no query is
-  pending, the worker looks for a thread-selected timeline that hasn't yet been scored against a
-  done query in the same thread, claims the pair via INSERT (the unique constraint serializes
-  competing claims), runs the LLM scorer, and UPDATEs the row with the score. The INSERT and
-  UPDATE are deliberately separate autocommits — wrapping them in one transaction would hold the
-  unique-index lock for the duration of the LLM call and serialize all scoring workers.
+    [[plan-thread!]]  — ask the LLM which charts to build, and materialize them as
+                        `:model/ExplorationQuery` rows
+    [[run-query!]]    — run one query's MBQL through the QP and store the result
+    [[score-pair!]]   — score one `(query, timeline)` pair for interestingness
 
-  Crash recovery is via stale-row reclaim: rows whose `scored_at` is still `NULL` longer than
-  [[stale-claim-cutoff-minutes]] are eligible for re-claim by a future iteration. The cutoff
-  comfortably exceeds the per-call scoring deadline ([[llm-scoring-deadline-ms]]), so a still-alive
-  worker will never be stale-reclaimed. A *caught* scorer failure (poison input, transient LLM
-  error past retries, or a deadline overrun) writes a sentinel row with `score=NULL,
-  scored_at=NOW()` so that pair isn't retried forever."
+  Each is idempotent for calling from MQ."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
-   [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.ai-summary :as explorations.ai-summary]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
-   [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
@@ -39,7 +26,6 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
-   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -49,27 +35,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- worker-count
-  "How many concurrent workers to spin up. H2 has no `FOR UPDATE SKIP LOCKED` so we'd race on
-  the claim and double-insert into `exploration_query_result` (1:1 with `exploration_query`);
-  cap at 1 there. Postgres/MySQL claim safely via SKIP LOCKED."
-  []
-  (case (mdb/db-type)
-    :h2 1
-    (explorations.settings/explorations-worker-count)))
-
-(def ^:private idle-sleep-ms    1000)
-(def ^:private error-backoff-ms 5000)
-(def ^:private join-timeout-ms  5000)
-
 (def ^:private llm-scoring-deadline-ms
   "Hard wall-clock cap on a single timeline-scoring LLM call, enforced via [[u/with-timeout]] (which
-  runs the call in a `future`, conveying dynamic bindings, and cancels it on timeout). Chosen well
-  under [[stale-claim-cutoff-minutes]] so a legitimately-running scorer is never stale-reclaimed."
+  runs the call in a `future`, conveying dynamic bindings, and cancels it on timeout)."
   (* 90 1000))
-
-(defonce ^:private running? (atom false))
-(defonce ^:private threads  (atom []))
 
 ;;; ------------------------------------- Prometheus metrics -------------------------------------
 
@@ -102,25 +71,17 @@
   [status]
   (analytics.interface/inc! :metabase-explorations/queries-processed {:status status}))
 
-(defn- claim-pending-query
-  "Claim a single pending row with `FOR UPDATE SKIP LOCKED` so peer workers don't fight for it.
-  H2 doesn't support SKIP LOCKED, but we cap H2 at one worker (see `worker-count`) so dropping
-  the lock clause is safe there.
-
-  Skips rows on a canceled thread: the cancel-thread endpoint may have written `canceled_at` after
-  the row was inserted (e.g. by a planner iteration that lost the cancel race), so the claim joins
-  to `exploration_thread.canceled_at IS NULL`."
-  []
+(defn- runnable-query
+  "Load the `ExplorationQuery` `query-id` if it is still work to do, else nil."
+  [query-id]
   (t2/select-one :model/ExplorationQuery
-                 (cond-> {:select    [:eq.*]
-                          :from      [[:exploration_query :eq]]
-                          :join      [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
-                          :where     [:and
-                                      [:= :eq.status "pending"]
-                                      [:= :et.canceled_at nil]]
-                          :order-by  [[:eq.id :asc]]
-                          :limit     1}
-                   (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))
+                 {:select [:eq.*]
+                  :from   [[:exploration_query :eq]]
+                  :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
+                  :where  [:and
+                           [:= :eq.id query-id]
+                           [:= :eq.status "pending"]
+                           [:= :et.canceled_at nil]]}))
 
 (defn- serialize-result
   "Run `cache.impl/do-with-serialization` against a single QP result, returning the gzipped+nippy
@@ -272,7 +233,7 @@
         (catch Throwable e
           (log/errorf e "Failed to set completed_at for thread %d" thread-id))))))
 
-(defn- maybe-complete-thread!
+(defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`
   (a query reaching a terminal status, or a timeline pair being scored). If this call is
   the one that claims the analysis run, runs `on-thread-completed` on a background
@@ -413,17 +374,18 @@
       (log/warn e "Failed to compute data-access token for exploration query result")
       nil)))
 
-(defn- execute-and-persist-query-result!
-  "Run the QP on `row`'s `:dataset_query`, compute the chart-config / stats / scores via the
-  `safe-*` helpers, persist a `StoredResult` + `ExplorationQueryResult` + `StoredResultUse`, and
-  flip the `ExplorationQuery` to `done`. `started` is the `OffsetDateTime` to stamp as the row's
-  `:started_at`.
+(defn- compute-query-result
+  "The slow half of running `row`: the warehouse query, its serialization, and the chart-config /
+  stats / scores (`safe-score+describe` makes an LLM call). Returns everything
+  [[persist-query-result!]] needs to write.
+
+  Deliberately holds no transaction.
 
   The query runs as the exploration's creator, so the snapshot reflects the creator's own lens —
   sandboxing, connection impersonation, and database routing (all applied by the QP's own
   middleware under the bound user). The same lens is captured as a `:data_access_token` so
   non-creator readers can be gated against it."
-  [row ^OffsetDateTime started]
+  [row]
   (let [creator-id (exploration-creator-id row)
         db-id      (:database_id row)
         run        (fn []
@@ -438,246 +400,155 @@
                                     (request/with-current-user creator-id
                                       (run))
                                     (run))
-        bytes        (serialize-result qp-result)
         chart-config (safe-chart-config row qp-result)
-        stats        (safe-deep-stats row chart-config)
-        score        (safe-score row chart-config stats)
-        ctx          (safe-score+describe row chart-config creator-id)
-        sr-id        (first
-                      (t2/insert-returning-pks!
-                       :model/StoredResult
-                       {:result_data       bytes
-                        :creator_id        creator-id
-                        :database_id       db-id
-                        :dataset_query     (:dataset_query row)
-                        :data_access_token token}))]
-    (t2/insert! :model/ExplorationQueryResult
-                {:exploration_query_id             (:id row)
-                 :stored_result_id                 sr-id
-                 :chart_stats                      stats
-                 :interestingness_score            score
-                 :contextual_interestingness_score (:score ctx)
-                 :metric_description               (:metric-description ctx)
-                 :chart_description                (:chart-description ctx)})
-    ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
-    (t2/insert! :model/StoredResultUse
-                {:stored_result_id sr-id
-                 :exploration_id   (exploration-id row)})
-    (t2/update! :model/ExplorationQuery (:id row)
-                {:status      "done"
-                 :started_at  started
-                 :finished_at (OffsetDateTime/now)})))
+        stats        (safe-deep-stats row chart-config)]
+    {:creator-id creator-id
+     :db-id      db-id
+     :bytes      (serialize-result qp-result)
+     :token      token
+     :stats      stats
+     :score      (safe-score row chart-config stats)
+     :ctx        (safe-score+describe row chart-config creator-id)}))
 
-(defn- run-one-query-iteration!
-  "Try to claim and execute a single pending query. Returns truthy when work was done so the
-  caller knows whether to sleep.
+(defn- persist-query-result!
+  "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.
 
-  Returns `{:thread-id ...}` on a row transition so the caller can run the
-  thread-completion check after the claim transaction commits — we don't want the
-  completion CAS UPDATE (or any handlers it triggers) inside the row's transaction
-  because it would extend the lock window."
-  []
-  (let [row-thread (atom nil)]
-    (t2/with-transaction [_conn]
-      (when-let [row (claim-pending-query)]
-        (reset! row-thread (:exploration_thread_id row))
-        (let [started (OffsetDateTime/now)]
-          (try
-            (execute-and-persist-query-result! (finalize-row! row) started)
-            (record-query-outcome! "done")
-            (catch Throwable e
-              (log/errorf e "ExplorationQuery %d failed" (:id row))
-              (t2/update! :model/ExplorationQuery (:id row)
-                          {:status        "error"
-                           :error_message (.getMessage e)
-                           :started_at    started
-                           :finished_at   (OffsetDateTime/now)})
-              (record-query-outcome! "error"))))
-        :worked))
-    (when-let [tid @row-thread]
-      (maybe-complete-thread! tid)
-      :worked)))
-
-(def ^:private ^:const stale-claim-cutoff-minutes
-  "How long after a claim row's `created_at` we treat it as stale and reclaimable. Must comfortably
-  exceed the wall-clock cost of one scoring iteration so a still-alive worker is never
-  stale-reclaimed. Scoring LLM calls are hard-capped at [[llm-scoring-deadline-ms]] (90s), so five
-  minutes leaves ample headroom."
-  5)
-
-(defn- stale-cutoff
-  "Cutoff `OffsetDateTime`: claim rows with `created_at` older than this and `scored_at` still
-  `NULL` are eligible for stale-reclaim."
-  ^OffsetDateTime []
-  (.minusMinutes (OffsetDateTime/now) stale-claim-cutoff-minutes))
-
-(defn- find-unscored-pair
-  "Return one `{:exploration_query_id _ :timeline_id _ :stale_id _}` map for a `(query, timeline)`
-  pair that needs scoring. A pair is eligible if the query is `done`, the timeline is selected on
-  the same thread, and either:
-   - no claim row exists yet (`:stale_id` is nil → fresh INSERT), or
-   - a claim row exists with `scored_at` still NULL and `created_at` older than
-     [[stale-claim-cutoff-minutes]] (`:stale_id` is the row id → reclaim via CAS UPDATE).
-  Returns nil when there's no pending work."
-  []
-  (first
-   (t2/query
-    {:select    [[:q.id :exploration_query_id]
-                 [:ett.timeline_id :timeline_id]
-                 [:s.id :stale_id]]
-     :from      [[:exploration_query :q]]
-     :join      [[:exploration_thread :et]
-                 [:= :et.id :q.exploration_thread_id]
-                 [:exploration_thread_timeline :ett]
-                 [:= :ett.exploration_thread_id :q.exploration_thread_id]]
-     :left-join [[:exploration_query_timeline_interestingness :s]
-                 [:and [:= :s.exploration_query_id :q.id]
-                  [:= :s.timeline_id :ett.timeline_id]]]
-     :where     [:and [:= :q.status "done"]
-                 [:= :et.canceled_at nil]
-                 [:or [:= :s.id nil]
-                  [:and [:= :s.scored_at nil]
-                   [:< :s.created_at (stale-cutoff)]]]]
-     :order-by  [[:q.id :asc] [:ett.timeline_id :asc]]
-     :limit     1})))
-
-(defn- reclaim-stale-timeline-pair!
-  "CAS-bump `created_at` on an existing claim row whose `scored_at` is still NULL and `created_at`
-  is older than the cutoff. Returns the claim shape on success, nil if another worker won the
-  reclaim race."
-  [exploration_query_id timeline_id stale_id]
-  (when (pos? (t2/update! :model/ExplorationQueryTimelineInterestingness
-                          :id         stale_id
-                          :scored_at  nil
-                          :created_at [:< (stale-cutoff)]
-                          {:created_at (OffsetDateTime/now)}))
-    (log/infof "Stale-reclaimed timeline pair (q=%s, t=%s, id=%s)"
-               exploration_query_id timeline_id stale_id)
-    {:id                   stale_id
-     :exploration_query_id exploration_query_id
-     :timeline_id          timeline_id}))
-
-(defn- insert-fresh-timeline-pair!
-  "INSERT a fresh claim row with `scored_at=NULL`; the unique constraint serializes competing
-  INSERTs. Returns the claim shape on success, nil on conflict (the loser of the race)."
-  [exploration_query_id timeline_id]
+  Returns false when a peer delivery already persisted this query."
+  [row ^OffsetDateTime started {:keys [creator-id db-id bytes token stats score ctx]}]
   (try
-    (when-let [row (first (t2/insert-returning-instances!
-                           :model/ExplorationQueryTimelineInterestingness
-                           {:exploration_query_id exploration_query_id
-                            :timeline_id          timeline_id}))]
-      {:id                   (:id row)
-       :exploration_query_id exploration_query_id
-       :timeline_id          timeline_id})
-    (catch Throwable e
-      (log/tracef e "Lost race claiming timeline pair (q=%s, t=%s)"
-                  exploration_query_id timeline_id)
-      nil)))
+    (t2/with-transaction [_conn]
+      (let [sr-id (first
+                   (t2/insert-returning-pks!
+                    :model/StoredResult
+                    {:result_data       bytes
+                     :creator_id        creator-id
+                     :database_id       db-id
+                     :dataset_query     (:dataset_query row)
+                     :data_access_token token}))]
+        (t2/insert! :model/ExplorationQueryResult
+                    {:exploration_query_id             (:id row)
+                     :stored_result_id                 sr-id
+                     :chart_stats                      stats
+                     :interestingness_score            score
+                     :contextual_interestingness_score (:score ctx)
+                     :metric_description               (:metric-description ctx)
+                     :chart_description                (:chart-description ctx)})
+        ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
+        (t2/insert! :model/StoredResultUse
+                    {:stored_result_id sr-id
+                     :exploration_id   (exploration-id row)})
+        (t2/update! :model/ExplorationQuery (:id row)
+                    {:status      "done"
+                     :started_at  started
+                     :finished_at (OffsetDateTime/now)})))
+    true
+    (catch Exception e
+      (if (t2/exists? :model/ExplorationQueryResult :exploration_query_id (:id row))
+        (do (log/infof "ExplorationQuery %d was already completed by a peer; discarding this run's duplicate result"
+                       (:id row))
+            false)
+        (throw e)))))
 
-(defn- claim-pending-timeline-pair!
-  "Reserve one `(query, timeline)` pair. Dispatches to [[reclaim-stale-timeline-pair!]] when
-  there's an existing stale claim row, otherwise to [[insert-fresh-timeline-pair!]]. Returns
-  the claim shape on success, nil on race loss / no work."
-  []
-  (when-let [pair (find-unscored-pair)]
-    (let [{:keys [exploration_query_id timeline_id stale_id]} pair]
-      (if stale_id
-        (reclaim-stale-timeline-pair! exploration_query_id timeline_id stale_id)
-        (insert-fresh-timeline-pair! exploration_query_id timeline_id)))))
+(defn run-query!
+  "Execute the pending `ExplorationQuery` `query-id` and flip it to `done`. Returns the row's
+  thread id when it ran, or nil when there was nothing to do."
+  [query-id]
+  (when-let [row (runnable-query query-id)]
+    (let [row      (finalize-row! row)
+          started  (OffsetDateTime/now)
+          computed (compute-query-result row)]
+      (when (persist-query-result! row started computed)
+        (record-query-outcome! "done"))
+      (:exploration_thread_id row))))
 
-(defn- run-one-timeline-iteration!
-  "Try to claim and score one `(query, timeline)` pair. The scorer's own try/catch (in
-  [[explorations.timeline-interestingness/score-query-timeline]]) already returns nil on failure
-  paths, but we wrap the call here too so a poison input that escapes still produces a sentinel
-  row with `score=NULL, scored_at=NOW()` instead of leaving the claim row stuck. Returns truthy
-  when work was done.
+(defn fail-query!
+  "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
+  renders.
 
-  Runs the scorer inside a `request/with-current-user creator-id` binding (same as the contextual
-  scorer in [[safe-score+describe]]) so the scorer's metabot permission / usage-limit gate resolves
-  against the exploration's creator. A nil creator (deleted exploration) leaves the score nil."
-  []
-  (when-let [{:keys [id exploration_query_id timeline_id]} (claim-pending-timeline-pair!)]
-    (let [eq         (t2/select-one [:model/ExplorationQuery :exploration_thread_id]
-                                    :id exploration_query_id)
-          creator-id (when eq (exploration-creator-id eq))
-          score      (try
-                       (when creator-id
-                         (request/with-current-user creator-id
-                           (u/with-timeout llm-scoring-deadline-ms
-                             (explorations.timeline-interestingness/score-query-timeline
-                              exploration_query_id timeline_id))))
-                       (catch TimeoutException _
-                         (log/warnf "Timeline scoring for query=%s timeline=%s timed out after %dms; treating as unscored"
-                                    exploration_query_id timeline_id llm-scoring-deadline-ms)
-                         nil)
-                       (catch Throwable e
-                         (log/warnf e "Timeline scoring failed for query=%s timeline=%s"
-                                    exploration_query_id timeline_id)
-                         nil))]
-      (t2/update! :model/ExplorationQueryTimelineInterestingness id
-                  {:interestingness_score score
-                   :scored_at             (OffsetDateTime/now)})
-      (maybe-complete-thread! (:exploration_thread_id eq)))
-    :worked))
+  No-ops on a row that is no longer `pending` (a later delivery succeeded, or it was canceled)."
+  [query-id message]
+  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id)]
+    (when (pos? (t2/update! :model/ExplorationQuery
+                            {:id query-id :status "pending"}
+                            {:status        "error"
+                             :error_message message
+                             :finished_at   (OffsetDateTime/now)}))
+      (record-query-outcome! "error"))
+    thread-id))
 
-(def ^:private ^:const plan-stale-cutoff-minutes
-  "Crash-recovery window for the planning phase."
-  10)
+(defn- score-pair-row!
+  "Run the LLM scorer for `(query-id, timeline-id)` and write `interestingness_score` +
+  `scored_at` onto claim row `id`. Failures (including a scorer that overruns
+  [[llm-scoring-deadline-ms]]) are caught and recorded as a nil score, not rethrown: a poison pair
+  must not be retried forever, and an unscored pair would stall its thread's completion gate.
 
-(defn- plan-stale-cutoff
-  "Cutoff `OffsetDateTime`: started threads whose `query_plan_started_at` is older than this and
-  that still have no query rows are eligible for planner-crash reclaim."
-  ^OffsetDateTime []
-  (.minusMinutes (OffsetDateTime/now) plan-stale-cutoff-minutes))
+  Runs inside `request/with-current-user` on the exploration's creator so the scorer's metabot
+  permission / usage-limit gate resolves against them. A nil creator (deleted exploration) scores nil."
+  [id query-id timeline-id creator-id]
+  (let [score (try
+                (when creator-id
+                  (request/with-current-user creator-id
+                    (u/with-timeout llm-scoring-deadline-ms
+                      (explorations.timeline-interestingness/score-query-timeline query-id timeline-id))))
+                (catch TimeoutException _
+                  (log/warnf "Timeline scoring for query=%s timeline=%s timed out after %dms; treating as unscored"
+                             query-id timeline-id llm-scoring-deadline-ms)
+                  nil)
+                (catch Throwable e
+                  (log/warnf e "Timeline scoring failed for query=%s timeline=%s" query-id timeline-id)
+                  nil))]
+    (t2/update! :model/ExplorationQueryTimelineInterestingness id
+                {:interestingness_score score
+                 :scored_at             (OffsetDateTime/now)})))
 
-(defn- claim-unplanned-thread!
-  "CAS-claim a started thread for planning. A thread is claimable when it has no `exploration_query`
-  rows yet and its `query_plan_started_at` is either NULL (never planned) or older than
-  [[plan-stale-cutoff-minutes]] — the latter being planner-crash recovery: a pod claimed the thread
-  for planning and died before producing any rows. Returns the claimed thread id, or nil when there's
-  no work or we lost the race.
+(defn score-pair!
+  "Score the `(query-id, timeline-id)` pair and return the query's thread id, or nil if there was
+  nothing to do.
 
-  Excludes canceled threads and ones that already started analysis/completion. Those last two guards
-  matter only for the stale branch — they distinguish a crash from a legitimately-empty thread that
-  planned 0 charts and finished. A never-planned thread always has `completed_at`/`analysis_started_at`
-  NULL (they're set only after a plan iteration runs, and `reset-thread-for-rerun!` clears them on
-  restart), so the guards are no-ops for the fresh branch.
+  Idempotent for use in MQ"
+  [query-id timeline-id]
+  (when-let [eq (t2/select-one [:model/ExplorationQuery :id :exploration_thread_id :status]
+                               :id query-id :status "done")]
+    (let [existing (t2/select-one [:model/ExplorationQueryTimelineInterestingness :id :scored_at]
+                                  :exploration_query_id query-id :timeline_id timeline-id)
+          row-id   (cond
+                     (:scored_at existing) nil                          ; already scored — nothing to do
+                     existing              (:id existing)               ; reserved but unscored — take it
+                     :else                 (try
+                                             (:id (first (t2/insert-returning-instances!
+                                                          :model/ExplorationQueryTimelineInterestingness
+                                                          {:exploration_query_id query-id
+                                                           :timeline_id          timeline-id})))
+                                             (catch Throwable e
+                                               ;; unique-constraint loser: a concurrent delivery has it
+                                               (log/tracef e "Lost race reserving timeline pair (q=%s, t=%s)"
+                                                           query-id timeline-id)
+                                               nil)))]
+      (when row-id
+        (score-pair-row! row-id query-id timeline-id (exploration-creator-id eq)))
+      (:exploration_thread_id eq))))
 
-  The CAS repeats the `query_plan_started_at` predicate (still NULL, or still older than the
-  freshly-recomputed cutoff) so it serializes competing workers; because the cutoff exceeds any
-  planner's run time, a still-alive planner is never reclaimed."
-  []
-  (let [claimable (fn [] [:or [:= :query_plan_started_at nil]
-                          [:< :query_plan_started_at (plan-stale-cutoff)]])]
-    (when-let [{:keys [id query_plan_started_at]}
-               (t2/select-one [:model/ExplorationThread :id :query_plan_started_at]
-                              {:where    [:and
-                                          [:not= :started_at nil]
-                                          [:= :canceled_at nil]
-                                          [:= :completed_at nil]
-                                          [:= :analysis_started_at nil]
-                                          (claimable)
-                                          [:not-exists {:select [1]
-                                                        :from   [:exploration_query]
-                                                        :where  [:= :exploration_query.exploration_thread_id
-                                                                 :exploration_thread.id]}]]
-                               :order-by [[:id :asc]]
-                               :limit    1})]
-      (when (pos? (t2/query-one
-                   {:update :exploration_thread
-                    :set    {:query_plan_started_at (OffsetDateTime/now)}
-                    :where  [:and [:= :id id] (claimable)]}))
-        ;; a non-nil prior timestamp means this was a crash reclaim, not a first-time claim
-        (when query_plan_started_at
-          (log/infof "Stale-reclaimed unplanned thread %d (planner appears to have crashed mid-plan)" id))
-        id))))
+(defn fail-pair!
+  "Record a terminal scoring failure for `(query-id, timeline-id)`"
+  [query-id timeline-id]
+  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id)]
+    (when thread-id
+      (if-let [existing (t2/select-one [:model/ExplorationQueryTimelineInterestingness :id :scored_at]
+                                       :exploration_query_id query-id :timeline_id timeline-id)]
+        (when-not (:scored_at existing)
+          (t2/update! :model/ExplorationQueryTimelineInterestingness (:id existing)
+                      {:scored_at (OffsetDateTime/now)}))
+        (t2/insert! :model/ExplorationQueryTimelineInterestingness
+                    {:exploration_query_id query-id
+                     :timeline_id          timeline-id
+                     :scored_at            (OffsetDateTime/now)})))
+    thread-id))
 
 (defn- canceled-mid-plan-cleanup!
-  "Planner-race repair: the user can cancel a thread *after* the planner claimed it (set
-  `query_plan_started_at`) but *before* `generate-query-plan!` returned. The cancel endpoint's
-  bulk pending→canceled UPDATE only saw the EQ rows that existed at cancel time; rows the planner
-  inserted after that are still `pending` on a canceled thread. Flip them here so the EQ table
-  matches its owning thread's terminal state."
+  "Planner-race repair: the user can cancel a thread *after* the plan message was published but
+  *before* the planner inserted its rows. The cancel endpoint's bulk pending→canceled UPDATE only
+  saw the rows that existed at cancel time; rows the planner inserted after that are still `pending`
+  on a canceled thread. Flip them so the query table matches its owning thread's terminal state."
   [thread-id]
   (when (t2/exists? :model/ExplorationThread :id thread-id :canceled_at [:not= nil])
     (t2/update! :model/ExplorationQuery
@@ -685,66 +556,51 @@
                  :status                "pending"}
                 {:status "canceled"})))
 
-(defn- run-one-plan-iteration!
-  "Try to claim one unplanned thread and run the LLM planner against it. Returns
-  truthy when work was done so the worker loop knows whether to sleep."
-  []
-  (when-let [thread-id (claim-unplanned-thread!)]
-    (try
-      (explorations.query-plan/generate-query-plan! thread-id)
-      (catch Throwable e
-        (log/errorf e "Exploration thread %d: query plan iteration crashed" thread-id)))
+(defn plan-thread!
+  "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
+  [thread-id]
+  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at] :id thread-id)
+        planned? (cond
+                   ;; `restart` deletes and re-creates a thread's work; a message for a thread that
+                   ;; no longer exists is a no-op.
+                   (nil? thread)
+                   false
+
+                   ;; The user canceled between publishing the message and delivering it. Don't
+                   ;; spend an LLM call on work nobody is waiting for.
+                   (:canceled_at thread)
+                   (do (log/infof "Exploration thread %d was canceled; skipping planning" thread-id)
+                       false)
+
+                   (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+                   (do (log/infof "Exploration thread %d is already planned; skipping" thread-id)
+                       false)
+
+                   :else
+                   (do (explorations.query-plan/generate-query-plan! thread-id)
+                       true))]
     (canceled-mid-plan-cleanup! thread-id)
-    ;; A successful plan inserts ExplorationQuery rows; downstream iterations
-    ;; will execute them. A failed plan terminally stamps the thread, so the
-    ;; completion-check we run below is also the right thing — no queries, but
-    ;; `analysis_started_at` is already set so it short-circuits.
-    (maybe-complete-thread! thread-id)
-    :worked))
+    planned?))
 
-(defn- run-one-iteration!
-  "Do one unit of work: plan any unplanned threads first, then queries, then
-  timeline scoring. Returns truthy when something was processed."
-  []
-  (or (run-one-plan-iteration!)
-      (run-one-query-iteration!)
-      (run-one-timeline-iteration!)))
+(defn fail-plan!
+  "Durably record that the queue gave up on planning `thread-id`: write the same terminal state
+  the planner's own failure path does (transcript, planning-failed doc, terminal stamp), so the
+  client stops polling and sees why instead of an exploration that silently never fills in.
+  `message` is the error that exhausted the retries.
 
-(defn- worker-loop
-  [worker-id]
-  (log/infof "Exploration worker %d started" worker-id)
-  (while @running?
-    (try
-      (when-not (run-one-iteration!)
-        (Thread/sleep ^long idle-sleep-ms))
-      (catch InterruptedException _
-        (reset! running? false))
-      (catch Throwable e
-        (log/errorf e "Exploration worker %d unexpected error" worker-id)
-        (try (Thread/sleep ^long error-backoff-ms)
-             (catch InterruptedException _ (reset! running? false))))))
-  (log/infof "Exploration worker %d stopped" worker-id))
+  A thread that already has query rows is left alone - planning succeeded there, and a failing
+  duplicate delivery must not stamp 'planning failed' over work that is in flight. Also flips any
+  rows a canceled thread left `pending`."
+  [thread-id message]
+  (explorations.query-plan/record-terminal-planning-failure! thread-id message)
+  (canceled-mid-plan-cleanup! thread-id))
 
-(defn- stop-workers!
-  []
-  (when (compare-and-set! running? true false)
-    (doseq [^Thread t @threads]
-      (.interrupt t))
-    (doseq [^Thread t @threads]
-      (.join t ^long join-timeout-ms))
-    (reset! threads [])))
+(defn pending-query-ids
+  "Ids of `thread-id`'s queries still awaiting execution."
+  [thread-id]
+  (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id thread-id :status "pending"))
 
-(defn- start-workers!
-  []
-  (when (compare-and-set! running? false true)
-    (reset! threads
-            (vec (for [i (range (worker-count))]
-                   (doto (Thread. ^Runnable #(worker-loop i)
-                                  (str "exploration-worker-" i))
-                     (.setDaemon true)
-                     (.start)))))
-    (.addShutdownHook (Runtime/getRuntime)
-                      (Thread. ^Runnable stop-workers! "exploration-worker-shutdown"))))
-
-(defmethod startup/def-startup-logic! ::ExplorationRunner [_]
-  (start-workers!))
+(defn thread-timeline-ids
+  "Ids of the timelines selected on `thread-id`, each of which is scored against every done query."
+  [thread-id]
+  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline :exploration_thread_id thread-id))

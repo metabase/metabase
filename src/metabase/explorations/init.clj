@@ -10,8 +10,8 @@
    [metabase.explorations.models.exploration-query-result]
    [metabase.explorations.models.exploration-thread]
    [metabase.explorations.models.exploration-thread-timeline]
-   [metabase.explorations.settings]
-   [metabase.explorations.task.runner]))
+   [metabase.explorations.queues]
+   [metabase.explorations.settings]))
 
 ;; Install the content-visibility gate into the documents module's read/write path, so the AI
 ;; Summary doc's content is hidden from collaborators whose lens differs from the creator's.

@@ -16,6 +16,7 @@
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.queues :as explorations.queues]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -244,7 +245,8 @@
                :query_plan_transcript nil
                :analysis_started_at   nil
                :completed_at          nil
-               :canceled_at           nil}))
+               :canceled_at           nil})
+  (explorations.queues/publish-plan! thread-id))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
@@ -493,10 +495,8 @@
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and stamp the thread as started. The background planning worker (see
-  `metabase.explorations.query-plan`) picks the thread up, calls an LLM to decide which charts
-  to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
-  with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
+  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns
+  immediately with an empty queries list. Clients should poll `GET /:id/queries` until rows appear.
 
   Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
@@ -519,10 +519,8 @@
       (insert-thread-default-documents! tid coll-id)
       (insert-blocks! tid blocks)
       (insert-thread-timelines! tid timeline_ids)
-      ;; Setting `started_at` is the signal to the background planning worker that this
-      ;; thread is ready to plan + execute. The worker's claim predicate matches threads
-      ;; with `started_at IS NOT NULL` and `query_plan_started_at IS NULL`.
       (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+      (explorations.queues/publish-plan! tid)
       (let [persisted (t2/select-one :model/Exploration :id (:id exploration))]
         (events/publish-event! :event/exploration-create
                                {:object persisted :user-id api/*current-user-id*})

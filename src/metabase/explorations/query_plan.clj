@@ -112,9 +112,8 @@
   `position` if it doesn't exist yet. An existing page keeps its id and position.
 
   Select-then-insert with no unique index backing it (`dimension_id` is a text column, which
-  MySQL can't uniquely index), so it relies on the runner's CAS claim on
-  `exploration_thread.query_plan_started_at` — at most one planner reconciles a thread's
-  pages at a time."
+  MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
+  only because [[lock-thread-for-planning!]] keeps them out — see there."
   [[block-id card-id dim-id query-type] position]
   (or (t2/select-one-pk :model/ExplorationPage
                         :exploration_block_id block-id
@@ -190,46 +189,72 @@
     (when (seq deletable)
       (t2/delete! :model/ExplorationPage :id [:in deletable]))))
 
+(defn- lock-thread-for-planning!
+  "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
+  one planner persists a plan for a thread at a time.
+
+  Queue delivery is at-least-once, so a thread can reach the planner twice — a redelivery, or a
+  duplicate delivery that overlaps the first. Neither the planner nor its caller can gate that alone:
+  `runner/plan-thread!`'s `exists?` check only sees committed rows, and two overlapping planners have
+  each seen an empty query table. So the persist step takes this lock and re-checks under it, and the
+  loser discards. [[find-or-create-page!]] is what makes it load-bearing rather than merely tidy: it
+  has no unique index to fall back on, so two planners would each create the thread's pages — and a
+  page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
+  [thread-id]
+  (t2/query {:select [:id]
+             :from   [:exploration_thread]
+             :where  [:= :id thread-id]
+             :for    [:update]}))
+
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted
   `ExplorationPage`, insert them as `ExplorationQuery` rows, and GC pages left with no
-  queries. Returns the number of rows inserted."
+  queries. Returns the number of rows inserted, or 0 when another planner got there first
+  (see [[lock-thread-for-planning!]]). A rerun deletes a thread's queries first, so it still plans."
   [thread-id metric-by-key plan]
-  (let [rows      (vec
-                   (for [item   plan
-                         :let   [metric (get metric-by-key [(:block_id item) (:metric_id item)])]
-                         recipe (try
-                                  (materialize-item metric-by-key item)
-                                  (catch Throwable e
-                                    (log/warnf e "Skipping plan item that failed to materialize: %s"
-                                               (pr-str item))
-                                    []))]
-                     {:exploration_thread_id thread-id
-                      :block_id              (:block_id item)
-                      :card_id               (:metric_id item)
-                      :database_id           (:database_id (:card metric))
-                      :segment_id            (:segment_id recipe)
-                      :dimension_id          (:dimension_id item)
-                      :query_type            (:query_type recipe)
-                      :display               (:display recipe)
-                      :name                  (:name recipe)
-                      :params                (:params recipe)
-                      :status                "pending"}))
-        key->page (reconcile-pages! rows)
-        ;; `:block_id` is only here to compute the page key; the queries reach their block
-        ;; through their page now, so it isn't persisted on the query row.
-        rows*     (mapv #(-> %
-                             (assoc :page_id (key->page (page-key %)))
-                             (dissoc :block_id))
-                        rows)]
+  (let [rows (vec
+              (for [item   plan
+                    :let   [metric (get metric-by-key [(:block_id item) (:metric_id item)])]
+                    recipe (try
+                             (materialize-item metric-by-key item)
+                             (catch Throwable e
+                               (log/warnf e "Skipping plan item that failed to materialize: %s"
+                                          (pr-str item))
+                               []))]
+                {:exploration_thread_id thread-id
+                 :block_id              (:block_id item)
+                 :card_id               (:metric_id item)
+                 :database_id           (:database_id (:card metric))
+                 :segment_id            (:segment_id recipe)
+                 :dimension_id          (:dimension_id item)
+                 :query_type            (:query_type recipe)
+                 :display               (:display recipe)
+                 :name                  (:name recipe)
+                 :params                (:params recipe)
+                 :status                "pending"}))]
     ;; GC only after a plan that actually materialized rows: zero rows means every item
     ;; failed to materialize (or the plan was empty), and treating that as "every selection
     ;; was removed" would destroy page-id stability for a later retry.
-    (when (seq rows*)
-      (t2/insert! :model/ExplorationQuery
-                  (map-indexed (fn [i r] (assoc r :position i)) rows*))
-      (gc-orphan-pages! thread-id (vals key->page)))
-    (count rows*)))
+    (if (empty? rows)
+      0
+      (t2/with-transaction [_conn]
+        (lock-thread-for-planning! thread-id)
+        (if (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+          (do
+            (log/infof "Thread %d was planned by a concurrent delivery; discarding this planner's %d row(s)"
+                       thread-id (count rows))
+            0)
+          (let [key->page (reconcile-pages! rows)
+                ;; `:block_id` is only here to compute the page key; the queries reach their block
+                ;; through their page now, so it isn't persisted on the query row.
+                rows*     (mapv #(-> %
+                                     (assoc :page_id (key->page (page-key %)))
+                                     (dissoc :block_id))
+                                rows)]
+            (t2/insert! :model/ExplorationQuery
+                        (map-indexed (fn [i r] (assoc r :position i)) rows*))
+            (gc-orphan-pages! thread-id (vals key->page))
+            (count rows*)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Failure path
@@ -411,6 +436,17 @@
         (catch Throwable e2
           (log/warnf e2 "Secondary failure after generate-query-plan! threw for thread %d" thread-id)))
       nil)))
+
+(defn record-terminal-planning-failure!
+  "Durably record that planning for `thread-id` was given up on before it produced any rows —
+  the same terminal state [[generate-query-plan!]] writes when the planner itself fails:
+  transcript, planning-failed doc, and the terminal stamp that stops the client polling."
+  [thread-id message]
+  (when-not (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+    (let [message (or message "planning gave up after exhausting retries")]
+      (record-outcome! thread-id (preamble thread-id :unknown) :error :error message)
+      (write-planning-failed-doc! thread-id (creator-id-for-thread thread-id) [message])
+      (mark-thread-terminally-failed! thread-id))))
 
 ;; ---------------------------------------------------------------------------
 ;; Debug helpers
