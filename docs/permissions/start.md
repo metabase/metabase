@@ -28,6 +28,10 @@ Granting group access to different Metabase features.
 
 Setting up row and column security to restrict access to rows and columns in tables.
 
+## [Choosing a data isolation method](./choosing-a-data-isolation-method.md)
+
+Compare row and column security, impersonation, database routing, and locked parameters for multi-tenant setups.
+
 ## [Snippet folder permissions](./snippets.md)
 
 Organize snippets into folders that require permissions to view.
