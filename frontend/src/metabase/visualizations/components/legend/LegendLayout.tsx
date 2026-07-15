@@ -18,7 +18,7 @@ const MIN_ITEM_HEIGHT = 25;
 const MIN_ITEM_HEIGHT_LARGE = 31;
 const MIN_LEGEND_WIDTH = 400;
 
-interface LegendLayoutProps {
+export interface LegendLayoutProps {
   className?: string;
   items: LegendItemData[];
   hovered?: HoveredObject | null;

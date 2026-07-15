@@ -16,7 +16,7 @@ import { Box } from "metabase/ui";
 
 import S from "./LegendLabel.module.css";
 
-interface Props {
+export interface Props {
   children: ReactNode;
   className?: string;
   href?: LinkProps["to"];

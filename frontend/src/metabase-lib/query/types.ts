@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type {
   CardId,
   DatabaseId,
@@ -36,36 +35,36 @@ import type { ColumnExtractionTag } from "./extractions";
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
  * and in other files it gets treated like `unknown` so it can't be examined, manipulated or a new one created.
  */
-declare const QuerySymbol: unique symbol;
+export declare const QuerySymbol: unique symbol;
 export type Query = unknown & { _opaque: typeof QuerySymbol };
 
-declare const MetadataProviderSymbol: unique symbol;
+export declare const MetadataProviderSymbol: unique symbol;
 export type MetadataProvider = unknown & {
   _opaque: typeof MetadataProviderSymbol;
 };
 
-declare const TableMetadataSymbol: unique symbol;
+export declare const TableMetadataSymbol: unique symbol;
 export type TableMetadata = unknown & { _opaque: typeof TableMetadataSymbol };
 
-declare const CardMetadataSymbol: unique symbol;
+export declare const CardMetadataSymbol: unique symbol;
 export type CardMetadata = unknown & { _opaque: typeof CardMetadataSymbol };
 
-declare const SegmentMetadataSymbol: unique symbol;
+export declare const SegmentMetadataSymbol: unique symbol;
 export type SegmentMetadata = unknown & {
   _opaque: typeof SegmentMetadataSymbol;
 };
 
-declare const MetricMetadataSymbol: unique symbol;
+export declare const MetricMetadataSymbol: unique symbol;
 export type MetricMetadata = unknown & {
   _opaque: typeof MetricMetadataSymbol;
 };
 
-declare const MeasureMetadataSymbol: unique symbol;
+export declare const MeasureMetadataSymbol: unique symbol;
 export type MeasureMetadata = unknown & {
   _opaque: typeof MeasureMetadataSymbol;
 };
 
-declare const AggregationClauseSymbol: unique symbol;
+export declare const AggregationClauseSymbol: unique symbol;
 export type AggregationClause = unknown & {
   _opaque: typeof AggregationClauseSymbol;
 };
@@ -76,36 +75,36 @@ export type Aggregable =
   | MeasureMetadata
   | ExpressionClause;
 
-declare const AggregationOperatorSymbol: unique symbol;
+export declare const AggregationOperatorSymbol: unique symbol;
 export type AggregationOperator = unknown & {
   _opaque: typeof AggregationOperatorSymbol;
 };
 
-declare const BreakoutClauseSymbol: unique symbol;
+export declare const BreakoutClauseSymbol: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClauseSymbol };
 
-declare const ExpressionClauseSymbol: unique symbol;
+export declare const ExpressionClauseSymbol: unique symbol;
 export type ExpressionClause = unknown & {
   _opaque: typeof ExpressionClauseSymbol;
 };
 
-declare const OrderByClauseSymbol: unique symbol;
+export declare const OrderByClauseSymbol: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClauseSymbol };
 
 export type OrderByDirection = "asc" | "desc";
 
-declare const FilterClauseSymbol: unique symbol;
+export declare const FilterClauseSymbol: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClauseSymbol };
 
 export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
 
-declare const JoinSymbol: unique symbol;
+export declare const JoinSymbol: unique symbol;
 export type Join = unknown & { _opaque: typeof JoinSymbol };
 
-declare const JoinStrategySymbol: unique symbol;
+export declare const JoinStrategySymbol: unique symbol;
 export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 
-declare const JoinConditionSymbol: unique symbol;
+export declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
 export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
@@ -135,16 +134,16 @@ export type Expressionable =
 
 export type Limit = number | null;
 
-declare const ColumnMetadataSymbol: unique symbol;
+export declare const ColumnMetadataSymbol: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
 
-declare const ColumnTypeInfoSymbol: unique symbol;
+export declare const ColumnTypeInfoSymbol: unique symbol;
 export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
 
-declare const ColumnGroupSymbol: unique symbol;
+export declare const ColumnGroupSymbol: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
 
-declare const BucketSymbol: unique symbol;
+export declare const BucketSymbol: unique symbol;
 export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
@@ -432,7 +431,7 @@ export type JoinStrategyDisplayInfo = {
   shortName: string;
 };
 
-declare const DrillThruSymbol: unique symbol;
+export declare const DrillThruSymbol: unique symbol;
 export type DrillThru = unknown & { _opaque: typeof DrillThruSymbol };
 
 export type DrillThruType =
@@ -460,7 +459,7 @@ export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 export type AutomaticInsightsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/automatic-insights">;
 
-declare const ColumnExtractionSymbol: unique symbol;
+export declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
   _opaque: typeof ColumnExtractionSymbol;
 };

@@ -300,7 +300,7 @@ export const setEditingParameter =
     );
   };
 
-interface AddParameterPayload {
+export interface AddParameterPayload {
   options: NewParameterOpts;
   dashcardId?: DashCardId;
 }

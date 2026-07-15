@@ -849,7 +849,7 @@ export const getStackTotalsSeries = (
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
-) => {
+): (LineSeriesOption | BarSeriesOption)[] => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter((s) => s.stack != null),
     "stack",

@@ -26,7 +26,7 @@ export function replaceBreakouts(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-) {
+): Query {
   let nextQuery = query;
 
   breakouts(query, stageIndex).forEach((clause) => {

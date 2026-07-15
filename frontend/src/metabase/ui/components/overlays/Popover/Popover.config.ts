@@ -1,10 +1,10 @@
-import { Popover } from "@mantine/core";
+import { type MantineThemeOverride, Popover } from "@mantine/core";
 
 import PopoverStyles from "./Popover.module.css";
 
 export const DEFAULT_POPOVER_Z_INDEX = 300;
 
-export const popoverOverrides = {
+export const popoverOverrides: MantineThemeOverride["components"] = {
   Popover: Popover.extend({
     defaultProps: {
       radius: "sm",
