@@ -27,7 +27,6 @@
    documents
    eid-translation
    embedding
-   entity-retrieval
    events
    explorations
    formatter
@@ -49,6 +48,7 @@
    remote-sync
    request
    search
+   search.entity-retrieval
    server
    session
    settings
