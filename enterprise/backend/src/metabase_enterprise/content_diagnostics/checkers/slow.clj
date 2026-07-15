@@ -8,8 +8,8 @@
     culprit card ids are frozen in `details` (`slow_entity_ids`) and hydrated to objects at read time;
     the container's own `:duration-ms` is the slowest culprit's mean, a representative magnitude so
     containers sort/filter by duration alongside leaves.
-  - **Transform** (leaf): wall-clock duration (`end_time - start_time`) of its latest **succeeded** run
-    over `slow-transform-threshold-seconds`.
+  - **Transform** (leaf): wall-clock duration (`end_time - start_time`) of its latest **finished** run
+    (succeeded/failed/timeout - not canceled) over `slow-transform-threshold-seconds`.
 
   Leaves freeze their `threshold_ms` in `details` at scan time; every finding carries its measured
   magnitude in the top-level `:duration-ms` (→ the native `duration_ms` column). Every detector is
@@ -18,7 +18,6 @@
   unset (the column stays NULL on slow findings)."
   (:require
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -137,24 +136,28 @@
   (.toMillis ^java.time.Duration (t/duration start end)))
 
 (defn- transform-findings
-  "Leaf transform findings - a transform is slow when the wall-clock duration of its **latest succeeded
-  run** exceeds `threshold-ms`. Transforms are low-cardinality and have no `archived` tier, so we pull
-  succeeded runs newest-first and keep the first per transform (= its latest) via `distinct-by`."
+  "Leaf transform findings - a transform is slow when the wall-clock duration of its latest **finished**
+  run (succeeded, failed, or timed out) exceeds `threshold-ms`. Canceled runs don't count: their
+  duration measures when someone hit cancel, not the transform."
   [threshold-ms]
-  (when-let [transform? (not-empty (t2/select-pks-set :model/Transform))]
-    (let [latest-run (->> (t2/select [:model/TransformRun :transform_id :start_time :end_time]
-                                     :status :succeeded
-                                     {:order-by [[:start_time :desc]]})
-                          (m/distinct-by :transform_id))]
-      (for [{:keys [transform_id start_time end_time]} latest-run
-            :when (and (transform? transform_id) start_time end_time)
-            :let  [duration-ms (run-duration-ms start_time end_time)]
-            :when (> duration-ms threshold-ms)]
-        {:entity-type  :transform
-         :entity-id    transform_id
-         :finding-type :slow
-         :duration-ms  duration-ms
-         :details      {:threshold_ms threshold-ms}}))))
+  ;; Runs per transform are serialized (`idx_unique_active_transform_run` allows one active run at a
+  ;; time), so among a transform's finished runs MAX(start_time) and MAX(end_time) belong to the same
+  ;; (latest) row - one grouped query, one row per transform, no fetch of the full run history.
+  (for [{:keys [transform_id start_time end_time]}
+        (t2/query {:select   [:transform_id
+                              [[:max :start_time] :start_time]
+                              [[:max :end_time] :end_time]]
+                   :from     [:transform_run]
+                   :where    [:in :status ["succeeded" "failed" "timeout"]]
+                   :group-by [:transform_id]})
+        :when (and start_time end_time)
+        :let  [duration-ms (run-duration-ms start_time end_time)]
+        :when (> duration-ms threshold-ms)]
+    {:entity-type  :transform
+     :entity-id    transform_id
+     :finding-type :slow
+     :duration-ms  duration-ms
+     :details      {:threshold_ms threshold-ms}}))
 
 ;;; ------------------------------------------------- checker -------------------------------------------------
 

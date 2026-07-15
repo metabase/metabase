@@ -189,13 +189,13 @@
               (testing "a dashboard whose only slow reference is a filter card value-source is NOT flagged"
                 (is (nil? (by-entity [:dashboard filter-dash])))))))))))
 
-(deftest slow-transform-uses-latest-succeeded-run-test
-  (testing "transform slowness uses the latest SUCCEEDED run; never-run yields nothing"
+(deftest slow-transform-uses-latest-finished-run-test
+  (testing "transform slowness uses the latest FINISHED (succeeded/failed/timeout) run; never-run yields nothing"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
-            [;; latest succeeded run is slow (60s); an even-newer FAILED run must be ignored
+            [;; the latest finished run is the newer FAILED one (5m) - failed runs finished, so they count
              :model/Transform    {failing-latest :id} {}
              :model/TransformRun _ {:transform_id failing-latest :status :succeeded
                                     :start_time (t/offset-date-time 2026 6 2 1 0 0)
@@ -203,7 +203,7 @@
              :model/TransformRun _ {:transform_id failing-latest :status :failed
                                     :start_time (t/offset-date-time 2026 6 3 1 0 0)
                                     :end_time   (t/offset-date-time 2026 6 3 1 5 0)}
-             ;; latest succeeded run is fast (1s) even though an older succeeded run was slow (60s)
+             ;; latest finished run is fast (1s) even though an older succeeded run was slow (60s)
              :model/Transform    {recovered :id} {}
              :model/TransformRun _ {:transform_id recovered :status :succeeded
                                     :start_time (t/offset-date-time 2026 6 1 1 0 0)
@@ -211,15 +211,37 @@
              :model/TransformRun _ {:transform_id recovered :status :succeeded
                                     :start_time (t/offset-date-time 2026 6 4 1 0 0)
                                     :end_time   (t/offset-date-time 2026 6 4 1 0 1)}
+             ;; a slow CANCELED run doesn't count as finished - the fast succeeded run before it wins
+             :model/Transform    {canceled-latest :id} {}
+             :model/TransformRun _ {:transform_id canceled-latest :status :succeeded
+                                    :start_time (t/offset-date-time 2026 6 5 1 0 0)
+                                    :end_time   (t/offset-date-time 2026 6 5 1 0 1)}
+             :model/TransformRun _ {:transform_id canceled-latest :status :canceled
+                                    :start_time (t/offset-date-time 2026 6 6 1 0 0)
+                                    :end_time   (t/offset-date-time 2026 6 6 1 5 0)}
+             ;; a TIMED-OUT run (2m) counts as finished
+             :model/Transform    {timed-out :id} {}
+             :model/TransformRun _ {:transform_id timed-out :status :succeeded
+                                    :start_time (t/offset-date-time 2026 6 7 1 0 0)
+                                    :end_time   (t/offset-date-time 2026 6 7 1 0 1)}
+             :model/TransformRun _ {:transform_id timed-out :status :timeout
+                                    :start_time (t/offset-date-time 2026 6 8 1 0 0)
+                                    :end_time   (t/offset-date-time 2026 6 8 1 2 0)}
              ;; never ran at all
              :model/Transform    {never :id} {}]
             (let [by-entity (slow-findings-by-entity!)]
-              (testing "flagged on its latest succeeded run (60s); the newer failed run is ignored"
+              (testing "flagged on its latest finished run - the 5m failed one, not the older 60s success"
                 (let [f (by-entity [:transform failing-latest])]
                   (is (some? f))
-                  (is (= 60000 (:duration_ms f)))))
-              (testing "a transform whose latest succeeded run is fast is not flagged"
+                  (is (= 300000 (:duration_ms f)))))
+              (testing "a transform whose latest finished run is fast is not flagged"
                 (is (nil? (by-entity [:transform recovered]))))
+              (testing "a slow canceled run is ignored - the latest finished run (fast) wins"
+                (is (nil? (by-entity [:transform canceled-latest]))))
+              (testing "a timed-out run counts - flagged on its 2m duration"
+                (let [f (by-entity [:transform timed-out])]
+                  (is (some? f))
+                  (is (= 120000 (:duration_ms f)))))
               (testing "a never-run transform yields no finding"
                 (is (nil? (by-entity [:transform never])))))))))))
 
