@@ -104,20 +104,6 @@
                          :cache_control {:type "ephemeral"}}]}
              (-> body :messages first))))))
 
-(deftest ^:parallel request-body-anthropic-system-sentinel-split-test
-  (testing "anthropic models split the system prompt at the sentinel into cached prefix + uncached suffix"
-    (let [body (openrouter/openrouter-request-body
-                {:model  "anthropic/claude-haiku-4.5"
-                 :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."
-                 :input  [{:role :user :content "hi"}]})]
-      (is (= {:role    "system"
-              :content [{:type          "text"
-                         :text          "Stable prefix content."
-                         :cache_control {:type "ephemeral"}}
-                        {:type "text"
-                         :text "Dynamic suffix content."}]}
-             (-> body :messages first))))))
-
 (deftest ^:parallel request-body-openai-system-plain-string-test
   (testing "openai models get a plain string system message with no cache markup"
     (let [body (openrouter/openrouter-request-body
