@@ -126,6 +126,24 @@
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
 
+(deftest migrate-sample-database-engine-in-place-disables-actions-test
+  (testing "Migrating the sample DB to an engine that doesn't support actions disables the actions settings
+           instead of failing the update (GHY-4133: actions enabled on the H2 sample DB blocked the v62->v63
+           upgrade because SQLite doesn't support actions)."
+    (mt/with-model-cleanup [:model/Database]
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :settings {:database-enable-actions       true
+                                                             :database-enable-table-editing true}
+                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+        (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+        (let [db (t2/select-one :model/Database :id (:id h2-db))]
+          (testing "the migration succeeds"
+            (is (= :sqlite (:engine db))))
+          (testing "the unsupported feature settings are disabled"
+            (is (false? (get-in db [:settings :database-enable-actions])))
+            (is (false? (get-in db [:settings :database-enable-table-editing])))))))))
+
 (def ^:private extracted-db-path-regex #".*plugins/sample-database\.sqlite$")
 
 (deftest extract-sample-database-test
