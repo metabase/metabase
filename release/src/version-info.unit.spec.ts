@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import { checkIsVersionActiveLts, generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, isVersionActiveLts, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -411,6 +411,84 @@ describe("version-info", () => {
         "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
       );
       expect(majors).toEqual([60]);
+    });
+  });
+
+  describe("checkIsVersionActiveLts", () => {
+    const fileWith = (major_version_support: any) =>
+      ({ latest: {}, older: [], major_version_support }) as unknown as VersionInfoFile;
+
+    const versionInfo = fileWith([
+      { major: 54, released: "2025-04-15", lts: true, eol: "2025-06-01" }, // past eol
+      { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" }, // active LTS
+      { major: 61, released: "2026-05-01", lts: false, eol: "2026-07-01" }, // active, not LTS
+    ]);
+
+    it("returns true when the version's major is in support and is an LTS", () => {
+      expect(checkIsVersionActiveLts("v0.60.2", versionInfo, "2026-06-04")).toBe(
+        true,
+      );
+    });
+
+    it("resolves the major from an enterprise version string too", () => {
+      expect(checkIsVersionActiveLts("v1.60.2", versionInfo, "2026-06-04")).toBe(
+        true,
+      );
+    });
+
+    it("returns false when the version's major is in support but not an LTS", () => {
+      expect(checkIsVersionActiveLts("v0.61.0", versionInfo, "2026-06-04")).toBe(
+        false,
+      );
+    });
+
+    it("returns false when the version's major is past end-of-life", () => {
+      expect(checkIsVersionActiveLts("v0.54.9", versionInfo, "2026-06-04")).toBe(
+        false,
+      );
+    });
+
+    it("returns false when the version's major is not listed at all", () => {
+      expect(checkIsVersionActiveLts("v0.99.0", versionInfo, "2026-06-04")).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("isVersionActiveLts", () => {
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+    });
+
+    const mockVersionInfo = () =>
+      mockFetch.mockResolvedValue({
+        json: async () => ({
+          latest: {},
+          older: [],
+          major_version_support: [
+            { major: 60, released: "2026-04-01", lts: true, eol: "2027-06-01" },
+            { major: 61, released: "2026-05-01", lts: false, eol: "2027-07-01" },
+          ],
+        }),
+      } as Awaited<ReturnType<typeof fetch>>);
+
+    it("fetches the OSS version-info.json and returns true for an active LTS", async () => {
+      mockVersionInfo();
+
+      const isLts = await isVersionActiveLts("v0.60.2", "2026-06-04");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
+      expect(isLts).toBe(true);
+    });
+
+    it("returns false for a supported non-LTS version", async () => {
+      mockVersionInfo();
+
+      expect(await isVersionActiveLts("v0.61.0", "2026-06-04")).toBe(false);
     });
   });
 

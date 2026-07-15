@@ -11,6 +11,7 @@ import {
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
+  getMajorVersion,
 } from "./version-helpers";
 
 const generateVersionInfo = ({
@@ -128,14 +129,13 @@ export async function getVersionInfo({
   return newVersionJson;
 }
 
-// A major version line is in support — and therefore an eligible backport and
-// auto-release target — if and only if its end-of-life date is today or later.
-// `lts` is display-only and intentionally ignored here. `major_version_support`
-// is append-only, so support is computed from `eol`, never from list membership.
-export const getSupportedMajorVersions = (
+// Returns the `major_version_support` entries still in support (eol today or
+// later). Throws if the file carries no `major_version_support` list, or if
+// every line is already past end-of-life.
+const getActiveMajorVersions = (
   versionInfo: VersionInfoFile,
-  today: string = new Date().toISOString().slice(0, 10),
-): number[] => {
+  today: string,
+): MajorVersionSupport[] => {
   const lines: MajorVersionSupport[] | undefined =
     versionInfo?.major_version_support;
 
@@ -145,28 +145,64 @@ export const getSupportedMajorVersions = (
     );
   }
 
-  const supported = [
-    ...new Set(lines.filter(line => line.eol >= today).map(line => line.major)),
-  ].sort((a, b) => b - a);
+  const active = lines.filter(line => line.eol >= today);
 
-  if (supported.length === 0) {
+  if (active.length === 0) {
     throw new Error(
       "No in-support major versions found — every `eol` date is in the past?",
     );
   }
 
-  return supported;
+  return active;
 };
 
-// Fetches version-info.json and returns the supported major versions, newest
-// first. `major_version_support` is edition-agnostic, so the OSS file suffices.
+// Fetches version-info.json as the edition-agnostic OSS file. `major_version_support`
+// is edition-agnostic, so the OSS file suffices for support/LTS lookups.
+const fetchOssVersionInfo = async (): Promise<VersionInfoFile> => {
+  const url = getVersionInfoUrl("v0");
+  return (await fetch(url).then(r => r.json())) as VersionInfoFile;
+};
+
+// A major version line is in support — and therefore an eligible backport and
+// auto-release target — if and only if its end-of-life date is today or later.
+// `lts` is display-only and intentionally ignored here. `major_version_support`
+// is append-only, so support is computed from `eol`, never from list membership.
+export const getSupportedMajorVersions = (
+  versionInfo: VersionInfoFile,
+  today: string = new Date().toISOString().slice(0, 10),
+): number[] => {
+  return [
+    ...new Set(
+      getActiveMajorVersions(versionInfo, today).map(line => line.major),
+    ),
+  ].sort((a, b) => b - a);
+};
+
+// Fetches version-info.json and returns the supported major versions, newest first.
 export async function getSupportedMajors(
   today: string = new Date().toISOString().slice(0, 10),
 ): Promise<number[]> {
-  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
-  const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
+  return getSupportedMajorVersions(await fetchOssVersionInfo(), today);
+}
 
-  return getSupportedMajorVersions(versionInfo, today);
+export const checkIsVersionActiveLts = (
+  version: string,
+  versionInfo: VersionInfoFile,
+  today: string = new Date().toISOString().slice(0, 10),
+): boolean => {
+  const match = getActiveMajorVersions(versionInfo, today).find(
+    line => String(line.major) === getMajorVersion(version),
+  );
+
+  return match?.lts || false;
+};
+
+// Checks version-info.json for if a version is an LTS version that is still actively supported.
+export async function isVersionActiveLts(
+  version: string,
+  today: string = new Date().toISOString().slice(0, 10),
+): Promise<boolean> {
+  return checkIsVersionActiveLts(version, await fetchOssVersionInfo(), today);
 }
 
 // for promoting a released version to `latest` in version-info.json
