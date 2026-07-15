@@ -374,6 +374,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
+  ;; whoami for workspace-manager-scoped tokens (the CLI shows who it is acting as);
+  ;; sessions and full-scope tokens are unaffected by the tag.
+  {:scope "mb:workspace-manager"}
   []
   (-> (api/check-404 @api/*current-user*)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)

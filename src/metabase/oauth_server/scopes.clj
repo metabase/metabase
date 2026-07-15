@@ -13,3 +13,6 @@
 
 (api-scope/defscope full-access "mb:full"
   (deferred-tru "Full access to Metabase as your user account"))
+
+(api-scope/defscope workspace-manager "mb:workspace-manager"
+  (deferred-tru "Create, list, connect to, and destroy workspaces (no access to the rest of Metabase)"))

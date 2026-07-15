@@ -391,6 +391,11 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
+  ;; :unchecked, not a scope tag: this endpoint already serves anonymous callers (public
+  ;; settings subset), so a scoped token must never be rejected where no token succeeds.
+  ;; Setting visibility filtering handles authorization; clients (e.g. the CLI's version
+  ;; probe) hit this with narrow tokens before any scoped call.
+  {:scope :unchecked}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 

@@ -585,26 +585,34 @@
 (defn- authorize-and-get-code!
   "Complete the authorize flow and return the authorization code.
    Creates a client, authorizes, and extracts the code from the redirect."
-  [client-id]
-  (let [consent-resp (get-consent-page! :crowberto client-id)
-        body         (:body consent-resp)
-        csrf-token   (extract-csrf-token-from-consent body)
-        csrf-cookie  (extract-csrf-cookie consent-resp)
-        params-sig   (extract-params-sig-from-consent body)
-        response     (form-post-decision!
-                      :crowberto
-                      {:approved      "true"
-                       :csrf_token    csrf-token
-                       :params_sig    params-sig
+  ([client-id]
+   (authorize-and-get-code! client-id "profile"))
+  ([client-id scope]
+   (let [consent-resp (mt/user-http-request-full-response
+                       :crowberto :get 200 "oauth/authorize"
                        :client_id     client-id
                        :redirect_uri  "https://example.com/callback"
                        :response_type "code"
-                       :scope         "profile"
-                       :state         "test-state"}
-                      302
-                      :csrf-cookie csrf-cookie)
-        location     (get-in response [:headers "Location"])]
-    (extract-query-param location "code")))
+                       :scope         scope
+                       :state         "test-state")
+         body         (:body consent-resp)
+         csrf-token   (extract-csrf-token-from-consent body)
+         csrf-cookie  (extract-csrf-cookie consent-resp)
+         params-sig   (extract-params-sig-from-consent body)
+         response     (form-post-decision!
+                       :crowberto
+                       {:approved      "true"
+                        :csrf_token    csrf-token
+                        :params_sig    params-sig
+                        :client_id     client-id
+                        :redirect_uri  "https://example.com/callback"
+                        :response_type "code"
+                        :scope         scope
+                        :state         "test-state"}
+                       302
+                       :csrf-cookie csrf-cookie)
+         location     (get-in response [:headers "Location"])]
+     (extract-query-param location "code"))))
 
 (defn- token-request!
   "POST to /oauth/token with form-encoded params."
@@ -700,6 +708,90 @@
                    :token_type   "Bearer"
                    :expires_in   pos-int?}
                   refresh-response)))))))
+
+(deftest token-refresh-cannot-widen-scope-test
+  (testing "Refresh token grant -- requesting a scope beyond the original grant is rejected"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [test-client    (create-test-client!)
+              client-id      (:client_id test-client)
+              client-secret  (:client_secret test-client)
+              code           (authorize-and-get-code! client-id)
+              token-response (token-request!
+                              {:grant_type    "authorization_code"
+                               :code          code
+                               :redirect_uri  "https://example.com/callback"}
+                              :authorization (basic-auth-header client-id client-secret))
+              response       (token-request!
+                              {:grant_type    "refresh_token"
+                               :refresh_token (:refresh_token token-response)
+                               :scope         "profile mb:full"}
+                              :expected-status 400
+                              :authorization (basic-auth-header client-id client-secret))]
+          (is (=? {:error string?} response)))))))
+
+(deftest workspace-login-revokes-other-sessions-test
+  (testing "a workspace-scoped authorization_code grant revokes ALL the user's other OAuth sessions"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client        (create-test-client! {:scopes ["mb:workspace-manager" "profile"]})
+              client-id     (:client_id client)
+              client-secret (:client_secret client)
+              user-id       (mt/user->id :crowberto)
+              other-id      (mt/user->id :rasta)
+              expiry        (+ (System/currentTimeMillis) (* 60 60 1000))
+              seed!         (fn [model token uid scope]
+                              (t2/insert! model {:token token :user_id uid :client_id client-id
+                                                 :scope scope :expiry expiry}))]
+          (seed! :model/OAuthAccessToken  "stale-full-at"   user-id  ["mb:full"])
+          (seed! :model/OAuthRefreshToken "stale-full-rt"   user-id  ["mb:full"])
+          ;; a non-mb:full agent token still grants mutating parent access -> must die
+          (seed! :model/OAuthAccessToken  "agent-at"        user-id  ["agent:sql:create"])
+          (seed! :model/OAuthRefreshToken "agent-rt"        user-id  ["agent:query:execute"])
+          ;; a mixed token is not a pure workspace-manager token -> must die
+          (seed! :model/OAuthAccessToken  "mixed-at"        user-id  ["mb:workspace-manager" "agent:sql:read"])
+          ;; a pre-existing pure workspace-manager session survives
+          (seed! :model/OAuthAccessToken  "ws-only-at"      user-id  ["mb:workspace-manager"])
+          ;; another user's tokens are never touched
+          (seed! :model/OAuthAccessToken  "other-full-at"   other-id ["mb:full"])
+          (let [code (authorize-and-get-code! client-id "mb:workspace-manager")
+                resp (token-request!
+                      {:grant_type   "authorization_code"
+                       :code         code
+                       :redirect_uri "https://example.com/callback"}
+                      :authorization (basic-auth-header client-id client-secret))]
+            (is (= "mb:workspace-manager" (:scope resp)))
+            (testing "mb:full, agent:*, and mixed tokens are all revoked"
+              (doseq [[model token] [[:model/OAuthAccessToken  "stale-full-at"]
+                                     [:model/OAuthRefreshToken "stale-full-rt"]
+                                     [:model/OAuthAccessToken  "agent-at"]
+                                     [:model/OAuthRefreshToken "agent-rt"]
+                                     [:model/OAuthAccessToken  "mixed-at"]]]
+                (is (some? (t2/select-one-fn :revoked_at model :token token))
+                    (str token " should be revoked"))))
+            (testing "a pure workspace-manager session and other users' tokens are untouched"
+              (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "ws-only-at")))
+              (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "other-full-at"))))
+            (testing "the fresh workspace-scoped token itself is live (resolves to the user)"
+              (is (= user-id (:user-id (oauth-server/resolve-access-token (:access_token resp))))))))))))
+
+(deftest full-scope-login-does-not-revoke-test
+  (testing "an ordinary (non-workspace) authorization_code grant revokes nothing"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client        (create-test-client!)
+              client-id     (:client_id client)
+              client-secret (:client_secret client)
+              expiry        (+ (System/currentTimeMillis) (* 60 60 1000))]
+          (t2/insert! :model/OAuthAccessToken {:token "existing-full-at" :user_id (mt/user->id :crowberto)
+                                               :client_id client-id :scope ["mb:full"] :expiry expiry})
+          (let [code (authorize-and-get-code! client-id)]
+            (token-request!
+             {:grant_type   "authorization_code"
+              :code         code
+              :redirect_uri "https://example.com/callback"}
+             :authorization (basic-auth-header client-id client-secret))
+            (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "existing-full-at")))))))))
 
 (deftest refresh-token-has-expiry-test
   (testing "Refresh tokens are stored with an expiry derived from oauth-server-refresh-token-ttl"

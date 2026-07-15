@@ -11,6 +11,7 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
+   [metabase.oauth-server.store :as oauth-store]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
@@ -103,7 +104,10 @@
                   :description  (or (some-> (api-scope/scope-description s) str) s)
                   ;; Flag the broad first-party grant so the consent page can warn about it without
                   ;; hardcoding the scope string in the view.
-                  :full-access? (= s oauth-server/full-access-scope)})))))
+                  :full-access? (= s oauth-server/full-access-scope)
+                  ;; Flag the workspace-manager grant: approving it revokes ALL of the account's
+                  ;; other OAuth sessions (containment tier 1), and the consent page must say so.
+                  :revokes-other-sessions? (= s oauth-server/workspace-manager-scope)})))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -318,6 +322,25 @@
                                  :error_description "The authorization request is invalid."}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
+(defn- revoke-other-sessions-on-workspace-login!
+  "Containment tier 1: a fresh workspace-scoped login (authorization_code grant whose
+   issued scope is exactly `mb:workspace-manager`) revokes all of the user's OTHER
+   OAuth sessions server-side — `mb:full`, every `agent:*` token, and any mixed token.
+   Only pure workspace-manager sessions survive: the workspace credential is meant to
+   be the only OAuth credential the agent holds, and any broader stale token (even a
+   non-`mb:full` `agent:sql:create` one) can still tinker with the parent. The consent
+   page warned the user this would happen (see [[requested-scope-descriptions]]).
+   Refresh grants are excluded — routine refresh of a workspace session must not
+   repeatedly sweep the account."
+  [body response]
+  (when (= (:grant_type body) "authorization_code")
+    (let [scopes (set (some-> (:scope response) (str/split #"\s+")))]
+      (when (= #{oauth-server/workspace-manager-scope} scopes)
+        (when-let [user-id (some-> (:access_token response) oauth-server/resolve-access-token :user-id)]
+          (let [counts (oauth-store/revoke-non-workspace-tokens-for-user! user-id)]
+            (log/infof "Workspace-scoped login for user %d: revoked other OAuth sessions %s"
+                       user-id (pr-str counts))))))))
+
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
@@ -333,6 +356,13 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (let [response (oidc/token-request provider body authorization-header)]
+                  ;; Isolated so a revocation failure can't turn an already-issued token
+                  ;; into a 400 the client never receives — that would leave a live orphan
+                  ;; token, which is strictly worse than surviving stale sessions.
+                  (try
+                    (revoke-other-sessions-on-workspace-login! body response)
+                    (catch Exception e
+                      (log/error e "Failed to revoke other sessions on workspace-scoped login")))
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.store
   "Database-backed implementations of OAuth provider storage protocols."
   (:require
+   [metabase.oauth-server.scopes :as scopes]
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [toucan2.core :as t2]))
@@ -207,6 +208,34 @@
     (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now})
     (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now})
     true))
+
+;;; ------------------------------------------- Bulk revocation ------------------------------------------------------
+
+(defn revoke-non-workspace-tokens-for-user!
+  "Revoke every unrevoked OAuth access and refresh token belonging to `user-id`
+   whose scope is not *exactly* `#{mb:workspace-manager}`. Tier 1 of the workspace
+   containment ladder: called when a workspace-scoped login is issued, so any other
+   session on the same account dies server-side.
+
+   Revokes `mb:full`, every `agent:*` token, and any mixed token — dropping `mb:full`
+   is not enough, since an `agent:sql:create` / `agent:transforms:write` token still
+   grants mutating access to the parent. The only session that survives is one scoped
+   to workspace management alone. The narrow workspace credential is meant to be the
+   *only* OAuth credential the agent holds; a broader stale token sitting in the same
+   profile store defeats that.
+
+   Returns `{:access-tokens <n> :refresh-tokens <n>}` revocation counts."
+  [user-id]
+  (let [workspace-only? (fn [scope] (= #{scopes/workspace-manager} (set scope)))
+        revoke! (fn [model]
+                  (let [ids (->> (t2/select [model :id :scope] :user_id user-id :revoked_at nil)
+                                 (remove #(workspace-only? (:scope %)))
+                                 (mapv :id))]
+                    (if (seq ids)
+                      (t2/update! model :id [:in ids] {:revoked_at :%now})
+                      0)))]
+    {:access-tokens  (revoke! :model/OAuthAccessToken)
+     :refresh-tokens (revoke! :model/OAuthRefreshToken)}))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------
 
