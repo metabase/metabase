@@ -470,7 +470,12 @@
     (println)
     (if (empty? by-file)
       (println "No findings; nothing inserted.")
-      (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage fix-kondo-ratchets --seed %s"
-                       (count (distinct (map (juxt :filename :row) findings)))
-                       (count by-file)
-                       linter)))))
+      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage fix-kondo-ratchets --seed %s"
+                           (count (distinct (map (juxt :filename :row) findings)))
+                           (count by-file)
+                           linter))
+          ;; the inserted ignores carry no justification comments, so the justification ratchet
+          ;; fails unless the linter is grandfathered
+          (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
+            (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                             linter kondo-ratchet/ratchets-file)))))))
