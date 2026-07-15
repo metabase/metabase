@@ -22,30 +22,16 @@
 ;;;; The ratchet itself
 ;;;; ---------------------------------------------------------------------------
 
-(deftest ^:parallel no-ignore-budget-exceeded-test
-  (testing (str "\nEach linter's inline ignore count must stay within its budget in "
-                kondo-ratchet/ratchets-file "\n"
-                "To fix: remove an ignore for the over-budget linter, or — if the new ignore is genuinely\n"
-                "needed — raise its budget by hand and defend the increase in the PR.\n"
-                "(`./bin/mage fix-kondo-ratchets` only lowers budgets; a linter with no entry has budget 0.)")
-    (is (= []
-           (kondo-ratchet/over-budget (:ignore-counts (kondo-ratchet/read-ratchets))
-                                      (kondo-ratchet/scan))))))
-
-;; The :once fixture tightened the file already, so any slack left here means [[kondo-ratchet/fix!]] is
-;; broken. Doesn't run in CI, where slack is allowed (the self-heal workflow owns it).
-(when-not (System/getenv "CI")
-  (deftest ^:parallel budgets-are-tight-locally-test
-    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " exceed the actual ignore counts even though"
-                  " the fixture just ran `fix!`.")
-      (let [recorded  (:ignore-counts (kondo-ratchet/read-ratchets))
-            tightened (kondo-ratchet/lowered-counts recorded (kondo-ratchet/actual-counts (kondo-ratchet/scan)))]
-        (is (= {}
-               (into {}
-                     (keep (fn [[linter budget]]
-                             (when (not= budget (get tightened linter 0))
-                               [linter {:recorded budget, :should-be (get tightened linter 0)}])))
-                     recorded)))))))
+(deftest ^:parallel budgets-match-actual-counts-test
+  (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
+                "Budget too low: remove an ignore, or raise the budget by hand and defend it in the PR\n"
+                "(a linter with no entry has budget 0).\n"
+                "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
+                "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a *local*\n"
+                "run means `fix!` itself is broken, since the test fixture just ran it.")
+    (is (= {}
+           (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
+                                (kondo-ratchet/scan))))))
 
 (deftest ^:parallel ratchets-file-normalized-test
   (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
@@ -114,18 +100,22 @@
       "budgets only ever move down: :lower shrinks to actual, :over-budget stays (the test's business),
        :gone is dropped, :new-linter is not added"))
 
-(deftest ^:parallel over-budget-test
+(deftest ^:parallel drift-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a]}
                      {:file "f.clj", :line 2, :linters [:a :b]}
                      {:file "g.clj", :line 3, :linters [:c]}]]
-    (is (= [{:linter :a, :recorded 1, :actual 2, :examples ["f.clj:1" "f.clj:2"]}
-            {:linter :b, :recorded 0, :actual 1, :examples ["f.clj:2"]}]
-           (kondo-ratchet/over-budget {:a 1, :c 9} occurrences))
-        ":a exceeds its budget, :b has no budget entry (= 0), :c is under budget"))
+    (is (= {:a    {:recorded 1, :actual 2, :examples ["f.clj:1" "f.clj:2"]}
+            :b    {:recorded 0, :actual 1, :examples ["f.clj:2"]}
+            :c    {:recorded 9, :actual 1}
+            :gone {:recorded 3, :actual 0}}
+           (kondo-ratchet/drift {:a 1, :c 9, :gone 3} occurrences))
+        ":a and :b are over budget (with examples); :c and :gone are stale (without)"))
+  (testing "a matching budget doesn't appear"
+    (is (= {} (kondo-ratchet/drift {:a 1} [{:file "f.clj", :line 1, :linters [:a]}]))))
   (testing "examples are capped at 5"
     (let [occurrences (for [line (range 1 10)]
                         {:file "f.clj", :line line, :linters [:a]})]
-      (is (= 5 (count (:examples (first (kondo-ratchet/over-budget {} occurrences)))))))))
+      (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
 (deftest ^:parallel change-report-test
   (is (= ["dropped :gone (no ignores left)"
