@@ -77,7 +77,7 @@ jobs:
         env:
           LABEL_NAME: ${{ github.event.label.name }}
         run: |
-          team_label=$(sed 's/&/\$/g' <<< "$LABEL_NAME")
+          team_label="${LABEL_NAME//&/$}"
           echo "$team_label"
           team_name=${team_label#*.Team/}
           echo "$team_name"
