@@ -42,7 +42,15 @@ export const TablePermalinkRedirect = ({
     term: tableName,
   });
 
-  const database = findDatabaseByName(databasesData?.data ?? [], dbName);
+  const databases = databasesData?.data ?? [];
+  const dbId = Urls.extractEntityId(dbName);
+  // The database segment accepts both forms the browse pages link to: an
+  // id-slug (`7-sales`) and a raw name (`Sales`).
+  const database =
+    dbId == null
+      ? findDatabaseByName(databases, dbName)
+      : databases.find((database) => database.id === dbId);
+
   const table = database
     ? findTable(tables ?? [], database.id, schemaName, tableName)
     : undefined;

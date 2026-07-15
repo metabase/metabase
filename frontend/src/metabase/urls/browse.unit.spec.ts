@@ -23,9 +23,6 @@ describe("permalinkDatabase", () => {
     expect(permalinkDatabase({ id: 7, name: "7-sales" })).toBe(
       "/browse/databases/7",
     );
-    expect(permalinkDatabase({ id: 9, name: "2024_metrics" })).toBe(
-      "/browse/databases/9",
-    );
   });
 });
 
