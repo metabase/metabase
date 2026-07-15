@@ -11,6 +11,7 @@
    [metabase.mcp.transport :as transport]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.search]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util.i18n :refer [tru]]))
 
