@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
 
+import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { isAbortError } from "metabase/api/client";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 type LazyQueryResult = {
   error?: unknown;
@@ -27,9 +29,16 @@ type UseAbortableQueryOptions = {
  *
  * Caching mirrors `useQuery`: cache-first by default.
  *
- * Use only for single subscribers, since aborting cancels shared query, and every query sharing the same arg will be aborted.
+ * Each hook instance gets its own RTK cache entry: the arg is disambiguated
+ * with an injected `RTK_CACHE_KEY_PARAM` (stripped in `baseQuery`, never sent
+ * to the server), so aborting never cancels a request another subscriber is
+ * waiting on. The trade-off is that instances don't share cached responses and
+ * identical concurrent requests aren't deduplicated.
  */
-export function useAbortableQuery<Arg, TResult extends LazyQueryResult>(
+export function useAbortableQuery<
+  Arg extends object,
+  TResult extends LazyQueryResult,
+>(
   useLazyQueryHook: () => readonly [
     (arg: Arg, preferCacheValue?: boolean) => LazyQueryRequest,
     TResult,
@@ -43,6 +52,7 @@ export function useAbortableQuery<Arg, TResult extends LazyQueryResult>(
 ): TResult & { refetch: () => void } {
   const [trigger, result] = useLazyQueryHook();
   const requestRef = useRef<LazyQueryRequest | null>(null);
+  const instanceKey = useUniqueId("abortable-query");
 
   const argRef = useRef(arg);
   if (!_.isEqual(argRef.current, arg)) {
@@ -53,11 +63,14 @@ export function useAbortableQuery<Arg, TResult extends LazyQueryResult>(
   const run = useCallback(
     (preferCache: boolean) => {
       requestRef.current?.abort();
-      const request = trigger(stableArg, preferCache);
+      const request = trigger(
+        { ...stableArg, [RTK_CACHE_KEY_PARAM]: instanceKey },
+        preferCache,
+      );
       requestRef.current = request;
       return request;
     },
-    [trigger, stableArg],
+    [trigger, stableArg, instanceKey],
   );
 
   const refetch = useCallback(() => run(false), [run]);

@@ -16,12 +16,49 @@ import { metabaseReduxContext } from "metabase/redux";
 
 import { TAG_TYPES } from "./tags";
 
+// Extra cache-key material that callers can mix into a query arg to get a
+// dedicated RTK cache entry — and thus an independent abort scope — per
+// subscriber. It must never reach the server: endpoints commonly spread the
+// arg into `params` or `body`, so it is stripped below, in the RTKQ adapter.
+export const RTK_CACHE_KEY_PARAM = "__rtkCacheKey";
+
+export type RtkCacheKeyed = { [RTK_CACHE_KEY_PARAM]?: unknown };
+
+function omitRtkCacheKey(value: unknown): unknown {
+  if (
+    value == null ||
+    typeof value !== "object" ||
+    !(RTK_CACHE_KEY_PARAM in value)
+  ) {
+    return value;
+  }
+  const { [RTK_CACHE_KEY_PARAM]: _omitted, ...rest } = value;
+  return rest;
+}
+
+function stripRtkCacheKey<T extends { params?: unknown; body?: unknown }>(
+  requestArgs: T,
+): T {
+  const params = omitRtkCacheKey(requestArgs.params);
+  const body = omitRtkCacheKey(requestArgs.body);
+  if (params === requestArgs.params && body === requestArgs.body) {
+    return requestArgs;
+  }
+  return {
+    ...requestArgs,
+    ...(params !== requestArgs.params ? { params } : null),
+    ...(body !== requestArgs.body ? { body } : null),
+  };
+}
+
 // Adapts our legacy API client to RTK Query's `BaseQueryFn` contract: pull the
 // abort signal off the query lifecycle context and turn the client's
 // resolve/throw into RTK's `{ data } | { error }` shape. All request-shaping and
 // validation lives in the client itself.
 export const baseQuery: BaseQueryFn = async (args, ctx, extraOptions) => {
-  const requestArgs = typeof args === "string" ? { url: args } : args;
+  const requestArgs = stripRtkCacheKey(
+    typeof args === "string" ? { url: args } : args,
+  );
   try {
     const method = requestArgs.method ?? "GET";
     const data = await api.request({
