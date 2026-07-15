@@ -17,6 +17,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
@@ -29,7 +30,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
    [ring.util.codec :as codec])
   (:import

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -337,3 +338,46 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
+
+;;; Retry settings for notification/email delivery, consumed by the pure machinery in `metabase.util.retry`
+;;; (which sits below the settings framework in the module graph).
+;;;
+;;; TODO (Chris 2026-07-15) -- the generic `retry-*` names imply a reusable retry policy, but the only
+;;; consumer is email delivery. Renaming needs a multi-release deprecation, so live with the smell for now:
+;;; eventually migrate the names to be clearly channel-related, or move them somewhere shareable.
+
+(defsetting retry-max-retries
+  (deferred-tru "The maximum number of retries for an event.")
+  :type :integer
+  :default (if config/is-dev?
+             0
+             6))
+
+(defsetting retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds.")
+  :type :integer
+  :default 500)
+
+(defsetting retry-multiplier
+  (deferred-tru "The delay multiplier between attempts.")
+  :type :double
+  :default 2.0)
+
+(defsetting retry-jitter-factor
+  (deferred-tru "The jitter factor of the retry delay.")
+  :type :double
+  :default 0.1)
+
+(defsetting retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts.")
+  :type :integer
+  :default 30000)
+
+(defn retry-configuration
+  "Returns a map with the default retry configuration."
+  []
+  {:max-retries (retry-max-retries)
+   :initial-interval-millis (retry-initial-interval)
+   :multiplier (retry-multiplier)
+   :jitter-factor (retry-jitter-factor)
+   :max-interval-millis (retry-max-interval-millis)})
