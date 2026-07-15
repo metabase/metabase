@@ -1,3 +1,7 @@
+.toolbarRow {
+  align-self: center;
+}
+
 .toolbar {
   /* float above the charts, pinned to the bottom of the chart canvas */
   position: sticky;
@@ -5,6 +9,22 @@
   z-index: 2;
   align-self: center;
   box-shadow: var(--mantine-shadow-xs);
+}
+
+.triageButton {
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background-primary);
+  box-shadow: var(--mantine-shadow-xs);
+
+  &:hover:not(:disabled, [data-disabled]) {
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    background-color: var(--mb-color-background-primary);
+    opacity: 0.4;
+  }
 }
 
 .commentDropdown {

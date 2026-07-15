@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -62,6 +62,8 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
@@ -154,6 +156,8 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onPreviousPage,
+  onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
 
@@ -225,10 +229,13 @@ function ExplorationGroupVisualizationChart({
     (comment: Comment) => {
       const context = comment.context;
 
-      // Unjustified type cast. FIXME
-      const highlighted = context?.highlighted as HighlightedObject | undefined;
+      // comment context is an untyped JSON blob; `highlighted` is written by
+      // us as a HighlightedObject when the comment captures a chart point
+      const commentHighlight = context?.highlighted as
+        | HighlightedObject
+        | undefined;
       const commentLabel = getCommentLabel(
-        highlighted,
+        commentHighlight,
         seriesGroup,
         computedSettings,
       );
@@ -254,8 +261,8 @@ function ExplorationGroupVisualizationChart({
               iconName="filter"
               buttonProps={{
                 onMouseEnter: () => {
-                  if (highlighted) {
-                    setHighlighted(highlighted);
+                  if (commentHighlight) {
+                    setHighlighted(commentHighlight);
                   }
                 },
                 onMouseLeave: () => setHighlighted(null),
@@ -364,6 +371,8 @@ function ExplorationGroupVisualizationChart({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
+          onPreviousPage={onPreviousPage}
+          onNextPage={onNextPage}
         />
       </Stack>
       {isCommentsSidebarOpen && (
@@ -514,10 +523,9 @@ export function ExplorationVisualization({
   highlighted,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Box w="100%" h="100%" pos="relative" ref={containerRef}>
+    <Box w="100%" h="100%" pos="relative">
       <Warnings warnings={warnings} className={S.warnings} size={18} />
       <Visualization
         rawSeries={rawSeries}

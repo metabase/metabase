@@ -19,6 +19,7 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  wrapNodes?: boolean;
 }
 
 function BaseTreeNodeList<TData = unknown>({
@@ -31,6 +32,7 @@ function BaseTreeNodeList<TData = unknown>({
   TreeNode,
   rightSection,
   role,
+  wrapNodes,
   ...boxProps
 }: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount<HTMLLIElement>();
@@ -46,8 +48,8 @@ function BaseTreeNodeList<TData = unknown>({
           typeof onSelect === "function" ? () => onSelect(item) : undefined;
         const onItemToggle = () => onToggleExpand(item.id);
 
-        return (
-          <Fragment key={item.id}>
+        const node = (
+          <>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
@@ -69,9 +71,18 @@ function BaseTreeNodeList<TData = unknown>({
                 onToggleExpand={onToggleExpand}
                 TreeNode={TreeNode}
                 rightSection={rightSection}
+                wrapNodes={wrapNodes}
               />
             )}
-          </Fragment>
+          </>
+        );
+
+        return wrapNodes ? (
+          <Box component="li" role="none" key={item.id}>
+            {node}
+          </Box>
+        ) : (
+          <Fragment key={item.id}>{node}</Fragment>
         );
       })}
     </Box>

@@ -498,29 +498,12 @@ export function getMostInterestingTimelineId(
   return best?.id ?? null;
 }
 
-export function getColumnsAndValuesFromClicked(
-  clicked: ClickObject,
-): { column: DatasetColumn; value: RowValue }[] {
-  return (clicked.dimensions ?? []).map(({ column, value }) => {
-    return { column, value };
-  });
-}
-
 export function getExploreFurtherFilters(
   clicked: ClickObject,
 ): ExplorationExploreFilter[] {
-  const columnsAndValues = getColumnsAndValuesFromClicked(clicked);
-  return columnsAndValues
-    .map(({ column, value }) => {
-      if (column.field_ref != null) {
-        return {
-          field_ref: column.field_ref,
-          value: value,
-        };
-      }
-      return undefined;
-    })
-    .filter((f) => f != null);
+  return (clicked.dimensions ?? []).flatMap(({ column, value }) =>
+    column.field_ref != null ? [{ field_ref: column.field_ref, value }] : [],
+  );
 }
 
 export function canExploreFurther(
@@ -528,8 +511,8 @@ export function canExploreFurther(
   blockType: ExplorationBlockNodeType,
   queryType: ExplorationQueryType,
 ): boolean {
-  const columnsAndValues = getColumnsAndValuesFromClicked(clicked);
-  if (columnsAndValues.length === 0) {
+  const dimensions = clicked.dimensions ?? [];
+  if (dimensions.length === 0) {
     return false;
   }
   // disable for dimension blocks - every query in a dimension block is cut by the same dimension
@@ -540,7 +523,7 @@ export function canExploreFurther(
   // OTHER_BUCKET_LABEL is not a real dimension value, so filtering on it won't return anything
   if (
     queryType === "top-n-other" &&
-    columnsAndValues.some(({ value }) => value === OTHER_BUCKET_LABEL)
+    dimensions.some(({ value }) => value === OTHER_BUCKET_LABEL)
   ) {
     return false;
   }

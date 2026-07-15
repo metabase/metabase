@@ -1557,6 +1557,9 @@
           (is (= 2 (count threads)) "explore-further adds a thread; restart would keep 1")
           (is (= (:id orig-thread) (:id orig)))
           (is (= 1 (:position new)))
+          (testing "the drill thread records the page it was drilled from (sidebar nesting)"
+            (is (= page-id (:source_page_id new)))
+            (is (nil? (:source_page_id orig))))
           (is (= "2 venues" (:name new))
               "thread name capitalizes the clicked value and strips the metric's aggregation prefix")
           (testing "new block copies type/dimensions and appends explore_filters onto metrics"

@@ -15,7 +15,7 @@ interface ExplorationCommentEditorProps {
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   pageId: ExplorationPageNodeId;
-  handleAddComment: (content: DocumentContent) => void;
+  onAddComment: (content: DocumentContent) => void;
   placeholder?: string;
 }
 
@@ -23,7 +23,7 @@ export function ExplorationCommentEditor({
   commentDrafts,
   setCommentDrafts,
   pageId,
-  handleAddComment,
+  onAddComment,
   placeholder,
 }: ExplorationCommentEditorProps) {
   const handleChangeCommentDraft = (content: DocumentContent) => {
@@ -41,7 +41,7 @@ export function ExplorationCommentEditor({
         placeholder={placeholder ?? t`Add a comment…`}
         initialContent={commentDrafts[pageId]}
         onChange={handleChangeCommentDraft}
-        onSubmit={handleAddComment}
+        onSubmit={onAddComment}
         autoFocus={"end"}
       />
     </div>

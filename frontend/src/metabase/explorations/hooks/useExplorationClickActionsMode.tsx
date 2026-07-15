@@ -128,7 +128,7 @@ export function useExplorationClickActionsMode({
               commentDrafts={commentDraftsRef.current}
               setCommentDrafts={setCommentDrafts}
               pageId={String(pageId)}
-              handleAddComment={(content) => handleAddComment(content, onClose)}
+              onAddComment={(content) => handleAddComment(content, onClose)}
               placeholder={t`Comment on this…`}
             />
           );

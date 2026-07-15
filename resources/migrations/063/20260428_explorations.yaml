@@ -177,6 +177,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: source_page_id
+                  type: int
+                  remarks: Page (chart) this thread was drilled from via explore-further; null for top-level threads
+                  constraints:
+                    nullable: true
+              - column:
                   name: started_at
                   type: ${timestamp_type}
                   remarks: Set when the user clicks "Start exploration"; null means draft
