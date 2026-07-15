@@ -117,15 +117,15 @@
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.6.2"}              ; pinned: must pair with httpcore5 5.4.x (upstream pairing); ClickHouse JDBC needs httpcore5 5.3.4+
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.4.3"}              ; pinned: 5.4.2+
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.4.3"}              ; pinned: must match httpcore5 version
-  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.4"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.4"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.4"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.4"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.26.1"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.26.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.26.1"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.26.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.25.4"}             ; allows the custom json logging format
+  {:mvn/version "2.26.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.26.1"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
