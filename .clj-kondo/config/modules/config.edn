@@ -134,8 +134,8 @@
    :uses #{actions
            analytics
            api
+           api.eid-translation
            collections
-           eid-translation
            lib
            lib.schema
            permissions
@@ -183,11 +183,11 @@
    :uses #{analytics.interface
            analytics.internal-stats
            api
+           api.eid-translation
            app-db
            appearance
            config
            driver
-           eid-translation
            lib.be
            models
            permissions
@@ -243,6 +243,7 @@
 
   api
   {:team "DevEx"
+   :module-exports #{api.eid-translation}
    :api #{metabase.api.common
           metabase.api.common.internal
           metabase.api.docs
@@ -310,6 +311,34 @@
    :api  #{metabase.api-scope.core
            metabase.api-scope.init}}
 
+  api.eid-translation
+  {:team "UX West"
+   :ns-prefix "metabase.eid-translation"
+   :api #{metabase.eid-translation.api metabase.eid-translation.core metabase.eid-translation.init}
+   :uses #{api
+           batch-processing
+           settings
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Dimension
+                    :model/Document
+                    :model/Exploration
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/Segment
+                    :model/Timeline
+                    :model/Transform
+                    :model/User}}
+
   app-db
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
@@ -334,6 +363,7 @@
 
   audit-app
   {:team "UX West"
+   :module-exports #{audit-app.view-log}
    :api  #{metabase.audit-app.core metabase.audit-app.impl metabase.audit-app.init}
    :uses #{api
            app-db
@@ -369,20 +399,24 @@
                     :model/TransformRun
                     :model/User}}
 
-  auth-identity
+
+
+  audit-app.view-log
   {:team "UX West"
-   :api  #{metabase.auth-identity.core
-           metabase.auth-identity.init}
-   :uses #{channel
+   :ns-prefix "metabase.view-log"
+   :api #{metabase.view-log.core metabase.view-log.init}
+   :uses #{analytics
+           api
+           app-db
+           audit-app
+           batch-processing
            events
-           login-history
            models
-           notification
            premium-features
-           request
+           query-permissions
            util}
-   :model-exports #{:model/AuthIdentity}
-   :model-imports #{:model/Session :model/User}}
+   :model-exports #{:model/ViewLog}
+   :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
   auth-provider
   {:team "UX West"
@@ -582,10 +616,10 @@
    :ns-prefix "metabase.collections-rest"
    :api  #{metabase.collections-rest.api}
    :uses #{api
+           api.eid-translation
            app-db
            collections
            documents
-           eid-translation
            events
            lib.be
            models
@@ -675,13 +709,13 @@
    :uses #{api
            api-routes
            app-db
-           auth-identity
            classloader
            config
            models
            query-processor
            search
            settings
+           sso.auth-identity
            util}
    :model-imports #{:model/Action
                     :model/ApiKey
@@ -831,12 +865,12 @@
    :uses #{actions
            analytics
            api
+           api.eid-translation
            app-db
            channel
            collections
            collections.rest
            dashboards
-           eid-translation
            embedding
            events
            lib.be
@@ -900,6 +934,7 @@
    :uses #{activity-feed
            api
            app-db
+           audit-app.view-log
            batch-processing
            collections
            events
@@ -912,8 +947,7 @@
            query-processor
            revisions
            search
-           util
-           view-log}
+           util}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
@@ -969,34 +1003,7 @@
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
-  eid-translation
-  {:team "UX West"
-   :api  #{metabase.eid-translation.api
-           metabase.eid-translation.core
-           metabase.eid-translation.init}
-   :uses #{api
-           batch-processing
-           settings
-           util}
-   :model-imports #{:model/Action
-                    :model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
-                    :model/Dimension
-                    :model/Document
-                    :model/Exploration
-                    :model/Measure
-                    :model/NativeQuerySnippet
-                    :model/PermissionsGroup
-                    :model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/Segment
-                    :model/Timeline
-                    :model/Transform
-                    :model/User}}
+
 
   embedding
   {:team "Embedding"
@@ -1021,9 +1028,9 @@
    :ns-prefix "metabase.embedding-rest"
    :api  #{metabase.embedding-rest.api}
    :uses #{api
+           api.eid-translation
            dashboards
            database-routing
-           eid-translation
            embedding
            events
            lib.schema
@@ -1367,19 +1374,7 @@
            permissions
            util}}
 
-  login-history
-  {:team "UX West"
-   :api  #{metabase.login-history.api
-           metabase.login-history.core
-           metabase.login-history.init}
-   :uses #{analytics
-           api
-           app-db
-           channel
-           request
-           settings
-           util}
-   :model-exports #{:model/LoginHistory}}
+
 
   mcp
   {:team "Metabot"
@@ -1541,7 +1536,6 @@
    :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.usage}
    :uses    #{ai-tracing
               api
-              auth-identity
               channel
               collections
               dashboards
@@ -1558,6 +1552,7 @@
               request
               server
               settings
+              sso.auth-identity
               util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1748,7 +1743,6 @@
            api
            app-db
            appearance
-           auth-identity
            channel
            config
            dashboards
@@ -1765,6 +1759,7 @@
            session
            settings
            sso
+           sso.auth-identity
            system
            task
            task.history
@@ -2025,6 +2020,7 @@
            api
            app-db
            audit-app
+           audit-app.view-log
            cache
            channel
            collections
@@ -2055,7 +2051,6 @@
            sync.analyze
            util
            util.graph
-           view-log
            warehouses.schema}
    :model-exports #{:model/Card
                     :model/ParameterCard
@@ -2084,8 +2079,8 @@
    :ns-prefix "metabase.queries-rest"
    :api  #{metabase.queries-rest.api}
    :uses #{api
+           api.eid-translation
            collections
-           eid-translation
            embedding
            events
            lib
@@ -2444,13 +2439,13 @@
 
   session
   {:team "UX West"
+   :module-exports #{session.login-history}
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
-           auth-identity
            channel
            config
            events
@@ -2458,12 +2453,26 @@
            request
            settings
            sso
+           sso.auth-identity
            system
            task
            tracing
            util}
    :model-exports #{:model/Session}
    :model-imports #{:model/AuthIdentity :model/User}}
+
+  session.login-history
+  {:team "UX West"
+   :ns-prefix "metabase.login-history"
+   :api #{metabase.login-history.api metabase.login-history.core metabase.login-history.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           request
+           settings
+           util}
+   :model-exports #{:model/LoginHistory}}
 
   settings
   {:team "DevEx"
@@ -2507,11 +2516,11 @@
    :uses #{analytics
            api
            appearance
-           auth-identity
            events
            request
            settings
            setup
+           sso.auth-identity
            system
            util}
    :model-imports #{:model/User}}
@@ -2540,22 +2549,38 @@
 
   sso
   {:team "UX West"
+   :module-exports #{sso.auth-identity}
    :api     #{metabase.sso.api
               metabase.sso.api.slack-connect
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
-              auth-identity
               config
               permissions
               premium-features
               request
               server
               settings
+              sso.auth-identity
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
+
+  sso.auth-identity
+  {:team "UX West"
+   :ns-prefix "metabase.auth-identity"
+   :api #{metabase.auth-identity.core metabase.auth-identity.init}
+   :uses #{channel
+           events
+           models
+           notification
+           premium-features
+           request
+           session.login-history
+           util}
+   :model-exports #{:model/AuthIdentity}
+   :model-imports #{:model/Session :model/User}}
 
   staleness
   {:team "UX West"
@@ -2955,7 +2980,6 @@
            metabase.users.settings}
    :uses #{analytics
            api
-           auth-identity
            batch-processing
            channel
            config
@@ -2966,6 +2990,7 @@
            premium-features
            settings
            setup
+           sso.auth-identity
            system
            tenants
            util
@@ -2982,7 +3007,6 @@
    :api  #{metabase.users-rest.api}
    :uses #{api
            appearance
-           auth-identity
            collections
            config
            events
@@ -2991,6 +3015,7 @@
            premium-features
            request
            sso
+           sso.auth-identity
            system
            tenants
            users
@@ -3023,25 +3048,6 @@
            system
            task
            util}}
-
-  view-log
-  {:team "UX West"
-   :api  #{metabase.view-log.core
-           metabase.view-log.init}
-   :uses #{analytics
-           api
-           app-db
-           audit-app
-           batch-processing
-           events
-           models
-           premium-features
-           query-permissions
-           util}
-   :model-exports #{:model/ViewLog}
-   :model-imports #{:model/Card :model/Dashboard :model/Table}}
-
-
 
 
 
@@ -3269,7 +3275,6 @@
    :uses #{api
            api-keys
            app-db
-           auth-identity
            driver
            lib
            permissions
@@ -3277,6 +3282,7 @@
            sample-data
            settings
            setup
+           sso.auth-identity
            sync
            users
            util}
@@ -3506,10 +3512,7 @@
            util}
    :model-exports #{:model/CustomVizPlugin}}
 
-  enterprise/dashboard-subscription-filters
-  {:team "Graphy"
-   :api  #{}
-   :uses #{premium-features}}
+
 
   enterprise/data-apps
   {:team "Gadget"
@@ -3702,20 +3705,6 @@
                     :model/Sandbox
                     :model/Table
                     :model/Tenant}}
-
-  enterprise/erd
-  {:team "Gadget"
-   :api  #{metabase-enterprise.erd.api}
-   :uses #{api
-           models
-           permissions
-           util
-           warehouses.schema}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table}}
-
-
 
 
 
@@ -3916,6 +3905,11 @@
    :uses #{premium-features
            util}}
 
+  enterprise/pulse
+  {:team "Graphy"
+   :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
+   :uses #{premium-features}}
+
   enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
@@ -4085,7 +4079,6 @@
            metabase-enterprise.sso.settings}
    :uses #{api
            appearance
-           auth-identity
            embedding
            premium-features
            request
@@ -4093,6 +4086,7 @@
            session
            settings
            sso
+           sso.auth-identity
            system
            task
            util
@@ -4140,11 +4134,11 @@
            metabase-enterprise.support-access-grants.init}
    :uses #{api
            app-db
-           auth-identity
            events
            models
            request
            settings
+           sso.auth-identity
            system
            task
            util}
@@ -4155,7 +4149,6 @@
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            audit-app
-           auth-identity
            collections
            events
            models
@@ -4163,6 +4156,7 @@
            premium-features
            request
            settings
+           sso.auth-identity
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
@@ -4241,6 +4235,17 @@
            upload
            util}
    :model-imports #{:model/Database :model/Table}}
+
+  enterprise/warehouses
+  {:team "Gadget"
+   :ns-prefix "metabase-enterprise.erd"
+   :api #{metabase-enterprise.erd.api}
+   :uses #{api
+           models
+           permissions
+           util
+           warehouses.schema}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/workspaces
   {:team "Graphy"}}
