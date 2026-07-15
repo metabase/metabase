@@ -19,7 +19,9 @@ import {
   useDeleteWorkspaceMutation,
   useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
+import type { Workspace } from "metabase-types/api";
+
+import { isPending } from "../../../utils";
 
 export type DeleteWorkspaceModalProps = {
   workspace: Workspace;
@@ -27,11 +29,6 @@ export type DeleteWorkspaceModalProps = {
   onDelete: () => void;
   onClose: () => void;
 };
-
-function isPending(workspaceDatabase: WorkspaceDatabase) {
-  const { status } = workspaceDatabase;
-  return status === "provisioning" || status === "deprovisioning";
-}
 
 export function DeleteWorkspaceModal({
   workspace,

@@ -15,6 +15,7 @@ import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
+import { isProvisioned } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
@@ -25,6 +26,8 @@ export type WorkspaceItemProps = {
 };
 
 export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
+  const databases = workspace.databases ?? [];
+
   return (
     <Card
       role="region"
@@ -40,7 +43,8 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {workspace.databases?.map((workspaceDatabase) => (
+          {!databases.every(isProvisioned) && <WorkspaceProvisioningWarning />}
+          {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
               workspaceDatabase={workspaceDatabase}
@@ -74,22 +78,31 @@ type WorkspaceDatabaseItemProps = {
   workspaceDatabase: WorkspaceDatabase;
 };
 
+function WorkspaceProvisioningWarning() {
+  return (
+    <Box c="text-secondary" lh="1rem">
+      <Group gap="xs" wrap="nowrap">
+        <FixedSizeIcon name="warning" aria-hidden />
+        {t`Failed to provision the workspace.`}
+      </Group>
+    </Box>
+  );
+}
+
 function WorkspaceDatabaseItem({
   workspaceDatabase,
 }: WorkspaceDatabaseItemProps) {
-  const { database, status } = workspaceDatabase;
+  const { database } = workspaceDatabase;
 
   if (database == null) {
     return null;
   }
 
-  const isProvisioned = status === "provisioned";
-
   return (
-    <Box c={isProvisioned ? "text-secondary" : "error"} lh="1rem">
+    <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
-        {isProvisioned ? database.name : t`${database.name} (not provisioned)`}
+        {database.name}
       </Group>
     </Box>
   );

@@ -68,7 +68,7 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("Postgres")).toBeInTheDocument();
   });
 
-  it("marks databases that are not provisioned", () => {
+  it("warns when a database is not provisioned", () => {
     setup({
       workspace: createMockWorkspace({
         id: 1,
@@ -83,7 +83,30 @@ describe("WorkspaceItem", () => {
       }),
     });
 
-    expect(screen.getByText("Postgres (not provisioned)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Failed to provision the workspace."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Postgres")).toBeInTheDocument();
+  });
+
+  it("does not warn when all databases are provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        id: 1,
+        name: "My workspace",
+        databases: [
+          createMockWorkspaceDatabase({
+            database_id: 10,
+            status: "provisioned",
+            database: createMockDatabase({ id: 10, name: "Postgres" }),
+          }),
+        ],
+      }),
+    });
+
+    expect(
+      screen.queryByText("Failed to provision the workspace."),
+    ).not.toBeInTheDocument();
   });
 
   it("offers a config download link in the menu", async () => {

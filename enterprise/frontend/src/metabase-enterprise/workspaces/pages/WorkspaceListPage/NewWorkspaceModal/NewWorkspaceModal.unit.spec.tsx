@@ -87,7 +87,7 @@ describe("NewWorkspaceModal", () => {
     );
 
     expect(
-      await screen.findByText(/Couldn't provision Postgres/),
+      await screen.findByText("Failed to provision the workspace."),
     ).toBeInTheDocument();
     await waitFor(() => expect(onCreate).toHaveBeenCalled());
   });
