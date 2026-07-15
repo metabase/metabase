@@ -1,48 +1,43 @@
-import type * as Yup from "yup";
+import { ValidationError } from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 import type {
-  FunctionParametersSchemaValidationErrorMetadata,
   FunctionSchemaValidationResult,
   SchemaValidationErrorMetadata,
 } from "embedding-sdk-shared/types/validation";
 
-const getErrorMetadata = <
-  TMetadata extends
-    | SchemaValidationErrorMetadata
-    | FunctionParametersSchemaValidationErrorMetadata,
->({
-  error,
-  parameterIndex,
-}: {
-  error: Yup.ValidationError;
-  parameterIndex?: number;
-}): TMetadata | null => {
+const getErrorMetadata = (
+  error: ValidationError,
+): SchemaValidationErrorMetadata | null => {
   switch (error.type) {
     case "required":
-      // Unjustified type cast. FIXME
       return {
         errorCode: "missing_required_property",
-        data: error.params?.path ?? "",
-        parameterIndex,
-      } as TMetadata;
+        data: String(error.params?.path ?? ""),
+      };
     case "has-entity-prop":
       return {
         errorCode: "missing_required_property",
         data: "questionId, token, or query",
-        parameterIndex,
-      } as TMetadata;
+      };
     case "noUnknown":
-      // Unjustified type cast. FIXME
       return {
         errorCode: "unrecognized_keys",
-        data: error.params?.unknown ?? "",
-        parameterIndex,
-      } as TMetadata;
+        data: String(error.params?.unknown ?? ""),
+      };
   }
 
   return null;
 };
+
+/**
+ * Schema violations surface as `ValidationError`; anything else thrown by
+ * `validateSync` is not a schema problem and carries no metadata.
+ */
+const getThrownErrorMetadata = (
+  error: unknown,
+): SchemaValidationErrorMetadata | null =>
+  ValidationError.isError(error) ? getErrorMetadata(error) : null;
 
 export const validateFunctionSchema = <
   TSchema extends FunctionSchema,
@@ -65,19 +60,13 @@ export const validateFunctionSchema = <
         });
 
         return { success: true };
-      } catch (_error: unknown) {
-        // Unjustified type cast. FIXME
-        const error = _error as Yup.ValidationError;
-        const errorMetadata =
-          getErrorMetadata<FunctionParametersSchemaValidationErrorMetadata>({
-            error,
-            parameterIndex: i,
-          });
+      } catch (error: unknown) {
+        const errorMetadata = getThrownErrorMetadata(error);
 
         if (errorMetadata) {
           return {
             success: false,
-            errorMetadata,
+            errorMetadata: { ...errorMetadata, parameterIndex: i },
           };
         }
       }
@@ -96,12 +85,8 @@ export const validateFunctionSchema = <
       });
 
       return { success: true };
-    } catch (_error: unknown) {
-      // Unjustified type cast. FIXME
-      const error = _error as Yup.ValidationError;
-      const errorMetadata = getErrorMetadata<SchemaValidationErrorMetadata>({
-        error,
-      });
+    } catch (error: unknown) {
+      const errorMetadata = getThrownErrorMetadata(error);
 
       if (errorMetadata) {
         return {

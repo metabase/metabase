@@ -2,17 +2,19 @@ import type { ComponentType, ReactNode } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
-const getDefaultPluginDataApps = () => ({
-  isEnabled: false,
-  getRoutes: () => null as ReactNode | null,
-  ManageDataAppsPage: PluginPlaceholder as ComponentType,
-});
-
-export const PLUGIN_DATA_APPS: {
+export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   ManageDataAppsPage: ComponentType;
-} = getDefaultPluginDataApps();
+};
+
+const getDefaultPluginDataApps = (): DataAppsPlugin => ({
+  isEnabled: false,
+  getRoutes: () => null,
+  ManageDataAppsPage: PluginPlaceholder,
+});
+
+export const PLUGIN_DATA_APPS: DataAppsPlugin = getDefaultPluginDataApps();
 
 /**
  * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.

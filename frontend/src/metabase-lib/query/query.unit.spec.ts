@@ -515,13 +515,9 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(
-        (
-          Lib.toLegacyQuery(query) as DatasetQuery & {
-            query: { filter: unknown };
-          }
-        ).query.filter,
-      ).toEqual(["segment", SEGMENT_ID]);
+      expect(Lib.toLegacyQuery(query)).toMatchObject({
+        query: { filter: ["segment", SEGMENT_ID] },
+      });
     });
 
     it("should create a query with filters", () => {
@@ -567,12 +563,14 @@ describe("createTestQuery", () => {
             createMockMeasure({
               id: MEASURE_ID,
               table_id: PRODUCTS_ID,
-              definition: createMockStructuredDatasetQuery({
-                query: {
-                  "source-table": PRODUCTS_ID,
-                  aggregation: [["count"]],
-                },
-              }) as never,
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
+              }),
             }),
           ],
         }),
@@ -590,19 +588,17 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(
-        (
-          Lib.toLegacyQuery(query) as DatasetQuery & {
-            query: { aggregation: unknown };
-          }
-        ).query.aggregation,
-      ).toEqual([
-        [
-          "aggregation-options",
-          expect.anything(),
-          { "display-name": "Measure" },
-        ],
-      ]);
+      expect(Lib.toLegacyQuery(query)).toMatchObject({
+        query: {
+          aggregation: [
+            [
+              "aggregation-options",
+              expect.anything(),
+              { "display-name": "Measure" },
+            ],
+          ],
+        },
+      });
     });
 
     it("should create a query with aggregations", () => {

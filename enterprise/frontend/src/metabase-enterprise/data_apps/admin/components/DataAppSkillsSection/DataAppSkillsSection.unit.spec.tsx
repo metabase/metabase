@@ -20,13 +20,13 @@ const setup = (tag?: string) => {
 };
 
 const copyCommand = async () => {
-  const writeText = jest.fn().mockResolvedValue(undefined);
+  const writeText = jest.fn((_text: string) => Promise.resolve());
   Object.assign(navigator, { clipboard: { writeText } });
 
   await userEvent.click(screen.getByTestId("copy-button"));
 
   await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-  return writeText.mock.calls[0][0] as string;
+  return writeText.mock.calls[0][0];
 };
 
 const DATA_APP_SKILLS = [
