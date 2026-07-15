@@ -168,6 +168,40 @@
             (is (not (contains? (set (map first @analytics-calls))
                                 :metabase-search/semantic-vector-inner-ms)))))))))
 
+(deftest ^:parallel index-table-name?-test
+  (testing "recognizes every shape the naming code produces"
+    (are [table-name] (semantic.index/index-table-name? table-name)
+      ;; model-table-name for the current default and mock models
+      (semantic.index/model-table-name {:provider "ai-service" :model-name "text-embedding-3-small" :vector-dimensions 1536})
+      (semantic.index/model-table-name semantic.tu/mock-embedding-model)
+      "index_ollama_mxbai_lg_1024"
+      ;; force-reset suffix, as pgvector-api/fresh-index builds it
+      (str (semantic.index/model-table-name semantic.tu/mock-embedding-model) "_" (semantic.index/model-table-suffix))
+      "index_ollama_mxbai_lg_1024_1234567"
+      ;; hashed shape for names exceeding the pg identifier limit
+      (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
+      (str "index_" (apply str (repeat 40 "a")))
+      ;; legacy pre-BOT-337 era: anything under the index_table_ prefix is reapable
+      "index_table_ollama_mxbai_lg_1024"
+      "index_table_stale"))
+  (testing "rejects the control-plane and other non-index tables"
+    (are [table-name] (not (semantic.index/index-table-name? table-name))
+      "index_metadata"
+      "index_control"
+      "index_gate"
+      "migration"
+      "dlq_1"
+      "repair_1751000000000_1"
+      ;; index_-prefixed but no trailing _<digits> and not the legacy index_table_ prefix
+      "index_tablex"
+      "index_table_"
+      ;; a valid shape as a substring must not match
+      "xindex_ollama_mxbai_lg_1024"
+      "index_ollama_mxbai_lg_1024 junk"
+      ;; wrong-length hex
+      (str "index_" (apply str (repeat 39 "a")))
+      (str "index_" (apply str (repeat 41 "a"))))))
+
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
   Maps the name of each index it must create to a pattern its pg_indexes indexdef must match."
