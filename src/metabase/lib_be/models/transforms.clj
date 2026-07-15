@@ -4,9 +4,13 @@
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.native :as lib.native]
+   [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -81,12 +85,38 @@
       (log/errorf e "Error normalizing query %s" (pr-str query))
       {}))))
 
+(defn- stale-card-tag-renames
+  "Old tag name => new tag name for `:card` template tags whose name embeds a card id other than
+  their `:card-id`. The tag name and the `{{#id-slug}}` query text it appears in are derived from the
+  id, so when the two disagree - e.g. serialization import remapped `:card-id` to the local card's
+  id - the id wins. Tags whose card can't be found are left alone."
+  [query]
+  (into {}
+        (keep (fn [{tag-type :type, :keys [card-id], tag-name :name}]
+                (when (and (= tag-type :card)
+                           card-id
+                           (some-> (lib.params.parse/tag-name->card-id tag-name)
+                                   (not= card-id)))
+                  (when-let [card-name (:name (lib.metadata/card query card-id))]
+                    [tag-name (str "#" card-id "-" (lib.native/card-tag-slug card-name))]))))
+        (lib.walk.util/all-template-tags query)))
+
+(defn- repair-stale-card-template-tags
+  "Repair card template tags whose name embeds a different card id than their `:card-id`, so stored
+  queries stay canonical. The frontend treats the disagreement as an edit (the question opens dirty),
+  and re-extracting tags from the stale text clobbers `:card-id` with the id embedded in the name."
+  [query]
+  (if (= (:lib/type query) :mbql/query)
+    (lib.native/replace-template-tag-names query (stale-card-tag-renames query))
+    query))
+
 (defn- transform-query-in [query]
   (when-not (map? query)
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))
                     {:query query, :status-code 400})))
   (-> query
       (as-> $query (normalize-query nil $query {:strict? true}))
+      repair-stale-card-template-tags
       lib/prepare-for-serialization
       mi/json-in))
 
