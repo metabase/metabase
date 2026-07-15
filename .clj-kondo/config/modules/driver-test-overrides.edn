@@ -12,9 +12,10 @@
    api
    api-keys
    api-scope
+   api.eid-translation
    appearance
    audit-app
-   auth-identity
+   audit-app.view-log
    auth-provider
    batch-processing
    channel
@@ -24,7 +25,6 @@
    content-verification
    dashboards
    documents
-   eid-translation
    embedding
    events
    formatter
@@ -32,7 +32,6 @@
    initialization-status
    interestingness
    lib.types
-   login-history
    mcp
    mcp.oauth-server
    metabot
@@ -50,9 +49,11 @@
    search.entity-retrieval
    server
    session
+   session.login-history
    settings
    setup
    sso
+   sso.auth-identity
    staleness
    startup
    system
@@ -64,7 +65,6 @@
    users
    util
    version
-   view-log
    warehouses.schema
    warehouses.secrets
    workspaces
