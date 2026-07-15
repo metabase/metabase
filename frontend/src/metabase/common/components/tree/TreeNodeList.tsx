@@ -78,9 +78,9 @@ function BaseTreeNodeList<TData = unknown>({
         );
 
         return wrapNodes ? (
-          <Box component="li" role="none" key={item.id}>
+          <li role="none" key={item.id}>
             {node}
-          </Box>
+          </li>
         ) : (
           <Fragment key={item.id}>{node}</Fragment>
         );

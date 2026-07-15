@@ -52,7 +52,10 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { useCopyLink } from "../../hooks/useCopyLink";
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
-import type { ExplorationSortOrder } from "../../sidebar-preferences";
+import {
+  DEFAULT_SORT_ORDER,
+  type ExplorationSortOrder,
+} from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
 import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
@@ -81,7 +84,6 @@ interface ExplorationSidebarProps {
   exploration: Exploration;
   explorationSidebarTabsInfo: ExplorationSidebarTabsInfo;
   selectedSidebarTab: ExplorationSidebarTab;
-  tabsWithNewContent?: ReadonlySet<ExplorationSidebarTab>;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
@@ -100,7 +102,6 @@ export function ExplorationSidebar({
   exploration,
   explorationSidebarTabsInfo,
   selectedSidebarTab,
-  tabsWithNewContent,
   getSelectedSidebarTabUrl,
   tree,
   selectedEntityId,
@@ -274,7 +275,7 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Group pl="0.5rem" pr="1rem" gap="md" wrap="nowrap" align="center">
+      <Group pl="0.5rem" gap="md" wrap="nowrap" align="center">
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth
@@ -289,13 +290,7 @@ export function ExplorationSidebar({
             data={Object.values(explorationSidebarTabsInfo).map(
               ({ value, label }) => ({
                 value,
-                label: (
-                  <SidebarTabLabel
-                    tab={value}
-                    label={label}
-                    hasNewContent={tabsWithNewContent?.has(value) ?? false}
-                  />
-                ),
+                label: <SidebarTabLabel tab={value} label={label} />,
               }),
             )}
           />
@@ -313,7 +308,7 @@ export function ExplorationSidebar({
             role="tree"
             tree={treeController}
             TreeNode={TreeNode}
-            wrapNodes
+            wrapNodesInListItem
           />
           {isEmptyDueToHidden && (
             <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
@@ -330,22 +325,6 @@ export function ExplorationSidebar({
   );
 }
 
-function NewContentDot() {
-  return (
-    <Tooltip label={t`New research to look at`}>
-      <Box
-        aria-label={t`New research to look at`}
-        data-testid="exploration-tab-new-content-dot"
-        bg="brand"
-        w="0.375rem"
-        h="0.375rem"
-        bdrs="50%"
-        flex="none"
-      />
-    </Tooltip>
-  );
-}
-
 const TAB_ICON: Partial<Record<ExplorationSidebarTab, IconProps["name"]>> = {
   stars: "star_filled",
   discussions: "comment",
@@ -354,14 +333,13 @@ const TAB_ICON: Partial<Record<ExplorationSidebarTab, IconProps["name"]>> = {
 function SidebarTabLabel({
   tab,
   label,
-  hasNewContent,
 }: {
   tab: ExplorationSidebarTab;
   label: string;
-  hasNewContent: boolean;
 }) {
   const iconName = TAB_ICON[tab];
-  const content: React.ReactNode = iconName ? (
+
+  return iconName ? (
     <Tooltip label={label}>
       <Center component="span" aria-label={label}>
         <Icon name={iconName} />
@@ -369,17 +347,6 @@ function SidebarTabLabel({
     </Tooltip>
   ) : (
     label
-  );
-
-  if (!hasNewContent) {
-    return content;
-  }
-
-  return (
-    <Group component="span" gap="xs" justify="center" wrap="nowrap">
-      {content}
-      <NewContentDot />
-    </Group>
   );
 }
 
@@ -394,7 +361,7 @@ function SidebarShowFilterMenu({
   sortOrder: ExplorationSortOrder;
   onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
 }) {
-  const hasActiveFilter = showHidden || sortOrder !== "interestingness";
+  const hasActiveFilter = showHidden || sortOrder !== DEFAULT_SORT_ORDER;
 
   return (
     <Menu position="bottom-end">
