@@ -28,7 +28,10 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
+   ;; export branch; omitted = auto-named ws-<slug>-<id>. 409 when another
+   ;; workspace already exports to the same branch.
+   [:target_branch {:optional true} ms/NonBlankString]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -62,6 +65,10 @@
    [:id          ms/PositiveInt]
    [:name        ms/NonBlankString]
    [:creator     [:maybe CreatorResponse]]
+   ;; git binding (GHY-4057): base = snapshot of the parent's remote-sync-branch at
+   ;; create; target = the workspace's export branch (nil only pre-migration rows)
+   [:base_branch   {:optional true} [:maybe :string]]
+   [:target_branch {:optional true} [:maybe :string]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
    ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
@@ -82,7 +89,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :creator :base_branch :target_branch :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 

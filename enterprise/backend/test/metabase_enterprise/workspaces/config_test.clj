@@ -1,7 +1,9 @@
 (ns metabase-enterprise.workspaces.config-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.config :as config]
+   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -267,3 +269,79 @@
                  (first samples))))
         (testing "sample entry is NOT also marked as a stub"
           (is (not (:is_stub (first samples)))))))))
+
+(deftest build-workspace-config-git-settings-section-test
+  (mt/with-temp [:model/Workspace {ws-id :id} {:name          "gitty"
+                                               :creator_id    (mt/user->id :crowberto)
+                                               :target_branch "ws-gitty"}]
+    (testing "no git remote configured on the parent -> no :settings section"
+      (mt/with-temporary-setting-values [remote-sync-url nil]
+        (is (not (contains? (:config (config/build-workspace-config ws-id)) :settings)))))
+    (testing "parent git settings flow into the child's :settings section, branch = target_branch, always read-write"
+      (mt/with-temporary-setting-values [remote-sync-url   "https://github.com/acme/mb-content.git"
+                                         remote-sync-token "ghp_secret"]
+        (is (= {:remote-sync-enabled true
+                :remote-sync-url     "https://github.com/acme/mb-content.git"
+                :remote-sync-token   "ghp_secret"
+                :remote-sync-type    "read-write"
+                :remote-sync-branch  "ws-gitty"}
+               (get-in (config/build-workspace-config ws-id) [:config :settings])))))))
+
+(deftest build-workspace-config-api-keys-section-test
+  (mt/with-temp [:model/Workspace {ws-id :id} {:name       "gitty"
+                                               :creator_id (mt/user->id :crowberto)}]
+    (testing "no :api-keys section without the mint-time opts (the parent cannot reproduce the key)"
+      (is (not (contains? (:config (config/build-workspace-config ws-id)) :api-keys))))
+    (testing "create orchestration supplies the freshly-minted key -> admin api-keys entry (GHY-4078)"
+      (is (= [{:name    "workspace gitty agent key"
+               :key     "mb_0123456789abcdef"
+               :creator "admin@child.test"
+               :group   "admin"}]
+             (get-in (config/build-workspace-config ws-id {:api-key       "mb_0123456789abcdef"
+                                                           :creator-email "admin@child.test"})
+                     [:config :api-keys]))))))
+
+(deftest create-workspace-names-target-branch-test
+  (testing "ws.core/create-workspace! names target_branch ws-<slug>-<id> and snapshots base_branch"
+    (mt/with-model-cleanup [:model/Workspace]
+      (testing "no parent git remote -> base_branch nil"
+        (let [ws (ws.core/create-workspace! {:name         "My Cool Workspace"
+                                             :creator_id   (mt/user->id :crowberto)
+                                             :database_ids []})]
+          (is (= (str "ws-my_cool_workspace-" (:id ws)) (:target_branch ws)))
+          (is (nil? (:base_branch ws)))))
+      (testing "base_branch snapshots the parent's remote-sync-branch at create"
+        (mt/with-temporary-setting-values [remote-sync-branch "develop"]
+          (let [ws (ws.core/create-workspace! {:name         "branchy"
+                                               :creator_id   (mt/user->id :crowberto)
+                                               :database_ids []})]
+            (is (= "develop" (:base_branch ws))))))
+      (testing "id suffix keeps branches distinct for slug-equal names"
+        (let [ws1 (ws.core/create-workspace! {:name         "branchy"
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :database_ids []})
+              ws2 (ws.core/create-workspace! {:name         "Branchy"
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :database_ids []})]
+          (is (= (str "ws-branchy-" (:id ws1)) (:target_branch ws1)))
+          (is (not= (:target_branch ws1) (:target_branch ws2))))))))
+
+(deftest create-workspace-cuts-target-branch-test
+  (testing "create cuts the target branch on the git remote when one is configured (GHY-4121)"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [cut (atom [])]
+        (with-redefs [remote-sync/create-workspace-branch! (fn [branch] (swap! cut conj branch) "main")]
+          (testing "no git remote -> no cut attempted"
+            (mt/with-temporary-setting-values [remote-sync-url nil]
+              (ws.core/create-workspace! {:name "no git" :creator_id (mt/user->id :crowberto) :database_ids []})
+              (is (= [] @cut))))
+          (testing "git remote configured -> branch cut after create"
+            (mt/with-temporary-setting-values [remote-sync-url "https://git.example.com/repo.git"]
+              (let [ws (ws.core/create-workspace! {:name "gitty cut" :creator_id (mt/user->id :crowberto) :database_ids []})]
+                (is (= [(:target_branch ws)] @cut))))))
+        (testing "a failing cut is best-effort: create still succeeds"
+          (mt/with-temporary-setting-values [remote-sync-url "https://git.example.com/repo.git"]
+            (with-redefs [remote-sync/create-workspace-branch! (fn [_] (throw (ex-info "remote unreachable" {})))]
+              (is (some? (ws.core/create-workspace! {:name         "flaky remote"
+                                                     :creator_id   (mt/user->id :crowberto)
+                                                     :database_ids []}))))))))))

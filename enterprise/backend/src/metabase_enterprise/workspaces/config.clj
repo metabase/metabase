@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
@@ -116,6 +117,33 @@
       :details   {}
       :is_sample true}]))
 
+(defn- git-settings-section
+  "The child's `settings:` section: point remote-sync at the parent's configured git
+   repo, read-write, on the workspace's `target_branch`. Nil when the parent has no
+   git remote configured (local dev without git-sync) — the child then boots without
+   sync and export is unavailable."
+  [ws]
+  (when-let [url (not-empty (remote-sync/remote-sync-url))]
+    {:remote-sync-enabled true
+     :remote-sync-url     url
+     :remote-sync-token   (remote-sync/remote-sync-token)
+     :remote-sync-type    "read-write"
+     :remote-sync-branch  (:target_branch ws)}))
+
+(defn- api-keys-section
+  "The child's `api-keys:` section registering the parent-minted agent key.
+   `admin` group: deliberate v0 reversal of the GHY-4061 all-users call
+   (GHY-4078 has the reasoning). The exfil paths admin opens are bounded —
+   the child holds only the disposable workspace-user warehouse cred, dropped
+   at destroy — and all-users cannot transform at all (no boot-grant mechanism
+   exists yet). Revisit at GA/multi-user, where child-admin gets real teeth.
+   `creator` must be an admin user that exists on the child at boot."
+  [ws api-key creator-email]
+  [{:name    (str "workspace " (:name ws) " agent key")
+    :key     api-key
+    :creator creator-email
+    :group   "admin"}])
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -123,39 +151,57 @@
      :config  {:databases [...]
                :workspace {:name      <ws-name>
                            :databases {<db-name> {:input_schemas [<schema-name> ...]
-                                                  :output        {:db ? :schema ?}}}}}
+                                                  :output        {:db ? :schema ?}}}
+               :settings  {...remote-sync settings, when the parent has git configured...}
+               :api-keys  [...only when `:api-key` is supplied...]}}
 
   Each database entry merges the underlying `metabase_database.details` with the
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`."
-  [workspace-id]
-  (when-let [ws (workspace/get-workspace workspace-id)]
-    (let [wsds (:databases ws)]
-      (when (some #(not= :provisioned (:status %)) wsds)
-        (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
-                        {:status-code  409
-                         :workspace_id workspace-id})))
-      (let [workspace-db-ids (mapv :database_id wsds)
-            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
-                               (into {} (map (juxt :id identity))
-                                     (t2/select :model/Database :id [:in ids]))
-                               {})
-            pairs            (for [wsd wsds
-                                   :let [db (get dbs-by-id (:database_id wsd))]]
-                               [wsd db])
-            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-            sample-entries   (sample-database-entries)]
-        {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+  `instance-workspace` setting stores.
+
+  The `:settings` section (remote-sync url/token/type + `remote-sync-branch` =
+  the workspace's `target_branch`) is emitted whenever the parent has a git
+  remote configured. The `:api-keys` section requires opts — the key value only
+  exists in memory at mint time (the parent stores just its prefix), so only the
+  create orchestration can emit it:
+
+    :api-key       unhashed mb_ key string from [[workspace/mint-api-key!]]
+    :creator-email admin email that exists on the child at boot (attribution for
+                   the key row the child creates)
+
+  Returns nil when the workspace does not exist. Throws a 409 `ex-info` if any
+  of the workspace's databases is not `:provisioned`."
+  ([workspace-id]
+   (build-workspace-config workspace-id {}))
+  ([workspace-id {:keys [api-key creator-email]}]
+   (when-let [ws (workspace/get-workspace workspace-id)]
+     (let [wsds (:databases ws)]
+       (when (some #(not= :provisioned (:status %)) wsds)
+         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
+                         {:status-code  409
+                          :workspace_id workspace-id})))
+       (let [workspace-db-ids (mapv :database_id wsds)
+             dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                                (into {} (map (juxt :id identity))
+                                      (t2/select :model/Database :id [:in ids]))
+                                {})
+             pairs            (for [wsd wsds
+                                    :let [db (get dbs-by-id (:database_id wsd))]]
+                                [wsd db])
+             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
+             sample-entries   (sample-database-entries)
+             settings         (git-settings-section ws)]
+         {:version 1
+          :config  (cond-> {:databases (-> ws-entries
+                                           (into stub-entries)
+                                           (into sample-entries))
+                            :workspace {:name      (:name ws)
+                                        :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
+                     settings (assoc :settings settings)
+                     api-key  (assoc :api-keys (api-keys-section ws api-key creator-email)))})))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

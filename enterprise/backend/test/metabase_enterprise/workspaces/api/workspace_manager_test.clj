@@ -94,6 +94,31 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
+(deftest create-workspace-user-named-target-branch-test
+  (testing "POST / with target_branch uses it verbatim; a second workspace targeting the same branch 409s"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (is (=? {:target_branch "my-feature-branch"}
+                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name          "Named Branch"
+                                         :database_ids  [db-id]
+                                         :target_branch "my-feature-branch"})))
+          (testing "same branch again -> 409"
+            (mt/user-http-request :crowberto :post 409 "ee/workspace-manager/"
+                                  {:name          "Named Branch Two"
+                                   :database_ids  [db-id]
+                                   :target_branch "my-feature-branch"}))
+          (testing "collision with an auto-named branch also 409s"
+            (let [{:keys [target_branch]} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                                {:name "Auto Named" :database_ids [db-id]})]
+              (mt/user-http-request :crowberto :post 409 "ee/workspace-manager/"
+                                    {:name          "Squatter"
+                                     :database_ids  [db-id]
+                                     :target_branch target_branch}))))))))
+
 (deftest metadata-export-test
   (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}

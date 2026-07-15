@@ -1,0 +1,41 @@
+## Add base_branch / target_branch columns to workspace for git-sync binding (GHY-4057)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.2026-07-06T19:52:00
+      author: escherize
+      comment: Add workspace.base_branch for the child instance's git-sync binding.
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: base_branch
+                  type: varchar(254)
+                  remarks: Git branch the child's initial import reads from. Null means the repo's default branch.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: base_branch
+
+  - changeSet:
+      id: v64.2026-07-06T19:52:01
+      author: escherize
+      comment: Add workspace.target_branch for the child instance's git-sync binding.
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: target_branch
+                  type: varchar(254)
+                  remarks: Git branch the child's exports write to (remote-sync-branch on the child). Named ws-<name> at create.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: target_branch

@@ -1,6 +1,8 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -9,9 +11,12 @@
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (comment
   source/keep-me)
@@ -19,7 +24,59 @@
 (p/import-vars
  [source]
  [source.p
-  ->ingestable])
+  ->ingestable]
+ [settings
+  remote-sync-url
+  remote-sync-token
+  remote-sync-branch])
+
+;;; --------------------------- Workspace child-branch helpers ---------------------------
+
+(defn create-workspace-branch!
+  "Create `branch` on the configured git remote, cut from the last-synced commit
+   (falling back to the `remote-sync-branch` tip when nothing has synced yet).
+   No-op when the branch already exists on the remote — which makes workspace
+   create idempotent on retry and lets a re-created workspace reuse its old
+   branch. Unlike the create-branch API path, this never touches this instance's
+   `remote-sync-branch` setting: the branch belongs to a child instance, not us.
+
+   Returns the base commit-ish the branch was cut from, or nil when skipped."
+  [branch]
+  (let [src (source/source-from-settings)]
+    (when-not (contains? (set (source.p/branches src)) branch)
+      (let [base (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+        (source.p/create-branch src branch base)
+        base))))
+
+(defn initial-import-if-needed!
+  "Blocking initial import of the configured `remote-sync-branch`, for a workspace
+   child instance's first boot: runs only when remote sync is enabled and no sync
+   task has ever completed, and skips (with a log line) when the branch does not
+   exist on the remote yet. Blocks until the import task finishes so the caller —
+   the config.yml apply path — can treat a 2xx response as \"content is live\".
+
+   Returns the finished RemoteSyncTask row, or nil when skipped."
+  []
+  (when (and (settings/remote-sync-enabled)
+             (nil? (remote-sync.task/last-version)))
+    (let [branch (settings/remote-sync-branch)
+          src    (source/source-from-settings)]
+      (if (contains? (set (source.p/branches src)) branch)
+        ;; force? true: first import on a fresh child, nothing local to protect;
+        ;; force-deletion? false mirrors finish-remote-config! (GHY-3900).
+        (let [{task-id :id} (impl/async-import! branch true {} :force-deletion? false)
+              ;; same ceiling run-async! enforces on the task itself
+              deadline (+ (System/currentTimeMillis) (* (settings/remote-sync-task-time-limit-ms) 10))]
+          (loop []
+            (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+              (cond
+                (:ended_at task) task
+                (> (System/currentTimeMillis) deadline)
+                (do (log/errorf "Initial workspace import (task %d) did not finish in time" task-id)
+                    task)
+                :else (do (Thread/sleep 500) (recur))))))
+        (log/infof "Remote-sync branch %s does not exist on the remote yet; skipping initial import"
+                   (pr-str branch))))))
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.

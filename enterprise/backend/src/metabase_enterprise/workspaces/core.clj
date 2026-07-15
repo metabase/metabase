@@ -32,6 +32,7 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -39,6 +40,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
@@ -103,6 +105,16 @@
   []
   (ws.settings/instance-workspace! nil)
   nil)
+
+(defn initial-import-if-needed!
+  "Blocking first import of this child instance's remote-sync branch (GHY-4121):
+   runs only when remote sync is enabled and nothing has ever synced; skips when
+   the branch doesn't exist on the remote. Called by the config.yml `:workspace`
+   section loader so a 2xx config apply means content is live. Thin delegate —
+   lives here because the advanced-config module depends on workspaces, not on
+   remote-sync."
+  []
+  (remote-sync/initial-import-if-needed!))
 
 ;;; ------------------------------- Instance-workspace lock -------------------------------
 
@@ -186,6 +198,26 @@
     (throw (ex-info "Workspaces are not enabled for this database"
                     {:status-code 400 :database_id (:id database)}))))
 
+(defn- assert-target-branch-available [target-branch]
+  (when (t2/exists? :model/Workspace :target_branch target-branch)
+    (throw (ex-info "Another workspace already exports to this branch"
+                    {:status-code 409 :target_branch target-branch}))))
+
+(defn- cut-target-branch!
+  "Cut the workspace's `target_branch` from the base on the git remote (GHY-4121),
+   so the child's first import finds it populated. Runs after the create
+   transaction commits — a remote git call must not hold the transaction open.
+   Best-effort: on failure the child boots empty and its first export creates the
+   branch, so we log rather than fail the (already committed) create."
+  [{:keys [target_branch] :as _ws}]
+  (when (not-empty (remote-sync/remote-sync-url))
+    (try
+      (when-let [base (remote-sync/create-workspace-branch! target_branch)]
+        (log/infof "Cut workspace branch %s from %s" (pr-str target_branch) (pr-str base)))
+      (catch Exception e
+        (log/warnf e "Could not create workspace branch %s on the git remote; the child will boot empty"
+                   (pr-str target_branch))))))
+
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
 (defn get-workspace
@@ -208,21 +240,42 @@
    known schemas as
    `input_schemas`, and provision each database (blocking). Everything runs in a
    single transaction, so a provisioning failure rolls back the workspace and its
-   database rows. Returns the created workspace, hydrated."
-  [{:keys [name creator_id database_ids]}]
+   database rows. Returns the created workspace, hydrated.
+
+   Git binding: the export branch (`:target_branch`) defaults to `ws-<slug>-<id>` —
+   the id suffix keeps branches distinct when two workspace names slugify to the
+   same string (names are not unique). A caller-supplied `:target_branch` is used
+   verbatim; it 409s when another workspace already exports to that branch (the
+   suffix can't protect user-chosen names). `:base_branch` (what the child's
+   initial import will read from, once wired — GHY-4121) records the parent's
+   `remote-sync-branch` at create; deliberately not caller-supplied, so a
+   workspace can never be based on another workspace's target branch (no stacked
+   PRs — GHY-4121 has the reasoning). Snapshot semantics: changing the parent
+   setting later never affects existing workspaces. Nil when the parent has no
+   git remote configured."
+  [{:keys [name creator_id database_ids target_branch]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
                             {:database_id   db-id
                              :input_schemas (workspace-database/database-input-schemas database)}))
                         database_ids)]
-    (t2/with-transaction [_conn]
-      (let [ws (workspace/create-workspace! {:name       name
-                                             :creator_id creator_id
-                                             :databases  databases})]
-        (doseq [{wsd-id :id} (:databases ws)]
-          (provisioning/provision-single! wsd-id))
-        (workspace/get-workspace (:id ws))))))
+    (when target_branch
+      (assert-target-branch-available target_branch))
+    (let [ws (t2/with-transaction [_conn]
+               (let [ws (workspace/create-workspace! {:name          name
+                                                      :creator_id    creator_id
+                                                      :databases     databases
+                                                      :base_branch   (remote-sync/remote-sync-branch)
+                                                      :target_branch target_branch})]
+                 (when-not target_branch
+                   (t2/update! :model/Workspace :id (:id ws)
+                               {:target_branch (str "ws-" (u/slugify name) "-" (:id ws))}))
+                 (doseq [{wsd-id :id} (:databases ws)]
+                   (provisioning/provision-single! wsd-id))
+                 (workspace/get-workspace (:id ws))))]
+      (cut-target-branch! ws)
+      ws)))
 
 (defn- orphaned-resources-message
   [workspace-id failures]
