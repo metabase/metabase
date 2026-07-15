@@ -385,7 +385,7 @@
 (deftest claude-system-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
     (let [input [{:role :user :content "hi"}]]
-      (testing "system prompt without sentinel is wrapped as a single cached content block"
+      (testing "system prompt is wrapped as a single cached content block"
         (let [body (capture-claude-request-body!
                     {:input  input
                      :system "You are a helpful assistant."})]
@@ -393,50 +393,20 @@
                    :text          "You are a helpful assistant."
                    :cache_control {:type "ephemeral"}}]
                  (:system body)))))
-      (testing "system prompt with sentinel is split into cached prefix + uncached suffix"
-        (let [body (capture-claude-request-body!
-                    {:input  input
-                     :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."})]
-          (is (= [{:type          "text"
-                   :text          "Stable prefix content."
-                   :cache_control {:type "ephemeral"}}
-                  {:type "text"
-                   :text "Dynamic suffix content."}]
-                 (:system body)))))
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
 
-(deftest claude-system-cache-breakpoint-blank-suffix-test
-  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
-    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
-      (let [body (capture-claude-request-body!
-                  {:input  [{:role :user :content "hi"}]
-                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
-        (is (= [{:type          "text"
-                 :text          "Stable prefix content."
-                 :cache_control {:type "ephemeral"}}]
-               (:system body)))))))
-
-(deftest system-templates-cache-breakpoint-presence-test
-  (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
+(deftest ^:parallel system-prompts-have-no-cache-breakpoint-sentinel-test
+  (testing "no system prompt template contains the retired <<<METABOT_CACHE_BREAKPOINT>>> sentinel"
     (let [system-dir (io/file (io/resource "metabot/prompts/system"))
-          templates  (->> (.listFiles system-dir)
-                          (filter #(re-find #"\.selmer$" (.getName ^java.io.File %))))]
+          templates  (->> (file-seq system-dir)
+                          (filter #(.isFile ^java.io.File %)))]
+      (is (seq templates) "system template directory exists and has files")
       (doseq [^java.io.File f templates]
-        (let [body  (slurp f)
-              n     (count (re-seq #"<<<METABOT_CACHE_BREAKPOINT>>>" body))
-              has-volatile? (some #(re-find % body)
-                                  [#"\{\{\s*current_time\s*\}\}"
-                                   #"\{%\s*if\s+recent_views\s*%\}"
-                                   #"\{%\s*if\s+current_user_info\s*%\}"
-                                   #"\{%\s*if\s+viewing_context\s*%\}"
-                                   #"\{\{\s*viewing_context"
-                                   #"\{\{\s*first_day_of_week\s*\}\}"])]
-          (testing (.getName f)
-            (if has-volatile?
-              (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")
-              (is (zero? n) "no sentinel expected when template has no volatile context vars"))))))))
+        (testing (.getName f)
+          (is (not (re-find #"<<<METABOT_CACHE_BREAKPOINT>>>" (slurp f)))
+              "system template contains the retired cache breakpoint sentinel"))))))
 
 (deftest claude-list-models-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
