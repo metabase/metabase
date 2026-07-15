@@ -343,7 +343,7 @@
         ;; if the merged viz settings reference other cards for dynamic goals, run those queries and inject
         ;; their values under `data.referenced_cards`; a no-op otherwise. Wrapping the qp (rather than the
         ;; `:make-run`) covers every card/dashcard/embed/public endpoint, since they all funnel through here.
-        qp          (qp.referenced-cards/wrap-qp-for-card qp merged-viz)
+        qp          (qp.referenced-cards/maybe-wrap-qp-for-card qp merged-viz)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

@@ -86,7 +86,7 @@
    rff
    (fn [response] (assoc-in response [:data :referenced_cards] result))))
 
-(defn wrap-rff
+(defn maybe-wrap-rff
   "Eagerly run `specs` and decorate `rff` to add their values under `data.referenced_cards`, or return `rff`
   unchanged when there are no specs. Must be called before [[qp/process-query]] runs the main query."
   [rff specs]
@@ -98,7 +98,7 @@
 ;;; Saved-card path: derive specs from a card's viz settings.
 ;;; ---------------------------------------------------------------------------------------------------------
 
-(defn wrap-qp
+(defn maybe-wrap-qp
   "Wrap a query-processor fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`.
   Run-fn agnostic (every run-fn ultimately calls `(qp query rff)`), so one wrap covers the saved-card,
   dashcard, embed and public endpoints. Returns `qp` unchanged when there are no specs."
@@ -130,8 +130,8 @@
                     :columns (vec (distinct (map :column ss)))})
                  (group-by :card_id sources)))))
 
-(defn wrap-qp-for-card
+(defn maybe-wrap-qp-for-card
   "Saved-card hook: derive referenced-card specs from a card's merged `viz` settings and wrap `qp` to inject
   their values. Returns `qp` unchanged when there are no dynamic references."
   [qp viz]
-  (wrap-qp qp (viz-settings->specs viz)))
+  (maybe-wrap-qp qp (viz-settings->specs viz)))

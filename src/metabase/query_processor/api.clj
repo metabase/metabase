@@ -82,7 +82,7 @@
       (qp.streaming/streaming-response [rff export-format]
         ;; run any referenced cards (dynamic goals) and add their values under `data.referenced_cards`.
         ;; Must happen before `process-query` sets up the QP store.
-        (let [rff (qp.referenced-cards/wrap-rff rff referenced-cards-specs)]
+        (let [rff (qp.referenced-cards/maybe-wrap-rff rff referenced-cards-specs)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
