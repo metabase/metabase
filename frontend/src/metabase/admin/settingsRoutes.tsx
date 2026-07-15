@@ -103,7 +103,7 @@ export const getSettingsRoutes = (
         )}
       </Route>
       <Route path={Urls.DATA_APP_URL_SEGMENT} component={IsAdmin}>
-        <IndexRoute component={DataAppsManagePage} />
+        <Route index component={DataAppsManagePage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />
       <Route
