@@ -58,6 +58,24 @@
     (is (= {:id 247}
            (#'schema.metric/metric-details {:id 247})))))
 
+(deftest metric-details-surfaces-error-responses-test
+  (mt/with-dynamic-fn-redefs [entity-details/get-metric-details
+                              (constantly {:output "Not found."
+                                           :status-code 404})]
+    (let [exception (try
+                      (#'schema.metric/metric-details {:id 247
+                                                       :name "Customer Lifetime Value"
+                                                       :type :metric})
+                      (catch clojure.lang.ExceptionInfo exception
+                        exception))]
+      (is (instance? clojure.lang.ExceptionInfo exception))
+      (is (= {:card-id     247
+              :card-name   "Customer Lifetime Value"
+              :card-type   :metric
+              :status-code 404
+              :error-message "Not found."}
+             (ex-data exception))))))
+
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
                                        {:id 20 :name "franchises" :display_name "Franchises"}])

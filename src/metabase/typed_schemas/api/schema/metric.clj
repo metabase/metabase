@@ -18,16 +18,35 @@
   [card]
   (schema.common/aggregation-result-column (:database_id card) (:dataset_query card)))
 
+(defn- metric-details-error-message
+  [card error-message]
+  (format "Failed to build schema details for metric \"%s\" (card %s): %s"
+          (or (:name card) "Untitled")
+          (:id card)
+          (or error-message "unknown error")))
+
+(defn- metric-details-error-data
+  [card error-data]
+  (m/assoc-some
+   {:card-id   (:id card)
+    :card-name (:name card)
+    :card-type (:type card)}
+   :status-code (:status-code error-data)))
+
 (defn- metric-details
   "Returns metric details with queryable dimensions for schema generation."
   [card]
-  (-> (entity-details/get-metric-details {:metric-id                       (:id card)
-                                          ;; The typed schema does not use the default temporal dimension.
-                                          :with-default-temporal-breakout? false
-                                          :with-field-values?              false
-                                          :with-queryable-dimensions?      true
-                                          :with-segments?                  false})
-      :structured-output))
+  (let [response (entity-details/get-metric-details {:metric-id                       (:id card)
+                                                     ;; The typed schema does not use the default temporal dimension.
+                                                     :with-default-temporal-breakout? false
+                                                     :with-field-values?              false
+                                                     :with-queryable-dimensions?      true
+                                                     :with-segments?                  false})]
+    (or (:structured-output response)
+        (let [error-message (:output response)]
+          (throw (ex-info (metric-details-error-message card error-message)
+                          (assoc (metric-details-error-data card response)
+                                 :error-message error-message)))))))
 
 (defn- persisted-dimension->column
   "Converts persisted metric dimensions to column-shaped maps.
