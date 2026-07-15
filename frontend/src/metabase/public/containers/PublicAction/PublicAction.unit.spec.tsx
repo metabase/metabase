@@ -7,7 +7,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { IndexRoute, Route, withRouteProps } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -78,7 +78,7 @@ async function setup({
 
   renderWithProviders(
     <Route path="/public/action/:uuid" element={<PublicApp />}>
-      <IndexRoute element={<RoutedPublicAction />} />
+      <Route index element={<RoutedPublicAction />} />
     </Route>,
     {
       mode: "public",
