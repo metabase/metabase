@@ -6,7 +6,7 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { createMockAppState } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 
 import PublicApp from "./PublicApp";
 
@@ -30,7 +30,8 @@ function setup({
 
   renderWithProviders(
     <Route path="/public/dashboard/:id" element={<PublicApp />}>
-      <IndexRoute
+      <Route
+        index
         element={
           <SyncedEmbedFrame {...embedFrameProps}>
             <h1 data-testid="test-content">Test</h1>
