@@ -80,6 +80,23 @@
                                  (lib-metric/extract-persisted-dimensions dimensions)
                                  dimension-mappings)))
 
+(defn compute-full-dimension-set
+  "Compute the FULL dimension set for a metric's `query` — its own-table columns PLUS every
+   implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
+   shape (or `nil` when `query` is blank).
+
+   New metrics seed their own-table columns only (see [[seed-metric-dimensions!]]), but metrics that
+   predate curated dimensions implicitly exposed every breakoutable column. This reproduces that full
+   set, so such a metric keeps all of its historical dimensions when it is modernized on read (used by
+   the `:model/Card` schema upgrade for pre-curation metrics)."
+  [query]
+  (when (seq query)
+    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+          {:keys [dimensions dimension-mappings]}
+          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+      {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+       :dimension-mappings dimension-mappings})))
+
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own (main-table) columns
    only. Joinable/FK columns are not added by default — they remain available to add via the

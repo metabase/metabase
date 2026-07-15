@@ -402,3 +402,88 @@
           (is (every? some? after) "no nil mappings")
           (is (= (set (map :dimension-id before)) (set (map :dimension-id after)))
               "every dimension is still mapped"))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                     Curated dimensions: pre-curation metric modernization on read                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- pre-curation-metric!
+  "Insert a metric on ORDERS and stamp it with the previous release's `card_schema` and no persisted
+   `:dimensions`, simulating a metric created before curated dimensions shipped. `f` receives the
+   metric id."
+  [f]
+  (let [mp       (mt/metadata-provider)
+        orders-q (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query orders-q}]
+      ;; Force the previous release's card_schema (23) and leave :dimensions never synced (nil),
+      ;; bypassing before-update so nothing bumps it back to the current version.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema 23}
+                     :where  [:= :id (:id metric)]})
+      (f (:id metric)))))
+
+(deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test
+  (testing (str "UXW-4808: a metric with the previous release's `card_schema` and no persisted "
+                "`:dimensions` is modernized on read — the `:model/Card` schema upgrade backfills the "
+                "FULL implicitly-joined dimension set (own-table + FK-joined columns) it implicitly "
+                "exposed pre-curation, so existing dashboard-filter mappings on joined columns still "
+                "correspond to a live dimension.")
+    (pre-curation-metric!
+     (fn [metric-id]
+       (let [cat-field (mt/id :products :category)   ; reachable from ORDERS only via the implicit FK join
+             dims      (:dimensions (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id)))
+             groups    (into #{} (comp (map :group)
+                                       (map :type))
+                             dims)
+             fields    (into #{} (comp (mapcat :sources)
+                                       (map :field-id))
+                             dims)]
+         (testing "the modernized set spans the own-table AND joined columns"
+           (is (contains? groups "main")       "own-table (main) dimensions are present")
+           (is (contains? groups "connection") "FK-joined (connection) dimensions are present"))
+         (testing "a joined column that an existing dashboard filter targets exists as a dimension"
+           (is (contains? fields cat-field)
+               "implicitly-joined PRODUCTS.CATEGORY is a live dimension after modernization")))))))
+
+(deftest pre-curation-metric-dashboard-filter-on-joined-column-works-test
+  (testing (str "UXW-4808: a dashboard filter bound to an implicitly-joined column of a pre-curation metric "
+                "(previous-release `card_schema`, no persisted `:dimensions`) resolves and filters the "
+                "query. The metric is modernized on read while the dashcard query runs, and the "
+                "parameter mapping (a field ref via :source-field) executes correctly.")
+    (pre-curation-metric!
+     (fn [metric-id]
+       (let [cat-field (mt/id :products :category)
+             fk-field  (mt/id :orders :product_id)
+             target    [:dimension [:field cat-field {:source-field fk-field}]]]
+         (mt/with-temp [:model/Dashboard dash {:name       "Dash"
+                                               :parameters [{:id "cat" :name "Category"
+                                                             :slug "category" :type "string/="}]}
+                        :model/DashboardCard dc {:dashboard_id (:id dash)
+                                                 :card_id      metric-id
+                                                 :parameter_mappings
+                                                 [{:parameter_id "cat"
+                                                   :card_id      metric-id
+                                                   :target       target}]}]
+           (let [run      (fn [params]
+                            (mt/user-http-request
+                             :crowberto :post 202
+                             (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                     (:id dash) (:id dc) metric-id)
+                             {:parameters params}))
+                 total    (-> (run []) :data :rows ffirst)
+                 filtered (-> (run [{:id     "cat"
+                                     :target target
+                                     :value  ["Gadget"]}])
+                              :data :rows ffirst)]
+             (testing "the join-column filter applies to the pre-curation metric's dashcard query"
+               (is (pos-int? total)
+                   "unfiltered metric returns a positive count")
+               (is (pos-int? filtered)
+                   "the filtered query executes and returns a count")
+               (is (< filtered total)
+                   "filtering by a single joined product category returns fewer rows than unfiltered")))))))))

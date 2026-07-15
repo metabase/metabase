@@ -84,7 +84,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  23)
+  24)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -715,6 +715,23 @@
   ;; This fix was a failure. We have to keep the schema upgrade, but now it's
   ;; just a no-op.
   card)
+
+;; Schema upgrade: 23 to 24 ==========================================================================================
+;; Curated metric dimensions (UXW-4808). New metrics seed their own-table columns only, with joined/FK
+;; columns available to add on demand. But metrics created before curated dimensions shipped implicitly
+;; exposed EVERY breakoutable column (own-table + implicitly-joined), and existing dashboard filters may
+;; be mapped to those joined columns. Modernize such a metric on read by backfilling the full
+;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
+;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
+;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+(defmethod upgrade-card-schema-to 24
+  [card _schema-version]
+  (if (and (= :metric (keyword (:type card)))
+           (nil? (:dimensions card))
+           (seq (:dataset_query card)))
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+      (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
+    card))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
