@@ -42,7 +42,9 @@
 (defn mask-strings-and-comments
   "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
   Same length as the input, so offsets and line numbers carry over.
-  Ignore forms inside strings (test fixtures) or commented-out code must not count."
+  Ignore forms inside strings (test fixtures) or commented-out code must not count.
+  The `;` that starts a comment survives, and no other `;` does, so [[justified?]] can locate real
+  trailing comments."
   [content]
   (let [sb (StringBuilder. ^String content)
         n  (count content)]
@@ -53,10 +55,12 @@
           (case state
             :code    (case c
                        \" (recur (inc i) :string)
-                       \; (do (.setCharAt sb i \space)
-                              (recur (inc i) :comment))
-                       ;; char literal: never treat the next char as a delimiter
-                       \\ (recur (+ i 2) :code)
+                       \; (recur (inc i) :comment)
+                       ;; char literal: mask the next char so it can't open a string or start a comment
+                       \\ (do (when (< (inc i) n)
+                                (when-not (= (.charAt sb (inc i)) \newline)
+                                  (.setCharAt sb (inc i) \space)))
+                              (recur (+ i 2) :code))
                        (recur (inc i) :code))
             :string  (case c
                        \" (recur (inc i) :code)
@@ -109,34 +113,37 @@
 
 (defn- justified?
   "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
-  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line."
-  [content start end]
+  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line.
+  The trailing comment is located in `masked`, where a `;` inside a string literal is blanked out."
+  [content masked start end]
   (let [line-num   (offset->line content start)
         lines      (str/split-lines content)
-        after      (let [line-end (str/index-of content "\n" end)]
-                     (subs content end (or line-end (count content))))
+        line-end   (or (str/index-of content "\n" end) (count content))
         prev-lines (->> (take (dec line-num) lines)
                         reverse
                         (drop-while str/blank?))]
-    (boolean (or (when-let [i (str/index-of after ";")]
-                   (re-matches substantive-comment-re (str/trim (subs after i))))
+    (boolean (or (when-let [i (str/index-of masked ";" end)]
+                   (when (< i line-end)
+                     (re-matches substantive-comment-re (str/trim (subs content i line-end)))))
                  (when-let [prev (first prev-lines)]
                    (re-matches substantive-comment-re (str/trim prev)))))))
 
 (defn ignore-matches
   "Inline ignore matches in `content`, in file order:
-  `{:start _, :end _, :line _, :linters [...]}` with character offsets and a 1-based line.
+  `{:start _, :end _, :line _, :linters [...], :justified? _}` with character offsets and a 1-based line.
   Matches inside string literals or line comments are excluded."
   [content]
   (let [masked (mask-strings-and-comments content)]
     (->> (concat (matches-with-offsets vector-form-re masked false)
                  (matches-with-offsets bare-form-re masked true))
          (sort-by :start)
-         (map #(assoc % :line (offset->line masked (:start %)))))))
+         (map #(assoc %
+                      :line       (offset->line masked (:start %))
+                      :justified? (justified? content masked (:start %) (:end %)))))))
 
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
-  Returns `{:file \"src/...\", :line 42, :linters [...], :justified? true}` maps.
+  Returns `{:file \"src/...\", :line 42, :linters [...], :justified? boolean}` maps.
   Forms inside string literals or line comments don't count."
   ([]
    (scan source-roots))
@@ -151,7 +158,7 @@
      {:file       (.getPath f)
       :line       (:line m)
       :linters    (:linters m)
-      :justified? (justified? content (:start m) (:end m))})))
+      :justified? (:justified? m)})))
 
 (defn actual-counts
   "Per-linter occurrence counts for `occurrences`, as returned by [[scan]]."
