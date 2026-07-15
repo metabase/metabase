@@ -330,7 +330,9 @@
   Args:
     model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")
     messages      - Sequence of Chat Completions message maps
-                    (e.g. [{:role \"user\" :content \"...\"}])
+                    (e.g. [{:role \"user\" :content \"...\"}]). A leading
+                    {:role \"system\" ...} message is forwarded as the provider
+                    system prompt, keeping untrusted content in the user channel.
     json-schema   - JSON Schema map for the expected response shape
     temperature   - Sampling temperature
     max-tokens    - Maximum tokens in the response
@@ -339,20 +341,24 @@
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
+        [system-msg input] (if (= "system" (some-> messages first :role name))
+                             [(:content (first messages)) (vec (rest messages))]
+                             [nil messages])
         _ (log/info "Calling LLM (structured)" {:provider provider
                                                 :model model
-                                                :msg-count (count messages)
+                                                :msg-count (count input)
                                                 :ai-proxy? ai-proxy?})
         tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
-        streaming-opts {:model       model
-                        :input       messages
-                        :schema      json-schema
-                        :temperature temperature
-                        :max-tokens  max-tokens
-                        :ai-proxy?   ai-proxy?}]
+        streaming-opts (cond-> {:model       model
+                                :input       input
+                                :schema      json-schema
+                                :temperature temperature
+                                :max-tokens  max-tokens
+                                :ai-proxy?   ai-proxy?}
+                         system-msg (assoc :system system-msg))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
-                      :msg-count (count messages)}
+                      :msg-count (count input)}
       (with-retries
         tracking-opts
         (fn []
