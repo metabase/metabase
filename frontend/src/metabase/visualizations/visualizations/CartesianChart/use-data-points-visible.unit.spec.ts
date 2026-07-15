@@ -4,6 +4,10 @@ import {
 } from "__support__/echarts";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { StackModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import {
+  WATERFALL_END_KEY,
+  WATERFALL_START_KEY,
+} from "metabase/visualizations/echarts/cartesian/waterfall/constants";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { SeriesSettings, StackType } from "metabase-types/api";
 
@@ -50,6 +54,28 @@ const createSingleSeriesChartModel = (values: (number | null)[]) =>
     dataset: values.map((value, index) => ({
       [X_AXIS_DATA_KEY]: index,
       count: value,
+    })),
+  });
+
+const createStackChartModel = (values: Record<string, number>) => {
+  const seriesKeys = Object.keys(values);
+  return createMockCartesianChartModel({
+    seriesModels: seriesKeys.map((dataKey) =>
+      createMockSeriesModel({ dataKey }),
+    ),
+    stackModels: [{ axis: "left", display: "bar", seriesKeys }],
+    dataset: [{ [X_AXIS_DATA_KEY]: "x", ...values }],
+  });
+};
+
+// `starts`/`ends` are the cumulative bounds of each rendered waterfall bar.
+const createWaterfallChartModel = (starts: number[], ends: number[]) =>
+  createMockCartesianChartModel({
+    seriesModels: [createMockSeriesModel({ dataKey: "count" })],
+    transformedDataset: starts.map((start, index) => ({
+      [X_AXIS_DATA_KEY]: index,
+      [WATERFALL_START_KEY]: start,
+      [WATERFALL_END_KEY]: ends[index],
     })),
   });
 
@@ -192,6 +218,65 @@ describe("useAreAllDataPointsOutOfRange", () => {
         useAreAllDataPointsOutOfRange(
           createSingleSeriesChartModel([100, null]),
           createSettings({ min: 40, max: 60, seriesDisplay: "line" }),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe("zero-valued stacks", () => {
+    it("returns false when an all-zero stack sits at the baseline within the range", () => {
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createStackChartModel({ a: 0, b: 0 }),
+          createSettings({ min: -10, max: 10, stackType: "stacked" }),
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when an all-zero stack's baseline is outside the range", () => {
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createStackChartModel({ a: 0, b: 0 }),
+          createSettings({ min: 40, max: 60, stackType: "stacked" }),
+        ),
+      ).toBe(true);
+    });
+
+    it("returns true for an all-zero normalized stack since it renders nothing", () => {
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createStackChartModel({ a: 0, b: 0 }),
+          createSettings({ min: -10, max: 10, stackType: "normalized" }),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe("waterfall", () => {
+    it("returns false when the range crosses a floating bar even though no raw value falls in it", () => {
+      // Bars span 0→10, 10→30, 30→25; the range hits the second bar's [10,30] span.
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createWaterfallChartModel([0, 10, 30], [10, 30, 25]),
+          createSettings({ min: 15, max: 25 }),
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when the range is entirely above the cumulative span", () => {
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createWaterfallChartModel([0, 10, 30], [10, 30, 25]),
+          createSettings({ min: 40, max: 60 }),
+        ),
+      ).toBe(true);
+    });
+
+    it("returns true when the range is entirely below the cumulative span", () => {
+      expect(
+        useAreAllDataPointsOutOfRange(
+          createWaterfallChartModel([0, 10, 30], [10, 30, 25]),
+          createSettings({ min: -20, max: -10 }),
         ),
       ).toBe(true);
     });

@@ -1,9 +1,12 @@
-import type {
-  BaseCartesianChartModel,
-  ComputedVisualizationSettings,
-  DataKey,
-  Datum,
-  SeriesModel,
+import {
+  type BaseCartesianChartModel,
+  type ChartDataset,
+  type ComputedVisualizationSettings,
+  type DataKey,
+  type Datum,
+  type SeriesModel,
+  WATERFALL_END_KEY,
+  WATERFALL_START_KEY,
 } from "metabase/viz-core";
 
 const NORMALIZED_STACK_MAX_PERCENT = 100;
@@ -24,12 +27,16 @@ const getStackInterval = (
     .map((key) => datum[key])
     .filter((value): value is number => typeof value === "number");
 
-  const hasValue = values.some((value) => value !== 0);
-  if (!hasValue) {
+  // Every series is missing at this x, so there's no bar to see. A present-but-zero
+  // value is a real point at the baseline and must fall through to the interval below.
+  if (values.length === 0) {
     return null;
   }
   if (isNormalized) {
-    return { min: 0, max: NORMALIZED_STACK_MAX_PERCENT };
+    // A normalized stack fills the full 0–100% band, except when every value is
+    // zero: the percentage is undefined (0/0) and nothing is rendered.
+    const hasMagnitude = values.some((value) => value !== 0);
+    return hasMagnitude ? { min: 0, max: NORMALIZED_STACK_MAX_PERCENT } : null;
   }
 
   const positiveTotal = values
@@ -56,6 +63,27 @@ const getSeriesInterval = (
   // any other series (a line) marks only its point.
   return { min: value, max: value };
 };
+
+// Waterfall bars chain end-to-end from a zero baseline, so the whole series
+// occupies one contiguous span between its extreme start/end values.
+const getWaterfallInterval = (
+  transformedDataset: ChartDataset,
+): Interval | null => {
+  const bounds = transformedDataset.flatMap((datum) =>
+    [datum[WATERFALL_START_KEY], datum[WATERFALL_END_KEY]].filter(
+      (value): value is number => typeof value === "number",
+    ),
+  );
+  if (bounds.length === 0) {
+    return null;
+  }
+  return { min: Math.min(...bounds), max: Math.max(...bounds) };
+};
+
+// Waterfall models store rendered bar bounds under dedicated start/end keys in
+// the transformed dataset; regular series keys are always `${cardId}:${name}`.
+const isWaterfallModel = (chartModel: BaseCartesianChartModel) =>
+  chartModel.transformedDataset.some((datum) => WATERFALL_END_KEY in datum);
 
 const isStackVisible = (
   datum: Datum,
@@ -90,6 +118,12 @@ export const useAreAllDataPointsOutOfRange = (
   }
 
   const windowRange: Interval = { min: yMin, max: yMax };
+
+  if (isWaterfallModel(chartModel)) {
+    const interval = getWaterfallInterval(chartModel.transformedDataset);
+    return interval == null || !intervalsOverlap(interval, windowRange);
+  }
+
   const isNormalized = settings["stackable.stack_type"] === "normalized";
 
   const stackedDataKeys = new Set(
