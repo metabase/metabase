@@ -51,7 +51,7 @@ export type SearchResultsProps = {
 };
 
 export const SearchLoadingSpinner = () => (
-  <Loader size="lg" data-testid="loading-indicator" label={t`Loading…`} />
+  <Loader size="lg" label={t`Loading…`} />
 );
 
 export const SearchResults = ({

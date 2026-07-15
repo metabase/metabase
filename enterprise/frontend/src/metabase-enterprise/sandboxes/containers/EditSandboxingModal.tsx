@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
@@ -7,9 +6,7 @@ import {
   useListUserAttributesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
@@ -20,14 +17,12 @@ import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
   params: GroupTableAccessPolicyParams;
-  location: Location;
-  route: { path: string };
+  onClose: () => void;
 }
 
 const EditSandboxingModalContainer = ({
   params,
-  location,
-  route,
+  onClose,
 }: EditSandboxingModalContainerProps) => {
   const dispatch = useDispatch();
 
@@ -77,14 +72,10 @@ const EditSandboxingModalContainer = ({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const close = () => {
-    return dispatch(push(getParentPath(route, location)));
-  };
-
   const handleSave = async (policy: GroupTableAccessPolicy) => {
     dispatch(updatePolicy(policy));
     dispatch(updateTableSandboxingPermission(params));
-    close();
+    onClose();
   };
 
   return (
@@ -92,7 +83,7 @@ const EditSandboxingModalContainer = ({
       policy={policy}
       attributes={attributes || []}
       params={params}
-      onCancel={close}
+      onCancel={onClose}
       onSave={handleSave}
     />
   );
