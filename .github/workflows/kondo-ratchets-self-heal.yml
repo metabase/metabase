@@ -1,9 +1,11 @@
 name: Kondo Ratchets Self-Heal
 
 # Removing an ignore doesn't require touching .clj-kondo/ratchets.edn, so PRs accumulate slack.
-# This commits the lowered budgets back to the PR branch, same pattern as the OpenAPI check.
+# On PRs labelled kondo-ratchets-self-healing, this commits the lowered budgets back to the PR
+# branch, same pattern as the OpenAPI check. Unlabelled PRs get tightened by local test runs instead.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "**.clj"
       - "**.cljc"
@@ -18,7 +20,9 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     # fork PRs don't get the automation token, so we couldn't push to them anyway
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'kondo-ratchets-self-healing')
+      && github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v6
         with:
