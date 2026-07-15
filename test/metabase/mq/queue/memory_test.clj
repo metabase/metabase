@@ -37,6 +37,19 @@
         (is (= 1 (depth-for layer "has-listener")) "messages with a listener are kept")
         (is (nil? (depth-for layer "no-listener")) "orphaned messages are dropped")))))
 
+(deftest clear-stale-claims-counts-as-a-failure-test
+  (testing "recovering a stale claim increments the message's failure count, so a delivery that keeps
+            timing out (never acks) eventually exhausts its retry budget instead of retrying forever"
+    (let [layer (memory/make-layer)]
+      (memory/publish! layer :queue/slow "p")
+      (memory/take-pending! layer :queue/slow 1)
+      (is (= 0 (memory/message-failures layer 1)) "claiming a message doesn't fail it")
+      ;; a negative timeout makes every in-flight claim stale
+      (is (= 1 (memory/clear-stale-claims! layer -1)) "the stale claim is recovered")
+      (is (= 1 (memory/message-failures layer 1)) "and counts as one failure")
+      (testing "the message is re-claimable after recovery"
+        (is (= 1 (count (memory/take-pending! layer :queue/slow 1))))))))
+
 (deftest publish-test
   (mq.tu/with-test-mq [ctx]
     (let [queue-name (keyword "queue" (str "publish-test-" (gensym)))
