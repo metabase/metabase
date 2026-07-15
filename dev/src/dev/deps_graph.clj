@@ -37,7 +37,7 @@
   (edn/read-string (slurp driver-test-overrides-path)))
 
 (declare kondo-config module-parent module-ancestor-chain external-usages module-dependencies
-         dependencies build-prefix->module default-ns-prefix)
+         dependencies build-prefix->module default-ns-prefix module-team)
 
 (defn friend-reach-count
   "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
@@ -164,6 +164,10 @@
   mismatch, and does not count. Expected to grow with config-only carves; a candidate ratchet once the
   source renames catch up.
 
+  `:parent-team-mismatches` counts nested modules whose effective `:team` differs from their parent's.
+  Meaningless for top-level modules (no parent) and zero for children that inherit; in practice these are
+  `enterprise/X` companions owned by a different team than the OSS `X`. Moves with reorgs, hence a stat.
+
   The SCC stats size the mutual-dependency blob at both granularities; they grow with ordinary feature
   work inside the blob, hence stats rather than ratchets.
   `:largest-scc-modules` and `:largest-scc-namespaces` measure the largest strongly connected component
@@ -178,6 +182,7 @@
      (module-boundary-stats (dependencies (build-prefix->module config)) config)))
   ([deps config]
    (let [values      (vals config)
+         declared    (set (keys config))
          api-sizes   (keep (fn [{:keys [api]}]
                              (when (set? api)
                                (count api)))
@@ -199,6 +204,10 @@
                                             (and ns-prefix
                                                  (not= ns-prefix (default-ns-prefix m))))
                                           config))
+      :parent-team-mismatches (count (filter (fn [m]
+                                               (when-let [parent (module-parent declared m)]
+                                                 (not= (module-team config m) (module-team config parent))))
+                                             declared))
       :total-api          (reduce + 0 api-sizes)})))
 
 (defn module-boundary-ratchets
