@@ -2490,7 +2490,7 @@ describe("sandbox", () => {
     const viewportHeight = Cypress.config("viewportHeight");
 
     H.vizSettingsSidebar()
-      .get("[data-plugin-sandbox]")
+      .find("[data-plugin-sandbox]")
       .should(($element) => {
         expect($element, "attack applied position:fixed").to.have.css(
           "position",
@@ -2511,7 +2511,7 @@ describe("sandbox", () => {
       });
 
     H.queryVisualizationRoot()
-      .get("[data-plugin-sandbox]")
+      .find("[data-plugin-sandbox]")
       .should(($element) => {
         const rect = $element[0].getBoundingClientRect();
 
