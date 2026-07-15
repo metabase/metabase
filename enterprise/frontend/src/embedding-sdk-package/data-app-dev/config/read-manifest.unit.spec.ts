@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { readAppSlug, readManifest } from "./read-manifest";
+import { readManifest } from "./read-manifest";
 
 jest.mock("node:fs");
 
@@ -53,32 +53,54 @@ describe("readManifest", () => {
 
     expect(() => readManifest(APP_ROOT)).toThrow(/Could not parse/);
   });
-});
 
-describe("readAppSlug", () => {
-  it("reads the slug from the manifest", () => {
-    setup({ [YML_PATH]: "name: Sales dashboard\nslug: sales\n" });
+  describe("slug", () => {
+    it("trims the slug", () => {
+      setup({ [YML_PATH]: "slug: ' sales '\n" });
 
-    expect(readAppSlug(APP_ROOT)).toBe("sales");
+      expect(readManifest(APP_ROOT)?.manifest.slug).toBe("sales");
+    });
+
+    it("is undefined when the slug is absent or not a string", () => {
+      setup({ [YML_PATH]: "name: Sales dashboard\n" });
+      expect(readManifest(APP_ROOT)?.manifest.slug).toBeUndefined();
+
+      setup({ [YML_PATH]: "slug: 123\n" });
+      expect(readManifest(APP_ROOT)?.manifest.slug).toBeUndefined();
+    });
   });
 
-  it("trims the slug", () => {
-    setup({ [YML_PATH]: "slug: ' sales '\n" });
+  describe("allowed_hosts", () => {
+    it("reads allowed_hosts as a list of strings", () => {
+      setup({
+        [YAML_PATH]:
+          "allowed_hosts:\n  - https://api.example.com\n  - https://*.acme.com\n",
+      });
 
-    expect(readAppSlug(APP_ROOT)).toBe("sales");
-  });
+      expect(readManifest(APP_ROOT)?.manifest.allowed_hosts).toEqual([
+        "https://api.example.com",
+        "https://*.acme.com",
+      ]);
+    });
 
-  it("returns '' when the manifest is missing", () => {
-    setup({});
+    it("is undefined when the manifest has no allowed_hosts key", () => {
+      setup({ [YAML_PATH]: "name: My App\n" });
 
-    expect(readAppSlug(APP_ROOT)).toBe("");
-  });
+      expect(readManifest(APP_ROOT)?.manifest.allowed_hosts).toBeUndefined();
+    });
 
-  it("returns '' when the slug is absent or not a string", () => {
-    setup({ [YML_PATH]: "name: Sales dashboard\n" });
-    expect(readAppSlug(APP_ROOT)).toBe("");
+    it("throws when allowed_hosts is not a list", () => {
+      setup({ [YAML_PATH]: "allowed_hosts: nope\n" });
 
-    setup({ [YML_PATH]: "slug: 123\n" });
-    expect(readAppSlug(APP_ROOT)).toBe("");
+      expect(() => readManifest(APP_ROOT)).toThrow(
+        /"allowed_hosts" must be a list/,
+      );
+    });
+
+    it("throws on a non-string entry", () => {
+      setup({ [YAML_PATH]: "allowed_hosts:\n  - https://ok.com\n  - 42\n" });
+
+      expect(() => readManifest(APP_ROOT)).toThrow(/must be a string/);
+    });
   });
 });

@@ -8,7 +8,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API } from "metabase/plugins";
 
-import { isEmbedPreview, setIsDataApp } from "./config";
+import { isEmbedPreview, setDataApp } from "./config";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
 
 const iframeState = { iframedInSelf: false };
@@ -28,7 +28,7 @@ const REQUEST: OnBeforeRequestHandlerConfig = {
 
 const runHandler = (handler: OnBeforeRequestHandler) => handler(REQUEST);
 
-describe("setIsDataApp", () => {
+describe("setDataApp", () => {
   const originalConfig = { ...EMBEDDING_SDK_CONFIG };
   const originalHandlers = { ...PLUGIN_API.onBeforeRequestHandlers };
 
@@ -39,7 +39,7 @@ describe("setIsDataApp", () => {
   });
 
   it("configures the data-app context on the shared config", () => {
-    setIsDataApp("sales");
+    setDataApp("sales");
 
     expect(EMBEDDING_SDK_CONFIG.isEmbeddingSdk).toBe(true);
     expect(EMBEDDING_SDK_CONFIG.isDataApp).toBe(true);
@@ -49,7 +49,7 @@ describe("setIsDataApp", () => {
   });
 
   it("installs a handler that sends the data-app client and identifier headers", async () => {
-    setIsDataApp("sales");
+    setDataApp("sales");
 
     expect(
       await runHandler(
@@ -64,7 +64,7 @@ describe("setIsDataApp", () => {
   });
 
   it("omits the identifier header when the app name is unknown", async () => {
-    setIsDataApp("");
+    setDataApp("");
 
     expect(
       await runHandler(
@@ -74,7 +74,7 @@ describe("setIsDataApp", () => {
   });
 
   it("does not send the embed-preview header for a non-dev data app", async () => {
-    setIsDataApp("sales");
+    setDataApp("sales");
 
     expect(
       await runHandler(
@@ -84,7 +84,7 @@ describe("setIsDataApp", () => {
   });
 
   it("sends the embed-preview header for a dev data app, so it is recorded as data-app-preview", async () => {
-    setIsDataApp("sales", { isDev: true });
+    setDataApp("sales", { isDev: true });
 
     expect(isDataAppDev()).toBe(true);
     expect(
@@ -99,7 +99,7 @@ describe("setIsDataApp", () => {
     // the handler slot with one built from EMBEDDING_SDK_CONFIG. It must
     // produce the same headers, or mounting an SDK component silently drops
     // the data-app attribution.
-    setIsDataApp("sales");
+    setDataApp("sales");
 
     const installed = await runHandler(
       PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,

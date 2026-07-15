@@ -4,21 +4,48 @@ import path from "node:path";
 import { load as parseYaml } from "js-yaml";
 
 /**
- * The user-authored `data_app.yml` manifest. Values come straight from YAML
- * and are unvalidated — narrow each field before use.
+ * The app's parsed `data_app.yml` manifest, validated and normalized:
+ * `slug` is trimmed, `allowed_hosts` is guaranteed to be a list of strings.
  */
 export type DataAppManifest = {
-  slug?: unknown;
-  allowed_hosts?: unknown;
+  slug?: string;
+  allowed_hosts?: string[];
+};
+
+const isString = (value: unknown): value is string => typeof value === "string";
+
+const parseAllowedHosts = (
+  value: unknown,
+  manifestPath: string,
+): string[] | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`${manifestPath}: "allowed_hosts" must be a list.`);
+  }
+
+  if (!value.every(isString)) {
+    const nonString = value.find((host) => !isString(host));
+
+    throw new Error(
+      `${manifestPath}: every "allowed_hosts" entry must be a string, got ${JSON.stringify(
+        nonString,
+      )}.`,
+    );
+  }
+
+  return value;
 };
 
 /**
- * Read + parse the app's `data_app.yml`/`.yaml` manifest.
+ * Read, parse, and normalize the app's `data_app.yml`/`.yaml` manifest.
  * Returns null when the app has no manifest.
  */
-export function readManifest(
+export const readManifest = (
   appRoot: string,
-): { manifestPath: string; manifest: DataAppManifest } | null {
+): { manifestPath: string; manifest: DataAppManifest } | null => {
   const manifestPath = [
     path.join(appRoot, "data_app.yaml"),
     path.join(appRoot, "data_app.yml"),
@@ -40,14 +67,14 @@ export function readManifest(
     );
   }
 
+  const raw: { slug?: unknown; allowed_hosts?: unknown } =
+    typeof parsed === "object" && parsed !== null ? parsed : {};
+
   return {
     manifestPath,
-    manifest: typeof parsed === "object" && parsed !== null ? parsed : {},
+    manifest: {
+      slug: isString(raw.slug) ? raw.slug.trim() : undefined,
+      allowed_hosts: parseAllowedHosts(raw.allowed_hosts, manifestPath),
+    },
   };
-}
-
-export function readAppSlug(appRoot: string): string {
-  const slug = readManifest(appRoot)?.manifest.slug;
-
-  return typeof slug === "string" ? slug.trim() : "";
-}
+};

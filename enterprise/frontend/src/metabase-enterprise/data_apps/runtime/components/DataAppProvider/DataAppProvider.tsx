@@ -5,7 +5,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
-import { setIsDataApp } from "metabase/embedding/config";
+import { setDataApp } from "metabase/embedding/config";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
@@ -41,7 +41,7 @@ export const DataAppProvider = (props: DataAppProviderProps) => {
   const { theme } = providerProps ?? {};
 
   // Configure the data-app request headers before any child renders. This must happen during the first render
-  useState(() => setIsDataApp(appName, { isDev: isDevApp }));
+  useState(() => setDataApp(appName, { isDev: isDevApp }));
 
   // Swap the SDK's default red error alert for a calm, neutral empty state,
   // unless the app ships its own `errorComponent`.

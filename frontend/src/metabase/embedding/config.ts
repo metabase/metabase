@@ -44,7 +44,7 @@ export function setIsStaticEmbedding() {
   EMBEDDING_CONFIG.isStaticEmbedding = true;
 }
 
-export function setIsDataApp(
+export function setDataApp(
   dataAppName: string,
   { isDev = false }: { isDev?: boolean } = {},
 ) {

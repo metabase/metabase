@@ -8,10 +8,10 @@ import {
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
-import { buildDevCsp, readAllowedHosts } from "./config/dev-connect-src";
+import { buildDevCsp } from "./config/dev-connect-src";
 import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
-import { readAppSlug } from "./config/read-manifest";
+import { readManifest } from "./config/read-manifest";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
 /**
@@ -27,8 +27,9 @@ import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
-  const allowedHosts = readAllowedHosts(appRoot);
-  const appSlug = readAppSlug(appRoot);
+  const { manifest } = readManifest(appRoot) ?? {};
+  const appSlug = manifest?.slug ?? "";
+  const allowedHosts = manifest?.allowed_hosts ?? [];
 
   return [
     react(),
