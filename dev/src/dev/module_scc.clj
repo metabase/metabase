@@ -26,8 +26,7 @@
 (set! *warn-on-reflection* true)
 
 ;;;; ------------------------------------------------------------------------------------------------
-;;;; SCC structure (Tarjan itself lives in [[dev.deps-graph]], which also tracks the component sizes
-;;;; as committed module-boundary stats)
+;;;; SCC structure (Tarjan itself lives in [[dev.deps-graph]])
 ;;;; ------------------------------------------------------------------------------------------------
 
 (defn- graph-nodes [graph]

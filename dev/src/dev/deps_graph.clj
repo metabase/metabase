@@ -74,15 +74,16 @@
                             (not= (root m) (root d)))]
              [m d]))))
 
-;;; Tarjan SCC lives here rather than in `dev.module-scc` (whose cut-scoring toolkit builds on top of it)
-;;; so [[module-boundary-stats]] can size the components without a circular require.
+;;; Tarjan SCC lives here rather than in `dev.module-scc` (which builds on it) so
+;;; [[module-boundary-stats]] can size the components without a circular require.
 
 (defn- graph-nodes [graph]
   (into (set (keys graph)) (mapcat val) graph))
 
 (defn strongly-connected-components
-  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`. Returns a vector of sets,
-  one per SCC, including singletons. Recursive; fine for graphs a few thousand nodes deep."
+  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`.
+  Returns a vector of sets, one per SCC, including singletons.
+  Recursive; fine for graphs a few thousand nodes deep."
   [graph]
   (let [index    (volatile! {})
         lowlink  (volatile! {})
@@ -119,8 +120,8 @@
     @sccs))
 
 (defn largest-scc
-  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes. With two
-  args, picks from precomputed `sccs`."
+  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes.
+  With two args, picks from precomputed `sccs`."
   ([graph] (largest-scc graph (strongly-connected-components graph)))
   ([_graph sccs] (if (seq sccs) (apply max-key count sccs) #{})))
 
@@ -163,14 +164,15 @@
   mismatch, and does not count. Expected to grow with config-only carves; a candidate ratchet once the
   source renames catch up.
 
-  The SCC stats size the mutual-dependency blob at both granularities. `:largest-scc-modules` and
-  `:largest-scc-namespaces` are the largest strongly connected component of the module graph, in modules
-  and in the namespaces those modules own — the namespace weighting is the honest coupling number, since
-  splitting a blob module in config raises the module count without moving a single namespace out of the
-  cycle. `:largest-ns-scc` is the largest SCC of the namespace graph itself: static requires form a DAG,
-  so it consists entirely of dynamic edges (`requiring-resolve` and friends) and is the floor no module
-  re-partitioning can get under — only breaking real runtime cycles moves it. All three grow with
-  ordinary feature work inside the blob, so they are stats rather than ratchets."
+  The SCC stats size the mutual-dependency blob at both granularities; they grow with ordinary feature
+  work inside the blob, hence stats rather than ratchets.
+  `:largest-scc-modules` and `:largest-scc-namespaces` measure the largest strongly connected component
+  of the module graph.
+  The namespace weighting is the honest number:
+  splitting a blob module in config raises the module count without moving a namespace out of the cycle.
+  `:largest-ns-scc` is the largest SCC of the namespace graph itself:
+  static requires form a DAG, so the component is pure dynamic edges (`requiring-resolve` and friends)
+  and is the floor no module re-partitioning can get under."
   ([]
    (let [config (kondo-config)]
      (module-boundary-stats (dependencies (build-prefix->module config)) config)))
