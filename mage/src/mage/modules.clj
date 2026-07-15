@@ -462,11 +462,13 @@
       (str/includes? filename "/test/")))    ; driver plugins live at modules/drivers/<d>/test/…
 
 (defn- metric-file->module
-  "Resolve a source/test file to its module, first rewriting driver-plugin paths
-  (`modules/drivers/<d>/(src|test)/…`) to their canonical `src|test/metabase/…` form so their
-  `metabase.driver.<d>…` namespaces resolve to the `driver` module."
+  "Resolve a source/test file to its module. Everything under `modules/drivers/*` is driver-plugin code —
+  including test-data helpers whose namespaces (`metabase.test.data.*`) wouldn't otherwise resolve — so
+  it all belongs to the `driver` module; other files resolve by namespace as usual."
   [prefix->module filename]
-  (file->module prefix->module (str/replace filename #"^modules/drivers/[^/]+/(src|test)/" "$1/")))
+  (if (str/starts-with? filename "modules/drivers/")
+    'driver
+    (file->module prefix->module filename)))
 
 (defn- count-lines [filename]
   (try

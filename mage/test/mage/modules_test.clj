@@ -396,3 +396,10 @@
       (is (= #{"core"} (get index "widget")))
       (is (contains? (get index "gadget") "core"))
       (is (not (contains? (get index "core") "core"))))))
+(deftest metric-file->module-driver-plugins-test
+  (let [metric-file->module @#'mage.modules/metric-file->module]
+    (testing "driver-plugin files belong to the driver module regardless of namespace"
+      (is (= 'driver (metric-file->module "modules/drivers/mysql/src/metabase/driver/mysql.clj")))
+      (is (= 'driver (metric-file->module "modules/drivers/mysql/test/metabase/test/data/mysql.clj"))))
+    (testing "non-driver files still resolve by module directory"
+      (is (= 'lib (metric-file->module "src/metabase/lib/core.clj"))))))

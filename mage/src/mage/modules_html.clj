@@ -416,9 +416,17 @@ function applySelected(id){   // id may be null; updates tree + detail, never to
   if(selected) scrollToSelected();
   renderDetail();
 }
-function select(id, replace){   // user selection → push a history entry (replace for continuous arrow browsing)
+function select(id){   // user selection → push a history entry
   applySelected(selected===id ? null : id);
-  syncHash(!replace);
+  syncHash(true);
+}
+let kbRunTimer=null;
+function keyboardSelect(id){   // coalesce a run of arrow moves into one history entry ending at the resting selection
+  const startOfRun = kbRunTimer===null;
+  applySelected(id);
+  syncHash(startOfRun);        // push on the first move of a run, replace as it continues
+  clearTimeout(kbRunTimer);
+  kbRunTimer=setTimeout(()=>{ kbRunTimer=null; }, 500);
 }
 function renderDetail(){
   if(!selected){ detailEl.classList.remove('show'); detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
@@ -512,7 +520,7 @@ document.addEventListener('keydown', e=>{
     let i=visibleIds.indexOf(selected);
     if(e.key==='ArrowDown') i = i<0 ? 0 : Math.min(i+1, visibleIds.length-1);
     else                    i = i<0 ? visibleIds.length-1 : Math.max(i-1, 0);
-    if(visibleIds[i] && visibleIds[i]!==selected) select(visibleIds[i], true);   // replace: continuous browsing, one history entry
+    if(visibleIds[i] && visibleIds[i]!==selected) keyboardSelect(visibleIds[i]);
   }
 });
 // deep-link: sync selection to the URL hash on load / back-forward, incl. empty hash → deselect
