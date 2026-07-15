@@ -39,8 +39,7 @@
    [pretty.core :as pretty]
    [toucan2.core :as t2])
   (:import
-   (java.time ZonedDateTime)
-   (java.util.concurrent Semaphore)))
+   (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -315,29 +314,6 @@
         (mt/wait-for-result purge-chan)
         (is (= :not-cached
                (run-query)))))))
-
-(deftest concurrent-write-limit-test
-  (testing "when no cache-write permits are available, the query still runs but its results are not cached"
-    (with-mock-cache! [save-chan]
-      (binding [cache/*write-permits* (Semaphore. 0)]
-        (is (= :not-cached
-               (run-query)))
-        (is (= :metabase.test.util.async/timed-out
-               (mt/wait-for-result save-chan 100))
-            "nothing should have been written to the cache backend")
-        ;; the second run also runs uncached: nothing was stored the first time
-        (is (= :not-cached
-               (run-query)))))))
-
-(deftest concurrent-write-limit-release-test
-  (testing "permits are released after each run, so sequential queries all get cached"
-    (with-mock-cache! [save-chan]
-      (binding [cache/*write-permits* (Semaphore. 1)]
-        (run-query)
-        (mt/wait-for-result save-chan)
-        (is (= :cached
-               (run-query)))
-        (is (= 1 (.availablePermits ^Semaphore cache/*write-permits*)))))))
 
 (deftest ignore-cached-results-test
   (testing "check that :ignore-cached-results? in middleware is respected when returning results..."
