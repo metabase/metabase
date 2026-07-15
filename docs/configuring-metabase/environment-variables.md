@@ -1547,15 +1547,6 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
-### `MB_QUERY_CACHING_MAX_CONCURRENT_WRITES`
-
-- Type: integer
-- Default: `0`
-
-Maximum number of queries that can write their results to the query cache at the same time; 0 means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. Each concurrent write buffers a result capped by query-caching-max-kb (2 MB by default), so e.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB including growth transients.
-
-Maximum number of queries that can write their results to the query cache at the same time; 0 (the default) means no limit. Queries over the limit run normally but skip caching that run, bounding the CPU and memory spent storing results during a burst of cache misses. E.g. a limit of 32 bounds the worst-case burst cost at roughly 200 MB.
-
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
