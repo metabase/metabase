@@ -80,7 +80,7 @@
                                                            :notification/sync? true)]
         (f)))))
 
-;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
+;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe.
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username` and
   `email-smtp-password` (which will cause [[metabase.channel.settings/email-configured?]] to return `true`, and execute

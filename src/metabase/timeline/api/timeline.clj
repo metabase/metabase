@@ -23,9 +23,6 @@
   [:map
    [:id pos-int?]])
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (api.macros/defendpoint :post "/" :- ::Timeline
   "Create a new [[Timeline]]."
   [_route-params
@@ -46,9 +43,6 @@
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
   [_route-params
@@ -65,9 +59,6 @@
       (= include :events)
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."

@@ -14,7 +14,6 @@
    (java.util Base64)))
 
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
-;; kondo flags it because of the `!` suffix in a fixture.
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (binding [client/*url-prefix* ""]

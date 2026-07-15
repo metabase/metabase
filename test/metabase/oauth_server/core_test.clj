@@ -4,7 +4,6 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]))
 
-;; TODO (Chris 2026-03-24) — remove kondo ignore once linter respects the thread-safe list in use-fixtures
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (thunk)
