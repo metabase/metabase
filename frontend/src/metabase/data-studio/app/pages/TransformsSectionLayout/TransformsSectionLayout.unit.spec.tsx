@@ -11,7 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { IndexRoute, Route, withRouteProps } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -96,7 +96,7 @@ const setup = ({
 
   renderWithProviders(
     <Route path={path} element={<RoutedTransformsSectionLayout />}>
-      <IndexRoute element={<div>List of transforms</div>} />
+      <Route index element={<div>List of transforms</div>} />
     </Route>,
     {
       storeInitialState: createMockState({
