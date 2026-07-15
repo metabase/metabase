@@ -117,18 +117,8 @@ const setup = ({
 const CONTENT_MANAGEMENT_GROUP = "Content management";
 const LOGS_AND_ACTIVITY_GROUP = "Logs and activity";
 
-const expandGroup = async (name: string) => {
-  const linkCountBefore = screen.queryAllByRole("link").length;
-  await userEvent.click(screen.getByRole("button", { name }));
-  await waitFor(() => {
-    expect(screen.queryAllByRole("link").length).toBeGreaterThan(
-      linkCountBefore,
-    );
-  });
-};
-
 describe("MonitorLayout", () => {
-  it("groups the sections into collapsible menus that start collapsed", async () => {
+  it("groups the sections under static headings with a link for each Monitor section", async () => {
     setup();
 
     await waitFor(() => {
@@ -136,34 +126,11 @@ describe("MonitorLayout", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: CONTENT_MANAGEMENT_GROUP }),
-    ).toHaveAttribute("aria-expanded", "false");
+      screen.getByRole("heading", { name: CONTENT_MANAGEMENT_GROUP }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: LOGS_AND_ACTIVITY_GROUP }),
-    ).toHaveAttribute("aria-expanded", "false");
-
-    [
-      "Dependency diagnostics",
-      "Erroring questions",
-      "Alerts management",
-      "Background tasks",
-      "Scheduled jobs",
-      "Application logs",
-      "Model caching log",
-    ].forEach((name) => {
-      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
-    });
-  });
-
-  it("renders a link for each Monitor section once its group is expanded", async () => {
-    setup();
-
-    await waitFor(() => {
-      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
-    });
-
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
-    await expandGroup(LOGS_AND_ACTIVITY_GROUP);
+      screen.getByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
+    ).toBeInTheDocument();
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
@@ -180,96 +147,26 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("opens the group containing the active route on mount", async () => {
-    setup({ initialRoute: Urls.monitorTasks() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
-    });
-
-    expect(
-      screen.getByRole("button", { name: LOGS_AND_ACTIVITY_GROUP }),
-    ).toHaveAttribute("aria-expanded", "true");
-    expect(
-      await screen.findByRole("link", { name: "Background tasks" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: CONTENT_MANAGEMENT_GROUP }),
-    ).toHaveAttribute("aria-expanded", "false");
-    expect(
-      screen.queryByRole("link", { name: "Dependency diagnostics" }),
-    ).not.toBeInTheDocument();
-  });
-
-  const SECTION_CASES: {
-    label: string;
-    route: string;
-    group: string;
-    otherGroup: string;
-  }[] = [
-    {
-      label: "Dependency diagnostics",
-      route: Urls.dependencyDiagnostics(),
-      group: CONTENT_MANAGEMENT_GROUP,
-      otherGroup: LOGS_AND_ACTIVITY_GROUP,
-    },
-    {
-      label: "Erroring questions",
-      route: Urls.monitorErroringQuestions(),
-      group: CONTENT_MANAGEMENT_GROUP,
-      otherGroup: LOGS_AND_ACTIVITY_GROUP,
-    },
-    {
-      label: "Alerts management",
-      route: Urls.monitorNotifications(),
-      group: CONTENT_MANAGEMENT_GROUP,
-      otherGroup: LOGS_AND_ACTIVITY_GROUP,
-    },
-    {
-      label: "Background tasks",
-      route: Urls.monitorTasks(),
-      group: LOGS_AND_ACTIVITY_GROUP,
-      otherGroup: CONTENT_MANAGEMENT_GROUP,
-    },
-    {
-      label: "Scheduled jobs",
-      route: Urls.monitorJobs(),
-      group: LOGS_AND_ACTIVITY_GROUP,
-      otherGroup: CONTENT_MANAGEMENT_GROUP,
-    },
-    {
-      label: "Application logs",
-      route: Urls.monitorLogs(),
-      group: LOGS_AND_ACTIVITY_GROUP,
-      otherGroup: CONTENT_MANAGEMENT_GROUP,
-    },
-    {
-      label: "Model caching log",
-      route: Urls.monitorModelCaching(),
-      group: LOGS_AND_ACTIVITY_GROUP,
-      otherGroup: CONTENT_MANAGEMENT_GROUP,
-    },
+  const SECTION_CASES: { label: string; route: string }[] = [
+    { label: "Dependency diagnostics", route: Urls.dependencyDiagnostics() },
+    { label: "Erroring questions", route: Urls.monitorErroringQuestions() },
+    { label: "Alerts management", route: Urls.monitorNotifications() },
+    { label: "Background tasks", route: Urls.monitorTasks() },
+    { label: "Scheduled jobs", route: Urls.monitorJobs() },
+    { label: "Application logs", route: Urls.monitorLogs() },
+    { label: "Model caching log", route: Urls.monitorModelCaching() },
   ];
 
   it.each(SECTION_CASES)(
-    "opens the owning group and marks $label as the current page for its route",
-    async ({ label, route, group, otherGroup }) => {
+    "marks $label as the current page for its route",
+    async ({ label, route }) => {
       setup({ initialRoute: route });
 
       await waitFor(() => {
         expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByRole("button", { name: group })).toHaveAttribute(
-        "aria-expanded",
-        "true",
-      );
-      expect(screen.getByRole("button", { name: otherGroup })).toHaveAttribute(
-        "aria-expanded",
-        "false",
-      );
-
-      const activeLink = await screen.findByRole("link", { name: label });
+      const activeLink = screen.getByRole("link", { name: label });
       expect(activeLink).toHaveAttribute("aria-current", "page");
       expect(screen.getAllByRole("link", { current: "page" })).toEqual([
         activeLink,
@@ -291,10 +188,8 @@ describe("MonitorLayout", () => {
     });
 
     expect(
-      screen.queryByRole("button", { name: LOGS_AND_ACTIVITY_GROUP }),
+      screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
     ).not.toBeInTheDocument();
-
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
 
     expect(
       screen.getByRole("link", { name: "Dependency diagnostics" }),
@@ -323,9 +218,6 @@ describe("MonitorLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
-
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
-    await expandGroup(LOGS_AND_ACTIVITY_GROUP);
 
     expect(
       screen.queryByRole("link", { name: "Dependency diagnostics" }),
@@ -356,8 +248,9 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
-
+    expect(
+      screen.getByRole("link", { name: "Erroring questions" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
     ).not.toBeInTheDocument();
@@ -427,7 +320,6 @@ describe("MonitorLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
 
     expect(getTabGem("Erroring questions")).toBeInTheDocument();
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
@@ -439,7 +331,6 @@ describe("MonitorLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
 
     expect(getTabGem("Dependency diagnostics")).toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
@@ -451,7 +342,6 @@ describe("MonitorLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
-    await expandGroup(CONTENT_MANAGEMENT_GROUP);
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();

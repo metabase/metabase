@@ -34,19 +34,6 @@ type MonitorSection =
   | "logs"
   | "model-caching";
 
-const CONTENT_MANAGEMENT_SECTIONS: readonly MonitorSection[] = [
-  "diagnostics",
-  "erroring-questions",
-  "alerts",
-];
-
-const LOGS_AND_ACTIVITY_SECTIONS: readonly MonitorSection[] = [
-  "tasks",
-  "jobs",
-  "logs",
-  "model-caching",
-];
-
 function getActiveSection(pathname: string): MonitorSection | null {
   return match(pathname)
     .returnType<MonitorSection | null>()
@@ -96,15 +83,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const upperNav = (
     <>
       {hasContentManagement && (
-        <AreaTabGroup
-          label={t`Content management`}
-          icon="folder"
-          showLabel={isNavbarOpened}
-          isActive={
-            activeSection != null &&
-            CONTENT_MANAGEMENT_SECTIONS.includes(activeSection)
-          }
-        >
+        <AreaTabGroup label={t`Content management`} showLabel={isNavbarOpened}>
           {canAccessDiagnostics && (
             <AreaTab
               label={t`Dependency diagnostics`}
@@ -137,15 +116,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
         </AreaTabGroup>
       )}
       {hasLogsAndActivity && (
-        <AreaTabGroup
-          label={t`Logs and activity`}
-          icon="list"
-          showLabel={isNavbarOpened}
-          isActive={
-            activeSection != null &&
-            LOGS_AND_ACTIVITY_SECTIONS.includes(activeSection)
-          }
-        >
+        <AreaTabGroup label={t`Logs and activity`} showLabel={isNavbarOpened}>
           <AreaTab
             label={t`Background tasks`}
             icon="clipboard"
