@@ -52,12 +52,12 @@
   (testing "the (source_transform_id, is_active) unique constraint allows at most one active run per seed"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
-        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
           (try
-            (is (thrown? Exception (dag-run/start-dag-run! tid :downstream nil)))
+            (is (thrown? Exception (dag-run/start-dag-run! tid :downstream nil 1)))
             (testing "a terminal run doesn't collide, so a new run can start"
               (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
-              (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil)]
+              (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil 1)]
                 (is (pos-int? run-id-2))))
             (finally
               (t2/delete! :model/TransformDagRun :source_transform_id tid))))))))
@@ -66,7 +66,7 @@
   (testing "run-dag! treats losing the unique-active-run insert race as already-running"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Transform {tid :id} {:name "seed" :table_dependencies []}]
-        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)
               start-promise (promise)]
           (try
             ;; bypass the fast pre-check to simulate two triggers racing past it together; the loser's
@@ -83,7 +83,7 @@
 (deftest dag-run-lifecycle-test
   (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
     (testing "start-dag-run! creates a started, active run for the seed transform"
-      (let [{run-id :id :as run} (dag-run/start-dag-run! tid :upstream (mt/user->id :rasta))]
+      (let [{run-id :id :as run} (dag-run/start-dag-run! tid :upstream (mt/user->id :rasta) 3)]
         (try
           (is (= :started (:status run)))
           (is (true? (:is_active run)))
@@ -91,6 +91,7 @@
           (testing "the seed transform's name/entity_id are snapshotted for post-deletion display"
             (is (= "seed" (:source_transform_name run)))
             (is (some? (:source_transform_entity_id run))))
+          (is (= 3 (:transform_count run)))
           (is (= :upstream (:direction run)))
           (is (= (mt/user->id :rasta) (:user_id run)))
           (testing "running-run-for-source-transform-id finds the active run"
@@ -103,7 +104,7 @@
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
     (testing "cancel-started-run! cancels an active run but is a no-op once terminal"
-      (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil 1)]
         (try
           (is (= 1 (coordinated-run/cancel-started-run! :model/TransformDagRun run-id)))
           (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
@@ -112,7 +113,7 @@
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
     (testing "fail-started-run! records the failure message"
-      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/fail-started-run! :model/TransformDagRun run-id {:message "boom"})
           (let [row (t2/select-one :model/TransformDagRun :id run-id)]
@@ -124,7 +125,7 @@
 (deftest dag-run-survives-transform-deletion-test
   (testing "deleting the seed transform nulls source_transform_id but preserves the DAG run and its snapshot"
     (mt/with-temp [:model/Transform {tid :id} {:name "doomed seed"}]
-      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
           (t2/delete! :model/Transform :id tid)
@@ -140,7 +141,7 @@
   (mt/with-temp [:model/Transform {seed :id} {:name "seed"}
                  :model/Transform {tid-a :id} {:name "member-a"}
                  :model/Transform {tid-b :id} {:name "member-b"}]
-    (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil)]
+    (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil 2)]
       (try
         (let [{active-run :id} (transform-run/start-run! tid-a {:dag_run_id run-id :run_method :manual})
               {done-run :id}   (transform-run/start-run! tid-b {:dag_run_id run-id :run_method :manual})]

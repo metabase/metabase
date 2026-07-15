@@ -34,6 +34,7 @@
                                                         :start_time   (parse-instant "2025-09-01T10:00:00")}
                  :model/TransformDagRun {dag-run-id :id} {:source_transform_id tb-id
                                                           :direction           "downstream"
+                                                          :transform_count     4
                                                           :status              "failed"
                                                           :message             "boom"
                                                           :user_id             (mt/user->id :lucky)
@@ -85,6 +86,7 @@
                 (is (= job-id (:entity_id row)))
                 (is (= "Nightly Job" (:name row)))
                 (is (nil? (:direction row)))
+                (is (nil? (:transform_count row)))
                 (is (= "cron" (:run_method row)))
                 (is (= "succeeded" (:status row)))
                 (is (= (utc-timestamp "2025-09-01T10:00:00") (:start_time row)))
@@ -94,6 +96,7 @@
                 (is (= tb-id (:entity_id row)))
                 (is (= "Transform B" (:name row)))
                 (is (= "downstream" (:direction row)))
+                (is (= 4 (:transform_count row)))
                 (is (= "manual" (:run_method row)))
                 (is (= "failed" (:status row)))
                 (is (= "boom" (:message row)))
