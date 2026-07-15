@@ -4,10 +4,20 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.models.collection :as collections]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(defn- mbql5-venues-segment-definition
+  "An MBQL5 segment definition on the venues table. Segment permissions derive the source table from the definition,
+  so remote-sync tests need a definition that actually references the table under test."
+  []
+  (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+        query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+    (lib/filter query (lib/> (lib.metadata/field mp (mt/id :venues :price)) 2))))
 
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
@@ -489,10 +499,8 @@
                           {:is_published true
                            :collection_id library-coll-id})
               (try
-                ;; Use empty definition {} which is valid for segments
                 (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
-                                                                :table_id table-id
-                                                                :definition {}}]
+                                                                :definition (mbql5-venues-segment-definition)}]
                   (is (false? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
                       "Segment on published table in remote-synced collection should not be writable when remote-sync-type is read-only"))
                 (finally
@@ -512,10 +520,8 @@
                           {:is_published true
                            :collection_id library-coll-id})
               (try
-                ;; Use empty definition {} which is valid for segments
                 (mt/with-temp [:model/Segment {segment-id :id} {:name "Test Segment"
-                                                                :table_id table-id
-                                                                :definition {}}]
+                                                                :definition (mbql5-venues-segment-definition)}]
                   (is (true? (mi/can-write? (t2/select-one :model/Segment :id segment-id)))
                       "Segment on published table in remote-synced collection should be writable when remote-sync-type is read-write"))
                 (finally
@@ -535,13 +541,9 @@
                           {:is_published true
                            :collection_id library-coll-id})
               (try
-                ;; Pass the table directly to can-create? so it uses the updated values
-                (let [table (t2/select-one :model/Table :id table-id)]
-                  (is (false? (mi/can-create? :model/Segment {:table_id table-id
-                                                              :table table
-                                                              :name "New Segment"
-                                                              :definition {}}))
-                      "Segment creation should be blocked on published table in remote-synced collection when remote-sync-type is read-only"))
+                (is (false? (mi/can-create? :model/Segment {:name "New Segment"
+                                                            :definition (mbql5-venues-segment-definition)}))
+                    "Segment creation should be blocked on published table in remote-synced collection when remote-sync-type is read-only")
                 (finally
                   (t2/update! :model/Table table-id
                               {:is_published false

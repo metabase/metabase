@@ -75,16 +75,17 @@
   But ONLY if the source table derived from the definition exists and is editable (not in a remote-synced collection
   in read-only mode)."
   [definition]
-  (and (or api/*is-superuser?* api/*is-data-analyst?*)
-       (when-let [table (definition-source-table definition)]
-         (and (or api/*is-superuser?*
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table)))
-              (remote-sync/table-editable? table)))))
+  (boolean
+   (and (or api/*is-superuser?* api/*is-data-analyst?*)
+        (when-let [table (definition-source-table definition)]
+          (and (or api/*is-superuser?*
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table)))
+               (remote-sync/table-editable? table))))))
 
 (defmethod mi/can-write? :model/Measure
   ([instance]
