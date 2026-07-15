@@ -47,25 +47,6 @@ export interface NodeViewportState {
   shouldLoadData: boolean;
 }
 
-/**
- * What the surrounding surface lets the editor do. Hosts declare these instead
- * of exposing a surface enum the editor has to branch on: a restricted surface
- * (e.g. exploration) flips the relevant flag to false. Adding a new surface is
- * "provide a host with these flags", not "find every `=== 'exploration'` check".
- */
-export interface EditorCapabilities {
-  canEmbedCharts: boolean;
-  canUseMetabot: boolean;
-  canOpenCardInQueryBuilder: boolean;
-}
-
-/** Capabilities for an unrestricted surface (standalone documents, comments, …). */
-export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
-  canEmbedCharts: true,
-  canUseMetabot: true,
-  canOpenCardInQueryBuilder: true,
-};
-
 type Selector<T> = (state: State) => T;
 
 /**
@@ -173,9 +154,7 @@ export type EditorHost = EditorDocumentHost &
   EditorCommentsHost &
   EditorViewportHost &
   EditorMentionsHost &
-  EditorAnalyticsHost & {
-    capabilities: EditorCapabilities;
-  };
+  EditorAnalyticsHost;
 
 const noop = () => undefined;
 
@@ -220,7 +199,6 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   }),
   useReportPrefetchLoading: () => undefined,
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
-  capabilities: DEFAULT_EDITOR_CAPABILITIES,
 };
 
 const EditorHostContext = createContext<EditorHost>(DEFAULT_EDITOR_HOST);

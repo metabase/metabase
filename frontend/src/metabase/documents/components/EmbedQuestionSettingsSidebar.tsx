@@ -53,9 +53,7 @@ export const EmbedQuestionSettingsSidebar = ({
     question,
     draftCard,
     regularDataset,
-  } = useCardData({
-    id: cardId,
-  });
+  } = useCardData({ id: cardId });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
     useVisualizationOptions(dataset, card?.display);

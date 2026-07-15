@@ -1,4 +1,5 @@
-import { t } from "ttag";
+import { useCallback, useState } from "react";
+import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
 import { getListCommentsQuery } from "metabase/comments/utils";
@@ -6,13 +7,21 @@ import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { useSetting } from "metabase/common/hooks";
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
+import CS from "metabase/css/core/index.css";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
+import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
   Button,
   Flex,
   Icon,
+  Loader,
+  Menu,
   Text,
   TextInput,
   Tooltip,
@@ -22,10 +31,11 @@ import {
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
+import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
-import { DocumentMenu } from "./DocumentMenu";
 
 const saveButtonTransition: TransitionProps["transition"] = {
   in: { opacity: 1, visibility: "visible", width: "auto" },
@@ -68,18 +78,48 @@ export const DocumentHeader = ({
 }: DocumentHeaderProps) => {
   const { hasComments } = useListCommentsQuery(
     getListCommentsQuery(
-      document
-        ? {
-            target_id: document?.id,
-            target_type: "document",
-          }
-        : null,
+      document ? { target_id: document.id, target_type: "document" } : null,
     ),
     {
       selectFromResult: ({ data }) => ({
         hasComments: !isNewDocument && !!data?.comments?.length,
       }),
     },
+  );
+
+  const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const isAdmin = useSelector(getUserIsAdmin);
+  const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
+
+  const hasPublicLink = !!document?.public_uuid;
+
+  const { prepareForPrint } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
+    window.print();
+    trackDocumentPrint(document);
+  }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPreparingForPrint) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPreparingForPrint],
   );
 
   return (
@@ -176,16 +216,122 @@ export const DocumentHeader = ({
           </Tooltip>
         )}
         {!document?.archived && (
-          <DocumentMenu
+          <Menu
+            position="bottom-end"
+            opened={isMenuOpen}
+            onChange={handleMenuChange}
+          >
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                aria-label={t`More options`}
+                data-hide-on-print
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={
+                  isPreparingForPrint ? (
+                    <Loader size="xs" />
+                  ) : (
+                    <Icon name="document" />
+                  )
+                }
+                closeMenuOnClick={false}
+                disabled={isPreparingForPrint}
+                onClick={handlePrint}
+              >
+                {t`Print Document`}
+              </Menu.Item>
+              {!isNewDocument && (
+                <>
+                  {isAdmin && (
+                    <Menu.Item
+                      leftSection={<Icon name="link" />}
+                      onClick={() => setIsPublicLinkPopoverOpen(true)}
+                      {...(!isPublicSharingEnabled && {
+                        onClick: undefined,
+                        component: "div",
+                        disabled: true,
+                      })}
+                    >
+                      {isPublicSharingEnabled ? (
+                        hasPublicLink ? (
+                          t`Public link`
+                        ) : (
+                          t`Create a public link`
+                        )
+                      ) : (
+                        <>
+                          {t`Public link`}
+                          <Button
+                            component={Link}
+                            to="/admin/settings/public-sharing"
+                            target="_blank"
+                            variant="subtle"
+                            h="auto"
+                            lh="inherit"
+                            ml="sm"
+                            p={0}
+                            bd={0}
+                            className={CS.floatRight}
+                          >
+                            {t`Enable`}
+                          </Button>
+                        </>
+                      )}
+                    </Menu.Item>
+                  )}
+                  {canWrite && (
+                    <Menu.Item
+                      leftSection={<Icon name="move" />}
+                      onClick={onMove}
+                    >
+                      {t`Move`}
+                    </Menu.Item>
+                  )}
+                  <Menu.Item
+                    leftSection={<Icon name="clone" />}
+                    onClick={onDuplicate}
+                  >
+                    {c("A verb, not a noun").t`Duplicate`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name={"bookmark"} />}
+                    onClick={onToggleBookmark}
+                  >
+                    {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="history" />}
+                    onClick={onShowHistory}
+                  >
+                    {t`History`}
+                  </Menu.Item>
+                  {canWrite && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item
+                        leftSection={<Icon name="trash" />}
+                        onClick={onArchive}
+                      >
+                        {t`Move to trash`}
+                      </Menu.Item>
+                    </>
+                  )}
+                </>
+              )}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+        {document && isAdmin && (
+          <DocumentPublicLinkPopover
             document={document}
-            isNewDocument={isNewDocument}
-            canWrite={canWrite}
-            isBookmarked={isBookmarked}
-            onMove={onMove}
-            onDuplicate={onDuplicate}
-            onToggleBookmark={onToggleBookmark}
-            onArchive={onArchive}
-            onShowHistory={onShowHistory}
+            isOpen={isPublicLinkPopoverOpen}
+            onClose={() => setIsPublicLinkPopoverOpen(false)}
           />
         )}
       </Flex>

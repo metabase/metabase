@@ -44,16 +44,9 @@ export const documentApi = Api.injectEndpoints({
         url: `/api/document/${document.id}`,
         body: document,
       }),
-      invalidatesTags: (result, error, { id }) =>
+      invalidatesTags: (_, error, { id }) =>
         !error
-          ? [
-              listTag("document"),
-              idTag("document", id),
-              listTag("revision"),
-              ...(result?.exploration_thread_id != null
-                ? ["exploration" as const]
-                : []),
-            ]
+          ? [listTag("document"), idTag("document", id), listTag("revision")]
           : [],
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
         const { data } = await queryFulfilled;

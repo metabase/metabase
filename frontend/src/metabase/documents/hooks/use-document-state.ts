@@ -5,12 +5,7 @@ import { useDispatch } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import type { DocumentContent } from "metabase-types/api";
 
-import {
-  clearDraftCards,
-  setCardEmbeds,
-  setIsCommentSidebarOpen,
-} from "../documents.slice";
-import { doesDocumentNeedMigration } from "../utils/editorNodeUtils";
+import { setCardEmbeds, setIsCommentSidebarOpen } from "../documents.slice";
 
 export function useDocumentState(documentData?: {
   name: string;
@@ -21,21 +16,16 @@ export function useDocumentState(documentData?: {
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
     null,
   );
-  const [documentNeedsMigration, setDocumentNeedsMigration] = useState(false);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
   useEffect(() => {
-    dispatch(clearDraftCards());
     if (documentData) {
       setDocumentTitle(documentData.name);
       setDocumentContent(documentData.document);
-      setDocumentNeedsMigration(
-        doesDocumentNeedMigration(documentData.document),
-      );
     } else {
       setDocumentContent(null);
     }
-  }, [documentData, dispatch]);
+  }, [documentData]);
 
   const updateCardEmbeds = useCallback(
     (newEmbeds: CardEmbedRef[]) => {
@@ -70,7 +60,6 @@ export function useDocumentState(documentData?: {
     setDocumentTitle,
     documentContent,
     setDocumentContent,
-    documentNeedsMigration,
     updateCardEmbeds,
     openCommentSidebar,
     closeCommentSidebar,

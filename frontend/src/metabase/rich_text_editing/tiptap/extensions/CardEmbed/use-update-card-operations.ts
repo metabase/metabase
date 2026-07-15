@@ -17,20 +17,15 @@ export const useUpdateCardOperations = ({
   regularCardData,
   editor,
   embedIndex,
-  cardId: rawCardId,
+  cardId,
 }: {
   document: Document | null;
   question: Question | undefined;
   regularCardData: UseCardDataResult;
   editor: NodeViewProps["editor"];
   embedIndex: number;
-  cardId: number | null | undefined;
+  cardId: number;
 }) => {
-  // The handlers this hook returns are only invoked from live-edit affordances, which a
-  // cardEmbed without an `id` never has — but the hook itself still runs unconditionally
-  // (rules of hooks). Treat a missing id as 0 so the downstream strict-typed helpers can
-  // mount; the dispatchers never actually fire with cardId === 0.
-  const cardId = rawCardId ?? 0;
   const host = useEditorHost();
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);

@@ -25,16 +25,6 @@
   line-height: 1.5;
 }
 
-/*
- * `.ProseMirror` above sets `font-size: 1rem` (16px) on the editor root,
- * which would otherwise be inherited by everything inside — including
- * Metabase components rendered through a `cardEmbed` (chart legends,
- * Mantine controls, …).
- */
-.editorContent :global(.editor-style-boundary) {
-  font-size: var(--mantine-font-size-md);
-}
-
 /* Apply typography styles only to elements NOT inside .editor-style-boundary */
 .editorContent
   :global(.ProseMirror)

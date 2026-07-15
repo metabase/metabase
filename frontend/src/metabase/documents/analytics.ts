@@ -1,27 +1,17 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { Document, DocumentId } from "metabase-types/api";
+import type { Document } from "metabase-types/api";
 
-export type DocumentTriggerSource = "standalone";
-
-export const trackDocumentCreated = (
-  documentId: DocumentId,
-  triggeredFrom: DocumentTriggerSource,
-) => {
+export const trackDocumentCreated = (document: Document) => {
   trackSimpleEvent({
     event: "document_created",
-    target_id: documentId,
-    triggered_from: triggeredFrom,
+    target_id: document.id,
   });
 };
 
-export const trackDocumentUpdated = (
-  documentId: DocumentId,
-  triggeredFrom: DocumentTriggerSource,
-) => {
+export const trackDocumentUpdated = (document: Document) => {
   trackSimpleEvent({
     event: "document_saved",
-    target_id: documentId,
-    triggered_from: triggeredFrom,
+    target_id: document.id,
   });
 };
 

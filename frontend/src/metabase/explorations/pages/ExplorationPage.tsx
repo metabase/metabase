@@ -12,7 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
-import { Box, Group, Stack } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Exploration,
@@ -62,7 +62,6 @@ interface ExplorationPageProps {
     entityId?: string;
   };
   location: Location<ExplorationPageQuery>;
-  children?: React.ReactNode;
 }
 
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
@@ -90,11 +89,7 @@ interface SelectedPageId {
 
 export type SelectedEntityId = SelectedPageId;
 
-export function ExplorationPage({
-  params,
-  location,
-  children,
-}: ExplorationPageProps) {
+export function ExplorationPage({ params, location }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
@@ -321,9 +316,6 @@ export function ExplorationPage({
 
   const isCommentsSidebarOpen = location.query?.comments === "true";
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
-  // The comments sidesheet is rendered by a nested route (`comments/:childTargetId`)
-  // as `children`, distinct from the query-param chart comments sidebar above.
-  const isCommentsSidesheetOpen = Boolean(children);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -386,7 +378,6 @@ export function ExplorationPage({
           )}
         </Group>
       </Stack>
-      {isCommentsSidesheetOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );
 }

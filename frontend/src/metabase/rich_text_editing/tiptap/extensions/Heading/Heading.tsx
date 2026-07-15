@@ -21,7 +21,7 @@ export const CustomHeading = Heading.extend<HeadingOptions & BlockNodeOptions>({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("heading")];
+    return [createProseMirrorPlugin(Heading.name)];
   },
 });
 

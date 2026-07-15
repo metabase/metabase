@@ -168,7 +168,6 @@ export const CardEmbedComponent = memo(
     const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
-    const { capabilities } = host;
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -349,9 +348,6 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
-      if (!capabilities.canOpenCardInQueryBuilder) {
-        return;
-      }
       if (card && metadata) {
         try {
           const isDraftCard = card.id < 0;
