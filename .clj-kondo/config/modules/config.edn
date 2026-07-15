@@ -1795,6 +1795,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -2979,7 +2980,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
