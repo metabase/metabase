@@ -37,12 +37,20 @@
     #(= "queue" (namespace %))]])
 
 (mr/def :metabase.mq.queue/queue-config
-  [:map {:closed true}
-   [:transactional      (into [:enum {:error/message (str "must be one of " transactional-modes)}]
-                              transactional-modes)]
-   [:exclusive          {:optional true} :boolean]
-   [:max-batch-messages {:optional true} pos-int?]
-   [:dedup-fn           {:optional true} fn?]])
+  [:and
+   [:map {:closed true}
+    [:transactional          (into [:enum {:error/message (str "must be one of " transactional-modes)}]
+                                   transactional-modes)]
+    [:exclusive              {:optional true} :boolean]
+    [:max-batch-messages     {:optional true} pos-int?]
+    [:max-concurrent-batches {:optional true} [:or pos-int? fn?]]
+    [:dedup-fn               {:optional true} fn?]
+    [:on-error               {:optional true} fn?]]
+   [:fn {:error/message (str "a queue cannot declare both :exclusive and :max-concurrent-batches — "
+                             ":exclusive already limits it to one batch cluster-wide, which is "
+                             "stricter than any per-node cap. Drop one.")}
+    (fn [{:keys [exclusive max-concurrent-batches]}]
+      (not (and exclusive max-concurrent-batches)))]])
 
 (def ^:dynamic *queues*
   "queue-name (keyword) → config map for every declared queue.
@@ -96,10 +104,30 @@
   [queue-name]
   (or (:max-batch-messages (get @*queues* queue-name)) default-max-batch-messages))
 
+(defn max-concurrent-batches
+  "Returns how many batches of `queue-name` a single node may deliver at once, or nil if the queue
+  declares no cap.
+
+  A queue may declare the cap as a literal int or as a 0-arg fn; a fn is resolved on every call, so a
+  cap backed by a `defsetting` tracks that setting live rather than freezing its value at
+  registration. A nil cap means unbounded."
+  [queue-name]
+  (let [cap (:max-concurrent-batches (get @*queues* queue-name))]
+    (if (fn? cap) (cap) cap)))
+
 (defn dedup-fn
   "Returns the `:dedup-fn` declared for `queue-name`, or nil if none."
   [queue-name]
   (:dedup-fn (get @*queues* queue-name)))
+
+(defn on-error
+  "Returns the `:on-error` handler declared for `queue-name`, or nil if none.
+
+  The handler is the queue's terminal-failure hook: it runs when a batch has exhausted
+  `queue-max-retries` and is about to be dropped, giving the owning module a chance to record the
+  failure durably (mark rows failed, alert, dead-letter)."
+  [queue-name]
+  (:on-error (get @*queues* queue-name)))
 
 (defn transactional
   "Returns the `:transactional` mode (`:require`/`:try`/`:never`) declared for `queue-name`, or nil
@@ -137,11 +165,41 @@
 
   Optional config keys:
     `:exclusive`          — when true, at most one batch for this queue is in-flight cluster-wide.
+                            Mutually exclusive with `:max-concurrent-batches` (declaring both throws).
+    `:max-concurrent-batches`
+                          — how many batches of this queue a single node will deliver at once. A node
+                            already running that many stops *taking* new ones: the Quartz backend
+                            won't acquire the queue's triggers and the poll driver won't fetch its
+                            messages, so the work stays in the shared store for a node with capacity.
+                            May be an int, or a 0-arg fn (resolved per check, so a cap backed by a
+                            `defsetting` tracks it live).
+
+                            This is the per-node middle ground between `:exclusive` (exactly 1
+                            cluster-wide) and the default (unbounded) — pick one of the three, they
+                            are not layered. Declaring it alongside `:exclusive` throws: cluster-wide
+                            mutual exclusion is already stricter than any per-node cap, so the cap
+                            could never bind, and the two are enforced by different machinery.
+
+                            Omitting it means unbounded, on every backend.
+
+                            It is a *throttle, not a guarantee*: it bounds what a node **takes**, and
+                            that check races the work it gates, so a node can end up a batch or two
+                            over the cap — in which case the batch is simply delivered, not handed
+                            back. Use `:exclusive` when a limit must actually hold.
     `:max-batch-messages` — soft target batch size for this queue (defaults to
                             [[default-max-batch-messages]]). Used at publish time (coalescing) and
                             consume time (slicing).
     `:dedup-fn`           — `messages -> messages` applied at publish time to drop duplicates
                             from a batch before it is buffered.
+    `:on-error`           — terminal-failure hook, called with a single map
+                            `{:channel :messages :error :attempts}` when a batch has exhausted
+                            `queue-max-retries` and is about to be dropped. Use it to record the failure
+                            durably. Exceptions thrown by the handler are logged and swallowed: the
+                            batch is dropped either way, so a broken handler can't lock the queue.
+
+                            It fires on the terminal drop only — never for a batch that recovers on a
+                            retry — but it is *at-least-once*, so make it idempotent and make it
+                            tolerate firing for work that already succeeded.
 
   These are all properties of the queue itself — they take effect at publish time, on every
   node, regardless of whether a listener is registered locally.

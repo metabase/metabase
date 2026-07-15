@@ -65,3 +65,62 @@
     (q.registry/register-queue! :queue/ok {:transactional :require :exclusive true
                                            :max-batch-messages 50 :dedup-fn identity})
     (is (= 50 (q.registry/max-batch-messages :queue/ok)))))
+
+(deftest max-concurrent-batches-test
+  (testing "a queue that doesn't declare a cap has none"
+    (q.registry/register-queue! :queue/uncapped {:transactional :try})
+    (is (nil? (q.registry/max-concurrent-batches :queue/uncapped))))
+  (testing "an undeclared queue has no cap"
+    (is (nil? (q.registry/max-concurrent-batches :queue/never-declared))))
+  (testing "a literal int cap is returned as-is"
+    (q.registry/register-queue! :queue/capped {:transactional :try :max-concurrent-batches 3})
+    (is (= 3 (q.registry/max-concurrent-batches :queue/capped))))
+  (testing "a fn cap is resolved at read time, so it tracks a setting that changes"
+    (let [cap (atom 2)]
+      (q.registry/register-queue! :queue/dynamic {:transactional :try
+                                                  :max-concurrent-batches (fn [] @cap)})
+      (is (= 2 (q.registry/max-concurrent-batches :queue/dynamic)))
+      (reset! cap 5)
+      (is (= 5 (q.registry/max-concurrent-batches :queue/dynamic))))))
+
+(deftest rejects-exclusive-with-max-concurrent-batches-test
+  (testing "a queue cannot declare both :exclusive and :max-concurrent-batches"
+    ;; :exclusive already pins the queue to one batch cluster-wide, which is strictly stronger than any
+    ;; per-node cap. Declaring both reads like it means something and doesn't.
+    (is (thrown-with-msg?
+         ExceptionInfo #"(?i)exclusive"
+         (q.registry/register-queue! :queue/both {:transactional          :try
+                                                  :exclusive              true
+                                                  :max-concurrent-batches 2}))))
+  (testing "and not even with a cap of 1, which looks equivalent but isn't (per-node vs cluster-wide)"
+    (is (thrown-with-msg?
+         ExceptionInfo #"(?i)exclusive"
+         (q.registry/register-queue! :queue/both-one {:transactional          :try
+                                                      :exclusive              true
+                                                      :max-concurrent-batches 1}))))
+  (testing ":exclusive false alongside a cap is fine — that's just the per-node cap on its own"
+    (q.registry/register-queue! :queue/not-exclusive {:transactional          :try
+                                                      :exclusive              false
+                                                      :max-concurrent-batches 3})
+    (is (= 3 (q.registry/max-concurrent-batches :queue/not-exclusive)))
+    (is (false? (q.registry/exclusive? :queue/not-exclusive))))
+  (testing "either one on its own still registers"
+    (q.registry/register-queue! :queue/just-exclusive {:transactional :try :exclusive true})
+    (is (true? (q.registry/exclusive? :queue/just-exclusive)))
+    (is (nil? (q.registry/max-concurrent-batches :queue/just-exclusive)))
+    (q.registry/register-queue! :queue/just-capped {:transactional :try :max-concurrent-batches 2})
+    (is (= 2 (q.registry/max-concurrent-batches :queue/just-capped)))
+    (is (false? (q.registry/exclusive? :queue/just-capped)))))
+
+(deftest rejects-invalid-max-concurrent-batches-test
+  (testing "register-queue! rejects a non-positive :max-concurrent-batches"
+    (is (thrown-with-msg?
+         ExceptionInfo #"max-concurrent-batches"
+         (q.registry/register-queue! :queue/zero-cap {:transactional :try :max-concurrent-batches 0})))
+    (is (thrown-with-msg?
+         ExceptionInfo #"max-concurrent-batches"
+         (q.registry/register-queue! :queue/neg-cap {:transactional :try :max-concurrent-batches -1}))))
+  (testing "register-queue! rejects a :max-concurrent-batches that is neither an int nor a fn"
+    (is (thrown-with-msg?
+         ExceptionInfo #"max-concurrent-batches"
+         (q.registry/register-queue! :queue/str-cap {:transactional :try :max-concurrent-batches "2"})))))

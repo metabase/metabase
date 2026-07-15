@@ -20,7 +20,7 @@ unified API.
     (mq/put q {:key "value"})))
 ```
 
-All queue config — `:exclusive`, `:max-batch-messages`, `:dedup-fn` — belongs on `def-queue!`,
+All queue config — `:exclusive`, `:max-concurrent-batches`, `:max-batch-messages`, `:dedup-fn` — belongs on `def-queue!`,
 because it takes effect at publish time on every node, regardless of where listeners are
 registered. `def-listener!` only wires up the consumer-side handler. A listener registration
 throws if its queue hasn't been declared yet — typos are caught at startup, not at first
@@ -119,10 +119,115 @@ keyword values become strings, sets become vectors, dates become strings.
 |               | Queue                                                                |
 |---------------|----------------------------------------------------------------------|
 | Delivery      | At-least-once per listener                                           |
+| Ordering      | **None.** See below                                                  |
 | Retry         | Yes — up to `queue-max-retries` (default 5)                          |
 | Backing store | Quartz `QRTZ_*` tables; `queue_message_outbox` for transactional publishes |
 | Backlog       | Persists until processed or exhausted                               |
 | Use when      | Work must complete reliably                                         |
+
+**Guaranteed delivery is the guarantee. Ordering is not.** Batches are delivered concurrently, retried
+with backoff (so a failed batch lands after ones published later), and Quartz does not fire triggers in
+submission order even when it serializes them. Don't write a listener that assumes it sees messages in
+publish order — and don't infer the guarantee from a test that passed, since the memory backend can
+look FIFO by accident. If a queue needs serialized delivery, say so with `:max-concurrent-batches 1`
+(per node) or `:exclusive true` (cluster-wide) — and note that even those give you mutual exclusion,
+not order.
+
+### Limiting concurrency
+
+By default a queue's batches run concurrently, bounded only by the Quartz thread pool — which is
+shared with sync, pulses, and every other scheduled job. A queue that can fan out (one message per
+row, per chart, per whatever) will happily eat that pool. Two knobs bound it:
+
+| Config                       | Bound                                    | Hard? | Enforced by |
+|------------------------------|------------------------------------------|-------|-------------|
+| `:exclusive true`            | 1 batch **cluster-wide**                 | Yes   | The backend (see below) |
+| `:max-concurrent-batches n`  | ~n batches **per node**                  | No — a throttle | Trigger acquisition / `fetch!` free-slot count |
+| *(neither)*                  | Unbounded, up to the Quartz thread pool  | —     | — |
+
+`:exclusive` is a **backend** guarantee, and each backend implements it its own way — Quartz with
+`@DisallowConcurrentExecution` on the job class, the memory backend by never fetching a second batch
+for a queue that already has one in flight. The shared poll driver knows nothing about the flag, so a
+new backend has to implement it or it silently won't hold.
+
+**Pick one — they don't layer.** Declaring both throws at registration: `:exclusive` is already the
+strictest limit there is, so a per-node cap on top of it could never bind, and the two are enforced by
+completely different machinery. A queue that wants "roughly one at a time, per node" wants
+`:max-concurrent-batches 1`; a queue that needs *exactly* one at a time wants `:exclusive`.
+
+`:max-concurrent-batches` may be an int or a 0-arg fn, so a cap can be backed by a setting and tuned
+live:
+
+```clojure
+(mq/def-queue! :queue/exploration-query
+  {:transactional :require
+   :max-batch-messages 100
+   :max-concurrent-batches #(explorations.settings/explorations-worker-count)})
+```
+
+A node at its cap **stops taking the work** rather than queueing it internally: it reports the queue as
+one it currently can't handle, and the affinity delegate leaves those triggers `WAITING` in the shared
+store for a node with room. That's the same mechanism that keeps a node from acquiring messages for a
+queue it has no listener for. It's also the only shape of limit a real broker can honor — "fetch at
+most N right now" is SQS's `MaxNumberOfMessages` and a Redis multi-pop count — so poll backends express
+it by asking `fetch!` for a per-queue free-slot count.
+
+**`:max-concurrent-batches` is a throttle, not a guarantee.** Both enforcement points race the work
+they're gating — Quartz decides what to acquire on its scheduler thread *before* the job body runs, and
+a poll backend can hand back a batch it fetched a moment before a slot filled — so a node can end up a
+batch or two over its cap. When that happens the batch is simply **delivered**. It is not bounced: a
+re-queue path would need its own backoff, its own metric, and a hot-loop to avoid if the upstream
+throttle ever stopped working, all to shave an overshoot that is small, bounded, and drains itself.
+Reach for `:exclusive` when a limit has to actually hold.
+
+A queue's config means the same thing on every backend — that's a contract, not a coincidence. The
+backends differ in *mechanism* (Quartz pushes and filters at trigger acquisition; poll backends ask
+`fetch!` for a free-slot count), never in what the config means. If you add a backend, that is the bar.
+
+### Terminal failures: `:on-error`
+
+There is no dead-letter queue. Once a batch exhausts `queue-max-retries` it is dropped, and without a
+handler the only trace is a log line and a `batches-dropped{reason=delivery-exhausted}` counter. That
+is fine for fire-and-forget work, but it silently strands anything the *producer* left behind — a row
+parked in a `pending` status waiting on the handler will sit there forever.
+
+Declare an `:on-error` handler to record the terminal failure durably:
+
+```clojure
+(mq/def-queue! :queue/run-report
+  {:transactional :require
+   :on-error (fn [{:keys [channel messages error attempts]}]
+               (doseq [{:keys [report-id]} messages]
+                 ;; Only fail a report that is still pending. See "at-least-once" below: this
+                 ;; handler can fire for a batch a peer already completed.
+                 (t2/update! :model/Report {:id report-id :status "pending"}
+                             {:status "error" :error_message (ex-message error)})))})
+```
+
+It is called on the terminal drop only — not on each failed attempt, and never for a batch that
+recovers on a retry. Exceptions it throws are logged (`on-error-failed`) and swallowed: the batch is
+dropped either way, so a broken handler cannot wedge the queue into redelivering an exhausted batch.
+
+**`:on-error` is at-least-once, like delivery itself. Write it to be idempotent, and to tolerate
+firing for work that actually succeeded** — hence the `:status "pending"` guard above.
+
+A message carries no identity. A retry is a fresh trigger with a new id, and the attempt counter
+rides inside it, so two deliveries of one payload are two *independent* batches with two independent
+retry budgets and nothing joining them. If a duplicate delivery fails while the original succeeded,
+the failing copy runs out its own budget and fires `:on-error` for a batch that is already done. That
+is not a corner case reserved for crashes: Quartz's cluster failover re-fires a batch onto a second
+node whenever the first misses a heartbeat, which a *live* node does under a long GC pause or app-DB
+latency — it is never told to stop, and its copy carries on.
+
+`metabase.mq.queue.on-error-test` pins this
+(`duplicate-delivery-fires-on-error-for-an-already-succeeded-payload-test`). Closing it needs message
+identity plus a record of what has already been delivered.
+
+The hook lives in the shared retry-vs-drop policy (`metabase.mq.queue.impl/handle-batch-failure-policy!`)
+rather than in any one backend, so it is inherited by every backend — a poll backend gets it through the
+shared poll driver, a push backend by calling the policy directly (as Quartz does). A backend cannot
+implement a retry budget without going through that policy, so `:on-error` comes along for free with any
+backend added later.
 
 ## Architecture
 
@@ -152,8 +257,24 @@ Delivery Engine (mq.impl)
 ```
 ### Idempotency
 
-Queue listeners must be idempotent. A batch can return to `pending` after a partial failure, and the same messages will
-be redelivered.
+Queue listeners must be idempotent, and must be safe to run **concurrently with another copy of
+themselves on another node**. Two things to hold onto:
+
+- **A batch can be redelivered.** It returns to `pending` after a partial failure, and the same
+  messages come back.
+- **A batch can be delivered *twice at once*.** Quartz's clustered failover re-fires a batch onto a
+  second node when the first misses a heartbeat — and a live node misses heartbeats under a long GC
+  pause, app-DB latency, or pool exhaustion. It is never interrupted, so both copies run. Separately,
+  a queue that isn't declared `:exclusive` has no cross-node mutual exclusion at all: N nodes × the
+  Quartz thread pool can be in the same listener at once.
+
+A "have I already done this?" check is therefore not enough on its own — two copies can both check,
+both see no, and both proceed. Where that matters, make the *write* safe rather than the check:
+condition the update on the state that justified the message (`{:id x :status "pending"}`), reserve
+via a unique constraint, or take a row lock and re-check inside the transaction.
+
+`with-test-mq`'s `{:duplicate-delivery? true}` (below) delivers every message twice, which will catch
+a listener that assumed exactly-once.
 
 ## Testing
 

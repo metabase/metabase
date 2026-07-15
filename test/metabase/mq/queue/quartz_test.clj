@@ -4,21 +4,26 @@
   root `*listeners*` (the production registration path; Quartz threads don't inherit the test
   thread's dynamic bindings) and drive the backend directly under an in-memory scheduler."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.payload :as payload]
+   [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.quartz :as q.quartz]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
+   [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures])
   (:import
-   (java.util Properties)
+   (java.time Instant)
+   (java.util Date Properties)
    (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)
-   (org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException Scheduler Trigger)
+   (org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException Scheduler Trigger TriggerBuilder)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -292,12 +297,51 @@
             queue                (keyword "queue" (str "quartz-nolistener-requeue-" (random-uuid)))]
         (#'q.quartz/ensure-queue-job! scheduler queue false)
         (try
-          (#'q.quartz/requeue-no-listener! scheduler queue (payload/encode ["x"]) 0)
+          (#'q.quartz/requeue-no-listener! scheduler queue (payload/encode ["x"]) 0 (Date.))
           (let [triggers (job-triggers scheduler queue)]
             (is (= 1 (count triggers))
                 "a single re-queue trigger is placed back into the store (re-acquired via affinity, not fired here)")
             (is (instance? Trigger (first triggers))))
           (finally (.deleteJob scheduler (#'q.quartz/queue-job-key queue))))))))
+
+(deftest quartz-requeue-no-listener-preserves-the-messages-age-test
+  (testing "a no-listener requeue keeps the message's original start time rather than stamping it `now`.
+
+            The age reaper ([[metabase.mq.task.queue-reaper]]) gives up on a never-acquired queue
+            trigger by its `start_time`. But a bounced message is re-queued as a *fresh* trigger, so
+            stamping `now` resets its own reaper clock on every bounce — a message that keeps landing
+            on nodes with no listener could never age out, which is exactly the message the reaper
+            exists to drop. Nothing else bounds this path: `requeue-no-listener!` carries no backoff
+            and spends no retry budget. It is most reachable during a rolling deploy, when nodes are
+            tearing their listeners down, and in the startup window before node-affinity is installed
+            (its capability fn defaults to `:all`, i.e. no filtering)."
+    (mt/with-temp-scheduler!
+      (let [^Scheduler scheduler (task.impl/scheduler)
+            queue    (keyword "queue" (str "quartz-nolistener-age-" (random-uuid)))
+            payload  (payload/encode ["x"])
+            ;; a message that has already been waiting hours for a node that can handle it
+            start-at (Date/from (.minusSeconds (Instant/now) (* 6 60 60)))
+            ctx      (reify JobExecutionContext
+                       (getMergedJobDataMap [_]
+                         (doto (JobDataMap.)
+                           (.put "queue" (name queue))
+                           (.put "payload" payload)
+                           (.put "attempt" "0")))
+                       (getScheduler [_] scheduler)
+                       (getTrigger [_] (-> (TriggerBuilder/newTrigger) (.startAt start-at) (.build))))]
+        ;; deliberately no listener for `queue` on this node — that is the path under test
+        (q.registry/register-queue! queue {:transactional :try})
+        (#'q.quartz/ensure-queue-job! scheduler queue false)
+        (try
+          (#'q.quartz/deliver-batch! ctx)
+          (let [triggers (job-triggers scheduler queue)]
+            (is (= 1 (count triggers))
+                "the message is re-queued for a node that does have the listener")
+            (is (= start-at (.getStartTime ^Trigger (first triggers)))
+                "and keeps its original start time, so the reaper's clock keeps running"))
+          (finally
+            (.deleteJob scheduler (#'q.quartz/queue-job-key queue))
+            (swap! q.registry/*queues* dissoc queue)))))))
 
 (deftest quartz-exclusive-job-not-downgraded-test
   (testing "a node that disagrees about :exclusive can't downgrade an existing exclusive job"
@@ -328,3 +372,203 @@
            (is (= "ExclusiveQueueMessageJob" (job-class))
                "exclusive is sticky; a disagreeing node cannot downgrade it back to concurrent")
            (finally (.deleteJob scheduler jk))))))))
+
+(deftest quartz-on-error-fires-on-exhaustion-test
+  (testing "the :on-error terminal-failure hook fires on the push backend too, with the dropped batch"
+    ;; Backend parity with `metabase.mq.queue.on-error-test` (poll backend): both route their
+    ;; delivery failures through the shared `q.impl/handle-batch-failure-policy!`, so the hook must
+    ;; behave identically here.
+    (mt/with-temporary-setting-values [queue-max-retries 2]
+      (mt/with-temp-scheduler!
+        (let [dropped (atom [])
+              queue   (keyword "queue" (str "quartz-on-error-" (random-uuid)))
+              boom    (ex-info "always boom" {})]
+          (q.registry/register-queue! queue {:transactional :try
+                                             :on-error      (fn [info] (swap! dropped conj info))})
+          (listener/batch-listen! queue (fn [_msgs] (throw boom)))
+          (try
+            (publish! queue {:id 7})
+            (is (wait-for! #(seq @dropped) 8000)
+                ":on-error fires once the batch exhausts its retries")
+            (is (= 1 (count @dropped)))
+            (let [info (first @dropped)]
+              (is (= queue (:channel info)))
+              (is (= [{:id 7}] (:messages info))
+                  "the handler receives the decoded messages of the dropped batch")
+              (is (= 2 (:attempts info))))
+            (finally
+              (listener/unlisten! queue)
+              (swap! q.registry/*queues* dissoc queue))))))))
+
+;;; ------------------------------- :max-concurrent-batches -------------------------------
+
+;;; Where the cap is actually enforced on Quartz is *trigger acquisition* — a node at capacity stops
+;;; acquiring the queue's triggers, so they stay WAITING for a node with room. That is exercised
+;;; against the real app-DB acquire query in `metabase.mq.quartz-affinity-test` (the delegate is a JDBC
+;;; DriverDelegate, so the tests here — which run on RAMJobStore — cannot see it at all).
+;;;
+;;; What is left to pin here is what `deliver-batch!` does with a batch that reaches it anyway.
+
+(defn- job-ctx
+  "A minimal `JobExecutionContext` for driving `deliver-batch!` directly, carrying `queue`'s payload
+  and a real scheduler (so a re-queue actually writes a trigger we can count)."
+  ^JobExecutionContext [^Scheduler scheduler queue payload]
+  (reify JobExecutionContext
+    (getMergedJobDataMap [_]
+      (doto (JobDataMap.)
+        (.put "queue" (name queue))
+        (.put "payload" payload)
+        (.put "attempt" "0")))
+    (getScheduler [_] scheduler)))
+
+(deftest over-capacity-batch-is-still-delivered-test
+  (testing "a batch that reaches deliver-batch! while the node is already at its cap is delivered
+            anyway, not handed back"
+    ;; The cap is a throttle on what a node *takes* (trigger acquisition), and that check necessarily
+    ;; races the job body: Quartz decides what to acquire on its scheduler thread, before this runs on
+    ;; a worker thread. Bouncing the odd batch that slips through would cost a whole re-queue path —
+    ;; backoff, metric, and a hot-loop to avoid if the acquisition filter ever stops working — to shave
+    ;; an overshoot that is small, bounded and drains itself. So we run it and let the count go over.
+    (mt/with-temp-scheduler!
+      (let [queue     (keyword "queue" (str "quartz-overcap-" (random-uuid)))
+            scheduler (task/scheduler)
+            ran       (atom 0)]
+        (q.registry/register-queue! queue {:transactional :try :max-concurrent-batches 1})
+        (listener/batch-listen! queue (fn [_msgs] (swap! ran inc)))
+        (try
+          ;; Create the durable job without publishing — a live trigger would be fired by this
+          ;; (running) scheduler on its own thread, adding a delivery we didn't ask for.
+          (#'q.quartz/ensure-queue-job! scheduler queue false)
+          (let [before (count (job-triggers scheduler queue))]
+            ;; Hold the queue's only slot, so the fired job runs while we are already at the cap —
+            ;; exactly the acquire/execute race the acquisition filter cannot close.
+            (q.concurrency/with-slot queue
+              (is (true? (q.concurrency/at-capacity? queue)) "we are at the cap before it fires")
+              (is (nil? (#'q.quartz/deliver-batch!
+                         (job-ctx scheduler queue (payload/encode [{:id 1}]))))
+                  "returns normally, so Quartz completes the one-shot")
+              (is (= 1 @ran)
+                  "the listener ran: the batch was delivered over the cap rather than bounced")
+              (is (= before (count (job-triggers scheduler queue)))
+                  "and no trigger was written back to the store — there is no bounce path any more"))
+            (is (zero? (q.concurrency/in-flight queue))
+                "the over-cap slot was released again, so the node drains back under its limit"))
+          (finally
+            (listener/unlisten! queue)
+            (swap! q.registry/*queues* dissoc queue)))))))
+
+(deftest delivery-releases-its-slot-test
+  (testing "the slot is released after delivery, on both the success and the failure path — otherwise
+            a queue would throttle itself to a standstill after a few batches"
+    (mt/with-temp-scheduler!
+      (let [scheduler (task/scheduler)]
+        (doseq [[label listener] [["success" (fn [_msgs] nil)]
+                                  ["failure" (fn [_msgs] (throw (ex-info "boom" {})))]]]
+          (testing label
+            (let [queue (keyword "queue" (str "quartz-release-" label "-" (random-uuid)))]
+              (q.registry/register-queue! queue {:transactional :try :max-concurrent-batches 1})
+              (listener/batch-listen! queue listener)
+              (try
+                ;; Create the durable job *without* publishing: the failure path reschedules a retry
+                ;; onto it, and it must exist for that. Publishing would also enqueue a live trigger,
+                ;; which this (running) scheduler would fire on its own thread — a second, concurrent
+                ;; delivery holding a slot of its own, which is exactly what we're trying to measure.
+                (#'q.quartz/ensure-queue-job! scheduler queue false)
+                (#'q.quartz/deliver-batch! (job-ctx scheduler queue (payload/encode [{:id 1}])))
+                (is (zero? (q.concurrency/in-flight queue))
+                    "the slot is returned, not leaked")
+                (finally
+                  (listener/unlisten! queue)
+                  (swap! q.registry/*queues* dissoc queue))))))))))
+
+(deftest capability-fn-excludes-at-capacity-queues-test
+  (testing "a queue this node is at capacity on is reported as one it cannot currently handle, so the
+            affinity delegate leaves its triggers WAITING for a node that can"
+    (let [capped   (keyword "queue" (str "quartz-capable-capped-" (random-uuid)))
+          uncapped (keyword "queue" (str "quartz-capable-uncapped-" (random-uuid)))]
+      (q.registry/register-queue! capped {:transactional :try :max-concurrent-batches 1})
+      (q.registry/register-queue! uncapped {:transactional :try})
+      (listener/batch-listen! capped (fn [_] nil))
+      (listener/batch-listen! uncapped (fn [_] nil))
+      (try
+        (testing "with a free slot, both queues are acquirable"
+          (let [capable (q.quartz/capable-queue-names)]
+            (is (contains? capable (name capped)))
+            (is (contains? capable (name uncapped)))))
+        (q.concurrency/with-slot capped
+          (testing "once the cap is reached, the capped queue drops out of the acquire query"
+            (let [capable (q.quartz/capable-queue-names)]
+              (is (not (contains? capable (name capped)))
+                  "at capacity — this node must not acquire more of its triggers")
+              (is (contains? capable (name uncapped))
+                  "an uncapped queue is unaffected: it stays unbounded, as it was before caps existed")))
+          (testing "and the predicate spliced into Quartz's acquire SQL really does exclude it"
+            (let [sql (quartz-affinity/rewrite-acquisition-sql
+                       "SELECT * FROM QRTZ_TRIGGERS WHERE x = 1 ORDER BY next_fire_time"
+                       (q.quartz/capable-queue-names))]
+              (is (not (str/includes? sql (name capped))))
+              (is (str/includes? sql (name uncapped))))))
+        (testing "releasing the slot makes it acquirable again"
+          (is (contains? (q.quartz/capable-queue-names) (name capped))))
+        (finally
+          (listener/unlisten! capped)
+          (listener/unlisten! uncapped)
+          (swap! q.registry/*queues* dissoc capped)
+          (swap! q.registry/*queues* dissoc uncapped))))))
+
+(deftest wake-scheduler-pokes-the-acquire-loop-for-capped-queues-only-test
+  ;; The nudge is load-bearing, not an optimization: once the acquisition filter excludes a queue this
+  ;; node is at capacity on, Quartz's acquire loop finds nothing and parks on its sigLock for up to
+  ;; idleWaitTime (30s) — and a plain (non-@DisallowConcurrentExecution) job completing does NOT signal
+  ;; it. Without this poke a capped queue would drain N batches, sleep 30s, drain N more.
+  ;;
+  ;; `resumeJob` is the public API we ride to get that signal: QuartzScheduler.resumeJob ends in
+  ;; notifySchedulerThread(0L). We aim it at a durable job with no triggers, so the resume itself is a
+  ;; no-op and only the signal survives. This pins our half of that contract.
+  (mt/with-temp-scheduler!
+    (let [scheduler (task/scheduler)
+          capped    (keyword "queue" (str "quartz-wake-capped-" (random-uuid)))
+          uncapped  (keyword "queue" (str "quartz-wake-uncapped-" (random-uuid)))
+          nudge-key @#'q.quartz/nudge-job-key]
+      (reset! @#'q.quartz/nudge-job-ensured? false)
+      (q.registry/register-queue! capped {:transactional :try :max-concurrent-batches 1})
+      (q.registry/register-queue! uncapped {:transactional :try})
+      (try
+        (testing "an uncapped queue is never filtered out, so there is no stall to break and no poke"
+          (#'q.quartz/wake-scheduler! scheduler uncapped)
+          (is (false? (.checkExists scheduler nudge-key))
+              "no nudge job created — an uncapped queue doesn't pay the cost of the wake-up"))
+        (testing "a capped queue pokes the acquire loop, via a durable job that carries no triggers"
+          (#'q.quartz/wake-scheduler! scheduler capped)
+          (is (true? (.checkExists scheduler nudge-key))
+              "the nudge job exists")
+          (is (empty? (.getTriggersOfJob scheduler nudge-key))
+              "and has no triggers — it never fires; we call resumeJob purely for the signal"))
+        (testing "poking is idempotent and safe to call on every completed batch"
+          (dotimes [_ 3] (#'q.quartz/wake-scheduler! scheduler capped))
+          (is (true? (.checkExists scheduler nudge-key))))
+        (finally
+          (swap! q.registry/*queues* dissoc capped)
+          (swap! q.registry/*queues* dissoc uncapped))))))
+
+(deftest delivery-wakes-the-acquire-loop-after-freeing-a-slot-test
+  (testing "finishing a batch on a capped queue tells the acquire loop to look again — that is what
+            turns a freed slot into the next batch actually being picked up"
+    (mt/with-temp-scheduler!
+      (let [scheduler (task/scheduler)
+            queue     (keyword "queue" (str "quartz-wake-on-release-" (random-uuid)))
+            woke      (atom [])]
+        (q.registry/register-queue! queue {:transactional :try :max-concurrent-batches 1})
+        (listener/batch-listen! queue (fn [_msgs] nil))
+        (try
+          (publish! queue {:seed 1})
+          (with-redefs-fn {#'q.quartz/wake-scheduler! (fn [_sched q] (swap! woke conj q))}
+            (fn []
+              (#'q.quartz/deliver-batch! (job-ctx scheduler queue (payload/encode [{:id 1}])))))
+          (is (= [queue] @woke)
+              "the acquire loop is woken exactly once, after the slot is released")
+          (is (zero? (q.concurrency/in-flight queue))
+              "and the slot really was free by then")
+          (finally
+            (listener/unlisten! queue)
+            (swap! q.registry/*queues* dissoc queue)))))))
