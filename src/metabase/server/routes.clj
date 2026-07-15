@@ -12,7 +12,6 @@
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
-   [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.server.routes.static :as static]
@@ -102,12 +101,15 @@
       (api-routes request respond raise))))
 
 (mu/defn make-routes :- ::api.macros/handler
-  "Create the top-level Ring route handler for Metabase."
-  [api-routes :- ::api.macros/handler]
+  "Create the top-level Ring route handler for Metabase.
+  `auth-routes` is the `/auth` handler (`metabase.sso.auth-wrapper/routes`), injected like `api-routes`
+  because `server` sits below `sso` in the module graph."
+  [auth-routes :- ::api.macros/handler
+   api-routes  :- ::api.macros/handler]
   ;; top-level routes defined outside the api.macros surface (SPA shell, health, redirects) have no OpenAPI metadata
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
-   auth-wrapper/routes
+   auth-routes
    (context "/.well-known" [] oauth-server.api/well-known-routes)
    (context "/oauth" [] oauth-server.api/oauth-routes)
    ;; ^/$ -> index.html
