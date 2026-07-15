@@ -225,6 +225,7 @@
 
   analytics.interface
   {:team "Querying Platform"
+   :suppress-codeowners true
    :ns-prefix "metabase.analytics-interface"
    :api  #{metabase.analytics-interface.core}
    :uses #{}}
@@ -968,6 +969,7 @@
 
   driver
   {:team "Querying Platform"
+   :suppress-codeowners true
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.connection
@@ -1169,6 +1171,7 @@
 
   health-inspector
   {:team "Querying Platform"
+   :suppress-codeowners true
    :api #{metabase.health-inspector.api
           metabase.health-inspector.core
           metabase.health-inspector.init}
@@ -1277,6 +1280,7 @@
 
   lib.legacy-mbql
   {:team "Querying Platform"
+   :suppress-codeowners true
    :ns-prefix "metabase.legacy-mbql"
    :api #{metabase.legacy-mbql.normalize metabase.legacy-mbql.schema metabase.legacy-mbql.util}
    :uses #{lib
@@ -1353,6 +1357,7 @@
 
   lib.source-swap
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase.source-swap"
    :api  #{metabase.source-swap.core
            metabase.source-swap.schema
@@ -1366,6 +1371,7 @@
 
   lib.types
   {:team "Querying Platform"
+   :suppress-codeowners true
    :ns-prefix "metabase.types"
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
@@ -1437,6 +1443,7 @@
 
   measures
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.measures.api}
    :uses #{api
            events
@@ -1659,6 +1666,7 @@
 
   model-persistence
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.model-persistence.api
            metabase.model-persistence.core
            metabase.model-persistence.init}
@@ -1729,6 +1737,7 @@
 
   native-query-snippets
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
@@ -1811,6 +1820,7 @@
   ;; TODO -- too many API namespaces
   parameters
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
            metabase.parameters.custom-values
@@ -2025,6 +2035,7 @@
 
   queries
   {:team "Graphy"
+   :suppress-codeowners true
    :module-exports #{queries.rest}
    :api  #{metabase.queries.core
            metabase.queries.init
@@ -2091,6 +2102,7 @@
 
   queries.rest
   {:team "Querying Platform"
+   :suppress-codeowners true
    :ns-prefix "metabase.queries-rest"
    :api  #{metabase.queries-rest.api}
    :uses #{api
@@ -2228,6 +2240,7 @@
 
   query-processor.driver-api
   {:team "Querying Platform"
+   :suppress-codeowners true
    :ns-prefix "metabase.driver-api"
    :api  #{metabase.driver-api.core}
    :uses #{actions
@@ -2399,6 +2412,7 @@
 
   segments
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
@@ -2613,6 +2627,7 @@
 
   sync
   {:team "Graphy"
+   :suppress-codeowners true
    :module-exports #{sync.analyze}
    :api  #{metabase.sync.api
            metabase.sync.core
@@ -2651,6 +2666,7 @@
 
   sync.analyze
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase.analyze"
    :api #{metabase.analyze.core}
    :uses #{lib.schema
@@ -2770,6 +2786,7 @@
 
   transforms
   {:team "Graphy"
+   :suppress-codeowners true
    :module-exports #{transforms.base
                      transforms.indexes
                      transforms.inspector
@@ -2824,6 +2841,7 @@
 
   transforms.base
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase.transforms-base"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
@@ -2930,6 +2948,7 @@
 
   upload
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.db
@@ -3218,6 +3237,7 @@
 
   warehouses.secrets
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase.secrets"
    :api #{metabase.secrets.core}
    :uses #{api
@@ -3229,6 +3249,7 @@
 
   xrays
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
@@ -3479,6 +3500,7 @@
 
   enterprise/connection-overlays
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{}
    :uses #{premium-features}}
 
@@ -3621,6 +3643,7 @@
 
   enterprise/dependencies.replacement
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase-enterprise.replacement"
    :api #{metabase-enterprise.replacement.api}
    :uses #{analytics
@@ -3713,6 +3736,7 @@
 
   enterprise/memoize-monitor
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase-enterprise.memoize-monitor.init}
    :uses #{analytics
            analytics.interface
@@ -3878,6 +3902,7 @@
 
   enterprise/permissions.impersonation
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase-enterprise.impersonation"
    :api #{metabase-enterprise.impersonation.api}
    :uses #{api
@@ -4074,6 +4099,7 @@
 
   enterprise/serialization
   {:team "Graphy"
+   :suppress-codeowners true
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
@@ -4197,6 +4223,7 @@
 
   enterprise/transforms
   {:team "Graphy"
+   :suppress-codeowners true
    :module-exports #{enterprise/transforms.inspector
                      enterprise/transforms.python}
    :api  #{metabase-enterprise.transforms.api}
@@ -4229,6 +4256,7 @@
 
   enterprise/transforms.python
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase-enterprise.transforms-python"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core

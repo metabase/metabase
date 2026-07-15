@@ -384,3 +384,50 @@
       (is (= 'lib.schema
              (file->module prefix->module
                            "test/metabase/lib/schema_test.cljc"))))))
+
+;;; =============================================================================
+;;; CODEOWNERS generation
+;;; =============================================================================
+
+(deftest codeowners-stanza-active-test
+  (testing "a module whose team has an :assignee and no suppression gets live owner lines"
+    (is (= ["# lib (Querying Platform)"
+            "src/metabase/lib @metabase/qp"
+            "test/metabase/lib @metabase/qp"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'lib :team "Querying Platform" :handle "@metabase/qp" :suppress? false
+             :dirs ["src/metabase/lib" "test/metabase/lib"]})))))
+
+(deftest codeowners-stanza-suppressed-test
+  (testing "a suppressed module is commented out but keeps its known handle, ready to uncomment"
+    (is (= ["# driver (Querying Platform, suppressed via :suppress-codeowners)"
+            "# src/metabase/driver @metabase/qp"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'driver :team "Querying Platform" :handle "@metabase/qp" :suppress? true
+             :dirs ["src/metabase/driver"]})))))
+
+(deftest codeowners-stanza-no-assignee-test
+  (testing "a module whose team has no :assignee is commented out with no handle"
+    (is (= ["# audit-app (UX West, no :assignee in team.json)"
+            "# enterprise/backend/src/metabase_enterprise/audit_app"]
+           (#'mage.modules/codeowners-stanza-lines
+            {:module 'enterprise/audit-app :team "UX West" :handle nil :suppress? false
+             :dirs ["enterprise/backend/src/metabase_enterprise/audit_app"]})))))
+
+(deftest codeowners-stanza-no-dirs-test
+  (testing "a module that owns no existing directory produces no stanza"
+    (is (nil? (#'mage.modules/codeowners-stanza-lines
+               {:module 'ghost :team "UX West" :handle nil :suppress? false :dirs []})))))
+
+(deftest codeowners-splice-idempotent-test
+  (testing "splicing a block in replaces only the marked region and is idempotent"
+    (let [begin @#'mage.modules/codeowners-begin-marker
+          end   @#'mage.modules/codeowners-end-marker
+          splice @#'mage.modules/splice-codeowners
+          block (str begin "\nfoo/bar @team\n" end)
+          base  "# hand-maintained\ndocs @writers\n"
+          once  (splice base block)
+          twice (splice once block)]
+      (is (str/includes? once "# hand-maintained"))
+      (is (str/includes? once "foo/bar @team"))
+      (is (= once twice)))))

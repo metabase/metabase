@@ -351,6 +351,14 @@
    :requires [[mage.kondo-ratchet]]
    :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
+  update-codeowners
+  {:doc "Regenerate the module-ownership block in .github/CODEOWNERS from module :team + team.json :assignee."
+   :examples [["./bin/mage update-codeowners" "Rewrite the generated block in .github/CODEOWNERS"]
+              ["./bin/mage update-codeowners --check" "Exit non-zero if the block is out of date (for CI)"]]
+   :options [[nil "--check" "Exit non-zero if CODEOWNERS is out of date instead of rewriting it"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-update-codeowners (cli/parse! (current-task))))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
