@@ -1,4 +1,4 @@
-(ns metabase.explorations.task.runner
+(ns metabase.explorations.runner
   "The work an exploration does in the background, as three plain functions:
 
     [[plan-thread!]]  — ask the LLM which charts to build, and materialize them as

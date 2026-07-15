@@ -1,7 +1,7 @@
 (ns metabase.explorations.ai-summary
   "Two-phase LLM-driven AI Summary generation for a completed exploration thread.
 
-  Invoked from `metabase.explorations.task.runner` after a thread has reached
+  Invoked from `metabase.explorations.runner` after a thread has reached
   terminal state. The pipeline is split into two structured LLM calls so each
   can specialize:
 
@@ -75,7 +75,7 @@
   transforms a raw join would bypass — `stored_result.result_data` is an *encrypted secret*
   column (`mi/transform-secret-value`) and `exploration_query_result.chart_stats` is EDN. We
   select each through its own model so both transforms run. Descriptions are LLM-generated
-  during contextual scoring (see [[metabase.explorations.task.runner]])."
+  during contextual scoring (see [[metabase.explorations.runner]])."
   [query-ids]
   (when (seq query-ids)
     (let [eqr-rows (t2/select [:model/ExplorationQueryResult

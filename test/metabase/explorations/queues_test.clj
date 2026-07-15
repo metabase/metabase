@@ -19,7 +19,7 @@
    [clojure.test :refer :all]
    [metabase.explorations.query-plan]
    [metabase.explorations.queues :as explorations.queues]
-   [metabase.explorations.task.runner :as runner]
+   [metabase.explorations.runner :as runner]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mq.core :as mq]
@@ -106,7 +106,7 @@
                          :ok)]
            (mq.tu/with-test-mq [ctx]
              (t2/with-transaction [_conn]
-               (explorations.queues/publish-plan! (:id thread)))
+               (explorations.queues/start-thread! (:id thread)))
              (mq.tu/eventually! ctx #(when-let [qid @planned] (= "done" (status qid))) 60000)))
          (is (some? @planned) "the plan handler ran and inserted a query")
          (let [row (t2/select-one :model/ExplorationQuery :id @planned)]
@@ -154,7 +154,7 @@
          (with-redefs [runner/plan-thread! (fn [_] (throw (ex-info "planner infrastructure down" {})))]
            (mq.tu/with-test-mq [ctx]
              (t2/with-transaction [_conn]
-               (explorations.queues/publish-plan! (:id thread)))
+               (explorations.queues/start-thread! (:id thread)))
              (mq.tu/eventually! ctx
                                 #(some? (:completed_at (t2/select-one :model/ExplorationThread
                                                                       :id (:id thread))))

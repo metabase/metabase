@@ -6,7 +6,7 @@
     :queue/exploration-timeline-score  one message per (done query, selected timeline) pair
 
   Each stage publishes the next: starting a thread enqueues a plan, planning enqueues that thread's
-  queries, and a query finishing enqueues its timeline pairs. `metabase.explorations.task.runner`
+  queries, and a query finishing enqueues its timeline pairs. `metabase.explorations.runner`
   holds the actual work; this namespace is only the plumbing.
 
   Every publish happens inside the transaction that produced the rows the message names, so the
@@ -23,8 +23,8 @@
   planning-failed doc on a thread that never planned), so giving up is something the user sees
   rather than something that hangs."
   (:require
+   [metabase.explorations.runner :as runner]
    [metabase.explorations.settings :as explorations.settings]
-   [metabase.explorations.task.runner :as runner]
    [metabase.mq.core :as mq]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -93,9 +93,9 @@
 
 ;;; ------------------------------------------ Publishing ------------------------------------------
 
-(defn publish-plan!
-  "Enqueue planning for `thread-id`. Call inside the transaction that starts the thread, so the
-  thread is planned iff it was really started."
+(defn start-thread!
+  "Start `thread-id`'s background processing by enqueuing its planning stage. Call inside the
+  transaction that starts the thread, so the thread is planned iff it was really started."
   [thread-id]
   (mq/with-queue :queue/exploration-plan [q]
     (mq/put q {:thread-id thread-id})))

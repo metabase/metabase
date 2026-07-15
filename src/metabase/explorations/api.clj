@@ -250,7 +250,7 @@
                :analysis_started_at   nil
                :completed_at          nil
                :canceled_at           nil})
-  (explorations.queues/publish-plan! thread-id))
+  (explorations.queues/start-thread! thread-id))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
@@ -532,7 +532,7 @@
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
             (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
-            (explorations.queues/publish-plan! tid)
+            (explorations.queues/start-thread! tid)
             (t2/select-one :model/Exploration :id (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.

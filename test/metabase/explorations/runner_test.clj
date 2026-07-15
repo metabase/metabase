@@ -1,11 +1,11 @@
-(ns metabase.explorations.task.runner-test
+(ns metabase.explorations.runner-test
   (:require
    [clojure.test :refer :all]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan]
-   [metabase.explorations.task.runner :as runner]
+   [metabase.explorations.runner :as runner]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

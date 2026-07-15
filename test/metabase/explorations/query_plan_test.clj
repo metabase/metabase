@@ -259,18 +259,17 @@
 (deftest replanning-a-thread-does-not-duplicate-its-queries-test
   (testing "a redelivered plan message that reaches the planner again must not append a second set
             of query rows — the persist step re-checks, so the later planner discards its rows"
-    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
-      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
-                     :model/Exploration e {:name "x"}
-                     :model/ExplorationThread t {:exploration_id (:id e)}]
-        (let [cid (:id metric)]
-          (mk-block! (:id t) cid "d1" "Price" "type/Number")
-          (is (= :ok (query-plan/generate-query-plan! (:id t))))
-          (let [after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t))]
-            (is (pos? after-first) "the first plan produced rows")
-            (query-plan/generate-query-plan! (:id t))
-            (is (= after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
-                "planning the same thread again must not duplicate its query rows")))))))
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid (:id metric)]
+        (mk-block! (:id t) cid "d1" "Price" "type/Number")
+        (is (= :ok (query-plan/generate-query-plan! (:id t))))
+        (let [after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t))]
+          (is (pos? after-first) "the first plan produced rows")
+          (query-plan/generate-query-plan! (:id t))
+          (is (= after-first (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+              "planning the same thread again must not duplicate its query rows"))))))
 
 (deftest planner-that-loses-the-persist-race-discards-its-rows-test
   (testing "a planner whose thread got planned by a *concurrent* delivery, after this one had already
@@ -287,38 +286,37 @@
             the transaction: hoisting it earlier (or dropping it) fails this test. A genuinely
             two-connection version of this isn't possible in-process — a test body runs inside a
             single transaction, so a second connection cannot see the fixtures at all."
-    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
-      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
-                     :model/Exploration e {:name "x"}
-                     :model/ExplorationThread t {:exploration_id (:id e)}]
-        (let [cid    (:id metric)
-              g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
-              ;; `original-fn`, not `@#'`: once the var has been proxied, deref'ing it returns the
-              ;; proxy, and delegating to that would recur forever
-              orig   (dynamic-redefs/original-fn #'query-plan/materialize-item)
-              raced? (atom false)
-              ;; stand in for the delivery that wins the race and commits its plan first
-              winner (fn []
-                       (t2/insert! :model/ExplorationQuery
-                                   {:exploration_thread_id (:id t)
-                                    :card_id               cid
-                                    :database_id           (mt/id)
-                                    :page_id               (orphan-page! (:id g) cid "d1")
-                                    :dimension_id          "d1"
-                                    :query_type            "default"
-                                    :dataset_query         (count-metric-query)
-                                    :status                "pending"
-                                    :position              0}))]
-          (mt/with-dynamic-fn-redefs [query-plan/materialize-item
-                                      (fn [metric-by-key item]
-                                        (when (compare-and-set! raced? false true)
-                                          (winner))
-                                        (orig metric-by-key item))]
-            (query-plan/generate-query-plan! (:id t)))
-          (is (= 1 (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
-              "the losing planner discards its rows instead of appending them")
-          (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id "d1"))
-              "and never reaches find-or-create-page!, so the thread's page is not duplicated"))))))
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid    (:id metric)
+            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            ;; `original-fn`, not `@#'`: once the var has been proxied, deref'ing it returns the
+            ;; proxy, and delegating to that would recur forever
+            orig   (dynamic-redefs/original-fn #'query-plan/materialize-item)
+            raced? (atom false)
+            ;; stand in for the delivery that wins the race and commits its plan first
+            winner (fn []
+                     (t2/insert! :model/ExplorationQuery
+                                 {:exploration_thread_id (:id t)
+                                  :card_id               cid
+                                  :database_id           (mt/id)
+                                  :page_id               (orphan-page! (:id g) cid "d1")
+                                  :dimension_id          "d1"
+                                  :query_type            "default"
+                                  :dataset_query         (count-metric-query)
+                                  :status                "pending"
+                                  :position              0}))]
+        (mt/with-dynamic-fn-redefs [query-plan/materialize-item
+                                    (fn [metric-by-key item]
+                                      (when (compare-and-set! raced? false true)
+                                        (winner))
+                                      (orig metric-by-key item))]
+          (query-plan/generate-query-plan! (:id t)))
+        (is (= 1 (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+            "the losing planner discards its rows instead of appending them")
+        (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id "d1"))
+            "and never reaches find-or-create-page!, so the thread's page is not duplicated")))))
 
 (deftest gc-retains-pages-that-still-have-queries-test
   (testing "gc-orphan-pages! never deletes a page some query still points at — the page_id FK
