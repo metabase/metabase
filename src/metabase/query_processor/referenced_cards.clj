@@ -17,7 +17,7 @@
   10)
 
 (def specs-schema
-  "Schema for the `referenced_cards` value: up to [[max-specs]] `{:card_id, :columns}` specs."
+  "Schema for the `referenced_cards` request param."
   [:maybe [:sequential {:max max-specs}
            [:map
             [:card_id :int]
@@ -27,8 +27,7 @@
   {:max-results 1, :max-results-bare-rows 1})
 
 (defn- project-columns
-  "Narrow `data` (`{:cols [...] :rows [...]}`) to the requested `columns` (matched by `:name`), unchanged when
-  no columns are requested."
+  "Narrow `data` to the requested `columns`, matched by column `:name`."
   [{:keys [cols rows] :as data} columns]
   (if (seq columns)
     (let [cols      (vec cols)
@@ -40,22 +39,20 @@
     data))
 
 (defn- referenced-query
-  "Build the QP query for a referenced `card` straight from its `dataset_query`, capped to a single row."
   [{:keys [dataset_query id]}]
   (assoc dataset_query
          :constraints single-row-constraints
-         ;; no :executed-by: that requires a :query-hash for the query remark, and this isn't a userland run
+         ;; no :executed-by; it'd require a :query-hash for the query remark
          :info {:context :question
                 :card-id id}))
 
 (defn- run-referenced-card
-  "Run one referenced-card spec. Never throws: any failure (missing card, no read permission, query error)
-  becomes `{:status \"failed\" :error ...}`."
+  "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
   [{:keys [card_id columns]}]
   (try
     (let [card   (api/read-check (api/check-404 (t2/select-one :model/Card :id card_id)))
-          ;; A nested query run inside another query's streaming response would otherwise write to the outer
-          ;; stream; reset the pipeline result handler / cancel channel so it delivers an in-memory map.
+          ;; a nested run inside the outer streaming response must return an in-memory map,
+          ;; not write to the outer stream
           result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
                            qp.pipeline/*canceled-chan* nil]
                    (qp/process-query (referenced-query card)))]
@@ -69,8 +66,8 @@
        :error  (or (ex-message e) "Failed to run referenced query")})))
 
 (defn referenced-cards-result
-  "Run each referenced-card spec (capped at [[max-specs]]) and return `{card-id-string result}`, or nil when
-  there are no specs. Must be called before the main query's QP store is established."
+  "Run each spec and return `{card-id-string result}`, nil when there are none. Must run before the main
+  query's QP store binds."
   [specs]
   (when (seq specs)
     (into {}
@@ -80,15 +77,13 @@
           (take max-specs specs))))
 
 (defn- inject-referenced-cards
-  "Decorate `rff` so the response's `:data` gets a `:referenced_cards` key holding `result`."
   [rff result]
   (qp.streaming/transforming-query-response
    rff
    (fn [response] (assoc-in response [:data :referenced_cards] result))))
 
 (defn maybe-wrap-rff
-  "Eagerly run `specs` and decorate `rff` to add their values under `data.referenced_cards`, or return `rff`
-  unchanged when there are no specs. Must be called before [[qp/process-query]] runs the main query."
+  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_cards`."
   [rff specs]
   (if-let [result (referenced-cards-result specs)]
     (inject-referenced-cards rff result)
@@ -99,9 +94,7 @@
 ;;; ---------------------------------------------------------------------------------------------------------
 
 (defn maybe-wrap-qp
-  "Wrap a query-processor fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`.
-  Run-fn agnostic (every run-fn ultimately calls `(qp query rff)`), so one wrap covers the saved-card,
-  dashcard, embed and public endpoints. Returns `qp` unchanged when there are no specs."
+  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`."
   [qp specs]
   (if-let [result (referenced-cards-result specs)]
     (fn [query rff]
@@ -109,16 +102,12 @@
     qp))
 
 (defn- ->goal-source
-  "A goal that references another card is a `{:card_id ..., :column ...}` map; anything else (a static
-  number, a bare column name) is nil."
   [goal-value]
   (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
     (perf/select-keys goal-value [:card_id :column])))
 
 (defn viz-settings->specs
-  "Extract referenced-card specs from merged `viz` settings: card references in `:graph.goal_value` and in
-  the `:min`/`:max` of `:gauge.segments` / `:scalar.segments` entries, grouped by card id. Nil when there
-  are none."
+  "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
   (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
         sources  (keep ->goal-source
@@ -131,7 +120,6 @@
                  (group-by :card_id sources)))))
 
 (defn maybe-wrap-qp-for-card
-  "Saved-card hook: derive referenced-card specs from a card's merged `viz` settings and wrap `qp` to inject
-  their values. Returns `qp` unchanged when there are no dynamic references."
+  "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
   [qp viz]
   (maybe-wrap-qp qp (viz-settings->specs viz)))

@@ -14,8 +14,7 @@
    [metabase.test.http-client :as client]))
 
 (defn- ref-cards
-  "Pull the `referenced_cards` map out of an API query response. The test HTTP client parses numeric
-  JSON keys back into numbers, so this map is keyed by the (integer) card id."
+  "The test HTTP client parses numeric JSON keys back to ints, so this map is keyed by integer card id."
   [response]
   (get-in response [:data :referenced_cards]))
 
