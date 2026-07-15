@@ -487,15 +487,14 @@
                                  (#'mage.modules/tree-node-lines config false [segment] node)))
                        (#'mage.modules/sorted-children tree)))]
     (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
-      (is (= ["billing"
-              "- billing.enterprise"
-              "lib"
+      (is (= ["lib"
               "- lib.be *"
               "transforms"
               "- transforms.base *"
               "-- transforms.base.deep"
               "- transforms.python *"
-              "- transforms.enterprise"]
+              "- transforms.enterprise"
+              "enterprise/billing"]
              lines)))))
 
 (deftest module-tree-enterprise-default-prefix-not-starred-test

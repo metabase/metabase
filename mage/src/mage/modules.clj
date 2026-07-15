@@ -328,12 +328,17 @@
 ;;;; =============================================================================
 
 (defn- module->tree-path
-  "Path segments a module occupies in the display tree. The `enterprise/` prefix nests as a trailing
-  segment — `enterprise/transforms` sits under `transforms` as `transforms.enterprise` — so enterprise
-  extensions group with the module they extend."
-  [module]
-  (cond-> (str/split (name module) #"\.")
-    (= (namespace module) "enterprise") (conj "enterprise")))
+  "Path segments a module occupies in the display tree. An `enterprise/` module nests under its OSS
+  counterpart as a trailing segment — `enterprise/transforms` sits under `transforms` as
+  `transforms.enterprise` — so enterprise extensions group with the module they extend. An enterprise
+  module with no OSS counterpart is its own root, displayed with its full `enterprise/` name."
+  [modules-config module]
+  (let [segments (str/split (name module) #"\.")]
+    (if (= (namespace module) "enterprise")
+      (if (contains? modules-config (symbol (first segments)))
+        (conj segments "enterprise")
+        (into [(str "enterprise/" (first segments))] (rest segments)))
+      segments)))
 
 (defn- explicit-ns-prefix
   "The module's `:ns-prefix` when it differs from the default derived from the module name, i.e. when the
@@ -350,7 +355,7 @@
   [modules-config]
   (reduce (fn [tree module]
             (update-in tree
-                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path module))
+                       (into [] (mapcat (fn [segment] [:children segment])) (module->tree-path modules-config module))
                        assoc :module module))
           {}
           (keys modules-config)))
@@ -358,7 +363,7 @@
 (defn- sorted-children
   "Child entries of a tree node, alphabetical except `enterprise` always sorts last among its siblings."
   [node]
-  (sort-by (fn [[segment _]] [(if (= segment "enterprise") 1 0) segment])
+  (sort-by (fn [[segment _]] [(if (str/starts-with? segment "enterprise") 1 0) segment])
            (:children node)))
 
 (defn- tree-node-lines
@@ -400,7 +405,7 @@
                           " enterprise"
                           (when (pos? starred)
                             (str ", " starred " ns-prefixed ("
-                                 (if (:prefixes options) "prefix in parens" "* ")
+                                 (if (:prefixes options) "prefix in parens " "* ")
                                  "= namespaces not moved to match the module name)")))))
     (u/exit 0)))
 
