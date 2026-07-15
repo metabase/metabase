@@ -18,8 +18,8 @@
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.memory :as q.memory]
-   [metabase.mq.queue.polling :as q.polling]
    [metabase.mq.queue.registry :as q.registry]))
 
 (set! *warn-on-reflection* true)
@@ -40,17 +40,17 @@
   "Returns a set of the idle conditions that currently do NOT hold. Empty set == idle."
   [ctx]
   (cond-> #{}
-    (seq @publish-buffer/*publish-buffer*) (conj :publish-buffer-nonempty)
-    (seq (q.polling/busy-channels))        (conj :busy-channels)
-    (not (layer-drained? ctx))             (conj :memory-messages-pending)))
+    (seq @publish-buffer/*publish-buffer*)   (conj :publish-buffer-nonempty)
+    (seq (q.concurrency/working-channels))   (conj :channels-still-working)
+    (not (layer-drained? ctx))               (conj :memory-messages-pending)))
 
 (defn wait-for-idle!
   "Blocks until the MQ fixture reaches quiescence or `timeout-ms` elapses. Throws
   an ex-info whose `:unmet` key names the conditions still holding on timeout.
 
-  Because `poll-once!` drains memory channels *before* setting `active-handlers`
-  on the next submit-delivery, a single idle observation can occur in the gap
-  between the two. We require two consecutive idle observations 20 ms apart."
+  Because the poll loop drains memory channels *before* the next submit-delivery
+  claims its slot, a single idle observation can occur in the gap between the two.
+  We require two consecutive idle observations 20 ms apart."
   ([ctx] (wait-for-idle! ctx 5000))
   ([ctx timeout-ms]
    (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
@@ -194,7 +194,7 @@
   (start! [_] (q.backend/start! inner))
   (shutdown! [_] (q.backend/shutdown! inner))
   (backend-id [_] (q.backend/backend-id inner))
-  (fetch! [_ available-queues] (q.backend/fetch! inner available-queues))
+  (fetch! [_ queue->free-slots] (q.backend/fetch! inner queue->free-slots))
   (recover-stale! [_ stale-timeout-ms max-retries]
     (q.backend/recover-stale! inner stale-timeout-ms max-retries))
   (run-heartbeats! [_] (q.backend/run-heartbeats! inner))
@@ -225,6 +225,7 @@
    (let [{:keys [backend listeners duplicate-delivery?] :or {backend :memory}} opts]
      (binding [listener/*listeners*            (atom {})
                q.registry/*queues*             (atom {})
+               q.concurrency/*in-flight*       (atom {})
                publish-buffer/*publish-buffer* (atom {})
                publish-buffer/*publish-buffer-ms* 0]
        (let [backends (make-fixture-backends backend)

@@ -201,7 +201,8 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id})
+                         {:metabot-id metabot.config/internal-metabot-id
+                          :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
         memory-atom     (atom nil)

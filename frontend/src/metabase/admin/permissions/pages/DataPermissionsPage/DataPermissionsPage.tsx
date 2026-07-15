@@ -27,7 +27,7 @@ import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;
-  route: typeof Route;
+  route: Route;
   params: {
     databaseId: DatabaseId;
   };

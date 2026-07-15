@@ -1,5 +1,5 @@
 (ns metabase.metabot.agent.user-context
-  "User context enrichment and formatting for agent system messages.
+  "User context enrichment and formatting for injecting into the prompt.
 
   Handles formatting of viewing context (what the user is currently looking at),
   recent views, user time formatting, and SQL dialect extraction from context."
@@ -348,7 +348,7 @@
                     (te/field "Selected text" text))))))))
 
 (defn format-viewing-context
-  "Format user's current viewing context for injection into system message.
+  "Format user's current viewing context.
 
   Handles different context types:
   - adhoc: Notebook query editor
@@ -416,7 +416,7 @@
 ;;; Recent Views Formatting
 
 (defn format-recent-views
-  "Format user's recently viewed items for injection into system message.
+  "Format user's recently viewed items.
 
   Returns formatted string for template variable {{recent_views}}."
   [context]
@@ -432,7 +432,7 @@
                 "Otherwise, use the search tool to find relevant entities."))))
 
 (defn format-current-user-info
-  "Format the current user and glossary for injection into the system message.
+  "Format the current user and glossary.
 
   Returns XML for template variable {{current_user_info}}."
   [_context]
@@ -449,12 +449,11 @@
 ;;; Context Enrichment
 
 (defn enrich-context-for-template
-  "Enrich context with all necessary variables for system prompt template rendering.
+  "Enrich context with all necessary variables for rendering the message-injection template.
 
   Takes raw context from API and returns map suitable for template rendering:
   - :current_time - Formatted user time string
   - :first_day_of_week - Calendar week start (default 'Sunday')
-  - :sql_dialect - SQL dialect name (lowercase)
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views
@@ -462,7 +461,6 @@
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
-   :sql_dialect (extract-sql-dialect context)
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
    :recent_views (format-recent-views context)
