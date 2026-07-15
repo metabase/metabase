@@ -41,7 +41,7 @@ export interface CreateDataAppSandboxOptions {
   /** Human-readable label used in sandbox diagnostics, e.g. the app slug. */
   label?: string;
   /** Realm the membrane binds to. Defaults to the current `window`. */
-  targetWindow?: Window;
+  targetWindow?: Window & typeof globalThis;
   /** Origins the bundle may fetch/XHR; empty keeps the default hard block. */
   allowedHosts?: string[];
   /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
@@ -52,6 +52,10 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
+function isDataAppFactory(value: unknown): value is DataAppFactory {
+  return typeof value === "function";
+}
+
 export function createDataAppSandbox({
   label = "",
   targetWindow = window,
@@ -60,44 +64,41 @@ export function createDataAppSandbox({
 }: CreateDataAppSandboxOptions) {
   let captured: unknown;
 
-  const env = createVirtualEnvironment(
-    targetWindow as Window & typeof globalThis,
-    {
-      distortionCallback: makeDistortionCallback(
-        label,
-        targetWindow as Window & typeof globalThis,
-        allowedHosts,
-      ),
-      liveTargetCallback: isLiveTarget,
-      // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
-      // externals (defined by the SDK build) and these endowments can't drift.
-      endowments: Object.getOwnPropertyDescriptors({
-        [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
-        [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
-        [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
-        [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
-        [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
-        ...(!!endowments.reactJsxDevRuntime && {
-          [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
-            endowments.reactJsxDevRuntime,
-        }),
-        [DATA_APP_GLOBAL_NAMES.sdk]: {
-          ...endowments.sdkExports,
-          // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
-        },
-        [DATA_APP_GLOBAL_NAMES.dataApp]: {
-          ...endowments.dataAppExports,
-          // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
-        },
-        get [DATA_APP_GLOBAL_NAMES.factory]() {
-          return captured;
-        },
-        set [DATA_APP_GLOBAL_NAMES.factory](value: unknown) {
-          captured = value;
-        },
+  const env = createVirtualEnvironment(targetWindow, {
+    distortionCallback: makeDistortionCallback(
+      label,
+      targetWindow,
+      allowedHosts,
+    ),
+    liveTargetCallback: isLiveTarget,
+    // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
+    // externals (defined by the SDK build) and these endowments can't drift.
+    endowments: Object.getOwnPropertyDescriptors({
+      [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
+      [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
+      [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
+      [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
+      [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
+      ...(!!endowments.reactJsxDevRuntime && {
+        [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
+          endowments.reactJsxDevRuntime,
       }),
-    },
-  );
+      [DATA_APP_GLOBAL_NAMES.sdk]: {
+        ...endowments.sdkExports,
+        // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
+      },
+      [DATA_APP_GLOBAL_NAMES.dataApp]: {
+        ...endowments.dataAppExports,
+        // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
+      },
+      get [DATA_APP_GLOBAL_NAMES.factory]() {
+        return captured;
+      },
+      set [DATA_APP_GLOBAL_NAMES.factory](value: unknown) {
+        captured = value;
+      },
+    }),
+  });
 
   return {
     evaluate(code: string): DataAppFactory {
@@ -107,7 +108,13 @@ export function createDataAppSandbox({
         let message: string;
 
         try {
-          message = String((error as { message?: unknown })?.message ?? error);
+          // Reading `message` off a membrane-opaque throw can itself throw, so
+          // the read stays inside this try.
+          message = String(
+            typeof error === "object" && error !== null && "message" in error
+              ? (error.message ?? error)
+              : error,
+          );
         } catch {
           message = "Unknown error inside data-app sandbox";
         }
@@ -115,13 +122,13 @@ export function createDataAppSandbox({
         throw new Error(message);
       }
 
-      if (typeof captured !== "function") {
+      if (!isDataAppFactory(captured)) {
         throw new Error(
           "Bundle did not assign a function to __dataAppFactory__",
         );
       }
 
-      return captured as DataAppFactory;
+      return captured;
     },
   };
 }

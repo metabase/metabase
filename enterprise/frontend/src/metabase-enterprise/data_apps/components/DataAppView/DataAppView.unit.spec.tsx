@@ -28,6 +28,8 @@ function setup({
   isLoading = false,
   error,
 }: SetupOpts = {}) {
+  // RTK Query's hook result is a wide discriminated union (refetch, status,
+  // isFetching, …); the component reads only these three fields.
   mockedGetApp.mockReturnValue({
     data,
     isLoading,

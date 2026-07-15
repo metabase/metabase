@@ -49,6 +49,9 @@ type TestPlugin = {
 };
 
 function makePlugin(allowedHosts: string[] = []): TestPlugin {
+  // Vite declares every hook on `Plugin` as an `ObjectHook` union (a function or
+  // a `{ handler }` object) bound to Rollup's plugin context. The tests call the
+  // hooks we return as plain functions, which no assignable type expresses.
   return dataAppSandboxDevPlugin(allowedHosts) as unknown as TestPlugin;
 }
 
@@ -134,6 +137,8 @@ describe("dataAppSandboxDevPlugin", () => {
     }
 
     async function setup(bundleCode = "BUNDLE_CODE") {
+      // Rollup's `OutputChunk` declares ~20 required fields; the plugin only
+      // reads `type` and `code`, so the stub deliberately omits the rest.
       mockedBuild.mockResolvedValue({
         output: [{ type: "chunk", code: bundleCode }],
       } as unknown as Awaited<ReturnType<typeof build>>);

@@ -1,4 +1,5 @@
 import {
+  type SandboxRealm,
   isHostAllowed,
   makeSandboxFetch,
   makeSandboxXhr,
@@ -81,9 +82,11 @@ describe("makeSandboxFetch", () => {
   const base = "https://mb.example.com/embed/apps/sales";
   const origin = "https://mb.example.com";
 
-  const fakeWindow = (fetch: jest.Mock) =>
-    ({ fetch, location: { href: base, origin } }) as unknown as Window &
-      typeof globalThis;
+  const fakeWindow = (fetch: typeof global.fetch): SandboxRealm => ({
+    fetch,
+    XMLHttpRequest,
+    location: { href: base, origin },
+  });
 
   it("returns null for an empty allowlist (keeps the sandbox hard block)", () => {
     expect(makeSandboxFetch(window, [], "sales")).toBeNull();

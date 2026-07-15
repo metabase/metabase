@@ -53,6 +53,9 @@ const fieldAggregation = <
   displayName: string,
   dimension: TDimension,
 ): FieldAggregationSchema<TOperator, TDimension> =>
+  // The column's `name`/`jsType` are computed at runtime (`string` /
+  // `SchemaJavaScriptType`), while the schema type states them as the conditional
+  // literals derived from `TOperator` — TS can't connect the two.
   ({
     type: "operator",
     operator: type,
@@ -78,11 +81,15 @@ function getFieldAggregationColumnJavaScriptType(
     return "number";
   }
 
-  if (dimension == null || typeof dimension !== "object") {
+  if (
+    dimension == null ||
+    typeof dimension !== "object" ||
+    !("jsType" in dimension)
+  ) {
     return "number";
   }
 
-  const jsType = (dimension as { jsType?: unknown }).jsType;
+  const { jsType } = dimension;
 
   if (isOrderableJavaScriptType(jsType)) {
     return jsType;
