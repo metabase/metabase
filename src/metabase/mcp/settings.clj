@@ -80,6 +80,14 @@
   :audit      :getter
   :doc        false)
 
+(defsetting mcp-query-handle-ttl-hours
+  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  :type       :integer
+  :default    24
+  :visibility :internal
+  :export?    false
+  :doc        false)
+
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv

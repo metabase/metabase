@@ -9,9 +9,12 @@
    scopes for net-new capability; never rename."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
@@ -305,6 +308,55 @@
       [:update id (dissoc args :method :id)])
 
     (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+
+;;; ------------------------------------------------ Query handles -------------------------------------------------
+
+(defn encode-serialized-query
+  "Base64-encode a serialized MBQL query map ([[metabase.lib.core/prepare-for-serialization]] output)
+   for storage in the query-handle store. The inverse of the decode step in [[resolve-query-handle!]]."
+  [serialized-query]
+  (-> serialized-query json/encode u/encode-base64))
+
+(defn mint-query-handle!
+  "Store `encoded-query` (base64 serialized MBQL, exactly what ran — see [[encode-serialized-query]])
+   under a fresh handle owned by `user-id`, with the user's original `prompt` alongside for the
+   visualization feedback flow. Returns the handle UUID string. Execute tools mint on every call,
+   including `validate_only`, so what the agent later saves or visualizes through the handle is
+   byte-identical to what ran."
+  ([mcp-session-id user-id encoded-query]
+   (mint-query-handle! mcp-session-id user-id encoded-query nil))
+  ([mcp-session-id user-id encoded-query prompt]
+   (mcp.session/store-handle! mcp-session-id user-id encoded-query prompt)))
+
+(defn- decode-stored-query
+  "Decode a stored handle's base64 query payload to a map, surfacing garbage as a teaching error
+   rather than a decode exception."
+  [encoded]
+  (let [decoded (try
+                  (-> encoded u/decode-base64 json/decode+kw)
+                  (catch Exception _ ::invalid))]
+    (if (map? decoded)
+      decoded
+      (throw-teaching-error "Query handle contents are invalid — run the query again to get a fresh handle."))))
+
+(defn resolve-query-handle!
+  "Resolve `handle` for `user-id` and re-run the fresh-query guards on the stored query, so a
+   handle can never smuggle native SQL past the MBQL-scoped tools or grant access the caller has
+   since lost. Returns `{:query <decoded MBQL map> :prompt <string-or-nil>}`, or throws a teaching
+   error (unknown/expired handle, native query, malformed query, or missing permissions).
+
+   MBQL-path callers only: the MCP Apps UI tools read handles directly through
+   [[metabase.mcp.session/resolve-query-handle]] — a native/SQL handle is visualizable by design,
+   so the native-reject guard must never move into the store's read path."
+  [mcp-session-id user-id handle]
+  (let [{:keys [encoded_query prompt]}
+        (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
+            (throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+        query (decode-stored-query encoded_query)]
+    (query-guards/reject-native-query! query)
+    (query-guards/validate-serialized-query! query)
+    (query-guards/check-token-query-permissions! query)
+    {:query query :prompt prompt}))
 
 ;;; ------------------------------------------------ Argument plumbing ---------------------------------------------
 
