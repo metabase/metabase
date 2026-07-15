@@ -137,7 +137,7 @@ export function SettingsNav() {
           pos="sticky"
           bottom={0}
           pt="md"
-          bg="background-primary"
+          bg="background_page-primary"
           style={{ marginTop: "auto", zIndex: 1 }}
         >
           <SecurityCenterPromoCard />

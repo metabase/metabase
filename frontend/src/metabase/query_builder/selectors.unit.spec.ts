@@ -8,6 +8,7 @@ import {
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
+  getShouldShowUnsavedChangesWarning,
 } from "metabase/query_builder/selectors";
 import type {
   QueryBuilderState,
@@ -19,7 +20,7 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -480,5 +481,107 @@ describe("getIsVisualized", () => {
       ],
     });
     expect(getIsVisualized(state)).toBe(true);
+  });
+});
+
+describe("getShouldShowUnsavedChangesWarning", () => {
+  describe("when creating or editing a model", () => {
+    function getModelCard(query: StructuredQuery) {
+      return createMockCard({
+        id: 1,
+        type: "model",
+        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
+      });
+    }
+    const model = getModelCard({ "source-table": ORDERS_ID });
+
+    it("warns when creating a new model", () => {
+      const state = getBaseState({
+        card: model,
+        originalCard: undefined,
+        uiControls: { queryBuilderMode: "dataset" },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+    });
+
+    it("warns when an existing model has unsaved changes", () => {
+      const state = getBaseState({
+        card: getModelCard({ "source-table": PRODUCTS_ID }),
+        originalCard: model,
+        uiControls: { queryBuilderMode: "dataset" },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+    });
+
+    it("does not warn when the model is unchanged", () => {
+      const state = getBaseState({
+        card: model,
+        originalCard: model,
+        uiControls: { queryBuilderMode: "dataset" },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+    });
+  });
+
+  describe("when editing a structured question", () => {
+    const card = createMockCard({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": ORDERS_ID },
+      },
+    });
+
+    it("warns when modified from the notebook editor", () => {
+      const state = getBaseState({
+        card,
+        originalCard: card,
+        uiControls: {
+          queryBuilderMode: "notebook",
+          isModifiedFromNotebook: true,
+        },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+    });
+
+    it("does not warn when not modified from the notebook editor", () => {
+      const state = getBaseState({
+        card,
+        originalCard: card,
+        uiControls: {
+          queryBuilderMode: "notebook",
+          isModifiedFromNotebook: false,
+        },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+    });
+  });
+
+  describe("when creating a native question", () => {
+    function getNativeCard(query: string) {
+      return createMockCard({
+        dataset_query: {
+          type: "native",
+          database: SAMPLE_DB_ID,
+          native: createMockNativeQuery({ query }),
+        },
+      });
+    }
+
+    it("warns when the new native query is non-empty", () => {
+      const state = getBaseState({
+        card: getNativeCard("SELECT 1"),
+        uiControls: { queryBuilderMode: "view" },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(true);
+    });
+
+    it("does not warn when the new native query is empty", () => {
+      const state = getBaseState({
+        card: getNativeCard(""),
+        uiControls: { queryBuilderMode: "view" },
+      });
+      expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
+    });
   });
 });

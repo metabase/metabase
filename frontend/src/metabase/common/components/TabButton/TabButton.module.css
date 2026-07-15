@@ -1,0 +1,14 @@
+.menuButton {
+  &[data-variant="subtle"] {
+    align-self: center;
+    color: inherit;
+    transition: background-color 0s;
+
+    &:hover,
+    &:focus,
+    &.menuButtonOpen {
+      color: var(--mb-color-core-brand);
+      background-color: var(--mb-color-background_page-tertiary);
+    }
+  }
+}

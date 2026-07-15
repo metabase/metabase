@@ -125,7 +125,7 @@ export function DatasetsList({
     return otherDimensions
       .map((dim) => dim.id)
       .filter(isNotNull)
-      .sort() as number[];
+      .sort();
   }, [otherDimensions]);
 
   const { data: visualizationSearchResult, isFetching: isSearchFetching } =

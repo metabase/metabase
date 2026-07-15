@@ -15,6 +15,7 @@
   On that note please don't add any unrelated macros to this namespace! Do cleanup first."
   (:require
    [clojure.core.specs.alpha]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clout.core :as clout]
@@ -347,8 +348,19 @@
    params-type :- ::param-type]
   (get-in args [:params params-type :binding] '_))
 
+(defn- redact-files
+  "Replace [[java.io.File]] values (multipart tempfiles) so validation errors don't leak server temp paths."
+  [x]
+  (cond
+    (instance? java.io.File x) "<redacted File>"
+    (map? x)                   (update-vals x redact-files)
+    (sequential? x)            (mapv redact-files x)
+    :else x))
+
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
+      (update :value redact-files)
+      (update :errors (partial mapv #(update % :value redact-files)))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
@@ -382,9 +394,10 @@
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route "route parameters"
-                                             :query "query parameters"
-                                             :body  "body"))
+                                             :route   "route parameters"
+                                             :query   "query parameters"
+                                             :body    "body"
+                                             :request "request"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
                             errors          (invalid-params-errors explanation)]
@@ -583,6 +596,38 @@
         (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
           body))))
 
+(defn- delete-multipart-tempfiles!
+  [request]
+  (doseq [v     (vals (:multipart-params request))
+          v     (if (sequential? v) v [v])
+          :when (map? v)
+          :let  [f (:tempfile v)]
+          :when f]
+    (io/delete-file f :silently)))
+
+(defn wrap-multipart-tempfile-cleanup
+  "Ring middleware that deletes the parsed multipart tempfiles when the wrapped handler throws,
+  e.g. when param validation rejects the request.
+  Applied inside [[ring.middleware.multipart-params/wrap-multipart-params]].
+  Ring's temp-file store only sweeps orphaned tempfiles after an hour.
+  Handlers that complete normally own the tempfiles they consume and must delete them themselves."
+  [handler]
+  (fn
+    ([request]
+     (try
+       (handler request)
+       (catch Throwable e
+         (delete-multipart-tempfiles! request)
+         (throw e))))
+    ([request respond raise]
+     (try
+       (handler request respond (fn [e]
+                                  (delete-multipart-tempfiles! request)
+                                  (raise e)))
+       (catch Throwable e
+         (delete-multipart-tempfiles! request)
+         (throw e))))))
+
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Supports:
 
@@ -594,17 +639,20 @@
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
    tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (let [scope            (:scope metadata)
-        scope-middleware (cond
-                           (= scope :unchecked) []
-                           (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
-                           :else ['metabase.api.macros.scope/ensure-scopes-checked])
-        multipart        (:multipart metadata)]
-    (cond-> (vec scope-middleware)
-      multipart
-      (conj (if (map? multipart)
-              `(fn [handler#] (ring.middleware.multipart-params/wrap-multipart-params handler# ~multipart))
-              'ring.middleware.multipart-params/wrap-multipart-params)))))
+  (let [scope                (:scope metadata)
+        scope-middleware     (cond
+                               (= scope :unchecked) []
+                               (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                               :else ['metabase.api.macros.scope/ensure-scopes-checked])
+        multipart            (:multipart metadata)
+        multipart-middleware (when multipart
+                               [`(fn [handler#]
+                                   (ring.middleware.multipart-params/wrap-multipart-params
+                                    (wrap-multipart-tempfile-cleanup handler#)
+                                    ~(if (map? multipart) multipart {})))])]
+    ;; [[apply-middleware]] wraps left-to-right, so the last entry is outermost and sees the request first.
+    ;; Scope goes last: a scope rejection must respond 403 before multipart parses the body to tempfiles.
+    (vec (concat multipart-middleware scope-middleware))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler

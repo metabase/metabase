@@ -107,8 +107,7 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule
-          :metabase_version))
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -527,7 +526,7 @@
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
                          [{:id "Linked database" :model "Database"}]}
-                       (set (serdes/dependencies extracted-dashboard))))
+                       (set (serdes/deserialization-dependencies extracted-dashboard))))
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"
               ;; ingest
@@ -810,12 +809,12 @@
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
-                (testing "Column ids are different in different dbs")
-                (is (not= {:people.name       %people.name
-                           :orders.user_id    %orders.user_id
-                           :products.title    %products.title
-                           :orders.product_id %orders.product_id}
-                          @old-ids))
+                (testing "Column ids are different in different dbs"
+                  (is (not= {:people.name       %people.name
+                             :orders.user_id    %orders.user_id
+                             :products.title    %products.title
+                             :orders.product_id %orders.product_id}
+                            @old-ids)))
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
                 (let [viz (t2/select-one-fn :visualization_settings :model/Card :entity_id (:entity_id @card1s))]
                   (testing "column names inside pivot table transferred"
@@ -841,7 +840,7 @@
           (testing "Hidden YAML files are still silently skipped"
             (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
                   files (->> entities
-                             (map (comp second second))
+                             (map val)
                              (map #(.getName ^File %))
                              set)]
               (is (not (contains? files ".hidden.yaml")))))

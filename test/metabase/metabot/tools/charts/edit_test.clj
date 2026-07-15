@@ -40,7 +40,7 @@
     (let [mp (mt/metadata-provider)
           charts-state {"chart-456" {:chart-id "chart-456"
                                      :queries [(lib/native-query mp "SELECT * FROM orders")]}}]
-      (doseq [new-type [:pie :table :scatter :area :sunburst]]
+      (doseq [new-type [:pie :table :scatter :area :sunburst :treemap]]
         (let [{:keys [result]} (edit-chart/edit-chart
                                 {:chart-id "chart-456"
                                  :new-chart-type new-type

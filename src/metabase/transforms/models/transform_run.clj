@@ -7,11 +7,10 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.parameters.dates :as params.dates]
-   [metabase.transforms.models.timeout-util :as timeout-util]
+   [metabase.run-tracking.core :as rt]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
+   [metabase.transforms.models.util :as transforms.models.u]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -19,7 +18,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.time Instant OffsetDateTime ZoneOffset)))
+   (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -154,31 +153,46 @@
        (when-let [run (t2/select-one :model/TransformRun :id run-id)]
          (publish-timeout-event! run))))))
 
-(defn timeout-old-runs!
-  "Time out all active runs older than the specified age. Returns the rows that were timed out.
-  See [[metabase.transforms.models.timeout-util/timeout-rows!]] for atomicity rationale."
-  [age unit]
-  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
-        timeout-dur (timeout-util/unit->duration age unit)
-        detected-at (Instant/now)
-        end-time    (OffsetDateTime/ofInstant detected-at ZoneOffset/UTC)
-        timed-out   (timeout-util/timeout-rows! :model/TransformRun :start_time cutoff)]
-    (when (seq timed-out)
-      (analytics/inc! :metabase-transforms/timeouts-total
-                      {:type "transform"}
-                      (count timed-out))
-      (doseq [run timed-out]
-        (when-let [start (:start_time run)]
-          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                              {:type "transform"}
-                              (timeout-util/detection-latency-ms start timeout-dur detected-at)))
-        (publish-timeout-event! (assoc run
-                                       :status    :timeout
-                                       :is_active nil
-                                       :end_time  end-time
-                                       :message   "Timed out by metabase"))))
+(defn- reap-transform-runs!
+  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
+  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  [stale-column age unit message]
+  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
+        reaped   (rt/reap-orphaned!
+                  {:model    :model/TransformRun
+                   :active   [:= :is_active true]
+                   :stale    [:< stale-column (rt/cutoff age unit)]
+                   :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
+                   :metrics  {:total-metric   :metabase-transforms/timeouts-total
+                              :latency-metric :metabase-transforms/timeout-detection-latency-ms
+                              :tags           {:type "transform"}
+                              :latency-column stale-column
+                              :timeout-ms     (rt/unit->ms age unit)}})]
+    (doseq [run reaped]
+      (publish-timeout-event! (assoc run
+                                     :status    :timeout
+                                     :is_active nil
+                                     :end_time  end-time
+                                     :message   message)))
     (cancel/delete-old-canceling-runs!)
-    timed-out))
+    reaped))
+
+(defn timeout-old-runs!
+  "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were
+  timed out."
+  [age unit]
+  (reap-transform-runs! :start_time age unit "Timed out by metabase"))
+
+(defn heartbeat-runs!
+  "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
+  [run-ids]
+  (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat run-ids))
+
+(defn reap-orphaned-runs!
+  "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
+  presumed dead). Returns the rows that were timed out."
+  [stale-minutes]
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: crashed"))
 
 (defn cancel-old-canceling-runs!
   "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
@@ -233,23 +247,6 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
-(defn- timestamp-constraint
-  [field-name date-string]
-  (let [{:keys [start end]}
-        (try
-          (params.dates/date-string->range date-string {:inclusive-end? false})
-          (catch Exception e
-            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
-                            {:status-code 400}
-                            e))))
-        start (some-> start u.date/parse)
-        end   (some-> end   u.date/parse)]
-    (into [:and] (remove nil?)
-          [(when start
-             [:>= field-name start])
-           (when end
-             [:< field-name end])])))
-
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
   [{:keys [sort-column]}]
@@ -262,10 +259,10 @@
   [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses user-id]}]
   (let [where-cond (cond-> []
                      (some? start-time)
-                     (conj (timestamp-constraint :start_time start-time))
+                     (conj (transforms.models.u/timestamp-constraint :start_time start-time))
 
                      (some? end-time)
-                     (conj (timestamp-constraint :end_time end-time))
+                     (conj (transforms.models.u/timestamp-constraint :end_time end-time))
 
                      (seq run-methods)
                      (conj [:in :run_method (set run-methods)])

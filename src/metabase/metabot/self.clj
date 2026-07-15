@@ -14,6 +14,8 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.azure :as azure]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -29,6 +31,8 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/claude
+    "azure"      azure/azure
+    "bedrock"    bedrock/bedrock
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -38,6 +42,8 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/list-models
+    "azure"      azure/list-models
+    "bedrock"    bedrock/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -51,8 +57,9 @@
      :ai-proxy?  (provider-util/metabase-provider? s)}))
 
 (defn list-models
-  "List available models for a provider using its configured API key,
-  or an override API key when provided."
+  "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
+  The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
+  AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
@@ -133,10 +140,17 @@
        jitter)))
 
 (defn- report-aisdk-errors-xf
-  "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
+  "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
+           ;; A streamed `:error` part means the provider failed mid-response (e.g. an OpenAI
+           ;; `response.failed`) without throwing, so nothing else logs it. Surface it here so it
+           ;; shows up in the server logs alongside the metric and the persisted turn error.
+           (log/error "Metabot LLM stream returned an error"
+                      {:model  (:model tracking-opts "unknown")
+                       :source (:tag tracking-opts "none")
+                       :error  (:error part)})
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -148,7 +162,7 @@
 
   Prometheus + Snowplow:
     - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4-5`)
+    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4.5`)
     - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
 
    Snowplow only:
@@ -255,7 +269,7 @@
   "Call an LLM and stream processed parts.
 
   `provider-and-model` is a string like `anthropic/claude-haiku-4-5` or
-  `openrouter/anthropic/claude-haiku-4-5`.  The first segment selects the
+  `openrouter/anthropic/claude-haiku-4.5`.  The first segment selects the
   provider adapter; the rest is the model name passed to the API.
 
   `parts` is a sequence of AISDK parts (`:text`, `:tool-input`, `:tool-output`)
@@ -314,7 +328,7 @@
   Includes the same retry logic as [[call-llm]] for transient errors.
 
   Args:
-    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")
     messages      - Sequence of Chat Completions message maps
                     (e.g. [{:role \"user\" :content \"...\"}])
     json-schema   - JSON Schema map for the expected response shape

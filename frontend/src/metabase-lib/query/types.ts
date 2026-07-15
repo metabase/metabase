@@ -457,6 +457,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type AutomaticInsightsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/automatic-insights">;
+
 declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
   _opaque: typeof ColumnExtractionSymbol;
@@ -545,6 +548,7 @@ export type ZoomGeographicDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | AutomaticInsightsDrillThruInfo
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo

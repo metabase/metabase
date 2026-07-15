@@ -1,5 +1,4 @@
 import { memo, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,7 +7,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -24,6 +23,7 @@ import {
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,
@@ -309,9 +309,7 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="md">
               <Group gap="md" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && (
-                  <Loader data-testid="loading-indicator" size="xs" />
-                )}
+                {isUpdatingSorting && <Loader size="xs" />}
 
                 {!isSorting && hasFields && (
                   <ResponsiveButton

@@ -1,6 +1,6 @@
 .search {
   width: 100%;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
 }
 
@@ -8,7 +8,7 @@
   padding: 0;
   margin-bottom: var(--mantine-spacing-sm);
   border-radius: var(--default-border-radius);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   overflow: hidden;
 
   .option {
@@ -19,27 +19,27 @@
     height: 2.5rem;
 
     &:not(:last-child) {
-      border-bottom: 1px solid var(--mb-color-border);
+      border-bottom: 1px solid var(--mb-color-border-neutral);
     }
 
     &:hover,
     &[data-combobox-selected="true"] {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
       color: inherit;
     }
   }
 }
 
 .noResultsIcon {
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   border-radius: 100%;
   color: var(--mb-color-text-secondary);
 }
 
 .sampleDbIndicator {
   height: 2.5rem;
-  background-color: var(--mb-color-background-info);
-  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background_page-tertiary);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   margin-bottom: var(--mantine-spacing-sm);

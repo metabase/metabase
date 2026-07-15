@@ -9,6 +9,7 @@ import {
   useGetCardQuery,
   useGetPermissionsGroupQuery,
   useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
@@ -17,12 +18,10 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { QuestionName } from "metabase/common/components/QuestionName";
-import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { GTAPApi } from "metabase/services";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import { Button, Center, Icon, Loader, Radio, Stack } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
@@ -50,6 +49,7 @@ const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
@@ -111,13 +111,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -146,7 +148,7 @@ const EditSandboxingModal = ({
   if (loadingCard || loadingTabe) {
     return (
       <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Center>
     );
   }
@@ -170,20 +172,23 @@ const EditSandboxingModal = ({
               <h4
                 className={CS.pb1}
               >{t`How do you want to filter this table?`}</h4>
-              <Radio
-                value={!shouldUseSavedQuestion}
-                options={[
-                  { name: t`Filter by a column in the table`, value: true },
-                  {
-                    name: t`Use a saved question to create a custom view for this table`,
-                    value: false,
-                  },
-                ]}
-                onChange={(shouldUseSavedQuestion) =>
-                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+              <Radio.Group
+                value={shouldUseSavedQuestion ? "saved-question" : "column"}
+                onChange={(value) =>
+                  setShouldUseSavedQuestion(value === "saved-question")
                 }
-                vertical
-              />
+              >
+                <Stack gap="sm">
+                  <Radio
+                    value="column"
+                    label={t`Filter by a column in the table`}
+                  />
+                  <Radio
+                    value="saved-question"
+                    label={t`Use a saved question to create a custom view for this table`}
+                  />
+                </Stack>
+              </Radio.Group>
             </div>
           ) : (
             <div>
@@ -284,7 +289,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}

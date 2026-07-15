@@ -253,6 +253,31 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
+
+    it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      // Pick a channel so the subscription is valid and can be sent
+      await userEvent.type(
+        await screen.findByPlaceholderText("Pick a user or channel..."),
+        "#general",
+      );
+
+      await userEvent.click(
+        await screen.findByRole("switch", {
+          name: /Send dashboard as PDF/,
+        }),
+      );
+
+      await userEvent.click(await screen.findByText("Send to Slack now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.channel).toBe("#general");
+      expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
   });
 
   describe("Email Subscription sidebar", () => {
@@ -285,6 +310,36 @@ describe("DashboardSubscriptionsSidebar", () => {
       const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
+    });
+
+    it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await screen.findByText("Email this dashboard");
+
+      const pdfSwitch = await screen.findByRole("switch", {
+        name: /Attach a PDF of the dashboard/,
+      });
+      expect(pdfSwitch).not.toBeChecked();
+
+      await userEvent.click(pdfSwitch);
+      expect(pdfSwitch).toBeChecked();
+
+      // Confirm the flag rides along in the channel details on send
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.click(await screen.findByText("Send email now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.include_pdf).toBe(true);
     });
   });
 });

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useSyncTablesSchemasMutation } from "metabase/api";
+import { trackDataStudioTableSchemaSyncStarted } from "metabase/common/data-studio/analytics";
 import { useTemporaryState } from "metabase/common/hooks";
-import { trackDataStudioTableSchemaSyncStarted } from "metabase/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";

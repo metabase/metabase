@@ -84,7 +84,7 @@
                                       (vals measures))))]
       (when (seq queries)
         ;; Extract all referenced entity IDs across all queries
-        (let [referenced-ids (lib/all-referenced-entity-ids queries)]
+        (let [referenced-ids (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})]
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables dashboards transforms segments measures))))

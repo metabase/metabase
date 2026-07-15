@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.util :as transforms.u]
@@ -203,7 +204,8 @@
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
       (-> (t2/select-one :model/TransformJob :id job-id)
-          (t2/hydrate :tag_ids :last_run)))))
+          (t2/hydrate :tag_ids :last_run)
+          (update :last_run transforms-base.u/present-run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
@@ -242,7 +244,8 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
-      (t2/hydrate :tag_ids :last_run)))
+      (t2/hydrate :tag_ids :last_run)
+      (update :last_run transforms-base.u/present-run)))
 
 (defn- add-next-run
   [{id :id :as job}]
@@ -279,9 +282,74 @@
                 (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
                 (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                (map #(update % :next_run transforms-base.u/localize-run-timestamps)))
+                (map #(update % :last_run transforms-base.u/present-run))
+                (map #(update % :next_run transforms-base.u/present-run)))
           (t2/hydrate jobs :tag_ids :last_run))))
+
+(def ^:private JobRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:job_id pos-int?]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:created_at :any]
+   [:updated_at :any]])
+
+(def ^:private TransformRunForJobRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   [:transform_id [:maybe pos-int?]]
+   [:job_run_id [:maybe pos-int?]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:transform {:optional true} [:maybe :map]]
+   [:metered_as {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+
+(api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
+                                                 [:data [:sequential JobRunResponse]]
+                                                 [:limit pos-int?]
+                                                 [:offset :int]
+                                                 [:total :int]]
+  "Get paginated run history for a transform job."
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
+   query-params :- [:map
+                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout"]]]
+                    [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
+                    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
+                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+  (api/read-check :model/TransformJob job-id)
+  (-> (transforms.core/paged-job-runs (assoc query-params
+                                             :job-id job-id
+                                             :offset (request/offset)
+                                             :limit  (request/limit)))
+      (update :data #(map transforms-base.u/present-run %))))
+
+(api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential TransformRunForJobRunResponse]
+  "Get the transform runs that made up a specific job run."
+  [{:keys [job-id run-id]} :- [:map
+                               [:job-id ms/PositiveInt]
+                               [:run-id ms/PositiveInt]]
+   _query-params]
+  (api/read-check :model/TransformJob job-id)
+  (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
+  (let [runs (transforms.core/transform-runs-for-job-run run-id)]
+    (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
+         (map transforms-base.u/present-run))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-job` routes."

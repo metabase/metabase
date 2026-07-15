@@ -207,6 +207,74 @@
              (log/warnf t "Failed to provision WorkspaceDatabase %s" id)))))
      triggered)))
 
+(defn force-teardown-for-delete!
+  "Best-effort warehouse teardown for a single WorkspaceDatabase, used only by the
+  delete path. Drops the iso schema + user (idempotent), always clears the row's
+  app-DB `TableRemapping` rows, then forces the row to `:unprovisioned` regardless
+  of the warehouse outcome.
+
+  Works from ANY non-`:unprovisioned` state: the iso schema and user names are
+  deterministic from the row id (see [[metabase.driver.util/workspace-isolation-namespace-name]]),
+  so the destroy target is reconstructable even for a row stuck in `:provisioning`
+  that never stored its `:output_namespace`/`:database_details`.
+
+  Returns `{:status :success}` when the warehouse objects were dropped, or
+  `{:status :failure :workspace_database_id .. :database_id .. :driver .. :schema ..
+  :user .. :reason ..}` when the warehouse was unreachable and inert objects were
+  left behind for manual cleanup."
+  [wsd provisioner]
+  (with-workspace-database-lock (:id wsd)
+    (let [db        (t2/select-one :model/Database :id (:database_id wsd))
+          driver    (driver.u/database->driver db)
+          iso-ws    {:id (:id wsd) :name (str "wsd-" (:id wsd))}
+          schema    (or (not-empty (:output_namespace wsd))
+                        (driver.u/workspace-isolation-namespace-name iso-ws))
+          user      (or (get-in wsd [:database_details :user])
+                        (driver.u/workspace-isolation-user-name iso-ws))
+          ;; prefer the stored details verbatim (some drivers stash more than :user
+          ;; there); synthesize a minimal map only for a crashed :provisioning row
+          ;; that never recorded anything.
+          details   (if (seq (:database_details wsd))
+                      (:database_details wsd)
+                      {:user user})
+          workspace (assoc iso-ws :schema schema :database_details details)
+          result    (try
+                      (destroy! provisioner driver db workspace)
+                      {:status :success}
+                      (catch Throwable t
+                        (log/warnf t (str "Workspace database %d: warehouse cleanup failed; leaving schema \"%s\" "
+                                          "and user \"%s\" on database %d for manual removal")
+                                   (:id wsd) schema user (:database_id wsd))
+                        {:status                :failure
+                         :workspace_database_id (:id wsd)
+                         :database_id           (:database_id wsd)
+                         :driver                driver
+                         :schema                schema
+                         :user                  user
+                         :reason                (ex-message t)}))]
+      ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
+      ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
+      ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
+      ;; (mirrors `deprovision-workspace-database!`).
+      (binding [t2.connection/*current-connectable* nil]
+        (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))
+      (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
+                  {:output_namespace "" :database_details {} :status :unprovisioned})
+      result)))
+
+(defn ignore-pending-database!
+  "Delete-path helper for a WorkspaceDatabase the admin chose to delete while it is
+  still `:provisioning`/`:deprovisioning`. Does NOT touch the warehouse — the row may
+  be in flight on another node — it only clears the row's app-DB `TableRemapping`
+  rows and forces it to `:unprovisioned` so it can be cascade-deleted. Any warehouse
+  schema/user is intentionally left in place."
+  [wsd]
+  (with-workspace-database-lock (:id wsd)
+    (let [db (t2/select-one :model/Database :id (:database_id wsd))]
+      (binding [t2.connection/*current-connectable* nil]
+        (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) (:output_namespace wsd)))
+      (t2/update! :model/WorkspaceDatabase {:id (:id wsd)} {:status :unprovisioned}))))
+
 (defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
   `:deprovisioning`, then deprovision each one synchronously (blocking).

@@ -227,7 +227,8 @@
    (fn [_] {:role         "assistant"
             :profile_id   "gpt-5"
             :total_tokens 0
-            :data         []})
+            :data         []
+            :data_version 2})
 
    :model/AiUsageLog
    (fn [_] {:source            "test"

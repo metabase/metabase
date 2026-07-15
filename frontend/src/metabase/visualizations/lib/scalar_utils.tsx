@@ -1,9 +1,12 @@
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import type { RowValue, ScalarSegment } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  RowValue,
+  ScalarSegment,
+} from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -20,7 +23,7 @@ function checkShouldCompact(fullValue: string, width: number) {
 export function compactifyValue(
   value: RowValue,
   width: number,
-  formatOptions: OptionsType = {},
+  formatOptions: ColumnSettings = {},
 ) {
   const fullScalarValue = formatValue(value, {
     ...formatOptions,

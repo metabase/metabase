@@ -21,6 +21,7 @@ export const CommentsButton = <C extends ElementType = "button">({
       }
       px="sm"
       size="xs"
+      // Unjustified type cast. FIXME
       {...(props as ButtonProps)}
     >
       {unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null}

@@ -78,8 +78,15 @@ export {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalProps,
   type SdkIframeEmbedSetupModalInitialState,
+  type SdkIframeEmbedSetupExperience,
+  type LegacyStaticEmbeddingModalProps,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
+export {
+  PLUGIN_NOTIFICATIONS_SDK,
+  type DashboardSubscriptionsButtonProps,
+  type QuestionAlertsButtonProps,
+} from "./oss/notifications-sdk";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -92,6 +99,10 @@ export {
   type MetabaseAIProviderSetupProps,
 } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
+export {
+  PLUGIN_MULTI_FACTOR_AUTH,
+  type AuthChallengeFormProps,
+} from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,
   type RevisionOrModerationEvent,
@@ -178,8 +189,6 @@ export type {
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
-import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
-
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -200,6 +209,8 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeMultiFactorAuth } from "./oss/multi-factor-auth";
+import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
@@ -244,6 +255,7 @@ export function reinitialize() {
   reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
+  reinitializeMultiFactorAuth();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();

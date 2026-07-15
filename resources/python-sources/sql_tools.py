@@ -378,29 +378,79 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
+def _wrap_base_table(table, alias):
+    """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
+    property inherited from it (see `add_into_clause`)."""
+    bare_table = table.copy()
+    bare_table.set("alias", None)
+    self_union = exp.union(
+        exp.select("*").from_(bare_table.copy()),
+        exp.select("*").from_(bare_table.copy()).where("1 = 0"),
+        distinct=False,
+    )
+    return self_union.subquery(alias=alias)
+
 def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
-    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
+    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
+    base-table reference into a self-UNION subquery so the new table doesn't inherit a source
+    column's IDENTITY property.
 
     Transforms: SELECT * FROM products
-    Into:       SELECT * INTO "new_table" FROM products
+    Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
 
-    Used by SQL Server transforms which require SELECT INTO syntax
-    instead of CREATE TABLE AS SELECT.
+    Used by SQL Server transforms which require SELECT INTO syntax instead of CREATE TABLE AS SELECT.
+    A plain `SELECT ... INTO` copies a directly-projected source IDENTITY column onto the new table,
+    which later breaks an incremental append (`INSERT INTO <target> SELECT ...`) with SQL Server error
+    8101. Wrapping each base table in a self-UNION breaks that IDENTITY lineage -- the UNION's second
+    branch is always empty and gets elided by SQL Server's contradiction detection, so each table is
+    still scanned once -- without touching filters, ORDER BY, TOP, or query params. CTEs, derived
+    tables, and table-valued functions are left untouched.
+
+    A table with no explicit alias is wrapped under an alias equal to its bare name, and any column
+    in the same scope that referenced it via a schema/catalog-qualified name (e.g. `dbo.products.id`,
+    legal only against a real table) has that now-invalid qualifier stripped, since a derived table can
+    only be referenced by its single-part alias.
 
     :param sql: The SELECT SQL query string
     :param table_name: The target table name (already formatted/quoted)
     :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
-    :return: Modified SQL string with INTO clause
+    :return: Modified SQL string with INTO clause and base tables wrapped
 
     Examples:
         add_into_clause("SELECT * FROM products", '"PRODUCTS_COPY"', "tsql")
-        => 'SELECT * INTO "PRODUCTS_COPY" FROM products'
+        => 'SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
     if not isinstance(ast, exp.Select):
         raise ValueError("SQL must be a SELECT statement")
+
+    cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
+    seen_ids = set()
+
+    for scope in optimizer.build_scope(ast).traverse():
+        scope_replacements = []
+        for alias, source in scope.sources.items():
+            if not isinstance(source, exp.Table):
+                continue
+            table_name_only = source.name
+            if not table_name_only or table_name_only in cte_names or alias in cte_names:
+                continue
+            if id(source) in seen_ids:
+                continue
+            seen_ids.add(id(source))
+            scope_replacements.append((source, alias))
+
+        for table, alias in scope_replacements:
+            # Columns in this scope may reference the table via a schema/catalog-qualified name
+            # (e.g. `dbo.products.id`), which only resolves against a real table. Once the table
+            # becomes a derived table it's only reachable by its single-part alias, so strip the
+            # now-invalid qualifiers.
+            for column in scope.source_columns(alias):
+                column.set("db", None)
+                column.set("catalog", None)
+            table.replace(_wrap_base_table(table, alias))
 
     # Create the Into expression with the table identifier
     # The table_name is pre-formatted, so parse it to preserve quotes
@@ -1634,13 +1684,15 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
     """
-    result = {"is_single_stmt?": False}
+    result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
-        if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
+        if len(stmts) == 1:
             result["is_single_stmt?"] = True
+            if isinstance(stmts[0], allowed_types):
+                result["allowed_stmt_type?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
         result["error"] = str(e)

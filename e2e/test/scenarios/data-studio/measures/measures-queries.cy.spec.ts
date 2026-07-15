@@ -853,6 +853,7 @@ function saveMeasure(): Cypress.Chainable<Measure> {
 
   return cy.wait("@measureCreate").then(({ response }) => {
     H.undoToast().should("contain.text", "Measure created");
+    // Unjustified type cast. FIXME
     return cy.wrap(response?.body as Measure);
   });
 }

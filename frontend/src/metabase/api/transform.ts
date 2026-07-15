@@ -68,6 +68,7 @@ export const transformApi = Api.injectEndpoints({
           tag("table"),
           listTag("table-remapping"),
           listTag("transform-run"),
+          listTag("table-index"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(

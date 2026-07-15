@@ -1,8 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { ComponentPropsWithoutRef, ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
+import type { ComponentPropsWithoutRef } from "react";
 
 import {
   setupAdhocQueryMetadataEndpoint,
@@ -37,6 +36,7 @@ import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {
@@ -218,12 +218,6 @@ const TestQueryBuilder = (
 
 const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
-// The real /model/new page (NewModelOptions) lives in the `models` feature.
-// Feature modules can't import each other, so tests that need it inject it via
-// `newModelOptionsComponent` (spec files are exempt from boundary rules); other
-// tests never hit this route and get this stub.
-const TestNewModelOptions = () => <div />;
-
 const TestRedirect = () => <div />;
 
 const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
@@ -234,9 +228,6 @@ interface SetupOpts {
   card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
-  // Loosely typed to match react-router's `component` prop: the real
-  // NewModelOptions receives router-injected props (location) the stub omits.
-  newModelOptionsComponent?: ComponentType<any>;
   timelines?: Timeline[];
   // Delay (ms) for the /api/timeline response, used to control its resolution
   // order relative to the question/bookmarks load.
@@ -253,7 +244,6 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
-  newModelOptionsComponent = TestNewModelOptions,
   timelines = [],
   timelinesDelay,
 }: SetupOpts) => {
@@ -299,7 +289,6 @@ export const setup = async ({
       <Route>
         <Route path="/" component={TestHome} />
         <Route path="/model">
-          <Route path="new" component={newModelOptionsComponent} />
           <Route path="query" component={TestQueryBuilder} />
           <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
@@ -311,7 +300,7 @@ export const setup = async ({
           <Route path=":slug/notebook" component={TestQueryBuilder} />
         </Route>
         <Route path="/question">
-          <IndexRoute component={TestQueryBuilder} />
+          <Route index component={TestQueryBuilder} />
           <Route path="notebook" component={TestQueryBuilder} />
           <Route path=":slug" component={TestQueryBuilder} />
           <Route path=":slug/notebook" component={TestQueryBuilder} />
@@ -342,18 +331,6 @@ export const setup = async ({
     mockEventListener,
     store,
   };
-};
-
-export const startNewNotebookModel = async () => {
-  await userEvent.click(screen.getByText("Use the notebook editor"));
-  await waitForLoaderToBeRemoved();
-
-  const modal = await screen.findByTestId("mini-picker");
-  await waitForLoaderToBeRemoved();
-  await userEvent.click(await within(modal).findByText("Sample Database"));
-  await userEvent.click(await within(modal).findByText("Orders"));
-
-  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
 
 export const triggerNativeQueryChange = async () => {

@@ -299,7 +299,7 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 
 ### Non-SQL databases have limited row and column security
 
-MongoDB only supports [row-level security](#row-level-security-filter-by-a-column-in-the-table). Row and column security permissions are unavailable for Apache Druid.
+MongoDB and Druid only support [row-level security](#row-level-security-filter-by-a-column-in-the-table). Neither supports column-level security.
 
 ### Advanced data types require a workaround
 

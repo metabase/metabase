@@ -23,6 +23,10 @@ type RunRtkEndpointOptions = {
  * the subscription. Use this when you need an endpoint's data inside a thunk
  * or other non-component code path, where the `useFooQuery` hook isn't an
  * option.
+ *
+ * Pass a `signal` to cancel the in-flight request: it's wired to RTK Query's
+ * `.abort()`, so aborts surface as the standard `DOMException` AbortError and
+ * callers can `isAbortError`-check them.
  */
 export async function runRtkEndpoint(
   request: unknown,

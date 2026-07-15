@@ -28,8 +28,8 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
       ? { provider: connectedProvider }
       : skipToken,
   );
-  const hasApiKeyError =
-    !!connectedProviderSettingsQuery.currentData?.["api-key-error"];
+  const hasCredentialsError =
+    !!connectedProviderSettingsQuery.currentData?.["credentials-error"];
 
   return (
     <SettingsSection
@@ -39,16 +39,18 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
           <Group gap="xs" wrap="nowrap">
             {connectedProvider && (
               <Badge
-                circle
-                size="12"
-                bg={hasApiKeyError ? "error" : "success"}
+                color={hasCredentialsError ? "negative" : "positive"}
+                indicator
                 mr="sm"
               />
             )}
             <div>
-              {match({ connectedProvider, hasApiKeyError })
+              {match({ connectedProvider, hasCredentialsError })
                 .with(
-                  { connectedProvider: P.nonNullable, hasApiKeyError: true },
+                  {
+                    connectedProvider: P.nonNullable,
+                    hasCredentialsError: true,
+                  },
                   ({ connectedProvider }) =>
                     t`Error connecting to ${getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label}`,
                 )

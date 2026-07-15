@@ -1,5 +1,9 @@
 /* eslint-disable import/order */
 
+// Must run before any dynamic import(): sets webpack's runtime publicPath so
+// on-demand chunks load from the Metabase-hosted SDK asset directory.
+import "./lib/sdk-public-path";
+
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
@@ -43,6 +47,7 @@ import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
+import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 
@@ -75,6 +80,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useLogVersionInfo,
   validateFunctionSchema,
   MetabotSubscriber,
+  executeAction,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package

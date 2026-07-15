@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
+import { NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 
 import DeleteEventModal from "./containers/DeleteEventModal";
 import DeleteTimelineModal from "./containers/DeleteTimelineModal";
@@ -16,105 +17,47 @@ import TimelineDetailsModal from "./containers/TimelineDetailsModal";
 import TimelineIndexModal from "./containers/TimelineIndexModal";
 import TimelineListArchiveModal from "./containers/TimelineListArchiveModal";
 
+const options = { modalProps: NO_ANIMATION_MODAL_PROPS };
+
 const getRoutes = () => {
   return (
     <Fragment>
-      <ModalRoute
-        {...{
-          path: "timelines",
-          modal: TimelineIndexModal,
-          // enableMouseEvents lets Mantine's click-outside detection work
-          // for the overflow menus inside (UXW-264).
-          modalProps: { enableTransition: false, enableMouseEvents: true },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/new",
-          modal: NewTimelineModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/archive",
-          modal: TimelineListArchiveModal,
-          modalProps: { enableTransition: false, enableMouseEvents: true },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId",
-          modal: TimelineDetailsModal,
-          // enableMouseEvents lets Mantine's click-outside detection work
-          // for the overflow menus inside (UXW-264).
-          modalProps: { enableTransition: false, enableMouseEvents: true },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/edit",
-          modal: EditTimelineModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/move",
-          modal: MoveTimelineModal,
-          modalProps: { enableTransition: false },
-          noWrap: true,
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/archive",
-          modal: TimelineArchiveModal,
-          modalProps: { enableTransition: false, enableMouseEvents: true },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/delete",
-          modal: DeleteTimelineModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/new/events/new",
-          modal: NewEventWithTimelineModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/events/new",
-          modal: NewEventModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/events/:timelineEventId/edit",
-          modal: EditEventModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/events/:timelineEventId/move",
-          modal: MoveEventModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
-      <ModalRoute
-        {...{
-          path: "timelines/:timelineId/events/:timelineEventId/delete",
-          modal: DeleteEventModal,
-          modalProps: { enableTransition: false },
-        }}
-      />
+      {modalRoute("timelines", TimelineIndexModal, options)}
+      {modalRoute("timelines/new", NewTimelineModal, options)}
+      {modalRoute("timelines/archive", TimelineListArchiveModal, options)}
+      {modalRoute("timelines/:timelineId", TimelineDetailsModal, options)}
+      {modalRoute("timelines/:timelineId/edit", EditTimelineModal, options)}
+      {modalRoute("timelines/:timelineId/move", MoveTimelineModal, {
+        ...options,
+        noWrap: true,
+      })}
+      {modalRoute(
+        "timelines/:timelineId/archive",
+        TimelineArchiveModal,
+        options,
+      )}
+      {modalRoute("timelines/:timelineId/delete", DeleteTimelineModal, options)}
+      {modalRoute(
+        "timelines/new/events/new",
+        NewEventWithTimelineModal,
+        options,
+      )}
+      {modalRoute("timelines/:timelineId/events/new", NewEventModal, options)}
+      {modalRoute(
+        "timelines/:timelineId/events/:timelineEventId/edit",
+        EditEventModal,
+        options,
+      )}
+      {modalRoute(
+        "timelines/:timelineId/events/:timelineEventId/move",
+        MoveEventModal,
+        options,
+      )}
+      {modalRoute(
+        "timelines/:timelineId/events/:timelineEventId/delete",
+        DeleteEventModal,
+        options,
+      )}
     </Fragment>
   );
 };

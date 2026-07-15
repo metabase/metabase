@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import {
@@ -21,6 +20,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { withRouter } from "metabase/router";
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";

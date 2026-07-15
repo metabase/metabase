@@ -11,7 +11,6 @@ export const MetricsViewer = {
     cy.get(
       "[data-testid='metrics-viewer-pill'], [data-testid='metrics-viewer-expression-pill']",
     ),
-  searchResults: () => cy.findByTestId("mini-picker"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),

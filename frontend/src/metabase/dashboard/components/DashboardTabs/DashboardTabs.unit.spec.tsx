@@ -1,12 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import {
-  type InjectedRouter,
-  Link,
-  Route,
-  type WithRouterProps,
-  withRouter,
-} from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
@@ -15,15 +8,28 @@ import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
-import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
 import { useSelector } from "metabase/redux";
-import type { DashboardState, State } from "metabase/redux/store";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  type InjectedRouter,
+  Link,
+  Route,
+  type WithRouterProps,
+  withRouter,
+} from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
+
+const TEST_CARD = createMockCard({
+  id: 1,
+  name: "Test card",
+  type: "model",
+});
 
 function setup({
   tabs,
@@ -109,8 +115,7 @@ function setup({
     },
   );
   return {
-    getDashcards: () =>
-      Object.values((store.getState() as unknown as State).dashboard.dashcards),
+    getDashcards: () => Object.values(store.getState().dashboard.dashcards),
   };
 }
 
@@ -120,6 +125,7 @@ function queryTab(numOrName: number | string) {
 }
 
 async function selectTab(num: number) {
+  // Unjustified type cast. FIXME
   const selectedTab = queryTab(num) as HTMLElement;
   await userEvent.click(selectedTab);
   return selectedTab;

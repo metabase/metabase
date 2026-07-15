@@ -524,7 +524,7 @@
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
               (qp/process-query-for-card
-               card-id :api
+               (t2/select-one :model/Card card-id) :api
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
@@ -547,7 +547,7 @@
 (deftest parameterized-queries-do-not-thrash-result-metadata-test
   ;; When parameters are applied via :parameters, result_metadata should not be updated.
   ;; See QUE2-502 for details.
-  (mt/with-temp [:model/Card {card-id :id}
+  (mt/with-temp [:model/Card {card-id :id, :as card}
                  {:dataset_query   (mt/mbql-query orders
                                      {:aggregation [[:count] [:sum $total]]
                                       :breakout    [$product_id]})
@@ -558,7 +558,7 @@
             (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
               (mt/as-admin
                 (qp/process-query-for-card
-                 card-id :api
+                 card :api
                  :parameters [{:id     "product-id-param"
                                :type   :id
                                :target [:dimension (mt/$ids orders $product_id)]

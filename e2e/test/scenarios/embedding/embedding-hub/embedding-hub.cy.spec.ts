@@ -1349,9 +1349,7 @@ describe("scenarios - embedding hub", () => {
           expect(domesticTableIds.length).to.be.at.least(1);
 
           // At least one table should be sandboxed (the Animals table we selected)
-          const domesticValues = Object.values(
-            viewData["Domestic"],
-          ) as string[];
+          const domesticValues = Object.values(viewData["Domestic"]);
           expect(domesticValues).to.include("sandboxed");
 
           // Wild schema should be blocked (it has no selected tables)
@@ -1476,7 +1474,7 @@ describe("scenarios - embedding hub", () => {
           const graph = response.body;
 
           const permissions =
-            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId as number];
+            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId];
 
           expect(permissions).to.exist;
           expect(permissions["view-data"]).to.equal("impersonated");

@@ -25,7 +25,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   invite: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
-  search: "1-1-3",
+  search: "1-1-4",
   serialization: "1-0-1",
   settings: "1-0-2",
   setup: "1-0-3",
@@ -64,12 +64,15 @@ export function trackSchemaEvent<S extends SchemaType>(
   }
 
   if (shouldSendSnowplow) {
-    Snowplow.trackSelfDescribingEvent({
-      event: {
-        schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
-        data: event,
+    Snowplow.trackSelfDescribingEvent(
+      {
+        event: {
+          schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
+          data: event,
+        },
       },
-    });
+      ["sp"],
+    );
   }
 
   if (Settings.get("metaplow-tracking-enabled")) {

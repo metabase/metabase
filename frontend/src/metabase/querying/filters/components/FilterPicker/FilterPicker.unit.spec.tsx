@@ -35,7 +35,9 @@ import {
   storeInitialState,
 } from "./test-utils";
 
+// Unjustified type cast. FIXME
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
+// Unjustified type cast. FIXME
 const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
 
 function createQueryWithMultipleValuesFilter() {

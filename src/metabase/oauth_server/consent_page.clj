@@ -7,6 +7,8 @@
    [metabase.appearance.core :as appearance]
    [metabase.system.core :as system]))
 
+(set! *warn-on-reflection* true)
+
 (defn- absolute-url
   "Resolve a potentially relative path to an absolute URL using site-url."
   [path]
@@ -138,6 +140,8 @@
                               padding: 0.75rem 1rem; margin-bottom: 1.5rem;
                               font-size: 0.8125rem; line-height: 1.45; color: #883b34; }
                    .warning .mark { flex: 0 0 auto; font-weight: 700; }
+                   .destination { text-align: center; font-size: 0.8125rem; color: #696e7b; margin-bottom: 1.5rem; }
+                   .destination strong { font-family: monospace; color: #4c5773; }
                    .actions { display: flex; gap: 0.75rem; }
                    button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
                             font-family: inherit; cursor: pointer;
@@ -162,6 +166,8 @@
              (or client-name "this application") " can do, including reading and changing all data you "
              "can reach. Only approve it for a tool you trust and control."]])
          (render-scope-list scopes)
+         (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+           [:p.destination "Redirects to " [:strong redirect-host]])
          [:form {:method "POST" :action "/oauth/authorize/decision"}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]

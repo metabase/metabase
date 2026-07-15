@@ -113,35 +113,34 @@
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
-  (let [has-rows? (volatile! false)]
-    (add-object-to-cache! (assoc metadata
-                                 :cache-version cache-version
-                                 :last-ran      (t/zoned-date-time)))
-    (fn
-      ([] (rf))
+  (add-object-to-cache! (assoc metadata
+                               :cache-version cache-version
+                               :last-ran      (t/zoned-date-time)))
+  (fn
+    ([] (rf))
 
-      ([result]
-       (add-object-to-cache! (if (map? result)
-                               (m/dissoc-in result [:data :rows])
-                               {}))
-       (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-             min-duration-ms (:min-duration-ms strategy 0)
-             eligible?       (and @has-rows?
-                                  (> duration-ms min-duration-ms))]
-         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                    (i/short-hex-hash query-hash)
-                    (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration-ms)
-                    (if eligible? "eligible" "not eligible"))
-         (when eligible?
-           (cache-results! query-hash))
-         (rf (cond-> result
-               (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
+    ([result]
+     (add-object-to-cache! (if (map? result)
+                             (m/dissoc-in result [:data :rows])
+                             {}))
+     (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
+           min-duration-ms (:min-duration-ms strategy 0)
+           ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
+           ;; doesn't get re-run at full cost on every request
+           eligible?       (> duration-ms min-duration-ms)]
+       (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
+                  (i/short-hex-hash query-hash)
+                  (u/format-milliseconds duration-ms)
+                  (u/format-milliseconds min-duration-ms)
+                  (if eligible? "eligible" "not eligible"))
+       (when eligible?
+         (cache-results! query-hash))
+       (rf (cond-> result
+             (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
 
-      ([acc row]
-       (add-object-to-cache! row)
-       (vreset! has-rows? true)
-       (rf acc row)))))
+    ([acc row]
+     (add-object-to-cache! row)
+     (rf acc row))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
@@ -181,43 +180,101 @@
              acc
              (rf acc row))))))))
 
-(mu/defn- maybe-reduce-cached-results :- [:tuple
-                                          #_status
-                                          [:enum ::ok ::miss ::canceled]
-                                          #_result
-                                          :any]
-  "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
+(defn- reduce-cached-stream
+  "Deserialize and reduce a cached-results `InputStream` `is` with `rff`. Returns the reduced result, or nil if the
+  stream is absent or was written by an incompatible cache version."
+  [is rff query-hash]
+  (when is
+    (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
+      (log/debugf "Found cached results for hash '%s'. Version: %s"
+                  (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
+      (when (and (= (:cache-version metadata) cache-version)
+                 reducible-rows)
+        (log/trace "Reducing cached rows...")
+        (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
+          (log/trace "All cached rows reduced"))))))
+
+(def ^:dynamic *refresh-lease-duration-ms*
+  "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
+  the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
+  (u/minutes->ms 5))
+
+(defn- cache-fresh?
+  "Whether a cache entry last written at `updated-at` is still within its TTL given `invalidated-at` (the strategy's
+  freshness boundary, which must be non-nil)."
+  [updated-at invalidated-at]
+  (boolean (and updated-at
+                (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
+
+(mu/defn- maybe-serve-cached-results :- [:tuple
+                                         #_status [:enum ::fresh ::stale ::miss ::canceled]
+                                         #_result :any]
+  "Look up the cache entry for `query-hash` and decide what to do (stale-while-revalidate):
+    - `[::fresh result]` -- entry is within its TTL; serve it.
+    - `[::stale result]` -- entry is expired but another process holds the refresh lease; serve it stale while that
+                            process refreshes, so we don't stampede the data warehouse.
+    - `[::miss nil]`     -- no entry, or it's expired and *this* process won the lease; the caller must recompute.
+    - `[::canceled nil]` -- the request was canceled."
   [ignore-cache?
-   query-hash    :- bytes?
-   strategy      :- :map
-   rff           :- ::qp.schema/rff]
-  (try
-    (or (when-not ignore-cache?
-          (log/debugf "Looking for cached results for query with hash '%s' satisfying %s"
-                      (i/short-hex-hash query-hash) (pr-str strategy))
-          (i/with-cached-results *backend* query-hash strategy [is]
-            (if is
-              (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
-                (log/debugf "Found cached results for hash '%s'. Version: %s"
-                            (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
-                (when (and (= (:cache-version metadata) cache-version)
-                           reducible-rows)
-                  (log/trace "Reducing cached rows...")
-                  (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
-                    (log/trace "All cached rows reduced")
-                    [::ok result])))
-              (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))
-        [::miss nil])
-    (catch EofException _
-      (log/debug "Request is closed; no one to return cached results to")
-      [::canceled nil])
-    (catch Throwable e
-      (log/errorf e "Error attempting to fetch cached results for query with hash %s: %s"
-                  (i/short-hex-hash query-hash)
-                  (ex-message e))
-      [::miss nil])))
+   query-hash :- bytes?
+   strategy   :- :map
+   rff        :- ::qp.schema/rff]
+  (if ignore-cache?
+    [::miss nil]
+    (try
+      (or (i/with-cached-results *backend* query-hash [is updated-at]
+                                 (when is
+                                   (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
+                                     (cond
+                                       ;; can't determine freshness for this strategy -> don't serve from cache
+                                       (nil? invalidated-at)
+                                       nil
+
+                                       ;; within its TTL -> serve the fresh entry
+                                       (cache-fresh? updated-at invalidated-at)
+                                       (when-let [result (reduce-cached-stream is rff query-hash)]
+                                         [::fresh result])
+
+                                       ;; expired, and we won the refresh lease -> recompute (don't serve stale)
+                                       (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                                       nil
+
+                                       ;; expired, another process is refreshing -> serve stale
+                                       :else
+                                       (when-let [result (reduce-cached-stream is rff query-hash)]
+                                         (log/debugf "Serving stale cached results for hash '%s' while another process refreshes"
+                                                     (i/short-hex-hash query-hash))
+                                         [::stale result])))))
+          [::miss nil])
+      (catch EofException _
+        (log/debug "Request is closed; no one to return cached results to")
+        [::canceled nil])
+      (catch Throwable e
+        (log/errorf e "Error attempting to fetch cached results for query with hash %s: %s"
+                    (i/short-hex-hash query-hash)
+                    (ex-message e))
+        [::miss nil]))))
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
+
+(defn- run-and-cache!
+  "Run `query` through `qp` and save the results to the cache (if eligible). Used on a cache miss, or when this process
+  holds the stale-while-revalidate refresh lease."
+  [qp query query-hash cache-strategy rff]
+  (let [start-time-ns (System/nanoTime)
+        orig-reduce   qp.pipeline/*reduce*]
+    (log/trace "Running query and saving cached results (if eligible)...")
+    (binding [qp.pipeline/*reduce* (fn reduce'
+                                     [rff metadata rows]
+                                     {:post [(some? %)]}
+                                     (impl/do-with-serialization
+                                      (fn [in-fn result-fn]
+                                        (binding [*in-fn*     in-fn
+                                                  *result-fn* result-fn]
+                                          (orig-reduce rff metadata rows)))))]
+      (qp query
+          (fn [metadata]
+            (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
 (mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
@@ -226,29 +283,11 @@
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
   (let [query-hash      (qp.util/query-hash query)
-        [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
+        [status result] (maybe-serve-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
     (case status
-      ::ok
-      result
-
-      ::canceled
-      ::canceled
-
-      ::miss
-      (let [start-time-ns (System/nanoTime)
-            orig-reduce   qp.pipeline/*reduce*]
-        (log/trace "Running query and saving cached results (if eligible)...")
-        (binding [qp.pipeline/*reduce* (fn reduce'
-                                         [rff metadata rows]
-                                         {:post [(some? %)]}
-                                         (impl/do-with-serialization
-                                          (fn [in-fn result-fn]
-                                            (binding [*in-fn*     in-fn
-                                                      *result-fn* result-fn]
-                                              (orig-reduce rff metadata rows)))))]
-          (qp query
-              (fn [metadata]
-                (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
+      (::fresh ::stale) result
+      ::canceled        ::canceled
+      ::miss            (run-and-cache! qp query query-hash cache-strategy rff))))
 
 (defn- has-cache-strategy? [cache-strategy]
   (some? cache-strategy))

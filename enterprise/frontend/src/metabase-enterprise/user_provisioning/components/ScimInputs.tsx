@@ -4,6 +4,7 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import type { TextInputProps } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 
+// Unjustified type cast. FIXME
 const fontFamilyMonospace = getThemeOverrides().fontFamilyMonospace as string;
 
 // why are we overriding the default styles?

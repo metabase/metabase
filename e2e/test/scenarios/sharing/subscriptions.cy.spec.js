@@ -78,6 +78,35 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
+    it("renders an object detail as a label/value table in a subscription email", () => {
+      const questionDetails = {
+        name: "Object detail static-viz smoke",
+        native: {
+          query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
+        },
+        display: "object",
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Hammer");
+        // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
+        expect(html).to.include("Empty");
+      });
+    });
+
     describe("with no existing subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
@@ -302,26 +331,21 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
-      // This is extremely fragile
-      // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
-      cy.findByLabelText("Attach results").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach").click();
-      clickButton("Done");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscriptions");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Emailed hourly").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete this subscription").scrollIntoView();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach");
-      cy.findAllByRole("listitem")
-        .contains("Orders")
-        .closest("li")
-        .within(() => {
-          cy.findByRole("checkbox").should("be.checked");
-        });
+
+      H.sidebar().within(() => {
+        cy.findByLabelText("Attach results")
+          .should("not.be.checked")
+          .click({ force: true }); // Input is placed behind the lable due to tooltip in label
+        cy.findByText("Questions to attach").click();
+        clickButton("Done");
+
+        cy.findByText("Subscriptions").should("exist");
+        cy.findByText("Emailed hourly").click();
+
+        cy.findByText("Delete this subscription").scrollIntoView();
+        cy.findByText("Questions to attach").should("be.visible");
+        cy.findByLabelText("Orders").should("be.checked");
+      });
     });
 
     it("should localize schedule type in the delete-confirmation modal", () => {
@@ -350,9 +374,13 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 
-      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Attach results")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Questions to attach").click();
-      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Send only attachments").should("be.checked");
 
       H.sendEmailAndAssert((email) => {
@@ -496,6 +524,40 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(dashboardDetails.name);
         expect(email.html).to.include(questionDetails.name);
+      });
+    });
+
+    it("renders a region (choropleth) map as an image in a subscription email", () => {
+      const questionDetails = {
+        name: "Region map static-viz smoke",
+        native: {
+          query:
+            "SELECT 'CA' AS state, 99999 AS metric " +
+            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
+        },
+        display: "map",
+        visualization_settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+          "map.dimension": "STATE",
+          "map.metric": "METRIC",
+        },
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          assignRecipient({ dashboard_id: dashboardId });
+        },
+      );
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include("99999");
+        expect(html).not.to.include("11111");
       });
     });
   });

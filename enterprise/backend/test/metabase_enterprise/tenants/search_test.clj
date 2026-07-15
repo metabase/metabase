@@ -14,7 +14,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
 
 (deftest dedicated-tenant-collection-dataset-search-test
   (testing "Search returns datasets (models) from dedicated tenant collections"

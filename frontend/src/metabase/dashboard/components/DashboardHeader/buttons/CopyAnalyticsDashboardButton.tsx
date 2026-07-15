@@ -1,7 +1,7 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { type WithRouterProps, withRouter } from "metabase/router";
 import { Button, Icon } from "metabase/ui";
 
 export const CopyAnalyticsDashboardButton = withRouter(

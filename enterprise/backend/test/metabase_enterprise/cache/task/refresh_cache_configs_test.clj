@@ -32,7 +32,7 @@
   [card-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     card-id :api
+     (t2/select-one :model/Card :id card-id) :api
      :parameters parameters
      :make-run (constantly
                 (fn [query info]
@@ -42,9 +42,9 @@
   [card-id dashboard-id dashcard-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     card-id :api
+     (t2/select-one :model/Card :id card-id) :api
      :dashboard-id dashboard-id
-     :dashcard-id dashcard-id
+     :dashcard (t2/select-one :model/DashboardCard :id dashcard-id)
      :parameters parameters
      :make-run (constantly
                 (fn [query info]

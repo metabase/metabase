@@ -1,10 +1,10 @@
 /* Step root - shared styles */
 .StepRoot {
   position: relative;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   margin-bottom: 1rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .StepRoot[data-active="true"] {
@@ -17,7 +17,7 @@
   transition: background-color 0.15s ease;
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -25,7 +25,7 @@
   cursor: not-allowed;
 
   &:hover {
-    background-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background_page-primary);
   }
 }
 
@@ -72,9 +72,9 @@
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 50%;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .StepRoot[data-active="true"] .StepNumber {
@@ -87,7 +87,7 @@
 }
 
 .StepNumber[data-completed="true"] {
-  background-color: var(--mb-color-background-success);
+  background-color: var(--mb-color-background_surface-success);
 }
 
 .StepNumberText {
@@ -99,13 +99,13 @@
 .StepNumberIcon {
   width: 1rem;
   height: 1rem;
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 .StepLockIcon {
   width: 0.75rem;
   height: 0.75rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 /* Step content with title (only shown when active) */

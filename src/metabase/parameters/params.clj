@@ -17,7 +17,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
@@ -172,17 +174,34 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- filterable-columns-for-query
-  "Get filterable columns for query."
-  [database-id card stage-number]
-  (let [metadata-provider (lib-be/application-database-metadata-provider database-id)
-        ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it into
-        ;; a query against that model or metric.
-        query (lib/query metadata-provider (if (= :question (:type card))
-                                             (:dataset_query card)
-                                             (lib.metadata/card metadata-provider (:id card))))
-        ;; for backward compatibility, append a filter stage only with explicit stage numbers
-        query (cond-> query (>= stage-number 0) lib/ensure-filter-stage)]
+(mr/def ::param-dashcard-info
+  "Internal bookkeeping for one parameter `mapping` on a hydrated `dashcard`: the dashcard, the mapping, and the
+  parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
+  columns)."
+  [:map
+   [:dashcard              :map]
+   [:param-mapping         ::parameters.schema/parameter-mapping]
+   [:param-target-field-id [:maybe ::lib.schema.id/field]]])
+
+(mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
+  "Build the lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query."
+  [card         :- :metabase.queries.schema/card
+   stage-number :- :int]
+  (when (and (seq (:dataset_query card)) (pos-int? (:database_id card)))
+    (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
+          ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it
+          ;; into a query against that model or metric.
+          query (lib/query metadata-provider (if (= :question (:type card))
+                                               (:dataset_query card)
+                                               (lib.metadata/card metadata-provider (:id card))))]
+      ;; for backward compatibility, append a filter stage only with explicit stage numbers
+      (cond-> query (>= stage-number 0) lib/ensure-filter-stage))))
+
+(mu/defn- filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Get the filterable columns of `card`'s query at `stage-number`."
+  [card         :- :metabase.queries.schema/card
+   stage-number :- :int]
+  (when-let [query (card->filterable-columns-query card stage-number)]
     (when (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
       (lib/filterable-columns query stage-number))))
 
@@ -198,7 +217,7 @@
          (seq dataset-query)
          (pos-int? database-id))
     (assoc-in [:card-id->filterable-columns card-id stage-number]
-              (or (filterable-columns-for-query database-id card stage-number) []))))
+              (or (filterable-columns-for-query card stage-number) []))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
@@ -234,6 +253,21 @@
   {:card-id->filterable-columns {}
    :param-id->field-ids         {}})
 
+(mu/defn- param-dashcard-info->card :- [:maybe :metabase.queries.schema/card]
+  "The Card on `param-dashcard-info`'s dashcard that its parameter mapping targets: matched by the mapping's `:card_id`
+  against the dashcard's main Card and series Cards, falling back to the main Card when the mapping has no `:card_id`."
+  [{:keys [param-mapping dashcard] :as _param-dashcard-info} :- ::param-dashcard-info]
+  (if-let [card-id (:card_id param-mapping)]
+    (m/find-first #(= (:id %) card-id)
+                  (cons (:card dashcard) (:series dashcard)))
+    (:card dashcard)))
+
+(mu/defn- param-dashcard-info->stage-number :- :int
+  "The query stage of `param-dashcard-info`'s parameter target whose filterable columns we need, or -1 when the target
+  doesn't pin a stage."
+  [{:keys [param-mapping] :as _param-dashcard-info} :- ::param-dashcard-info]
+  (get-in param-mapping [:target 2 :stage-number] -1))
+
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
   and returns new _context_ (`ctx`) with the _field id_ added.
@@ -255,14 +289,7 @@
             merge (:card-id->filterable-columns ctx)))
    (:param-id->field-ids ctx))
   ([ctx {:keys [param-mapping param-target-field-id] :as param-dashcard-info}]
-   (let [card-id (:card_id param-mapping)
-         card (if card-id
-                (m/find-first #(= (:id %) card-id)
-                              (cons (get-in param-dashcard-info [:dashcard :card])
-                                    (get-in param-dashcard-info [:dashcard :series])))
-                (get-in param-dashcard-info [:dashcard :card]))
-         param-id (:parameter_id param-mapping)
-         stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
+   (let [param-id (:parameter_id param-mapping)]
      ;; Get the field id from the field-clause if it contains it. This is the common case
      ;; for mbql queries.
      (if param-target-field-id
@@ -270,9 +297,11 @@
        ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
        ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
        ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
-       (-> ctx
-           (ensure-filterable-columns-for-card card stage-number)
-           (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number))))))
+       (let [card         (param-dashcard-info->card param-dashcard-info)
+             stage-number (param-dashcard-info->stage-number param-dashcard-info)]
+         (-> ctx
+             (ensure-filterable-columns-for-card card stage-number)
+             (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
 
 (defn- find-card-for-mapping
   "Find the card that a parameter mapping refers to. Looks up the card by `:card_id` from both
@@ -287,19 +316,48 @@
       (string? (:type card))          (update :type keyword)
       (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))
 
+(mu/defn- mapping->param-dashcard-info :- ::param-dashcard-info
+  "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
+  target is already field-id-based."
+  [dashcard :- :map
+   mapping  :- ::parameters.schema/parameter-mapping]
+  (let [card (find-card-for-mapping dashcard mapping)]
+    {:dashcard              dashcard
+     :param-mapping         mapping
+     :param-target-field-id (when (:target mapping)
+                              (param-target->field-id (:target mapping) card))}))
+
+(mu/defn- preload-param-filterable-columns! :- :nil
+  "Bulk-load up front the metadata that the per-Card [[filterable-columns-for-query]] computations (run lazily by
+  [[field-id-into-context-rf]]) will need, so those computations hit the metadata-provider cache instead of fetching
+  objects one at a time. Only Cards whose parameter target is not field-id-based need filterable columns; we build
+  their queries here (the same way [[ensure-filterable-columns-for-card]] does, via [[card->filterable-columns-query]]),
+  gather the entities they reference, and bulk-load them per Database. Requires a metadata-provider cache scope (asserted
+  by [[card->filterable-columns-query]]), since there'd otherwise be no shared cache to warm."
+  [param-dashcard-infos :- [:sequential ::param-dashcard-info]]
+  (doseq [[database-id infos] (->> param-dashcard-infos
+                                   ;; field-id-based targets are resolved without filterable columns, so nothing to preload
+                                   (remove :param-target-field-id)
+                                   (group-by (comp :database_id param-dashcard-info->card))
+                                   (filter (fn [[database-id _infos]] (pos-int? database-id))))]
+    (when-let [queries (not-empty (into [] (keep (fn [info]
+                                                   (card->filterable-columns-query
+                                                    (param-dashcard-info->card info)
+                                                    (param-dashcard-info->stage-number info))))
+                                        infos))]
+      (lib-be/bulk-load-query-metadata! (lib-be/application-database-metadata-provider database-id)
+                                        (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})))))
+
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
-  (letfn [(dashcard->param-dashcard-info [dashcard]
-            (for [mapping (:parameter_mappings dashcard)]
-              (let [card (find-card-for-mapping dashcard mapping)]
-                {:dashcard              dashcard
-                 :param-mapping         mapping
-                 :param-target-field-id (when (:target mapping)
-                                          (param-target->field-id (:target mapping) card))})))]
-    (transduce (mapcat dashcard->param-dashcard-info)
-               field-id-into-context-rf
-               dashcards)))
+  (let [param-dashcard-infos (into []
+                                   (mapcat (fn [dashcard]
+                                             (for [mapping (:parameter_mappings dashcard)]
+                                               (mapping->param-dashcard-info dashcard mapping))))
+                                   dashcards)]
+    (preload-param-filterable-columns! param-dashcard-infos)
+    (transduce identity field-id-into-context-rf param-dashcard-infos)))
 
 (declare card->template-tag-id->field-ids)
 
@@ -322,16 +380,11 @@
 (mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
   [{:keys [mappings]} :- ::parameters.schema/parameter]
-  (let [param-id->field-ids (transduce (map (fn [mapping]
-                                              (let [card (find-card-for-mapping (:dashcard mapping) mapping)]
-                                                {:dashcard              (:dashcard mapping)
-                                                 :param-mapping         mapping
-                                                 :param-target-field-id (param-target->field-id
-                                                                         (:target mapping)
-                                                                         card)})))
-                                       field-id-into-context-rf
-                                       mappings)]
-    (into #{} cat (vals param-id->field-ids))))
+  (let [param-dashcard-infos (mapv (fn [mapping]
+                                     (mapping->param-dashcard-info (:dashcard mapping) mapping))
+                                   mappings)]
+    (preload-param-filterable-columns! param-dashcard-infos)
+    (into #{} cat (vals (transduce identity field-id-into-context-rf param-dashcard-infos)))))
 
 (defn get-linked-field-ids
   "Retrieve a map relating parameter ids to field ids."

@@ -127,3 +127,62 @@
             {:key    [::remote-sync.merge/by-path "collections/x.yaml"]
              :ours   {:path "collections/x.yaml" :content "not-an-entity"}
              :theirs {:path "collections/x.yaml" :content "also-not"}})))))
+
+(deftest ^:parallel force-push-casualties-deleted-test
+  (testing "GHY-3917: a force push reports remote content it would discard"
+    (testing "remote-only entity (added on remote, absent locally) -> deleted"
+      (is (= {:deleted ["d (collections/d.yaml)"] :overwritten []}
+             (remote-sync.merge/force-push-casualties
+              [(card "A" "a")]            ; base
+              [(card "A" "a")]            ; ours: nothing for D
+              [(card "A" "a") (card "D" "d")])))) ; theirs added D
+    (testing "entity dropped locally but edited on the remote -> deleted (the remote edit is lost)"
+      (is (= {:deleted ["b (collections/b.yaml)"] :overwritten []}
+             (remote-sync.merge/force-push-casualties
+              [(card "A" "a") (card "B" "b")]
+              [(card "A" "a")]                       ; ours dropped B
+              [(card "A" "a") (card "B" "b" "y: 2\n")])))))) ; theirs edited B
+
+(deftest ^:parallel force-push-casualties-overwritten-test
+  (testing "GHY-3917: an entity edited on the remote and locally -> overwritten (remote edit replaced)"
+    (is (= {:deleted [] :overwritten ["a (collections/a.yaml)"]}
+           (remote-sync.merge/force-push-casualties
+            [(card "A" "a")]
+            [(card "A" "a" "x: ours\n")]
+            [(card "A" "a" "x: theirs\n")])))))
+
+(deftest ^:parallel force-push-casualties-routine-push-not-a-casualty-test
+  (testing "GHY-3917: a routine push (local edit, remote untouched since base) is not a casualty"
+    (is (= {:deleted [] :overwritten []}
+           (remote-sync.merge/force-push-casualties
+            [(card "A" "a")]
+            [(card "A" "a" "x: 1\n")] ; ours edited A
+            [(card "A" "a")]))))      ; theirs unchanged
+  (testing "GHY-3917: remote and local converged on the same content -> nothing lost"
+    (is (= {:deleted [] :overwritten []}
+           (remote-sync.merge/force-push-casualties
+            [(card "A" "a")]
+            [(card "A" "a" "x: 1\n")]
+            [(card "A" "a" "x: 1\n")]))))
+  (testing "GHY-3917: a locally-added entity is not a casualty (it's not on the remote)"
+    (is (= {:deleted [] :overwritten []}
+           (remote-sync.merge/force-push-casualties
+            [(card "A" "a")]
+            [(card "A" "a") (card "C" "c")] ; ours adds C
+            [(card "A" "a")])))))
+
+(deftest ^:parallel force-push-casualties-no-base-test
+  (testing "GHY-3917: with no merge base (history rewritten), every remote entity not identical to ours is a casualty"
+    (testing "remote-only -> deleted; present-but-different -> overwritten; identical -> neither"
+      (is (= {:deleted ["b (collections/b.yaml)"]
+              :overwritten ["a (collections/a.yaml)"]}
+             (remote-sync.merge/force-push-casualties
+              []                                       ; no base
+              [(card "A" "a" "x: ours\n") (card "C" "c")]  ; ours: edits A, has C (not on remote)
+              [(card "A" "a" "x: theirs\n") (card "B" "b")])))) ; theirs: different A, remote-only B
+    (testing "an entity identical on both sides is not a casualty even without a base"
+      (is (= {:deleted [] :overwritten []}
+             (remote-sync.merge/force-push-casualties
+              []
+              [(card "A" "a")]
+              [(card "A" "a")]))))))

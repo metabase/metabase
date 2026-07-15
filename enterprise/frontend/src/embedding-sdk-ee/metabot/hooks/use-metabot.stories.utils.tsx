@@ -99,7 +99,7 @@ export const InlineChart = ({ Component }: { Component: ChartComponent }) => (
       borderRadius: 8,
       overflow: "hidden",
       margin: "6px 0",
-      background: "var(--mb-color-background-secondary)",
+      background: "var(--mb-color-background_page-secondary)",
     }}
   >
     <Component drills isSaveEnabled={false} height="500px" />

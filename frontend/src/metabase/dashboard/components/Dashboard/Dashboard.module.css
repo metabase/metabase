@@ -1,6 +1,6 @@
 .DashboardBody {
   flex: 1 0 auto;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 
   &.isEmbeddingSdk {
     background-color: var(--mb-color-bg-dashboard);
@@ -26,11 +26,11 @@
   z-index: 2;
 
   &:not(.noBorder) {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 
   &:not(.isEmbeddingSdk) {
-    background-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background_page-primary);
   }
 
   &.isFullscreen {

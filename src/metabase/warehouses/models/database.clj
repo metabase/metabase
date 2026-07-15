@@ -477,58 +477,53 @@
 
 (t2/define-before-update :model/Database
   [database]
+  ;; Note: the "sample database may not be edited" policy is enforced at the API layer
+  ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
+  ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
   (let [changes                       (t2/changes database)
         {new-engine        :engine
          new-settings      :settings} changes
-        {is-sample?        :is_sample
-         existing-settings :settings
+        {existing-settings :settings
          existing-engine   :engine}   (t2/original database)
         new-engine                    (some-> new-engine keyword)]
-    (if (and is-sample?
-             new-engine
-             (not= new-engine existing-engine))
-      (throw (ex-info (trs "The engine on a sample database cannot be changed.")
-                      {:status-code     400
-                       :existing-engine existing-engine
-                       :new-engine      new-engine}))
-      (u/prog1 (cond-> database
-                 ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                 (and (some? (:details changes))
-                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
-                 (update :details dissoc :json_unfolding)
+    (u/prog1 (cond-> database
+               ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+               (and (some? (:details changes))
+                    (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
+               (update :details dissoc :json_unfolding)
 
-                 (or
-                  ;if there is any changes in user control setting
-                  (some? (get-in changes [:details :let-user-control-scheduling]))
-                  ;; if the let user control scheduling is already on, we should always try to re-infer it
-                  (get-in database [:details :let-user-control-scheduling])
-                  ;; if there is a changes in schedules, make sure it respects the settings
-                  (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
-                 infer-db-schedules
+               (or
+                ;if there is any changes in user control setting
+                (some? (get-in changes [:details :let-user-control-scheduling]))
+                ;; if the let user control scheduling is already on, we should always try to re-infer it
+                (get-in database [:details :let-user-control-scheduling])
+                ;; if there is a changes in schedules, make sure it respects the settings
+                (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+               infer-db-schedules
 
-                 (or (some? (:details changes))
-                     (some? (:write_data_details changes))
-                     (some? (:admin_details changes)))
-                 secret/handle-incoming-client-secrets!
+               (or (some? (:details changes))
+                   (some? (:write_data_details changes))
+                   (some? (:admin_details changes)))
+               secret/handle-incoming-client-secrets!
 
-                 (:uploads_enabled changes)
-                 maybe-disable-uploads-for-all-dbs!)
-        ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
-        ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-        (when (and (:database-enable-actions (or new-settings existing-settings))
-                   (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
-          (throw (ex-info (trs "The database does not support actions.")
-                          {:status-code     400
-                           :existing-engine existing-engine
-                           :new-engine      new-engine})))
-        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
-        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
-        (when (and (:database-enable-table-editing (or new-settings existing-settings))
-                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
-          (throw (ex-info (trs "The database does not support table editing.")
-                          {:status-code     400
-                           :existing-engine existing-engine
-                           :new-engine      new-engine})))))))
+               (:uploads_enabled changes)
+               maybe-disable-uploads-for-all-dbs!)
+      ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
+      ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
+      (when (and (:database-enable-actions (or new-settings existing-settings))
+                 (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
+        (throw (ex-info (trs "The database does not support actions.")
+                        {:status-code     400
+                         :existing-engine existing-engine
+                         :new-engine      new-engine})))
+      ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+      ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+      (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                 (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+        (throw (ex-info (trs "The database does not support table editing.")
+                        {:status-code     400
+                         :existing-engine existing-engine
+                         :new-engine      new-engine}))))))
 
 (t2/define-after-update :model/Database
   [database]
@@ -691,7 +686,9 @@
   (t2/reducible-select (keyword "model" model-name)
                        {:where (cond-> [:and
                                         (or where true)
-                                        [:= :router_database_id nil]]
+                                        [:= :router_database_id nil]
+                                        ;; never export the sample database, regardless of its driver
+                                        [:not= :is_sample true]]
                                  (not *include-h2-in-extract?*)
                                  (conj [:not= :engine "h2"]))}))
 

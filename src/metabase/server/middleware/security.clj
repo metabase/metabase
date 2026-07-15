@@ -60,6 +60,26 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
+(def ^:private url-scheme-pattern
+  "RFC 3986 generic URI scheme syntax: a letter followed by any number of letters, digits, `+`, `-`,
+   or `.`. We don't restrict this to a closed set of known schemes (`http`, `app`, ...) since MCP
+   clients are free to register arbitrary custom schemes (e.g. `vscode-webview`, `chrome-extension`,
+   `electron`). Schemes are case-insensitive; callers that need case-insensitive matching normalize
+   case themselves."
+  "[a-zA-Z][a-zA-Z0-9+.\\-]*")
+
+(def ^:private url-domain-pattern
+  "Valid characters for a CORS origin's domain: standard hostname/IPv4 labels (letters, digits,
+   hyphens, separated by dots), plus `*` so wildcard entries like `*.example.com` are still accepted."
+  "[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?(?:\\.[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?)*")
+
+(def ^:private url-host-pattern
+  "Bracketed IPv6 literal (e.g. `[::1]`) or a hostname/IPv4/wildcard domain."
+  (str "\\[[^\\]]+\\]|" url-domain-pattern))
+
+(def ^:private url-pattern
+  (re-pattern (str "^(?:(" url-scheme-pattern ")://)?(" url-host-pattern ")(?::(\\d+|\\*))?$")))
+
 (defn try-parse-url
   "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
    client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
@@ -67,9 +87,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
-    (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          [_ protocol domain port] (re-matches pattern url)]
+    (let [[_ protocol domain port] (re-matches url-pattern url)]
       (when domain
         {:protocol protocol :domain domain :port port}))))
 
@@ -80,6 +98,20 @@
   [url]
   (or (try-parse-url url)
       (do (log/errorf "Invalid URL: %s" url) nil)))
+
+(def ^:private url-authority-pattern
+  ;;                  _________________________________$1_____________________________________
+  (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
+
+(defn- strip-origin-path
+  "Strips a trailing `/path` from a URL. Used both for admin-entered CORS origin entries and for deriving
+   the map tile server origin. Origins have no path component by definition (just scheme + host + port),
+   so a bare trailing slash pasted into an allowlist setting (e.g. `http://localhost:6274/`) shouldn't
+   silently make that entry fail to parse and drop out of the allowlist. Entries with a real path are
+   rejected at save time (see the setting's `:setter`); this only needs to normalize bare trailing
+   slashes and any non-trivial paths saved before that validation existed."
+  [url]
+  (str/replace url url-authority-pattern "$1"))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
@@ -173,6 +205,19 @@
        distinct
        vec))
 
+(defn- map-tile-server->hosts
+  "Origin of the configured `map-tile-server-url` (OpenStreetMap or a custom server), so that `img-src`
+  allows map visualizations to load their tiles. The `{s}` subdomain placeholder becomes a `*` wildcard
+  and the `{z}/{x}/{y}` path is dropped; blank or relative templates yield no host."
+  []
+  (let [origin (some-> (setting/get-value-of-type :string :map-tile-server-url)
+                       not-empty
+                       (str/replace "{s}" "*")
+                       strip-origin-path)]
+    (if (and origin (try-parse-url origin))
+      [origin]
+      [])))
+
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 (def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
@@ -226,7 +271,8 @@
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
                   :img-src      (if (server.settings/csp-img-enabled)
-                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                  (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                (map-tile-server->hosts))
                                     config/is-dev? (conj frontend-address))
                                   (into ["*"] always-allowed-resource-hosts))
                   :connect-src  ["'self'"
@@ -288,7 +334,7 @@
   "Parses the space separated string of approved origins"
   [approved-origins-raw]
   (let [urls (str/split approved-origins-raw #" +")]
-    (keep parse-url urls)))
+    (keep (comp parse-url strip-origin-path) urls)))
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.
@@ -338,7 +384,7 @@
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
         "Access-Control-Max-Age"  "60"}))))
 

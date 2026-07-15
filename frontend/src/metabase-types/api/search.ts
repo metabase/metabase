@@ -130,19 +130,19 @@ export type ModelResult = SearchResult<number, "dataset">;
 // The frontend surface that issued a search request; the backend uses it to pick ranking weights and
 // filter defaults. Keep in sync with `metabase.search.config/ui-contexts`.
 export type SearchContext =
-  | "search-bar"
-  | "search-app"
-  | "command-palette"
-  | "entity-picker"
-  | "data-picker"
-  | "type-filter"
   | "basic-actions"
   | "browse"
-  | "embedding-setup"
-  | "document"
-  | "library"
+  | "command-palette"
+  | "data-picker"
   | "dependencies"
-  | "model-migration";
+  | "document"
+  | "embedding-setup"
+  | "entity-picker"
+  | "library"
+  | "model-migration"
+  | "search-app"
+  | "search-bar"
+  | "type-filter";
 
 export type SearchRequest = {
   q?: string;

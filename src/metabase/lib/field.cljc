@@ -13,6 +13,7 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -612,8 +613,14 @@
         (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref   (lib.ref/ref column)
-        [join field] (first (for [join  (lib.join/joins query stage-number)
+  (let [column-ref (lib.ref/ref column)
+        join-alias (lib.join.util/current-join-alias column)
+        joins (lib.join/joins query stage-number)
+        joins (if-let [join-with-alias (and join-alias
+                                            (m/find-first #(= (:alias %) join-alias) joins))]
+                [join-with-alias]
+                joins)
+        [join field] (first (for [join  joins
                                   :let [joinables (lib.join/joinable-columns query stage-number join)
                                         field     (lib.equality/find-matching-column
                                                    query stage-number column-ref joinables)]

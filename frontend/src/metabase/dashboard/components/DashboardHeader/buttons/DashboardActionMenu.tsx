@@ -1,5 +1,4 @@
 import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
@@ -12,6 +11,7 @@ import { DashboardSubscriptionMenuItem } from "metabase/notifications/Notificati
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Link, type LinkProps, withRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {

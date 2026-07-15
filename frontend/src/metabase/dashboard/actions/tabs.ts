@@ -212,6 +212,7 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
+  // Unjustified type cast. FIXME
   const prevDash = dashId ? (state as DashboardState).dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
@@ -499,6 +500,7 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       _moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
+        // Unjustified type cast. FIXME
         const dashboardState = { ...state } as unknown as DashboardState;
         const dashCard = dashboardState.dashcards[dashCardId];
         const dashboardId = checkNotNull(dashboardState.dashboardId);

@@ -1,6 +1,7 @@
 import { type ComponentType, useEffect } from "react";
 import { t } from "ttag";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import {
   CollectionNotFoundError,
   SdkLoader,
@@ -20,7 +21,7 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
@@ -106,6 +107,8 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
+  useTrackSdkComponentMount("CollectionBrowser", null, {});
+
   const {
     baseCollectionId,
     internalCollectionId,
@@ -163,7 +166,7 @@ export const CollectionBrowserInner = ({
         return;
       }
 
-      setInternalCollectionId(item.id as CollectionId);
+      setInternalCollectionId(item.id);
     }
   };
 

@@ -114,7 +114,7 @@ export function DimensionsWidget({
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
     onChangeSettings({
-      "pie.dimension": newDimensions.filter((d) => d != null) as string[],
+      "pie.dimension": newDimensions.filter((d) => d != null),
     });
   };
 
@@ -184,9 +184,11 @@ export function DimensionsWidget({
         sensors={[pointerSensor]}
       >
         <SortableContext
-          items={(dimensions.filter((d) => d != null) as string[]).map((d) => ({
-            id: d,
-          }))}
+          items={dimensions
+            .filter((d) => d != null)
+            .map((d) => ({
+              id: d,
+            }))}
           strategy={verticalListSortingStrategy}
         >
           {dimensions.map((dimension, index) => (

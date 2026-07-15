@@ -4,17 +4,15 @@ import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
-import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
@@ -65,6 +63,7 @@ const DASHCARD_MAP_ID = getNextId();
 const CARD_MAP_ID = getNextId();
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({
     currentUser: null,
@@ -119,7 +118,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
       },
     }),
   });
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

@@ -854,7 +854,9 @@ export class UnconnectedDataSelector extends Component {
             </Box>
           </Popover.Target>
 
-          <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
+          <Popover.Dropdown aria-label={this.props.popoverAriaLabel}>
+            {this.renderContent()}
+          </Popover.Dropdown>
         </Popover>
       );
     }

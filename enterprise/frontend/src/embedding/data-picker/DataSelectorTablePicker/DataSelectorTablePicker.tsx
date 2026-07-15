@@ -12,8 +12,8 @@ import {
   TableInfoIcon,
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
@@ -166,9 +166,9 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
     <Box
       p="md"
       ta="center"
-      bg={"background-secondary"}
+      bg={"background_page-secondary"}
       style={{
-        borderTop: "1px solid var(--mb-color-border)",
+        borderTop: "1px solid var(--mb-color-border-neutral)",
       }}
     >
       {t`Is a question missing?`}

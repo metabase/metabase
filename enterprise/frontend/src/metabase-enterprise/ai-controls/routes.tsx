@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured";
 import {

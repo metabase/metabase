@@ -16,7 +16,7 @@ import {
 } from "__support__/ui";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
   Parameter,
@@ -104,6 +104,7 @@ const setup = (options?: Partial<LinkVizProps>) => {
       dashcard={linkDashcard}
       isEditing={true}
       onUpdateVisualizationSettings={changeSpy}
+      // Unjustified type cast. FIXME
       settings={linkDashcard.visualization_settings as LinkCardVizSettings}
       {...options}
     />,
@@ -149,6 +150,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: emptyLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           emptyLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -173,6 +175,7 @@ describe("LinkViz", () => {
       setup({
         isEditing: false,
         dashcard,
+        // Unjustified type cast. FIXME
         settings: dashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -193,6 +196,7 @@ describe("LinkViz", () => {
       setup({
         isEditing: false,
         dashcard,
+        // Unjustified type cast. FIXME
         settings: dashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -206,6 +210,7 @@ describe("LinkViz", () => {
       const markdownDescription =
         "**Bold text** and _italic text_ and [link](https://example.com)";
 
+      // Unjustified type cast. FIXME
       const settings = {
         link: {
           entity: {
@@ -252,6 +257,7 @@ describe("LinkViz", () => {
     it("disallows headings in markdown tooltip", async () => {
       const markdownDescription = "# Heading\nRegular text";
 
+      // Unjustified type cast. FIXME
       const settings = {
         link: {
           entity: {
@@ -285,6 +291,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: questionLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           questionLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -297,6 +304,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: tableLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -309,6 +317,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: tableLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -323,6 +332,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: tableLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           tableLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -340,6 +350,7 @@ describe("LinkViz", () => {
         isEditing: true,
         dashcard: searchingDashcard,
         settings:
+          // Unjustified type cast. FIXME
           searchingDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -361,6 +372,48 @@ describe("LinkViz", () => {
             name: "Question Uno",
             model: "card",
             display: "pie",
+          }),
+        },
+      });
+    });
+
+    it("should find Documents when searching (UXW-4440)", async () => {
+      const documentSearchDashcard = createMockLinkDashboardCard({
+        url: "Quarterly",
+      });
+      const searchDocumentItem = createMockCollectionItem({
+        id: 2,
+        model: "document",
+        name: "Quarterly Plan Doc",
+        collection: searchCardCollection,
+      });
+      setupSearchEndpoints([searchDocumentItem]);
+      setupUserRecipientsEndpoint({ users: [createMockUser()] });
+      setupCollectionByIdEndpoint({
+        collections: [searchCardCollection],
+      });
+
+      const { changeSpy } = setup({
+        isEditing: true,
+        dashcard: documentSearchDashcard,
+        settings:
+          // Unjustified type cast. FIXME
+          documentSearchDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      const searchInput = screen.getByPlaceholderText("https://example.com");
+
+      await userEvent.click(searchInput);
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(await screen.findByText("Quarterly Plan Doc"));
+
+      expect(changeSpy).toHaveBeenCalledWith({
+        link: {
+          entity: expect.objectContaining({
+            id: 2,
+            name: "Quarterly Plan Doc",
+            model: "document",
           }),
         },
       });
@@ -395,6 +448,7 @@ describe("LinkViz", () => {
         isEditing: true,
         dashcard: emptyLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           emptyLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -421,6 +475,7 @@ describe("LinkViz", () => {
         isEditing: false,
         dashcard: restrictedLinkDashcard,
         settings:
+          // Unjustified type cast. FIXME
           restrictedLinkDashcard.visualization_settings as LinkCardVizSettings,
       });
 
@@ -460,6 +515,7 @@ describe("LinkViz", () => {
           dashboard={dashboard}
           isEditing={false}
           onUpdateVisualizationSettings={jest.fn()}
+          // Unjustified type cast. FIXME
           settings={dashcard.visualization_settings as LinkCardVizSettings}
         />,
         {

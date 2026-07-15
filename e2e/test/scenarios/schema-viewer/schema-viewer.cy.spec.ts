@@ -518,10 +518,10 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     cy.findAllByTestId("tree-item").contains("Orders").click();
 
     cy.log(
-      "Click the 'View Schema' action in the Orders table section — opens with Orders as focal",
+      "Click the 'View schema' action in the Orders table section — opens with Orders as focal",
     );
     H.DataModel.TableSection.getActionsMenuButton().click();
-    H.menu().findByText("View Schema").click();
+    H.menu().findByText("View schema").click();
     cy.wait("@erd");
     cy.url()
       .should("include", "/data-studio/schema-viewer")

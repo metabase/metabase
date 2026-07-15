@@ -123,7 +123,7 @@ export const BranchDropdown = ({
           </Flex>
         ) : branchesError ? (
           <Box p="md">
-            <Text size="sm" c="error" ta="center">
+            <Text size="sm" c="feedback-negative" ta="center">
               {t`Failed to load branches — check your authentication token`}
             </Text>
           </Box>
@@ -131,7 +131,7 @@ export const BranchDropdown = ({
           <>
             {filteredBranches.length === 0 && !showCreateOption ? (
               <Box p="md">
-                <Text size="sm" c="text-tertiary" ta="center">
+                <Text size="sm" c="text-disabled" ta="center">
                   {searchValue
                     ? t`No branches found`
                     : t`No branches available`}
@@ -145,7 +145,7 @@ export const BranchDropdown = ({
                       <Box px="sm" py="sm">
                         <Text
                           size="xs"
-                          c="text-tertiary"
+                          c="text-disabled"
                           tt="uppercase"
                           fw="bold"
                         >
@@ -182,7 +182,7 @@ export const BranchDropdown = ({
                         <Icon name="add" size={16} />
                         <Box>
                           <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                          <Text size="xs" c="text-tertiary">
+                          <Text size="xs" c="text-disabled">
                             {t`from ${baseBranch || value}`}
                           </Text>
                         </Box>

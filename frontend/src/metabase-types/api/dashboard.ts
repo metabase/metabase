@@ -299,7 +299,19 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
+
+export type DashboardParameterValuesRequest = {
+  dashId?: DashboardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchDashboardParameterValuesRequest =
+  DashboardParameterValuesRequest & {
+    query: string;
+  };
 
 export type CreateDashboardRequest = {
   name: string;
@@ -374,9 +386,9 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id?: DashboardId;
-  entityIdentifier?: EntityUuid | EntityToken;
-  parameter_id: ParameterId;
+  dashId?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

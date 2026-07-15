@@ -32,7 +32,7 @@ export function EditBar({
         <Title>{title}</Title>
       </Group>
       {center && <div>{center}</div>}
-      <ButtonsContainer>{buttons}</ButtonsContainer>
+      <ButtonsContainer admin={admin}>{buttons}</ButtonsContainer>
     </Root>
   );
 }

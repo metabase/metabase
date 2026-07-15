@@ -9,7 +9,6 @@ import type {
   SettingsExtra,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ColumnSettings,
   DimensionReference,
@@ -20,7 +19,6 @@ import type {
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
-  getSettingsWidgets,
 } from "../settings";
 
 const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
@@ -61,7 +59,7 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-function getSettingDefinitionsForSeries(
+export function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
 ): VisualizationSettingsDefinitions {
   if (!series) {
@@ -85,11 +83,9 @@ function normalizeColumnSettings(
   for (const oldColumnKey of Object.keys(columnSettings)) {
     const [refOrName, fieldRef]: [string, DimensionReference] =
       JSON.parse(oldColumnKey);
-    // if the key is a reference, normalize the mbql syntax
+    // keys are re-serialized so legacy formatting differences don't matter
     const newColumnKey =
-      refOrName === "ref"
-        ? JSON.stringify(["ref", normalize(fieldRef)])
-        : oldColumnKey;
+      refOrName === "ref" ? JSON.stringify(["ref", fieldRef]) : oldColumnKey;
     newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
   }
   return newColumnSettings;
@@ -131,27 +127,4 @@ export function getPersistableDefaultSettingsForSeries(
   const settingsDefs = getSettingDefinitionsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
   return getPersistableDefaultSettings(settingsDefs, computedSettings);
-}
-
-export function getSettingsWidgetsForSeries(
-  series: Series | null | undefined,
-  onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
-  isDashboard = false,
-  extra: SettingsExtra = {},
-) {
-  const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
-  const computedSettings = getComputedSettingsForSeries(series);
-
-  return getSettingsWidgets(
-    settingsDefs,
-    storedSettings,
-    computedSettings,
-    series ?? [],
-    onChangeSettings,
-    { isDashboard, ...extra },
-  ).filter(
-    (widget) =>
-      widget.dashboard === undefined || widget.dashboard === isDashboard,
-  );
 }

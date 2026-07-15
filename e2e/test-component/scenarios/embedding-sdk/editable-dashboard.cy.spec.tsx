@@ -378,6 +378,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
           cy.log("make the dashboard dirty");
           cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME }).click();
+          // Wait for the card to actually be added before navigating away.
+          // The leave-confirmation modal only shows when the dashboard is dirty,
+          // so clicking "New Question" too early skips the modal entirely.
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
           cy.button("New Question").should("be.visible").click();
 
           cy.log("we should now see the save confirmation modal");
@@ -403,12 +409,22 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log("make the dashboard dirty again");
           cy.button("Add questions").should("be.visible").click();
           cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME_2 }).click();
-          cy.button("New Question").click();
+          // Wait for the second card to be added (dashboard dirty) before
+          // navigating away, so the leave-confirmation modal shows reliably.
+          H.getDashboardCards().should("have.length", 2);
+          cy.button("New Question").should("be.visible").click();
 
           H.modal().button("Save changes").click();
 
           cy.log("we are back in the query builder");
-          H.popover().findByRole("link", { name: "Products" }).click();
+          // Wait for the new-question editor to finish mounting before reaching
+          // into the data-source popover. Otherwise we can match a stale popover
+          // from the dashboard edit view while navigation is still in flight.
+          cy.contains("Pick your starting data").should("be.visible");
+          H.popover()
+            .findByRole("link", { name: "Products" })
+            .should("be.visible")
+            .click();
           cy.button("Save").click();
 
           H.modal().within(() => {

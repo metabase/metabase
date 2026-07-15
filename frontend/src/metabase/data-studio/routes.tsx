@@ -1,6 +1,5 @@
-import type { Store } from "@reduxjs/toolkit";
-import { IndexRoute, Route, type RouteComponent } from "react-router";
-
+import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
+import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -8,7 +7,9 @@ import {
   PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { Navigate, Route, type RouteComponent } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
@@ -16,34 +17,27 @@ import * as Urls from "metabase/urls";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { getDataStudioSettingsRoutes } from "./settings/routes";
 import {
   DependenciesUpsellPage,
-  DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
   SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
-  store: Store<State>,
   CanAccessDataStudio: RouteComponent,
   CanAccessDataModel: RouteComponent,
-  _CanAccessTransforms: RouteComponent,
   IsAdmin: RouteComponent,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
       <Route path="data-studio" component={DataStudioLayout}>
-        <IndexRoute
-          onEnter={(_state, replace) => {
-            replace(getIndexPath(store.getState()));
-          }}
-        />
+        <Route index component={DataStudioIndexRedirect} />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes(IsAdmin)}
@@ -56,6 +50,7 @@ export function getDataStudioRoutes(
           {PLUGIN_WORKSPACES.getDataStudioRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
+        {getDataStudioSettingsRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
@@ -92,6 +87,11 @@ export function getDataStudioRoutes(
       </Route>
     </Route>
   );
+}
+
+function DataStudioIndexRedirect() {
+  const indexPath = useSelector(getIndexPath);
+  return <Navigate to={indexPath} replace />;
 }
 
 function getIndexPath(state: State) {

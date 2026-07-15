@@ -71,8 +71,7 @@ export function useTemporalGranularity(
     : null;
 
   const currentUnit = currentBucket
-    ? (Lib.displayInfo(query, stageIndex, currentBucket)
-        .shortName as TemporalUnit)
+    ? Lib.displayInfo(query, stageIndex, currentBucket).shortName
     : undefined;
 
   const availableBuckets = temporalColumn
@@ -82,7 +81,7 @@ export function useTemporalGranularity(
   const availableItems: TemporalGranularityItem[] = availableBuckets.map(
     (bucket) => {
       const info = Lib.displayInfo(query, stageIndex, bucket);
-      const unit = info.shortName as TemporalUnit;
+      const unit = info.shortName;
 
       return { bucket, unit, label: Lib.describeTemporalUnit(unit) };
     },

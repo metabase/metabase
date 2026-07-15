@@ -370,12 +370,18 @@
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
-(defn- fetch-compatible-series*
+(mu/defn- fetch-compatible-series* :- [:sequential :map]
   "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card database-id->metadata-provider {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  [card    :- :map
+   {:keys [query last-cursor page-size exclude-ids] :as _options}
+   :- [:map {:closed true}
+       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
+       [:page-size   {:optional true} [:maybe ms/PositiveInt]]
+       [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [matching-cards  (t2/select :model/Card
                                    :archived false
                                    :display [:in supported-series-display-type]
@@ -396,15 +402,6 @@
                                      ;; this is just a heuristic, but it should be good enough
                                      page-size
                                      (assoc :limit (+ 10 page-size))))
-        database-ids (set (keys database-id->metadata-provider))
-        database-id->metadata-provider (->> matching-cards
-                                            (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
-                                            (keep :database_id)
-                                            (set)
-                                            (remove #(contains? database-ids %))
-                                            (into database-id->metadata-provider
-                                                  (map (juxt identity lib-be/application-database-metadata-provider))))
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
@@ -414,8 +411,8 @@
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
-      [database-id->metadata-provider (take page-size compatible-cards)]
-      [database-id->metadata-provider compatible-cards])))
+      (take page-size compatible-cards)
+      compatible-cards)))
 
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
@@ -426,14 +423,10 @@
   - last-cursor: the id of the last card from the previous page
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
-   (fetch-compatible-series
-    card
-    options
-    {(:database_id card) (lib-be/application-database-metadata-provider (:database_id card))}
-    []))
+   (fetch-compatible-series card options []))
 
-  ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
-   (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
+  ([card {:keys [page-size] :as options} current-cards]
+   (let [cards     (fetch-compatible-series* card options)
          new-cards (concat current-cards cards)]
      ;; if the total card fetches is less than page-size and there are still more, continue fetching
      (if (and (some? page-size)
@@ -443,7 +436,6 @@
                                 (merge options
                                        {:page-size   (- page-size (count cards))
                                         :last-cursor (:id (last cards))})
-                                database-id->metadata-provider
                                 new-cards)
        new-cards))))
 
@@ -492,7 +484,7 @@
   [dataset-query :- [:maybe ::queries.schema/query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save dataset-query card-type)
+    (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -784,9 +776,8 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (lib-be/with-metadata-provider-cache
-    (let [resolved-id (eid-translation/->id-or-404 :card id)]
-      (queries/batch-fetch-card-metadata [(get-card resolved-id)]))))
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -870,7 +861,7 @@
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))
         (doseq [card cards]
-          (collection/check-non-remote-synced-dependencies card)))))
+          (collection/check-for-remote-sync-update card)))))
 
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
@@ -913,7 +904,7 @@
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
-     resolved-card-id :api
+     (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
@@ -927,17 +918,18 @@
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
-  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
+  `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
-   {:keys          [parameters]
-    pivot-results? :pivot_results
-    format-rows?   :format_rows
-    :as            _body}
+   {:keys           [parameters]
+    pivot-results?  :pivot_results
+    format-rows?    :format_rows
+    csv-include-bom? :csv_include_bom
+    :as             _body}
    :- [:map
        [:parameters    {:optional true} [:maybe
                                          ;; support JSON-encoded parameters for backwards compatibility when with this
@@ -951,9 +943,10 @@
                                          ;; it breaks existing tests
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:pivot_results {:default false} ms/BooleanValue]
+       [:csv_include_bom {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -962,6 +955,7 @@
                  :ignore-cached-results? true
                  :format-rows?           format-rows?
                  :pivot?                 pivot-results?
+                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -1027,7 +1021,7 @@
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card card-id :api
+  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))

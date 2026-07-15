@@ -15,7 +15,7 @@ export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
   ${({ width }) => {
     const dividerWidth = width ?? "100%";
     return css`
-      border-color: var(--mb-color-border);
+      border-color: var(--mb-color-border-neutral);
       width: ${dividerWidth};
     `;
   }}

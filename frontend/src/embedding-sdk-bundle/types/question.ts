@@ -115,7 +115,7 @@ export type LoadSdkQuestionParams = {
 export interface NavigateToNewCardParams {
   nextCard: Card;
   previousCard: Card;
-  objectId: ObjectId;
+  objectId?: ObjectId;
   signal?: AbortSignal;
   drillName?: string;
 }

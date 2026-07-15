@@ -27,6 +27,17 @@
   [origin]
   (is (nil? (get-cors-origin-header origin))))
 
+(defn- get-cors-expose-headers
+  "Returns the Access-Control-Expose-Headers value for a given request origin."
+  [request-origin]
+  (let [wrapped-handler (mw.security/add-security-headers
+                         (fn [_request respond _raise]
+                           (respond {:status 200 :headers {} :body "ok"})))
+        response (wrapped-handler {:headers {"origin" request-origin}
+                                   :uri "/api/metabase-mcp"}
+                                  identity identity)]
+    (get-in response [:headers "Access-Control-Expose-Headers"])))
+
 (deftest test-mcp-common-cors-origins
   (testing "Claude sandbox origins should be allowed when claude is enabled"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["claude"]]
@@ -66,6 +77,16 @@
                                        embedding-app-origins-sdk "https://my-app.example.com"]
       (assert-cors-allowed! "https://my-app.example.com")
       (assert-cors-allowed! "https://abc.claudemcpcontent.com"))))
+
+(deftest test-mcp-session-id-exposed-to-browser
+  (testing "Mcp-Session-Id is listed in Access-Control-Expose-Headers so browser-based MCP clients"
+    (testing "can read the session ID issued by the initialize response"
+      (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "https://my-librechat.example.com"]
+        (is (str/includes? (get-cors-expose-headers "https://my-librechat.example.com")
+                           "Mcp-Session-Id"))))
+    (testing "including localhost origins, e.g. MCP Inspector"
+      (is (str/includes? (get-cors-expose-headers "http://localhost:6274")
+                         "Mcp-Session-Id")))))
 
 (deftest test-mcp-settings-helper
   (testing "mcp-apps-cors-origins returns space-separated origins for enabled clients"

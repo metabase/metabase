@@ -114,7 +114,8 @@ export function ResourcePreview({
           inset={0}
           style={{
             backgroundColor:
-              theme?.colors?.background ?? "var(--mb-color-background-primary)",
+              theme?.colors?.background ??
+              "var(--mb-color-background_page-primary)",
           }}
         >
           <Center h="100%" w="100%">

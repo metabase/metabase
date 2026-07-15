@@ -1,5 +1,5 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { FetchedChatMessage } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
 import type {
   DatasetQuery,
   MetabotFeedback,
@@ -23,6 +23,7 @@ export type ConversationSummary = {
   user_message_count: number;
   assistant_message_count: number;
   total_tokens: number;
+  cache_read_tokens: number;
   last_message_at: string | null;
   profile_id: MetabotProfileId | null;
   search_count: number;
@@ -39,6 +40,7 @@ export const CONVERSATION_SORT_COLUMNS = [
   "created_at",
   "message_count",
   "total_tokens",
+  "cache_read_tokens",
   "user",
   "profile_id",
   "ip_address",
@@ -93,7 +95,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
-  chat_messages: FetchedChatMessage[];
+  messages: ParentedChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;

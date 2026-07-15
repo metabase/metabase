@@ -1,15 +1,15 @@
 (ns metabase.lib.limit
-  (:refer-clojure :exclude [empty?])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.page :as lib.page]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty?]]))
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :limit
   [query stage-number _k]
@@ -40,6 +40,18 @@
   [query]
   (assoc-in query [:middleware :disable-max-results?] true))
 
+(mu/defn aggregated-output? :- :boolean
+  "Whether the rows produced by a `query`'s final stage are aggregated, i.e., whether the query is an aggregate query.
+
+  A query is an aggregate query if it has a stage with an aggregation without a later stage containing a join."
+  [query :- ::lib.schema/query]
+  (loop [stage-number (dec (lib.query/stage-count query))]
+    (cond
+      (neg? stage-number)                               false
+      (lib.aggregation/aggregations query stage-number) true
+      (lib.join/joins query stage-number)               false
+      :else                                             (recur (dec stage-number)))))
+
 (mu/defn max-rows-limit :- [:maybe nat-int?]
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
@@ -55,7 +67,8 @@
 
   *  If query has `:constraints` with `:max-results-bare-rows` or `:max-results`, returns the appropriate number
 
-     *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
+     *  `:max-results-bare-rows` is returned if set and Query does not produce aggregated output
+        (see [[aggregated-output?]])
 
      *  `:max-results` is returned otherwise
 
@@ -65,7 +78,7 @@
   (let [mbql-limit        (when-not (lib.util/native-stage? query -1)
                             (u/safe-min (:items (lib.page/current-page query -1))
                                         (current-limit query -1)))
-        constraints-limit (or (when (empty? (lib.aggregation/aggregations query -1))
+        constraints-limit (or (when-not (aggregated-output? query)
                                 max-results-bare-rows)
                               max-results)]
     (u/safe-min mbql-limit constraints-limit)))

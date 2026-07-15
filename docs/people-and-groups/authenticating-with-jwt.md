@@ -101,7 +101,7 @@ User provisioning is enabled by default. Metabase will create accounts for peopl
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 

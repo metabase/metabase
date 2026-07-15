@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupListSourceReplacementRunsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -47,13 +47,13 @@ describe("TableActionsMenu", () => {
 
     // it's a menu, not a standalone link
     expect(
-      screen.queryByRole("link", { name: /View Schema/ }),
+      screen.queryByRole("link", { name: /View schema/ }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
 
     expect(
-      await screen.findByRole("menuitem", { name: /View Schema/ }),
+      await screen.findByRole("menuitem", { name: /View schema/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: /Re-sync schema/ }),
@@ -66,7 +66,7 @@ describe("TableActionsMenu", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders a standalone View Schema button when there are no other actions", () => {
+  it("renders a standalone View schema button when there are no other actions", () => {
     // attached DWH => no sync items, and a non-admin can't replace sources
     setup({
       table: createMockTable({
@@ -75,7 +75,7 @@ describe("TableActionsMenu", () => {
     });
 
     expect(
-      screen.getByRole("link", { name: /View Schema/ }),
+      screen.getByRole("link", { name: /View schema/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "More actions" }),
@@ -93,13 +93,13 @@ describe("TableActionsMenu", () => {
 
     // the selector keeps it a menu rather than collapsing to a button
     expect(
-      screen.queryByRole("link", { name: /View Schema/ }),
+      screen.queryByRole("link", { name: /View schema/ }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
 
     expect(
-      await screen.findByRole("menuitem", { name: /View Schema/ }),
+      await screen.findByRole("menuitem", { name: /View schema/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: /Find and replace/ }),

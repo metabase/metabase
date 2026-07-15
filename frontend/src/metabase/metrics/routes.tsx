@@ -1,6 +1,5 @@
-import { IndexRoute, Route } from "react-router";
-
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
@@ -18,7 +17,7 @@ export function getMetricRoutes() {
       <Route path=":cardId/query" component={MetricQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":cardId/dependencies" component={MetricDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
       <Route path=":cardId/history" component={MetricHistoryPage} />

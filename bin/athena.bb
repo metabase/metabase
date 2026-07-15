@@ -90,6 +90,33 @@
       (with-open [w (io/writer "maven-metadata.xml")]
         (x/emit xml w)))))
 
+(defn pom-file-name [artifact-id version]
+  (str artifact-id "-" version ".pom"))
+
+(defn create-sha1 [fname]
+  (let [sha1 (-> (p/shell {:out :string} "shasum -a 1" fname)
+                 :out
+                 (str/split #"\s+")
+                 first)]
+    (println "sha1 =>" (str fname ".sha1"))
+    (with-open [w (io/writer (str fname ".sha1"))]
+      (.write w sha1))))
+
+(defn generate-pom
+  "Generate a minimal POM for artifacts that don't ship one."
+  [artifact-id version]
+  (let [pom-name (pom-file-name artifact-id version)
+        xml      (x/element :project {}
+                             (x/element :modelVersion {} "4.0.0")
+                             (x/element :groupId {} "com.metabase")
+                             (x/element :artifactId {} artifact-id)
+                             (x/element :version {} version)
+                             (x/element :packaging {} "jar"))]
+    (println "pom =>" pom-name)
+    (with-open [w (io/writer pom-name)]
+      (x/emit xml w))
+    (create-sha1 pom-name)))
+
 (defn download-uber-jar [version]
   (let [base-url  athena-downloads-url
         downloads (x/parse (io/reader base-url))
@@ -104,10 +131,8 @@
         local-name (jar-file-name "athena-jdbc" version)]
     (println jar-file "=>" local-name)
     (p/shell "curl --progress-bar -o " local-name (str base-url jar-file))
+    (generate-pom "athena-jdbc" version)
     local-name))
-
-(defn pom-file-name [artifact-id version]
-  (str artifact-id "-" version ".pom"))
 
 (defn download-lean-zip
   "Downloads and extracts the lean zip, returning the zip-file path for cleanup."
@@ -130,6 +155,7 @@
       (when (not= extracted local-name)
         (.renameTo (io/file extracted) (io/file local-name))))
     (.renameTo (io/file "pom.xml") (io/file pom-name))
+    (create-sha1 pom-name)
     (.delete (io/file zip-file))
     local-name))
 
@@ -143,16 +169,9 @@
     (p/shell "unzip" "-o" "-j" zip-file (str "runtime-dependencies/" src-name) "-d" ".")
     (.renameTo (io/file src-name) (io/file local-name))
     (.delete (io/file zip-file))
+    ;; athena-streaming has no pom.xml in the zip, so generate a minimal one
+    (generate-pom "athena-streaming" athena-streaming-version)
     local-name))
-
-(defn create-sha1 [fname]
-  (let [sha1 (-> (p/shell {:out :string} "shasum -a 1" fname)
-                 :out
-                 (str/split #"\s+")
-                 first)]
-    (println "sha1(jar) =>" (str fname ".sha1"))
-    (with-open [w (io/writer (str fname ".sha1"))]
-      (.write w sha1))))
 
 (defn copy-to-s3 [artifact-id version jar-fname]
   (let [root-dir (str "com/metabase/" artifact-id "/")
@@ -162,7 +181,8 @@
                    (.exists (io/file "maven-metadata.xml"))
                    (conj {:remote-dir nil :fname "maven-metadata.xml"})
                    (.exists (io/file pom-name))
-                   (conj {:remote-dir (str version "/") :fname pom-name}))]
+                   (conj {:remote-dir (str version "/") :fname pom-name}
+                         {:remote-dir (str version "/") :fname (str pom-name ".sha1")}))]
     (doseq [{:keys [remote-dir fname]} files
             :let [target (str s3-bucket root-dir remote-dir fname)]]
       (println fname "=>" target)

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
@@ -7,6 +6,7 @@ import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
+import { type WithRouterProps, withRouter } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";

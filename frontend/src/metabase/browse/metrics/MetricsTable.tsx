@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
@@ -8,7 +7,7 @@ import {
   useDeleteBookmarkMutation,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
@@ -25,6 +24,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Button,
   FixedSizeIcon,

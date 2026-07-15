@@ -12,7 +12,7 @@ export const TokenFieldContainer = styled.ul`
   overflow-x: auto;
   overflow-y: auto;
   border-radius: var(--mantine-spacing-sm);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const TokenInputItem = styled.li`

@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -139,7 +140,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation, metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (match/replace replacement
@@ -154,6 +155,9 @@
                                 %
                                 {:name (lib/column-name query stage-number replacement)}
                                 (select-keys % [:name :display-name])
+                                ;; The metric card's name is the column's display-name externally,
+                                ;; overriding the inner aggregation's display-name (#58307).
+                                (when metric-name {:display-name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
@@ -174,11 +178,16 @@
        (lib.metadata/bulk-metadata-or-throw query :metadata/card)
        (into {}
              (map (fn [card-metadata]
-                    (let [metric-query (->> (:dataset-query card-metadata)
-                                            (lib/query query)
-                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                            (lib/query query)
-                                            metric-query-filters->aggregation)
+                    ;; Preprocess the metric query as admin so user-context middleware (sandboxing,
+                    ;; impersonation) leaves it untouched. The outer query still goes through those passes
+                    ;; normally, and will sandbox the spliced result. This matches how the sandboxing
+                    ;; middleware preprocesses its own source query (#76044).
+                    (let [metric-query (request/as-admin
+                                         (->> (:dataset-query card-metadata)
+                                              (lib/query query)
+                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                              (lib/query query)
+                                              metric-query-filters->aggregation))
                           metric-name (:name card-metadata)]
                       (if-let [aggregation (first (lib/aggregations metric-query))]
                         [(:id card-metadata)

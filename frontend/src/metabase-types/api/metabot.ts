@@ -56,31 +56,6 @@ export type MetabotTool = {
   parameters: Record<string, any>;
 };
 
-export type MetabotHistoryUserMessageEntry = {
-  role: "user";
-  message: string;
-  context: MetabotChatContext;
-};
-
-export type MetabotHistoryToolEntry = {
-  role: "assistant";
-  assistant_response_type: "tools";
-  tools: MetabotTool[];
-};
-
-export type MetabotHistoryMessageEntry = {
-  role: "assistant";
-  assistant_response_type: "message";
-  message: string;
-};
-
-export type MetabotHistoryEntry =
-  | MetabotHistoryUserMessageEntry
-  | MetabotHistoryToolEntry
-  | MetabotHistoryMessageEntry;
-
-export type MetabotHistory = any[];
-
 export type MetabotStateContext = Record<string, any>;
 
 export type MetabotColumnType =
@@ -173,28 +148,48 @@ export type MetabotCodeEdit = {
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory;
-  state: MetabotStateContext;
   conversation_id: string; // uuid
+  parent_message_id?: string;
+  retry_message_id?: string;
+  user_message_id?: string; // uuid
+  assistant_message_id?: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  history: MetabotHistory[];
   conversation_id: string;
-  state: any;
+  state?: MetabotStateContext;
 };
 
 export type MetabotProvider =
   | "metabase"
   | "anthropic"
+  | "azure"
+  | "bedrock"
   | "openai"
   | "openrouter";
 
+export interface BedrockCredentials {
+  "access-key-id"?: string | null;
+  "secret-access-key"?: string | null;
+  region?: string | null;
+  "session-token"?: string | null;
+}
+
+export interface AzureCredentials {
+  "api-key"?: string | null;
+  "base-url"?: string | null;
+}
+
+/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
+ * material, Azure sends an API key and base URL. */
+export interface MetabotCredentials
+  extends BedrockCredentials, AzureCredentials {}
+
 export interface MetabotSettingsResponse {
   value: string | null;
-  "api-key-error"?: string | null;
+  "credentials-error"?: string | null;
   models: {
     id: string;
     display_name: string;
@@ -206,6 +201,7 @@ export interface UpdateMetabotSettingsRequest {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: MetabotCredentials | null;
 }
 
 /* Metabot - Suggested Prompts */
@@ -282,16 +278,13 @@ export type MetabotSourceFeedback = {
 /**
  * Feedback payload for MCP Apps visualization results.
  *
- * Sends the prompt and query context needed for Harbormaster
- * to understand the generated visualization.
+ * Sends the prompt and query context needed to understand
+ * the generated visualization.
  */
 export type McpAppsFeedback = {
   /** User's rating and optional comments about the generated visualization. */
   feedback: {
     positive: boolean;
-
-    /** Client-generated id for feedback submission. */
-    message_id: string;
 
     /** Optional category for negative feedback. */
     issue_type?: string;
@@ -300,7 +293,7 @@ export type McpAppsFeedback = {
     freeform_feedback?: string;
   };
 
-  /** MCP-specific context that Harbormaster needs to evaluate the result. */
+  /** MCP-specific context stored alongside the rating. */
   conversation_data: {
     /** Identifies this submission as coming from the MCP Apps flow. */
     source: "mcp";

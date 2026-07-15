@@ -8,6 +8,11 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
+import {
+  useDisablePersistMutation,
+  useEnablePersistMutation,
+  useSetRefreshScheduleMutation,
+} from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
@@ -17,7 +22,6 @@ import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { PersistedModelsApi } from "metabase/services";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
@@ -71,12 +75,16 @@ export const ModelPersistenceConfiguration = () => {
 
   const dispatch = useDispatch();
   const [sendToast, removeToast] = useToast();
+  const [enablePersist] = useEnablePersistMutation();
+  const [disablePersist] = useDisablePersistMutation();
+  const [setRefreshSchedule] = useSetRefreshScheduleMutation();
 
   const showLoadingToast = async () => {
     const result = await sendToast({
       icon: "info",
       message: t`Loading...`,
     });
+    // Unjustified type cast. FIXME
     return result?.payload?.id as number;
   };
 
@@ -89,7 +97,7 @@ export const ModelPersistenceConfiguration = () => {
     } catch (e) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
     } finally {
@@ -105,8 +113,8 @@ export const ModelPersistenceConfiguration = () => {
     const shouldEnable = e.target.checked;
     setModelPersistenceEnabled(shouldEnable);
     const promise = shouldEnable
-      ? PersistedModelsApi.enablePersistence()
-      : PersistedModelsApi.disablePersistence();
+      ? enablePersist().unwrap()
+      : disablePersist().unwrap();
     await resolveWithToasts([promise]);
     dispatch(refreshSiteSettings());
   };
@@ -158,9 +166,9 @@ export const ModelPersistenceConfiguration = () => {
             <ModelCachingScheduleWidget
               value={modelCachingSchedule}
               options={modelCachingOptions}
-              onChange={async (value: unknown) => {
+              onChange={async (value: string) => {
                 await resolveWithToasts([
-                  PersistedModelsApi.setRefreshSchedule({ cron: value }),
+                  setRefreshSchedule({ cron: value }).unwrap(),
                   dispatch(refreshSiteSettings()),
                 ]);
               }}

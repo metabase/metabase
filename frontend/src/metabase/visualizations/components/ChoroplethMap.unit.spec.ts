@@ -1,9 +1,7 @@
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import {
-  getLegendTitles,
-  getMapUrl,
-} from "metabase/visualizations/components/ChoroplethMap";
-import type { ColumnSettings } from "metabase/visualizations/types";
+import { getMapUrl } from "metabase/visualizations/components/ChoroplethMap";
+import { getLegendTitles } from "metabase/visualizations/lib/choropleth";
+import type { ColumnSettings } from "metabase-types/api";
 
 const currencyColumnSettings: ColumnSettings = {
   column: { base_type: "type/Float" },

@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
@@ -6,6 +5,7 @@ import type {
   Dashboard,
   DashboardCardQueryRequest,
   DashboardId,
+  DashboardParameterValuesRequest,
   DashboardQueryMetadata,
   Dataset,
   FieldId,
@@ -20,7 +20,9 @@ import type {
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
+  ParameterValues,
   SaveDashboardRequest,
+  SearchDashboardParameterValuesRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
@@ -76,9 +78,10 @@ export const dashboardApi = Api.injectEndpoints({
         onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
-        query: ({ id, ignore_error }) => ({
+        query: ({ id, ignore_error, ...params }) => ({
           method: "GET",
           url: `/api/dashboard/${id}`,
+          params,
           noEvent: ignore_error,
         }),
         providesTags: (dashboard) =>
@@ -140,16 +143,41 @@ export const dashboardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
-        query: ({ dashboard_id, parameter_id, ...params }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
-            dashboard_id,
-            parameter_id,
-          ),
+          url: "/api/dashboard/:dashId/params/:paramId/remapping",
+          // In an embed the override rewrites `:dashId` → `:entityIdentifier` and
+          // drops the real `dashId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      getDashboardParameterValues: builder.query<
+        ParameterValues,
+        DashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/values",
           params,
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      searchDashboardParameterValues: builder.query<
+        ParameterValues,
+        SearchDashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/search/:query",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
@@ -309,6 +337,8 @@ export const {
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetDashboardParameterValuesQuery,
+  useSearchDashboardParameterValuesQuery,
   useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
@@ -323,6 +353,8 @@ export const {
   useUpdateDashboardEmbeddingParamsMutation,
   endpoints: {
     getDashboard,
+    getDashboardParameterValues,
+    searchDashboardParameterValues,
     deleteDashboardPublicLink,
     createDashboard,
     createDashboardPublicLink,

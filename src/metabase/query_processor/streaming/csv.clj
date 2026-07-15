@@ -9,6 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util :as u]
    [metabase.util.performance :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -67,9 +68,12 @@
         pivot-data              (volatile! nil)
         enable-pivoted-exports? (qp.settings/enable-pivoted-exports)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
-                   :or   {format-rows? true
-                          pivot?       false}} :data} viz-settings]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot? csv-include-bom?]
+                   :or   {format-rows?    true
+                          pivot?          false
+                          csv-include-bom? true}} :data} viz-settings]
+        (when csv-include-bom?
+          (.write writer u/utf8-bom))
         (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
               pivot-grouping-index (pivot.postprocess/pivot-grouping-index col-names)]
           (cond

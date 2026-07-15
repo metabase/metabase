@@ -173,6 +173,7 @@ export function UploadSettingsFormView({
       <Group align="flex-start">
         <Select
           label={t`Database to use for uploads`}
+          description={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
           value={dbId ? String(dbId) : null}
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}
@@ -206,6 +207,7 @@ export function UploadSettingsFormView({
               schemaLength: !!schemas?.length,
             })
               .with({ schemasError: true }, () =>
+                // Unjustified type cast. FIXME
                 getErrorMessage((schemasError as any)?.data),
               )
               .with(
@@ -238,7 +240,7 @@ export function UploadSettingsFormView({
               disabled={!hasValidSettings}
               failedText={t`Failed to save upload settings`}
               actionFn={handleEnableUploads}
-              primary
+              variant="filled"
               useLoadingSpinner
               type="submit"
             />
@@ -252,7 +254,8 @@ export function UploadSettingsFormView({
               failedText={t`Failed to disable uploads`}
               actionFn={handleDisableUploads}
               type="button"
-              danger
+              variant="filled"
+              color="feedback-negative"
               useLoadingSpinner
             />
           )
@@ -265,7 +268,7 @@ export function UploadSettingsFormView({
             }
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
+            variant={hasValidSettings ? "filled" : "default"}
             disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"
@@ -274,7 +277,7 @@ export function UploadSettingsFormView({
       </Flex>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && (
-        <Text c="danger" mt="md">
+        <Text c="feedback-negative" mt="md">
           {errorMessage}
         </Text>
       )}

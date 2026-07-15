@@ -129,6 +129,7 @@ const ActionComponent = ({
 
   return (
     <ActionVizForm
+      // Unjustified type cast. FIXME
       action={dashcard.action as WritebackAction}
       dashboard={dashboard}
       dashcard={dashcard}

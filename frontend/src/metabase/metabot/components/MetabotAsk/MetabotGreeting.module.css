@@ -35,14 +35,14 @@
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
   box-shadow:
-    0 0 0 1px var(--mb-color-border),
+    0 0 0 1px var(--mb-color-border-neutral),
     0 4px 24px rgba(0, 0, 0, 0.08);
   min-height: 7rem;
   transition: box-shadow 150ms ease;
 
   &:focus-within {
     box-shadow:
-      0 0 0 1px var(--mb-color-border),
+      0 0 0 1px var(--mb-color-border-neutral),
       0 4px 24px rgba(0, 0, 0, 0.12);
   }
 }
@@ -60,13 +60,13 @@
 }
 
 .sendButton {
-  color: var(--mb-color-background-primary);
+  color: var(--mb-color-background_page-primary);
 
   &:disabled,
   &:disabled:hover {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
     color: var(--mb-color-text-primary-inverse);
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
     opacity: 0.35;
   }
 }
@@ -93,7 +93,7 @@
     color 150ms ease;
 
   &:hover {
-    background: var(--mb-color-background-secondary);
+    background: var(--mb-color-background_page-secondary);
     color: var(--mb-color-text-primary);
   }
 }

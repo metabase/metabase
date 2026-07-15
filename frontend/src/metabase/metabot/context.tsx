@@ -90,9 +90,7 @@ export const defaultContext: MetabotCtx = {
   setSuggestionActions: () => {},
 };
 
-export const MetabotContext = createContext<MetabotCtx>(
-  defaultContext as MetabotCtx,
-);
+export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
 export const useMetabotContext = () => {
   const context = useContext(MetabotContext);
@@ -168,6 +166,7 @@ export const MetabotProvider = ({
     let ctx: MetabotChatContext = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
+      // Unjustified type cast. FIXME
       capabilities: _.compact([
         "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",

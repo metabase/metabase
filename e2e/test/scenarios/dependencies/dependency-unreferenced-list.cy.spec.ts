@@ -8,6 +8,7 @@ import {
 import type {
   CardId,
   CollectionId,
+  DependencyNode,
   FieldId,
   NativeQuerySnippetId,
   SegmentId,
@@ -82,6 +83,19 @@ const ENTITY_NAMES = [
   ...SNIPPET_NAMES,
 ];
 
+// The unreferenced list also contains inactive tables of the shared writable DB
+// (tables dropped by other specs stay visible on purpose — see #77714), so the
+// full list can exceed one page. Tests that need to see all of the entities
+// created by this spec at once narrow the list down with this search term,
+// which matches every entity name above except the table's.
+const ENTITY_SEARCH_TERM = "for";
+const SEARCHABLE_ENTITY_NAMES = [
+  ...MODEL_NAMES,
+  ...SEGMENT_NAMES,
+  ...METRIC_NAMES,
+  ...SNIPPET_NAMES,
+];
+
 const MODELS_SORTED_BY_NAME = [
   MODEL_FOR_DASHBOARD_CARD,
   MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
@@ -121,17 +135,19 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("analysis", () => {
     it("should show unreferenced entities", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
+      checkList({ visibleEntities: [TABLE_DISPLAY_NAME] });
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
     });
 
     it("should not show referenced entities", () => {
       setupEntities({ withReferences: true });
+      // These entities are referenced, so they should never appear in the
+      // unreferenced list — we can't poll for their presence. Wait for the
+      // global backfill so the analysis has run before asserting their absence.
+      H.waitForBackfillComplete();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.list().within(() => {
         ENTITY_NAMES.forEach((name) => {
@@ -144,7 +160,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("search", () => {
     it("should search for entities", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type(
         MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -157,7 +173,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should search for entities with type filters", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("tag");
       checkList({
@@ -180,9 +196,10 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("filters", () => {
     it("should filter entities by type", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: ENTITY_NAMES });
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
+      checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
 
       H.DependencyDiagnostics.filterButton().click();
       H.popover().findByText("Model").click();
@@ -211,7 +228,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist filter changes after page reload", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -225,8 +242,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should filter by location", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
       checkList({
         visibleEntities: [
           MODEL_FOR_MODEL_DATA_SOURCE,
@@ -259,7 +277,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("sorting", () => {
     it("should sort by name", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -283,7 +301,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should sort by location", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -302,7 +320,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist sorting changes after page reload", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       H.DependencyDiagnostics.searchInput().type("Model for");
 
@@ -318,7 +336,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("selecting entities", () => {
     it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
-      H.waitForBackfillComplete();
+      waitForUnreferencedAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
@@ -335,6 +353,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
         fields: ["ID", "UUID"],
       });
 
+      H.DependencyDiagnostics.searchInput().type(ENTITY_SEARCH_TERM);
       H.DependencyDiagnostics.list()
         .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
         .click();
@@ -1096,6 +1115,34 @@ function createDashboardWithParameterWithCardSource({
         },
       }),
     ],
+  });
+}
+
+function getNodeName(node: DependencyNode): string | null | undefined {
+  if (node.type === "table") {
+    return node.data.display_name;
+  }
+  return "name" in node.data ? node.data.name : undefined;
+}
+
+// The dependency graph is recomputed asynchronously when entities are created or
+// updated (metabase#71037). `waitForBackfillComplete` only reports the global
+// one-time backfill flag — it does NOT guarantee the entities `setupEntities()`
+// just created have been classified into the unreferenced graph. The list page
+// fires a single query on load, so visiting before that async analysis finishes
+// renders an incomplete list and the `findByText` assertions time out (4000ms).
+//
+// Poll the unreferenced endpoint until every expected entity is present before
+// visiting. Defaults to the full seeded set, which is a superset of what any
+// individual test asserts, so a single arg-free call makes every list test
+// deterministic. The writable-Postgres table reaches the graph via the slower
+// async DB-sync path, so it is covered here too. Mirrors the broken-list spec's
+// `waitForBreakingDependencies` guard.
+function waitForUnreferencedAnalysis(expectedNames: string[] = ENTITY_NAMES) {
+  H.waitForBackfillComplete();
+  H.waitForUnreferencedEntities((nodes) => {
+    const presentNames = new Set(nodes.map(getNodeName));
+    return expectedNames.every((name) => presentNames.has(name));
   });
 }
 

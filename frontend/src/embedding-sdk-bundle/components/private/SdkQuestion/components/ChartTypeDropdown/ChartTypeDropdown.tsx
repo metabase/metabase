@@ -90,6 +90,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     value: CardDisplayType;
     label: ReturnType<Visualization["getUiName"]>;
     iconName: IconName;
+    iconUrl?: string;
   } | null => {
     const visualization = visualizations.get(visualizationType);
     if (!visualization) {
@@ -100,6 +101,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       value: visualizationType,
       label: visualization.getUiName(),
       iconName: visualization.iconName,
+      iconUrl: visualization.iconUrl,
     };
   };
 
@@ -126,6 +128,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       store={combobox}
       position="bottom-start"
       onOptionSubmit={(value) => {
+        // Unjustified type cast. FIXME
         updateQuestionVisualization(value as CardDisplayType);
         combobox.closeDropdown();
       }}
@@ -136,6 +139,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
           disabled={!selectedElement}
           label={selectedElement?.label}
           icon={selectedElement?.iconName}
+          iconUrl={selectedElement?.iconUrl}
           isHighlighted={false}
           variant="default"
           px={undefined}
@@ -155,7 +159,7 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
             />
           ))}
           <Text
-            c="text-tertiary"
+            c="text-disabled"
             size="sm"
             py="xs"
             px="sm"
@@ -177,16 +181,27 @@ interface OptionProps {
   value: CardDisplayType;
   label: ReturnType<Visualization["getUiName"]>;
   iconName: IconName;
+  iconUrl?: string;
   selected: boolean;
 }
 
 function Option(props: OptionProps) {
-  const { value, selected, iconName, label } = props;
+  const { value, selected, iconName, iconUrl, label } = props;
 
   return (
     <Combobox.Option px="sm" py="xs" value={value} selected={selected}>
       <Flex align="center" gap="sm">
-        {iconName ? <Icon name={iconName} flex="0 0 1rem" /> : null}
+        {iconUrl ? (
+          <img
+            src={iconUrl}
+            alt=""
+            width={16}
+            height={16}
+            style={{ flex: "0 0 1rem" }}
+          />
+        ) : iconName ? (
+          <Icon name={iconName} flex="0 0 1rem" />
+        ) : null}
         <Text c="inherit" style={{ whiteSpace: "nowrap" }}>
           {label}
         </Text>

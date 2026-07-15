@@ -441,6 +441,7 @@ describe("admin > tools > erroring questions ", () => {
 
     describe("with the existing broken questions", () => {
       beforeEach(() => {
+        // Unjustified type cast. FIXME
         H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
           loadMetadata: true,
         });

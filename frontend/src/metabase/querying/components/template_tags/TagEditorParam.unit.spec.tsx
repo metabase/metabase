@@ -8,13 +8,13 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import Question from "metabase-lib/v1/Question";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
   Card,
@@ -86,7 +86,9 @@ const setup = ({
       database={databaseMetadata}
       databases={metadata.databasesList()}
       parameter={getTemplateTagParameter(tag)}
-      originalQuestion={getOriginalQuestion(state)}
+      originalQuestion={
+        originalCard ? new Question(originalCard, metadata) : undefined
+      }
       setTemplateTag={setTemplateTag}
       setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}

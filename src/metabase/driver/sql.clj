@@ -238,15 +238,63 @@
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
+(defn- merge-delete-query
+  "DELETE the rows of `target` whose `unique-key` matches a row in `temp`.
+
+   `delete-strategy` selects how the match is expressed:
+     - `:in`     — uncorrelated `WHERE (k…) IN (SELECT k… FROM temp)`
+     - `:exists` — correlated `WHERE EXISTS (SELECT 1 FROM temp WHERE temp.k = target.k …)"
+  [driver target temp unique-key delete-strategy]
+  (let [honeysql (case delete-strategy
+                   :exists (let [temp-col   (fn [c] (keyword (name temp) c))
+                                 target-col (fn [c] (keyword (name target) c))]
+                             {:delete-from target
+                              :where       [:exists {:select [[[:inline 1]]]
+                                                     :from   [temp]
+                                                     :where  (into [:and]
+                                                                   (map (fn [c] [:= (temp-col c) (target-col c)]))
+                                                                   unique-key)}]})
+                   :in     (let [cols (mapv keyword unique-key)
+                                 lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
+                             {:delete-from target
+                              :where       [:in lhs {:select cols, :from [temp]}]}))]
+    (sql.qp/format-honeysql driver honeysql)))
+
+(defn- merge-insert-query
+  "INSERT every row of `temp` into `target`."
+  [driver target temp]
+  (sql.qp/format-honeysql driver
+                          {:insert-into [target {:select [:*] :from [temp]}]}))
+
+(defn compile-merge
+  "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
+   into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names] :delete-strategy k}`."
+  [driver target select {:keys [unique-key delete-strategy] :or {delete-strategy :in}}]
+  (let [temp (driver.u/temp-table-name driver target)]
+    [(driver/compile-transform driver {:query select, :output-table temp})
+     (merge-delete-query driver target temp unique-key delete-strategy)
+     (merge-insert-query driver target temp)
+     (driver/compile-drop-table driver temp)]))
+
 (mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
-  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
-  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
-                                                           :name (name output-table)})
-                  (driver/compile-insert driver transform-details)
-                  (driver/compile-transform driver transform-details))]
-    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
-    ;; `execute-raw-queries!` already yields `{:rows-affected N}` maps; take the last as-is.
-    (last (driver/execute-raw-queries! driver conn-spec [queries]))))
+  [driver {:keys [conn-spec database output-table query] :as transform-details} {merge-opts :merge}]
+  (let [table-exists? (driver/table-exists? driver database {:schema (namespace output-table)
+                                                             :name   (name output-table)})]
+    (cond
+      ;; First run — no target yet — create it.
+      (not table-exists?)
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-transform driver transform-details)]))
+
+      ;; Key-based upsert
+      merge-opts
+      (let [results (driver/execute-raw-queries!
+                     driver conn-spec
+                     (compile-merge driver output-table query merge-opts))]
+        {:rows-affected (reduce max 0 (keep :rows-affected results))})
+
+      ;; Append.
+      :else
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-insert driver transform-details)])))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -290,7 +338,11 @@
   "Validates a native query by parsing it and ensuring that it is a single statement.
    Reads `:impersonation/allow-write?` on the query to decide what to require: when truthy (set by
    [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions) require a single
-   write statement (insert, update, delete); otherwise require a single select statement."
+   write statement (insert, update, delete); otherwise require a single select statement.
+
+   Queries that cannot be parsed are always rejected. Admins are allowed to run parseable queries that
+   aren't a single select/write statement (e.g. `SHOW TIMEZONE`); non-admins are restricted to a single
+   statement of the required type."
   [driver query]
   (update query :stages
           (fn [stages]
@@ -299,7 +351,7 @@
                       (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
-                            {:keys [is-single-stmt? sql error]}
+                            {:keys [is-single-stmt? allowed-stmt-type? sql error]}
                             (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
@@ -307,11 +359,15 @@
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))
-                              (not is-single-stmt?)
+
+                              (and is-single-stmt?
+                                   (or allowed-stmt-type? (:impersonation/admin? query)))
+                              (assoc stage :native sql)
+
+                              :else
                               (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
                                               {:type qp.error-type/invalid-query
-                                               :sql  (:native stage)}))
-                              :else (assoc stage :native sql)))
+                                               :sql  (:native stage)}))))
                       stage))
                   stages))))
 

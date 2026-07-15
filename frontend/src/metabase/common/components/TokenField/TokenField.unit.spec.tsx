@@ -85,7 +85,7 @@ describe("TokenField", () => {
   });
 
   const input = () => {
-    return screen.getByRole("textbox") as HTMLInputElement;
+    return screen.getByRole<HTMLInputElement>("textbox");
   };
 
   const values = () => {

@@ -4,7 +4,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -36,7 +38,7 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-4.1-mini\")
+    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
     :system      - System prompt string
@@ -141,7 +143,13 @@
     :start                 {:type :start
                             :id   (:messageId chunk)}
     :usage                 chunk
-    :error                 chunk
+    ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
+    ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
+    ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
+    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    :error                 (if (:error chunk)
+                             chunk
+                             {:type :error :error {:message (:errorText chunk)}})
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
@@ -210,135 +218,225 @@
   []
   (aisdk-xf {:stream-text? true}))
 
-;;; AI SDK v4 Line Protocol Output
+;;; AI SDK SSE Output
 ;;
-;; Converts internal parts to the AI SDK v4 line protocol format used by the Python ai-service.
-;; Format examples:
-;;   0:"text content"           - Text (just the string, JSON encoded)
-;;   2:{"type":"state",...}     - Data parts
-;;   3:"error message"          - Errors
-;;   9:{"toolCallId":...}       - Tool calls
-;;   a:{"toolCallId":...}       - Tool results
-;;   d:{"finishReason":...}     - Finish message
-;;   e:{...}                    - Finish step
-;;   f:{"messageId":...}        - Start step
+;; Converts internal parts to the AI SDK v5+ SSE protocol: typed `UIMessageChunk`
+;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
+;; `data: {json}` line, terminated by `data: [DONE]`.
 
-(defn format-text-line
-  "Format text part as AI SDK line: 0:\"content\""
-  [{:keys [text]}]
-  (str "0:" (json/encode text)))
-
-(defn format-data-line
-  "Format data part as AI SDK line: 2:{\"type\":...,\"version\":1,\"value\":...}"
-  [{:keys [data-type data] :as part}]
-  ;; Support both old format (data-type + data) and new format (data map with type inside)
-  (let [type-str (or data-type
-                     (get data :type)
-                     "data")
-        value    (or data (dissoc part :type :id))]
-    (str "2:" (json/encode {:type    (if (keyword? type-str) (name type-str) type-str)
-                            :version 1
-                            :value   value}))))
+(defn format-sse-event
+  "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
+  writer appends another newline, forming the blank-line event boundary."
+  [payload]
+  (str "data: "
+       (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
+       "\n"))
 
 (defn format-error-line
-  "Format error part as AI SDK line.
-  Emits a JSON object when the error carries an :error-code, so clients can
-  distinguish typed errors from generic ones:
-    3:{\"message\":\"...\",\"error-code\":\"...\"}
-  Otherwise emits a plain string for backwards compatibility:
-    3:\"error message\""
+  "An `:error` part's AI SDK `error` SSE event line."
   [{:keys [error]}]
-  (let [msg        (or (:message error) (str error))
-        error-code (some-> (:error-code error) name)]
-    (str "3:" (json/encode (if error-code
-                             {"message" msg "error-code" error-code}
-                             msg)))))
+  (format-sse-event {:type "error" :errorText (or (:message error) (str error))}))
 
-(defn format-tool-call-line
-  "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
-  [{:keys [id function arguments]}]
-  (str "9:" (json/encode {:toolCallId id
-                          :toolName   function
-                          :args       (if (string? arguments)
-                                        arguments
-                                        (json/encode arguments))})))
+(defn format-error-frames
+  "SSE frames that close a stream which failed mid-flight: the `error` event, a
+  `finish` (finishReason \"error\"), and the `[DONE]` terminator — so the client
+  consumes a well-formed end instead of a truncated close."
+  [error-part]
+  (str (format-error-line error-part) "\n"
+       (format-sse-event {:type "finish" :finishReason "error"}) "\n"
+       "data: [DONE]\n\n"))
 
-(defn format-tool-result-line
-  "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}
-  Always includes :result key (AI SDK protocol requirement). When there is only
-  an error and no result, :result is set to the error message string."
-  [{:keys [id result error]}]
-  (let [output (cond
-                 (string? result) result
-                 (map? result)    (or (:output result) (json/encode result))
-                 ;; When result is nil but error is present, use the error message as result
-                 ;; so the `result` key is always present in the output.
-                 (nil? result)    (some-> error :message str)
-                 :else            (str result))]
-    (str "a:" (json/encode (cond-> {:toolCallId id
-                                    :result     (or output "")}
-                             error (assoc :error (json/encode error)))))))
+(defn- ->message-metadata
+  "Translate accumulated per-model usage into the `finish` event's message
+  metadata.
 
-(defn format-finish-line
-  "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [error? usage]
-  (str "d:" (json/encode {:finishReason (if error? "error" "stop") :usage (or usage {})})))
+  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
 
-(defn format-start-line
-  "Format start part as AI SDK line: f:{\"messageId\":...}"
-  [{:keys [id messageId]}]
-  (str "f:" (json/encode {:messageId (or messageId id)})))
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
+                    :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
+            :usageByModel {\"provider/model\" {…}}}`
 
-(defn aisdk-line-xf
-  "Transducer that converts internal parts to AI SDK v4 line protocol format.
-  Returns strings ready to be written to the output stream (without newlines).
+  Returns nil if no usage was observed. The cache counts are a subset of
+  :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
+  [usage-by-model]
+  (when (seq usage-by-model)
+    (let [by-model (update-vals
+                    usage-by-model
+                    (fn [{:keys [promptTokens completionTokens
+                                 cacheCreationTokens cacheReadTokens]
+                          :or   {promptTokens 0 completionTokens 0
+                                 cacheCreationTokens 0 cacheReadTokens 0}}]
+                      {:inputTokens         promptTokens
+                       :outputTokens        completionTokens
+                       :totalTokens         (+ promptTokens completionTokens)
+                       :cacheCreationTokens cacheCreationTokens
+                       :cacheReadTokens     cacheReadTokens
+                       :cachedInputTokens   cacheReadTokens}))
+          totals   (reduce (partial merge-with +)
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0
+                            :cacheCreationTokens 0 :cacheReadTokens 0
+                            :cachedInputTokens 0}
+                           (vals by-model))]
+      {:usage        totals
+       :usageByModel by-model})))
+
+(defn- tool-output->wire-output
+  "The `tool-output-available` event's `:output` value: the LLM-facing output
+  string. The full result map (`:resources`, `:data-parts`, …) stays off the
+  wire — anything the client renders arrives as its own `:data` part."
+  [result]
+  (cond
+    (string? result) result
+    (map? result)    (or (:output result) "")
+    (nil? result)    ""
+    :else            (str result)))
+
+(defn parts->aisdk-sse-xf
+  "Transducer that converts internal parts to AI SDK SSE events: strings ready
+  to be written to the output stream, one `data: {json}\\n` per event, ending
+  with `data: [DONE]\\n`.
+
+  The agent loop emits `:start` per LLM call (iteration), but the protocol
+  expects a single `start` for the whole message, so subsequent `:start` parts
+  become step boundaries (`finish-step` + `start-step`).
+
+  Consecutive `:text` parts sharing an `:id` coalesce into one text block —
+  one `text-start`, many `text-delta`s, one `text-end`. Any intervening
+  non-text part (or end of stream) closes the open block first.
 
   Options:
-    :emit-usage? - When true, emit `:usage` parts as data lines (2:) in the SSE
-                   stream. Useful for dev/benchmarking. Default false.
-    :external-id - When set, force this id into the emitted `f:` (start) line
-                   so the client sees the same id we persist as
-                   `metabot_message.external_id`.
+    :message-id       - When set, force this id into the `start` event so the client
+                        sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
 
-  Input types and their output:
-    :text       -> 0:\"content\"
-    :data       -> 2:{\"type\":...,\"version\":1,\"value\":...}
-    :error      -> 3:\"message\"
-    :tool-input -> 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}
-    :tool-output -> a:{\"toolCallId\":...,\"result\":...}
-    :start      -> f:{\"messageId\":...}
-    :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
-    :usage      -> 2:{\"type\":\"usage\",...} (when :emit-usage? true, else skipped)"
-  ([] (aisdk-line-xf nil))
-  ([{:keys [emit-usage? external-id]}]
+  Input types and their SSE events:
+    :start (1st)      -> start + start-step
+    :start (Nth)      -> finish-step + start-step
+    :text             -> [text-end]? [text-start]? text-delta
+    :tool-input-start -> tool-input-start
+    :tool-input       -> tool-input-available
+    :tool-output      -> tool-output-available | tool-output-error
+    :data             -> data-<data-type>
+    :error            -> [start + start-step]? error
+    :usage            -> (accumulated; emitted as finish.message_metadata)
+    :finish           -> (ignored — the completion arity emits the finish)
+    completion        -> [text-end]? finish-step + finish + [DONE]"
+  ([] (parts->aisdk-sse-xf nil))
+  ([{:keys [message-id message-metadata]}]
    (fn [rf]
-     (let [error? (volatile! false)
-           usage  (volatile! nil)]
+     (let [error?            (volatile! false)
+           finish-error-code (volatile! nil)
+           started?          (volatile! false)
+           usage-by-model    (volatile! {})
+           ;; non-nil while a text block is open; holds the block id so we can
+           ;; emit a matching text-end when the block closes
+           current-text-id   (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
+           close-text-block  (fn [result]
+                               (if-let [id @current-text-id]
+                                 (do (vreset! current-text-id nil)
+                                     (rf result (format-sse-event {:type "text-end" :id id})))
+                                 result))
+           ensure-started    (fn [result]
+                               (if @started?
+                                 result
+                                 (do (vreset! started? true)
+                                     (-> result
+                                         (rf (start-event (or message-id (mkid))))
+                                         (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
          ([result]
-          (-> result
-              ;; Emit finish message with accumulated usage at the end
-              (rf (format-finish-line @error? (when emit-usage? @usage)))
-              (rf)))
+          (let [metadata (merge (->message-metadata @usage-by-model)
+                                (when @finish-error-code {:errorCode @finish-error-code}))]
+            (-> result
+                close-text-block
+                (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
+                (rf (format-sse-event
+                     (cond-> {:type         "finish"
+                              :finishReason (if @error? "error" "stop")}
+                       (seq metadata) (assoc :messageMetadata metadata))))
+                (rf "data: [DONE]\n")
+                (rf))))
          ([result part]
-          (case (:type part)
-            :text        (rf result (format-text-line part))
-            :data        (rf result (format-data-line part))
-            :error       (do
-                           (vreset! error? true)
-                           (rf result (format-error-line part)))
-            :tool-input  (rf result (format-tool-call-line part))
-            :tool-output (rf result (format-tool-result-line part))
-            :start       (rf result (format-start-line
-                                     (cond-> part
-                                       external-id (assoc :messageId external-id))))
-            :finish      result ;; Don't emit here, we emit in completion arity
-            :usage       (do
-                           (vreset! usage (:usage part))
-                           result)
-            ;; Pass through unknown types as data
-            (rf result (format-data-line part)))))))))
+          ;; Any non-text part implicitly closes the current text block before
+          ;; its own events are emitted; the :text branch handles its own
+          ;; closing semantics (only closes when the id changes).
+          (let [result (if (= :text (:type part))
+                         result
+                         (close-text-block result))]
+            (case (:type part)
+              :start
+              (if @started?
+                (-> result
+                    (rf (format-sse-event {:type "finish-step"}))
+                    (rf (format-sse-event {:type "start-step"})))
+                (do
+                  (vreset! started? true)
+                  (-> result
+                      (rf (start-event (or message-id (:id part) (mkid))))
+                      (rf (format-sse-event {:type "start-step"})))))
+
+              :text
+              (let [id (or (:id part) (mkid))]
+                (if (= id @current-text-id)
+                  (rf result (format-sse-event {:type "text-delta" :id id :delta (:text part)}))
+                  (let [result (close-text-block result)]
+                    (vreset! current-text-id id)
+                    (-> result
+                        (rf (format-sse-event {:type "text-start" :id id}))
+                        (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
+
+              :tool-input-start
+              (rf result (format-sse-event {:type       "tool-input-start"
+                                            :toolCallId (:id part)
+                                            :toolName   (:function part)}))
+
+              :tool-input
+              (rf result (format-sse-event {:type       "tool-input-available"
+                                            :toolCallId (:id part)
+                                            :toolName   (:function part)
+                                            :input      (:arguments part)}))
+
+              :tool-output
+              (rf result
+                  (format-sse-event
+                   (if-let [error (:error part)]
+                     {:type       "tool-output-error"
+                      :toolCallId (:id part)
+                      :errorText  (or (:message error) (str error))}
+                     {:type       "tool-output-available"
+                      :toolCallId (:id part)
+                      :output     (tool-output->wire-output (:result part))})))
+
+              :data
+              (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
+                                            :id   (or (:id part) (mkid))
+                                            :data (:data part)}))
+
+              :error
+              (do
+                (vreset! error? true)
+                (when-let [code (some-> (:error-code (:error part)) name)]
+                  (vreset! finish-error-code code))
+                (rf (ensure-started result) (format-error-line part)))
+
+              :finish
+              result
+
+              :usage
+              ;; cumulative per-model snapshot; last-wins, emitted on finish
+              (do
+                (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+                result)
+
+              ;; Unknown types: emit as data parts
+              (rf result (format-sse-event {:type (str "data-" (name (:type part)))
+                                            :id   (or (:id part) (mkid))
+                                            :data part}))))))))))
 
 ;;; Tool executor
 
@@ -427,35 +525,41 @@
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
-  (with-span :info {:name         :metabot.agent/run-tool
-                    :tool-name    tool-name
-                    :tool-call-id tool-call-id}
-    (let [start-ms (u/start-timer)
-          assoc-ms (fn [duration-ms]
-                     (fn [chunk]
-                       (cond-> chunk
-                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-          results  (try
-                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (or (coerce-stringified-json arguments) {})
-                           decode    (tool-decode-fn tool)
-                           arguments (cond-> arguments decode decode)]
-                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-                       (let [tool-fn (tool-call-fn tool)
-                             result  (tool-fn arguments)]
-                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                         (collect-tool-result tool-call-id tool-name result)))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
-                       [{:type         :tool-output-available
-                         :toolCallId   tool-call-id
-                         :toolName     tool-name
-                         :error        {:message (concise-tool-error e)
-                                        :type    (str (type e))}}]))]
-      (mapv (assoc-ms (u/since-ms start-ms))
-            results))))
+  (ait/with-tool-call {:ai/tool-name    tool-name
+                       :ai/tool-call-id tool-call-id}
+    (with-span :info {:name         :metabot.agent/run-tool
+                      :tool-name    tool-name
+                      :tool-call-id tool-call-id}
+      (let [start-ms (u/start-timer)
+            assoc-ms (fn [duration-ms]
+                       (fn [chunk]
+                         (cond-> chunk
+                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+            results  (try
+                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             arguments (or (coerce-stringified-json arguments) {})
+                             decode    (tool-decode-fn tool)
+                             arguments (cond-> arguments decode decode)]
+                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (when (ait/capture-active?)
+                           (ait/record! {:ai/tool-args arguments}))
+                         (let [tool-fn (tool-call-fn tool)
+                               result  (tool-fn arguments)]
+                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                           (collect-tool-result tool-call-id tool-name result)))
+                       (catch Exception e
+                         (if (:agent-error? (ex-data e))
+                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                         [{:type         :tool-output-available
+                           :toolCallId   tool-call-id
+                           :toolName     tool-name
+                           :error        {:message (concise-tool-error e)
+                                          :type    (str (type e))}}]))]
+        (when (ait/capture-active?)
+          (ait/record! {:ai/tool-output results}))
+        (mapv (assoc-ms (u/since-ms start-ms))
+              results)))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.

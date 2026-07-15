@@ -45,9 +45,7 @@
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
-                           (-> dashcard :visualization_settings :card.title)
-                           (-> card :name))
+    (let [card-name    (render.util/dashcard-title card dashcard)
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
           title-href   (if dashcard
@@ -85,19 +83,66 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
-(defn- visualizer-display-type
-  "Return dashcard's display type if it is a visualizer dashcard else nil"
-  [dashcard]
-  (if (render.util/is-visualizer-dashcard? dashcard)
-    (keyword (get-in dashcard [:visualization_settings :visualization :display]))
-    nil))
+(defn- has-lat-lng-columns?
+  "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
+  [cols]
+  (and (render.util/any-col-of-type? cols :type/Latitude)
+       (render.util/any-col-of-type? cols :type/Longitude)))
+
+(defn- binned-lat-lng-columns?
+  "True when both a Latitude and a Longitude column are binned (a grid map, per the frontend default)."
+  [cols]
+  (and (some #(and (render.util/col-of-type? % :type/Latitude) (get-in % [:binning_info :bin_width])) cols)
+       (some #(and (render.util/col-of-type? % :type/Longitude) (get-in % [:binning_info :bin_width])) cols)))
+
+(defn- effective-map-type
+  "Resolve the effective `map.type` the way the frontend's getDefault does: an explicit setting, else
+  inferred from the display type and columns. A `:map` with lat/long columns (or explicit lat/long column
+  settings) is a coordinate map — NOT a region map — even if the result also has a State/Country column;
+  it's a grid map when those lat/long columns are binned, otherwise a pin map. Returns
+  \"pin\" / \"grid\" / \"region\" / \"heat\"."
+  [display-type card maybe-dashcard {:keys [cols]}]
+  (let [viz-settings (render.util/merged-viz-settings card maybe-dashcard)
+        setting      (partial render.util/viz-setting viz-settings)]
+    (or (setting "map.type")
+        (case display-type
+          :pin_map           "pin"
+          (:state :country)  "region"
+          (if (or (and (setting "map.latitude_column")
+                       (setting "map.longitude_column"))
+                  (has-lat-lng-columns? cols))
+            (if (binned-lat-lng-columns? cols)
+              "grid"
+              "pin")
+            "region")))))
+
+(defn- map-chart-type
+  "The static-viz chart type a map card renders as — `:region_map`, `:pin_map`, or `:grid_map` — or nil
+  when the card isn't a map, or is one we can't render statically yet (heat maps, region maps whose region
+  isn't defined). Mirrors the frontend's map-type defaulting, computing [[effective-map-type]] once for
+  all three outcomes."
+  [display-type card maybe-dashcard data]
+  (if (= :pin_map display-type)
+    :pin_map
+    (when (#{:map :state :country} display-type)
+      (case (effective-map-type display-type card maybe-dashcard data)
+        "pin"    (when (= :map display-type)
+                   :pin_map)
+        "grid"   (when (= :map display-type)
+                   :grid_map)
+        ;; a region map is only renderable when its region key names GeoJSON we know about — built-in, or
+        ;; a user-defined custom map (the latter is fetched at render time)
+        "region" (when (body/region-map-region-key display-type card maybe-dashcard data)
+                   :region_map)
+        nil))))
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
+  [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
-        display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
+        display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
+        map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -108,7 +153,10 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (#{:pin_map :state :country} display-type)
+        map-type
+        (chart-type map-type "card is a map renderable as %s" (name map-type))
+
+        (#{:state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
@@ -118,19 +166,21 @@
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
-             (not (contains? #{:progress :gauge} display-type))
+             (not (contains? #{:progress :gauge :object} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
            :gauge
            :table
+           :object
            :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
            :progress
            :sankey
+           :treemap
            :scalar
            :pie
            :scatter

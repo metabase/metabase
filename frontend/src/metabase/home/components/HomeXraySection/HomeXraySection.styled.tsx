@@ -17,7 +17,7 @@ export const DatabaseLink = styled(Link)`
 `;
 
 export const DatabaseLinkIcon = styled(Icon)`
-  color: var(--mb-color-focus);
+  color: var(--mb-color-input-focus);
   width: 1rem;
   height: 1rem;
   margin-right: 0.25rem;
@@ -26,13 +26,6 @@ export const DatabaseLinkIcon = styled(Icon)`
 export const DatabaseLinkText = styled.span`
   color: var(--mb-color-core-brand);
   font-weight: bold;
-`;
-
-export const SchemaTrigger = styled.span`
-  display: flex;
-  align-items: center;
-  margin: 0 0.5rem;
-  cursor: pointer;
 `;
 
 export const SchemaTriggerIcon = styled(Icon)`
