@@ -8,7 +8,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
-   [metabase.mcp.core :as mcp]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
@@ -370,13 +369,31 @@
                    (approved-port? (:port origin) (:port approved-origin))))
                 approved-list)))))))
 
+(defonce ^:private cors-origins-providers
+  (atom {}))
+
+(defn register-cors-origins-provider!
+  "Register a provider of extra approved CORS origins under keyword `k` (idempotent on reload).
+  `provider` is a map of `:origins-fn` (nullary, returns a space-separated origins string or nil) and
+  optional `:sandbox-origin?-fn` (origin string -> boolean, for non-standard origins like
+  `vscode-webview://`). Called at load time by modules that sit above `server` (e.g. mcp)."
+  [k provider]
+  (swap! cors-origins-providers assoc k provider))
+
+(defn- provided-origins []
+  (str/join " " (keep (fn [{:keys [origins-fn]}] (origins-fn)) (vals @cors-origins-providers))))
+
+(defn- provided-sandbox-origin? [origin]
+  (boolean (some (fn [{:keys [sandbox-origin?-fn]}]
+                   (when sandbox-origin?-fn (sandbox-origin?-fn origin)))
+                 (vals @cors-origins-providers))))
+
 (defn access-control-headers
-  "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
+  "Returns headers for CORS requests. Merges embedding SDK origins and registered provider origins."
   [origin approved-origins]
-  (let [mcp-origins       (mcp/cors-origins)
-        all-origins       (str/trim (str approved-origins " " mcp-origins))
+  (let [all-origins       (str/trim (str approved-origins " " (provided-origins)))
         localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
-        mcp-sandbox?       (mcp/sandbox-origin? origin)]
+        mcp-sandbox?       (provided-sandbox-origin? origin)]
     (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
        (when (or (approved-origin? origin all-origins) mcp-sandbox?)

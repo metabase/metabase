@@ -1,7 +1,7 @@
 (ns metabase.tracing.quartz-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.task.bootstrap :as task.bootstrap]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.tracing.core :as tracing]
    [metabase.tracing.quartz :as tracing.quartz])
   (:import
@@ -247,12 +247,12 @@
 
 (deftest set-connection-interceptor-test
   (testing "set-connection-interceptor! installs and removes interceptors"
-    (let [the-atom @#'task.bootstrap/connection-interceptor
+    (let [the-atom @#'app-db.quartz/connection-interceptor
           original @the-atom]
       (try
-        (task.bootstrap/set-connection-interceptor! identity)
+        (app-db.quartz/set-connection-interceptor! identity)
         (is (some? @the-atom))
-        (task.bootstrap/set-connection-interceptor! nil)
+        (app-db.quartz/set-connection-interceptor! nil)
         (is (nil? @the-atom))
         (finally
           (reset! the-atom original))))))

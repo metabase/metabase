@@ -1,4 +1,4 @@
-(ns metabase.server.auth-wrapper-test
+(ns metabase.sso.auth-wrapper-test
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]

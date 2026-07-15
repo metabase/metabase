@@ -1,4 +1,6 @@
-(ns metabase.task.bootstrap
+(ns metabase.app-db.quartz
+  "Quartz JDBC plumbing over the application DB: a `ConnectionProvider` backed by our connection pool,
+  a `ClassLoadHelper` that uses our classloader, and the JDBC backend system properties."
   (:require
    [metabase.classloader.core :as classloader]
    [metabase.util.log :as log]))
@@ -8,15 +10,17 @@
 ;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
 
 (defn- app-db ^javax.sql.DataSource []
+  ;; requiring-resolve rather than a require: this namespace is loaded by custom-migrations, which
+  ;; app-db.core loads -- a direct require would be an ns cycle.
   ((requiring-resolve 'metabase.app-db.core/app-db)))
 
 ;; Optional interceptor for wrapping JDBC connections before Quartz uses them.
-;; Set by task.tracing to add SQL-level tracing. nil means no interception.
+;; Set by tracing.quartz to add SQL-level tracing. nil means no interception.
 (defonce ^:private connection-interceptor (atom nil))
 
 (defn set-connection-interceptor!
   "Set an optional function to wrap JDBC connections before Quartz uses them.
-   Called by task.tracing to add SQL-level tracing. Pass nil to remove."
+   Called by tracing.quartz to add SQL-level tracing. Pass nil to remove."
   [f]
   (reset! connection-interceptor f))
 
