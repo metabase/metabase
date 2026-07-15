@@ -1,12 +1,16 @@
 (ns metabase-enterprise.harbormaster.client-test
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]
+   [metabase.util.secret :as u.secret]))
 
 (deftest ->config-good-test
   (testing "Both needed values are present and pulled from settings"
@@ -72,3 +76,30 @@
           (let [req (hm.client/request :test-op)]
             (is (= "crowberto@metabase.com"
                    (get-in req [:headers "X-Metabase-User-Email"])))))))))
+
+(deftest secret-values-reach-the-wire-but-never-the-log-test
+  (testing "a Secret in the request body is exposed for the HTTP payload but redacted in logs"
+    (mt/with-temporary-setting-values [api-key "mb_api_key_123" store-api-url "http://hm.test"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url request]
+                                                (reset! captured request)
+                                                {:status 200 :body "{}"})]
+          (log.capture/with-log-messages-for-level [messages [metabase-enterprise.harbormaster.client :info]]
+            (hm.client/make-request :post "/things"
+                                    {:name       "ws"
+                                     :config-yml (u.secret/secret "SUPER_SECRET_YAML")})
+            (testing "the real secret value is in the outbound HTTP body"
+              (is (str/includes? (:body @captured) "SUPER_SECRET_YAML"))
+              (is (not (str/includes? (:body @captured) "REDACTED"))))
+            (testing "the secret never appears in any log message"
+              (let [logged (pr-str (messages))]
+                (is (not (str/includes? logged "SUPER_SECRET_YAML")))
+                (is (str/includes? logged "REDACTED SECRET")))))))))
+  (testing "on an HTTP error the scrubbed request (no bearer, no raw secret) rides the error map"
+    (mt/with-temporary-setting-values [api-key "mb_api_key_123" store-api-url "http://hm.test"]
+      (mt/with-dynamic-fn-redefs [http/post (fn [_ _] (throw (ex-info "boom" {})))]
+        (log.capture/with-log-messages-for-level [messages [metabase-enterprise.harbormaster.client :info]]
+          (hm.client/make-request :post "/things" {:config-yml (u.secret/secret "SUPER_SECRET_YAML")})
+          (let [logged (pr-str (messages))]
+            (is (not (str/includes? logged "SUPER_SECRET_YAML")))
+            (is (not (str/includes? logged "mb_api_key_123")))))))))

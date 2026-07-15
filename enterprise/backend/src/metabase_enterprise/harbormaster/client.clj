@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
    [medley.core :as m]
@@ -15,7 +16,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,7 +65,25 @@
 
 (mr/def :hm-client/http-reply [:tuple [:enum :ok :error] :map])
 
-(defn- send-request [request-method-fn store-api-url url request]
+(defn- expose-secrets
+  "Recursively replace every [[metabase.util.secret/Secret]] value in `x` with its
+   exposed value, for the wire payload only. A `Secret` left un-exposed serializes to
+   `<< REDACTED SECRET >>` and would ship a placeholder to Harbormaster instead of the
+   real value, so exposing must happen here, at the encode boundary — never earlier
+   (where it could leak into a log line)."
+  [x]
+  (walk/postwalk #(if (u.secret/secret? %) (u.secret/expose %) %) x))
+
+(defn- loggable-request
+  "A copy of `request` safe to log: any un-exposed `Secret` in the body prints as
+   `<< REDACTED SECRET >>` (that is why the body is logged BEFORE [[expose-secrets]]),
+   and the bearer credential in the Authorization header is scrubbed."
+  [request loggable-body]
+  (-> request
+      (assoc :body loggable-body)
+      (m/update-existing-in [:headers "Authorization"] (constantly "<< REDACTED SECRET >>"))))
+
+(defn- send-request [request-method-fn store-api-url url request loggable-body]
   (let [response (try
                    (request-method-fn
                     (str store-api-url (+slash-prefix url))
@@ -71,12 +91,12 @@
                    (catch Exception e
                      (log/errorf e "Error making request to %s" url)
                      {:ex-data (ex-data e)
-                      :request request
+                      :request (loggable-request request loggable-body)
                       :url     url}))]
     (log/info "Harbormaster API call:"
               {:method   (m.util/upper-case-en (last (str/split (-> request-method-fn class .getSimpleName) #"\$")))
                :url      url
-               :request-body  (:body request)
+               :request-body  loggable-body
                :response (select-keys response [:status :body])})
     response))
 
@@ -108,19 +128,28 @@
   The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
   and back to kebab-keys on response.
 
+  `opts` (optional) is merged into the clj-http request map — use it for per-call
+  settings like `:socket-timeout` / `:connection-timeout` (milliseconds).
+
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body]]
+   & [body opts]]
   (let [{:keys [store-api-url
                 api-key]} (->config)
-        request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
-                                             "Content-Type" "application/json"}}
-                            body (assoc :body (json/encode (m.util/deep-snake-keys body))))
+        ;; snake-cased body with `Secret`s still WRAPPED — safe to log (they self-redact)
+        loggable-body     (some-> body m.util/deep-snake-keys)
+        request           (cond-> (merge opts
+                                         {:headers {"Authorization" (str "Bearer " api-key)
+                                                    "Content-Type" "application/json"}})
+                            ;; wire body: expose secrets only here, at the encode boundary
+                            body (assoc :body (json/encode (expose-secrets loggable-body))))
+        ;; scrubbed request carried into any error map downstream (never the raw one)
+        safe-request      (loggable-request request loggable-body)
         request-method-fn (->requestor method)
-        unparsed-response (send-request request-method-fn store-api-url url request)
-        response          (m.util/deep-kebab-keys (decode-response unparsed-response url request))
-        success?          (calculate-success response url request)]
+        unparsed-response (send-request request-method-fn store-api-url url request loggable-body)
+        response          (m.util/deep-kebab-keys (decode-response unparsed-response url safe-request))
+        success?          (calculate-success response url safe-request)]
     [(if success? :ok :error) response]))
 
 ;; OpenAPI-based API
