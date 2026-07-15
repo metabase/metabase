@@ -3523,35 +3523,7 @@
            settings
            util}}
 
-  enterprise/data-complexity-score
-  {:team "Metabot"
-   :api  #{metabase-enterprise.data-complexity-score.api
-           metabase-enterprise.data-complexity-score.init}
-   :uses #{analytics
-           analytics.interface
-           api
-           app-db
-           audit-app
-           collections
-           config
-           driver
-           embeddings
-           metabot
-           models
-           premium-features
-           settings
-           startup
-           task
-           util
-           enterprise/search.embeddings
-           enterprise/search.semantic}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Database
-                    :model/Measure
-                    :model/Metabot
-                    :model/ModerationReview
-                    :model/Table}}
+
 
   enterprise/data-studio
   {:team "UX West"
@@ -3744,7 +3716,8 @@
 
   enterprise/metabot
   {:team           "Metabot"
-   :module-exports #{enterprise/metabot.analytics}
+   :module-exports #{enterprise/metabot.analytics
+                     enterprise/metabot.data-complexity-score}
    :api            #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
@@ -3783,6 +3756,36 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
+  enterprise/metabot.data-complexity-score
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.data-complexity-score"
+   :api #{metabase-enterprise.data-complexity-score.api metabase-enterprise.data-complexity-score.init}
+   :uses #{analytics
+           analytics.interface
+           api
+           app-db
+           audit-app
+           collections
+           config
+           driver
+           embeddings
+           metabot
+           models
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/search.embeddings
+           enterprise/search.semantic}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Metabot
+                    :model/ModerationReview
+                    :model/Table}}
+
   enterprise/mfa
   {:team "Graphy"
    :api #{metabase-enterprise.mfa.core metabase-enterprise.mfa.init metabase-enterprise.mfa.routes}
@@ -3797,6 +3800,7 @@
            sso
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
+
 
   enterprise/native-query-snippets
   {:team "Graphy"
