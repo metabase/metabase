@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
-import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
+import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -57,24 +57,19 @@ export const TableRowForCacheableItem = ({
       }
     >
       <td>
-        <MaybeLink
+        <Flex
           className={StrategyEditorForQuestionsAndDashboardsS.ItemLink}
+          component={MaybeLink}
           to={url}
+          align="center"
+          wrap="nowrap"
+          gap="sm"
+          fw={700}
+          style={{ overflow: "hidden" }}
         >
-          <Flex
-            align="center"
-            wrap="nowrap"
-            gap="sm"
-            style={{ overflow: "hidden" }}
-          >
-            {iconName ? (
-              <FixedSizeIcon name={iconName} />
-            ) : (
-              <Box h="sm" w="md" />
-            )}
-            <Ellipsified style={{ fontWeight: "bold" }}>{name}</Ellipsified>
-          </Flex>
-        </MaybeLink>
+          {iconName ? <FixedSizeIcon name={iconName} /> : <Box h="sm" w="md" />}
+          <Ellipsified>{name}</Ellipsified>
+        </Flex>
       </td>
       <td>
         {collection && (

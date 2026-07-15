@@ -4,6 +4,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import cx from "classnames";
 import {
+  type ComponentProps,
   type HTMLAttributes,
   type TableHTMLAttributes,
   forwardRef,
@@ -12,7 +13,7 @@ import {
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
-import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
+import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink";
 import AdminS from "metabase/css/admin.module.css";
 import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
@@ -112,17 +113,25 @@ export const ItemButton = styled(Text)<
 
 export const ItemLink = styled(Link)(itemLinkStyle);
 
-export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
+export const MaybeItemLink = ({
+  style,
+  ...props
+}: ComponentProps<typeof MaybeLink>) => (
+  <MaybeLink
+    {...props}
+    style={{ display: "flex", gap: "0.5rem", alignItems: "center", ...style }}
+  />
+);
 
 export const ItemNameCell = styled.td`
   padding: 0 !important;
 
-  ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
+  & > * {
     padding: 1em;
   }
 
   &:hover {
-    ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
+    & > * {
       color: var(--mb-color-core-brand);
     }
 

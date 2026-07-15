@@ -126,7 +126,7 @@ function PinnedItemCard({
       onClick={onClick}
     >
       <Card p={0} radius="md" shadow="none" withBorder>
-        <Body>
+        <Body style={item ? undefined : { cursor: "default" }}>
           <Header>
             <EntityIcon {...iconData} size="1.5rem" color="core-brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
