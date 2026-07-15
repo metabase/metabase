@@ -7,6 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.content-diagnostics.checkers.slow :as checkers.slow]
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -36,106 +37,119 @@
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
                                          content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp
-            [:model/Collection {coll-id :id} {}
-             ;; slow card: mean running_time 30s > 10s threshold (cache hits are ignored)
-             :model/Card           {slow-card :id} {:collection_id coll-id :name "Full Orders Export"}
-             :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
-                                      :cache_hit false :running_time 30000}
-             :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
-                                      :cache_hit false :running_time 30000}
-             ;; a cache hit at a huge time must NOT count toward the mean
-             :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
-                                      :cache_hit true :running_time 99999}
-             ;; fast card: 500ms < 10s - never flagged, and never a culprit
-             :model/Card           {fast-card :id} {:collection_id coll-id :name "Quick Lookup"}
-             :model/QueryExecution _ {:card_id fast-card :started_at (t/offset-date-time)
-                                      :cache_hit false :running_time 500}
-             ;; archived card whose mean IS slow - must be excluded (not flagged, not a culprit)
-             :model/Card           {archived-card :id} {:collection_id coll-id :archived true}
-             :model/QueryExecution _ {:card_id archived-card :started_at (t/offset-date-time)
-                                      :cache_hit false :running_time 40000}
-             ;; container roll-ups: a dashboard and a document embedding the slow card
-             :model/Dashboard      {dash-id :id}  {:collection_id coll-id}
-             :model/DashboardCard  _ {:dashboard_id dash-id :card_id slow-card}
-             ;; the same slow card on a second tab must dedupe to one culprit id
-             :model/DashboardCard  _ {:dashboard_id dash-id :card_id slow-card}
-             :model/DashboardCard  _ {:dashboard_id dash-id :card_id fast-card}
-             :model/Document       {doc-id :id}   {:collection_id coll-id
-                                                   :creator_id    (mt/user->id :rasta)
-                                                   :content_type  prose-mirror/prose-mirror-content-type
-                                                   :document      {:type "doc"
-                                                                   :content [{:type "cardEmbed"
-                                                                              :attrs {:id slow-card}}]}}
-             ;; a dashboard with only the fast card must NOT be flagged
-             :model/Dashboard      {fast-dash :id} {:collection_id coll-id}
-             :model/DashboardCard  _ {:dashboard_id fast-dash :card_id fast-card}
-             ;; an archived dashboard embedding the slow card must NOT be flagged
-             :model/Dashboard      {archived-dash :id} {:collection_id coll-id :archived true}
-             :model/DashboardCard  _ {:dashboard_id archived-dash :card_id slow-card}
-             ;; transform leaves: one slow succeeded run (60s), one fast (1s)
-             :model/Transform      {slow-xform :id} {}
-             :model/TransformRun   _ {:transform_id slow-xform :status :succeeded
-                                      :start_time (t/offset-date-time 2026 6 1 3 0 0)
-                                      :end_time   (t/offset-date-time 2026 6 1 3 1 0)}
-             :model/Transform      {fast-xform :id} {}
-             :model/TransformRun   _ {:transform_id fast-xform :status :succeeded
-                                      :start_time (t/offset-date-time 2026 6 1 3 0 0)
-                                      :end_time   (t/offset-date-time 2026 6 1 3 0 1)}]
-            (let [by-entity (slow-findings-by-entity!)]
-              (testing "slow card leaf: measured mean in top-level duration_ms; threshold frozen in details"
-                (let [f (by-entity [:card slow-card])]
-                  (is (some? f))
-                  (is (= 30000 (:duration_ms f)))
-                  (is (= 10000 (get-in f [:details :threshold_ms])))
-                  (testing "leaf details holds ONLY the threshold"
-                    (is (= #{:threshold_ms} (set (keys (:details f))))))))
-              (testing "fast card is not flagged"
-                (is (nil? (by-entity [:card fast-card]))))
-              (testing "archived card is not flagged even though its mean is slow"
-                (is (nil? (by-entity [:card archived-card]))))
-              (testing "slow transform leaf: 60s duration over the 10s threshold, both frozen in ms"
-                (let [f (by-entity [:transform slow-xform])]
-                  (is (some? f))
-                  (is (= 60000 (:duration_ms f)))
-                  (is (= 10000 (get-in f [:details :threshold_ms])))))
-              (testing "fast transform is not flagged"
-                (is (nil? (by-entity [:transform fast-xform]))))
-              (testing "dashboard container: dedupes the twice-embedded slow card, stamps representative duration"
-                (let [f (by-entity [:dashboard dash-id])]
-                  (is (some? f))
-                  (is (= [slow-card] (get-in f [:details :slow_entity_ids])))
-                  (is (= 30000 (:duration_ms f)))))
-              (testing "dashboard with only fast cards is not flagged"
-                (is (nil? (by-entity [:dashboard fast-dash]))))
-              (testing "archived dashboard is not flagged"
-                (is (nil? (by-entity [:dashboard archived-dash]))))
-              (testing "document container rolls up the embedded slow card with its representative duration"
-                (let [f (by-entity [:document doc-id])]
-                  (is (some? f))
-                  (is (= [slow-card] (get-in f [:details :slow_entity_ids])))
-                  (is (= 30000 (:duration_ms f))))))))))))
+          (let [now (t/offset-date-time)]
+            (mt/with-temp
+              [:model/Collection {coll-id :id} {}
+               ;; slow card: median running_time 30s > 10s threshold (cache hits are ignored)
+               :model/Card           {slow-card :id} {:collection_id coll-id :name "Full Orders Export"}
+               :model/QueryExecution _ {:card_id slow-card :started_at now
+                                        :cache_hit false :running_time 30000}
+               ;; a cache hit at a huge time must NOT count toward the median (it would shift it to 65s)
+               :model/QueryExecution _ {:card_id slow-card :started_at now
+                                        :cache_hit true :running_time 99999}
+               ;; fast card: 500ms < 10s - never flagged, and never a culprit
+               :model/Card           {fast-card :id} {:collection_id coll-id :name "Quick Lookup"}
+               :model/QueryExecution _ {:card_id fast-card :started_at now
+                                        :cache_hit false :running_time 500}
+               ;; archived card whose median IS slow - must be excluded (not flagged, not a culprit)
+               :model/Card           {archived-card :id} {:collection_id coll-id :archived true}
+               :model/QueryExecution _ {:card_id archived-card :started_at now
+                                        :cache_hit false :running_time 40000}
+               ;; container roll-ups: a dashboard and a document embedding the slow card
+               :model/Dashboard      {dash-id :id}  {:collection_id coll-id}
+               :model/DashboardCard  _ {:dashboard_id dash-id :card_id slow-card}
+               ;; the same slow card on a second tab must dedupe to one culprit id
+               :model/DashboardCard  _ {:dashboard_id dash-id :card_id slow-card}
+               :model/DashboardCard  _ {:dashboard_id dash-id :card_id fast-card}
+               :model/Document       {doc-id :id}   {:collection_id coll-id
+                                                     :creator_id    (mt/user->id :rasta)
+                                                     :content_type  prose-mirror/prose-mirror-content-type
+                                                     :document      {:type "doc"
+                                                                     :content [{:type "cardEmbed"
+                                                                                :attrs {:id slow-card}}]}}
+               ;; a dashboard with only the fast card must NOT be flagged
+               :model/Dashboard      {fast-dash :id} {:collection_id coll-id}
+               :model/DashboardCard  _ {:dashboard_id fast-dash :card_id fast-card}
+               ;; an archived dashboard embedding the slow card must NOT be flagged
+               :model/Dashboard      {archived-dash :id} {:collection_id coll-id :archived true}
+               :model/DashboardCard  _ {:dashboard_id archived-dash :card_id slow-card}
+               ;; transform leaves: one slow succeeded run (60s), one fast (1s)
+               :model/Transform      {slow-xform :id} {}
+               :model/TransformRun   _ {:transform_id slow-xform :status :succeeded
+                                        :start_time (t/minus now (t/minutes 2))
+                                        :end_time   (t/minus now (t/minutes 1))}
+               :model/Transform      {fast-xform :id} {}
+               :model/TransformRun   _ {:transform_id fast-xform :status :succeeded
+                                        :start_time (t/minus now (t/seconds 61))
+                                        :end_time   (t/minus now (t/seconds 60))}]
+              (let [by-entity (slow-findings-by-entity!)]
+                (testing "slow card leaf: measured median in top-level duration_ms; threshold frozen in details"
+                  (let [f (by-entity [:card slow-card])]
+                    (is (some? f))
+                    (is (= 30000 (:duration_ms f)))
+                    (is (= 10000 (get-in f [:details :threshold_ms])))
+                    (testing "leaf details holds ONLY the threshold"
+                      (is (= #{:threshold_ms} (set (keys (:details f))))))))
+                (testing "fast card is not flagged"
+                  (is (nil? (by-entity [:card fast-card]))))
+                (testing "archived card is not flagged even though its median is slow"
+                  (is (nil? (by-entity [:card archived-card]))))
+                (testing "slow transform leaf: 60s duration over the 10s threshold, both frozen in ms"
+                  (let [f (by-entity [:transform slow-xform])]
+                    (is (some? f))
+                    (is (= 60000 (:duration_ms f)))
+                    (is (= 10000 (get-in f [:details :threshold_ms])))))
+                (testing "fast transform is not flagged"
+                  (is (nil? (by-entity [:transform fast-xform]))))
+                (testing "dashboard container: dedupes the twice-embedded slow card, stamps representative duration"
+                  (let [f (by-entity [:dashboard dash-id])]
+                    (is (some? f))
+                    (is (= [slow-card] (get-in f [:details :slow_entity_ids])))
+                    (is (= 30000 (:duration_ms f)))))
+                (testing "dashboard with only fast cards is not flagged"
+                  (is (nil? (by-entity [:dashboard fast-dash]))))
+                (testing "archived dashboard is not flagged"
+                  (is (nil? (by-entity [:dashboard archived-dash]))))
+                (testing "document container rolls up the embedded slow card with its representative duration"
+                  (let [f (by-entity [:document doc-id])]
+                    (is (some? f))
+                    (is (= [slow-card] (get-in f [:details :slow_entity_ids])))
+                    (is (= 30000 (:duration_ms f)))))))))))))
 
 (deftest slow-checker-threshold-boundary-test
-  (testing "a card's mean must strictly exceed the threshold (boundary is exclusive)"
+  (testing "the measured duration must strictly exceed the threshold (boundary is exclusive) for both leaf types"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
+                                         content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp [:model/Collection {coll-id :id} {}
-                         :model/Card {at-card :id} {:collection_id coll-id}
-                         :model/QueryExecution _ {:card_id at-card :started_at (t/offset-date-time)
-                                                  :cache_hit false :running_time 10000}
-                         :model/Card {over-card :id} {:collection_id coll-id}
-                         :model/QueryExecution _ {:card_id over-card :started_at (t/offset-date-time)
-                                                  :cache_hit false :running_time 10001}]
-            (let [by-entity (slow-findings-by-entity!)]
-              (testing "exactly at the threshold (10000ms) → not flagged"
-                (is (nil? (by-entity [:card at-card]))))
-              (testing "just over the threshold (10001ms) → flagged"
-                (is (some? (by-entity [:card over-card])))))))))))
+          (let [now (t/offset-date-time)]
+            (mt/with-temp [:model/Collection {coll-id :id} {}
+                           :model/Card {at-card :id} {:collection_id coll-id}
+                           :model/QueryExecution _ {:card_id at-card :started_at now
+                                                    :cache_hit false :running_time 10000}
+                           :model/Card {over-card :id} {:collection_id coll-id}
+                           :model/QueryExecution _ {:card_id over-card :started_at now
+                                                    :cache_hit false :running_time 10001}
+                           :model/Transform    {at-xform :id} {}
+                           :model/TransformRun _ {:transform_id at-xform :status :succeeded
+                                                  :start_time (t/minus now (t/seconds 10))
+                                                  :end_time   now}
+                           :model/Transform    {over-xform :id} {}
+                           :model/TransformRun _ {:transform_id over-xform :status :succeeded
+                                                  :start_time (t/minus now (t/seconds 11))
+                                                  :end_time   now}]
+              (let [by-entity (slow-findings-by-entity!)]
+                (testing "card exactly at the threshold (10000ms) → not flagged"
+                  (is (nil? (by-entity [:card at-card]))))
+                (testing "card just over the threshold (10001ms) → flagged"
+                  (is (some? (by-entity [:card over-card]))))
+                (testing "transform run exactly at the threshold (10s) → not flagged"
+                  (is (nil? (by-entity [:transform at-xform]))))
+                (testing "transform run over the threshold (11s) → flagged"
+                  (is (some? (by-entity [:transform over-xform]))))))))))))
 
 (deftest slow-container-duration-is-slowest-culprit-test
-  (testing "a container's duration_ms is the slowest culprit card's mean"
+  (testing "a container's duration_ms is the slowest culprit card's median"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -151,7 +165,7 @@
                          :model/DashboardCard _ {:dashboard_id dash-id :card_id c40}]
             (let [f (get (slow-findings-by-entity!) [:dashboard dash-id])]
               (is (some? f))
-              (testing "duration_ms is the slowest culprit's mean (40s), not the fastest or a sum"
+              (testing "duration_ms is the slowest culprit's median (40s), not the fastest or a sum"
                 (is (= 40000 (:duration_ms f))))
               (is (= #{c20 c40} (set (get-in f [:details :slow_entity_ids])))))))))))
 
@@ -194,56 +208,147 @@
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp
-            [;; the latest finished run is the newer FAILED one (5m) - failed runs finished, so they count
-             :model/Transform    {failing-latest :id} {}
-             :model/TransformRun _ {:transform_id failing-latest :status :succeeded
-                                    :start_time (t/offset-date-time 2026 6 2 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 2 1 1 0)}
-             :model/TransformRun _ {:transform_id failing-latest :status :failed
-                                    :start_time (t/offset-date-time 2026 6 3 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 3 1 5 0)}
-             ;; latest finished run is fast (1s) even though an older succeeded run was slow (60s)
-             :model/Transform    {recovered :id} {}
-             :model/TransformRun _ {:transform_id recovered :status :succeeded
-                                    :start_time (t/offset-date-time 2026 6 1 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 1 1 1 0)}
-             :model/TransformRun _ {:transform_id recovered :status :succeeded
-                                    :start_time (t/offset-date-time 2026 6 4 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 4 1 0 1)}
-             ;; a slow CANCELED run doesn't count as finished - the fast succeeded run before it wins
-             :model/Transform    {canceled-latest :id} {}
-             :model/TransformRun _ {:transform_id canceled-latest :status :succeeded
-                                    :start_time (t/offset-date-time 2026 6 5 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 5 1 0 1)}
-             :model/TransformRun _ {:transform_id canceled-latest :status :canceled
-                                    :start_time (t/offset-date-time 2026 6 6 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 6 1 5 0)}
-             ;; a TIMED-OUT run (2m) counts as finished
-             :model/Transform    {timed-out :id} {}
-             :model/TransformRun _ {:transform_id timed-out :status :succeeded
-                                    :start_time (t/offset-date-time 2026 6 7 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 7 1 0 1)}
-             :model/TransformRun _ {:transform_id timed-out :status :timeout
-                                    :start_time (t/offset-date-time 2026 6 8 1 0 0)
-                                    :end_time   (t/offset-date-time 2026 6 8 1 2 0)}
-             ;; never ran at all
-             :model/Transform    {never :id} {}]
-            (let [by-entity (slow-findings-by-entity!)]
-              (testing "flagged on its latest finished run - the 5m failed one, not the older 60s success"
-                (let [f (by-entity [:transform failing-latest])]
-                  (is (some? f))
-                  (is (= 300000 (:duration_ms f)))))
-              (testing "a transform whose latest finished run is fast is not flagged"
-                (is (nil? (by-entity [:transform recovered]))))
-              (testing "a slow canceled run is ignored - the latest finished run (fast) wins"
-                (is (nil? (by-entity [:transform canceled-latest]))))
-              (testing "a timed-out run counts - flagged on its 2m duration"
-                (let [f (by-entity [:transform timed-out])]
-                  (is (some? f))
-                  (is (= 120000 (:duration_ms f)))))
-              (testing "a never-run transform yields no finding"
-                (is (nil? (by-entity [:transform never])))))))))))
+          (let [now      (t/offset-date-time)
+                days-ago #(t/minus now (t/days %))]
+            (mt/with-temp
+              [;; the latest finished run is the newer FAILED one (5m) - failed runs finished, so they count
+               :model/Transform    {failing-latest :id} {}
+               :model/TransformRun _ {:transform_id failing-latest :status :succeeded
+                                      :start_time (days-ago 9)
+                                      :end_time   (t/plus (days-ago 9) (t/minutes 1))}
+               :model/TransformRun _ {:transform_id failing-latest :status :failed
+                                      :start_time (days-ago 8)
+                                      :end_time   (t/plus (days-ago 8) (t/minutes 5))}
+               ;; latest finished run is fast (1s) even though an older succeeded run was slow (60s)
+               :model/Transform    {recovered :id} {}
+               :model/TransformRun _ {:transform_id recovered :status :succeeded
+                                      :start_time (days-ago 10)
+                                      :end_time   (t/plus (days-ago 10) (t/minutes 1))}
+               :model/TransformRun _ {:transform_id recovered :status :succeeded
+                                      :start_time (days-ago 7)
+                                      :end_time   (t/plus (days-ago 7) (t/seconds 1))}
+               ;; a slow CANCELED run doesn't count as finished - the fast succeeded run before it wins
+               :model/Transform    {canceled-latest :id} {}
+               :model/TransformRun _ {:transform_id canceled-latest :status :succeeded
+                                      :start_time (days-ago 6)
+                                      :end_time   (t/plus (days-ago 6) (t/seconds 1))}
+               :model/TransformRun _ {:transform_id canceled-latest :status :canceled
+                                      :start_time (days-ago 5)
+                                      :end_time   (t/plus (days-ago 5) (t/minutes 5))}
+               ;; a TIMED-OUT run (2m) counts as finished
+               :model/Transform    {timed-out :id} {}
+               :model/TransformRun _ {:transform_id timed-out :status :succeeded
+                                      :start_time (days-ago 4)
+                                      :end_time   (t/plus (days-ago 4) (t/seconds 1))}
+               :model/TransformRun _ {:transform_id timed-out :status :timeout
+                                      :start_time (days-ago 3)
+                                      :end_time   (t/plus (days-ago 3) (t/minutes 2))}
+               ;; never ran at all
+               :model/Transform    {never :id} {}]
+              (let [by-entity (slow-findings-by-entity!)]
+                (testing "flagged on its latest finished run - the 5m failed one, not the older 60s success"
+                  (let [f (by-entity [:transform failing-latest])]
+                    (is (some? f))
+                    (is (= 300000 (:duration_ms f)))))
+                (testing "a transform whose latest finished run is fast is not flagged"
+                  (is (nil? (by-entity [:transform recovered]))))
+                (testing "a slow canceled run is ignored - the latest finished run (fast) wins"
+                  (is (nil? (by-entity [:transform canceled-latest]))))
+                (testing "a timed-out run counts - flagged on its 2m duration"
+                  (let [f (by-entity [:transform timed-out])]
+                    (is (some? f))
+                    (is (= 120000 (:duration_ms f)))))
+                (testing "a never-run transform yields no finding"
+                  (is (nil? (by-entity [:transform never]))))))))))))
+
+(deftest slow-card-uses-median-test
+  (testing "card slowness is the MEDIAN running_time, so outliers don't drag a typically-fast card over"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [now (t/offset-date-time)]
+            (mt/with-temp
+              [:model/Collection {coll-id :id} {}
+               ;; odd count {1s 1s 60s}: the mean (20.7s) would flag it; the median (1s) must not
+               :model/Card           {outlier-card :id} {:collection_id coll-id}
+               :model/QueryExecution _ {:card_id outlier-card :started_at now
+                                        :cache_hit false :running_time 1000}
+               :model/QueryExecution _ {:card_id outlier-card :started_at now
+                                        :cache_hit false :running_time 1000}
+               :model/QueryExecution _ {:card_id outlier-card :started_at now
+                                        :cache_hit false :running_time 60000}
+               ;; even count {20s 30s}: the median is the average of the middle pair (25s)
+               :model/Card           {even-card :id} {:collection_id coll-id}
+               :model/QueryExecution _ {:card_id even-card :started_at now
+                                        :cache_hit false :running_time 20000}
+               :model/QueryExecution _ {:card_id even-card :started_at now
+                                        :cache_hit false :running_time 30000}
+               ;; even pair {10000 10001} straddling the 10s threshold: the unrounded median (10000.5)
+               ;; must be what the SQL compares (flagged), and the stored duration_ms rounds up
+               :model/Card           {half-card :id} {:collection_id coll-id}
+               :model/QueryExecution _ {:card_id half-card :started_at now
+                                        :cache_hit false :running_time 10000}
+               :model/QueryExecution _ {:card_id half-card :started_at now
+                                        :cache_hit false :running_time 10001}]
+              (let [by-entity (slow-findings-by-entity!)]
+                (testing "a fast card with one slow outlier execution is not flagged (the mean would have)"
+                  (is (nil? (by-entity [:card outlier-card]))))
+                (testing "even count: median is the mean of the two middle values"
+                  (let [f (by-entity [:card even-card])]
+                    (is (some? f))
+                    (is (= 25000 (:duration_ms f)))))
+                (testing "fractional median 10000.5 clears the 10000 threshold unrounded; duration_ms rounds to 10001"
+                  (let [f (by-entity [:card half-card])]
+                    (is (some? f))
+                    (is (= 10001 (:duration_ms f)))))))))))))
+
+(deftest slow-lookback-window-test
+  (testing "only activity within the lookback window counts - older executions and runs are invisible"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
+                                         content-diagnostics-slow-transform-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          ;; freeze the clock so the scan-time cutoff (now - lookback) is identical to what the fixtures
+          ;; compute - the exact >= boundary can then be pinned without racing the scan
+          (mt/with-clock #t "2026-07-15T12:00Z[UTC]"
+            (let [now    (t/offset-date-time)
+                  cutoff (t/minus now (t/days @#'checkers.slow/lookback-days))]
+              (mt/with-temp
+                [:model/Collection {coll-id :id} {}
+                 ;; an out-of-window slow execution must not drag a recently-fast card's median over
+                 :model/Card           {recent-card :id} {:collection_id coll-id}
+                 :model/QueryExecution _ {:card_id recent-card :started_at (t/minus cutoff (t/days 1))
+                                          :cache_hit false :running_time 99999}
+                 :model/QueryExecution _ {:card_id recent-card :started_at now
+                                          :cache_hit false :running_time 500}
+                 ;; executions exactly AT the cutoff count (inclusive >=); 1s older do not
+                 :model/Card           {at-edge-card :id} {:collection_id coll-id}
+                 :model/QueryExecution _ {:card_id at-edge-card :started_at cutoff
+                                          :cache_hit false :running_time 30000}
+                 :model/Card           {past-edge-card :id} {:collection_id coll-id}
+                 :model/QueryExecution _ {:card_id past-edge-card
+                                          :started_at (t/minus cutoff (t/seconds 1))
+                                          :cache_hit false :running_time 30000}
+                 ;; the same boundary for transform runs, keyed on start_time
+                 :model/Transform    {at-edge-xform :id} {}
+                 :model/TransformRun _ {:transform_id at-edge-xform :status :succeeded
+                                        :start_time cutoff
+                                        :end_time   (t/plus cutoff (t/minutes 1))}
+                 :model/Transform    {past-edge-xform :id} {}
+                 :model/TransformRun _ {:transform_id past-edge-xform :status :succeeded
+                                        :start_time (t/minus cutoff (t/seconds 1))
+                                        :end_time   (t/plus cutoff (t/minutes 1))}]
+                (let [by-entity (slow-findings-by-entity!)]
+                  (testing "an out-of-window slow execution doesn't affect the in-window median"
+                    (is (nil? (by-entity [:card recent-card]))))
+                  (testing "an execution exactly at the cutoff is included"
+                    (is (some? (by-entity [:card at-edge-card]))))
+                  (testing "an execution 1s before the cutoff is excluded"
+                    (is (nil? (by-entity [:card past-edge-card]))))
+                  (testing "a run started exactly at the cutoff is included"
+                    (is (some? (by-entity [:transform at-edge-xform]))))
+                  (testing "a run started 1s before the cutoff is excluded"
+                    (is (nil? (by-entity [:transform past-edge-xform])))))))))))))
 
 (deftest slow-threshold-frozen-at-scan-time-test
   (testing "threshold_ms is frozen in details at scan time; a later setting change does not rewrite it"
