@@ -458,11 +458,9 @@ function select(id){
 
 // ---- controls ------------------------------------------------------------
 document.getElementById('q').addEventListener('input', e=>{ query=e.target.value.trim().toLowerCase(); render(); });
-document.getElementById('expand').onclick=()=>{
-  (function all(node,path){ for(const kid of node.children.values()){ const kp=path.concat(kid.seg);
-    if(kid.children.size) open.add(kp.join('/')); all(kid,kp); } })(root,[]);
-  render();
-};
+function expandAll(){ (function all(node,path){ for(const kid of node.children.values()){ const kp=path.concat(kid.seg);
+  if(kid.children.size) open.add(kp.join('/')); all(kid,kp); } })(root,[]); }
+document.getElementById('expand').onclick=()=>{ expandAll(); render(); };
 document.getElementById('collapse').onclick=()=>{ open.clear(); render(); };
 const rootEl=document.documentElement;
 const themeSel=document.getElementById('theme');
@@ -507,8 +505,8 @@ document.addEventListener('keydown', e=>{
 // deep-link: reflect selection in the URL hash, and honor it on load / back-forward
 window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h] && h!==selected) select(h); });
 
-// open the top level by default
-for(const kid of root.children.values()) if(kid.children.size) open.add(kid.seg);
+// fully expanded by default
+expandAll();
 render();
 { const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) select(h); }
 ")
