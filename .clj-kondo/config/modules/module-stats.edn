@@ -1,24 +1,25 @@
-{:api-any-namespaces 82
  :cyclic-components 3
  :cyclic-components-with-model-imports 2
- :cyclic-edges 1077
- :cyclic-edges-with-model-imports 1498
+ :cyclic-edges 1076
+ :cyclic-edges-with-model-imports 1488
  :cyclic-modules 112
  :cyclic-modules-with-model-imports 124
- :cyclic-namespaces 1575
- :cyclic-namespaces-with-model-imports 1666
- :driver-test-triggering-namespaces 734
+ :cyclic-namespaces 1479
+ :cyclic-namespaces-with-model-imports 1559
+ :driver-test-triggering-namespaces 696
+{:api-any-namespaces 78
+{:api-any-namespaces 81
  :largest-api 32
- :largest-ns-scc 546
- :largest-scc-modules 107
- :largest-scc-modules-with-model-imports 121
- :largest-scc-namespaces 1517
- :largest-scc-namespaces-with-model-imports 1637
- :max-file-deftests 19729
- :max-file-test-namespaces 1510
+ :largest-ns-scc 388
+ :largest-scc-modules 97
+ :largest-scc-modules-with-model-imports 118
+ :largest-scc-namespaces 1186
+ :largest-scc-namespaces-with-model-imports 1534
+ :max-file-deftests 19462
+ :max-file-test-namespaces 1490
  :model-import-bypass-modules 1
  :module-count 207
  :module-exports 70
  :ns-prefix-overrides 78
  :parent-team-mismatches 26
- :total-api 600}
+ :total-api 595}
