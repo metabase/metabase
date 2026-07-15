@@ -130,6 +130,11 @@ export interface CreateExplorationRequest {
 export type ExplorationExploreFilter = {
   field_ref: DimensionReference;
   value: RowValue;
+  display_value: string;
+};
+
+export type HydratedExplorationExploreFilter = ExplorationExploreFilter & {
+  display_name?: string | null;
 };
 
 export interface ExploreFurtherRequest {
@@ -297,6 +302,7 @@ export interface ExplorationBlockNode {
   name: string | null;
   position: number;
   pages: ExplorationPageNode[];
+  explore_filters?: HydratedExplorationExploreFilter[] | null;
 }
 
 export function getExplorationQueryGroupStatus(

@@ -360,9 +360,9 @@
             dimension-block (first (filter #(= "dimension" (:type %)) blocks))
             page-names (fn [block] (set (map :name (:pages block))))
             long-names (fn [block] (set (map :long_name (:pages block))))]
-        (testing "metric-anchored block: heading is the metric, pages are By <dimension>"
+        (testing "metric-anchored block: heading is the metric, pages are the dimension"
           (is (= "Revenue" (:name metric-block)))
-          (is (= #{"By Price"} (page-names metric-block)))
+          (is (= #{"Price"} (page-names metric-block)))
           (testing "long_name is self-describing (carries the metric the heading drops)"
             (is (= #{"Revenue by Price"} (long-names metric-block)))))
         (testing "dimension-anchored block: heading is By <dimension>, pages are the metrics"
@@ -711,9 +711,9 @@
           (is (= #{"Sales by Category" "Sales by Category over time"}
                  (set (map :long_name pages)))
               "long_name: full <metric> by <dimension> <variant>")
-          (is (= "By Category" (:name (by-long "Sales by Category")))
+          (is (= "Category" (:name (by-long "Sales by Category")))
               "short name of the default page drops the metric (it's the block heading)")
-          (is (= "By Category over time" (:name (by-long "Sales by Category over time")))
+          (is (= "Category over time" (:name (by-long "Sales by Category over time")))
               "short name carries the variant qualifier"))))))
 
 (deftest exploration-create-time-facet-skipped-without-default-breakout-test
@@ -1548,7 +1548,9 @@
               page-id      (some :id (filter #(str/includes? (:name %) "Price")
                                              (-> created :threads first :blocks first :pages)))
               explore-body {:page_id         page-id
-                            :explore_filters [{:field_ref field-ref :value filter-value}]}
+                            :explore_filters [{:field_ref field-ref
+                                               :value filter-value
+                                               :display_value "2"}]}
               hydrated     (explore-further-and-hydrate! u expl-id page-id (:explore_filters explore-body))
               threads      (sort-by :position (:threads hydrated))
               [orig new]   threads
@@ -1560,13 +1562,30 @@
           (testing "the drill thread records the page it was drilled from (sidebar nesting)"
             (is (= page-id (:source_page_id new)))
             (is (nil? (:source_page_id orig))))
-          (is (= "2 venues" (:name new))
-              "thread name capitalizes the clicked value and strips the metric's aggregation prefix")
+          (is (= "Number of venues → Price: 2" (:name new))
+              "thread name uses Metric → Column: Value for top-level follow-ups")
           (testing "new block copies type/dimensions and appends explore_filters onto metrics"
             (let [persisted (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new))]
               (is (= "metric" (:type new-block)))
               (is (= ["category" "price"] (mapv :dimension_id (:dimensions persisted))))
-              (is (= (:explore_filters explore-body) (:explore_filters (first (:metrics persisted)))))))
+              (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
+                (is (= 1 (count persisted-filters)))
+                (is (= filter-value (:value (first persisted-filters))))
+                (is (= "Price" (:display_name (first persisted-filters))))
+                (is (contains? (first persisted-filters) :display_value)))))
+          (testing "filtered blocks expose explore_filters on the block node and unprefixed page names"
+            (let [page (first (:pages new-block))]
+              (is (some? page))
+              (is (= [{:field_ref     field-ref
+                       :value         filter-value
+                       :display_name  "Price"
+                       :display_value "2"}]
+                     (map #(select-keys % [:field_ref :value :display_name :display_value])
+                          (:explore_filters new-block)))
+                  "block node echoes persisted explore_filters")
+              (is (str/includes? (:name page) "Price")
+                  "page short name is heading-relative, without the clicked value prefix")
+              (is (= "Number of venues by Price" (:long_name page)))))
           (testing "timelines are copied from the source thread"
             (is (= 1 (count (:timelines new))))
             (is (= (:id tl) (-> new :timelines first :timeline_id))))
@@ -1577,12 +1596,6 @@
                                       (str/includes? fname (str filter-value))))
                                (filter-display-names (:dataset_query %)))
                         new-queries)))
-          (testing "filtered page names prefix the clicked value in the blocks tree"
-            (let [page (first (:pages new-block))]
-              (is (some? page))
-              (is (str/starts-with? (:name page) "2 ")
-                  "filtered blocks use the long title as :name")
-              (is (= (:name page) (:long_name page)))))
           (testing "explore-further skips the AI Summary placeholder — Scratchpad only"
             (let [docs (t2/select :model/Document :exploration_thread_id (:id new))]
               (is (= #{"Scratchpad"} (set (map :name docs)))))))))))
@@ -1855,24 +1868,32 @@
           [block] (explorations.blocks/blocks-tree blocks pages {10 "Revenue"} queries)
           [page]  (:pages block)]
       (is (= "Revenue" (:name block)))
-      (is (= "By Price" (:name page))
+      (is (= "Price" (:name page))
           "short name drops the metric, which the block heading already shows")
       (is (= "Revenue by Price" (:long_name page))
           "long name is self-describing — metric + dimension"))))
 
 (deftest blocks-tree-explore-further-naming-test
-  (testing "filtered blocks prefix every page title with the clicked segment values"
-    (let [blocks  [{:id 5 :metrics [{:card_id 10
-                                     :explore_filters [{:value "texas"} {:value "2024"}]}]}]
+  (testing "filtered blocks expose explore_filters on the block node with unprefixed page names"
+    (let [filters [{:field_ref ["field" {} 1]
+                    :value     "texas"
+                    :display_name "State"
+                    :display_value "Texas"}
+                   {:field_ref ["field" {} 2]
+                    :value     "2024"
+                    :display_name "Year"
+                    :display_value "2024"}]
+          blocks  [{:id 5 :metrics [{:card_id 10 :explore_filters filters}]}]
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Category" :name "stored name"}]
           [block] (explorations.blocks/blocks-tree blocks pages {10 "Orders"} queries)
           [page]  (:pages block)]
-      (is (str/starts-with? (:name page) "Texas / 2024 ")
-          "multiple explore_filters join as capitalized values")
-      (is (= (:name page) (:long_name page))
-          "filtered blocks use the self-describing long title for :name")
-      (is (str/includes? (:long_name page) "Orders by Category")))))
+      (is (= filters (:explore_filters block))
+          "block node carries the complete explore_filters list")
+      (is (= "Category" (:name page))
+          "page short name is heading-relative, without the clicked value prefix")
+      (is (= "Orders by Category" (:long_name page))
+          "long name stays self-describing"))))
 
 (deftest blocks-tree-page-sort-prefers-contextual-test
   (testing "page sort uses contextual_interestingness_score when present, else interestingness_score"
@@ -1955,8 +1976,8 @@
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
                     (str "page " (:id p) " bundles a single (card, dim) partition"))))))
-        (testing "pages are named 'By <dimension> <variant>', the variant qualifier distinguishing same-dimension pages"
-          (is (= #{"By Category" "By Category (Top values + Other)" "By Price"}
+        (testing "pages are named '<dimension> <variant>', the variant qualifier distinguishing same-dimension pages"
+          (is (= #{"Category" "Category (Top values + Other)" "Price"}
                  (set (map :name pages))))
           (is (= 2 (count (filter #(str/includes? (:name %) "Category") pages)))
               "category's default and top-n-other are distinct, separately-named pages"))
@@ -2473,7 +2494,7 @@
   explore-further endpoint has a clicked page to copy. `metrics` is the block's
   metric-selection JSON (each entry needs at least `:card_id`). Returns a map of the
   created ids."
-  [{:keys [creator-id collection-id card-id database-id dimension-id metrics query-type]}]
+  [{:keys [creator-id collection-id card-id database-id dimension-id metrics dimensions query-type]}]
   (let [expl   (first (t2/insert-returning-instances! :model/Exploration
                                                       {:name "src" :creator_id creator-id
                                                        :collection_id collection-id}))
@@ -2482,7 +2503,7 @@
         block  (first (t2/insert-returning-instances! :model/ExplorationBlock
                                                       {:exploration_thread_id (:id thread)
                                                        :type "metric" :metrics metrics
-                                                       :dimensions [] :position 0}))
+                                                       :dimensions (or dimensions []) :position 0}))
         page   (first (t2/insert-returning-instances! :model/ExplorationPage
                                                       {:exploration_block_id (:id block)
                                                        :card_id card-id :dimension_id dimension-id}))]
@@ -2555,6 +2576,38 @@
                  (mapv #(select-keys % [:field_ref :value]) filters))
               "both the prior (Texas) and the newly clicked (price) filter are present, in drill order"))))))
 
+(deftest explore-further-nested-thread-name-omits-metric-prefix-test
+  (testing "a drill from a follow-up thread names only the formatted filters"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       metric {:name          "Revenue"
+                                             :type          :metric
+                                             :dataset_query (lib/->legacy-MBQL
+                                                             (let [mp (mt/metadata-provider)]
+                                                               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                   (lib/aggregate (lib/count)))))}]
+      (let [src (insert-explore-fixture!
+                 {:creator-id    (mt/user->id :crowberto)
+                  :collection-id (:id coll)
+                  :card-id       (:id metric)
+                  :database-id   (mt/id)
+                  :dimension-id  "price"
+                  :metrics       [{:card_id (:id metric)
+                                   :dimension_mappings (venues-dimension-mappings)}]
+                  :dimensions    [{:dimension_id "price" :display_name "Price"}]})]
+        ;; Mark the source thread as a follow-up so the next drill is nested.
+        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id 999})
+        (mt/user-http-request :crowberto :post 200
+                              (str "exploration/" (:exploration-id src) "/explore-further")
+                              {:page_id         (:page-id src)
+                               :explore_filters [{:field_ref ["field" {} (mt/id :venues :price)]
+                                                  :value     2
+                                                  :display_value "2"}]})
+        (let [new-thread (t2/select-one :model/ExplorationThread
+                                        :exploration_id (:exploration-id src)
+                                        {:order-by [[:position :desc] [:id :desc]]})]
+          (is (= "Price: 2" (:name new-thread))
+              "nested follow-up omits the metric prefix"))))))
+
 (deftest explore-further-thread-name-includes-every-clicked-value-test
   (testing "a click on a chart with several breakouts carries one value per dimension —"
     (testing "the new thread is named for all of them, since its queries are scoped to all of them"
@@ -2570,8 +2623,11 @@
                     :collection-id (:id coll)
                     :card-id       (:id metric)
                     :database-id   (mt/id)
-                    :dimension-id  "d1"
-                    :metrics       [{:card_id (:id metric)}]})]
+                    :dimension-id  "category"
+                    :metrics       [{:card_id (:id metric)
+                                     :dimension_mappings (venues-dimension-mappings)}]
+                    :dimensions    [{:dimension_id "category" :display_name "Category"}
+                                    {:dimension_id "price" :display_name "Price"}]})]
           (mt/user-http-request :crowberto :post 200
                                 (str "exploration/" (:exploration-id src) "/explore-further")
                                 {:page_id         (:page-id src)
@@ -2582,8 +2638,8 @@
           (let [new-thread (t2/select-one :model/ExplorationThread
                                           :exploration_id (:exploration-id src)
                                           {:order-by [[:position :desc] [:id :desc]]})]
-            (is (= "Gadget / 2 venues" (:name new-thread))
-                "both clicked values are in the name (the last one alone would read `2 venues`)")))))))
+            (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
+                "top-level follow-up names all filters as Metric → Column: Value")))))))
 ;;; |                                 Create-time reference permission checks                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

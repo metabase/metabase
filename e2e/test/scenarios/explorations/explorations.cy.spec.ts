@@ -857,7 +857,7 @@ describe("scenarios > explorations > chart click-through", () => {
               },
             );
             cy.findByRole("treeitem", {
-              name: new RegExp(`By ${categoricalDimension!.display_name}`),
+              name: new RegExp(categoricalDimension!.display_name),
             })
               .first()
               .click();
@@ -900,6 +900,7 @@ describe("scenarios > explorations > chart click-through", () => {
             expect(request.body.explore_filters[0]).to.include.keys(
               "field_ref",
               "value",
+              "display_value",
             );
 
             // Unjustified type cast. FIXME

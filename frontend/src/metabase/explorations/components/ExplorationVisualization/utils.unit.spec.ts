@@ -1,5 +1,6 @@
 import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   ClickObject,
@@ -398,8 +399,16 @@ describe("getExploreFurtherFilters", () => {
     });
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
-      { field_ref: ["field", 10, null], value: "Gadget" },
-      { field_ref: ["field", 11, null], value: "Affiliate" },
+      {
+        field_ref: ["field", 10, null],
+        value: "Gadget",
+        display_value: "Gadget",
+      },
+      {
+        field_ref: ["field", 11, null],
+        value: "Affiliate",
+        display_value: "Affiliate",
+      },
     ]);
   });
 
@@ -418,7 +427,11 @@ describe("getExploreFurtherFilters", () => {
     });
 
     expect(getExploreFurtherFilters(clicked)).toEqual([
-      { field_ref: ["field", 10, null], value: null },
+      {
+        field_ref: ["field", 10, null],
+        value: null,
+        display_value: NULL_DISPLAY_VALUE,
+      },
     ]);
   });
 });
