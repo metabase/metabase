@@ -13,7 +13,7 @@ import {
   IsNotAuthenticated,
   isBackendOnlyPath,
 } from "./guards";
-import { Route } from "./react-router";
+import { Route } from "./route";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),

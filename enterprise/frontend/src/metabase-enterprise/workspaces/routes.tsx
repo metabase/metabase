@@ -1,4 +1,4 @@
-import { IndexRoute, Route, type RouteComponent } from "metabase/router";
+import { Route, type RouteComponent } from "metabase/router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
 import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";
@@ -6,7 +6,7 @@ import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";
 export function getDataStudioRoutes() {
   return (
     <Route path="workspaces">
-      <IndexRoute component={WorkspaceIndexPage} />
+      <Route index component={WorkspaceIndexPage} />
     </Route>
   );
 }

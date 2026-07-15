@@ -73,7 +73,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
+      {isFetching && <Loader size="md" />}
 
       {!isFetching && (
         <Text
