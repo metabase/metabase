@@ -742,6 +742,21 @@
             (mt/user-http-request :rasta :post 400 (format "dashboard/%d/pdf" dash-id)
                                   {:paper_size "a3"})))))))
 
+(deftest dashboard-pdf-export-metric-test
+  (testing "POST /api/dashboard/:id/pdf records the pdf-export Prometheus counter by outcome"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Bird Dashboard"}]
+        (testing "a successful render increments status=success"
+          (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "%PDF-1.4 ok"))]
+            (mt/user-http-request :rasta :post 200 (format "dashboard/%d/pdf" dash-id)
+                                  {:request-options {:as :byte-array}} {}))
+          (is (= 1.0 (mt/metric-value system :metabase-dashboard/pdf-export {:status "success"}))))
+        (testing "a failing render increments status=error"
+          (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (throw (ex-info "boom" {})))]
+            (mt/user-http-request :rasta :post 500 (format "dashboard/%d/pdf" dash-id)
+                                  {:request-options {:as :byte-array}} {}))
+          (is (= 1.0 (mt/metric-value system :metabase-dashboard/pdf-export {:status "error"}))))))))
+
 (deftest dashboard-pdf-permissions-test
   (testing "POST /api/dashboard/:id/pdf requires read permission on the dashboard"
     (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "x"))]

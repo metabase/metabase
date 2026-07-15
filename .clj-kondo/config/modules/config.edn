@@ -747,6 +747,7 @@
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
+           analytics-interface
            api
            app-db
            channel

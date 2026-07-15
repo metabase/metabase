@@ -42,6 +42,12 @@
     {:template-type template-type
      :channel-type  :channel/email}))
 
+(defmethod analytics.core/known-labels :metabase-notification/dashboard-subscription-send [_]
+  (for [channel-type [:channel/email :channel/slack]
+        include-pdf   [true false]]
+    {:channel-type channel-type
+     :include-pdf  include-pdf}))
+
 (def ^:private EmailMessage
   [:map
    [:subject                         :string]
@@ -339,6 +345,9 @@
         card-attachments    (map make-message-attachment merged-attachments)
         pdf-attachment      (when include_pdf
                               (dashboard-pdf-attachment (:id dashboard) (:name dashboard) creator_id parameters dashboard_parts))
+        _                   (analytics/inc! :metabase-notification/dashboard-subscription-send
+                                            {:channel-type :channel/email
+                                             :include-pdf  (boolean include_pdf)})
         attachments         (cond-> (into [icon-attachment] result-attachments)
                               (not attachment_only) (concat card-attachments)
                               pdf-attachment        (concat [pdf-attachment]))
