@@ -13,21 +13,21 @@ Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single
 
 ## Turn on two-factor authentication
 
-An admin can turn 2FA on for your Metabase, and people opt in from their own [account settings](./account-settings.md#two-factor-authentication).
+An admin can turn 2FA on for your Metabase, and people opt in to signing in with 2FA from their own [account settings](./account-settings.md#two-factor-authentication).
 
 1. Go to **Admin settings** > **Settings** > **Authentication**.
 2. Find the **Two-factor authentication** card.
 3. Toggle it to **Enabled**.
 
-Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll.
+Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll in 2FA.
 
 If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.
 
 ## Supported methods
 
-- **Authenticator app (primary).** People scan a QR code with an app like Google Authenticator, 1Password, or Authy, which then generates a new six-digit code every 30 seconds. This is the method everyone enrolls in first.
-- **Email code (fallback at login).** If you've set up [email](../configuring-metabase/email.md), people who are already enrolled can have Metabase email them a one-time code when they can't reach their authenticator app. The code is single-use and expires after about ten minutes. If email isn't configured, Metabase hides this option.
-- **Recovery codes.** When someone enrolls, Metabase gives them ten single-use codes to save. Each code signs them in once if they lose access to their authenticator app.
+- **Authenticator app (primary).** People scan a QR code with an app like Google Authenticator or 1Password, which then generates a new six-digit code every 30 seconds.
+- **Email code (fallback at login).** If you've set up [email](../configuring-metabase/email.md), people who are already enrolled can have Metabase email them a one-time code when they can't reach their authenticator app. You can only use the code once, and expires after ten minutes. If email isn't configured, Metabase hides this option.
+- **Recovery codes.** When someone enrolls in 2FA, Metabase gives them ten single-use codes to save.
 
 Metabase doesn't support SMS codes or hardware keys (passkeys, U2F, or WebAuthn).
 
@@ -41,13 +41,11 @@ If you're using Metabase Cloud, we've encrypted your keys for you.
 
 ### Set up email for the fallback code
 
-The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip this, people will rely on their authenticator app and recovery codes only.
+The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip setting up email, people will have to rely on their authenticator app and recovery codes only.
 
 ## See who's enrolled
 
-When 2FA is on, the **Two-factor authentication** card shows how many people have enrolled and how many haven't. Since enrollment is up to each person in this version, these counts help you follow up with anyone who hasn't set it up yet.
-
-The counts are the whole picture Metabase gives you here: there's no per-person status or admin control to remove someone's 2FA from the People page.
+When 2FA is on, go to **Admin settings** > **Settings** > **Authentication** > **Two-factor authentication**. The 2FA card shows how many people have enrolled in 2FA and how many haven't.
 
 ## Further reading
 
