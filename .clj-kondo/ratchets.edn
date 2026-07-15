@@ -1,8 +1,9 @@
 ;; Budgets for inline `:clj-kondo/ignore` forms, counted per linter across the backend source tree.
 ;; metabase.core.kondo-ratchet-test fails when any actual count exceeds its budget here.
-;; `./bin/mage fix-kondo-ratchets` lowers budgets to match reality; raising one, or adding an entry
-;; for a new linter, is a deliberate hand edit to defend in the PR. :all counts the vector-less
-;; ignore form, which suppresses every linter on the form after it.
+;; `./bin/mage fix-kondo-ratchets` lowers budgets to match reality (CI also runs it against master
+;; after each merge); raising one, or adding an entry for a new linter, is a deliberate hand edit
+;; to defend in the PR. :all counts the vector-less ignore form, which suppresses every linter on
+;; the form after it.
 {:ignore-counts {:aliased-namespace-symbol                                            3
                  :all                                                                 61
                  :case-symbol-test                                                    2
