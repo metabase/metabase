@@ -9,7 +9,10 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.format :as u.format]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.memory :as memory])
   (:import
    (java.io OutputStream)
    (org.graalvm.polyglot Context Engine HostAccess SandboxPolicy Source Value)))
@@ -81,15 +84,96 @@
       ([_])
       ([_ _ _]))))
 
+;;; ---- Isolate memory sizing (fail closed below the pod ceiling) ----
+;;;
+;;; The isolate is a separate heap but runs in the *same OS process* as the JVM, so its native memory counts
+;;; against the same pod/container cgroup. If it grows unbounded it pushes process RSS over the cgroup limit and
+;;; the kernel OOM-killer SIGKILLs the whole pod (uncatchable). To avoid that we size the isolate's own hard cap
+;;; (`engine.MaxIsolateMemory`) *below* the pod limit, so a runaway render hits the isolate's limit first and
+;;; throws a catchable `PolyglotException` (which the render path degrades to a placeholder) instead of getting
+;;; the pod killed. The cap is derived at startup from the detected pod limit rather than hard-coded, so it
+;;; self-adapts to the pod size.
+
+(def ^:private isolate-memory-overhead-bytes
+  "Conservative reserve (bytes) for process memory that is neither the JVM max heap nor the isolate heap:
+  metaspace, code cache, thread stacks, direct byte buffers (e.g. Batik image buffers), and the GraalVM
+  host-side runtime. Subtracted from the pod memory limit when sizing the isolate so their sum stays under the
+  cgroup ceiling. Deliberately generous — underestimating risks an OOM-kill of the whole pod."
+  (* 512 1024 1024))
+
+(def ^:private isolate-memory-safety-margin-ratio
+  "Fraction of the pod memory limit kept free as headroom, on top of the explicit reserves."
+  0.15)
+
+(def ^:private target-max-isolate-memory-bytes
+  "Isolate heap cap used when the pod can afford it. The ~16MB static-viz bundle plus a real render peak at
+  <=512MB (measured), so 1GB is comfortably enough; a larger cap would only let a runaway plugin grow bigger
+  before failing closed."
+  (* 1024 1024 1024))
+
+(def ^:private min-max-isolate-memory-bytes
+  "Floor for the derived isolate cap. Below this the bundle + echarts/React runtime can't reliably parse and
+  render. If the computed budget is below this, the pod is too small to render custom-viz safely — we clamp
+  here and warn; the residual OOM-kill risk is then a deployment problem (raise the pod limit / lower -Xmx)."
+  (* 384 1024 1024))
+
+(defn- isolate-heap-bytes
+  "Pure: isolate heap cap (bytes) such that `jvm-max-heap + cap + overhead + margin <= pod-limit`, clamped to
+  [[[min-max-isolate-memory-bytes]], [[target-max-isolate-memory-bytes]]]. A cap at the floor means the pod is
+  too small for a safe budget (caller warns)."
+  ^long [^long pod-limit ^long jvm-max-heap]
+  (let [margin (long (* isolate-memory-safety-margin-ratio pod-limit))
+        budget (- pod-limit jvm-max-heap isolate-memory-overhead-bytes margin)]
+    (-> budget
+        (min target-max-isolate-memory-bytes)
+        (max min-max-isolate-memory-bytes))))
+
+(defn- bytes->mb-option
+  "Format a byte count as an integer-megabyte GraalVM size-option string, e.g. 750780416 -> \"716MB\"."
+  ^String [^long bytes]
+  (str (quot bytes (* 1024 1024)) "MB"))
+
+(defonce ^:private
+  ^{:doc "Isolate memory caps, computed once from the detected pod/container memory limit so the isolate fails
+          closed (catchable) below the cgroup ceiling instead of getting the pod OOM-killed:
+          `{:max-isolate-memory <opt-str> :max-heap-memory <opt-str>}`. `:max-heap-memory` (per-context) is
+          kept strictly below `:max-isolate-memory` (engine-wide), as GraalVM requires."}
+  isolate-memory-config
+  (delay
+    (let [pod-limit    (memory/container-memory-limit)
+          jvm-max-heap (.maxMemory (Runtime/getRuntime))
+          iso-bytes    (if pod-limit
+                         (isolate-heap-bytes pod-limit jvm-max-heap)
+                         target-max-isolate-memory-bytes)
+          ;; per-context heap must be < engine-wide isolate memory; half keeps the invariant and matches the
+          ;; historical 1GB / 512MB pairing.
+          heap-bytes   (quot iso-bytes 2)
+          config       {:max-isolate-memory (bytes->mb-option iso-bytes)
+                        :max-heap-memory    (bytes->mb-option heap-bytes)}]
+      (when (and pod-limit (<= iso-bytes min-max-isolate-memory-bytes))
+        (log/warnf (str "static-viz isolate memory budget is at its floor (%s) for pod limit %s + JVM max heap "
+                        "%s; custom-viz rendering may still pressure the pod. Raise the pod memory limit or "
+                        "lower -Xmx.")
+                   (:max-isolate-memory config)
+                   (u.format/format-bytes pod-limit)
+                   (u.format/format-bytes jvm-max-heap)))
+      (log/infof "static-viz isolate memory: MaxIsolateMemory=%s MaxHeapMemory=%s (pod limit %s, JVM max heap %s)"
+                 (:max-isolate-memory config) (:max-heap-memory config)
+                 (if pod-limit (u.format/format-bytes pod-limit) "unknown")
+                 (u.format/format-bytes jvm-max-heap))
+      config)))
+
 (defn- new-untrusted-plugin-engine
   "Build the isolate `Engine` shared by every untrusted-plugin context. `engine.MaxIsolateMemory` caps the
-  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]]."
+  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]];
+  both are derived from the pod memory limit at startup (see [[isolate-memory-config]]) so the isolate fails
+  closed below the cgroup ceiling instead of OOM-killing the pod."
   ^Engine []
   (.. (Engine/newBuilder (into-array String ["js"]))
       ;; A shared engine and its contexts must declare the same sandbox policy, so the engine sets UNTRUSTED
       ;; too — otherwise creating an UNTRUSTED context on it would fail the engine/context policy-match check.
       (sandbox SandboxPolicy/UNTRUSTED)
-      (option "engine.MaxIsolateMemory" "1GB")
+      (option "engine.MaxIsolateMemory" (:max-isolate-memory @isolate-memory-config))
       (out discarding-output-stream)
       (err discarding-output-stream)
       (build)))
@@ -124,7 +208,9 @@
   host access and no IO, so data must cross the boundary as JSON strings. Requires `js-isolate-community` on
   the classpath. The `sandbox.*` limits below are all mandatory under `UNTRUSTED` — the context fails to build
   if any is unset. `max-cpu-time` is the `sandbox.MaxCPUTime` budget (default [[render-max-cpu-time]] for the
-  dev fresh-context path; the pool passes the larger cumulative [[pool-max-cpu-time]])."
+  dev fresh-context path; the pool passes the larger cumulative [[pool-max-cpu-time]]). `sandbox.MaxHeapMemory`
+  is derived from the pod memory limit at startup (see [[isolate-memory-config]]) so a runaway render fails
+  closed below the cgroup ceiling."
   (^Context [] (untrusted-plugin-context render-max-cpu-time))
   (^Context [^String max-cpu-time]
    (.. (Context/newBuilder (into-array String ["js"]))
@@ -141,7 +227,7 @@
        ;; allowExperimentalOptions left at default false
        ;; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a multi-second budget.
        (option "sandbox.MaxCPUTime" max-cpu-time)
-       (option "sandbox.MaxHeapMemory" "512MB")
+       (option "sandbox.MaxHeapMemory" (:max-heap-memory @isolate-memory-config))
        (option "sandbox.MaxASTDepth" "5000")
        (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
        (option "sandbox.MaxOutputStreamSize" "16MB")

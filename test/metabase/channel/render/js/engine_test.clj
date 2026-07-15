@@ -75,3 +75,31 @@
             "termination should be resource exhaustion (heap limit), not some other error")
         (finally
           (.close context true))))))
+
+(deftest isolate-heap-bytes-test
+  (testing "isolate heap cap is derived to fail closed below the pod/cgroup ceiling"
+    (let [mb       (* 1024 1024)
+          gb       (* 1024 mb)
+          floor    (* 384 mb)
+          target   (* 1024 mb)
+          overhead (* 512 mb)]
+      (testing "a large pod is capped at the target — no benefit to handing a runaway more room"
+        (is (= target (#'js/isolate-heap-bytes (* 32 gb) (* 8 gb)))))
+      (testing "a mid-size pod shrinks the cap so JVM heap + cap + overhead + 15% margin fits under the pod"
+        (let [pod  (* 2 gb)
+              heap (* 512 mb)
+              cap  (#'js/isolate-heap-bytes pod heap)]
+          (is (< floor cap target) "cap lands strictly between floor and target")
+          (is (<= (+ heap cap overhead (long (* 0.15 pod))) pod)
+              "the reserved sum stays within the pod memory limit")))
+      (testing "a pod too small for a safe budget clamps to the floor (caller warns)"
+        (is (= floor (#'js/isolate-heap-bytes (* 1 gb) (* 256 mb))))))))
+
+(deftest isolate-memory-config-test
+  (testing "the startup-computed caps are valid GraalVM size strings"
+    (let [cfg      @@#'js/isolate-memory-config
+          ->mb     (fn [s] (Long/parseLong (subs s 0 (- (count s) 2))))]
+      (is (re-matches #"\d+MB" (:max-isolate-memory cfg)))
+      (is (re-matches #"\d+MB" (:max-heap-memory cfg)))
+      (testing "per-context heap is strictly below engine-wide isolate memory (GraalVM requires it)"
+        (is (< (->mb (:max-heap-memory cfg)) (->mb (:max-isolate-memory cfg))))))))
