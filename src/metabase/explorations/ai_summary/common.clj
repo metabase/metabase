@@ -30,7 +30,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.self :as metabot.self]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str])
@@ -49,11 +49,11 @@
 ;;; ----- chart prep (used by both phases via the prep-chart record) -----
 
 (defn- deserialize-result
-  "Inverse of [[cache.impl/do-with-serialization]] for the runner's
+  "Inverse of [[qp/do-with-serialization]] for the runner's
   single-frame nippy+gzip blob."
   [^bytes result-bytes]
   (with-open [is (ByteArrayInputStream. result-bytes)]
-    (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
+    (qp/with-reducible-deserialized-results [[qp-result _] is]
       qp-result)))
 
 (defn format-pct

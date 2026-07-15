@@ -1,11 +1,15 @@
 (ns metabase-enterprise.metabot.usage-test
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- insert-usage!
   "Insert a test ai_usage_log row for the given user with the specified total_tokens."
@@ -442,3 +446,39 @@
                 (is (= "test limit reached" (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
+
+;;; ---------------------------------- Analytics view CASE-branch parity ----------------------------------
+
+(defn- latest-view-version-dir
+  "The highest-versioned directory (v1, v2, ...) of SQL files for an instance-analytics view family."
+  ^java.io.File [view-name]
+  (let [base (io/file (io/resource (str "migrations/instance_analytics_views/" view-name)))]
+    (->> (.listFiles base)
+         (keep (fn [^java.io.File f]
+                 (when-let [[_ n] (and (.isDirectory f) (re-matches #"v(\d+)" (.getName f)))]
+                   [(parse-long n) f])))
+         (sort-by first)
+         last
+         second)))
+
+(deftest known-sources-and-profiles-have-view-case-branches-test
+  (testing "every known source/profile id has a friendly-name CASE branch in the latest analytics view SQL,
+           so new values don't surface as raw machine names in AI usage analytics (see the comment above
+           `known-sources` in metabase-enterprise.metabot.usage)"
+    (let [;; `user-intent-classification` is short-circuited in `log-ai-usage!` and never written to
+          ;; ai_usage_log, so the views don't need a CASE branch for it.
+          sources  (disj @#'ee.usage/known-sources "user-intent-classification")
+          profiles @#'ee.usage/known-profile-ids]
+      (doseq [[view expected] {"ai_usage_log"          sources
+                               ;; v_metabot_conversations maps both the source and the profile id
+                               "metabot_conversations" (into sources profiles)}
+              :let [dir       (latest-view-version-dir view)
+                    sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
+                                      (.listFiles dir))]]
+        (testing (format "view %s (%s)" view (.getName dir))
+          (is (= 3 (count sql-files)) "expected one SQL file per dialect (h2, mysql, postgres)")
+          (doseq [^java.io.File sql-file sql-files
+                  :let [sql (slurp sql-file)]
+                  value expected]
+            (testing (format "%s has a CASE branch in %s" (pr-str value) (.getName sql-file))
+              (is (str/includes? sql (format "WHEN '%s'" value))))))))))

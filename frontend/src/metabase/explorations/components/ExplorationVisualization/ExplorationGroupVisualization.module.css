@@ -17,6 +17,8 @@
   grid-auto-rows: minmax(10rem, auto);
   /* never let the grid itself be widened past its container */
   min-width: 0;
+  /* contain leaflet pane z-indexes (up to ~700) so the sticky toolbar floats above maps */
+  isolation: isolate;
 }
 
 /*

@@ -97,6 +97,9 @@ export const METABOT_ERR_MSG = {
   get locked() {
     return t`You've used all of your included AI service tokens. To keep using AI features you can either end your trial early and start your subscription, or stay in the trial and add your own AI provider API key.`;
   },
+  get outOfSync() {
+    return t`This conversation was updated elsewhere. Please refresh to see the latest messages.`;
+  },
   format(msg: string) {
     return t`Sorry, an error occurred: ${msg}. If this persists, please contact your administrator.`;
   },

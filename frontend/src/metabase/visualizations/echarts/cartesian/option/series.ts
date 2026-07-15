@@ -8,10 +8,8 @@ import type {
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
 import {
-  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -490,27 +488,12 @@ const buildEChartsBarSeries = (
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
 
-  const dimensionValueColors = settings["graph._dimension_value_colors"];
-  const itemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
-    dimensionValueColors == null
-      ? seriesModel.color
-      : (params: CallbackDataParams) => {
-          const xValue = dataset[params.dataIndex]?.[X_AXIS_DATA_KEY];
-          const formattedXValue =
-            xValue === ECHARTS_CATEGORY_AXIS_NULL_VALUE
-              ? NULL_DISPLAY_VALUE
-              : String(xValue);
-          return dimensionValueColors[formattedXValue] ?? seriesModel.color;
-        };
-  const emphasisItemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
-    dimensionValueColors == null ? seriesModel.color : "inherit";
-
   const seriesOption: BarSeriesOption = {
     id: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
-        color: emphasisItemColor,
+        color: seriesModel.color,
       },
     },
     blur: {
@@ -572,7 +555,7 @@ const buildEChartsBarSeries = (
           },
         }),
     itemStyle: {
-      color: itemColor,
+      color: seriesModel.color,
     },
   };
 

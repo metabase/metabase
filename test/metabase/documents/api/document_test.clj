@@ -2462,3 +2462,27 @@
                                 {:name "Should Fail"
                                  :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
+
+(deftest document-list-excludes-exploration-documents-test
+  (testing "GET /api/document excludes documents attached to an exploration thread"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Doc List Collection"}
+                   :model/Exploration {expl-id :id} {:name       "List Exclusion Expl"
+                                                     :creator_id (mt/user->id :crowberto)
+                                                     :collection_id coll-id}
+                   :model/ExplorationThread {thread-id :id} {:exploration_id expl-id
+                                                             :position       0}
+                   :model/Document _ {:name          "Standalone Doc"
+                                      :document      (documents.test-util/text->prose-mirror-ast "standalone")
+                                      :collection_id coll-id}
+                   :model/Document _ {:name                  "Exploration Scratchpad"
+                                      :document              (documents.test-util/text->prose-mirror-ast "attached")
+                                      :collection_id         coll-id
+                                      :exploration_thread_id thread-id}]
+      (let [doc-names (->> (mt/user-http-request :crowberto :get 200 "document/")
+                           :items
+                           (map :name)
+                           set)]
+        (testing "standalone documents are listed"
+          (is (contains? doc-names "Standalone Doc")))
+        (testing "exploration-attached documents are not (matching search / recents / collection items)"
+          (is (not (contains? doc-names "Exploration Scratchpad"))))))))

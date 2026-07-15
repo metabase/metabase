@@ -56,8 +56,6 @@ export interface RowChartProps<TDatum> {
 
   xScaleType?: ContinuousScaleType;
 
-  dimensionValueColors?: Record<string, string>;
-
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;
@@ -97,8 +95,6 @@ export const RowChart = <TDatum,>({
   labelsFormatter = defaultFormatter,
 
   xScaleType = "linear",
-
-  dimensionValueColors,
 
   measureTextWidth,
 
@@ -143,16 +139,8 @@ export const RowChart = <TDatum,>({
             multipleSeries,
             seriesColors,
             xScaleType,
-            dimensionValueColors,
           ),
-    [
-      stackOffset,
-      trimmedData,
-      multipleSeries,
-      seriesColors,
-      xScaleType,
-      dimensionValueColors,
-    ],
+    [stackOffset, trimmedData, multipleSeries, seriesColors, xScaleType],
   );
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;

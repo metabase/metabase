@@ -24,7 +24,7 @@
    [metabase.queries.models.card :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -515,13 +515,13 @@
             mp   (lib-be/application-database-metadata-provider (mt/id))
             qry  (lib/query mp (:dataset_query q))
             bos  (lib/breakouts qry)
-            ids  (set (filter int? (tree-seq coll? seq (first bos))))]
+            col  (lib/find-matching-column qry -1 (first bos) (lib/breakoutable-columns qry))]
         (is (= 1 (count bos))
             "metric's default temporal breakout is stripped before the chosen one is added")
-        (is (contains? ids dim-fid)
-            "the surviving breakout points at the chosen dim's target")
-        (is (not (contains? ids temp-fid))
-            "the metric's original temporal breakout (created_at) is gone")))))
+        (is (= dim-fid (:id col))
+            "the surviving breakout resolves to the chosen dim's target field")
+        (is (not= temp-fid (:id col))
+            "the metric's original temporal breakout (created_at) is gone — the only breakout is the chosen dim")))))
 
 (deftest exploration-create-materializes-metric-x-dimension-matrix-test
   (testing "POST / creates one ExplorationQuery per (metric, dimension) pair"
@@ -632,7 +632,10 @@
     (mt/with-temp [:model/User u {:email "temporal-dt@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
-                      :table_id     (mt/id :venues)
+                      ;; a mapping's :table_id is the table of the *target* column (see
+                      ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
+                      ;; which for joined dimensions differs from the metric's source table
+                      :table_id     (mt/id :people)
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "dt"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
@@ -710,7 +713,8 @@
     (mt/with-temp [:model/User u {:email "high-card@example.com"}
                    :model/Card metric (products-monthly-metric-card (:id u))]
       (let [mapping [{:dimension_id "email"
-                      :table_id     (mt/id :products)
+                      ;; :table_id is the target column's table, not the metric's source table
+                      :table_id     (mt/id :people)
                       :target       ["field" {} (mt/id :people :email)]}]
             body    {:name       "high-card"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
@@ -753,7 +757,10 @@
                                      :table_id   (mt/id :venues)
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id "created"
-                      :table_id     (mt/id :venues)
+                      ;; a mapping's :table_id is the table of the *target* column (see
+                      ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
+                      ;; which for joined dimensions differs from the metric's source table
+                      :table_id     (mt/id :people)
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
@@ -775,7 +782,10 @@
     (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
-                      :table_id     (mt/id :venues)
+                      ;; a mapping's :table_id is the table of the *target* column (see
+                      ;; `column->computed-pair` in `metabase.lib-metric.dimension.jvm`),
+                      ;; which for joined dimensions differs from the metric's source table
+                      :table_id     (mt/id :people)
                       :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "collapse"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
@@ -1176,7 +1186,7 @@
   Stamps `creator_id` from the owning Exploration (as the real runner does) so the cached-read
   gate's creator bypass behaves like production."
   [query-id qp-result]
-  (let [bytes      (cache.impl/do-with-serialization
+  (let [bytes      (qp.core/do-with-serialization
                     (fn [in result-fn]
                       (in qp-result)
                       (result-fn)))
@@ -1838,8 +1848,8 @@
         (is (= [] (:queries thread)))
         (is (= [] (:blocks thread)))))))
 
-(deftest exploration-hydrates-timeline-events-and-per-query-scores-test
-  (testing "GET /:id hydrates :timelines with the underlying Timeline + :events, and :queries with :timeline_interestingness"
+(deftest exploration-hydrates-per-query-timeline-interestingness-test
+  (testing "GET /:id hydrates :queries with per-timeline :timeline_interestingness scores"
     (mt/with-temp [:model/User u {:email "ti-hydrate@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:name       "Promotions"
@@ -2300,3 +2310,58 @@
           (is (nil? (:limit resp)))
           (is (nil? (:offset resp)))
           (is (= 3 (count (:data resp)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                 Create-time reference permission checks                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest create-checks-block-card-permissions-test
+  (testing "POST / read-checks every metric card referenced by the blocks payload"
+    (mt/with-temp [:model/User u {:email "block-card-perms@example.com"}
+                   :model/Collection hidden {:name "hidden-metrics"}
+                   :model/Card secret (assoc (valid-metric-card (mt/user->id :crowberto))
+                                             :collection_id (:id hidden))]
+      ;; Temp collections auto-grant All Users read-write; revoke it so the caller genuinely
+      ;; cannot read the metric card.
+      (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
+      (let [base {:name          "block perm check"
+                  :collection_id (:id (collection/user->personal-collection (:id u)))}]
+        (testing "an unreadable card id is a 403"
+          (mt/user-http-request u :post 403 "exploration"
+                                (assoc base :blocks [{:type    "metric"
+                                                      :metrics [{:card_id (:id secret)}]}])))
+        (testing "a nonexistent card id is a 404"
+          (mt/user-http-request u :post 404 "exploration"
+                                (assoc base :blocks [{:type    "metric"
+                                                      :metrics [{:card_id Integer/MAX_VALUE}]}])))
+        (testing "nothing was persisted by the rejected requests"
+          (is (zero? (t2/count :model/Exploration :name "block perm check"))))))))
+
+(deftest create-checks-timeline-permissions-test
+  (testing "POST / read-checks every attached timeline id"
+    (mt/with-temp [:model/User u {:email "tl-perms@example.com"}
+                   :model/Collection hidden {:name "hidden-timelines"}
+                   :model/Timeline secret-tl {:creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id hidden)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
+      (let [base {:name          "tl perm check"
+                  :collection_id (:id (collection/user->personal-collection (:id u)))}]
+        (testing "an unreadable timeline id is a 403"
+          (mt/user-http-request u :post 403 "exploration"
+                                (assoc base :timeline_ids [(:id secret-tl)])))
+        (testing "a nonexistent timeline id is a 404"
+          (mt/user-http-request u :post 404 "exploration"
+                                (assoc base :timeline_ids [Integer/MAX_VALUE])))
+        (testing "nothing was persisted by the rejected requests"
+          (is (zero? (t2/count :model/Exploration :name "tl perm check"))))))))
+
+(deftest create-dedupes-timeline-ids-test
+  (testing "POST / dedupes repeated timeline_ids instead of 500ing on the unique constraint"
+    (mt/with-temp [:model/User u {:email "tl-dupes@example.com"}
+                   :model/Timeline tl {:creator_id (:id u)}]
+      (let [resp (mt/user-http-request u :post 200 "exploration"
+                                       {:name         "tl dupes"
+                                        :timeline_ids [(:id tl) (:id tl)]})
+            tid  (-> resp :threads first :id)]
+        (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))
+            "the duplicate id collapses to a single attachment")))))

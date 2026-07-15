@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
@@ -51,11 +52,11 @@
     :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
     :thinking    - Provider-specific extended-thinking config. For Anthropic,
                    either of:
-                     - `{:type \"enabled\" :budget_tokens <int>}` (Sonnet 4.6 and
-                       earlier)
-                     - `{:type \"adaptive\" :effort \"high|medium|low\"}` (Opus
-                       4.7+; `:effort` is forwarded as
-                       `output_config.effort`)
+                     - `{:type \"enabled\" :budget_tokens <int>}` (explicit
+                       budget; rejected by adaptive-only models such as Opus
+                       4.7+)
+                     - `{:type \"adaptive\" :effort \"high|medium|low\"}`
+                       (`:effort` is forwarded as `output_config.effort`)
                    The Claude adapter normalizes whichever shape is given into
                    what the target model accepts (adaptive-only models reject
                    `budget_tokens`), so callers express intent rather than the
@@ -331,8 +332,9 @@
   non-text part (or end of stream) closes the open block first.
 
   Options:
-    :message-id - When set, force this id into the `start` event so the client
-                  sees the same id we persist as `metabot_message.external_id`.
+    :message-id       - When set, force this id into the `start` event so the client
+                        sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -347,7 +349,7 @@
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id]}]
+  ([{:keys [message-id message-metadata]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -356,6 +358,10 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
            close-text-block  (fn [result]
                                (if-let [id @current-text-id]
                                  (do (vreset! current-text-id nil)
@@ -366,8 +372,7 @@
                                  result
                                  (do (vreset! started? true)
                                      (-> result
-                                         (rf (format-sse-event {:type      "start"
-                                                                :messageId (or message-id (mkid))}))
+                                         (rf (start-event (or message-id (mkid))))
                                          (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
@@ -399,8 +404,7 @@
                 (do
                   (vreset! started? true)
                   (-> result
-                      (rf (format-sse-event {:type      "start"
-                                             :messageId (or message-id (:id part) (mkid))}))
+                      (rf (start-event (or message-id (:id part) (mkid))))
                       (rf (format-sse-event {:type "start-step"})))))
 
               :text
@@ -548,35 +552,41 @@
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
-  (with-span :info {:name         :metabot.agent/run-tool
-                    :tool-name    tool-name
-                    :tool-call-id tool-call-id}
-    (let [start-ms (u/start-timer)
-          assoc-ms (fn [duration-ms]
-                     (fn [chunk]
-                       (cond-> chunk
-                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-          results  (try
-                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (or (coerce-stringified-json arguments) {})
-                           decode    (tool-decode-fn tool)
-                           arguments (cond-> arguments decode decode)]
-                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-                       (let [tool-fn (tool-call-fn tool)
-                             result  (tool-fn arguments)]
-                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                         (collect-tool-result tool-call-id tool-name result)))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
-                       [{:type         :tool-output-available
-                         :toolCallId   tool-call-id
-                         :toolName     tool-name
-                         :error        {:message (concise-tool-error e)
-                                        :type    (str (type e))}}]))]
-      (mapv (assoc-ms (u/since-ms start-ms))
-            results))))
+  (ait/with-tool-call {:ai/tool-name    tool-name
+                       :ai/tool-call-id tool-call-id}
+    (with-span :info {:name         :metabot.agent/run-tool
+                      :tool-name    tool-name
+                      :tool-call-id tool-call-id}
+      (let [start-ms (u/start-timer)
+            assoc-ms (fn [duration-ms]
+                       (fn [chunk]
+                         (cond-> chunk
+                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+            results  (try
+                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             arguments (or (coerce-stringified-json arguments) {})
+                             decode    (tool-decode-fn tool)
+                             arguments (cond-> arguments decode decode)]
+                         (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
+                         (when (ait/capture-active?)
+                           (ait/record! {:ai/tool-args arguments}))
+                         (let [tool-fn (tool-call-fn tool)
+                               result  (tool-fn arguments)]
+                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                           (collect-tool-result tool-call-id tool-name result)))
+                       (catch Exception e
+                         (if (:agent-error? (ex-data e))
+                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                           (log/warn e "Tool execution failed" {:tool-name tool-name}))
+                         [{:type         :tool-output-available
+                           :toolCallId   tool-call-id
+                           :toolName     tool-name
+                           :error        {:message (concise-tool-error e)
+                                          :type    (str (type e))}}]))]
+        (when (ait/capture-active?)
+          (ait/record! {:ai/tool-output results}))
+        (mapv (assoc-ms (u/since-ms start-ms))
+              results)))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.

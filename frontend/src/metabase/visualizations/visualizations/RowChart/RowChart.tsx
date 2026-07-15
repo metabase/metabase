@@ -299,7 +299,6 @@ const RowChartVisualization = ({
           xLabel={xLabel}
           yLabel={yLabel}
           xScaleType={settings["graph.y_axis.scale"]}
-          dimensionValueColors={settings["graph._dimension_value_colors"]}
           xValueRange={xValueRange}
           labelledSeries={labelledSeries}
           hasXAxis={hasXAxis}

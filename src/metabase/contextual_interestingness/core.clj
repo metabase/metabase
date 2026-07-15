@@ -7,7 +7,8 @@
 
       {:score              <double in [0.0, 1.0]>
        :chart-description  <one-sentence chart description, model-generated>
-       :metric-description <one-sentence metric description, model-generated>}
+       :metric-description <one-sentence metric description, model-generated>
+       :reasoning          <one-sentence score justification, kept for debugging>}
 
   - `:score` ranges match `metabase.interestingness.core/chart-interestingness` so the two
     compose cleanly.
@@ -40,7 +41,7 @@
   "Score how well `chart-config` answers `context-string` and generate descriptions in the
   same LLM call. Returns
 
-      {:score :chart-description :metric-description}
+      {:score :chart-description :metric-description :reasoning}
 
   or nil when the call can't or shouldn't run (blank context, nil chart-config, or the shared
   [[metabase.metabot.core/llm-call-available?]] gate is closed — Metabot disabled, provider
@@ -53,6 +54,10 @@
     `:card-description` — optional already-authored metric description. When present, the
                           model is instructed not to regenerate it; `:metric-description`
                           in the response is always nil.
+    `:chart-slicing`    — optional one-line description of how this chart slices its metric
+                          (segment filter, top-N + Other rollup, specific-values subset,
+                          per-value over-time view). The model is instructed to fold it into
+                          `:chart-description`. Nil-safe.
     `:sql`              — optional compiled SQL string for the underlying query. Used as
                           extra semantic context for description generation. Nil-safe."
   [{:keys [chart-config context-string] :as inputs}]

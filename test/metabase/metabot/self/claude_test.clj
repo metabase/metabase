@@ -186,8 +186,8 @@
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
-(deftest ^:parallel claude-thinking-blocks-ignored-test
-  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) are ignored"
+(deftest ^:parallel claude-thinking-blocks-streamed-test
+  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) stream as reasoning parts"
     (let [events [{:type "message_start"
                    :message {:id "msg-1" :model "claude-sonnet-5"
                              :usage {:input_tokens 10 :output_tokens 0}}}
@@ -202,25 +202,33 @@
                   {:type "message_delta" :delta {:stop_reason "end_turn"}
                    :usage {:input_tokens 10 :output_tokens 5}}
                   {:type "message_stop"}]]
-      (testing "no thinking/reasoning chunks are emitted; only text + usage survive"
-        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+      (testing "reasoning chunks are emitted ahead of the text chunks"
+        (is (=? [{:type :start}
+                 {:type :reasoning-start} {:type :reasoning-delta} {:type :reasoning-end}
+                 {:type :text-start} {:type :text-delta} {:type :text-end}
+                 {:type :usage}]
                 (into []
                       (comp (claude/claude->aisdk-chunks-xf)
                             (m/distinct-by :type))
                       events))))
-      (testing "through the full pipeline produces text + usage"
-        (is (=? [{:type :start} {:type :text :text "hi"} {:type :usage}]
+      (testing "through the full pipeline produces reasoning + text + usage"
+        (is (=? [{:type :start}
+                 {:type :reasoning :reasoning "let me think"}
+                 {:type :text :text "hi"}
+                 {:type :usage}]
                 (into []
                       (comp (claude/claude->aisdk-chunks-xf)
                             (self.core/aisdk-xf))
                       events))))))
-  (testing "a stream that ends mid-thinking flushes usage without emitting a thinking part"
+  (testing "a stream that ends mid-thinking closes the reasoning part and flushes usage"
     (let [events [{:type "message_start"
                    :message {:id "msg-2" :model "claude-sonnet-5"
                              :usage {:input_tokens 10 :output_tokens 0}}}
                   {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
                   {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "partial"}}]]
-      (is (=? [{:type :start} {:type :usage}]
+      (is (=? [{:type :start}
+               {:type :reasoning-start} {:type :reasoning-delta} {:type :reasoning-end}
+               {:type :usage}]
               (into []
                     (comp (claude/claude->aisdk-chunks-xf)
                           (m/distinct-by :type))
@@ -319,16 +327,16 @@
       (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
-          (with-redefs [self.core/sse-reducible identity
-                        debug/capture-stream    (fn [r _] r)
-                        http/request            (fn [req] {:body req})]
+          (with-redefs [self.core/sse-reducible             identity
+                        debug/capture-stream                (fn [r _] r)
+                        http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.anthropic.com/v1/messages"
                      :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
                     (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
         (testing "Uses ai proxy when explicitly requested"
-          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
+          (with-redefs [llm.settings/llm-anthropic-api-key  (constantly nil)
                         self.core/sse-reducible             identity
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
@@ -450,6 +458,17 @@
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
+
+(deftest claude-system-cache-breakpoint-blank-suffix-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
+      (let [body (capture-claude-request-body!
+                  {:input  [{:role :user :content "hi"}]
+                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+        (is (= [{:type          "text"
+                 :text          "Stable prefix content."
+                 :cache_control {:type "ephemeral"}}]
+               (:system body)))))))
 
 (deftest system-templates-cache-breakpoint-presence-test
   (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
@@ -577,7 +596,7 @@
                    "claude-opus-5" "claude-opus-5-0"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
                    "claude-fable-5"]]
-      (is (false? (#'claude/model-supports-temperature? model))
+      (is (false? (#'claude/model-supports-temperature? model nil))
           model))))
 
 (deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test

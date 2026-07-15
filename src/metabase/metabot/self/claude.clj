@@ -407,11 +407,11 @@
 
 (defn- adaptive-thinking-only?
   "Whether `model` accepts only adaptive thinking — sending the legacy
-   `{:type \"enabled\" :budget_tokens N}` shape returns HTTP 400.
+  `{:type \"enabled\" :budget_tokens N}` shape returns HTTP 400.
 
-   `capabilities` is the model's live Models API capability map when available
-   (see [[model-capabilities]]) and takes precedence: adaptive-only iff the
-   `enabled` thinking type is unsupported while `adaptive` is supported."
+  `capabilities` is the model's live Models API capability map when available
+  (see [[model-capabilities]]) and takes precedence: adaptive-only iff the
+  `enabled` thinking type is unsupported while `adaptive` is supported."
   [model capabilities]
   (if-let [types (get-in capabilities [:thinking :types])]
     (and (not (get-in types [:enabled :supported]))
@@ -430,8 +430,8 @@
 
 (defn- normalize-thinking
   "Coerce a caller's `:thinking` config into the wire shape `model` accepts, so
-   call sites declare intent once and keep working as the configured model
-   changes generation."
+  call sites declare intent once and keep working as the configured model
+  changes generation."
   [model capabilities thinking]
   (when thinking
     (if-not (adaptive-thinking-only? model capabilities)
@@ -490,7 +490,12 @@
       (and all-tools tool_choice)
       (assoc :tool_choice (case (name tool_choice)
                             "auto"     {:type "auto"}
-                            "required" {:type "any"}))
+                            ;; Anthropic forbids forced tool use (`{:type "any"}`)
+                            ;; when extended thinking is enabled — degrade to
+                            ;; `auto`, same as the schema path above.
+                            "required" (if thinking
+                                         {:type "auto"}
+                                         {:type "any"})))
 
       (and temperature (model-supports-temperature? model model-caps))
       (assoc :temperature temperature))))
@@ -499,9 +504,10 @@
   "Perform a streaming request to Claude API.
 
   `:thinking` accepts either of Anthropic's two extended-thinking shapes:
-   - Legacy / explicit budget (Sonnet 4.6 and earlier):
+   - Explicit budget:
        `{:type \"enabled\" :budget_tokens <int>}`
-   - Adaptive (required by Opus 4.7+):
+       (rejected by adaptive-only models — see [[adaptive-thinking-only?]])
+   - Adaptive (the only shape adaptive-only models such as Opus 4.7+ accept):
        `{:type \"adaptive\" :effort \"high\"|\"medium\"|\"low\"}`
   Either shape is normalized to what the target model actually accepts —
   preferring the model's live Models API capabilities (fetched once per model

@@ -121,7 +121,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java-version: [21]
+        java-version: [25]
         job:
           - name: Enterprise Tests
             edition: ee
@@ -221,7 +221,7 @@ jobs:
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
+        if: always()
         with:
           input-path: ./target/junit/
           output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
@@ -259,7 +259,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [21]
+        java-version: [25]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v6

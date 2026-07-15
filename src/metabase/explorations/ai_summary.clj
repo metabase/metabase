@@ -255,18 +255,25 @@
   (coerce-int (get-in node [:attrs :id])))
 
 (defn- wrap-card-embeds-in-resize-nodes
-  "Walk the LLM-generated PM doc and wrap each top-level `cardEmbed` in a `resizeNode` so the
-  FE node-view inherits an explicit height (matching the structure produced by the user-facing
-  append endpoint). Without the wrapper, static cardEmbeds inside paragraphs collapse to 0
-  height because `.cardEmbed` is `height: 100%` of an unsized parent."
+  "Walk the LLM-generated PM doc and wrap every `cardEmbed` — at any depth, e.g. inside a
+  `blockquote` — in a `resizeNode` so the FE node-view inherits an explicit height (matching
+  the structure produced by the user-facing append endpoint). Without the wrapper, static
+  cardEmbeds collapse to 0 height because `.cardEmbed` is `height: 100%` of an unsized parent.
+  Wrapping happens at the parent's `:content` (skipping parents that are already `resizeNode`s)
+  so an already-wrapped embed is never double-wrapped."
   [pm-doc]
   (letfn [(wrap [node]
             (if (card-embed? node)
               {:type "resizeNode" :attrs {:height 400} :content [node]}
               node))]
-    (cond-> pm-doc
-      (and (map? pm-doc) (sequential? (:content pm-doc)))
-      (update :content (fn [content] (mapv wrap content))))))
+    (walk/postwalk
+     (fn [node]
+       (if (and (map? node)
+                (not= "resizeNode" (:type node))
+                (sequential? (:content node)))
+         (update node :content (partial mapv wrap))
+         node))
+     pm-doc)))
 
 (defn- materialize-cards-for-card-embeds
   "Walk every static `cardEmbed` in `pm-doc`, materialize a real `report_card` for each one
@@ -349,11 +356,13 @@
            rationale top_tier awareness_tier]}]
   (let [top-breakouts       (u/keepv breakouts-by-rep top_tier)
         awareness-breakouts (u/keepv breakouts-by-rep awareness_tier)
-        categorical-top-ids (into #{}
-                                  (comp (mapcat :variants)
-                                        (filter #(-> % :cfg phase2/x-axis-kind (= :categorical)))
-                                        (keep :stored-result-id))
-                                  top-breakouts)
+        ;; both tiers: the model may embed awareness-tier charts too, and their prompt blocks
+        ;; carry the same per-chart sort instruction (see `phase2/slim-block`).
+        categorical-chart-ids (into #{}
+                                    (comp (mapcat :variants)
+                                          (filter #(-> % :cfg phase2/x-axis-kind (= :categorical)))
+                                          (keep :stored-result-id))
+                                    (concat top-breakouts awareness-breakouts))
         analysis-prompt   (phase2/build-analysis-prompt
                            {:thread-prompt       (:prompt thread)
                             :selections          selections
@@ -363,7 +372,7 @@
                             :awareness-breakouts awareness-breakouts
                             :total-chart-count   (count done-queries)
                             :pool-size           (count breakouts)})
-        p2 (phase2/run-analysis! thread-id analysis-prompt categorical-top-ids)
+        p2 (phase2/run-analysis! thread-id analysis-prompt categorical-chart-ids)
         common-args {:placeholder-doc placeholder-doc
                      :creator-id      creator-id
                      :exploration-id  (:exploration_id thread)

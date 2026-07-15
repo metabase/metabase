@@ -1,4 +1,1 @@
-export {
-  TimelineSidebar,
-  type TimelineSidebarProps,
-} from "metabase/timelines/questions/components/TimelineSidebar";
+export { TimelineSidebar } from "./TimelineSidebar";

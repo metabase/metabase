@@ -30,11 +30,15 @@
   (testing "root type must be doc"
     (is (= ["Top-level node must have type=\"doc\", got `paragraph`"]
            (validate/validate-prose-mirror (p (text "x"))))))
-  (testing "doc must have non-empty content"
-    (is (= ["doc: doc has empty `content`; either remove the node or add children"]
-           (validate/validate-prose-mirror {:type "doc" :content []})))
-    (is (= ["doc: doc requires a non-empty `content` array"]
-           (validate/validate-prose-mirror {:type "doc"})))))
+  (testing "an empty root doc is valid — the backend itself creates {:type \"doc\" :content []}"
+    (is (= [] (validate/validate-prose-mirror {:type "doc" :content []})))
+    (is (= [] (validate/validate-prose-mirror {:type "doc"}))))
+  (testing "root `content` must still be an array when present"
+    (is (= ["doc: `content` must be an array, got java.lang.String"]
+           (validate/validate-prose-mirror {:type "doc" :content "nope"}))))
+  (testing "empty content on non-root containers is still rejected"
+    (is (= ["doc.content[0]: bulletList has empty `content`; either remove the node or add children"]
+           (validate/validate-prose-mirror (doc {:type "bulletList" :content []}))))))
 
 (deftest valid-canonical-doc-test
   (testing "the canonical doc shape we ask the LLM to emit validates clean"
