@@ -70,6 +70,6 @@
    warehouses.schema
    warehouses.secrets
    enterprise/api
-   enterprise/scim
    enterprise/serialization
-   enterprise/sso}}
+   enterprise/sso
+   enterprise/sso.scim}}
