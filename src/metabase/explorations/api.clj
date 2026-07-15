@@ -276,11 +276,11 @@
         dimensions))
 
 (defn- format-explore-filter-for-thread-name
-  [{:keys [display_name display_value value]}]
+  [{:keys [dimension_name display_value value]}]
   (let [value-str (or (some-> display_value str/trim not-empty)
                       (some-> value str))]
-    (if (and display_name (not (str/blank? value-str)))
-      (str display_name ": " value-str)
+    (if (and dimension_name (not (str/blank? value-str)))
+      (str dimension_name ": " value-str)
       value-str)))
 
 (defn- explore-further-thread-name
@@ -390,7 +390,7 @@
               [:field_ref     [:sequential :any]]
               [:value         :any]
               [:display_value {:optional true} [:maybe :string]]
-              [:display_name  {:optional true} [:maybe :string]]]]]]
+              [:dimension_name {:optional true} [:maybe :string]]]]]]
    [:pages           [:sequential ::ExplorationPageNode]]])
 
 (mr/def ::ExplorationDocument
@@ -514,7 +514,7 @@
    [:field_ref     [:sequential :any]]
    [:value         :any]
    [:display_value {:optional true} [:maybe :string]]
-   [:display_name  {:optional true} [:maybe :string]]])
+   [:dimension_name {:optional true} [:maybe :string]]])
 
 (def ^:private ExploreFurther
   "Body schema for `POST /api/exploration/:id/explore-further`. `page_id` is the clicked chart's

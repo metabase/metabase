@@ -1571,21 +1571,21 @@
               (let [persisted-filters (:explore_filters (first (:metrics persisted)))]
                 (is (= 1 (count persisted-filters)))
                 (is (= filter-value (:value (first persisted-filters))))
-                (is (= "Price" (:display_name (first persisted-filters))))
+                (is (= "Price" (:dimension_name (first persisted-filters))))
                 (is (contains? (first persisted-filters) :display_value)))))
           (testing "filtered blocks expose explore_filters on the block node and unprefixed page names"
-            (let [page (first (:pages new-block))]
-              (is (some? page))
-              (is (= [{:field_ref     field-ref
-                       :value         filter-value
-                       :display_name  "Price"
-                       :display_value "2"}]
-                     (map #(select-keys % [:field_ref :value :display_name :display_value])
+            (let [price-page (some #(when (str/includes? (:name %) "Price") %) (:pages new-block))]
+              (is (some? price-page))
+              (is (= [{:field_ref      field-ref
+                       :value          filter-value
+                       :dimension_name "Price"
+                       :display_value  "2"}]
+                     (map #(select-keys % [:field_ref :value :dimension_name :display_value])
                           (:explore_filters new-block)))
                   "block node echoes persisted explore_filters")
-              (is (str/includes? (:name page) "Price")
+              (is (str/includes? (:name price-page) "Price")
                   "page short name is heading-relative, without the clicked value prefix")
-              (is (= "Number of venues by Price" (:long_name page)))))
+              (is (= "Number of venues by Price" (:long_name price-page)))))
           (testing "timelines are copied from the source thread"
             (is (= 1 (count (:timelines new))))
             (is (= (:id tl) (-> new :timelines first :timeline_id))))
@@ -1875,14 +1875,14 @@
 
 (deftest blocks-tree-explore-further-naming-test
   (testing "filtered blocks expose explore_filters on the block node with unprefixed page names"
-    (let [filters [{:field_ref ["field" {} 1]
-                    :value     "texas"
-                    :display_name "State"
-                    :display_value "Texas"}
-                   {:field_ref ["field" {} 2]
-                    :value     "2024"
-                    :display_name "Year"
-                    :display_value "2024"}]
+    (let [filters [{:field_ref      ["field" {} 1]
+                    :value          "texas"
+                    :dimension_name "State"
+                    :display_value  "Texas"}
+                   {:field_ref      ["field" {} 2]
+                    :value          "2024"
+                    :dimension_name "Year"
+                    :display_value  "2024"}]
           blocks  [{:id 5 :metrics [{:card_id 10 :explore_filters filters}]}]
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
           queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Category" :name "stored name"}]

@@ -250,8 +250,8 @@
                       dim))))
               block-dimensions)))))
 
-(defn- explore-filter-display-name
-  "Resolve the column label for one explore filter on `metric` within `block`."
+(defn- explore-filter-dimension-name
+  "Resolve the dimension label for one explore filter on `metric` within `block`."
   [mp card block metric filter-spec]
   (let [block-dims (or (:dimensions block) [])]
     (or (some-> (dimension-for-explore-filter mp card block-dims metric filter-spec)
@@ -265,13 +265,13 @@
           (catch Exception _ nil)))))
 
 (defn enrich-explore-filters
-  "Stamp BE-computed `:display_name` onto each request filter, preserving the FE-supplied
+  "Stamp BE-computed `:dimension_name` onto each request filter, preserving the FE-supplied
   `:display_value` when present."
   [mp card block metric explore-filters]
   (mapv (fn [filter-spec]
-          (let [display-name (explore-filter-display-name mp card block metric filter-spec)]
+          (let [dimension-name (explore-filter-dimension-name mp card block metric filter-spec)]
             (cond-> filter-spec
-              display-name (assoc :display_name display-name))))
+              dimension-name (assoc :dimension_name dimension-name))))
         explore-filters))
 
 (defn- apply-single-explore-filter
