@@ -49,10 +49,10 @@
   ^BufferedImage [^long w ^long h]
   (if (> (* w h) (long array-pixels))
     (do
-      (analytics/inc! :metabase-static-viz/image-buffer-unpooled)
+      (analytics/inc! :metabase-notification/image-buffer-unpooled)
       (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
     (let [^"[I" backing (.acquire array-pool pool-key)]
-      (analytics/inc! :metabase-static-viz/image-buffer-pooled)
+      (analytics/inc! :metabase-notification/image-buffer-pooled)
       (java.util.Arrays/fill backing 0 (int (* w h)) (int 0))
       (wrap-array backing w h))))
 
