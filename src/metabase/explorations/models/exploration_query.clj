@@ -47,6 +47,20 @@
   [_model k queries]
   (hydrate-score-from-result k queries))
 
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :row_count]
+  [_model k queries]
+  (mi/instances-with-hydrated-data
+   queries k
+   #(u/index-by :exploration_query_id :row_count
+                (t2/select [:model/ExplorationQueryResult
+                            :exploration_query_result.exploration_query_id
+                            [:stored_result.row_count :row_count]]
+                           {:join  [:stored_result
+                                    [:= :stored_result.id :exploration_query_result.stored_result_id]]
+                            :where [:in :exploration_query_result.exploration_query_id
+                                    (map :id queries)]}))
+   :id))
+
 (defn- ->timeline-score [row]
   (select-keys row [:timeline_id :interestingness_score]))
 
