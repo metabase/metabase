@@ -230,16 +230,6 @@
                     :model/QueryExecution
                     :model/User}}
 
-  analyze
-  {:team "Graphy"
-   :api  #{metabase.analyze.core}
-   :uses #{config
-           lib.schema
-           models
-           query-processor
-           sync
-           util}
-   :model-imports #{:model/Field :model/Table}}
 
   ;; TODO -- consolidate these into a `.core` API namespace.
   api
@@ -518,8 +508,8 @@
            metabase.cloud-migration.init}
    :uses #{api
            app-db
-           cmd
            config
+           core.cmd
            models
            premium-features
            settings
@@ -534,24 +524,6 @@
                     :model/User
                     :model/UserParameterValue
                     :model/ViewLog}}
-
-  cmd
-  {:team "UX West"
-   :api  #{metabase.cmd.copy
-           metabase.cmd.core
-           metabase.cmd.dump-to-h2}
-   :uses #{api
-           api-routes
-           app-db
-           auth-identity
-           classloader
-           config
-           models
-           query-processor
-           search
-           settings
-           util}
-   :model-imports :bypass}
 
   collections
   {:team "UX West"
@@ -588,6 +560,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/User}}
+
 
   collections.rest
   {:team    "UX West"
@@ -669,8 +642,29 @@
 
   core
   {:team "UX West"
+   :module-exports #{core.cmd}
    :api  #{}
    :uses :any}
+
+  core.cmd
+  {:team "UX West"
+   :ns-prefix "metabase.cmd"
+   :api  #{metabase.cmd.copy
+           metabase.cmd.core
+           metabase.cmd.dump-to-h2}
+   :uses #{api
+           api-routes
+           app-db
+           auth-identity
+           classloader
+           config
+           models
+           query-processor
+           search
+           settings
+           util}
+   :model-imports :bypass}
+
 
   dashboards
   {:team "UX West"
@@ -1793,7 +1787,6 @@
            metabase.queries.schema}
    :uses #{analytics
            analytics.interface
-           analyze
            api
            app-db
            audit-app
@@ -1825,6 +1818,7 @@
            settings
            staleness
            sync
+           sync.analyze
            util
            view-log
            warehouses.schema}
@@ -1851,8 +1845,7 @@
   {:team    "Querying Platform"
    :ns-prefix "metabase.queries-rest"
    :api  #{metabase.queries-rest.api}
-   :uses #{analyze
-           api
+   :uses #{api
            collections
            eid-translation
            embedding
@@ -1870,6 +1863,7 @@
            request
            revisions
            search
+           sync.analyze
            util}
    :model-imports #{:model/Card
                     :model/CardBookmark
@@ -1933,7 +1927,6 @@
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics.interface
-           analyze
            api
            app-db
            appearance
@@ -1962,6 +1955,7 @@
            request
            server
            settings
+           sync.analyze
            system
            tracing
            users
@@ -2327,6 +2321,7 @@
 
   sync
   {:team "Graphy"
+   :module-exports #{sync.analyze}
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.field-values
@@ -2335,7 +2330,6 @@
            metabase.sync.task.sync-databases
            metabase.sync.util}
    :uses #{analytics.interface
-           analyze
            api
            app-db
            audit-app
@@ -2351,6 +2345,7 @@
            premium-features
            query-processor
            settings
+           sync.analyze
            task
            task.history
            tracing
@@ -2362,6 +2357,18 @@
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
+
+  sync.analyze
+  {:team "Graphy"
+   :ns-prefix "metabase.analyze"
+   :api  #{metabase.analyze.core}
+   :uses #{config
+           lib.schema
+           models
+           query-processor
+           sync
+           util}
+   :model-imports #{:model/Field :model/Table}}
 
   system
   {:team "UX West"
@@ -2833,8 +2840,7 @@
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
-   :uses #{analyze
-           api
+   :uses #{api
            app-db
            audit-app
            collections
@@ -2850,6 +2856,7 @@
            query-processor
            remote-sync
            search
+           sync.analyze
            util
            warehouses}
    :model-exports #{:model/Dimension
@@ -2914,8 +2921,7 @@
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
-   :uses #{analyze
-           api
+   :uses #{api
            appearance
            collections
            dashboards
@@ -2931,6 +2937,7 @@
            query-processor
            segments
            settings
+           sync.analyze
            util
            warehouses.schema}
    :model-imports #{:model/Card
@@ -3096,21 +3103,6 @@
                     :model/QueryCache
                     :model/QueryExecution}}
 
-  enterprise/checker
-  {:team "Graphy"
-   ;; todo: add ability to prevent usage (transitive even) of app db
-   :api  #{}
-   :uses #{classloader
-           lib
-           lib.metadata
-           lib.schema
-           models
-           plugins
-           query-processor
-           sql-tools
-           util
-           enterprise/dependencies}
-   :model-imports #{:model/Database}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -3298,6 +3290,23 @@
                     :model/Segment
                     :model/Table
                     :model/Transform}}
+
+  enterprise/dependencies.checker
+  {:team "Graphy"
+   :ns-prefix "metabase-enterprise.checker"
+   ;; todo: add ability to prevent usage (transitive even) of app db
+   :api  #{}
+   :uses #{classloader
+           lib
+           lib.metadata
+           lib.schema
+           models
+           plugins
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}
+   :model-imports #{:model/Database}}
 
   enterprise/email
   {:team "UX West"
