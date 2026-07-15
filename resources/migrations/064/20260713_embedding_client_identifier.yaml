@@ -1,0 +1,100 @@
+## Adds the embedding_client_identifier column that stores the value of the
+## X-Metabase-Client-Identifier request header (e.g. the data-app name), so
+## query executions and views can be attributed to a concrete embedding client,
+## not just a client type.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-13T00:00:00
+      author: timofei
+      comment: Add embedding_client_identifier column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_client_identifier
+                  remarks: Identifier of the concrete embedding client (e.g. the data-app name) from the X-Metabase-Client-Identifier header
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-13T00:00:01
+      author: timofei
+      comment: Add embedding_client_identifier column to view_log for embedding analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_client_identifier
+                  remarks: Identifier of the concrete embedding client (e.g. the data-app name) from the X-Metabase-Client-Identifier header
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  # Surface the new column in usage analytics, where the rest of the embedding
+  # attributes already live.
+
+  - changeSet:
+      id: v64.2026-07-13T00:00:02
+      author: timofei
+      comment: Updated view v_query_log v6 - add embedding_client_identifier (EMB-2088)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v6/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v6/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v6/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v5/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v5/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v5/h2-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.2026-07-13T00:00:03
+      author: timofei
+      comment: Updated view v_view_log v5 - add embedding_client_identifier (EMB-2088)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v5/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v5/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v5/h2-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v4/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v4/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v4/h2-view_log.sql
+            relativeToChangelogFile: true
