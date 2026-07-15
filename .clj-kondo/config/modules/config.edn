@@ -157,8 +157,7 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
+   :api     #{metabase.agent-api.api metabase.agent-api.init metabase.agent-api.query-guards}
    :uses    #{ai-tracing
               api
               auth-identity
@@ -1270,6 +1269,8 @@
            app-db
            config
            eid-translation
+           lib
+           lib-be
            llm
            metabot
            oauth-server
@@ -1279,6 +1280,7 @@
            session
            settings
            system
+           task
            util}
    :model-imports #{:model/Collection}}
 
