@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
+   [mage.modules-html :as modules-html]
    [mage.shell :as shell]
    [mage.util :as u]))
 
@@ -399,27 +400,82 @@
                     (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
           (sorted-children node))))
 
+(defn- set-field->strings
+  "Sort + stringify a set-valued config field (`:api`, `:friends`, `:model-*`…) for the HTML explorer,
+  spelling out the `:any`/`:bypass` sentinels so the front-end can show them literally."
+  [x]
+  (cond
+    (= x :any)    ["∗any"]
+    (= x :bypass) ["∗bypass"]
+    (set? x)      (vec (sort (map str x)))
+    :else         []))
+
+(defn- used-by-index
+  "Reverse of every module's `:uses`: `module-string -> #{modules that :use it}`."
+  [modules-config]
+  (reduce-kv (fn [acc m {:keys [uses]}]
+               (if (set? uses)
+                 (reduce (fn [a used] (update a (str used) (fnil conj #{}) (str m))) acc uses)
+                 acc))
+             {} modules-config))
+
+(defn- module->viz-node
+  "Flatten one module's config into the plain-data map the HTML explorer consumes. `:path` reuses the
+  same display nesting as the text tree; `:used-by` is filled from the reverse-`:uses` index."
+  [modules-config used-by module]
+  (let [{:keys [team api uses friends] :as entry} (get modules-config module)]
+    {:id                   (str module)
+     :name                 (name module)
+     :enterprise           (= (namespace module) "enterprise")
+     :team                 team
+     :path                 (module->tree-path modules-config module)
+     :ns-prefix            (explicit-ns-prefix modules-config module)
+     :api-any              (= api :any)
+     :api                  (set-field->strings api)
+     :uses-any             (= uses :any)
+     :uses                 (if (set? uses) (vec (sort (map str uses))) [])
+     :used-by              (vec (sort (get used-by (str module))))
+     :friends              (set-field->strings friends)
+     :module-exports       (set-field->strings (:module-exports entry))
+     :model-exports        (set-field->strings (:model-exports entry))
+     :model-imports-bypass (= (:model-imports entry) :bypass)
+     :model-imports        (set-field->strings (:model-imports entry))}))
+
+(defn- modules->viz-data
+  "The full seq of module nodes (alphabetical) fed to [[mage.modules-html/page]]."
+  [modules-config]
+  (let [used-by (used-by-index modules-config)]
+    (mapv (partial module->viz-node modules-config used-by) (sort (keys modules-config)))))
+
 (defn cli-print-module-tree
   "Print the module hierarchy as an indented tree, with enterprise extensions nested under the module
-  they extend and ns-prefixed (not yet moved) modules starred."
+  they extend and ns-prefixed (not yet moved) modules starred. With `--html`, emit a self-contained
+  interactive HTML explorer instead — to stdout, or to a file with `--output`."
   [{:keys [options] :as _parsed}]
-  (let [modules-config (read-modules-config)
-        tree           (module-display-tree modules-config)
-        roots          (cond->> (sorted-children tree)
-                         (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
-        starred        (count (keep #(explicit-ns-prefix modules-config %) (keys modules-config)))]
-    (doseq [[segment node] roots
-            line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
-      (println line))
-    (println)
-    (println (c/dark (str (count modules-config) " modules, "
-                          (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
-                          " enterprise"
-                          (when (pos? starred)
-                            (str ", " starred " ns-prefixed ("
-                                 (if (:prefixes options) "prefix in parens " "* ")
-                                 "= namespaces not moved to match the module name)")))))
-    (u/exit 0)))
+  (let [modules-config (read-modules-config)]
+    (if (:html options)
+      (let [html (modules-html/page (modules->viz-data modules-config))]
+        (if-let [out (:output options)]
+          (do (spit out html)
+              (println (c/green (str "Wrote " out " (" (count modules-config) " modules)"))))
+          (print html))
+        (u/exit 0))
+      (let [tree    (module-display-tree modules-config)
+            roots   (cond->> (sorted-children tree)
+                      (:nested-only options) (filter (fn [[_ node]] (seq (:children node)))))
+            starred (count (keep #(explicit-ns-prefix modules-config %) (keys modules-config)))]
+        (doseq [[segment node] roots
+                line            (tree-node-lines modules-config (:prefixes options) [segment] node)]
+          (println line))
+        (println)
+        (println (c/dark (str (count modules-config) " modules, "
+                              (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
+                              " enterprise"
+                              (when (pos? starred)
+                                (str ", " starred " ns-prefixed ("
+                                     (if (:prefixes options) "prefix in parens " "* ")
+                                     "= namespaces not moved to match the module name)")))))
+        (u/exit 0)))))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests because `updated-files` touches something important like
