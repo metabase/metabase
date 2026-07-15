@@ -1,5 +1,8 @@
 import { render, screen } from "@testing-library/react";
 
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { PLUGIN_API } from "metabase/plugins";
+
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
 import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 
@@ -31,18 +34,46 @@ const setup = (providerProps?: Record<string, unknown>) => {
   } as unknown as ReturnType<typeof useHostSdkStore>);
 
   render(
-    <DataAppProvider providerProps={providerProps}>
+    <DataAppProvider appName="test-app" providerProps={providerProps}>
       <div>app content</div>
     </DataAppProvider>,
   );
 };
 
 describe("DataAppProvider", () => {
-  afterEach(() => jest.clearAllMocks());
+  const originalConfig = { ...EMBEDDING_SDK_CONFIG };
+  const originalHandlers = { ...PLUGIN_API.onBeforeRequestHandlers };
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    Object.assign(EMBEDDING_SDK_CONFIG, originalConfig);
+    Object.assign(PLUGIN_API.onBeforeRequestHandlers, originalHandlers);
+  });
 
   it("renders its children", () => {
     setup();
     expect(screen.getByText("app content")).toBeInTheDocument();
+  });
+
+  it("configures the data-app request headers with the app name", async () => {
+    setup();
+
+    expect(EMBEDDING_SDK_CONFIG.isDataApp).toBe(true);
+    expect(EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier).toBe(
+      "test-app",
+    );
+    expect(
+      await PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders({
+        method: "GET",
+        url: "/api/health",
+        data: {},
+      }),
+    ).toEqual({
+      headers: {
+        "X-Metabase-Client": "data-app",
+        "X-Metabase-Client-Identifier": "test-app",
+      },
+    });
   });
 
   // Regression guard: the neutral error component must be registered in the

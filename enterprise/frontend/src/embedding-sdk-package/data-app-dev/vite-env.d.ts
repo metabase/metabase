@@ -18,6 +18,7 @@ interface ImportMeta {
 
 declare module "virtual:metabase-data-app-dev-config" {
   export const allowedHosts: string[];
+  export const appSlug: string;
   export const bundleUrl: string;
   export const rebuiltEvent: string;
 }

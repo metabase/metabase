@@ -7,12 +7,14 @@ import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
+  DataAppDevProvider,
   DevToolbar,
   createDataAppSandbox,
   installDevDiagnostics,
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
+  appSlug,
   bundleUrl,
   rebuiltEvent,
 } from "virtual:metabase-data-app-dev-config";
@@ -33,10 +35,8 @@ import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
 //
 // It mounts the diagnostics toolbar, builds the Near-Membrane sandbox, then
 // fetches + evaluates the app's IIFE bundle and renders it under
-// `MetabaseProvider`. Load failures go through `console.error`, so the toolbar
+// `DataAppDevProvider`. Load failures go through `console.error`, so the toolbar
 // surfaces them.
-
-const { MetabaseProvider } = sdkExports;
 
 const authConfig = {
   metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL,
@@ -84,9 +84,13 @@ async function loadAndRender() {
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
   appRoot.render(
-    <MetabaseProvider authConfig={authConfig} {...providerProps}>
+    <DataAppDevProvider
+      appSlug={appSlug}
+      authConfig={authConfig}
+      {...providerProps}
+    >
       <Component />
-    </MetabaseProvider>,
+    </DataAppDevProvider>,
   );
 }
 
