@@ -80,22 +80,21 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
-tree may contain. `metabase.core.kondo-ratchet-test` fails when any count exceeds its budget, so ignores can
-be removed freely but never silently added. Prefer fixing the underlying warning over adding an ignore.
+tree may contain. `metabase.core.kondo-ratchet-test` fails when the budgets drift from the actual counts,
+in either direction. Prefer fixing the underlying warning over adding an ignore.
 
-Stale budgets (above the actual counts) also fail the test. A local run of
-`metabase.core.kondo-ratchet-test` tightens the file for you (commit the change), and PRs labelled
-`kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI. To tighten by hand
-(babashka, no JVM; a no-op prints `unchanged`):
+Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
+change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
+To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
 ```
 
-The task never raises a budget or adds an entry. If a new ignore is genuinely required, raise the budget by
-hand (the task's `WARNING:` output tells you the actual count) and defend the increase in the PR. The same
-applies when introducing a new linter: add an entry at the current actual count instead of cleaning up every
-occurrence first.
+Budget too low (you added an ignore): the task never raises a budget or adds an entry. If the ignore is
+genuinely required, raise the budget by hand (the task's `WARNING:` output tells you the actual count) and
+defend the increase in the PR. The same applies when introducing a new linter: add an entry at the current
+actual count instead of cleaning up every occurrence first.
 
 ## Tool Preferences
 
