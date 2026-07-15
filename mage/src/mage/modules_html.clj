@@ -65,7 +65,7 @@ button.ghost:hover{color:var(--ink);border-color:var(--accent)}
 .tchip.off{opacity:.4}
 .tchip .ct{color:var(--ink-soft);font-size:11px}
 main{flex:1;display:flex;min-height:0}
-.tree{flex:1;overflow:auto;padding:10px 8px 40px;min-width:0}
+.tree{flex:1;overflow:auto;padding:10px 8px 40px;min-width:0;overflow-anchor:none}
 .detail{width:380px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);
   overflow:auto;padding:0}
 .row{display:flex;align-items:center;gap:7px;padding:3px 6px;border-radius:7px;cursor:pointer;
@@ -168,7 +168,14 @@ function sortedKids(node){
 
 // ---- state ---------------------------------------------------------------
 const open = new Set();            // node dom-path keys currently expanded
-const activeTeams = new Set(TEAMS);
+// team focus: empty = passive (every team shown); non-empty = show only these.
+// toggling a team in/out; emptying the set returns to passive.
+const focusTeams = new Set();
+function teamActive(t){ return focusTeams.size===0 || focusTeams.has(t); }
+function refreshTeamChips(){
+  for(const el of legend.querySelectorAll('.tchip'))
+    el.classList.toggle('off', focusTeams.size>0 && !focusTeams.has(el.dataset.team));
+}
 let selected = null;               // module id
 let query = '';
 
@@ -185,7 +192,7 @@ for(const t of TEAMS){
   const el = document.createElement('span');
   el.className='tchip'; el.dataset.team=t;
   el.innerHTML=`<span class=dot style='background:${teamColor[t]}'></span>${t}<span class=ct>${teamCount[t]}</span>`;
-  el.onclick=()=>{ activeTeams.has(t)?activeTeams.delete(t):activeTeams.add(t); el.classList.toggle('off'); render(); };
+  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); };
   legend.appendChild(el);
 }
 const hint=document.createElement('span');
@@ -219,16 +226,19 @@ function visibleKeys(){
   return keep;
 }
 
-function depMarks(m){
-  if(!selected || !m) return '';
+// Append dependency dots directly to the row as flex children (7px each). Wrapping them in a span
+// would make that span a flex item whose line box inherits line-height:1.5 (~21px), taller than the
+// row text — so related rows would grow/shrink by ~1px as selection moves. Direct children don't.
+function appendDepMarks(row, m){
+  if(!selected || !m) return;
   const s = byId[selected];
-  let html='';
-  if(s.uses.includes(m.id)) html+=`<span class='dep-mark uses' title='used by ${selected}'></span>`;
-  if(s['used-by'].includes(m.id)) html+=`<span class='dep-mark usedby' title='uses ${selected}'></span>`;
-  return html;
+  const mark=(cls,title)=>{ const d=document.createElement('span'); d.className='dep-mark '+cls; d.title=title; row.appendChild(d); };
+  if(s.uses.includes(m.id)) mark('uses', 'used by '+selected);
+  if(s['used-by'].includes(m.id)) mark('usedby', 'uses '+selected);
 }
 
 function render(){
+  const scroll = treeEl.scrollTop;   // full rebuild resets scroll; restore it so selecting a node doesn't jump
   const keep = visibleKeys();
   treeEl.innerHTML='';
   const frag = document.createDocumentFragment();
@@ -238,7 +248,7 @@ function render(){
       const key = kpath.join('/');
       if(keep && !keep.has(key)) continue;
       const m = kid.module;
-      const teamOk = !m || !m.team || activeTeams.has(m.team);
+      const teamOk = !m || !m.team || teamActive(m.team);
       const hasKids = kid.children.size>0;
 
       const row = document.createElement('div');
@@ -265,7 +275,7 @@ function render(){
       if(m){ const c=document.createElement('span'); c.className='mini';
         c.textContent=`${m.uses.length}→ ${m['used-by'].length}←`;
         c.title=`${m.uses.length} uses · ${m['used-by'].length} used-by`; row.appendChild(c); }
-      const dm=depMarks(m); if(dm){ const s=document.createElement('span'); s.innerHTML=dm; row.appendChild(s); }
+      appendDepMarks(row, m);
 
       const kidsBox=document.createElement('div');
       kidsBox.className='kids'+(hasKids&&isOpen?'':' hidden');
@@ -283,6 +293,7 @@ function render(){
     }
   })(root, [], frag);
   treeEl.appendChild(frag);
+  treeEl.scrollTop = scroll;
 }
 
 // ---- detail panel --------------------------------------------------------
