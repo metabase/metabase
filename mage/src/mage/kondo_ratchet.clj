@@ -52,14 +52,22 @@
     (kondo-ratchet/line-linters
      (str/join "\n" (subvec lines (dec row) (min (count lines) (+ row 2)))))))
 
+(defn- lsp-only?
+  "Does the ignore form suppress only linters kondo doesn't run, so a re-lint could never restore it?"
+  [linters]
+  (boolean (and (seq linters)
+                (every? #(= (namespace %) "clojure-lsp") linters))))
+
 (defn- remove-ignores-at
   "The inline ignore forms that start on the 1-based `rows` of `text`, removed.
+  Forms that are [[lsp-only?]] survive: kondo flagged the row for a co-located ignore, not for them.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows one space.
-  Returns `{:text _, :form-rows [...]}` — the post-removal rows of the forms the ignores covered,
-  so a verifying re-lint can tell exposed findings apart from unrelated pre-existing ones."
+  Returns `{:text _, :sites [{:row _, :linters _} ...]}` — the post-removal row of the form each ignore
+  covered and the linters it named, so a verifying re-lint can tell exposed findings apart from
+  unrelated pre-existing ones."
   [text rows]
   (let [rowset (set rows)
-        result (reduce (fn [{:keys [text] :as acc} {:keys [start end line]}]
+        result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
                          (let [before     (subs text 0 start)
                                after      (subs text end)
                                after      (if (and (str/ends-with? before " ") (str/starts-with? after " "))
@@ -74,15 +82,21 @@
                                               (str (subs before 0 line-start)
                                                    (subs after (min (count after) (inc line-end))))
                                               (str before after)))
-                               (update :deletions conj [line (if blank?
-                                                               (inc (count (filter #(= % \newline) (subs text start end))))
-                                                               0)]))))
+                               (update :deletions conj [line
+                                                        (if blank?
+                                                          (inc (count (filter #(= % \newline) (subs text start end))))
+                                                          0)
+                                                        linters]))))
                        {:text text, :deletions []}
                        ;; bottom-up so earlier offsets stay valid
-                       (sort-by :start > (filter (comp rowset :line) (kondo-ratchet/ignore-matches text))))]
-    {:text      (:text result)
-     :form-rows (for [[line _] (:deletions result)]
-                  (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result))))}))
+                       (sort-by :start >
+                                (->> (kondo-ratchet/ignore-matches text)
+                                     (filter (comp rowset :line))
+                                     (remove (comp lsp-only? :linters)))))]
+    {:text  (:text result)
+     :sites (for [[line _ linters] (:deletions result)]
+              {:row     (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result)))
+               :linters linters})}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
@@ -94,9 +108,7 @@
         {located true, homeless false} (group-by #(some? (:row %)) findings)
         {lsp-only true, candidates false}
         (group-by (fn [{:keys [filename row]}]
-                    (let [linters (ignored-linters-at filename row)]
-                      (and (seq linters)
-                           (every? #(= (namespace %) "clojure-lsp") linters))))
+                    (lsp-only? (ignored-linters-at filename row)))
                   located)]
     (doseq [{:keys [filename row]} (sort-by (juxt :filename :row) candidates)]
       (println (format "%s:%d %s" filename row (str/join " " (ignored-linters-at filename row)))))
@@ -104,25 +116,32 @@
     (println (format "%d candidate redundant ignores (dropped as false positives: %d location-less, %d lsp-only)"
                      (count candidates) (count homeless) (count lsp-only)))
     (when (and (get-in parsed [:options :fix]) (seq candidates))
-      (let [files      (vec (sort (distinct (map :filename candidates))))
-            form-rows  (into {}
-                             (for [[file file-candidates] (group-by :filename candidates)]
-                               (let [{:keys [text form-rows]} (remove-ignores-at (slurp file)
-                                                                                 (map :row file-candidates))]
-                                 (spit file text)
-                                 [file (set form-rows)])))
-            ;; a finding near a removed site was exposed by the removal; anything further away is a
-            ;; pre-existing finding in a file the usual `mage kondo` roots don't cover
-            exposed?   (fn [{:keys [filename row]}]
-                         (some #(<= (abs (- row %)) 5) (form-rows filename)))]
+      (let [files       (vec (sort (distinct (map :filename candidates))))
+            sites       (into {}
+                              (for [[file file-candidates] (group-by :filename candidates)]
+                                (let [{:keys [text sites]} (remove-ignores-at (slurp file)
+                                                                              (map :row file-candidates))]
+                                  (spit file text)
+                                  [file sites])))
+            near-sites  (fn [{:keys [filename row]}]
+                          (filter #(<= (abs (- row (:row %))) 5) (sites filename)))
+            ;; a finding near a removed site, of a type the removed ignore named, was exposed by the
+            ;; removal; anything further away is a pre-existing finding in a file the usual
+            ;; `mage kondo` roots don't cover
+            exposed?    (fn [{:keys [type] :as finding}]
+                          (boolean (some #(some #{:all type} (:linters %)) (near-sites finding))))]
         (println (format "Removed them across %d files; re-linting those files to verify..." (count files)))
         ;; redundant-ignore can't see findings from hook-based linters, so some ignores it called
         ;; redundant were still doing work; restore those.
-        (let [regressions (filter (every-pred :row exposed?) (kondo-findings! nil files))]
+        (let [{regressions true, others false} (group-by exposed? (filter :row (kondo-findings! nil files)))
+              mismatched (filter (comp seq near-sites) others)]
           (doseq [[file file-regressions] (sort-by key (group-by :filename regressions))]
             (spit file (insert-ignore-lines (slurp file)
                                             (-> (group-by :row file-regressions)
                                                 (update-vals #(map :type %))))))
+          (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) mismatched)]
+            (println (format "WARNING: %s:%d has a new %s finding near a removed ignore that named other linters -- fix or re-ignore by hand"
+                             filename row type)))
           (if (empty? regressions)
             (println "Verified: the removals exposed no findings.")
             (println (format "Restored ignores at %d sites where a finding reappeared (%s)."
