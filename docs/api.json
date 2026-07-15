@@ -3751,6 +3751,91 @@
         },
         "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
       },
+      "metabase.agent-api.api.create-metric-request" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.card-display"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "query" ]
+      },
+      "metabase.agent-api.api.create-metric-response" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_path" : {
+            "type" : "string"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
+      },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
         "properties" : {
@@ -4275,6 +4360,107 @@
         },
         "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
       },
+      "metabase.agent-api.api.update-metric-request" : {
+        "description" : "Patch shape for `update_metric`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer) and must still describe a valid metric.",
+        "type" : "object",
+        "properties" : {
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.card-display"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "query" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.agent-api.api.update-metric-response" : {
+        "description" : "Returned by `update_metric` - the fields the LLM is most likely to want to read back\n  after an update. Excludes the full dataset_query, which the caller can re-fetch via\n  `read_resource` if needed.",
+        "type" : "object",
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_path" : {
+            "type" : "string"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "id", "name", "display", "collection_id", "collection_path", "description", "archived" ]
+      },
       "metabase.agent-api.api.update-question-request" : {
         "description" : "Patch shape for `update_question`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer).",
         "type" : "object",
@@ -4670,8 +4856,7 @@
             "required" : [ "count", "message" ]
           },
           "status" : {
-            "type" : "integer",
-            "enum" : [ 200, 404 ]
+            "const" : 200
           }
         },
         "required" : [ "status", "body" ]
@@ -8217,7 +8402,7 @@
               } ]
             },
             "template-tags" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag-map"
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tags"
             }
           },
           "required" : [ "lib/type" ]
@@ -10977,6 +11162,7 @@
         "required" : [ "name", "display-name" ]
       },
       "metabase.lib.schema.template-tag.disallow-dimension" : { },
+      "metabase.lib.schema.template-tag.distinct-template-tags" : { },
       "metabase.lib.schema.template-tag.field-filter" : {
         "type" : "object",
         "properties" : {
@@ -11182,14 +11368,15 @@
           } ]
         } ]
       },
-      "metabase.lib.schema.template-tag.template-tag-map" : {
+      "metabase.lib.schema.template-tag.template-tags" : {
+        "description" : "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.\n\n  Each tag must have a distinct `:name`.",
         "allOf" : [ {
-          "type" : "object",
-          "additionalProperties" : {
+          "type" : "array",
+          "items" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag"
           }
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.distinct-template-tags"
         } ]
       },
       "metabase.lib.schema.template-tag.temporal-unit" : {
@@ -14991,6 +15178,87 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/metabase.agent-api.api.execute-sql-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/metric" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-metric",
+        "summary" : "POST /api/agent/v1/metric",
+        "description" : "Save a previously constructed query as a named metric.\n\n  A metric is a reusable aggregation (a `Card` of type `metric`): the underlying query must have\n  exactly one aggregation and at most one date/datetime grouping. The `query` parameter accepts a\n  `query_handle` (UUID) returned by `construct_query`, or a base64-encoded MBQL string. MCP callers\n  should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the metric is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-metric-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-metric-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/metric/{id}" : {
+      "put" : {
+        "operationId" : "put-api-agent-v1-metric-id",
+        "summary" : "PUT /api/agent/v1/metric/{id}",
+        "description" : "Update a saved metric. Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.\n  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying\n  query; the replacement must still be a valid metric (exactly one aggregation, at most one\n  date/datetime grouping). The target card must be a metric — use `update_question` for questions.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.update-metric-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.update-metric-request"
               }
             }
           }
@@ -24939,7 +25207,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -24990,7 +25258,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -27559,7 +27827,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "message_count", "total_tokens", "user", "profile_id", "ip_address" ]
+              "enum" : [ "created_at", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -27653,6 +27921,11 @@
                             }, {
                               "type" : "null"
                             } ]
+                          },
+                          "cache_read_tokens" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
                           },
                           "user" : {
                             "oneOf" : [ {
@@ -27769,7 +28042,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
+                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
                       }
                     },
                     "limit" : {
@@ -28176,6 +28449,327 @@
           }
         },
         "tags" : [ "/api/ee/metabot" ]
+      }
+    },
+    "/api/ee/mfa/admin/overview" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-overview",
+        "summary" : "GET /api/ee/mfa/admin/overview",
+        "description" : "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and\n  whether the instance encrypts secrets at rest.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "encryption_key_set" : {
+                      "type" : "boolean"
+                    },
+                    "enrolled_count" : {
+                      "type" : "integer"
+                    },
+                    "unenrolled_count" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "encryption_key_set", "enrolled_count", "unenrolled_count" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/admin/remove" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-admin-remove",
+        "summary" : "POST /api/ee/mfa/admin/remove",
+        "description" : "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost\n  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make\n  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —\n  there is nothing to \"reset\", the secret lives on their device.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "user_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/disable" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-disable",
+        "summary" : "POST /api/ee/mfa/disable",
+        "description" : "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a\n  TOTP code or an unused recovery code — never just the password.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll",
+        "summary" : "POST /api/ee/mfa/enroll",
+        "description" : "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind\n  against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an\n  `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "otpauth_uri" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "secret" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "secret", "otpauth_uri" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "password" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "password" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/enroll/confirm" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-enroll-confirm",
+        "summary" : "POST /api/ee/mfa/enroll/confirm",
+        "description" : "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second\n  factor and returns the single-use recovery codes — the only time they exist in plaintext.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/recovery-codes" : {
+      "post" : {
+        "operationId" : "post-api-ee-mfa-recovery-codes",
+        "summary" : "POST /api/ee/mfa/recovery-codes",
+        "description" : "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a\n  fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can\n  never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "recovery_codes" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "recovery_codes" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "code" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/status" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-status",
+        "summary" : "GET /api/ee/mfa/status",
+        "description" : "The current user's MFA status, for the account-settings UI.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enrolled" : {
+                      "type" : "boolean"
+                    },
+                    "method" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "mfa_enabled" : {
+                      "type" : "boolean"
+                    },
+                    "pending" : {
+                      "type" : "boolean"
+                    },
+                    "recovery_codes_remaining" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "mfa_enabled", "enrolled", "pending", "method", "recovery_codes_remaining" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
       }
     },
     "/api/ee/permission_debug" : {
@@ -39244,7 +39838,7 @@
       "post" : {
         "operationId" : "post-api-osi-ai-context-reconcile",
         "summary" : "POST /api/osi/ai-context/reconcile",
-        "description" : "Force a reconcile of the library entity index against the application database, blocking until a\n  reconcile covering this call finishes.\n  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run\n  waited to start, then how long it ran).\n  This call never reuses a reconcile already in progress (it may have started before your latest change);\n  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls\n  share.\n  Requires the semantic search feature; returns a 400 when it isn't configured.",
+        "description" : "Force a reconcile of the library entity index against the application database, blocking until a\n  reconcile covering this call finishes.\n  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run\n  waited to start, then how long it ran).\n  This call never reuses a reconcile already in progress (it may have started before your latest change);\n  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls\n  share.\n  Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature\n  isn't licensed, or the pgvector store or embedding backend isn't configured).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -43990,6 +44584,98 @@
                   }
                 },
                 "required" : [ "token" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/mfa/send-email-otp" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-send-email-otp",
+        "summary" : "POST /api/session/mfa/send-email-otp",
+        "description" : "Email a one-time code as a fallback second factor (for a user who lost their authenticator but\n  still has recovery codes disabled or unavailable). Requires a valid challenge token from\n  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by\n  `POST /mfa/verify` like any other code.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "challenge_token" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/mfa/verify" : {
+      "post" : {
+        "operationId" : "post-api-session-mfa-verify",
+        "summary" : "POST /api/session/mfa/verify",
+        "description" : "Complete a two-step login by verifying a one-time code. Takes the `challenge_token` returned by\n  `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of\n  their single-use recovery codes, or an emailed one-time code; on success sets the session cookie.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "challenge_token" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "code" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "remember" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "challenge_token", "code" ]
               }
             }
           }
@@ -51155,6 +51841,29 @@
                     "oneOf" : [ {
                       "type" : "string",
                       "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "invite_target" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "dashboard", "question" ]
+                        }
+                      },
+                      "required" : [ "type", "id", "name" ]
                     }, {
                       "type" : "null"
                     } ]
