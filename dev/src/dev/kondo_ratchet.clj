@@ -84,22 +84,23 @@
   [occurrences]
   (frequencies (mapcat :linters occurrences)))
 
-(defn over-budget
-  "Linters in `occurrences` whose count exceeds its budget in `recorded` (an absent linter has budget 0).
-  Returns `{:linter _, :recorded _, :actual _, :examples [\"file:line\" ...]}` maps sorted by linter."
+(defn drift
+  "Linters whose count in `occurrences` differs from its budget in `recorded` (absent = 0, either side).
+  Returns `{linter {:recorded _, :actual _}}`, plus `:examples` (up to 5 `file:line`) when over budget."
   [recorded occurrences]
-  (->> (for [[linter n] (actual-counts occurrences)
-             :let       [budget (get recorded linter 0)]
-             :when      (> n budget)]
-         {:linter   linter
-          :recorded budget
-          :actual   n
-          :examples (->> occurrences
-                         (filter #(some #{linter} (:linters %)))
-                         (map #(str (:file %) ":" (:line %)))
-                         (take 5)
-                         vec)})
-       (sort-by (comp str :linter))))
+  (let [actual (actual-counts occurrences)]
+    (into (sorted-map-by #(compare (str %1) (str %2)))
+          (for [linter (into (set (keys actual)) (keys recorded))
+                :let   [budget (get recorded linter 0)
+                        n      (get actual linter 0)]
+                :when  (not= budget n)]
+            [linter (cond-> {:recorded budget, :actual n}
+                      (> n budget)
+                      (assoc :examples (->> occurrences
+                                            (filter #(some #{linter} (:linters %)))
+                                            (map #(str (:file %) ":" (:line %)))
+                                            (take 5)
+                                            vec)))]))))
 
 (defn read-ratchets
   "Parsed contents of [[ratchets-file]], or `{:ignore-counts {}}` when the file doesn't exist."
@@ -110,7 +111,7 @@
 
 (def ^:private header
   (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
-       ";; metabase.core.kondo-ratchet-test fails when a count exceeds its budget.\n"
+       ";; metabase.core.kondo-ratchet-test fails when a count exceeds its budget, or a budget goes stale.\n"
        ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; local test runs do it automatically.\n"
        ";; Raising a budget, or adding one for a new linter, is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))

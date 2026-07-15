@@ -83,9 +83,10 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 tree may contain. `metabase.core.kondo-ratchet-test` fails when any count exceeds its budget, so ignores can
 be removed freely but never silently added. Prefer fixing the underlying warning over adding an ignore.
 
-Removing ignores needs no bookkeeping: a local run of `metabase.core.kondo-ratchet-test` tightens the
-file for you (commit the change), and PRs labelled `kondo-ratchets-self-healing` get the lowered budgets
-committed to the branch by CI. To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+Stale budgets (above the actual counts) also fail the test. A local run of
+`metabase.core.kondo-ratchet-test` tightens the file for you (commit the change), and PRs labelled
+`kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI. To tighten by hand
+(babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
