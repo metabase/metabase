@@ -277,9 +277,25 @@
 
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
-   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]]
+   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
+              ["./bin/mage fix-kondo-ratchets --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix!))}
+   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  kondo-redundant-ignores
+  {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
+   :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/redundant-ignores (:arguments parsed)))}
+
+  kondo-insert-ignores
+  {:doc "Insert inline ignores at every site a linter flags -- for landing a new linter without a big-bang fix."
+   :examples [["./bin/mage kondo-insert-ignores :metabase/new-linter" "Insert ignores everywhere the linter fires, then seed its budget"]
+              ["./bin/mage kondo-insert-ignores :equals-true test/metabase/pulse" "Only under the given paths"]]
+   :arg-schema [:sequential [:string {:name "linter-then-paths"}]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
   ls
   {:doc "List all mage public and private tasks"
