@@ -29,13 +29,9 @@
   (is (= 102
          (:sourceFieldId
           (#'schema.metric/dimension-schema
-           {:id              "550e8400-e29b-41d4-a716-446655440001"
+           {:id              "category-dimension"
             :name            "category"
-            :display-name    "Category"
-            :effective-type  :type/Text
-            :table-id        12
-            :source-field-id 102
-            :sources         [{:type :field, :field-id 3815}]}
+            :source-field-id 102}
            247)))))
 
 (deftest metric-source-id-test
@@ -100,12 +96,9 @@
   (let [table-select-count (atom 0)]
     (with-redefs [schema.metric/metric-result-column (constantly nil)
                   schema.metric/metric-dimensions
-                  (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
-                                :name           "orders"
-                                :display-name   "Orders"
-                                :effective-type :type/Integer
-                                :table-id       10
-                                :sources        [{:type :field, :field-id 42}]}])
+                  (constantly [{:id       "orders-dimension"
+                                :name     "orders"
+                                :table-id 10}])
                   mi/can-read? (constantly true)
                   t2/select (fn [columns & _args]
                               (when (= columns [:model/Table :id :name :display_name])
@@ -119,16 +112,12 @@
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
   (with-redefs [schema.metric/metric-result-column (constantly nil)
-                schema.metric/table-source-names (constantly {10 "employee_store_roster"})
                 schema.metric/metric-dimensions
                 (constantly [{:id   "count-dimension-uuid"
                               :name "count"}
                              {:id             "store-name-dimension-uuid"
                               :name           "store_name"
-                              :display-name   "Store Name"
-                              :effective-type :type/Text
-                              :table-id       10
-                              :sources        [{:type :field, :field-id 42}]}])]
+                              :table-id       10}])]
     (is (= {:type         "metric"
             :key          "storesWithOver5Employees"
             :id           259
