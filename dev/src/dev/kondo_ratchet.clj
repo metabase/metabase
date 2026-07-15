@@ -1,9 +1,10 @@
 (ns dev.kondo-ratchet
   "Ratchet on inline kondo ignore forms.
 
-  Per-linter budgets live in `.clj-kondo/ratchets.edn`.
-  `metabase.core.kondo-ratchet-test` fails when a count exceeds its budget;
-  `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree, never raises them.
+  Per-linter budgets live in `.clj-kondo/ratchets.edn`, along with the set of linters whose ignores don't
+  need a justification comment.
+  `metabase.core.kondo-ratchet-test` fails when either drifts from the tree;
+  `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   (:require
    [clojure.edn :as edn]
@@ -22,25 +23,51 @@
 (def ^:private source-extensions
   [".clj" ".cljc" ".cljs"])
 
-;; Files whose ignore forms are regexes or test fixtures, not suppressions.
-;; Side effect: this file's own few real ignores go uncounted.
-(def ^:private fixture-files
-  #{"dev/src/dev/kondo_ratchet.clj"
-    "dev/test/dev/deps_graph_test.clj"
-    "test/metabase/core/kondo_ratchet_test.clj"})
-
 ;; Concatenated so this file never contains a literal ignore marker.
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
-;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`.
-;; A vector spilling onto the next line is missed, which only makes the ratchet more lenient.
+;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`; the vector may span lines.
 (def ^:private vector-form-re
   (re-pattern (str "(?:#_|\\^)\\s*\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\]")))
 
 ;; Bare `#_kw` / `^kw` with no linter vector: suppresses every linter on the next form.
 (def ^:private bare-form-re
   (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
+
+(defn mask-strings-and-comments
+  "`content` with string-literal and line-comment interiors replaced by spaces, newlines kept.
+  Same length as the input, so offsets and line numbers carry over.
+  Ignore forms inside strings (test fixtures) or commented-out code must not count."
+  [content]
+  (let [sb (StringBuilder. ^String content)
+        n  (count content)]
+    (loop [i 0, state :code]
+      (if (>= i n)
+        (str sb)
+        (let [c (.charAt sb i)]
+          (case state
+            :code    (case c
+                       \" (recur (inc i) :string)
+                       \; (do (.setCharAt sb i \space)
+                              (recur (inc i) :comment))
+                       ;; char literal: never treat the next char as a delimiter
+                       \\ (recur (+ i 2) :code)
+                       (recur (inc i) :code))
+            :string  (case c
+                       \" (recur (inc i) :code)
+                       \\ (do (.setCharAt sb i \space)
+                              (when (< (inc i) n)
+                                (when-not (= (.charAt sb (inc i)) \newline)
+                                  (.setCharAt sb (inc i) \space)))
+                              (recur (+ i 2) :string))
+                       \newline (recur (inc i) :string)
+                       (do (.setCharAt sb i \space)
+                           (recur (inc i) :string)))
+            :comment (if (= c \newline)
+                       (recur (inc i) :code)
+                       (do (.setCharAt sb i \space)
+                           (recur (inc i) :comment)))))))))
 
 (defn- linter-keywords
   [vector-contents]
@@ -54,126 +81,210 @@
   (concat (mapcat (comp linter-keywords second) (re-seq vector-form-re line))
           (repeat (count (re-seq bare-form-re line)) :all)))
 
-(defn- source-file?
-  [^java.io.File f]
-  (let [path (.getPath f)]
-    (and (.isFile f)
-         (some #(str/ends-with? path %) source-extensions)
-         (not (contains? fixture-files path)))))
+(defn- offset->line
+  "1-based line number of character offset `i` in `content`."
+  [content i]
+  (inc (count (filter #(= % \newline) (subs content 0 i)))))
+
+(defn- matches-with-offsets
+  "Like re-seq, but returns `{:start _, :end _, :linters [...]}` for each match of `re` in `masked`."
+  [re masked bare?]
+  (let [m (re-matcher re masked)]
+    (loop [acc []]
+      (if (.find m)
+        (recur (conj acc {:start   (.start m)
+                          :end     (.end m)
+                          :linters (if bare? [:all] (vec (linter-keywords (.group m 1))))}))
+        acc))))
+
+;; A justifying comment has words in it; a bare `;;` section divider does not.
+(def ^:private substantive-comment-re
+  #";+\s*\S*[A-Za-z].*")
+
+(defn- justified?
+  "Does the ignore starting at `start`/ending at `end` in `content` have an explanatory comment?
+  Counts a substantive trailing comment on the same line, or one on the nearest preceding non-blank line."
+  [content start end]
+  (let [line-num   (offset->line content start)
+        lines      (str/split-lines content)
+        after      (let [line-end (str/index-of content "\n" end)]
+                     (subs content end (or line-end (count content))))
+        prev-lines (->> (take (dec line-num) lines)
+                        reverse
+                        (drop-while str/blank?))]
+    (boolean (or (when-let [i (str/index-of after ";")]
+                   (re-matches substantive-comment-re (str/trim (subs after i))))
+                 (when-let [prev (first prev-lines)]
+                   (re-matches substantive-comment-re (str/trim prev)))))))
 
 (defn scan
   "Occurrences of inline ignore forms under `roots` (relative to the repo root).
-  Returns `{:file \"src/...\", :line 42, :linters [...]}` maps."
+  Returns `{:file \"src/...\", :line 42, :linters [...], :justified? true}` maps.
+  Forms inside string literals or line comments don't count."
   ([]
    (scan source-roots))
   ([roots]
    (for [root  roots
-         f     (file-seq (io/file root))
-         :when (source-file? f)
+         ^java.io.File f (file-seq (io/file root))
+         :when (and (.isFile f)
+                    (some #(str/ends-with? (.getPath f) %) source-extensions))
          :let  [content (slurp f)]
          :when (str/includes? content ignore-marker)
-         [i line] (map-indexed vector (str/split-lines content))
-         :let  [linters (seq (line-linters line))]
-         :when linters]
-     {:file    (.getPath ^java.io.File f)
-      :line    (inc i)
-      :linters (vec linters)})))
+         :let  [masked (mask-strings-and-comments content)]
+         m     (sort-by :start
+                        (concat (matches-with-offsets vector-form-re masked false)
+                                (matches-with-offsets bare-form-re masked true)))]
+     {:file       (.getPath f)
+      :line       (offset->line masked (:start m))
+      :linters    (:linters m)
+      :justified? (justified? content (:start m) (:end m))})))
 
 (defn actual-counts
   "Per-linter occurrence counts for `occurrences`, as returned by [[scan]]."
   [occurrences]
   (frequencies (mapcat :linters occurrences)))
 
+(defn- sorted-by-str
+  [kvs]
+  (into (sorted-map-by #(compare (str %1) (str %2))) kvs))
+
 (defn drift
   "Linters whose count in `occurrences` differs from its budget in `recorded` (absent = 0, either side).
   Returns `{linter {:recorded _, :actual _}}`, plus `:examples` (up to 5 `file:line`) when over budget."
   [recorded occurrences]
   (let [actual (actual-counts occurrences)]
-    (into (sorted-map-by #(compare (str %1) (str %2)))
-          (for [linter (into (set (keys actual)) (keys recorded))
-                :let   [budget (get recorded linter 0)
-                        n      (get actual linter 0)]
-                :when  (not= budget n)]
-            [linter (cond-> {:recorded budget, :actual n}
-                      (> n budget)
-                      (assoc :examples (->> occurrences
-                                            (filter #(some #{linter} (:linters %)))
-                                            (map #(str (:file %) ":" (:line %)))
-                                            (take 5)
-                                            vec)))]))))
+    (sorted-by-str
+     (for [linter (into (set (keys actual)) (keys recorded))
+           :let   [budget (get recorded linter 0)
+                   n      (get actual linter 0)]
+           :when  (not= budget n)]
+       [linter (cond-> {:recorded budget, :actual n}
+                 (> n budget)
+                 (assoc :examples (->> occurrences
+                                       (filter #(some #{linter} (:linters %)))
+                                       (map #(str (:file %) ":" (:line %)))
+                                       (take 5)
+                                       vec)))]))))
+
+(defn unjustified
+  "Occurrences that need a justification comment but lack one: not [[justified?]], and suppressing at
+  least one linter outside the `exempt` set."
+  [exempt occurrences]
+  (for [{:keys [linters justified?] :as occurrence} occurrences
+        :when (and (not justified?)
+                   (seq (remove exempt linters)))]
+    occurrence))
+
+(defn stale-exemptions
+  "Linters in `exempt` that no longer have any unjustified ignore, so the exemption can go."
+  [exempt occurrences]
+  (let [still-needed (set (mapcat :linters (unjustified #{} occurrences)))]
+    (into (sorted-set-by #(compare (str %1) (str %2)))
+          (remove still-needed)
+          exempt)))
 
 (defn read-ratchets
-  "Parsed contents of [[ratchets-file]], or `{:ignore-counts {}}` when the file doesn't exist."
+  "Parsed contents of [[ratchets-file]], with empty defaults when the file doesn't exist."
   []
-  (if (.exists (io/file ratchets-file))
-    (edn/read-string (slurp ratchets-file))
-    {:ignore-counts {}}))
+  (merge {:ignore-counts {}, :comment-exempt #{}}
+         (when (.exists (io/file ratchets-file))
+           (edn/read-string (slurp ratchets-file)))))
 
 (def ^:private header
   (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
-       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; local test runs do it automatically.\n"
-       ";; Raising a budget, or adding one for a new linter, is a hand edit to defend in your PR.\n"
+       ";; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts, or when a\n"
+       ";; linter outside :comment-exempt has an ignore with no explanatory comment above (or trailing) it.\n"
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
+       ";; automatically. Raising a budget, adding one for a new linter (`--seed`), or widening the\n"
+       ";; exemptions is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn render
-  "Text of the ratchets file for the `counts` budget map.
+  "Text of the ratchets file for the `{:ignore-counts _, :comment-exempt _}` map `ratchets`.
   Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
-  [counts]
-  (str header
-       (if (empty? counts)
-         "{:ignore-counts {}}\n"
-         (let [entries (sort-by (comp str first) counts)
-               width   (apply max (map (comp count str first) entries))
-               indent  (apply str (repeat (count "{:ignore-counts {") \space))]
-           (str "{:ignore-counts {"
-                (str/join (str "\n" indent)
-                          (for [[linter n] entries]
-                            (format (str "%-" width "s %d") (str linter) n)))
-                "}}\n")))))
+  [{:keys [ignore-counts comment-exempt]}]
+  (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
+        exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
+    (str header
+         "{:ignore-counts  "
+         (if (empty? ignore-counts)
+           "{}"
+           (let [entries (sort-by (comp str first) ignore-counts)
+                 width   (apply max (map (comp count str first) entries))]
+             (str "{"
+                  (str/join (str "\n" counts-indent)
+                            (for [[linter n] entries]
+                              (format (str "%-" width "s %d") (str linter) n)))
+                  "}")))
+         "\n :comment-exempt "
+         (if (empty? comment-exempt)
+           "#{}"
+           (str "#{"
+                (str/join (str "\n" exempt-indent)
+                          (sort-by str comment-exempt))
+                "}"))
+         "}\n")))
 
 (defn lowered-counts
   "`recorded` with each budget lowered to its actual count; entries with no ignores left are dropped.
-  Never raises a budget, never adds one."
-  [recorded actual]
-  (into {}
+  Linters in `seeded` get their budget set to the actual count outright — the explicit escape hatch for
+  landing a new linter. Otherwise never raises a budget, never adds one."
+  [recorded actual seeded]
+  (into (sorted-by-str
+         (for [linter seeded
+               :when  (pos? (get actual linter 0))]
+           [linter (get actual linter)]))
         (keep (fn [[linter budget]]
                 (let [n (get actual linter 0)]
                   (cond
-                    (zero? n)    nil
-                    (< n budget) [linter n]
-                    :else        [linter budget]))))
+                    (contains? (set seeded) linter) nil
+                    (zero? n)                       nil
+                    (< n budget)                    [linter n]
+                    :else                           [linter budget]))))
         recorded))
 
 (defn change-report
-  "The lines [[fix!]] prints: lowered and dropped budgets, plus warnings for anything over budget."
-  [recorded actual]
-  (concat
-   (for [[linter budget] (sort-by (comp str first) recorded)
-         :let            [n (get actual linter 0)]
-         :when           (not= n budget)]
-     (cond
-       (zero? n)    (format "dropped %s (no ignores left)" linter)
-       (< n budget) (format "lowered %s %d -> %d" linter budget n)
-       :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores or raise the budget by hand"
-                            linter budget n)))
-   (for [[linter n] (sort-by (comp str first) (apply dissoc actual (keys recorded)))]
-     (format "WARNING: %s has %d ignores but no budget entry -- add one by hand" linter n))))
+  "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
+  anything over budget."
+  [{:keys [ignore-counts comment-exempt]} occurrences seeded]
+  (let [actual (actual-counts occurrences)]
+    (concat
+     (for [linter seeded]
+       (format "seeded %s at %d" linter (get actual linter 0)))
+     (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
+           :let            [n (get actual linter 0)]
+           :when           (not= n budget)]
+       (cond
+         (zero? n)    (format "dropped %s (no ignores left)" linter)
+         (< n budget) (format "lowered %s %d -> %d" linter budget n)
+         :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
+                              linter budget n linter)))
+     (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
+       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
+               linter n linter))
+     (for [linter (stale-exemptions comment-exempt occurrences)]
+       (format "unexempted %s (all its ignores are justified now)" linter)))))
 
 (defn fix!
-  "Rewrite [[ratchets-file]] with lowered budgets and normalized formatting.
+  "Rewrite [[ratchets-file]]: lower budgets, drop stale comment exemptions, normalize formatting.
+  `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count, adding or raising it.
   Prints the [[change-report]], or `unchanged` on a no-op."
-  []
-  (let [recorded (:ignore-counts (read-ratchets))
-        actual   (actual-counts (scan))
-        text     (render (lowered-counts recorded actual))
-        file     (io/file ratchets-file)
-        old      (when (.exists file) (slurp file))]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (run! println (change-report recorded actual))
-    (if (= old text)
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (println "unchanged")
-      (do (spit file text)
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println (str "wrote " ratchets-file))))))
+  ([]
+   (fix! nil))
+  ([{:keys [seed]}]
+   (let [{:keys [ignore-counts comment-exempt] :as ratchets} (read-ratchets)
+         occurrences (scan)
+         seeded      (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
+         actual      (actual-counts occurrences)
+         text        (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
+                              :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
+         file        (io/file ratchets-file)
+         old         (when (.exists file) (slurp file))]
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (run! println (change-report ratchets occurrences seeded))
+     (if (= old text)
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (println "unchanged")
+       (do (spit file text)
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println (str "wrote " ratchets-file)))))))
