@@ -113,9 +113,10 @@
 (def ^:private header
   (str ";; Budgets for inline `" ignore-marker "` forms, counted per linter across the backend source tree.\n"
        ";; metabase.core.kondo-ratchet-test fails when any actual count exceeds its budget here.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match reality; raising one, or adding an entry\n"
-       ";; for a new linter, is a deliberate hand edit to defend in the PR. :all counts the vector-less\n"
-       ";; ignore form, which suppresses every linter on the form after it.\n"))
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match reality (CI also runs it against master\n"
+       ";; after each merge); raising one, or adding an entry for a new linter, is a deliberate hand edit\n"
+       ";; to defend in the PR. :all counts the vector-less ignore form, which suppresses every linter on\n"
+       ";; the form after it.\n"))
 
 (defn render
   "Deterministic text of the ratchets file for the `counts` budget map.
