@@ -88,10 +88,10 @@ function NewWorkspaceForm({
       name,
       database_ids: database_ids.map(Number),
     }).unwrap();
-    await fetchWorkspaces();
     trackWorkspaceCreated({ workspaceId: workspace.id });
-    // The workspace is created even when provisioning some of its databases failed.
-    if (!(workspace.databases ?? []).every(isProvisioned)) {
+
+    const databases = workspace.databases ?? [];
+    if (!databases.every(isProvisioned)) {
       sendToast({
         message: t`Failed to provision the workspace.`,
         icon: "warning",
@@ -99,6 +99,8 @@ function NewWorkspaceForm({
         timeout: null,
       });
     }
+
+    await fetchWorkspaces();
     onCreate(workspace);
   };
 
