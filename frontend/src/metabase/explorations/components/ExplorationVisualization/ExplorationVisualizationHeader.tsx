@@ -46,7 +46,7 @@ export function ExplorationVisualizationHeader({
       childTargetId: pageId,
     });
 
-  const ShowCommentsButton = showCommentsButton ? (
+  const commentsButton = showCommentsButton ? (
     <ToolbarButton
       icon="comment"
       aria-label={
@@ -92,10 +92,10 @@ export function ExplorationVisualizationHeader({
               size={16}
               color={unresolvedCommentsCount > 0 ? "danger" : "core-info"}
             >
-              {ShowCommentsButton}
+              {commentsButton}
             </Indicator>
           ) : (
-            ShowCommentsButton
+            commentsButton
           )}
         </Group>
       </Group>
@@ -110,8 +110,8 @@ function getExploreFilterPillLabel(
   const value =
     filter.display_value ??
     (filter.value == null ? NULL_DISPLAY_VALUE : String(filter.value));
-  if (filter.display_name) {
-    return `${filter.display_name}: ${value}`;
+  if (filter.dimension_name) {
+    return `${filter.dimension_name}: ${value}`;
   }
   return value;
 }
