@@ -65,7 +65,7 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
-import { IndexRedirect, IndexRoute, Redirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -100,13 +100,13 @@ export const getRoutes = (store: AppStore) => {
       </Route>
 
       {/* For compatibility: use the standard setup for embedding */}
-      <Redirect from="/setup/embedding" to="/setup" />
+      <Route path="/setup/embedding" component={redirect("/setup")} />
 
       {/* APP */}
       <Route component={LoadCurrentUser}>
         {/* AUTH */}
         <Route path="/auth">
-          <IndexRedirect to="/auth/login" />
+          <Route index component={redirect("/auth/login")} />
           <Route component={IsNotAuthenticated}>
             <Route path="login" component={Login} />
             <Route path="login/:provider" component={Login} />
@@ -128,12 +128,12 @@ export const getRoutes = (store: AppStore) => {
           <Route path="/" component={LandingPageRedirect} />
 
           <Route path="getting-started" component={CanAccessOnboarding}>
-            <IndexRoute component={Onboarding} />
+            <Route index component={Onboarding} />
           </Route>
 
           <Route path="search" component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect from="archive" to="trash" />
+          <Route path="archive" component={redirect("trash")} />
           <Route path="trash" component={TrashCollectionLanding} />
 
           <Route path="document/:entityId" component={DocumentPageOuter}>
@@ -156,18 +156,18 @@ export const getRoutes = (store: AppStore) => {
           />
 
           <Route path="collection/users" component={IsAdmin}>
-            <IndexRoute component={UserCollectionList} />
+            <Route index component={UserCollectionList} />
           </Route>
 
           <Route
             path="collection/tenant-specific"
             component={PLUGIN_TENANTS.CanAccessTenantSpecificRoute}
           >
-            <IndexRoute component={PLUGIN_TENANTS.TenantCollectionList} />
+            <Route index component={PLUGIN_TENANTS.TenantCollectionList} />
           </Route>
 
           <Route path="collection/tenant-users" component={IsAdmin}>
-            <IndexRoute component={PLUGIN_TENANTS.TenantUsersList} />
+            <Route index component={PLUGIN_TENANTS.TenantUsersList} />
             <Route
               path=":tenantId"
               component={PLUGIN_TENANTS.TenantUsersPersonalCollectionList}
@@ -225,7 +225,7 @@ export const getRoutes = (store: AppStore) => {
                 ],
               })}
             />
-            <IndexRoute component={QueryBuilder} />
+            <Route index component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
@@ -238,7 +238,7 @@ export const getRoutes = (store: AppStore) => {
           {getModelRoutes()}
 
           <Route path="/model">
-            <IndexRoute component={QueryBuilder} />
+            <Route index component={QueryBuilder} />
             <Route path="new" component={NewModelOptions} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
@@ -254,7 +254,7 @@ export const getRoutes = (store: AppStore) => {
           {getMetricRoutes()}
 
           <Route path="browse">
-            <IndexRedirect to="/browse/models" />
+            <Route index component={redirect("/browse/models")} />
             <Route path="metrics" component={BrowseMetrics} />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
@@ -267,10 +267,13 @@ export const getRoutes = (store: AppStore) => {
             {PLUGIN_TABLE_EDITING.getRoutes()}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}
-            <Redirect from=":dbId-:slug" to="databases/:dbId-:slug" />
-            <Redirect
-              from=":dbId/schema/:schemaName"
-              to="databases/:dbId/schema/:schemaName"
+            <Route
+              path=":dbId-:slug"
+              component={redirect("databases/:dbId-:slug")}
+            />
+            <Route
+              path=":dbId/schema/:schemaName"
+              component={redirect("databases/:dbId/schema/:schemaName")}
             />
           </Route>
 
@@ -287,7 +290,7 @@ export const getRoutes = (store: AppStore) => {
 
           {/* REFERENCE */}
           <Route path="/reference">
-            <IndexRedirect to="/reference/databases" />
+            <Route index component={redirect("/reference/databases")} />
             <Route path="segments" component={SegmentListContainer} />
             <Route
               path="segments/:segmentId"
@@ -356,15 +359,24 @@ export const getRoutes = (store: AppStore) => {
       {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
       <Route path="/q" component={QuestionHashRedirect} />
       <Route path="/card/:slug" component={QuestionHashRedirect} />
-      <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
-      <Redirect
-        from="/collections/permissions"
-        to="/admin/permissions/collections"
+      <Route
+        path="/dash/:dashboardId"
+        component={redirect("/dashboard/:dashboardId")}
+      />
+      <Route
+        path="/collections/permissions"
+        component={redirect("/admin/permissions/collections")}
       />
 
       {/* Transforms moved from /admin to /data-studio */}
-      <Redirect from="/admin/transforms" to="/data-studio/transforms" />
-      <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
+      <Route
+        path="/admin/transforms"
+        component={redirect("/data-studio/transforms")}
+      />
+      <Route
+        path="/admin/transforms/*"
+        component={redirect("/data-studio/transforms/*")}
+      />
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />

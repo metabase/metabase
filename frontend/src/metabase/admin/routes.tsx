@@ -65,13 +65,7 @@ import {
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Redirect,
-  Route,
-  type RouteComponent,
-} from "metabase/router";
+import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
@@ -98,9 +92,9 @@ export const getRoutes = (
   return (
     <Route path="/admin" component={CanAccessSettings}>
       <Route component={AdminApp}>
-        <IndexRoute component={RedirectToAllowedSettings} />
+        <Route index component={RedirectToAllowedSettings} />
         <Route path="databases" component={createAdminRouteGuard("databases")}>
-          <IndexRoute component={DatabaseListApp} />
+          <Route index component={DatabaseListApp} />
           <Route component={IsAdmin}>
             <Route path="create" component={DatabasePage} />
           </Route>
@@ -113,7 +107,7 @@ export const getRoutes = (
         </Route>
         <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
           <Route>
-            <IndexRedirect to="database" />
+            <Route index component={redirect("database")} />
             <Route path="database" component={DataModelV1} />
             <Route path="database/:databaseId" component={DataModelV1} />
             <Route
@@ -131,34 +125,38 @@ export const getRoutes = (
             <Route component={DataModelV1}>
               <Route path="segments" component={SegmentListApp} />
               <Route path="segment/create" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
+                <Route index component={SegmentApp} />
               </Route>
               <Route path="segment/:id" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
+                <Route index component={SegmentApp} />
               </Route>
               <Route
                 path="segment/:id/revisions"
                 component={RevisionHistoryApp}
               />
             </Route>
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-              to="database/:databaseId/schema/:schemaId/table/:tableId"
+            <Route
+              path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+              component={redirect(
+                "database/:databaseId/schema/:schemaId/table/:tableId",
+              )}
             />
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-              to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+            <Route
+              path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+              component={redirect(
+                "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+              )}
             />
           </Route>
         </Route>
         {/* PEOPLE */}
         <Route path="people" component={createAdminRouteGuard("people")}>
           <Route component={AdminPeopleApp}>
-            <IndexRoute component={PeopleListingApp} />
+            <Route index component={PeopleListingApp} />
 
             {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
             <Route path="groups">
-              <IndexRoute component={GroupsListingApp} />
+              <Route index component={GroupsListingApp} />
               <Route path=":groupId" component={GroupDetailApp} />
             </Route>
 
@@ -166,7 +164,7 @@ export const getRoutes = (
             <Route path="tenants" component={createTenantsRouteGuard()}>
               {PLUGIN_TENANTS.tenantsRoutes ?? (
                 <>
-                  <IndexRoute component={UpsellTenants} />
+                  <Route index component={UpsellTenants} />
                   <Route path="groups" component={UpsellTenants} />
                   <Route path="people" component={UpsellTenants} />
                 </>
@@ -179,7 +177,7 @@ export const getRoutes = (
             </Route>
 
             <Route path=":userId" component={PeopleListingApp}>
-              <IndexRedirect to="/admin/people" />
+              <Route index component={redirect("/admin/people")} />
               {modalRoute("edit", EditUserModal, { noWrap: true })}
               {modalRoute("success", UserSuccessModal, { noWrap: true })}
               {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
@@ -195,10 +193,10 @@ export const getRoutes = (
         {/* EMBEDDING */}
         <Route path="embedding" component={createAdminRouteGuard("embedding")}>
           <Route component={AdminEmbeddingApp}>
-            <IndexRoute component={EmbeddingSettings} />
+            <Route index component={EmbeddingSettings} />
 
             <Route path="setup-guide">
-              <IndexRoute component={EmbeddingHubAdminSettingsPage} />
+              <Route index component={EmbeddingHubAdminSettingsPage} />
 
               <Route
                 path="permissions"
@@ -221,27 +219,36 @@ export const getRoutes = (
 
         {/* OSS/Starter has all embedding settings on the same page */}
         {!hasSimpleEmbedding && (
-          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
+          <Route
+            path="/admin/embedding/guest"
+            component={redirect("/admin/embedding")}
+          />
         )}
 
         {/* Backwards compatibility for embedding settings */}
-        <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
-        <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications"
-          to="/admin/embedding"
+        <Route
+          path="/admin/embedding/modular"
+          component={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/full-app"
-          to="/admin/embedding"
+        <Route
+          path="/admin/embedding/interactive"
+          component={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/standalone"
-          to="/admin/embedding/guest"
+        <Route
+          path="/admin/settings/embedding-in-other-applications"
+          component={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/sdk"
-          to="/admin/embedding"
+        <Route
+          path="/admin/settings/embedding-in-other-applications/full-app"
+          component={redirect("/admin/embedding")}
+        />
+        <Route
+          path="/admin/settings/embedding-in-other-applications/standalone"
+          component={redirect("/admin/embedding/guest")}
+        />
+        <Route
+          path="/admin/settings/embedding-in-other-applications/sdk"
+          component={redirect("/admin/embedding")}
         />
 
         {/* SETTINGS */}
@@ -259,7 +266,7 @@ export const getRoutes = (
           component={createAdminRouteGuard("performance")}
         >
           <Route component={PerformanceApp}>
-            <IndexRedirect to={PerformanceTabId.Databases} />
+            <Route index component={redirect(PerformanceTabId.Databases)} />
             <Route path="databases" component={StrategyEditorForDatabases} />
             <Route path="models" component={ModelPersistenceConfiguration} />
             <Route
@@ -274,7 +281,7 @@ export const getRoutes = (
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
-            <IndexRoute key="index" component={AISettingsPage} />
+            <Route index key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />
           </Route>
           <Route
@@ -318,7 +325,7 @@ export const getRoutes = (
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route component={ToolsApp}>
-            <IndexRedirect to="help" />
+            <Route index component={redirect("help")} />
             <Route
               key="error-overview"
               path="errors"

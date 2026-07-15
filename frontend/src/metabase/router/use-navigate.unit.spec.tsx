@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { Route } from "./react-router";
+import { Route } from "./route";
 import { useNavigate } from "./use-navigate";
 
 function NavigateProbe() {
