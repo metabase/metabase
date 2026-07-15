@@ -469,6 +469,7 @@ function isExplorationTreeHeadingProps(
 function ExplorationTreeHeading({
   item,
   isExpanded,
+  hasChildren,
   onToggleExpand,
   depth,
   explorationId,
@@ -476,11 +477,16 @@ function ExplorationTreeHeading({
   getSelectedEntityIdUrl,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
+  // Only the retained initial-investigation heading can be childless (pruning
+  // drops every other empty heading). The tree controller can't expand a node
+  // without children, so force the expanded look: the all-hidden note beneath
+  // then reads as the group's content rather than a collapsed group.
+  const displayExpanded = isExpanded || !hasChildren;
   return (
     <Box
       role="group"
       aria-label={item.name}
-      aria-expanded={isExpanded}
+      aria-expanded={displayExpanded}
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
@@ -492,7 +498,7 @@ function ExplorationTreeHeading({
     >
       <Box className={S.treeChevron} aria-hidden>
         <Icon
-          name={isExpanded ? "chevrondown" : "chevronright"}
+          name={displayExpanded ? "chevrondown" : "chevronright"}
           size={12}
           c="text-tertiary"
         />

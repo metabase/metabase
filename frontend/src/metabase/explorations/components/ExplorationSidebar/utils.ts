@@ -105,10 +105,15 @@ function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
   };
 }
 
+interface GetExplorationSidebarTreeOptions {
+  keepEmptyInitialThread?: boolean;
+}
+
 export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
+  { keepEmptyInitialThread = false }: GetExplorationSidebarTreeOptions = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   const initialThreadId = threads[0]?.id;
@@ -134,16 +139,11 @@ export function getExplorationSidebarTree(
   threads.forEach((thread, index) => {
     const parentThreadId = getParentThreadId(thread);
     const isFollowUp = parentThreadId != null;
-    // Only the first sub-exploration off the initial investigation surfaces the
-    // metric it drilled into; follow-ups nested inside another sub-exploration
-    // don't repeat it ("Revenue → State = TX" once, not on every descendant).
     const isTopLevelFollowUp = isFollowUp && parentThreadId === initialThreadId;
+
     let children = getExplorationQueryTree(thread, treeItemFilter, sortOrder);
-    // A follow-up drill copies a single metric, so its lone metric-group
-    // heading ("Revenue") is redundant as a row — surface its pages directly
-    // under the thread, and for the first sub-exploration fold the metric's
-    // name into the thread heading ("Revenue → State = TX").
     let metricName: string | undefined;
+
     if (
       isFollowUp &&
       children.length === 1 &&
@@ -208,7 +208,10 @@ export function getExplorationSidebarTree(
     }
   });
 
-  return pruneEmptyHeadings(topLevel, initialThreadId);
+  return pruneEmptyHeadings(
+    topLevel,
+    keepEmptyInitialThread ? initialThreadId : undefined,
+  );
 }
 
 function pruneEmptyHeadings(

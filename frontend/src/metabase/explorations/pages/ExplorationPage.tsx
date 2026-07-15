@@ -250,7 +250,10 @@ export function ExplorationPage({
       ? tabFilter
       : (node: ITreeNodeItem<ExplorationTreeNode>) =>
           tabFilter(node) && !isHiddenTreeItem(node);
-    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder);
+
+    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
+      keepEmptyInitialThread: selectedSidebarTab === "all",
+    });
   }, [
     exploration,
     selectedSidebarTab,

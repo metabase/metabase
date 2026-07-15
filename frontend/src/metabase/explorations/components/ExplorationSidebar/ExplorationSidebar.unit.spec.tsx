@@ -39,10 +39,10 @@ import {
 
 function getSidebarTestContext(
   exploration: ReturnType<typeof createExploration>,
+  selectedSidebarTab: ExplorationSidebarTab = "all",
 ) {
   const path = Urls.exploration(exploration.id);
   const explorationSidebarTabsInfo = getExplorationSidebarTabsInfo(exploration);
-  const selectedSidebarTab: ExplorationSidebarTab = "all";
   const getSelectedSidebarTabUrl = (tab: ExplorationSidebarTab) =>
     `${path}?tab=${tab}`;
   const treeItemFilter =
@@ -75,6 +75,7 @@ interface SetupOpts {
   showHidden?: boolean;
   sortOrder?: ExplorationSortOrder;
   readPageIds?: ReadonlySet<string>;
+  tab?: ExplorationSidebarTab;
 }
 
 function setup({
@@ -89,6 +90,7 @@ function setup({
   showHidden = false,
   sortOrder = DEFAULT_SORT_ORDER,
   readPageIds = new Set<string>(),
+  tab = "all",
 }: SetupOpts) {
   const setSelectedEntityId = jest.fn();
   const onToggleShowHidden = jest.fn();
@@ -146,14 +148,17 @@ function setup({
     selectedSidebarTab,
     getSelectedSidebarTabUrl,
     treeItemFilter,
-  } = getSidebarTestContext(exploration);
+  } = getSidebarTestContext(exploration, tab);
 
-  // Mirror the page: exclude hidden pages from the tree unless "show hidden" is on.
+  // Mirror the page: exclude hidden pages from the tree unless "show hidden"
+  // is on, and keep the initial-thread anchor only on the "All" tab.
   const displayTree = getExplorationSidebarTree(
     exploration,
     showHidden
       ? treeItemFilter
       : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
+    undefined,
+    { keepEmptyInitialThread: tab === "all" },
   );
 
   const sidebar = (
@@ -431,11 +436,18 @@ describe("ExplorationSidebar", () => {
       expect(
         screen.getByText("All items have been hidden."),
       ).toBeInTheDocument();
+      // The childless heading renders expanded so the note reads as its content.
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toHaveAttribute("aria-expanded", "true");
     });
 
     it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
       setup({ queries: [] });
 
+      // The thread anchor is kept on the "All" tab; whenever it has no
+      // visible children the inline note shows in place of its rows.
+      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
       expect(
         screen.getByText("All items have been hidden."),
       ).toBeInTheDocument();
@@ -444,7 +456,7 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders the hidden pages instead of the message when the filter is on", () => {
+    it("renders the hidden pages instead of the note when the filter is on", () => {
       setup({
         queries: [hiddenQuery],
         blocks: [hiddenBlock],
@@ -452,9 +464,66 @@ describe("ExplorationSidebar", () => {
       });
 
       expect(
-        screen.queryByTestId("exploration-all-hidden"),
+        screen.queryByText("All items have been hidden."),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Hidden chart")).toBeInTheDocument();
+    });
+
+    it("shows the per-tab empty message on Stars when nothing is starred", () => {
+      setup({ queries: [doneQuery], tab: "stars" });
+
+      expect(
+        screen.getByText("Nothing's been starred yet."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the per-tab empty message on Discussions when nothing is discussed", () => {
+      setup({ queries: [doneQuery], tab: "discussions" });
+
+      expect(screen.getByText("No discussions yet.")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the per-tab empty message on Stars even when the starred pages are merely hidden", () => {
+      setup({
+        queries: [hiddenQuery],
+        blocks: [
+          createBlock({
+            id: 1,
+            name: "Revenue",
+            pages: [
+              createPage({
+                id: 900,
+                name: "Hidden chart",
+                query_ids: [9],
+                hidden: true,
+                starred: true,
+              }),
+            ],
+          }),
+        ],
+        tab: "stars",
+      });
+
+      // Filtered tabs never show the all-hidden note — an empty tree always
+      // falls through to the tab's own empty message.
+      expect(
+        screen.getByText("Nothing's been starred yet."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
     });
   });
 
