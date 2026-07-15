@@ -73,6 +73,12 @@
                  clojure.lang.ExceptionInfo
                  #"only supported engine and cannot be disabled"
                  (search/check-for-removed-env-vars!))))))
+      (testing "naming both settings when semantic is the default and also force-enabled as additional"
+        (with-engines {:supported all-engines :additional ["semantic"]}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Set MB_SEARCH_ENGINE=appdb and remove semantic from additional-search-engines"
+               (search/check-for-removed-env-vars!)))))
       (testing "pointing at additional-search-engines when semantic is only force-enabled through it"
         (with-engines {:supported all-engines :configured :appdb :additional ["semantic"]}
           (is (thrown-with-msg?

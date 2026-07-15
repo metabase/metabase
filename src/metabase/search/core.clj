@@ -105,11 +105,15 @@
   []
   ;; An empty value is "explicitly unset" per the usual env-var semantics, so only a non-blank value trips this.
   (when-not (str/blank? (env/env :mb-semantic-search-enabled))
-    (let [engines           (search.engine/supported-engines)
-          semantic-default? (= :search.engine/semantic (first engines))
-          semantic-active?  (contains? (set (search.engine/active-engines)) :search.engine/semantic)
-          fallback          (when semantic-default? (second engines))]
+    (let [engines              (search.engine/supported-engines)
+          semantic-default?    (= :search.engine/semantic (first engines))
+          semantic-additional? (contains? (set (search.engine/additional-engines)) :search.engine/semantic)
+          fallback             (when semantic-default? (second engines))]
       (if-let [msg (cond
+                     (and fallback semantic-additional?)
+                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} and remove semantic from additional-search-engines to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                          (name fallback))
+
                      fallback
                      (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
                           (name fallback))
@@ -117,7 +121,7 @@
                      semantic-default?
                      (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
 
-                     semantic-active?
+                     semantic-additional?
                      (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Remove semantic from additional-search-engines to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."))]
         (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
         (log/warn "MB_SEMANTIC_SEARCH_ENABLED is no longer supported; remove it from your configuration.")))))
