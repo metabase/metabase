@@ -7,10 +7,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
@@ -28,20 +30,21 @@
     include `:source-table` so the table can be derived"
   [definition]
   (if (seq definition)
-    (-> (case (lib/normalized-mbql-version definition)
-          (:mbql-version/mbql5 :mbql-version/legacy)
-          definition
-          ;; default: MBQL4 fragment - wrap it in a full query. Some legacy fragments carry a stray
-          ;; :aggregation, which segments cannot have; strip it like the model migration does.
-          (let [definition  (dissoc definition :aggregation)
-                table-id    (:source-table definition)
-                _           (api/check-400 (pos-int? table-id)
-                                           (tru "Segment definition must specify a source table."))
-                database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-            {:database database-id
-             :type     :query
-             :query    definition}))
-        lib-be/normalize-query)
+    (let [normalized (-> (case (lib/normalized-mbql-version definition)
+                           (:mbql-version/mbql5 :mbql-version/legacy)
+                           definition
+                           ;; default: MBQL4 fragment - wrap it in a full query
+                           (let [table-id    (:source-table definition)
+                                 _           (api/check-400 (pos-int? table-id)
+                                                            (tru "Segment definition must specify a source table."))
+                                 database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
+                             {:database database-id
+                              :type     :query
+                              :query    definition}))
+                         lib-be/normalize-query)]
+      (api/check-400 (mr/validate ::segments.schema/segment normalized)
+                     (tru "Invalid segment definition."))
+      normalized)
     {}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}

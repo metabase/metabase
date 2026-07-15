@@ -245,7 +245,6 @@ describe("issues 55617, 55618", () => {
       name: "My segment",
       definition: {
         "source-table": ORDERS_ID,
-        aggregation: [["count"]],
         filter: ["<", ["field", ORDERS.TOTAL, null], 100],
       },
     }).then(({ body: segment }) => {

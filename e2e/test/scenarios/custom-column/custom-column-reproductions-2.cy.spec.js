@@ -307,7 +307,6 @@ describe("issue 55300", () => {
         name: "now",
         definition: {
           "source-table": ORDERS_ID,
-          aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
@@ -316,7 +315,6 @@ describe("issue 55300", () => {
         name: "Count",
         definition: {
           "source-table": ORDERS_ID,
-          aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });

@@ -118,15 +118,14 @@
                                       {:name       "A Segment"
                                        :definition (definition-fn (mt/id :users :id) 20)})))))))
 
-(deftest create-segment-strips-fragment-aggregation-test
-  (testing "POST /api/segment strips a stray :aggregation from MBQL4 fragments (segments cannot have one)"
-    (let [segment (mt/user-http-request :crowberto :post 200 "segment"
-                                        {:name       "Fragment with aggregation"
-                                         :definition {:source-table (mt/id :users)
-                                                      :aggregation  [[:count]]
-                                                      :filter       [:> [:field (mt/id :users :id) nil] 0]}})]
-      (is (=? {:table_id (mt/id :users)} segment))
-      (is (not (contains? (-> segment :definition :stages first) :aggregation))))))
+(deftest create-segment-rejects-aggregation-test
+  (testing "POST /api/segment rejects definitions with an :aggregation (segments cannot have one)"
+    (is (= "Invalid segment definition."
+           (mt/user-http-request :crowberto :post 400 "segment"
+                                 {:name       "Fragment with aggregation"
+                                  :definition {:source-table (mt/id :users)
+                                               :aggregation  [[:count]]
+                                               :filter       [:> [:field (mt/id :users :id) nil] 0]}})))))
 
 ;; ## PUT /api/segment
 
