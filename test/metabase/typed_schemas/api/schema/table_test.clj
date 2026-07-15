@@ -59,6 +59,24 @@
           :fields       {"createdAt" (assoc created-at-field-schema :sourceName "orders")}}
          (schema.table/table-schema orders-table))))
 
+; Avoid N+1 on table fields by re-using the known table id
+(deftest table-schema-uses-known-table-id-for-detail-fields-test
+  (let [field-table-lookups (atom 0)
+        detail-fields       [{:field_id     42
+                              :name         "created_at"
+                              :display_name "Created At"
+                              :base_type    "type/DateTime"}
+                             {:field_id     43
+                              :name         "total"
+                              :display_name "Total"
+                              :base_type    "type/Decimal"}]]
+    (with-redefs [t2/select-one-fn (fn [& _]
+                                     (swap! field-table-lookups inc)
+                                     999)]
+      (let [schema (schema.table/table-schema (assoc orders-table :fields detail-fields))]
+        (is (= #{10} (->> (:fields schema) vals (map :tableId) set)))
+        (is (zero? @field-table-lookups))))))
+
 (deftest segment-schema-uses-type-discriminator-test
   (is (= {:type    "segment"
           :key     "completedOrders"

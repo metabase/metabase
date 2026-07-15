@@ -21,10 +21,12 @@
 (defn field-schema
   "Returns the schema for a table field."
   ([field]
-   (field-schema field nil))
-  ([{:keys [id field_id] :as field} source-name]
+   (field-schema field nil nil))
+  ([field source-name]
+   (field-schema field source-name nil))
+  ([{:keys [id field_id] :as field} source-name table-id]
    (let [field-id (or id field_id)
-         table-id (or (:table_id field) (:table-id field) (table-by-field-id field-id))]
+         table-id (or table-id (:table_id field) (:table-id field) (table-by-field-id field-id))]
      (m/assoc-some
       (assoc (common/column-schema field)
              :type "column"
@@ -144,7 +146,7 @@
       :name         (or display_name name)
       :databaseName database_name
       :tableName    name
-      :fields       (common/keyed-map (map #(field-schema % name) fields))}
+      :fields       (common/keyed-map (map #(field-schema % name id) fields))}
      :entityId portable_entity_id
      :description description
      :schemaName database_schema
