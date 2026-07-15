@@ -35,6 +35,24 @@
   --group:#5a6472; --chip:#1c222c; --chip-ink:#b9c3d1; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.35);
   --uses:#e89a4d; --usedby:#4cc98a;
 }
+:root[data-theme=solarized-light]{
+  --bg:#eee8d5; --panel:#fdf6e3; --panel-2:#f4eeda; --ink:#586e75; --ink-soft:#93a1a1;
+  --line:#e3ddc8; --line-strong:#d3ccb4; --accent:#268bd2; --accent-soft:#dceaf4;
+  --group:#93a1a1; --chip:#e7e0cc; --chip-ink:#586e75; --shadow:0 1px 2px rgba(88,110,117,.12),0 10px 26px rgba(88,110,117,.14);
+  --uses:#cb4b16; --usedby:#859900;
+}
+:root[data-theme=solarized-dark]{
+  --bg:#002b36; --panel:#073642; --panel-2:#053039; --ink:#93a1a1; --ink-soft:#657b83;
+  --line:#0a3f4c; --line-strong:#164955; --accent:#2aa7d8; --accent-soft:#0f4657;
+  --group:#586e75; --chip:#08313c; --chip-ink:#93a1a1; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.4);
+  --uses:#cb4b16; --usedby:#859900;
+}
+:root[data-theme=gruvbox]{
+  --bg:#282828; --panel:#32302f; --panel-2:#3c3836; --ink:#ebdbb2; --ink-soft:#a89984;
+  --line:#3c3836; --line-strong:#504945; --accent:#8ec07c; --accent-soft:#3a4a3a;
+  --group:#928374; --chip:#3c3836; --chip-ink:#d5c4a1; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.4);
+  --uses:#fe8019; --usedby:#b8bb26;
+}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--ink);
@@ -53,9 +71,15 @@ header h1 .dim{color:var(--ink-soft);font-weight:400}
   background:var(--panel-2);color:var(--ink);font-size:13px;outline:none}
 .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .search svg{position:absolute;left:9px;top:8px;width:15px;height:15px;color:var(--ink-soft)}
-button.ghost{border:1px solid var(--line-strong);background:var(--panel-2);color:var(--ink-soft);
+.ghost{border:1px solid var(--line-strong);background:var(--panel-2);color:var(--ink-soft);
   border-radius:8px;padding:6px 11px;font-size:12.5px;cursor:pointer}
-button.ghost:hover{color:var(--ink);border-color:var(--accent)}
+.ghost:hover{color:var(--ink);border-color:var(--accent)}
+.themepick{display:inline-flex;align-items:center;gap:6px;padding:0 9px}
+.themepick .ticon{color:var(--ink-soft);flex-shrink:0}
+.themepick:hover .ticon,.themepick:hover .tchev{color:var(--ink)}
+.themepick select{border:none;background:transparent;color:inherit;font:inherit;font-size:12.5px;
+  padding:6px 0;cursor:pointer;-webkit-appearance:none;appearance:none;outline:none}
+.themepick .tchev{color:var(--ink-soft);font-size:10px;pointer-events:none}
 .legend{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px;border-bottom:1px solid var(--line);
   background:var(--panel-2);align-items:center}
 .legend .lbl{color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;margin-right:2px}
@@ -130,7 +154,18 @@ main{flex:1;display:flex;min-height:0}
   </div>
   <button class=ghost id=expand>Expand all</button>
   <button class=ghost id=collapse>Collapse</button>
-  <button class=ghost id=theme>◐</button>
+  <label class='themepick ghost' title='Theme'>
+    <svg class=ticon viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='2'><circle cx='12' cy='12' r='9'/><path d='M12 3a9 9 0 0 0 0 18' fill='currentColor' stroke='none'/></svg>
+    <select id=theme>
+      <option value=''>System</option>
+      <option value='light'>Light</option>
+      <option value='dark'>Dark</option>
+      <option value='solarized-light'>Solarized Light</option>
+      <option value='solarized-dark'>Solarized Dark</option>
+      <option value='gruvbox'>Gruvbox</option>
+    </select>
+    <span class=tchev>▾</span>
+  </label>
 </header>
 <div class=legend id=legend></div>
 <main>
@@ -366,10 +401,10 @@ document.getElementById('expand').onclick=()=>{
 };
 document.getElementById('collapse').onclick=()=>{ open.clear(); render(); };
 const rootEl=document.documentElement;
-document.getElementById('theme').onclick=()=>{
-  const cur=rootEl.getAttribute('data-theme')|| (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
-  rootEl.setAttribute('data-theme', cur==='dark'?'light':'dark');
-};
+const themeSel=document.getElementById('theme');
+function applyTheme(v){ v ? rootEl.setAttribute('data-theme',v) : rootEl.removeAttribute('data-theme'); }
+try{ const saved=localStorage.getItem('mb-modtree-theme'); if(saved!==null){ themeSel.value=saved; applyTheme(saved); } }catch(e){}
+themeSel.onchange=()=>{ applyTheme(themeSel.value); try{ localStorage.setItem('mb-modtree-theme', themeSel.value); }catch(e){} };
 
 // open the top level by default
 for(const kid of root.children.values()) if(kid.children.size) open.add(kid.seg);
