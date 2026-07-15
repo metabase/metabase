@@ -25,8 +25,8 @@
            (kondo-ratchet/over-budget (:ignore-counts (kondo-ratchet/read-ratchets))
                                       (kondo-ratchet/scan))))))
 
-;; CI allows slack: the kondo-ratchets-update workflow lowers budgets on master after each merge, so PRs
-;; that remove ignores don't have to touch the file. Locally the fix is instant, so keep the file tight.
+;; CI allows slack — the kondo-ratchets-self-heal workflow commits the lowered budgets to the PR branch.
+;; Locally the fix is instant, so keep the file tight.
 (when-not (System/getenv "CI")
   (deftest ^:parallel budgets-are-tight-locally-test
     (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " exceed the actual ignore counts.\n"

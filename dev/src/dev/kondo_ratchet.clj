@@ -1,12 +1,10 @@
 (ns dev.kondo-ratchet
   "Ratchet on inline kondo ignore forms.
 
-  Scans the backend source tree, counts ignores per linter, and compares them to the budgets recorded in
-  `.clj-kondo/ratchets.edn`.
-  `metabase.core.kondo-ratchet-test` fails when any count exceeds its budget;
-  `./bin/mage fix-kondo-ratchets` lowers budgets to match reality (it never raises one).
-
-  Loadable under both Babashka and the JVM: depends only on clojure.core, clojure.edn, and clojure.java.io."
+  Per-linter budgets live in `.clj-kondo/ratchets.edn`.
+  `metabase.core.kondo-ratchet-test` fails when a count exceeds its budget;
+  `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree, never raises them.
+  Loaded by both the bb task and the JVM test, so keep it dependency-free."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -15,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (def ratchets-file
-  "Path of the checked-in per-linter budgets file, relative to the repo root."
+  "The budgets file, relative to the repo root."
   ".clj-kondo/ratchets.edn")
 
 (def ^:private source-roots
@@ -24,23 +22,23 @@
 (def ^:private source-extensions
   [".clj" ".cljc" ".cljs"])
 
-;; These files contain ignore forms as regexes or test fixtures rather than as suppressions.
-;; (This file's own handful of real :discouraged-var ignores go uncounted as a side effect.)
+;; Files whose ignore forms are regexes or test fixtures, not suppressions.
+;; Side effect: this file's own few real ignores go uncounted.
 (def ^:private fixture-files
   #{"dev/src/dev/kondo_ratchet.clj"
     "dev/test/dev/deps_graph_test.clj"
     "test/metabase/core/kondo_ratchet_test.clj"})
 
-;; Built by concatenation so this file never contains a literal ignore marker (see `fixture-files`).
+;; Concatenated so this file never contains a literal ignore marker.
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
 ;; `#_{... [:some-linter]}` and `^{... [:some-linter]}`.
-;; A vector that spills onto the next line is missed; that only undercounts, making the ratchet more lenient.
+;; A vector spilling onto the next line is missed, which only makes the ratchet more lenient.
 (def ^:private vector-form-re
   (re-pattern (str "(?:#_|\\^)\\s*\\{\\s*" ignore-marker "\\s*\\[([^\\]]*)\\]")))
 
-;; Bare `#_kw` / `^kw` forms with no linter vector, which suppress every linter on the next form.
+;; Bare `#_kw` / `^kw` with no linter vector: suppresses every linter on the next form.
 (def ^:private bare-form-re
   (re-pattern (str "(?:#_\\s*|\\^)" ignore-marker "(?![\\w./-])")))
 
@@ -111,16 +109,15 @@
     {:ignore-counts {}}))
 
 (def ^:private header
-  (str ";; Budgets for inline `" ignore-marker "` forms, counted per linter across the backend source tree.\n"
-       ";; metabase.core.kondo-ratchet-test fails when any actual count exceeds its budget here.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match reality (CI also runs it against master\n"
-       ";; after each merge); raising one, or adding an entry for a new linter, is a deliberate hand edit\n"
-       ";; to defend in the PR. :all counts the vector-less ignore form, which suppresses every linter on\n"
-       ";; the form after it.\n"))
+  (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
+       ";; metabase.core.kondo-ratchet-test fails when a count exceeds its budget.\n"
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; CI runs it against PR branches.\n"
+       ";; Raising a budget, or adding one for a new linter, is a hand edit to defend in your PR.\n"
+       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn render
-  "Deterministic text of the ratchets file for the `counts` budget map.
-  [[fix!]] and the file-hygiene test both rely on this being byte-stable."
+  "Text of the ratchets file for the `counts` budget map.
+  Byte-stable: [[fix!]] idempotency and the file-hygiene test depend on it."
   [counts]
   (str header
        (if (empty? counts)
@@ -135,9 +132,8 @@
                 "}}\n")))))
 
 (defn lowered-counts
-  "`recorded` budgets with each lowered to its actual count where that is lower.
-  Budgets for linters with no remaining ignores are dropped.
-  Never raises a budget and never adds a linter."
+  "`recorded` with each budget lowered to its actual count; entries with no ignores left are dropped.
+  Never raises a budget, never adds one."
   [recorded actual]
   (into {}
         (keep (fn [[linter budget]]
@@ -149,8 +145,7 @@
         recorded))
 
 (defn change-report
-  "Human-readable lines describing what [[fix!]] does to `recorded` given `actual` counts:
-  lowered/dropped budgets, plus warnings for linters over budget (which it never fixes)."
+  "The lines [[fix!]] prints: lowered and dropped budgets, plus warnings for anything over budget."
   [recorded actual]
   (concat
    (for [[linter budget] (sort-by (comp str first) recorded)
@@ -165,8 +160,8 @@
      (format "WARNING: %s has %d ignores but no budget entry -- add one by hand" linter n))))
 
 (defn fix!
-  "Rewrite [[ratchets-file]] with lowered budgets (see [[lowered-counts]]) and normalized formatting.
-  Prints the [[change-report]]; prints `unchanged` on a no-op."
+  "Rewrite [[ratchets-file]] with lowered budgets and normalized formatting.
+  Prints the [[change-report]], or `unchanged` on a no-op."
   []
   (let [recorded (:ignore-counts (read-ratchets))
         actual   (actual-counts (scan))
