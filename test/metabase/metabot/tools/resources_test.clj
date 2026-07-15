@@ -135,35 +135,35 @@
   (testing "every supported URI pattern routes to the expected handler with the expected args"
     (let [calls (atom nil)
           spy   (fn [tag] (fn [& args] (reset! calls [tag (vec args)]) :spied))]
-      (with-redefs [read-resource/fetch-databases-list             (spy :databases-list)
-                    read-resource/fetch-collections-list           (spy :collections-list)
-                    read-resource/fetch-user-recents               (spy :user-recents)
-                    read-resource/fetch-database                   (spy :database)
-                    read-resource/fetch-database-tables            (spy :database-tables)
-                    read-resource/fetch-database-models            (spy :database-models)
-                    read-resource/fetch-database-schemas           (spy :database-schemas)
-                    read-resource/fetch-database-schema-tables     (spy :database-schema-tables)
-                    read-resource/fetch-collection                 (spy :collection)
-                    read-resource/fetch-collection-items           (spy :collection-items)
-                    read-resource/fetch-collection-subcollections  (spy :collection-subcollections)
-                    read-resource/fetch-table                      (spy :table)
-                    read-resource/fetch-table-fields               (spy :table-fields)
-                    read-resource/fetch-table-field                (spy :table-field)
-                    read-resource/fetch-table-derived              (spy :table-derived)
-                    read-resource/fetch-card                       (spy :card)
-                    read-resource/fetch-card-fields                (spy :card-fields)
-                    read-resource/fetch-card-field                 (spy :card-field)
-                    read-resource/fetch-card-sources               (spy :card-sources)
-                    read-resource/fetch-metric                     (spy :metric)
-                    read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
-                    read-resource/fetch-metric-dimension           (spy :metric-dimension)
-                    read-resource/fetch-measure                    (spy :measure)
-                    read-resource/fetch-segment                    (spy :segment)
-                    read-resource/fetch-transform                  (spy :transform)
-                    read-resource/fetch-transform-sources          (spy :transform-sources)
-                    read-resource/fetch-transform-target           (spy :transform-target)
-                    read-resource/fetch-dashboard                  (spy :dashboard)
-                    read-resource/fetch-dashboard-items            (spy :dashboard-items)]
+      (mt/with-dynamic-fn-redefs [read-resource/fetch-databases-list             (spy :databases-list)
+                                  read-resource/fetch-collections-list           (spy :collections-list)
+                                  read-resource/fetch-user-recents               (spy :user-recents)
+                                  read-resource/fetch-database                   (spy :database)
+                                  read-resource/fetch-database-tables            (spy :database-tables)
+                                  read-resource/fetch-database-models            (spy :database-models)
+                                  read-resource/fetch-database-schemas           (spy :database-schemas)
+                                  read-resource/fetch-database-schema-tables     (spy :database-schema-tables)
+                                  read-resource/fetch-collection                 (spy :collection)
+                                  read-resource/fetch-collection-items           (spy :collection-items)
+                                  read-resource/fetch-collection-subcollections  (spy :collection-subcollections)
+                                  read-resource/fetch-table                      (spy :table)
+                                  read-resource/fetch-table-fields               (spy :table-fields)
+                                  read-resource/fetch-table-field                (spy :table-field)
+                                  read-resource/fetch-table-derived              (spy :table-derived)
+                                  read-resource/fetch-card                       (spy :card)
+                                  read-resource/fetch-card-fields                (spy :card-fields)
+                                  read-resource/fetch-card-field                 (spy :card-field)
+                                  read-resource/fetch-card-sources               (spy :card-sources)
+                                  read-resource/fetch-metric                     (spy :metric)
+                                  read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
+                                  read-resource/fetch-metric-dimension           (spy :metric-dimension)
+                                  read-resource/fetch-measure                    (spy :measure)
+                                  read-resource/fetch-segment                    (spy :segment)
+                                  read-resource/fetch-transform                  (spy :transform)
+                                  read-resource/fetch-transform-sources          (spy :transform-sources)
+                                  read-resource/fetch-transform-target           (spy :transform-target)
+                                  read-resource/fetch-dashboard                  (spy :dashboard)
+                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)]
         (doseq [[uri expected-handler expected-args] dispatch-cases]
           (testing uri
             (reset! calls nil)
@@ -349,6 +349,17 @@
               (is (str/includes? output "VISIBLE-DB"))
               (is (not (str/includes? output "HIDDEN-DB"))
                   "unreadable database must not appear in the list"))))))))
+
+(deftest list-filters-destination-databases-test
+  (testing "metabase://databases hides destination DBs"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {:name "ROUTER-DB"}
+                     :model/Database _               {:name "DESTINATION-DB" :router_database_id router-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
+            (is (str/includes? output "ROUTER-DB"))
+            (is (not (str/includes? output "DESTINATION-DB"))
+                "destination database must not appear in the list")))))))
 
 (deftest list-filters-collections-by-can-read-test
   (testing "metabase://collections hides collections the user can't read"
@@ -707,6 +718,52 @@
           (is (str/includes? output (str "uri=\"metabase://database/" db-id "\"")))
           (is (str/includes? output "engine=\"h2\"")))))))
 
+(deftest read-database-detail-rejects-destination-databases-test
+  (testing "metabase://database/{destination-id} returns an error"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (is (error? (read-resource/read-resource
+                       {:uris [(str "metabase://database/" destination-id)]}))
+              "destination database must not be readable by direct URI"))))))
+
+(deftest read-destination-backed-entities-return-errors-test
+  (testing "destination-backed entity resources cannot expose destination database metadata"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id} {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}
+                     :model/Table    {table-id :id}       {:db_id destination-id :active true}
+                     :model/Card     {model-id :id}       {:type :model :database_id destination-id}
+                     :model/Card     {question-id :id}    {:type :question :database_id destination-id}
+                     :model/Card     {metric-id :id}      {:type :metric :database_id destination-id}
+                     :model/Measure  {measure-id :id}     {:table_id table-id}
+                     :model/Segment  {segment-id :id}     {:table_id table-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (doseq [uri [(str "metabase://table/" table-id)
+                       (str "metabase://table/" table-id "/fields")
+                       (str "metabase://table/" table-id "/fields/42")
+                       (str "metabase://table/" table-id "/derived")
+                       (str "metabase://model/" model-id)
+                       (str "metabase://model/" model-id "/fields")
+                       (str "metabase://model/" model-id "/fields/42")
+                       (str "metabase://model/" model-id "/sources")
+                       (str "metabase://question/" question-id)
+                       (str "metabase://question/" question-id "/fields")
+                       (str "metabase://question/" question-id "/fields/42")
+                       (str "metabase://question/" question-id "/sources")
+                       (str "metabase://metric/" metric-id)
+                       (str "metabase://metric/" metric-id "/dimensions")
+                       (str "metabase://metric/" metric-id "/dimensions/42")
+                       (str "metabase://measure/" measure-id)
+                       (str "metabase://segment/" segment-id)]]
+            (testing uri
+              ;; Match the guard's 404 message exactly: a plain `error?` check can't tell the
+              ;; destination-database guard from unrelated failures like "Field 42 not found".
+              (is (= "Not found."
+                     (-> (read-resource/read-resource {:uris [uri]}) :resources first :error))
+                  "destination-backed entity resource must 404 via the destination-database guard"))))))))
+
 (deftest read-database-models-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id}    {}
@@ -795,8 +852,8 @@
 (deftest read-table-field-with-slash-test
   (testing "field IDs containing slashes (e.g. composite ids c75/17) are preserved through dispatch"
     (let [calls (atom nil)]
-      (with-redefs [read-resource/fetch-table-field
-                    (fn [& args] (reset! calls args) {:structured-output {:result-type :metabot-entity :type :stub}})]
+      (mt/with-dynamic-fn-redefs [read-resource/fetch-table-field
+                                  (fn [& args] (reset! calls args) {:structured-output {:result-type :metabot-entity :type :stub}})]
         (#'read-resource/dispatch "metabase://table/3/fields/c75/17")
         (is (= ["3" "c75/17"] @calls))))))
 
