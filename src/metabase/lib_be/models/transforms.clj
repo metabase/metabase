@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.native :as lib.native]
-   [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk.util :as lib.walk.util]
@@ -85,29 +84,30 @@
       (log/errorf e "Error normalizing query %s" (pr-str query))
       {}))))
 
-(defn- stale-card-tag-renames
-  "Old tag name => new tag name for `:card` template tags whose name embeds a card id other than
-  their `:card-id`. The tag name and the `{{#id-slug}}` query text it appears in are derived from the
-  id, so when the two disagree - e.g. serialization import remapped `:card-id` to the local card's
-  id - the id wins. Tags whose card can't be found are left alone."
-  [query]
-  (into {}
-        (keep (fn [{tag-type :type, :keys [card-id], tag-name :name}]
-                (when (and (= tag-type :card)
-                           card-id
-                           (some-> (lib.params.parse/tag-name->card-id tag-name)
-                                   (not= card-id)))
-                  (when-let [card-name (:name (lib.metadata/card query card-id))]
-                    [tag-name (str "#" card-id "-" (lib.native/card-tag-slug card-name))]))))
-        (lib.walk.util/all-template-tags query)))
+(defn- card-tag-canonical-name
+  "The canonical name for a `:card` template tag - `#<card-id>-<slug of the card's name>`. The tag
+  name and the `{{#id-slug}}` query text it appears in are denormalized from `:card-id`, so the id
+  wins whenever they disagree - e.g. serialization import remapped `:card-id` to the local card's id,
+  or the referenced card was renamed. Nil when the tag isn't a card tag or its card can't be found."
+  [query {tag-type :type, :keys [card-id]}]
+  (when (and (= tag-type :card) card-id)
+    (when-let [card-name (:name (lib.metadata/card query card-id))]
+      (str "#" card-id "-" (lib.native/card-tag-slug card-name)))))
 
-(defn- repair-stale-card-template-tags
-  "Repair card template tags whose name embeds a different card id than their `:card-id`, so stored
-  queries stay canonical. The frontend treats the disagreement as an edit (the question opens dirty),
-  and re-extracting tags from the stale text clobbers `:card-id` with the id embedded in the name."
+(defn- canonicalize-card-template-tags
+  "Rename card template tags (and their `{{#id-slug}}` references in the query text) to the canonical
+  name derived from their `:card-id`, so stored queries stay canonical. The frontend treats a name
+  that disagrees with the card as an edit (the question opens dirty), and re-extracting tags from
+  stale text clobbers `:card-id` with the id embedded in the name."
   [query]
   (if (= (:lib/type query) :mbql/query)
-    (lib.native/replace-template-tag-names query (stale-card-tag-renames query))
+    (lib.native/replace-template-tag-names
+     query
+     (into {}
+           (keep (fn [{tag-name :name, :as tag}]
+                   (when-let [new-name (card-tag-canonical-name query tag)]
+                     [tag-name new-name])))
+           (lib.walk.util/all-template-tags query)))
     query))
 
 (defn- transform-query-in [query]
@@ -116,7 +116,7 @@
                     {:query query, :status-code 400})))
   (-> query
       (as-> $query (normalize-query nil $query {:strict? true}))
-      repair-stale-card-template-tags
+      canonicalize-card-template-tags
       lib/prepare-for-serialization
       mi/json-in))
 

@@ -123,7 +123,7 @@
    :native   {:query         (str "SELECT * FROM {{" tag-name "}}")
               :template-tags {tag-name tag}}})
 
-(deftest ^:parallel repair-stale-card-template-tags-test
+(deftest ^:parallel canonicalize-card-template-tags-test
   (testing "on write, a card tag whose name embeds a different card id than :card-id is rewritten to the id (#77516)"
     (mt/with-temp [:model/Card {card-id :id} {:name "BH Population Model"}]
       (let [stale-name (str "#" (inc card-id) "-bh-population-model")
@@ -141,19 +141,22 @@
                                          :type         :card
                                          :card-id      card-id}))))))))
 
-(deftest ^:parallel repair-stale-card-template-tags-noop-test
-  (testing "a card tag whose name agrees with :card-id is untouched, even if the slug is stale"
+(deftest ^:parallel canonicalize-card-template-tags-slug-drift-test
+  (testing "a card tag whose name agrees with :card-id but has a stale slug is canonicalized to the card's current name"
     (mt/with-temp [:model/Card {card-id :id} {:name "Totally Different Name"}]
-      (let [tag-name (str "#" card-id "-some-old-slug")]
-        (is (=? {:stages [{:native        (str "SELECT * FROM {{" tag-name "}}")
-                           :template-tags [{:name tag-name, :card-id card-id}]}]}
+      (let [tag-name (str "#" card-id "-some-old-slug")
+            new-name (str "#" card-id "-totally-different-name")]
+        (is (=? {:stages [{:native        (str "SELECT * FROM {{" new-name "}}")
+                           :template-tags [{:name new-name, :card-id card-id}]}]}
                 (write-read-query
                  (native-card-tag-query tag-name
                                         {:id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
                                          :name         tag-name
                                          :display-name "Some Old Slug"
                                          :type         :card
-                                         :card-id      card-id})))))))
+                                         :card-id      card-id}))))))))
+
+(deftest ^:parallel canonicalize-card-template-tags-missing-card-test
   (testing "a tag whose :card-id doesn't resolve to a card is untouched"
     (let [missing-id 2147483647
           tag-name   "#133-who-knows"]
