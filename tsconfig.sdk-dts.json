@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.sdk.json",
+  "compilerOptions": {
+    "declarationMap": false,
+    "incremental": false
+  },
+  // The dts bundler walks the import graph from the entry point, so only the
+  // entry and the ambient declaration files (global augmentations, css/svg
+  // module declarations) need to be listed here.
+  "include": [
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
+    "frontend/src/types/*.d.ts",
+    "frontend/src/embedding-sdk-shared/types/*.d.ts"
+  ]
+}
