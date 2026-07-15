@@ -484,6 +484,7 @@
            lib
            lib.be
            lib.schema
+           lib.types
            metabot.slackbot
            models
            notification
@@ -498,7 +499,6 @@
            task
            tiles
            timeline
-           types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
@@ -1078,6 +1078,7 @@
            lib
            lib.be
            lib.metric
+           lib.types
            metrics
            models
            mq
@@ -1091,7 +1092,6 @@
            task
            task.history
            timeline
-           types
            util}
    :model-exports #{:model/Exploration
                     :model/ExplorationBlock
@@ -1113,9 +1113,9 @@
   {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
+           lib.types
            models
            query-processor
-           types
            util}}
 
   frontend-errors
@@ -1147,10 +1147,7 @@
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
 
-  graph
-  {:team "Graphy"
-   :api  #{metabase.graph.core}
-   :uses #{util}}
+
 
   health-inspector
   {:team "Querying Platform"
@@ -1207,7 +1204,8 @@
                      lib.metadata
                      lib.metric
                      lib.schema
-                     lib.source-swap}
+                     lib.source-swap
+                     lib.types}
    :api  #{metabase.lib.core
            metabase.lib.equality
            metabase.lib.expression
@@ -1221,12 +1219,12 @@
            metabase.lib.util
            metabase.lib.walk}
    :uses #{config
-           graph
            lib.legacy-mbql
            lib.metadata
            lib.schema
-           types
-           util}
+           lib.types
+           util
+           util.graph}
    :friends #{query-processor}}     ;; Necessarily manipulates MBQL; the one irreducible friend edge -- lib and the QP are one MBQL subsystem.
 
   lib.agent-lib
@@ -1268,7 +1266,7 @@
    :api #{metabase.legacy-mbql.normalize metabase.legacy-mbql.schema metabase.legacy-mbql.util}
    :uses #{lib
            lib.schema
-           types
+           lib.types
            util}}
 
   lib.metadata
@@ -1286,7 +1284,7 @@
            lib
            lib.legacy-mbql
            lib.schema
-           types
+           lib.types
            util}}
 
   lib.metric
@@ -1297,8 +1295,8 @@
            lib.be
            lib.metadata
            lib.schema
+           lib.types
            settings
-           types
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
@@ -1336,7 +1334,7 @@
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
           metabase.lib.schema.validate}
-   :uses #{lib types util}}
+   :uses #{lib lib.types util}}
 
   lib.source-swap
   {:team "Graphy"
@@ -1350,6 +1348,12 @@
            lib.schema
            sql-tools
            util}}
+
+  lib.types
+  {:team "Querying Platform"
+   :ns-prefix "metabase.types"
+   :api #{metabase.types.core metabase.types.init}
+   :uses #{util}}
 
   logger
   {:team "DevEx"
@@ -2030,7 +2034,6 @@
            documents
            embedding
            events
-           graph
            lib
            lib.be
            lib.metadata
@@ -2051,6 +2054,7 @@
            sync
            sync.analyze
            util
+           util.graph
            view-log
            warehouses.schema}
    :model-exports #{:model/Card
@@ -2865,12 +2869,12 @@
            lib
            lib.be
            lib.schema
+           lib.types
            metabot
            metrics
            models
            permissions
            system
-           types
            util}
    :model-imports #{:model/Action
                     :model/Card
@@ -2885,11 +2889,7 @@
    :api #{metabase.typed-schemas-rest.api}
    :uses #{api typed-schemas util}}
 
-  types
-  {:team "Querying Platform"
-   :api  #{metabase.types.core
-           metabase.types.init}
-   :uses #{util}}
+
 
   upload
   {:team "Graphy"
@@ -3004,8 +3004,15 @@
 
   util
   {:team "DevEx"
+   :module-exports #{util.graph}
    :api  :any
    :uses #{classloader config settings}}
+
+  util.graph
+  {:team "Graphy"
+   :ns-prefix "metabase.graph"
+   :api #{metabase.graph.core}
+   :uses #{util}}
 
   version
   {:team "UX West"
@@ -3162,6 +3169,7 @@
            lib
            lib.metadata
            lib.schema
+           lib.types
            models
            parameters
            permissions
@@ -3169,7 +3177,6 @@
            query-processor
            request
            sync
-           types
            upload
            util
            warehouses.schema
@@ -3230,10 +3237,12 @@
                     :model/Segment
                     :model/Table}}
 
-  enterprise/action-v2
+
+
+  enterprise/actions
   {:team "Gadget"
-   :api  #{metabase-enterprise.action-v2.api
-           metabase-enterprise.action-v2.init}
+   :ns-prefix "metabase-enterprise.action-v2"
+   :api #{metabase-enterprise.action-v2.api metabase-enterprise.action-v2.init}
    :uses #{actions
            api
            driver
@@ -3393,24 +3402,64 @@
 
 
 
-  enterprise/cloud-add-ons
+
+
+
+
+  enterprise/cloud
   {:team "Cloud"
-   :api  #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
+   :ns-prefix "metabase-enterprise.harbormaster"
+   :module-exports #{enterprise/cloud.add-ons
+                     enterprise/cloud.database-replication
+                     enterprise/cloud.gsheets
+                     enterprise/cloud.proxy}
+   :uses #{api store-api util}}
+
+  enterprise/cloud.add-ons
+  {:team "Cloud"
+   :ns-prefix "metabase-enterprise.cloud-add-ons"
+   :api #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
    :uses #{api
            events
            premium-features
            store-api
            util
-           enterprise/harbormaster}}
+           enterprise/cloud}}
 
-  enterprise/cloud-proxy
+  enterprise/cloud.database-replication
   {:team "Cloud"
-   :api  #{metabase-enterprise.cloud-proxy.api}
+   :ns-prefix "metabase-enterprise.database-replication"
+   :api #{metabase-enterprise.database-replication.api metabase-enterprise.database-replication.init}
+   :uses #{api
+           driver
+           premium-features
+           settings
+           util
+           enterprise/cloud}
+   :model-imports #{:model/Database}}
+
+  enterprise/cloud.gsheets
+  {:team "Cloud"
+   :ns-prefix "metabase-enterprise.gsheets"
+   :api #{metabase-enterprise.gsheets.api metabase-enterprise.gsheets.init}
+   :uses #{analytics
+           analytics.interface
+           api
+           premium-features
+           settings
+           util
+           enterprise/cloud}
+   :model-imports #{:model/Database :model/Setting}}
+
+  enterprise/cloud.proxy
+  {:team "Cloud"
+   :ns-prefix "metabase-enterprise.cloud-proxy"
+   :api #{metabase-enterprise.cloud-proxy.api}
    :uses #{api
            lib.schema
            premium-features
            util
-           enterprise/harbormaster}}
+           enterprise/cloud}}
 
   enterprise/connection-overlays
   {:team "Graphy"
@@ -3516,17 +3565,7 @@
                     :model/Field
                     :model/Table}}
 
-  enterprise/database-replication
-  {:team "Cloud"
-   :api  #{metabase-enterprise.database-replication.api
-           metabase-enterprise.database-replication.init}
-   :uses #{api
-           driver
-           premium-features
-           settings
-           util
-           enterprise/harbormaster}
-   :model-imports #{:model/Database}}
+
 
   enterprise/database-routing
   {:team "UX West"
@@ -3548,6 +3587,7 @@
 
   enterprise/dependencies
   {:team "Graphy"
+   :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
@@ -3559,7 +3599,6 @@
            documents
            driver
            events
-           graph
            lib
            lib.be
            lib.metadata
@@ -3576,7 +3615,8 @@
            task
            transforms
            transforms.base
-           util}
+           util
+           util.graph}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3593,6 +3633,38 @@
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.checker"}
 
+  enterprise/dependencies.replacement
+  {:team "Graphy"
+   :ns-prefix "metabase-enterprise.replacement"
+   :api #{metabase-enterprise.replacement.api}
+   :uses #{analytics
+           api
+           app-db
+           events
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           lib.source-swap
+           model-persistence
+           models
+           queries
+           task
+           transforms
+           util
+           warehouses.schema
+           enterprise/dependencies}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Field
+                    :model/Measure
+                    :model/PersistedInfo
+                    :model/Sandbox
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
+
   enterprise/email
   {:team "UX West"
    :api  #{metabase-enterprise.email.api}
@@ -3608,9 +3680,12 @@
    :api  #{}
    :uses #{classloader embeddings util}}
 
-  enterprise/embedding-hub
+
+
+  enterprise/embedding
   {:team "Embedding"
-   :api  #{metabase-enterprise.embedding-hub.api}
+   :ns-prefix "metabase-enterprise.embedding-hub"
+   :api #{metabase-enterprise.embedding-hub.api}
    :uses #{api
            appearance
            audit-app
@@ -3628,10 +3703,6 @@
                     :model/Table
                     :model/Tenant}}
 
-
-
-
-
   enterprise/erd
   {:team "Gadget"
    :api  #{metabase-enterprise.erd.api}
@@ -3644,25 +3715,7 @@
                     :model/Field
                     :model/Table}}
 
-  enterprise/gsheets
-  {:team "Cloud"
-   :api  #{metabase-enterprise.gsheets.api
-           metabase-enterprise.gsheets.init}
-   :uses #{analytics
-           analytics.interface
-           api
-           premium-features
-           settings
-           util
-           enterprise/harbormaster}
-   :model-imports #{:model/Database :model/Setting}}
 
-  enterprise/harbormaster
-  {:team "Cloud"
-   :api  #{metabase-enterprise.harbormaster.client}
-   :uses #{api
-           store-api
-           util}}
 
 
 
@@ -3716,7 +3769,7 @@
                      settings
                      task
                      util
-                     enterprise/cloud-add-ons
+                     enterprise/cloud.add-ons
                      enterprise/dependencies
                      enterprise/transforms.python}
    :model-imports #{:model/AiUsageLog
@@ -3755,6 +3808,17 @@
            sso
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
+
+  enterprise/native-query-snippets
+  {:team "Graphy"
+   :ns-prefix "metabase-enterprise.snippet-collections"
+   :uses #{models
+           native-query-snippets
+           permissions
+           premium-features
+           remote-sync
+           util}
+   :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/permissions
   {:team "UX West"
@@ -3890,36 +3954,7 @@
                     :model/TransformTag
                     :model/User}}
 
-  enterprise/replacement
-  {:team "Graphy"
-   :api  #{metabase-enterprise.replacement.api}
-   :uses #{analytics
-           api
-           app-db
-           events
-           lib
-           lib.be
-           lib.metadata
-           lib.schema
-           lib.source-swap
-           model-persistence
-           models
-           queries
-           task
-           transforms
-           util
-           warehouses.schema
-           enterprise/dependencies}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/Field
-                    :model/Measure
-                    :model/PersistedInfo
-                    :model/Sandbox
-                    :model/Segment
-                    :model/Table
-                    :model/Transform}}
+
 
   enterprise/search
   {:team "UX West"
@@ -4040,16 +4075,7 @@
            util}
    :model-imports :bypass}
 
-  enterprise/snippet-collections
-  {:team "Graphy"
-   :api  #{}
-   :uses #{models
-           native-query-snippets
-           permissions
-           premium-features
-           remote-sync
-           util}
-   :model-imports #{:model/NativeQuerySnippet}}
+
 
   enterprise/sso
   {:team "UX West"
@@ -4202,9 +4228,12 @@
                     :model/Table
                     :model/TransformRun}}
 
-  enterprise/upload-management
+
+
+  enterprise/upload
   {:team "UX West"
-   :api  #{metabase-enterprise.upload-management.api}
+   :ns-prefix "metabase-enterprise.upload-management"
+   :api #{metabase-enterprise.upload-management.api}
    :uses #{api
            models
            permissions
