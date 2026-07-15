@@ -137,13 +137,19 @@
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw>}}`. The read-time hydration of
   a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects. `card_type` is the
-  `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched."
+  `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched.
+
+  Culprit cards can live outside their container's collection, so caller visibility (the same gate as
+  `visible-findings-clause`) is re-applied here - an unreadable culprit drops out of `slow_entities`
+  exactly like a deleted one."
   [card-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)})
                       [:model/Card :id :name :type :card_schema]
-                      :id [:in (set card-ids)])))
+                      {:where [:and
+                               [:in :id (set card-ids)]
+                               (collection/visible-collection-filter-clause :collection_id)]})))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external

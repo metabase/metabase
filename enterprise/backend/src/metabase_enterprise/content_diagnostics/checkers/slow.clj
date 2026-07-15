@@ -80,18 +80,38 @@
    :duration-ms  (representative-duration-ms card->avg-ms culprit-ids)
    :details      {:slow_entity_ids culprit-ids}})
 
+(defn- dashboard-culprit-pairs
+  "`{:dashboard_id … :card_id …}` rows for every way a **non-archived** dashboard runs a card in
+  `slow-card-ids` **when it renders**: a dashcard's primary card, and a combined-**series** card (extra
+  cards layered onto one dashcard's visualization). Both execute the card's real query on dashboard load.
+
+  We deliberately exclude the third dashboard→card reference dependency tracking counts — a filter's **card
+  value-source** (`parameter_card`, the \"From another model or question\" filter option) — because it does
+  not reflect this card's slowness: the dropdown values are fetched **on demand** (only when the filter is
+  opened), are **cached**, and run a *different, limited distinct-values query* (see
+  `parameters.custom-values/values-from-card-query`), not the card's chart query that `duration_ms` measures."
+  [slow-card-ids]
+  (let [non-archived [:= :d.archived false]]
+    (concat
+     ;; primary dashcard cards (a card can appear on several tabs — deduped by the caller)
+     (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
+                :from   [[:report_dashboardcard :dc]]
+                :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                :where  [:and non-archived [:in :dc.card_id slow-card-ids]]})
+     ;; combined-series cards (extra cards layered onto one dashcard's visualization)
+     (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
+                :from   [[:dashboardcard_series :s]]
+                :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
+                         [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
+                :where  [:and non-archived [:in :s.card_id slow-card-ids]]}))))
+
 (defn- dashboard-findings
-  "Container findings for **non-archived** dashboards embedding ≥1 of `slow-card-ids`. `slow_entity_ids`
-  is the de-duplicated set of slow cards on the dashboard (a card can appear on several tabs)."
+  "Container findings for **non-archived** dashboards that render ≥1 of `slow-card-ids`. `slow_entity_ids`
+  is the de-duplicated set of slow cards the dashboard runs on load — primary or series (see
+  `dashboard-culprit-pairs`)."
   [card->avg-ms slow-card-ids]
   (when (seq slow-card-ids)
-    (for [[dash-id rows] (group-by :dashboard_id
-                                   (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
-                                              :from   [[:report_dashboardcard :dc]]
-                                              :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                              :where  [:and
-                                                       [:= :d.archived false]
-                                                       [:in :dc.card_id slow-card-ids]]}))
+    (for [[dash-id rows] (group-by :dashboard_id (dashboard-culprit-pairs slow-card-ids))
           :let [culprit-ids (vec (distinct (map :card_id rows)))]]
       (container-finding :dashboard dash-id card->avg-ms culprit-ids))))
 

@@ -155,6 +155,40 @@
                 (is (= 40000 (:duration_ms f))))
               (is (= #{c20 c40} (set (get-in f [:details :slow_entity_ids])))))))))))
 
+(deftest slow-dashboard-covers-series-not-filter-source-test
+  (testing "a dashboard is flagged for a combined-series slow card (renders on load) but NOT for a filter card value-source (fetched on demand, cached, a different limited query)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp
+            [:model/Collection {coll-id :id} {}
+             :model/Card           {slow-card :id} {:collection_id coll-id :name "Slow One"}
+             :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
+                                      :cache_hit false :running_time 30000}
+             ;; a fast primary card, so each dashboard's ONLY slow reference is the non-primary one
+             :model/Card           {fast-card :id} {:collection_id coll-id}
+             :model/QueryExecution _ {:card_id fast-card :started_at (t/offset-date-time)
+                                      :cache_hit false :running_time 500}
+             ;; dashboard S: the slow card is a combined SERIES on a dashcard whose primary card is fast
+             :model/Dashboard      {series-dash :id} {:collection_id coll-id}
+             :model/DashboardCard  {series-dc :id}   {:dashboard_id series-dash :card_id fast-card}
+             :model/DashboardCardSeries _ {:dashboardcard_id series-dc :card_id slow-card :position 0}
+             ;; dashboard F: the slow card is ONLY a filter's card value-source (no dashcards at all).
+             ;; The dropdown query is on-demand + cached + a different limited distinct-values query, so
+             ;; this must NOT be attributed to the dashboard's render-time slowness.
+             :model/Dashboard      {filter-dash :id} {:collection_id coll-id}
+             :model/ParameterCard  _ {:parameterized_object_type "dashboard"
+                                      :parameterized_object_id   filter-dash
+                                      :parameter_id              "p1"
+                                      :card_id                   slow-card}]
+            (let [by-entity (slow-findings-by-entity!)]
+              (testing "a slow SERIES card flags the dashboard, with the series card as the culprit"
+                (let [f (by-entity [:dashboard series-dash])]
+                  (is (some? f))
+                  (is (= [slow-card] (get-in f [:details :slow_entity_ids])))))
+              (testing "a dashboard whose only slow reference is a filter card value-source is NOT flagged"
+                (is (nil? (by-entity [:dashboard filter-dash])))))))))))
+
 (deftest slow-transform-uses-latest-succeeded-run-test
   (testing "transform slowness uses the latest SUCCEEDED run; never-run yields nothing"
     (mt/with-premium-features #{:content-diagnostics}
@@ -407,6 +441,32 @@
                 (let [ids (ids-for :crowberto)]
                   (is (contains? ids r-fid))
                   (is (contains? ids u-fid)))))))))))
+
+(deftest slow-api-hides-unreadable-culprits-test
+  (testing "GET /slow omits culprit cards the caller can't read from a container's slow_entities"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {readable :id}   {}
+                         :model/Collection {unreadable :id} {}
+                         :model/Dashboard {dash-id :id} {:collection_id readable}
+                         :model/Card {open-card :id}   {:collection_id readable}
+                         :model/Card {secret-card :id} {:collection_id unreadable}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
+            (let [fid         (first (t2/insert-returning-pks!
+                                      :model/ContentDiagnosticsFinding
+                                      {:scan_id "perm" :entity_type :dashboard :entity_id dash-id
+                                       :finding_type :slow :duration_ms 20000
+                                       :details {:slow_entity_ids [open-card secret-card]}}))
+                  culprit-ids (fn [user]
+                                (let [finding (some #(when (= fid (:id %)) %)
+                                                    (:data (mt/user-http-request
+                                                            user :get 200 "ee/content-diagnostics/slow")))]
+                                  (into #{} (map :id) (get-in finding [:details :slow_entities]))))]
+              (testing "superuser sees both culprits"
+                (is (= #{open-card secret-card} (culprit-ids :crowberto))))
+              (testing "non-admin sees only the culprit they can read"
+                (is (= #{open-card} (culprit-ids :rasta)))))))))))
 
 (deftest slow-api-does-not-leak-across-finding-types-test
   (testing "a stale finding never surfaces in /slow, and a slow finding never surfaces in /stale"
