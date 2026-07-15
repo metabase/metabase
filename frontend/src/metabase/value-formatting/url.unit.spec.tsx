@@ -398,5 +398,4 @@ describe("formatUrl", () => {
       }),
     ).toEqual("foobar");
   });
-
 });

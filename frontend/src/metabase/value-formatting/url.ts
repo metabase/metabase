@@ -98,4 +98,3 @@ function getLinkUrl(
 
   return null;
 }
-
