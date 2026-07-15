@@ -1321,7 +1321,10 @@
         escaped-password (sql.u/escape-sql password :ansi)
         quoted-db        (quote-schema db-name)
         quoted-user      (quote-field user)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; No transaction: MySQL DDL (CREATE DATABASE/USER, GRANT) implicitly commits
+    ;; per statement, so a transaction wrapper would be decorative. Failure
+    ;; recovery is compensation via the idempotent destroy, not rollback.
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
                        (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
                                quoted-user escaped-password)
@@ -1352,7 +1355,7 @@
         username    (-> workspace :database_details :user)
         quoted-db   (quote-schema db-name)
         quoted-user (quote-field username)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
                       (mysql-user-exists? t-conn username)
@@ -1382,7 +1385,7 @@
   ;; so we don't reject inputs that don't equal `:details.db`.
   (let [username (-> workspace :database_details :user)
         sqls     (grant-workspace-read-access-sqls username schemas)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))

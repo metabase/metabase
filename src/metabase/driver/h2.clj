@@ -765,7 +765,10 @@
         [_file {:strs [USER PASSWORD]}] (connection-string->file+options (-> workspace :database_details :db))
         username    USER
         password    PASSWORD]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
+    ;; transaction, so a wrapper would be decorative. Failure recovery is
+    ;; compensation via the idempotent destroy, not rollback.
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
@@ -781,7 +784,7 @@
   [_driver database workspace]
   (let [schema-name (:schema workspace)
         username    (-> workspace :database_details :db get-user-from-connection-string)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
                      (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
@@ -797,7 +800,7 @@
     ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
     ;; Schema-wide grant covers existing + future tables. Per-table grants
     ;; are not emitted: workspace input shape is per-namespace, not per-table.
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [schema schemas]
           (.addBatch ^Statement stmt

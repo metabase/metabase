@@ -555,7 +555,9 @@
         quoted-user         (quote-field (:user read-user))
         quoted-canonical-db (when-not (str/blank? canonical-db)
                               (quote-schema canonical-db))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
+    ;; immediately. Failure recovery is compensation via the idempotent destroy.
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
@@ -596,7 +598,7 @@
                  (format "GRANT SELECT ON %s.* TO %s"
                          (quote-schema schema)
                          quoted-user))]
-      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
         (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql sqls]
             (.addBatch ^Statement stmt ^String sql))
@@ -608,7 +610,7 @@
         username     (-> workspace :database_details :user)
         quoted-db    (quote-schema db-name)
         quoted-user  (quote-field username)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; DROP DATABASE cascades to all tables within it
                      (format "DROP DATABASE IF EXISTS %s" quoted-db)

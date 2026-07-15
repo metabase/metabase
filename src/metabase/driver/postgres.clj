@@ -1737,7 +1737,8 @@
         ;; isolation hole this catches. We probe per-schema so only the schemas
         ;; actually used as inputs need to be locked down — schemas the workspace
         ;; never touches can keep their default ACLs.
-        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        ;; read-only probes — one connection, no transaction needed
+        _              (jdbc/with-db-connection [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
                          (doseq [s source-schemas]
                            (assert-no-public-create-grant!       check-conn s)
                            (assert-has-usage-grant-option!       check-conn s)

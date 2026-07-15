@@ -1034,7 +1034,7 @@
         quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Pre-flight check (read-only) can run in its own transaction. Redshift's
+    ;; Pre-flight check (read-only, one connection, no transaction). Redshift's
     ;; GRANT statements error loudly when grant authority is missing, so PG's
     ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
     ;; DEFAULT PRIVILEGES failure modes do reproduce and need explicit checks:
@@ -1044,7 +1044,7 @@
     ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
-    (jdbc/with-db-transaction [t-conn spec]
+    (jdbc/with-db-connection [t-conn spec]
       (doseq [s source-schemas]
         (assert-no-public-create-grant!       t-conn s)
         (assert-can-alter-default-privileges! t-conn s)))
