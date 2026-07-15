@@ -205,7 +205,7 @@ Declare an `:on-error` handler to record the terminal failure durably:
 ```
 
 It is called on the terminal drop only — not on each failed attempt, and never for a batch that
-recovers on a retry. Exceptions it throws are logged (`on-error-failed`) and swallowed: the batch is
+recovers on a retry. Exceptions it throws are logged and swallowed: the batch is
 dropped either way, so a broken handler cannot wedge the queue into redelivering an exhausted batch.
 
 **`:on-error` is at-least-once, like delivery itself. Write it to be idempotent, and to tolerate

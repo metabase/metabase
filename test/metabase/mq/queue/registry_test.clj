@@ -83,6 +83,16 @@
       (reset! cap 5)
       (is (= 5 (q.registry/max-concurrent-batches :queue/dynamic))))))
 
+(deftest max-concurrent-batches-fn-that-throws-is-treated-as-unbounded-test
+  (testing "a cap fn that throws degrades to unbounded (nil) instead of propagating"
+    ;; This resolver runs inside the Quartz trigger-acquisition filter, so a throw here would abort
+    ;; acquisition for *every* queue on the node, not just this one. The cap is a best-effort throttle,
+    ;; so a broken resolver must degrade to unbounded rather than wedge the scheduler.
+    (q.registry/register-queue! :queue/boom-cap
+                                {:transactional          :try
+                                 :max-concurrent-batches (fn [] (throw (ex-info "boom" {})))})
+    (is (nil? (q.registry/max-concurrent-batches :queue/boom-cap)))))
+
 (deftest rejects-exclusive-with-max-concurrent-batches-test
   (testing "a queue cannot declare both :exclusive and :max-concurrent-batches"
     ;; :exclusive already pins the queue to one batch cluster-wide, which is strictly stronger than any

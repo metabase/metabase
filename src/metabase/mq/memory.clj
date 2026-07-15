@@ -82,7 +82,8 @@
                               (fn [m]
                                 (reduce-kv (fn [acc id msg]
                                              (cond-> acc
-                                               (stale? msg) (update id dissoc :claimed-at)))
+                                               (stale? msg) (-> (update-in [id :failures] inc)
+                                                                (update id dissoc :claimed-at))))
                                            m
                                            m)))]
     (count (filter (fn [[id msg]] (and (:claimed-at msg) (not (:claimed-at (get new id)))))

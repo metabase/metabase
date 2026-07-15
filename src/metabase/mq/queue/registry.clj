@@ -6,6 +6,7 @@
   in the cluster. Backends use this registry at startup to pre-arrange broker-side resources
   (e.g. RabbitMQ queue declarations) for the full set of known queues."
   (:require
+   [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -110,10 +111,19 @@
 
   A queue may declare the cap as a literal int or as a 0-arg fn; a fn is resolved on every call, so a
   cap backed by a `defsetting` tracks that setting live rather than freezing its value at
-  registration. A nil cap means unbounded."
+  registration. A nil cap means unbounded.
+
+  A fn cap that throws is caught and treated as unbounded (nil): the cap is a best-effort throttle,
+  so degrading to unbounded keeps work flowing rather than wedging the scheduler in quartz or other places."
   [queue-name]
   (let [cap (:max-concurrent-batches (get @*queues* queue-name))]
-    (if (fn? cap) (cap) cap)))
+    (if (fn? cap)
+      (try
+        (cap)
+        (catch Throwable t
+          (log/warnf t "Error resolving :max-concurrent-batches for %s; treating as unbounded" queue-name)
+          nil))
+      cap)))
 
 (defn dedup-fn
   "Returns the `:dedup-fn` declared for `queue-name`, or nil if none."
