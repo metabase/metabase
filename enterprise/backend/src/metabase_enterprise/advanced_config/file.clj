@@ -161,11 +161,13 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [configured-path (get *env* :mb-config-file-path)
-        paths-to-try    (if-not (str/blank? configured-path)
-                          [(u.files/get-path configured-path)]
-                          [(u.files/get-path (System/getProperty "user.dir") "config.yml")
-                           (u.files/get-path (System/getProperty "user.dir") "config.yaml")])]
+  (let [configured-path     (get *env* :mb-config-file-path)
+        default-config-yml  (u.files/get-path (System/getProperty "user.dir") "config.yml")
+        default-config-yaml (u.files/get-path (System/getProperty "user.dir") "config.yaml")
+        paths-to-try       (if-not (str/blank? configured-path)
+                             [(u.files/get-path configured-path)]
+                             [default-config-yml
+                              default-config-yaml])]
     (if-let [path* (first (filter u.files/exists? paths-to-try))]
       (do
         (log/info (u/format-color :magenta
@@ -240,7 +242,8 @@
 (defn- config-from-disk
   "Read the config file from disk."
   []
-  (yaml/from-file (str (path))))
+  (when-let [yaml-path (path)]
+    (yaml/from-file (str yaml-path))))
 
 (defn- config
   "Spec-validate `parsed-config` and (optionally) expand `{{env VAR}}` templates.
