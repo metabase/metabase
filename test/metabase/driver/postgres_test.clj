@@ -585,22 +585,43 @@
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
-          (is (= ["SELECT"
+          (is (= ["WITH \"__mb_stage_0\" AS ("
+                  "  SELECT"
+                  "    (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
+                  "    COUNT(*) AS \"count\""
+                  "  FROM"
+                  "    \"json_alias_test\""
+                  "  GROUP BY"
+                  "    \"json_alias_test\""
+                  "  ORDER BY"
+                  "    \"json_alias_test\" ASC"
+                  ")"
+                  "SELECT"
                   "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
-                  "  ("
-                  "    SELECT"
-                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
-                  "      COUNT(*) AS \"count\""
-                  "    FROM"
-                  "      \"json_alias_test\""
-                  "    GROUP BY"
-                  "      \"json_alias_test\""
-                  "    ORDER BY"
-                  "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""]
+                  "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+(deftest ^:parallel multi-stage-queries-compile-to-ctes-test
+  (mt/test-driver :postgres
+    (testing "multi-stage queries compile to chained CTEs instead of nested subselects (sql.qp/use-ctes-for-stages?)"
+      (let [query        (mt/mbql-query venues
+                           {:source-query {:source-query {:source-table $$venues
+                                                          :filter       [:> $price 1]}
+                                           :aggregation  [[:count]]
+                                           :breakout     [$category_id]}
+                            :filter       [:> *count/Integer 1]})
+            {sql :query} (qp.compile/compile query)]
+        (testing "each stage but the last becomes a CTE, consumed under the usual __mb_source alias"
+          (is (str/starts-with? sql "WITH \"__mb_stage_0\" AS ("))
+          (is (str/includes? sql ", \"__mb_stage_1\" AS ("))
+          (is (str/includes? sql "FROM \"__mb_stage_0\" AS \"__mb_source\""))
+          (is (str/includes? sql "FROM \"__mb_stage_1\" AS \"__mb_source\"")))
+        (testing "the query returns the same results as the nested-subselect form"
+          (is (= [[2 8] [3 2] [5 6] [7 7] [10 2] [11 3] [20 4] [40 9]
+                  [43 3] [44 2] [46 3] [48 5] [50 4] [58 3] [67 4] [71 2]]
+                 (mt/formatted-rows [int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
@@ -633,7 +654,15 @@
                         :show-column-totals true})]
         (qp.store/with-metadata-provider mp
           (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
-            (is (= ["SELECT"
+            (is (= ["WITH \"__mb_stage_0\" AS ("
+                    "  SELECT"
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "    \"json_table\".\"region\" AS \"region\","
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "  FROM"
+                    "    \"json_table\""
+                    ")"
+                    "SELECT"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
                     "  \"__mb_source\".\"region\" AS \"region\","
                     "  GROUPING("
@@ -642,14 +671,7 @@
                     "  ) AS \"pivot-grouping\","
                     "  COUNT(*) AS \"count\""
                     "FROM"
-                    "  ("
-                    "    SELECT"
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
-                    "      \"json_table\".\"region\" AS \"region\","
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
-                    "    FROM"
-                    "      \"json_table\""
-                    "  ) AS \"__mb_source\""
+                    "  \"__mb_stage_0\" AS \"__mb_source\""
                     "GROUP BY"
                     "  GROUPING SETS ("
                     "    ("
