@@ -11,22 +11,27 @@
 
 (set! *warn-on-reflection* true)
 
-;; Scanning walks the whole tree, so the ratchet tests share one pass per run; the fixture invalidates
-;; the cache so a long-lived REPL doesn't compare fresh ratchet-file contents with stale counts.
+;; Scanning walks the whole tree, so the ratchet tests share one pass per run. The cache only exists
+;; while the :once fixture is live; a directly-run test var (no fixture) always scans fresh, so a
+;; long-lived REPL never compares fresh ratchet-file contents with stale counts.
 (def ^:private tree-scan-cache
   (atom nil))
 
 (defn- tree-scan []
-  (or @tree-scan-cache
-      (reset! tree-scan-cache (kondo-ratchet/scan))))
+  (if-let [scan @tree-scan-cache]
+    @scan
+    (kondo-ratchet/scan)))
 
 ;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The self-heal workflow does the same for labelled PRs.
 (use-fixtures :once (fn [thunk]
                       (when-not (System/getenv "CI")
                         (kondo-ratchet/fix!))
-                      (reset! tree-scan-cache nil)
-                      (thunk)))
+                      (reset! tree-scan-cache (delay (kondo-ratchet/scan)))
+                      (try
+                        (thunk)
+                        (finally
+                          (reset! tree-scan-cache nil)))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; The ratchets themselves
