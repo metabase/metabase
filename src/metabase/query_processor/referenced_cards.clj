@@ -1,8 +1,8 @@
 (ns metabase.query-processor.referenced-cards
-  "Runs the queries a chart references for its dynamic goals (Option 5 of the \"Dynamic goals\" tech doc) and
-  injects their values into the response under `data.referenced_cards`, keyed by card id, a single row, and
-  only the requested columns. Referenced queries run eagerly, before the main query's QP store binds, so a
-  reference to a different database can't clash with the outer store."
+  "Runs the extra queries a chart's dynamic goals reference (e.g. a gauge whose goal is another card's value)
+  and injects the values into the response under `data.referenced_cards`: keyed by card id, a single row,
+  only the requested columns. Referenced queries run eagerly, before the main query's QP store binds,
+  because the store is bound to a single database."
   (:require
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
@@ -95,8 +95,7 @@
     rff))
 
 ;;; ---------------------------------------------------------------------------------------------------------
-;;; Saved-card path (viz settings). GDGT-2826 reworks everything below; kept here so its FE stack keeps
-;;; working in the meantime.
+;;; Saved-card path: derive specs from a card's viz settings.
 ;;; ---------------------------------------------------------------------------------------------------------
 
 (defn wrap-qp
@@ -110,16 +109,16 @@
     qp))
 
 (defn- ->goal-source
-  "A `GoalSource` reference is a map with `:card_id` and `:column`; anything else (a static number, a bare
-  self-column string) is nil."
+  "A goal that references another card is a `{:card_id ..., :column ...}` map; anything else (a static
+  number, a bare column name) is nil."
   [goal-value]
   (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
     (perf/select-keys goal-value [:card_id :column])))
 
 (defn viz-settings->specs
-  "Extract referenced-card specs from a card's merged `viz` settings: `GoalSource` references in
-  `:graph.goal_value` and in the `:min`/`:max` of each `:gauge.segments` / `:scalar.segments` entry, grouped
-  by card id. Nil when there are no dynamic references."
+  "Extract referenced-card specs from merged `viz` settings: card references in `:graph.goal_value` and in
+  the `:min`/`:max` of `:gauge.segments` / `:scalar.segments` entries, grouped by card id. Nil when there
+  are none."
   [viz]
   (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
         sources  (keep ->goal-source

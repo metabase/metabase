@@ -340,9 +340,9 @@
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
-        ;; GDGT-2826: if the merged viz settings reference other cards for dynamic goals, run those queries
-        ;; and inject their values under `data.referenced_cards`. Wrapping the qp here (rather than the
-        ;; `:make-run`) covers every card/dashcard/embed/public endpoint, since they all funnel through here.
+        ;; if the merged viz settings reference other cards for dynamic goals, run those queries and inject
+        ;; their values under `data.referenced_cards`. Wrapping the qp (rather than the `:make-run`) covers
+        ;; every card/dashcard/embed/public endpoint, since they all funnel through here.
         qp          (if (or (:graph.goal_value merged-viz) (:gauge.segments merged-viz) (:scalar.segments merged-viz))
                       (qp.referenced-cards/wrap-qp-for-card qp merged-viz)
                       qp)

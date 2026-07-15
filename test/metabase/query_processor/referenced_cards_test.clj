@@ -147,7 +147,7 @@
     (mt/with-temp [:model/Card      {goal-id :id}     {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card      {chart-id :id}    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
                    :model/Dashboard {dash-id :id}     {}
-                   ;; the dynamic goal lives on the DASHCARD's viz settings — exercises the card+dashcard merge
+                   ;; the dynamic goal lives on the DASHCARD's viz settings, exercising the card+dashcard merge
                    :model/DashboardCard {dashcard-id :id} {:dashboard_id            dash-id
                                                            :card_id                 chart-id
                                                            :visualization_settings  {:gauge.segments
