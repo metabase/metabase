@@ -12,6 +12,8 @@ jest.mock("metabase/visualizations/register", () => jest.fn());
 jest.mock("metabase/dashboard/visualizations/register", () => jest.fn());
 
 const fakeReduxStore = () =>
+  // A stub store: the test only reads `initStatus` and calls `dispatch`/`subscribe`,
+  // so it stubs those three members rather than the full `SdkStore` surface.
   ({
     getState: () => ({ sdk: { initStatus: { status: "success" } } }),
     dispatch: jest.fn(),

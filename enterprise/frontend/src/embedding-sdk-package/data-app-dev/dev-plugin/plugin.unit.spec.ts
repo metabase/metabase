@@ -51,12 +51,12 @@ type TestPlugin = {
 const APP_SLUG = "test-app";
 
 function makePlugin(appSlug: string, allowedHosts: string[] = []): TestPlugin {
+  // Vite declares every hook on `Plugin` as an `ObjectHook` union (a function or
+  // a `{ handler }` object) bound to Rollup's plugin context. The tests call the
+  // hooks we return as plain functions, which no assignable type expresses.
   return dataAppSandboxDevPlugin(
     appSlug,
     allowedHosts,
-    // Vite declares every hook on `Plugin` as an `ObjectHook` union (a function or
-    // a `{ handler }` object) bound to Rollup's plugin context. The tests call the
-    // hooks we return as plain functions, which no assignable type expresses.
   ) as unknown as TestPlugin;
 }
 
