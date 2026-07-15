@@ -363,8 +363,9 @@
 
 (defn- tree-node-lines
   "Render a tree node and its descendants as display lines. Depth 1 gets `- `, each further level one
-  more dash. Nodes that only group children (not modules themselves) print dark; a yellow `*`
-  marks modules whose namespaces still live at an explicit `:ns-prefix`, shown when `show-prefixes?`."
+  more dash. Nodes that only group children (not modules themselves) print dark; modules whose
+  namespaces still live at an explicit `:ns-prefix` get a yellow `*`, or the prefix itself in yellow
+  parens when `show-prefixes?`."
   [modules-config show-prefixes? path node]
   (let [depth   (dec (count path))
         module  (:module node)
@@ -373,9 +374,9 @@
                        (str (apply str (repeat depth "-")) " "))
                      (if module display (c/dark display))
                      (when-let [prefix (and module (explicit-ns-prefix modules-config module))]
-                       (str " " (c/yellow "*")
-                            (when show-prefixes?
-                              (str " " (c/dark (str "(" prefix ")")))))))]
+                       (if show-prefixes?
+                         (str " " (c/yellow (str "(" prefix ")")))
+                         (str " " (c/yellow "*")))))]
     (into [line]
           (mapcat (fn [[segment child]]
                     (tree-node-lines modules-config show-prefixes? (conj path segment) child)))
@@ -398,7 +399,9 @@
                           (count (filter #(= (namespace %) "enterprise") (keys modules-config)))
                           " enterprise"
                           (when (pos? starred)
-                            (str ", " starred " ns-prefixed (* = namespaces not moved to match the module name)")))))
+                            (str ", " starred " ns-prefixed ("
+                                 (if (:prefixes options) "prefix in parens" "* ")
+                                 "= namespaces not moved to match the module name)")))))
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
