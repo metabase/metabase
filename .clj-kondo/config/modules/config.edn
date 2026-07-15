@@ -3221,35 +3221,6 @@
            util}
    :model-exports #{:model/CustomVizPlugin}}
 
-  enterprise/data-complexity-score
-  {:team "Metabot"
-   :api  #{metabase-enterprise.data-complexity-score.api
-           metabase-enterprise.data-complexity-score.init}
-   :uses #{analytics
-           analytics.interface
-           api
-           app-db
-           audit-app
-           collections
-           config
-           driver
-           metabot
-           models
-           premium-features
-           settings
-           startup
-           task
-           util
-           enterprise/search.embeddings
-           enterprise/search.semantic}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Database
-                    :model/Measure
-                    :model/Metabot
-                    :model/ModerationReview
-                    :model/Table}}
-
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
@@ -3449,7 +3420,8 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :module-exports #{enterprise/metabot.analytics}
+   :module-exports #{enterprise/metabot.analytics
+                     enterprise/metabot.data-complexity-score}
    :uses    #{api
               lib.be
               metabot
@@ -3482,6 +3454,36 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
+
+  enterprise/metabot.data-complexity-score
+  {:team "Metabot"
+   :ns-prefix "metabase-enterprise.data-complexity-score"
+   :api  #{metabase-enterprise.data-complexity-score.api
+           metabase-enterprise.data-complexity-score.init}
+   :uses #{analytics
+           analytics.interface
+           api
+           app-db
+           audit-app
+           collections
+           config
+           driver
+           metabot
+           models
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/search.embeddings
+           enterprise/search.semantic}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Metabot
+                    :model/ModerationReview
+                    :model/Table}}
 
   enterprise/native-query-snippets
   {:team "Graphy"
