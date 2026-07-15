@@ -53,6 +53,8 @@ jobs:
         with:
           name: ratchets-edn
           path: .clj-kondo/ratchets.edn
+          # dot-directories are excluded by default, which would ship an empty artifact
+          include-hidden-files: true
 
   push:
     needs: ratchet-down

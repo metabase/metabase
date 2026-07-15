@@ -106,12 +106,15 @@
                                                         linters]))))
                        {:text text, :deletions []}
                        ;; bottom-up so earlier offsets stay valid
-                       (sort-by :start > removable))]
+                       (sort-by :start > removable))
+        post-removal-row (fn [line]
+                           (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result))))]
     {:text    (:text result)
      :sites   (for [[line _ linters] (:deletions result)]
-                {:row     (- line (transduce (keep (fn [[l k]] (when (< l line) k))) + (:deletions result)))
+                {:row     (post-removal-row line)
                  :linters linters})
-     :skipped (map :line unbalanced)}))
+     ;; adjusted like :sites, so warnings point at the rewritten file
+     :skipped (map (comp post-removal-row :line) unbalanced)}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:

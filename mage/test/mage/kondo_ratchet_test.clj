@@ -40,6 +40,13 @@
            (#'kondo-ratchet/remove-ignores-at
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
+  (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
+    (is (= {:text    "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
+            :sites   [{:row 1, :linters [:x]}]
+            :skipped [2]}
+           (#'kondo-ratchet/remove-ignores-at
+            "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
+            [1 3]))))
   (testing "any form naming a clojure-lsp/* linter survives — a re-lint could never restore that half"
     (is (= {:text  (str "(do #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]} (foo))\n"
                         "#_{:clj-kondo/ignore [:x :clojure-lsp/unused-public-var]}\n"
