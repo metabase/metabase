@@ -24,6 +24,8 @@
    config
    content-verification
    contextual-interestingness
+   core.initialization-status
+   core.version
    dashboards
    documents
    embedding
@@ -31,7 +33,6 @@
    explorations
    formatter
    geojson
-   initialization-status
    interestingness
    lib.types
    mcp
@@ -66,7 +67,6 @@
    tracing
    users
    util
-   version
    warehouses.schema
    warehouses.secrets
    enterprise/api

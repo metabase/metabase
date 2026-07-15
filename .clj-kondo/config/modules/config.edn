@@ -174,6 +174,7 @@
            app-db
            appearance
            config
+           core.version
            driver
            lib.be
            models
@@ -185,8 +186,7 @@
            sso
            system
            task
-           util
-           version}
+           util}
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
@@ -675,7 +675,9 @@
 
   core
   {:team "UX West"
-   :module-exports #{core.cmd}
+   :module-exports #{core.cmd
+                     core.initialization-status
+                     core.version}
    :api  #{}
    :uses :any}
 
@@ -698,6 +700,23 @@
            util}
    :model-imports :bypass}
 
+
+  core.initialization-status
+  {:team "UX West"
+   :ns-prefix "metabase.initialization-status"
+   :api  #{metabase.initialization-status.core}
+   :uses #{}}
+
+  core.version
+  {:team "UX West"
+   :ns-prefix "metabase.version"
+   :api  #{metabase.version.core
+           metabase.version.init}
+   :uses #{config
+           settings
+           system
+           task
+           util}}
 
   dashboards
   {:team "UX West"
@@ -1012,11 +1031,6 @@
    :model-imports #{:model/Card :model/Collection}}
 
 
-
-  initialization-status
-  {:team "UX West"
-   :api  #{metabase.initialization-status.core}
-   :uses #{}}
 
   interestingness
   {:team "UX West"
@@ -2166,9 +2180,9 @@
            app-db
            appearance
            config
+           core.initialization-status
            driver
            embedding
-           initialization-status
            lib.be
            mcp
            mcp.oauth-server
@@ -2436,12 +2450,6 @@
    :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
-  tenants
-  {:team "Admin Webapp"
-   :api  #{metabase.tenants.core}
-   :uses #{premium-features
-           util}}
-
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -2695,7 +2703,8 @@
 
   users
   {:team "UX West"
-   :module-exports #{users.rest}
+   :module-exports #{users.rest
+                     users.tenants}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
@@ -2715,7 +2724,7 @@
            settings
            setup
            system
-           tenants
+           users.tenants
            util
            enterprise/permissions}
    :model-exports #{:model/User :model/UserParameterValue}
@@ -2742,8 +2751,8 @@
            sso
            sso.auth-identity
            system
-           tenants
            users
+           users.tenants
            util
            enterprise/permissions}
    :model-imports #{:model/AuthIdentity
@@ -2752,6 +2761,13 @@
                     :model/Dashboard
                     :model/LoginHistory
                     :model/User}}
+
+  users.tenants
+  {:team "Admin Webapp"
+   :ns-prefix "metabase.tenants"
+   :api  #{metabase.tenants.core}
+   :uses #{premium-features
+           util}}
 
   util
   {:team "DevEx"
@@ -2767,16 +2783,6 @@
    :ns-prefix "metabase.graph"
    :api  #{metabase.graph.core}
    :uses #{util}}
-
-  version
-  {:team "UX West"
-   :api  #{metabase.version.core
-           metabase.version.init}
-   :uses #{config
-           settings
-           system
-           task
-           util}}
 
   warehouses
   {:team "UX West"
@@ -3080,11 +3086,6 @@
                     :model/Table
                     :model/User
                     :model/ViewLog}}
-
-  enterprise/auth-identity
-  {:team "UX West"
-   :api  #{}
-   :uses #{premium-features}}
 
   enterprise/auth-provider
   {:team "UX West"
@@ -3576,8 +3577,8 @@
            premium-features
            query-processor
            request
-           tenants
            users
+           users.tenants
            util
            warehouses
            warehouses.schema
@@ -3775,6 +3776,12 @@
            util
            enterprise/sso.scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
+
+  enterprise/sso.auth-identity
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.auth-identity"
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/sso.scim
   {:team "UX West"
