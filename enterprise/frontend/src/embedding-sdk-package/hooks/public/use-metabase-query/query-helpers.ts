@@ -46,16 +46,14 @@ export function filter(
   value?: unknown,
 ): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
   if (operator === "between") {
-    const [min, max] = value as readonly unknown[];
+    // The `between` overload takes a `[min, max]` tuple, but the implementation
+    // signature shared by all overloads widens `value` to `unknown`.
+    const [min, max] = value as readonly [unknown, unknown];
 
     return {
       type: "operator",
       operator,
-      args: [
-        dimension,
-        { type: "literal", value: min as FilterLiteralValue },
-        { type: "literal", value: max as FilterLiteralValue },
-      ],
+      args: [dimension, toFilterLiteral(min), toFilterLiteral(max)],
     };
   }
 
@@ -66,23 +64,25 @@ export function filter(
   return {
     type: "operator",
     operator,
-    args: [dimension, { type: "literal", value: value as FilterLiteralValue }],
+    args: [dimension, toFilterLiteral(value)],
   };
 }
 
-export function breakout<TDimension>(dimension: TDimension): TDimension;
+export function breakout<TDimension extends object>(
+  dimension: TDimension,
+): TDimension;
 
-export function breakout<TDimension>(
+export function breakout<TDimension extends object>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
 ): TDimension & BreakoutOptionsArgument<TDimension>;
 
-export function breakout<TDimension>(
+export function breakout<TDimension extends object>(
   dimension: TDimension,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
   return {
-    ...(dimension as object),
+    ...dimension,
     unit: options && "unit" in options ? options.unit : undefined,
     ...getBinningOptions(options),
   };
@@ -138,11 +138,11 @@ export function orderBy<TDimension>(
 }
 
 function getAggregationResultColumn(value: unknown): SchemaColumn | undefined {
-  if (value == null || typeof value !== "object") {
+  if (value == null || typeof value !== "object" || !("columns" in value)) {
     return undefined;
   }
 
-  const columns = (value as { columns?: unknown }).columns;
+  const { columns } = value;
 
   if (!Array.isArray(columns)) {
     return undefined;
@@ -150,15 +150,16 @@ function getAggregationResultColumn(value: unknown): SchemaColumn | undefined {
 
   const [column] = columns;
 
-  if (
-    column == null ||
-    typeof column !== "object" ||
-    typeof (column as { name?: unknown }).name !== "string"
-  ) {
-    return undefined;
-  }
+  return isSchemaColumn(column) ? column : undefined;
+}
 
-  return column as SchemaColumn;
+function isSchemaColumn(value: unknown): value is SchemaColumn {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "name" in value &&
+    typeof value.name === "string"
+  );
 }
 
 function getBinningOptions(
@@ -195,4 +196,16 @@ function getBinningOptions(
   }
 
   return undefined;
+}
+
+function toFilterLiteral(value: unknown): {
+  type: "literal";
+  value: FilterLiteralValue;
+} {
+  return {
+    type: "literal",
+    // The overloads accept the filter value as `unknown` (it is only constrained
+    // by the operator), while the emitted filter types it as a literal value.
+    value: value as FilterLiteralValue,
+  };
 }

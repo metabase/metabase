@@ -25,6 +25,18 @@ interface AppViewProps {
   params: { name: string };
 }
 
+/** The iframe can post anything; only trust objects tagged with our error type. */
+function isBundleErrorMessage(
+  data: unknown,
+): data is Partial<DataAppBundleErrorMessage> {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "type" in data &&
+    data.type === DATA_APP_ERROR_MESSAGE_TYPE
+  );
+}
+
 /**
  * /apps/:name(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
@@ -136,9 +148,9 @@ export function DataAppView({ params }: AppViewProps) {
         return;
       }
 
-      const data = event.data as Partial<DataAppBundleErrorMessage> | null;
+      const data: unknown = event.data;
 
-      if (data?.type === DATA_APP_ERROR_MESSAGE_TYPE) {
+      if (isBundleErrorMessage(data)) {
         setBundleError({
           type: DATA_APP_ERROR_MESSAGE_TYPE,
           notReady: Boolean(data.notReady),
@@ -171,7 +183,7 @@ export function DataAppView({ params }: AppViewProps) {
     // else is an unexpected failure.
     const status =
       metaError && typeof metaError === "object" && "status" in metaError
-        ? (metaError as { status?: unknown }).status
+        ? metaError.status
         : undefined;
 
     if (!metaError || status === 404) {

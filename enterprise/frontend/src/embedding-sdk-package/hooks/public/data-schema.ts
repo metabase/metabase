@@ -73,9 +73,13 @@ export function getSchemaId<TEntity extends { id: unknown }>(
   }
 
   if (typeof entity === "object" && "id" in entity) {
+    // `TEntity["id"]` is unconstrained, so it may itself be an object with an
+    // `id`: the guard cannot narrow the `TEntity | TEntity["id"]` union for TS.
     return entity.id as TEntity["id"];
   }
 
+  // Not an entity object, so it is already the id — but TS still cannot rule
+  // `TEntity` out of the union at the type level.
   return entity as TEntity["id"];
 }
 
@@ -84,6 +88,8 @@ export function mapRowsToObjects<TRow>(
   rows: RowValues[],
 ): TRow[] {
   return rows.map((row) => {
+    // Rows are keyed by column names known only at runtime; `TRow` is the
+    // schema-derived shape the caller expects, so the two can't be tied in TS.
     return columns.reduce<Record<string, RowValue>>((acc, column, index) => {
       const key = column.name || column.display_name || `column_${index}`;
       acc[key] = row[index];

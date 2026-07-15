@@ -1,23 +1,25 @@
+import type { SandboxRealm } from "./allowed-hosts";
 import { makeDistortionCallback } from "./distortions";
 
 // A minimal stand-in for the iframe window the data-app sandbox is built on.
 // `fetch`/`XMLHttpRequest` are the native refs the membrane passes to the
 // distortion callback; `makeDistortionCallback` should route those to the
 // allowlist wrappers and delegate everything else to the shared callback.
-const fakeWindow = () =>
-  ({
-    fetch: function nativeFetch() {},
-    XMLHttpRequest: class NativeXHR {},
-    location: {
-      href: "https://mb.example.com/embed/apps/sales",
-      origin: "https://mb.example.com",
-    },
-  }) as unknown as Window & typeof globalThis;
+const fakeWindow = (): SandboxRealm => ({
+  fetch: async () => new Response("native"),
+  XMLHttpRequest: class NativeXHR extends XMLHttpRequest {},
+  location: {
+    href: "https://mb.example.com/embed/apps/sales",
+    origin: "https://mb.example.com",
+  },
+});
 
 describe("makeDistortionCallback", () => {
   it("allows style elements for bundled CSS injection", () => {
     const win = fakeWindow();
     const callback = makeDistortionCallback("sales", win, []);
+    // The membrane types a distortion as `object -> object`, erasing the call
+    // signature of the native ref it replaces — restore it to invoke it.
     const createElement = callback(
       Document.prototype.createElement,
     ) as typeof Document.prototype.createElement;
@@ -31,6 +33,7 @@ describe("makeDistortionCallback", () => {
       .mockImplementation(() => {});
     const win = fakeWindow();
     const callback = makeDistortionCallback("sales", win, []);
+    // Same signature erasure as above.
     const createElement = callback(
       Document.prototype.createElement,
     ) as typeof Document.prototype.createElement;
@@ -44,11 +47,12 @@ describe("makeDistortionCallback", () => {
   it("routes window.fetch to the allowlisted wrapper when allowed_hosts is set", async () => {
     const win = fakeWindow();
     const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
-    win.fetch = realFetch as unknown as typeof fetch;
+    win.fetch = realFetch;
 
     const callback = makeDistortionCallback("sales", win, [
       "https://api.example.com",
     ]);
+    // Same signature erasure as above.
     const distorted = callback(win.fetch) as typeof fetch;
 
     // Not the native fetch — a wrapper that enforces the allowlist.
@@ -65,6 +69,8 @@ describe("makeDistortionCallback", () => {
     const callback = makeDistortionCallback("sales", win, [
       "https://api.example.com",
     ]);
+    // Same signature erasure as above: the membrane hands the constructor back
+    // as a bare `object`.
     const Distorted = callback(win.XMLHttpRequest) as typeof XMLHttpRequest;
 
     expect(Distorted).not.toBe(win.XMLHttpRequest);

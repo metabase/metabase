@@ -30,6 +30,8 @@ const mockedEnsurePropsStore = jest.mocked(ensureMetabaseProviderPropsStore);
 
 const setup = (initialProps: Record<string, unknown> = {}) => {
   const dispatch = jest.fn();
+  // The hook only ever dispatches; faking the rest of the Redux store contract
+  // (getState over the whole SDK state tree, subscribe, replaceReducer) is dead weight.
   const store = { dispatch } as unknown as ReturnType<typeof getSdkStore>;
   mockedGetSdkStore.mockReturnValue(store);
 
@@ -38,7 +40,10 @@ const setup = (initialProps: Record<string, unknown> = {}) => {
   mockedEnsurePropsStore.mockReturnValue({
     setProps,
     updateInternalProps,
-  } as unknown as ReturnType<typeof ensureMetabaseProviderPropsStore>);
+    getState: () => ({ props: null, internalProps: {} }),
+    subscribe: () => () => undefined,
+    cleanup: () => undefined,
+  });
 
   const utils = renderHook(({ props }) => useHostSdkStore(props), {
     initialProps: { props: initialProps },
