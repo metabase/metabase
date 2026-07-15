@@ -284,7 +284,8 @@
    :options [["-n" "--nested-only" "Only print modules that have nested children"]
              ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]
              ["-H" "--html" "Emit a self-contained interactive HTML explorer instead of the text tree"]
-             ["-o" "--output FILE" "With --html, write to FILE instead of stdout"]]
+             ["-o" "--output FILE" "With --html, write to FILE instead of stdout"]
+             ["-S" "--no-stats" "With --html, skip the slower per-module source metrics (namespaces, LOC, tests, commits)"]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 

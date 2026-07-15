@@ -441,11 +441,94 @@
      :model-imports-bypass (= (:model-imports entry) :bypass)
      :model-imports        (set-field->strings (:model-imports entry))}))
 
-(defn- modules->viz-data
-  "The full seq of module nodes (alphabetical) fed to [[mage.modules-html/page]]."
+;;;; Optional per-module source metrics for the HTML detail pane (namespaces, LOC, tests, commits).
+;;;; Gathered from the working tree + git history, so this is skippable via `--no-stats`.
+
+(def ^:private source-metric-dirs ["src" "enterprise/backend/src"])
+(def ^:private test-metric-dirs ["test" "enterprise/backend/test"])
+
+(defn- clj-source? [filename]
+  (some #(str/ends-with? filename %) [".clj" ".cljc" ".cljs"]))
+
+(defn- count-lines [filename]
+  (try
+    (with-open [r (io/reader (io/file filename))]
+      (reduce (fn [n _] (inc n)) 0 (line-seq r)))
+    (catch java.io.IOException _ 0)))
+
+(defn- count-deftests [filename]
+  (try
+    (with-open [r (io/reader (io/file filename))]
+      (reduce (fn [n line] (if (re-find #"\(\s*deftest\b" line) (inc n) n)) 0 (line-seq r)))
+    (catch java.io.IOException _ 0)))
+
+(defn- git-tracked-files [dirs]
+  (->> (apply shell/sh* {:quiet? true} "git" "ls-files" dirs)
+       :out
+       (remove str/blank?)))
+
+(defn- module->test-files
+  "`module -> [test-file …]`, reusing the same test-path resolution as the test runner."
   [modules-config]
-  (let [used-by (used-by-index modules-config)]
-    (mapv (partial module->viz-node modules-config used-by) (sort (keys modules-config)))))
+  (into {} (for [m (keys modules-config)
+                 :let [files (vec (module->test-paths modules-config m))]
+                 :when (seq files)]
+             [m files])))
+
+(defn- module->commit-counts
+  "One `git log` pass over source + test dirs: `module -> distinct commits that touched its files`.
+  `file->module-map` maps every tracked source/test path to its owning module."
+  [file->module-map]
+  (let [lines (:out (apply shell/sh* {:quiet? true}
+                           "git" "log" "--format=%H" "--name-only" "--"
+                           (concat source-metric-dirs test-metric-dirs)))]
+    (loop [lines lines, commit nil, acc {}]
+      (if-let [line (first lines)]
+        (cond
+          (re-matches #"[0-9a-f]{7,40}" line) (recur (rest lines) line acc)
+          (str/blank? line)                (recur (rest lines) commit acc)
+          :else                            (recur (rest lines) commit
+                                                  (if-let [m (get file->module-map line)]
+                                                    (update acc m (fnil conj #{}) commit)
+                                                    acc)))
+        (update-vals acc count)))))
+
+(defn- gather-module-stats
+  "`module -> {:namespaces :loc :tests :commits}`. Namespaces/LOC come from tracked backend source
+  files, tests from the module's test files (file + `deftest` counts), commits from git history."
+  [modules-config]
+  (let [prefix->module (build-prefix->module modules-config)
+        src-files      (filter clj-source? (git-tracked-files source-metric-dirs))
+        src-by-module  (reduce (fn [acc f]
+                                 (if-let [m (file->module prefix->module f)]
+                                   (-> acc
+                                       (update-in [m :namespaces] (fnil inc 0))
+                                       (update-in [m :loc] (fnil + 0) (count-lines f)))
+                                   acc))
+                               {} src-files)
+        tests-by-mod   (module->test-files modules-config)
+        file->module*  (merge (into {} (keep (fn [f] (when-let [m (file->module prefix->module f)] [f m])) src-files))
+                              (into {} (for [[m files] tests-by-mod, f files] [f m])))
+        commit-counts  (module->commit-counts file->module*)]
+    (into {}
+          (for [m (keys modules-config)
+                :let [files (get tests-by-mod m [])]]
+            [m {:namespaces (get-in src-by-module [m :namespaces] 0)
+                :loc        (get-in src-by-module [m :loc] 0)
+                :test-files (count files)
+                :tests      (reduce + 0 (map count-deftests files))
+                :commits    (get commit-counts m 0)}]))))
+
+(defn- modules->viz-data
+  "The full seq of module nodes (alphabetical) fed to [[mage.modules-html/page]]. When `stats?`, attach
+  per-module source metrics (namespaces/LOC/tests/commits)."
+  [modules-config stats?]
+  (let [used-by (used-by-index modules-config)
+        stats   (when stats? (gather-module-stats modules-config))]
+    (mapv (fn [m]
+            (cond-> (module->viz-node modules-config used-by m)
+              stats? (assoc :stats (get stats m))))
+          (sort (keys modules-config)))))
 
 (defn cli-print-module-tree
   "Print the module hierarchy as an indented tree, with enterprise extensions nested under the module
@@ -454,7 +537,7 @@
   [{:keys [options] :as _parsed}]
   (let [modules-config (read-modules-config)]
     (if (:html options)
-      (let [html (modules-html/page (modules->viz-data modules-config))]
+      (let [html (modules-html/page (modules->viz-data modules-config (not (:no-stats options))))]
         (if-let [out (:output options)]
           (do (spit out html)
               (println (c/green (str "Wrote " out " (" (count modules-config) " modules)"))))

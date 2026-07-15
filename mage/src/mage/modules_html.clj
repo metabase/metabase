@@ -124,6 +124,10 @@ main{flex:1;display:flex;min-height:0}
 .d-title .dot{width:11px;height:11px}
 .d-sub{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .d-body{padding:6px 20px 40px}
+.d-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:16px}
+.stat{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 5px;text-align:center}
+.stat b{display:block;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:9px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
 .sec{margin-top:18px}
 .sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin:0 0 8px;
   display:flex;align-items:center;gap:7px}
@@ -378,6 +382,16 @@ function select(id){
   detailEl.appendChild(head);
 
   const body=document.createElement('div'); body.className='d-body';
+  if(m.stats){
+    const st=document.createElement('div'); st.className='d-stats';
+    for(const [k,v] of [['namespaces',m.stats.namespaces],['lines',m.stats.loc],['tests',m.stats.tests],['commits',m.stats.commits]]){
+      const d=document.createElement('div'); d.className='stat';
+      d.innerHTML=`<b>${(v||0).toLocaleString()}</b><span>${k}</span>`;
+      if(k==='tests'&&m.stats['test-files']) d.title=`${m.stats.tests} deftest across ${m.stats['test-files']} files`;
+      st.appendChild(d);
+    }
+    body.appendChild(st);
+  }
   const api = m['api-any']?['(any — no API namespace yet)']:m.api;
   const secs=[
     section('API namespaces', api),
