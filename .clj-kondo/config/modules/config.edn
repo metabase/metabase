@@ -1263,7 +1263,8 @@
            metabase.mcp.v2.api}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
-   :uses #{agent-api
+   :uses #{activity-feed
+           agent-api
            ai-tracing
            api
            app-db
@@ -1273,6 +1274,7 @@
            lib-be
            llm
            metabot
+           models
            oauth-server
            premium-features
            request
@@ -1282,7 +1284,7 @@
            system
            task
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Collection :model/NativeQuerySnippet}}
 
   measures
   {:team "Graphy"
@@ -1309,7 +1311,8 @@
               metabase.metabot.init
               metabase.metabot.scope
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.search}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics

@@ -73,6 +73,25 @@
       (merge common-fields
              {:database_id (:database_id result)})
 
+      "document"
+      (merge common-fields
+             {:official   official?
+              :collection collection-info})
+
+      ;; Measures and segments live on a table, not in a collection.
+      ("measure" "segment")
+      (-> common-fields
+          (m/assoc-some :database_id     (:database_id result)
+                        :table_id        (:table_id result)
+                        :table_name      (:table_name result)
+                        :table_schema    (:table_schema result)))
+
+      "action"
+      (-> common-fields
+          (merge {:collection collection-info})
+          (m/assoc-some :database_id (:database_id result)
+                        :model_id    (:model_id result)))
+
       ;; Questions, metrics, and datasets
       (-> common-fields
           (merge {:database_id (:database_id result)
@@ -237,9 +256,19 @@
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
-  Abstracted from the API endpoint logic."
+  Abstracted from the API endpoint logic.
+
+  Optional filter keys threaded straight into the search context: `created-by` (set of user
+  ids), `archived`, `collection-id` (numeric, scopes to the collection subtree), `offset`.
+  `filters-only?` makes a call with no queries run a single nil-query search — a pure listing
+  over the active filters — instead of returning nothing.
+
+  When exactly one engine search ran (a single query, or a filters-only listing), the result
+  carries the engine's total match count as `:total` metadata; fused multi-query results have
+  no knowable total and carry none."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id profile-id search-native-query weights]}]
+           entity-types limit metabot-id profile-id search-native-query weights
+           created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries        term-queries
               :semantic-queries    semantic-queries
@@ -251,7 +280,12 @@
               :metabot-id          metabot-id
               :profile-id          profile-id
               :search-native-query search-native-query
-              :weights             weights})
+              :weights             weights
+              :created-by          created-by
+              :archived            archived
+              :collection-id       collection-id
+              :offset              offset
+              :filters-only?       filters-only?})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -261,9 +295,13 @@
                           (:use_verified_content metabot)
                           false)
         embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot))
+        collection-id   (or collection-id
+                            (when (or embedded-metabot? (= profile-id "nlq"))
+                              (:collection_id metabot)))
         limit           (or limit 50)
+        ;; the engine's total match count from the last search, plus how many searches ran —
+        ;; a total is only meaningful when exactly one did (no rank fusion).
+        engine-state    (atom {:searches 0 :total nil})
         search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
                                                 (cond-> {:search-string                       search-string
@@ -278,9 +316,9 @@
                                                          :current-user-perms                  @api/*current-user-permissions-set*
                                                          :filter-items-in-personal-collection "exclude-others"
                                                          :context                             :metabot
-                                                         :archived                            false
+                                                         :archived                            (boolean archived)
                                                          :limit                               limit
-                                                         :offset                              0}
+                                                         :offset                              (or offset 0)}
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query
@@ -291,6 +329,8 @@
                                                   (assoc :weights weights)
                                                   search-engine
                                                   (assoc :search-engine (name search-engine))
+                                                  (seq created-by)
+                                                  (assoc :created-by (set created-by))
                                                   collection-id
                                                   (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
@@ -298,6 +338,8 @@
                                 search-results (search/search search-context)
                                 data           (:data search-results)
                                 result-models  (frequencies (map :model data))]
+                            (swap! engine-state (fn [s] {:searches (inc (:searches s))
+                                                         :total    (:total search-results)}))
                             (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
                             data))
         search-fn*      (fn [search-engine queries]
@@ -308,22 +350,34 @@
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-results   (if semantic-engine
+        fused-results   (cond
+                          ;; A pure listing over the filters: one search with no search string.
+                          (and filters-only?
+                               (empty? term-queries)
+                               (empty? semantic-queries))
+                          (search-fn nil nil)
+
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
+                          semantic-engine
                           (reciprocal-rank-fusion
                            (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
                                 {semantic-engine semantic-queries
                                  fallback-engine term-queries}))
+
                           ;; Search for all the terms on equal footing, using the default engine.
-                          (search-fn* nil (distinct (concat term-queries semantic-queries))))]
-    (->> fused-results
-         (take limit)
-         (map postprocess-search-result)
-         enrich-with-collection-descriptions
-         enrich-with-database-engines
-         enrich-with-portable-entity-ids
-         enrich-with-metric-base-tables
-         remove-unreadable-transforms)))
+                          :else
+                          (search-fn* nil (distinct (concat term-queries semantic-queries))))
+        results         (->> fused-results
+                             (take limit)
+                             (map postprocess-search-result)
+                             enrich-with-collection-descriptions
+                             enrich-with-database-engines
+                             enrich-with-portable-entity-ids
+                             enrich-with-metric-base-tables
+                             remove-unreadable-transforms)
+        {:keys [searches total]} @engine-state]
+    (cond-> results
+      (and (= 1 searches) total) (vary-meta assoc :total total))))
 
 (defn- table-refs->results
   [ids]
