@@ -4588,11 +4588,12 @@
                                       :type  "string/="
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
-                    (#'api.dashboard/broken-pulses dash-id {param-id param}))))
+                    ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
+                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
           (testing "We can gather all needed data regarding broken params"
             (let [bad-pulses    (mapv
                                  #(update % :affected-users (partial sort-by :email))
-                                 (#'api.dashboard/broken-subscription-data dash-id {param-id param}))
+                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
                   bad-pulse-ids (set (map :pulse-id bad-pulses))]
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))
