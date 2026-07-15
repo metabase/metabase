@@ -3,27 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
-   [metabase.collections.models.collection :as collection]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]
+   [metabase.typed-schemas.api.scope :as typed-schemas.api.scope]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-(deftest column-schema-includes-description-test
-  (is (= {:type          "column"
-          :name          "name"
-          :displayName   "Name"
-          :baseType      "type/Text"
-          :jsType        "string"
-          :description   "Name of the customer"}
-         (#'typed-schemas.api/column-schema {:name         "name"
-                                             :display_name "Name"
-                                             :base_type    "type/Text"
-                                             :description  "Name of the customer"}))))
 
 (deftest metric-dimension-schema-uses-dimension-id-test
   (is (= {:type          "column"
@@ -172,40 +160,6 @@
   (testing "stage source-card emits sourceCardId"
     (is (= 42 (#'typed-schemas.api/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
-
-(deftest keyed-map-disambiguates-duplicate-keys-with-readable-suffix-test
-  (is (= {"channelOrderItems" {:key     "channelOrderItems"
-                               :id      "40f15584-bca0-4557-910d-e5e789757f23"
-                               :tableId 261}
-          "channelOrders"     {:key     "channelOrders"
-                               :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
-                               :tableId 167}}
-         (#'typed-schemas.api/keyed-map
-          [{:key     "channel"
-            :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
-            :tableId 167
-            :keyDisambiguator "Orders"}
-           {:key     "channel"
-            :id      "40f15584-bca0-4557-910d-e5e789757f23"
-            :tableId 261
-            :keyDisambiguator "OrderItems"}]))))
-
-(deftest keyed-map-falls-back-to-id-when-readable-suffix-does-not-disambiguate-test
-  (is (= {"channelOrders1" {:key     "channelOrders1"
-                            :id      1
-                            :tableId 167}
-          "channelOrders2" {:key     "channelOrders2"
-                            :id      2
-                            :tableId 168}}
-         (#'typed-schemas.api/keyed-map
-          [{:key     "channel"
-            :id      1
-            :tableId 167
-            :keyDisambiguator "Orders"}
-           {:key     "channel"
-            :id      2
-            :tableId 168
-            :keyDisambiguator "Orders"}]))))
 
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
@@ -513,6 +467,17 @@
     (is (map? (get-in response [:body :tables])))
     (is (map? (get-in response [:body :metrics])))))
 
+(deftest query-params-are-coerced-at-endpoint-test
+  (with-redefs [typed-schemas.api/typed-schema identity]
+    (let [response (mt/user-http-request
+                    :crowberto
+                    :get
+                    200
+                    "typed-schemas/v1/json?include-models=true&questions=false&library-collections=1,2")]
+      (is (true? (:include-models response)))
+      (is (false? (:questions response)))
+      (is (= "1,2" (:library-collections response))))))
+
 (deftest database-filter-test
   (testing "a non-matching database name returns an empty semantic schema"
     (let [response (mt/user-http-request-full-response
@@ -537,7 +502,7 @@
 
 (deftest database-filter-scopes-models-test
   (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.api/database-ids-for-value (constantly #{42})
+    (with-redefs [typed-schemas.api.scope/database-ids-for-value (constantly #{42})
                   typed-schemas.api/model-schemas (fn [database-ids]
                                                     (swap! model-database-ids conj database-ids)
                                                     [])
@@ -678,141 +643,9 @@
    400
    "typed-schemas/v1/json?library=1&library-collections=2"))
 
-(deftest library-collection-scope-accepts-subcollection-id-test
-  (mt/with-temp [:model/Collection root  {:name "Library"
-                                          :type "library"
-                                          :location "/"}
-                 :model/Collection data  {:name "Data"
-                                          :type "library-data"
-                                          :location (collection/children-location root)}
-                 :model/Collection child {:name "Boba Data"
-                                          :type "library-data"
-                                          :location (collection/children-location data)}]
-    (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id child)}
-              :data-collection-ids   #{(:id child)}
-              :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.api/library-collection-scope (str (:id child)))
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
-
-(deftest library-collections-scope-accepts-comma-separated-subcollection-ids-test
-  (mt/with-temp [:model/Collection root          {:name "Library"
-                                                  :type "library"
-                                                  :location "/"}
-                 :model/Collection data          {:name "Data"
-                                                  :type "library-data"
-                                                  :location (collection/children-location root)}
-                 :model/Collection metrics       {:name "Metrics"
-                                                  :type "library-metrics"
-                                                  :location (collection/children-location root)}
-                 :model/Collection data-child    {:name "Boba Data"
-                                                  :type "library-data"
-                                                  :location (collection/children-location data)}
-                 :model/Collection data-grandkid {:name "Boba Data Nested"
-                                                  :type "library-data"
-                                                  :location (collection/children-location data-child)}
-                 :model/Collection metric-child  {:name "Boba Metrics"
-                                                  :type "library-metrics"
-                                                  :location (collection/children-location metrics)}]
-    (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
-              :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
-              :metric-collection-ids #{(:id metric-child)}}
-             (select-keys (#'typed-schemas.api/library-collections-scope
-                           (#'typed-schemas.api/query-library-collection-values
-                            {:library-collections (format "%d, %d"
-                                                          (:id data-child)
-                                                          (:id metric-child))}))
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
-
-(deftest library-collections-scope-accepts-representation-entity-ids-test
-  (mt/with-temp [:model/Collection root         {:name "Library"
-                                                 :type "library"
-                                                 :location "/"}
-                 :model/Collection data         {:name "Data"
-                                                 :type "library-data"
-                                                 :location (collection/children-location root)}
-                 :model/Collection website      {:name      "Website"
-                                                 :type      "library-data"
-                                                 :entity_id "g-jLnamuHKdezZMthJ-z7"
-                                                 :location  (collection/children-location data)}
-                 :model/Collection website-page {:name "Website Page"
-                                                 :type "library-data"
-                                                 :location (collection/children-location website)}]
-    (mt/with-test-user :crowberto
-      (is (= {:collection-ids        #{(:id website) (:id website-page)}
-              :data-collection-ids   #{(:id website) (:id website-page)}
-              :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.api/library-collections-scope ["g-jLnamuHKdezZMthJ-z7"])
-                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
-
-(deftest library-scope-includes-canonical-data-and-metrics-libraries-test
-  (with-redefs [typed-schemas.api/library-data-entity-id    "test-library-data"
-                typed-schemas.api/library-metrics-entity-id "test-library-metrics"]
-    (mt/with-temp [:model/Collection root         {:name "Library"
-                                                   :type "library"
-                                                   :location "/"}
-                   :model/Collection data         {:name      "Data"
-                                                   :type      "library-data"
-                                                   :entity_id "test-library-data"
-                                                   :location  (collection/children-location root)}
-                   :model/Collection metrics      {:name      "Metrics"
-                                                   :type      "library-metrics"
-                                                   :entity_id "test-library-metrics"
-                                                   :location  (collection/children-location root)}
-                   :model/Collection data-child   {:name "Boba Data"
-                                                   :type "library-data"
-                                                   :location (collection/children-location data)}
-                   :model/Collection metric-child {:name "Boba Metrics"
-                                                   :type "library-metrics"
-                                                   :location (collection/children-location metrics)}]
-      (mt/with-test-user :crowberto
-        (is (= {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
-                :data-collection-ids   #{(:id data) (:id data-child)}
-                :metric-collection-ids #{(:id metrics) (:id metric-child)}}
-               (select-keys (#'typed-schemas.api/library-scope
-                             {:includeDataLibrary   "true"
-                              :includeMetricLibrary "true"})
-                            [:collection-ids :data-collection-ids :metric-collection-ids])))))))
-
-(deftest query-collection-values-accept-camel-case-aliases-test
-  (is (= ["1" "2"]
-         (#'typed-schemas.api/query-library-collection-values {:libraryCollections "1, 2"})))
-  (is (= ["3" "4"]
-         (#'typed-schemas.api/query-question-collection-values {:questionCollections "3, 4"})))
-  (is (true?
-       (#'typed-schemas.api/query-include-models? {:includeModels "true"}))))
-
-(deftest question-collection-scope-accepts-comma-separated-collection-ids-test
-  (mt/with-temp [:model/Collection parent {:name "Question Parent"
-                                           :location "/"}
-                 :model/Collection child  {:name "Question Child"
-                                           :location (collection/children-location parent)}]
-    (mt/with-test-user :crowberto
-      (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.api/collection-scope
-              (#'typed-schemas.api/query-question-collection-values
-               {:question-collections (str (:id parent))})))))))
-
-(deftest question-collection-scope-accepts-representation-entity-ids-test
-  (mt/with-temp [:model/Collection parent {:name      "Question Parent"
-                                           :entity_id "question-entity-id-1"
-                                           :location  "/"}
-                 :model/Collection child  {:name "Question Child"
-                                           :location (collection/children-location parent)}]
-    (mt/with-test-user :crowberto
-      (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.api/collection-scope ["question-entity-id-1"]))))))
-
-(deftest question-collection-scope-rejects-missing-collection-ref-test
-  (mt/with-test-user :crowberto
-    (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.api/collection-scope ["missing-entity-id-1"])))]
-      (is (= 404 (:status-code (ex-data e)))))))
-
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.api/library-collection-scope
+    (with-redefs [typed-schemas.api.scope/library-collection-scope
                   (constantly {:metric-collection-ids #{20}
                                :data-collection-ids   #{10}})
                   typed-schemas.api/model-schemas
@@ -848,7 +681,7 @@
 
 (deftest collections-schema-includes-selected-data-and-metric-collections-test
   (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.api/library-collections-scope
+    (with-redefs [typed-schemas.api.scope/library-collections-scope
                   (fn [collection-values]
                     (is (= ["10" "20"] collection-values))
                     {:metric-collection-ids #{20}
@@ -895,22 +728,22 @@
                 typed-schemas.api/question-schemas
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load questions"))
+                   (is false "include-models-only schemas should not load questions"))
                   ([_database-ids _collection-ids]
-                   (is false "includeModels-only schemas should not load questions")))
+                   (is false "include-models-only schemas should not load questions")))
                 typed-schemas.api/metric-schemas
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load metrics"))
+                   (is false "include-models-only schemas should not load metrics"))
                   ([_database-ids _collection-ids]
-                   (is false "includeModels-only schemas should not load metrics")))
+                   (is false "include-models-only schemas should not load metrics")))
                 typed-schemas.api/select-tables
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load tables"))
+                   (is false "include-models-only schemas should not load tables"))
                   ([_database-ids _table-ids]
-                   (is false "includeModels-only schemas should not load tables")))]
-    (let [schema (#'typed-schemas.api/typed-schema {:includeModels "true"})]
+                   (is false "include-models-only schemas should not load tables")))]
+    (let [schema (#'typed-schemas.api/typed-schema {:include-models "true"})]
       (is (= {} (:questions schema)))
       (is (= {"actionableModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
              (:models schema)))
@@ -919,7 +752,7 @@
 
 (deftest include-models-with-database-scopes-models-test
   (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.api/database-ids-for-value (constantly #{42})
+    (with-redefs [typed-schemas.api.scope/database-ids-for-value (constantly #{42})
                   typed-schemas.api/model-schemas (fn [database-ids]
                                                     (swap! model-database-ids conj database-ids)
                                                     [{:key     "databaseModel"
@@ -934,13 +767,13 @@
                                                     ([_database-ids] [])
                                                     ([_database-ids _table-ids] []))
                   typed-schemas.api/table-schemas (constantly [])]
-      (let [schema (#'typed-schemas.api/typed-schema {:database "Boba" :includeModels "true"})]
+      (let [schema (#'typed-schemas.api/typed-schema {:database "Boba" :include-models "true"})]
         (is (= [#{42}] @model-database-ids))
         (is (= {"databaseModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
                (:models schema)))))))
 
 (deftest question-collections-schema-includes-selected-question-collections-test
-  (with-redefs [typed-schemas.api/collection-scope
+  (with-redefs [typed-schemas.api.scope/collection-scope
                 (fn [collection-values]
                   (is (= ["30" "40"] collection-values))
                   #{30 40})
@@ -962,12 +795,12 @@
       (is (= {} (:metrics schema))))))
 
 (deftest library-and-question-collections-can-be-combined-test
-  (with-redefs [typed-schemas.api/library-collections-scope
+  (with-redefs [typed-schemas.api.scope/library-collections-scope
                 (fn [collection-values]
                   (is (= ["10"] collection-values))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
-                typed-schemas.api/collection-scope
+                typed-schemas.api.scope/collection-scope
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
@@ -998,12 +831,12 @@
       (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
 
 (deftest library-and-question-collections-can-be-combined-with-include-models-test
-  (with-redefs [typed-schemas.api/library-collections-scope
+  (with-redefs [typed-schemas.api.scope/library-collections-scope
                 (fn [collection-values]
                   (is (= ["10"] collection-values))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
-                typed-schemas.api/collection-scope
+                typed-schemas.api.scope/collection-scope
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
@@ -1027,7 +860,7 @@
                 (constantly [{:type "table", :key "orders", :id 3}])]
     (let [schema (#'typed-schemas.api/typed-schema {:library-collections  "10"
                                                     :question-collections "30"
-                                                    :includeModels        "true"})]
+                                                    :include-models        "true"})]
       (is (= #{1} (->> (:questions schema) vals (map :id) set)))
       (is (= {"selectedQuestionCollectionModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
              (:models schema)))
