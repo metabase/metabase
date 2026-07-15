@@ -72,7 +72,7 @@
   "Check if a table exists."
   [table-name ^Connection conn]
   (-> (.getMetaData conn)
-      (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
+      (.getTables nil nil table-name (u/varargs String ["TABLE"]))
       jdbc/metadata-query
       seq
       boolean))
@@ -81,15 +81,22 @@
   [^Connection conn ^Database database]
   (not (table-exists? (.getDatabaseChangeLogTableName database) conn)))
 
+(defn- year-directory-migration?
+  "Whether `filename` is a version-less migration living in a year-based directory,
+  e.g. `migrations/2026/20260703_workspaces.yaml`."
+  [filename]
+  (boolean (some->> filename (re-find #"(?:^|[/\\])\d{4}[/\\]"))))
+
 (defn- decide-liquibase-file
   [^Connection conn ^Database database]
   (if (fresh-install? conn database)
     changelog-file
-    (let [latest-migration (->> (jdbc/query {:connection conn}
-                                            [(format "select id from %s order by dateexecuted desc limit 1"
-                                                     (.getDatabaseChangeLogTableName database))])
-                                first
-                                :id)]
+    (let [{latest-migration :id, latest-filename :filename}
+          (first (jdbc/query {:connection conn}
+                             [(format "select id, filename from %s order by dateexecuted desc limit 1"
+                                      (.getDatabaseChangeLogTableName database))]))
+          ;; major version parsed from a legacy "vNN.*" id, or nil for version-less (year-directory) ids
+          major (some-> (re-find #"^v(\d+)\." (str latest-migration)) second parse-long)]
       (cond
         (nil? latest-migration)
         changelog-file
@@ -98,11 +105,15 @@
         (= latest-migration "v00.00-000")
         changelog-file
 
-        ;; pre 42
-        (not (str/starts-with? latest-migration "v"))
+        (year-directory-migration? latest-filename)
+        changelog-file
+
+        ;; Pre-4.2 installs used purely-numeric changeset ids (e.g. "1" .. "316") and need the legacy changelog.
+        (re-matches #"\d+" latest-migration)
         changelog-legacy-file
 
-        (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+        ;; versioned ids below 45 need the legacy changelog
+        (and major (< major 45))
         changelog-legacy-file
 
         :else
@@ -129,7 +140,7 @@
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
   [conn-or-data-source :- [:or (ms/InstanceOfClass Connection) (ms/InstanceOfClass javax.sql.DataSource)]
-   f                   :- fn?]
+   f :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (let [f* (fn [^Liquibase liquibase]
              ;; trigger creation of liquibase's databasechangelog tables if needed, without updating any checksums
@@ -319,7 +330,7 @@
                      ;; It's possible that the lock was accidentally released by an operation, or force released by
                      ;; another process, so it's useful for debugging to know whether we were still within a locked
                      ;; scope.
-                     :lock-depth *lock-depth*}))))
+                     :lock-depth   *lock-depth*}))))
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
@@ -363,7 +374,7 @@
   `(run-in-scope-locked ~liquibase (fn [] ~@body)))
 
 (defonce ^{:private true
-           :doc "Identifiers of the application DBs whose `databasechangelog_version` table we have already created in
+           :doc     "Identifiers of the application DBs whose `databasechangelog_version` table we have already created in
                  this process, so repeated [[ensure-databasechangelog-versions-table!]] calls can skip the DDL. Keyed by
                  [[mdb.connection/unique-identifier]] so each (e.g. temp test) application DB is tracked separately."}
   databasechangelog-versions-table-created
@@ -389,7 +400,7 @@
   (some-> (re-find #"^x\.(\d+)" (str version)) second parse-long))
 
 (def ^{:private true
-       :doc "Dev synthetic majors start here, well above any real Metabase release so it's obvious"}
+       :doc     "Dev synthetic majors start here, well above any real Metabase release so it's obvious"}
   synthetic-major-floor
   1000)
 
@@ -435,7 +446,7 @@
   (let [values "(deployment_id, metabase_version, deployed_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
         upsert (case (mdb.connection/db-type)
                  :postgres (format "INSERT INTO %s %s ON CONFLICT DO NOTHING" databasechangelog-versions-table values)
-                 :mysql    (format "INSERT IGNORE INTO %s %s" databasechangelog-versions-table values)
+                 :mysql (format "INSERT IGNORE INTO %s %s" databasechangelog-versions-table values)
                  nil)]
     (if upsert
       (jdbc/execute! {:connection conn} [upsert deployment-id version])
@@ -459,19 +470,24 @@
                               (.getDeploymentId (Scope/getCurrentScope))
                               (current-recorded-version)))
 
+(defn- last-deployment-id
+  "The `deployment_id` of the most-recently-applied changeset."
+  [^Database database]
+  (-> (jdbc/query {:connection (.. database getConnection getUnderlyingConnection)}
+                  [(format "SELECT deployment_id FROM %s ORDER BY dateexecuted DESC, orderexecuted DESC LIMIT 1"
+                           (.getDatabaseChangeLogTableName database))])
+      first
+      :deployment_id))
+
 (defn- record-unchanged-deployment-version!
   "Associate the most recent deployment with the current Metabase version when a boot runs no migrations. Only real
   versions are recorded here -- a no-op boot is not a new deployment, so it must not advance the dev synthetic counter
   (which only increments when migrations actually run, via [[record-active-deployment-version!]])."
   [^Database database]
   (when-let [version (real-recorded-version)]
-    (let [conn     (.. database getConnection getUnderlyingConnection)
-          last-dep (-> (jdbc/query {:connection conn}
-                                   [(format "SELECT deployment_id FROM %s ORDER BY dateexecuted DESC, orderexecuted DESC LIMIT 1"
-                                            (.getDatabaseChangeLogTableName database))])
-                       first
-                       :deployment_id)]
-      (insert-deployment-version! conn last-dep version))))
+    (insert-deployment-version! (.. database getConnection getUnderlyingConnection)
+                                (last-deployment-id database)
+                                version)))
 
 (defn recording-exec-listener
   "A Liquibase `ChangeExecListener` that records the running Metabase version against the current `deployment_id` as
@@ -482,6 +498,56 @@
       (ran [change-set _database-change-log _database _exec-type]
         (when (and (instance? ChangeSet change-set) (compare-and-set! recorded? false true))
           (record-active-deployment-version! database))))))
+
+(def ^{:private true}
+  legacy-version-tracking-suffix "legacy-version-tracking")
+
+(def ^{:private true}
+  legacy-version-tracking-author "version-tracking")
+
+(def ^{:private true}
+  legacy-version-tracking-comment
+  (str "Not a real migration, tracking version for instances prior to the databasechangelog_version tracking."))
+
+(defn record-legacy-version-tracking!
+  "Record a synthetic `vNN.legacy-version-tracking` changeset row for `major`, as an ordinary row of the deployment that
+  just ran migrations.
+
+  Older Metabase binaries detect an unsupported downgrade by reading the highest `vNN.*` changeset id
+  ([[latest-applied-major-version]]) and know nothing about `databasechangelog_version`. Once a release ships its
+  migrations as version-less changesets those binaries would see a stale major, so this row keeps that signal accurate.
+
+  It deliberately carries the **same `deployment_id`** as the deployment that created it, and an execution position
+  within that deployment's range. That means it needs no special handling anywhere: rolling that deployment back deletes
+  it through the normal [[delete-deployment-rows!]] path, exactly like any other row of the deployment. (It must be
+  in-range for that: [[rollback-plan]] only drops a deployment when *all* of its rows are being rolled back.)
+
+  Rows for earlier majors are deliberately left in place, so that after rolling back the later deployments the earlier
+  deployment's row is once again the highest -- e.g. rolling 65 -> 63 removes the v64 and v65 rows with their
+  deployments and leaves v63."
+  [^Database database major deployment-id]
+  (when (and major (< major synthetic-major-floor) deployment-id)
+    (let [conn      (.. database getConnection getUnderlyingConnection)
+          changelog (.getDatabaseChangeLogTableName database)
+          wanted    (format "v%d.%s" major legacy-version-tracking-suffix)
+          exists?   (seq (jdbc/query {:connection conn}
+                                     [(format "SELECT 1 FROM %s WHERE id = ?" changelog) wanted]))]
+      (when-not exists?
+        (try
+          (let [next-order (-> (jdbc/query {:connection conn}
+                                           [(format "SELECT MAX(orderexecuted) AS m FROM %s WHERE deployment_id = ?" changelog)
+                                            deployment-id])
+                               first :m (or 0) inc)]
+            (jdbc/execute! {:connection conn}
+                           [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, "
+                                         "deployment_id, comments) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, 'EXECUTED', ?, ?)")
+                                    changelog)
+                            wanted legacy-version-tracking-author legacy-version-tracking-suffix
+                            next-order deployment-id legacy-version-tracking-comment]))
+          (catch Throwable e
+            ;; This row only improves downgrade detection for *older* binaries -- it must never block a migration.
+            (log/warnf e "Could not record %s in %s; older Metabase versions may not detect a downgrade from this schema"
+                       wanted changelog)))))))
 
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
@@ -506,6 +572,8 @@
                 (.update liquibase contexts)
                 (finally
                   (.setChangeExecListener liquibase nil)))
+              (let [database (.getDatabase liquibase)]
+                (record-legacy-version-tracking! database (current-recorded-major) (last-deployment-id database)))
               (log/infof "Migration complete in %s" (u/format-milliseconds (u/since-ms timer))))
             (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (do
@@ -518,7 +586,7 @@
    (update-with-change-log liquibase {}))
   ([^Liquibase liquibase
     {:keys [^List change-set-filters exec-listener]
-     :or {change-set-filters []}}]
+     :or   {change-set-filters []}}]
    (assert-locked liquibase)
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
@@ -611,10 +679,14 @@
         (with-scope-locked liquibase
           (jdbc/execute!
            conn-spec
-           [(format "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? ELSE FILENAME END" liquibase-table-name)
+           [(format (str "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? "
+                         "ELSE FILENAME END WHERE FILENAME NOT LIKE ?")
+                    liquibase-table-name)
             "v00.00-000" update001-migrations-file
             "v45.00-001" legacy-migrations-file
-            "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
+            "v56.0000-00-00T00:00:00" update001-migrations-file
+            "%/____/%" ;; versionless migrations have a 4-digit string after "migrations/"
+            ]))))))
 
 (def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
 
@@ -650,7 +722,7 @@
   (when-not (fresh-install? conn database)
     (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY id DESC LIMIT 1"
                                   (.getDatabaseChangeLogTableName database))
-          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
+          changeset-id    (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
       (some-> changeset-id extract-numbers first))))
 
 (defn changesets-from-later-version
@@ -712,7 +784,12 @@
                              ;; empty means the table has no rows at all, so do the one-time backfill and read again
                              (do (backfill-databasechangelog-versions! conn database)
                                  (recent-rows)))
-           current-major (current-recorded-major)
+           ;; The major the schema is currently at = major of the most-recently-deployed recorded version (rows are
+           ;; newest-first). In production this equals current-recorded-major (the running binary migrated the DB to its
+           ;; own version); in dev, where each deployment records an incrementing synthetic version, this is the latest
+           ;; major that actually ran -- whereas current-recorded-major is the *next* synthetic version this process
+           ;; would record. Windowing on the recorded value keeps `migrate down` correct in both cases.
+           current-major (some-> (first rows) :metabase_version version->major)
            ;; by default keep the leading current-major rows (rows are newest-first) plus the first row from a different
            ;; major version (the last-major-upgrade boundary); `all?` keeps the entire recorded history
            kept          (if all?
@@ -721,6 +798,22 @@
                              (concat current (take 1 older))))]
        ;; a deployment can have several version rows; rows are ordered by deployed_at DESC, so keep the newest one
        (update-vals (group-by :deployment_id kept) (comp :metabase_version first))))))
+
+(defn current-schema-major
+  "Major version the application-db schema is currently at: the major of the most-recently-deployed recorded version.
+  In production this equals [[current-recorded-major]] (the running binary migrated the DB to its own version); in dev,
+  where each deployment records an incrementing synthetic version, it is the latest major that actually ran migrations
+  -- which is the correct major to step back *from* on a default `migrate down` (whereas [[current-recorded-major]] is
+  the *next* synthetic version this process would record, so `dec` of it would target the current state and be a no-op).
+  Returns nil only when there is no recorded (or backfillable) version at all."
+  [^Connection conn ^Database database]
+  (letfn [(newest [] (some-> (jdbc/query {:connection conn}
+                                         [(format "SELECT metabase_version FROM %s ORDER BY deployed_at DESC LIMIT 1"
+                                                  databasechangelog-versions-table)])
+                             first :metabase_version version->major))]
+    (ensure-databasechangelog-versions-table! conn)
+    (or (newest)
+        (do (backfill-databasechangelog-versions! conn database) (newest)))))
 
 (defn last-deployment-version
   "Return the Metabase version string recorded for the `deployment_id` of the most-recently-applied changeset, or nil if
@@ -812,7 +905,7 @@
     {:changesets-to-drop  (set (map changeset-row-key drop-rows))
      ;; only clear a deployment's history/version rows when the entire deployment is being rolled back
      :deployments-to-drop (set (for [[dep drops] (group-by :deployment_id drop-rows)
-                                     :when        (and dep (= (count drops) (count (get rows-by-dep dep))))]
+                                     :when (and dep (= (count drops) (count (get rows-by-dep dep))))]
                                  dep))}))
 
 (defn- run-liquibase-rollback!
@@ -876,9 +969,12 @@
   By default only the recent window is targetable -- the current major plus the previous-major upgrade boundary. When
   `force` is true the window is widened to the *full* recorded history, so you can roll back further back; the target
   must still be a recorded version."
-  ;; default rollback to the previous major version
-  ([conn liquibase force]
-   (rollback-major-version! conn liquibase force (str (dec (current-recorded-major)))))
+  ;; default rollback to the previous major version which is what makes the default `migrate down` roll back the last deployment in dev
+  ;; rather than no-op against the next synthetic version)
+  ([conn ^Liquibase liquibase force]
+   (let [schema-major (or (current-schema-major conn (.getDatabase liquibase))
+                          (current-recorded-major))]
+     (rollback-major-version! conn liquibase force (str (dec schema-major)))))
 
   ;; with explicit target version
   ([conn ^Liquibase liquibase force target]
@@ -898,6 +994,13 @@
          (if (empty? changesets-to-drop)
            (log/info "No changesets to roll back")
            (let [error-ids (run-liquibase-rollback! liquibase lb-db changesets-to-drop)]
-             (delete-deployment-rows! conn changelog-table deployments-to-drop)
+             ;; If any changeset failed to reverse, do NOT clear the deployments' history. Doing so would leave the
+             ;; changelog claiming a rollback that only partly happened, and would drop the `legacy-version-tracking`
+             ;; row with it -- so an older binary would read a *lower* major than the schema actually has and happily
+             ;; start against it. Fail loudly instead: the caller ([[metabase.app-db.setup/migrate!]]) rolls the
+             ;; transaction back, so the database is left as it was and the operator can fix the changeset and retry.
              (when (seq error-ids)
-               (log/warnf "The following changesets had errors during rollback: %s" (str/join ", " error-ids))))))))))
+               (throw (ex-info (trs "Rollback to {0} failed: could not roll back changeset(s) {1}. The database has been left unchanged."
+                                    target (str/join ", " error-ids))
+                               {:target target, :failed-changesets (vec error-ids)})))
+             (delete-deployment-rows! conn changelog-table deployments-to-drop))))))))

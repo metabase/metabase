@@ -516,3 +516,203 @@
                 (is (= #{"d43"} (set (map :deployment_id
                                           (jdbc/query {:connection conn} [(format "SELECT deployment_id FROM %s" versions-table)]))))
                     "the rolled-back deployments' version rows were also removed")))))))))
+
+(deftest decide-liquibase-file-version-less-ids-test
+  (testing "decide-liquibase-file treats version-less (year-directory) ids as modern, not as a pre-4.2 install"
+    ;; Regression: a version-less latest changeset id (e.g. `aeiagus09e`) has no leading `v`, so the old heuristic
+    ;; mistook a modern install for pre-4.2 and loaded the legacy changelog, re-running the earliest migrations and
+    ;; bricking the instance on its next boot.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          ;; with-liquibase creates the databasechangelog table, so we are no longer a "fresh install"
+          (let [db              (.getDatabase liquibase)
+                changelog-table (liquibase/changelog-table-name liquibase)
+                decide          #(#'liquibase/decide-liquibase-file conn db)
+                set-latest!     (fn [id filename]
+                                  (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" changelog-table)])
+                                  (jdbc/execute! {:connection conn}
+                                                 [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype) "
+                                                               "VALUES (?, 't', ?, CURRENT_TIMESTAMP, 1, 'EXECUTED')")
+                                                          changelog-table) id filename]))]
+            (testing "a year-based directory positively identifies a modern version-less migration"
+              ;; this is the case the id-shape heuristic alone cannot get right: an all-digit version-less id would
+              ;; otherwise look exactly like a pre-4.2 changeset
+              (doseq [id ["aeiagus09e" "12345" "09xyztest"]]
+                (set-latest! id "migrations/2026/20260703_workspaces.yaml")
+                (is (= @#'liquibase/changelog-file (decide))
+                    (str "version-less id " id " in a year directory"))))
+            (testing "version-less ids -> modern changelog even without the path signal"
+              (doseq [id ["aeiagus09e" "ccdevtest01" "09xyztest"]]
+                (set-latest! id "f.yaml")
+                (is (= @#'liquibase/changelog-file (decide)) id)))
+            (testing "genuinely pre-4.2 numeric ids and version < 45 ids -> legacy changelog (unchanged behavior)"
+              (doseq [id ["316" "v44.00-042"]]
+                (set-latest! id "migrations/000_legacy_migrations.yaml")
+                (is (= @#'liquibase/changelog-legacy-file (decide)) id)))
+            (testing "modern version ids and the v00 marker -> modern changelog (unchanged behavior)"
+              (doseq [id ["v45.00-001" "v63.abc" "v00.00-000"]]
+                (set-latest! id "migrations/001_update_migrations.yaml")
+                (is (= @#'liquibase/changelog-file (decide)) id)))
+            (testing "version-numbered directories (060/) are NOT year directories"
+              (set-latest! "v60.abc" "migrations/060/20260101_foo.yaml")
+              (is (= @#'liquibase/changelog-file (decide))))))))))
+
+(deftest consolidate-does-not-clobber-version-less-ids-test
+  (testing "consolidate-liquibase-changesets! rewrites legacy ids' filenames but leaves version-less ids alone"
+    ;; Regression: `consolidate` rewrote the filename of any id sorting before `v45.00-001`, which caught version-less
+    ;; ids (e.g. `aeiagus09e` < `v45.00-001`) and pointed them at the legacy changelog file -> Liquibase then re-ran the
+    ;; earliest migrations on the next boot.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [changelog-table (liquibase/changelog-table-name liquibase)
+                filename-of      (fn [id] (:filename (first (jdbc/query {:connection conn}
+                                                                        [(format "SELECT filename FROM %s WHERE id = ?" changelog-table) id]))))]
+            ;; a legacy row (its filename ends with update_migrations.yaml, so consolidate's guard fires) and two
+            ;; version-less rows in a year directory that must not be touched
+            (insert-changelog-row! conn changelog-table "aeiagus09e" "dep-new" 2)
+            (insert-changelog-row! conn changelog-table "12345" "dep-new" 3)
+            (jdbc/execute! {:connection conn}
+                           [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id) "
+                                         "VALUES ('v44.00-042', 't', 'migrations/001_update_migrations.yaml', CURRENT_TIMESTAMP, 1, 'EXECUTED', 'dep-old')")
+                                    changelog-table)])
+            (jdbc/execute! {:connection conn}
+                           [(format "UPDATE %s SET filename = 'migrations/2026/foo.yaml' WHERE id IN ('aeiagus09e', '12345')" changelog-table)])
+            (liquibase/consolidate-liquibase-changesets! conn liquibase)
+            (is (= "migrations/000_legacy_migrations.yaml" (filename-of "v44.00-042"))
+                "the legacy v44 changeset is rewritten to the consolidated legacy filename")
+            (is (= "migrations/2026/foo.yaml" (filename-of "aeiagus09e"))
+                "the version-less changeset's filename is left untouched")
+            (is (= "migrations/2026/foo.yaml" (filename-of "12345"))
+                "an all-digit version-less id in a year directory is recognized by its path, not mistaken for pre-4.2")))))))
+
+(deftest dev-default-rollback-targets-previous-deployment-test
+  (testing "in dev (synthetic versions) `migrate down` with no target rolls back the last deployment, not a no-op"
+    ;; Regression: dev's synthetic current-recorded-major is max(recorded)+1, so `dec` of it targeted the *current*
+    ;; state (a no-op). The default target now steps back from the schema's latest recorded major instead.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db              (.getDatabase liquibase)
+                changelog-table (liquibase/changelog-table-name liquibase)
+                versions-table  liquibase/databasechangelog-versions-table
+                now             (java.time.Instant/now)
+                ago             (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; two dev "restarts": a base deployment and then a new-migration deployment with the next synthetic version
+            (insert-changelog-row! conn changelog-table "base01"   "dev1000" 1)
+            (insert-changelog-row! conn changelog-table "newmig01" "dev1001" 2)
+            (insert-version-row! conn versions-table "dev1000" "x.1000.0.0" (ago 20))
+            (insert-version-row! conn versions-table "dev1001" "x.1001.0.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+              (testing "current-schema-major is the latest recorded major, not the next synthetic one"
+                (is (= 1001 (liquibase/current-schema-major conn db)))
+                (is (< 1001 (liquibase/current-recorded-major)) "current-recorded-major is the next synthetic version"))
+              (liquibase/rollback-major-version! conn liquibase false)
+              (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'newmig01'" changelog-table)]))
+                  "the most recent deployment's changeset was rolled back")
+              (is (seq (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'base01'" changelog-table)]))
+                  "the earlier deployment is retained"))))))))
+
+(deftest record-legacy-version-tracking-test
+  (testing "record-legacy-version-tracking! tags the deployment that ran migrations, so older binaries read the right major"
+    ;; Older (pre-version-less) binaries detect an unsupported downgrade via latest-applied-major-version (id LIKE 'v%')
+    ;; and know nothing about databasechangelog_version. This row keeps that signal accurate once migrations ship as
+    ;; version-less changesets.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db      (.getDatabase liquibase)
+                ct      (liquibase/changelog-table-name liquibase)
+                rows    (fn [] (mapv :id (jdbc/query {:connection conn}
+                                                     [(format "SELECT id FROM %s WHERE id LIKE 'v%%.legacy-version-tracking' ORDER BY id" ct)])))
+                dep-of  (fn [id] (:deployment_id (first (jdbc/query {:connection conn}
+                                                                    [(format "SELECT deployment_id FROM %s WHERE id = ?" ct) id]))))]
+            (insert-changelog-row! conn ct "c64" "d64" 1)
+            (testing "records the row against the deployment that ran, and latest-applied-major-version reads it"
+              (liquibase/record-legacy-version-tracking! db 64 "d64")
+              (is (= ["v64.legacy-version-tracking"] (rows)))
+              (is (= "d64" (dep-of "v64.legacy-version-tracking"))
+                  "shares the deployment_id, so the normal rollback path removes it with its deployment")
+              (is (= 64 (liquibase/latest-applied-major-version conn db))))
+            (testing "idempotent for a major that already has a row (a pre-existing row never fails an upgrade)"
+              (liquibase/record-legacy-version-tracking! db 64 "d64")
+              (liquibase/record-legacy-version-tracking! db 64 "dOther")
+              (is (= ["v64.legacy-version-tracking"] (rows))))
+            (testing "a new major adds its own row; earlier majors' rows are deliberately kept"
+              (insert-changelog-row! conn ct "c65" "d65" 2)
+              (liquibase/record-legacy-version-tracking! db 65 "d65")
+              (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking"] (rows)))
+              (is (= 65 (liquibase/latest-applied-major-version conn db))
+                  "older binaries read the highest, i.e. the current major"))
+            (testing "synthetic/dev majors are skipped -- no older binaries to protect"
+              (liquibase/record-legacy-version-tracking! db 1000 "d65")
+              (is (= ["v64.legacy-version-tracking" "v65.legacy-version-tracking"] (rows))))))))))
+
+(deftest legacy-version-tracking-removed-by-rollback-test
+  (testing "rolling back several majors (65 -> 63) removes the v64 and v65 rows with their deployments, leaving v63"
+    ;; No special handling: each row belongs to the deployment that created it, so delete-deployment-rows! sweeps it up.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)
+                vt liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))
+                rows (fn [] (mapv :id (jdbc/query {:connection conn}
+                                                  [(format "SELECT id FROM %s WHERE id LIKE 'v%%.legacy-version-tracking' ORDER BY id" ct)])))
+                deps (fn [] (set (map :deployment_id
+                                      (jdbc/query {:connection conn} [(format "SELECT DISTINCT deployment_id FROM %s" ct)]))))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; three upgrades, each its own deployment, each tagging itself
+            (insert-changelog-row! conn ct "c63" "d63" 1)
+            (liquibase/record-legacy-version-tracking! db 63 "d63")
+            (insert-changelog-row! conn ct "c64" "d64" 2)
+            (liquibase/record-legacy-version-tracking! db 64 "d64")
+            (insert-changelog-row! conn ct "c65" "d65" 3)
+            (liquibase/record-legacy-version-tracking! db 65 "d65")
+            (insert-version-row! conn vt "d63" "x.63.0.0" (ago 30))
+            (insert-version-row! conn vt "d64" "x.64.0.0" (ago 20))
+            (insert-version-row! conn vt "d65" "x.65.0.0" (ago 10))
+            (is (= ["v63.legacy-version-tracking" "v64.legacy-version-tracking" "v65.legacy-version-tracking"] (rows)))
+            (is (= 65 (liquibase/latest-applied-major-version conn db)) "older binaries see 65 before the downgrade")
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
+              ;; 63 is two majors back, so it is outside the default window -- force widens it to the full history
+              (liquibase/rollback-major-version! conn liquibase true "63"))
+            (is (= ["v63.legacy-version-tracking"] (rows))
+                "the v64 and v65 rows were removed along with their deployments -- no special handling needed")
+            (is (= 63 (liquibase/latest-applied-major-version conn db)) "older binaries now correctly see 63")
+            (is (= #{"d63"} (deps)) "only the v63 deployment remains")))))))
+
+(deftest rollback-failure-preserves-history-test
+  (testing "a rollback that cannot reverse a changeset throws and leaves the deployment's history intact"
+    ;; Otherwise we would clear the deployment's rows -- including its legacy-version-tracking row -- while the schema
+    ;; is still (partly) at the higher major, so an older binary would read the lower major and start against it.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)
+                vt liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))
+                has? (fn [id] (boolean (seq (jdbc/query {:connection conn}
+                                                        [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            (insert-changelog-row! conn ct "c63" "d63" 1)
+            (insert-changelog-row! conn ct "c64" "d64" 2)
+            (liquibase/record-legacy-version-tracking! db 64 "d64")
+            (insert-version-row! conn vt "d63" "x.63.0.0" (ago 20))
+            (insert-version-row! conn vt "d64" "x.64.0.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")
+                          ;; simulate Liquibase failing to reverse one of the changesets
+                          liquibase/run-liquibase-rollback! (fn [& _] ["c64"])]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"could not roll back changeset"
+                                    (liquibase/rollback-major-version! conn liquibase false "63"))))
+            (testing "the deployment's history is left alone, so the changelog does not claim a rollback that failed"
+              (is (has? "c64"))
+              (is (has? "v64.legacy-version-tracking"))
+              (is (= 64 (liquibase/latest-applied-major-version conn db))
+                  "older binaries still see 64 -- the schema really is still at 64"))))))))
