@@ -173,6 +173,7 @@ export function UploadSettingsFormView({
       <Group align="flex-start">
         <Select
           label={t`Database to use for uploads`}
+          description={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
           value={dbId ? String(dbId) : null}
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}

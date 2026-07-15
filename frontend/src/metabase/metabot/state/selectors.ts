@@ -121,6 +121,18 @@ export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
 );
 
+export const getLastAgentMessageExternalId = createSelector(
+  getMessages,
+  (messages) => {
+    const lastAgentMessage = messages.findLast(
+      (m) => m.role === "agent" && "externalId" in m,
+    );
+    return lastAgentMessage && "externalId" in lastAgentMessage
+      ? lastAgentMessage.externalId
+      : undefined;
+  },
+);
+
 const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
   messages.reduce<MetabotChatMessage[][]>((turns, m) => {
     if (m.role === "user" || turns.length === 0) {
@@ -182,11 +194,6 @@ export const getIsProcessing = createSelector(
   (convo) => convo.isProcessing,
 );
 
-export const getHistory = createSelector(
-  getMetabotConversation,
-  (convo) => convo.history,
-);
-
 export const getMetabotRequestState = createSelector(
   getMetabotConversation,
   (convo) => convo.state,
@@ -239,15 +246,21 @@ export const getProfile = createSelector(
 );
 
 export const getAgentRequestMetadata = createSelector(
-  getHistory,
-  getMetabotRequestState,
-  getProfile,
-  (history, state, profile) => ({
-    state,
-    // NOTE: need end to end support for ids on messages as BE will error if ids are present
-    history: history.map((h) =>
-      h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
-    ),
+  [
+    getProfile,
+    getLastAgentMessageExternalId,
+    (
+      _state: State,
+      _agentId: MetabotAgentId,
+      retryMessageId: string | undefined,
+    ) => retryMessageId,
+  ],
+  (profile, parentMessageId, retryMessageId) => ({
+    // a retry regenerates the response to an existing message, so it carries
+    // retry_message_id in place of parent_message_id — never both
+    ...(retryMessageId
+      ? { retry_message_id: retryMessageId }
+      : { parent_message_id: parentMessageId }),
     ...(profile ? { profile_id: profile } : {}),
   }),
 );
