@@ -111,7 +111,7 @@
 (def ^:private header
   (str ";; Per-linter budgets for inline `" ignore-marker "` forms.\n"
        ";; metabase.core.kondo-ratchet-test fails when a count exceeds its budget.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; CI runs it against PR branches.\n"
+       ";; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; local test runs do it automatically.\n"
        ";; Raising a budget, or adding one for a new linter, is a hand edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 

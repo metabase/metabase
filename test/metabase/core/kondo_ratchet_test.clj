@@ -11,6 +11,13 @@
 
 (set! *warn-on-reflection* true)
 
+;; Outside CI, tighten the budgets before asserting: slack is fixed on the spot and the file change rides
+;; along in your next commit. The self-heal workflow does the same for labelled PRs.
+(use-fixtures :once (fn [thunk]
+                      (when-not (System/getenv "CI")
+                        (kondo-ratchet/fix!))
+                      (thunk)))
+
 ;;;; ---------------------------------------------------------------------------
 ;;;; The ratchet itself
 ;;;; ---------------------------------------------------------------------------
@@ -25,12 +32,12 @@
            (kondo-ratchet/over-budget (:ignore-counts (kondo-ratchet/read-ratchets))
                                       (kondo-ratchet/scan))))))
 
-;; CI allows slack — the kondo-ratchets-self-heal workflow commits the lowered budgets to the PR branch.
-;; Locally the fix is instant, so keep the file tight.
+;; The :once fixture tightened the file already, so any slack left here means [[kondo-ratchet/fix!]] is
+;; broken. Doesn't run in CI, where slack is allowed (the self-heal workflow owns it).
 (when-not (System/getenv "CI")
   (deftest ^:parallel budgets-are-tight-locally-test
-    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " exceed the actual ignore counts.\n"
-                  "Run `./bin/mage fix-kondo-ratchets` to tighten them (takes a couple of seconds).")
+    (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " exceed the actual ignore counts even though"
+                  " the fixture just ran `fix!`.")
       (let [recorded  (:ignore-counts (kondo-ratchet/read-ratchets))
             tightened (kondo-ratchet/lowered-counts recorded (kondo-ratchet/actual-counts (kondo-ratchet/scan)))]
         (is (= {}
