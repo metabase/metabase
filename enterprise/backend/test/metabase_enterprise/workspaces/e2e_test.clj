@@ -666,24 +666,26 @@
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
                           ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
-                          ;; `delete-workspace!` then deprovisions any `:provisioned` databases (calls
+                          ;; `delete-workspace!` then tears down every database (any state, calls
                           ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
                           ;; provision succeeded fully or partially.
                           (ws/clear-instance-workspace!)
                           (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                          ;; Cleanup tries [[ws/delete-workspace!]] first. If it throws (e.g. on
-                          ;; Redshift, [[destroy-workspace-isolation!]] rolls WSD status back to
-                          ;; `:provisioned` if any cleanup statement fails, and [[delete-workspace!]]
-                          ;; refuses with 409), fall back to force-clearing the WSD status so
-                          ;; `mt/with-temp Database` cleanup can complete. Real fix for the
-                          ;; Redshift destroy fragility is tracked separately.
-                          (let [delete-result (try (ws/delete-workspace! ws-id) ::deleted-ok
+                          ;; Cleanup tries [[ws/delete-workspace!]] first. A failed warehouse
+                          ;; teardown no longer throws — it returns `{:deleted false}` and keeps
+                          ;; the workspace + rows for retry. For test cleanup we don't retry:
+                          ;; fall back to force-clearing the rows so `mt/with-temp Database`
+                          ;; cleanup can complete. Real fix for the Redshift destroy fragility
+                          ;; is tracked separately.
+                          (let [delete-result (try (ws/delete-workspace! ws-id)
                                                    (catch Throwable t
-                                                     (log/warn t "delete-workspace! failed; force-clearing WSD")
-                                                     ::delete-failed))]
-                            (when (= ::delete-failed delete-result)
+                                                     (log/warn t "delete-workspace! threw; force-clearing WSD")
+                                                     {:deleted false}))]
+                            (when-not (:deleted delete-result)
+                              (log/warnf "delete-workspace! left workspace %d behind (%s); force-clearing WSD"
+                                         ws-id (pr-str (:message delete-result)))
                               (doseq [wsd (t2/select :model/WorkspaceDatabase :workspace_id ws-id)]
-                                (t2/update! :model/WorkspaceDatabase :id (:id wsd) {:status :unprovisioned}))
+                                (t2/delete! :model/WorkspaceDatabase :id (:id wsd)))
                               (t2/delete! :model/Workspace :id ws-id)))))))
                   (finally
                     (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)

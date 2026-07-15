@@ -201,82 +201,97 @@
 
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
+(defn- teardown-workspace-databases!
+  "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking,
+  continuing past failures so each row gets its attempt. Rows whose teardown
+  succeeds are deleted immediately (progress is persisted per row, so an instance
+  crash midway loses nothing); rows whose teardown fails are kept. Returns the
+  vector of failure maps (see [[provisioning/teardown-workspace-database!]])."
+  [workspace-id]
+  (->> (t2/select :model/WorkspaceDatabase :workspace_id workspace-id)
+       (mapv (fn [wsd]
+               (try
+                 (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
+                 (catch Throwable t
+                   (log/warnf t "Teardown of WorkspaceDatabase %d failed" (:id wsd))
+                   {:status                :failure
+                    :workspace_database_id (:id wsd)
+                    :database_id           (:database_id wsd)
+                    :reason                (ex-message t)}))))
+       (filterv #(= :failure (:status %)))))
+
+(defn- teardown-failures-message
+  [workspace-id failures]
+  (str (format "Teardown failed for %d database(s) of workspace %d. "
+               (count failures) workspace-id)
+       "The workspace and these databases were kept so the teardown can be retried:\n"
+       (str/join "\n"
+                 (for [{:keys [database_id driver schema user reason]} failures]
+                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — teardown failed because: %s"
+                           database_id (some-> driver name) schema user reason)))))
+
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
    [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
-   known schemas as
-   `input_schemas`, and provision each database (blocking). Everything runs in a
-   single transaction, so a provisioning failure rolls back the workspace and its
-   database rows. Returns the created workspace, hydrated."
+   known schemas as `input_schemas`, and provision each database (blocking).
+   Returns the created workspace, hydrated.
+
+   The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
+   starts — deliberately NOT one big transaction. The rows are the durable record
+   of warehouse resources that may (partially) exist, so they must survive an
+   instance crash mid-provision; a rollback would erase them while the warehouse
+   objects live on. Cleanup after a provisioning failure is therefore explicit:
+   every database is torn down, rows whose teardown succeeds are deleted, rows
+   whose teardown fails are kept (`:unprovisioned`), and the Workspace row is
+   deleted only when no database row remains — otherwise it is kept so the leak
+   stays visible and the delete can be retried."
   [{:keys [name creator_id database_ids]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
                             {:database_id   db-id
                              :input_schemas (workspace-database/database-input-schemas database)}))
-                        database_ids)]
-    (t2/with-transaction [_conn]
-      (let [ws (workspace/create-workspace! {:name       name
-                                             :creator_id creator_id
-                                             :databases  databases})]
-        (doseq [{wsd-id :id} (:databases ws)]
-          (provisioning/provision-single! wsd-id))
-        (workspace/get-workspace (:id ws))))))
-
-(defn- orphaned-resources-message
-  [workspace-id failures]
-  (str (format "Workspace %d was deleted, but warehouse cleanup failed for %d database(s). "
-               workspace-id (count failures))
-       "These resources were left in place and may need to be removed manually:\n"
-       (str/join "\n"
-                 (for [{:keys [database_id driver schema user reason]} failures]
-                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — not removed because: %s"
-                           database_id (name driver) schema user reason)))))
-
-(defn- pending-database?
-  "True for a WorkspaceDatabase that is mid-provision/deprovision — a state we can't
-  safely tear down because warehouse work may still be in flight on another node."
-  [wsd]
-  (contains? #{:provisioning :deprovisioning} (:status wsd)))
+                        database_ids)
+        ws        (workspace/create-workspace! {:name       name
+                                                :creator_id creator_id
+                                                :databases  databases})]
+    (try
+      (doseq [{wsd-id :id} (:databases ws)]
+        (provisioning/provision-single! wsd-id))
+      (catch Throwable t
+        (let [failures (teardown-workspace-databases! (:id ws))]
+          (if (seq failures)
+            (let [message (teardown-failures-message (:id ws) failures)]
+              (log/warn message)
+              (throw (ex-info (str "Workspace provisioning failed, and cleanup could not remove everything it had created. "
+                                   message)
+                              {:workspace_id       (:id ws)
+                               :orphaned_resources failures}
+                              t)))
+            (do (workspace/delete-workspace! (:id ws))
+                (throw t))))))
+    (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
-  "Tear down each `:provisioned` database's warehouse isolation (best-effort,
-  blocking), then delete the workspace.
+  "Tear down every database's warehouse isolation (any state, blocking), then
+  delete the workspace. There is no partial deletion: each WorkspaceDatabase is
+  either fully torn down (warehouse footprint confirmed gone, row deleted) or
+  kept. Every database gets its teardown attempt even when earlier ones fail; if
+  any of them fail, the workspace is kept alongside the failed rows so the delete
+  can be retried. Progress is persisted per row, so an instance crash midway
+  loses nothing.
 
-  `ignore-pending?` (default false) controls databases still `:provisioning` or
-  `:deprovisioning`: when false, refuses with a 409 (`:pending_databases` lists
-  them) since their warehouse work may be in flight; when true, those databases are
-  left untouched in the warehouse and only their app-DB rows are removed.
-
-  Returns `{:deleted true}` on clean teardown, or
-  `{:deleted true :orphaned_resources [...] :message ..}` when the warehouse was
-  unreachable for some `:provisioned` rows and inert schema/user objects were left
-  behind. App-DB `TableRemapping` rows are always cleared, so query routing is never
-  left dangling."
-  ([id] (delete-workspace! id false))
-  ([id ignore-pending?]
-   (let [ws       (assert-workspace-exists id)
-         databases (:databases ws)
-         pending  (filter pending-database? databases)
-         active   (filter #(= :provisioned (:status %)) databases)]
-     (when (and (seq pending) (not ignore-pending?))
-       (throw (ex-info "Cannot delete a workspace while some of its databases are still provisioning or deprovisioning"
-                       {:status-code       409
-                        :workspace_id      id
-                        :pending_databases (mapv (fn [wsd]
-                                                   {:database_id (:database_id wsd)
-                                                    :name        (:name (:database wsd))
-                                                    :status      (:status wsd)})
-                                                 pending)})))
-     (let [results  (mapv #(provisioning/force-teardown-for-delete!
-                            % provisioning/dispatching-provisioner)
-                          active)
-           failures (filterv #(= :failure (:status %)) results)]
-       (run! provisioning/ignore-pending-database! pending)
-       (workspace/delete-workspace! id)
-       (if (seq failures)
-         (let [message (orphaned-resources-message id failures)]
-           (log/warn message)
-           {:deleted true :orphaned_resources failures :message message})
-         {:deleted true})))))
+  Returns `{:deleted true}` on clean teardown, or `{:deleted false
+  :orphaned_resources [...] :message ..}` when some databases could not be torn
+  down. App-DB `TableRemapping` rows are always cleared, so query routing is
+  never left dangling."
+  [id]
+  (assert-workspace-exists id)
+  (let [failures (teardown-workspace-databases! id)]
+    (if (seq failures)
+      (let [message (teardown-failures-message id failures)]
+        (log/warn message)
+        {:deleted false :orphaned_resources failures :message message})
+      (do (workspace/delete-workspace! id)
+          {:deleted true}))))

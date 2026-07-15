@@ -130,21 +130,18 @@
        [:sequential [:map
                      [:workspace_database_id ms/PositiveInt]
                      [:database_id ms/PositiveInt]
-                     [:driver :keyword]
-                     [:schema :string]
-                     [:user :string]
+                     [:driver {:optional true} :keyword]
+                     [:schema {:optional true} [:maybe :string]]
+                     [:user {:optional true} [:maybe :string]]
                      [:reason {:optional true} [:maybe :string]]]]]]
-  "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation
-  first (blocking). Refuses with a 409 if any database is still `:provisioning`/
-  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are
-  left in the warehouse and only their app-DB rows are removed. If the warehouse was
-  unreachable for some `:provisioned` databases, the response includes
-  `:orphaned_resources` and a `:message` describing the inert schema/user objects
-  left behind for manual cleanup."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
+  "Delete a Workspace. Tears down every database's warehouse isolation first
+  (blocking, any state). Each database is either fully torn down (its row is
+  deleted) or kept; when any teardown fails the workspace is kept too and the
+  response is `{:deleted false}` with `:orphaned_resources` and a `:message`
+  describing the databases whose teardown must be retried."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id))
+  (assoc (ws/delete-workspace! id) :id id))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
