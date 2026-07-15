@@ -222,10 +222,14 @@
 
 (defn write-module-boundary-stats!
   "Sync `module-stats.edn` to the current config. Unlike the ratchets, stats move freely in both
-  directions; the committed file exists so the movement shows up in PR diffs."
+  directions; the committed file exists so the movement shows up in PR diffs — one metric per line so
+  each movement diffs on its own."
   []
   (spit module-boundary-stats-path
-        (str (pr-str (into (sorted-map) (module-boundary-stats))) \newline)))
+        (str "{"
+             (str/join "\n " (for [[k v] (into (sorted-map) (module-boundary-stats))]
+                               (str k " " v)))
+             "}\n")))
 
 (defn lowered-module-boundary-ratchets
   "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
