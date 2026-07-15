@@ -53,7 +53,6 @@
               fields))
     {:fields-scored 0 :fields-failed 0}))
 
-
 (mu/defn- score-missing-leftovers!
   "Backup pass after the per-table sweep: any Field in `database` whose persisted
   `dimension_interestingness` is still `NULL` gets one more compute attempt. This catches Fields
