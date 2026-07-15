@@ -4304,9 +4304,7 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
         .should("not.exist");
 
       cy.log("transform permissions should still not");
-      H.goToAdmin();
-      H.appBar().findByRole("link", { name: "Permissions" }).click();
-      cy.findByRole("menuitem", { name: "All Users" }).click();
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
       //Check that a known header is present
       cy.findByRole("columnheader", { name: "Database name" }).should(
@@ -4369,9 +4367,7 @@ describe(
         cy.button("Create a transform").should("be.visible");
 
         cy.log("transform permissions should now be visible");
-        H.goToAdmin();
-        H.appBar().findByRole("link", { name: "Permissions" }).click();
-        cy.findByRole("menuitem", { name: "All Users" }).click();
+        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
         //Check that a known header is present
         cy.findByRole("columnheader", { name: "Database name" }).should(
