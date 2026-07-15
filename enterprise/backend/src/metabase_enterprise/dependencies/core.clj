@@ -153,7 +153,7 @@
   returned, and only when every upstream edge is a plain table/transform edge."
   :feature :dependencies
   [transform-ids]
-  (let [fresh-ids (some-> transform-ids seq (deps.status/fresh-entity-ids :transform))
+  (let [fresh-ids (some->> transform-ids seq (deps.status/fresh-entity-ids :transform))
         rows      (when (seq fresh-ids)
                     (t2/select [:model/Dependency :from_entity_id :to_entity_type :to_entity_id]
                                :from_entity_type :transform
