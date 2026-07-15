@@ -498,13 +498,33 @@
           []
           rows))
 
+(defn- replayable-turn
+  [turn-rows]
+  (let [rows  (remove :deleted_at turn-rows)
+        reply (last (filter assistant-row? rows))]
+    (when (replayable-assistant-row? reply)
+      {:rows rows :reply reply})))
+
+(defn first-valid-user-message
+  "Return the first non-blank user message from a live replayable turn.
+
+  `messages` must be in reader order. Soft-deleted rows are ignored. Returns
+  `{:content <text> :profile-id <profile-id>}`, or nil when no turn qualifies."
+  [messages]
+  (some (fn [turn-rows]
+          (when-let [{:keys [rows]} (replayable-turn turn-rows)]
+            (when-let [user-row (first (filter user-row? rows))]
+              (let [content (message-text user-row)]
+                (when-not (str/blank? content)
+                  {:content content :profile-id (:profile_id user-row)})))))
+        (rows->turns messages)))
+
 (defn- turn->llm-messages
   [turn-rows]
-  (let [user-row (first (filter user-row? turn-rows))
-        reply    (last (filter assistant-row? turn-rows))]
-    (when (and reply (replayable-assistant-row? reply))
+  (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
+    (let [user-row (first (filter user-row? rows))]
       (concat (when user-row [(user-row->llm-message user-row)])
-              (when reply (assistant-row->llm-messages reply))))))
+              (assistant-row->llm-messages reply)))))
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live

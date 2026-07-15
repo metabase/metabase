@@ -30,6 +30,31 @@
      (mt/with-current-user (mt/user->id :rasta)
        ~@body)))
 
+(deftest ^:parallel first-valid-user-message-test
+  (testing "returns the first non-blank user message from a replayable, live turn"
+    (let [deleted-at (t/offset-date-time)]
+      (is (= {:content "keep this prompt" :profile-id "internal"}
+             (metabot-persistence/first-valid-user-message
+              [{:id 1 :role :user :profile_id "default"
+                :data [{:type "text" :text "errored prompt"}]}
+               {:id 2 :role :assistant :finished true :error "boom" :data []}
+               {:id 3 :role :user :profile_id "default" :deleted_at deleted-at
+                :data [{:type "text" :text "deleted prompt"}]}
+               {:id 4 :role :assistant :finished true :data []}
+               {:id 5 :role :user :profile_id "default"
+                :data [{:type "text" :text "in-flight prompt"}]}
+               {:id 6 :role :assistant :finished nil :data []}
+               {:id 7 :role :user :profile_id "default"
+                :data [{:type "text" :text "  "}]}
+               {:id 8 :role :assistant :finished true :data []}
+               {:id 9 :role :user :profile_id "internal"
+                :data [{:type "text" :text "keep this prompt"}]}
+               {:id 10 :role :assistant :finished false :data []}])))))
+  (testing "returns nil when no live replayable turn has a non-blank user message"
+    (is (nil? (metabot-persistence/first-valid-user-message
+               [{:id 1 :role :user :data [{:type "text" :text "failed"}]}
+                {:id 2 :role :assistant :finished true :error "boom" :data []}])))))
+
 (deftest ^:parallel message->chat-messages-test
   (testing "text part on a user row renders as a user message"
     (let [result (metabot-persistence/message->chat-messages

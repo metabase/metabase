@@ -1323,6 +1323,7 @@
               documents
               driver
               entity-retrieval
+              events
               interestingness
               legacy-mbql
               lib
