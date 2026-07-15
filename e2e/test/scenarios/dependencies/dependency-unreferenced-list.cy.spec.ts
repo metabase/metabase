@@ -949,7 +949,6 @@ function createSegmentWithTableDataSource({
 }) {
   return H.createSegment({
     name,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: [["=", "A", "A"]],
@@ -968,7 +967,6 @@ function createSegmentWithSegmentClause({
 }) {
   return H.createSegment({
     name,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: ["segment", segmentId],
