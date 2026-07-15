@@ -45,9 +45,9 @@
 
 (defn- action-rows
   "Returns raw rows so we can detect actions that cannot be resolved to action details."
-  [model-id]
-  (t2/select [:model/Action :id :name :type]
-             :model_id model-id
+  [model-ids]
+  (t2/select [:model/Action :id :model_id :name :type]
+             :model_id [:in model-ids]
              :archived false
              :type [:not= "http"]))
 
@@ -198,6 +198,24 @@
                        exception)
                       exception)))))
 
+(defn- resolved-action-details-for-models
+  "Returns resolved action details for selected models."
+  [models]
+  (let [model-ids (set (map :id models))]
+    (try
+      (actions/select-actions
+       models
+       :model_id [:in model-ids]
+       :archived false
+       :type [:not= "http"])
+      (catch Exception exception
+        (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
+                        (error-data-with-cause-message
+                         {:model-ids   model-ids
+                          :status-code (:status-code (ex-data exception))}
+                         exception)
+                        exception))))))
+
 (defn- model-action-schema
   "Returns an action schema, preserving which model/action failed to render."
   [model action]
@@ -212,28 +230,40 @@
 
 (defn- model-action-schemas
   "Returns action schemas for a model, preserving action lookup error context."
-  [model]
-  (let [action-rows    (action-rows (:id model))
-        action-details (resolved-action-details model)]
-    (throw-if-unresolved-action-rows! model action-rows action-details)
-    (not-empty
-     (mapv #(model-action-schema model %) action-details))))
+  ([model]
+   (model-action-schemas model
+                         (action-rows #{(:id model)})
+                         (resolved-action-details model)))
+  ([model action-rows action-details]
+   (throw-if-unresolved-action-rows! model action-rows action-details)
+   (not-empty
+    (mapv #(model-action-schema model %) action-details))))
 
 (defn model-schema
   "Returns the model schema with actions, or nil when the model has no executable actions."
-  [{:keys [id name] :as model}]
-  (let [action-schemas (model-action-schemas model)]
-    (when (seq action-schemas)
-      {:key              (common/generated-key name id)
-       :keyDisambiguator id
-       :actions          (common/keyed-map action-schemas)})))
+  ([model]
+   (model-schema model (model-action-schemas model)))
+  ([{:keys [id name]} action-schemas]
+   (when (seq action-schemas)
+     {:key              (common/generated-key name id)
+      :keyDisambiguator id
+      :actions          (common/keyed-map action-schemas)})))
 
 (defn model-schemas
   "Returns model schemas, with optional database and collection scopes."
   ([database-ids]
    (model-schemas database-ids nil))
   ([database-ids collection-ids]
-   (for [card (schema.common/select-schema-cards :model database-ids collection-ids)
-         :let [schema (model-schema card)]
-         :when schema]
-     schema)))
+   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
+     (if (seq models)
+       (let [model-ids                  (set (map :id models))
+             action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
+             action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
+         (for [model models
+               :let [action-schemas (model-action-schemas model
+                                                          (get action-rows-by-model-id (:id model))
+                                                          (get action-details-by-model-id (:id model)))
+                     schema         (model-schema model action-schemas)]
+               :when schema]
+           schema))
+       []))))

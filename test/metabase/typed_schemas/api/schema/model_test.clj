@@ -34,6 +34,26 @@
                 (map :key)
                 set)))))
 
+; Ensures we are not doing N+1 queries for action rows and details
+(deftest model-schemas-bulk-loads-actions-test
+  (let [models               [{:id 42 :name "Model 42"}
+                              {:id 43 :name "Model 43"}]
+        action-rows-calls    (atom [])
+        action-details-calls (atom [])]
+    (with-redefs [schema.common/select-schema-cards (constantly models)
+                  schema.model/action-rows (fn [model-ids]
+                                             (swap! action-rows-calls conj model-ids)
+                                             [])
+                  actions/select-actions (fn [known-models & options]
+                                           (swap! action-details-calls conj [known-models options])
+                                           [])]
+      (is (= [] (vec (schema.model/model-schemas #{1}))))
+      (is (= [#{42 43}] @action-rows-calls))
+      (is (= [[models [:model_id [:in #{42 43}]
+                       :archived false
+                       :type [:not= "http"]]]]
+             @action-details-calls)))))
+
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])
                 actions/select-actions (fn [& _]
