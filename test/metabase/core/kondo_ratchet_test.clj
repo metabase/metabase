@@ -64,11 +64,14 @@
 (deftest ^:parallel mask-strings-and-comments-test
   (are [expected content] (= expected (kondo-ratchet/mask-strings-and-comments content))
     "(f \"     \" x)"        "(f \"a ; b\" x)"
-    "(f)      \n(g)"         "(f) ; hey\n(g)"
+    ;; the comment-start `;` survives; the interior does not
+    "(f) ;    \n(g)"         "(f) ; hey\n(g)"
     "(f \"   \n  \")"        "(f \"a b\nc \")"
-    ;; escaped quote stays inside the string; char literals never open one
+    ;; escaped quote stays inside the string; char literals are masked so they can't open a string or
+    ;; start a comment
     "(f \"      \")"         "(f \"a\\\"b c\")"
-    "[\\\" \"   \"]"         "[\\\" \"abc\"]")
+    "[\\  \"   \"]"          "[\\\" \"abc\"]"
+    "(f \\  \"   \")"        "(f \\; \"a;b\")")
   (testing "masking preserves length and newline positions"
     (let [content "(f \"a\nb\") ; c\n(g)"
           masked  (kondo-ratchet/mask-strings-and-comments content)]
@@ -111,7 +114,8 @@
                "                      :line]}\n"
                "(defn i [] 4) #_{:clj-kondo/ignore [:trailing]} ;; trailing needs suppressing here\n"
                ";; #_{:clj-kondo/ignore [:commented-out]}\n"
-               "(defn j [] 5)\n"))
+               "(defn j [] 5)\n"
+               "#_{:clj-kondo/ignore [:sneaky]} (def s \"a ; b\")\n"))
     (spit (io/file dir "b.clj")
           (str "(ns b {:clj-kondo/ignore [:attr-map]})\n"
                "#_{:clj-kondo/ignore [:extra] :reason \"legacy\"}\n"
@@ -121,11 +125,13 @@
               {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all],         :justified? true}
               {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line], :justified? false}
               {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing],    :justified? true}
+              {:file (.getPath (io/file dir "a.clj")), :line 13, :linters [:sneaky],      :justified? false}
               {:file (.getPath (io/file dir "b.clj")), :line 1,  :linters [:attr-map],    :justified? false}
               {:file (.getPath (io/file dir "b.clj")), :line 2,  :linters [:extra],       :justified? false}]
              occurrences)
-          "strings and commented-out forms don't count; multi-line vectors, attr-maps, and extra keys do")
-      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :attr-map 1, :extra 1}
+          "strings and commented-out forms don't count; multi-line vectors, attr-maps, and extra keys do;
+           a semicolon inside a trailing string is not a justification")
+      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :sneaky 1, :attr-map 1, :extra 1}
              (kondo-ratchet/actual-counts occurrences))))))
 
 ;;;; ---------------------------------------------------------------------------
