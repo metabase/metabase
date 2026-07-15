@@ -83,10 +83,9 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 tree may contain. `metabase.core.kondo-ratchet-test` fails when any count exceeds its budget, so ignores can
 be removed freely but never silently added. Prefer fixing the underlying warning over adding an ignore.
 
-Removing ignores needs no bookkeeping on a PR: CI allows budgets to sit above the actual counts and
-ratchets them back down on master after each merge (`.github/workflows/kondo-ratchets-update.yml`).
-A local test run does fail on slack — tighten the file with (runs in babashka, no JVM; a no-op prints
-`unchanged`):
+Removing ignores needs no bookkeeping: CI commits the lowered budgets back to your PR branch
+(`.github/workflows/kondo-ratchets-self-heal.yml`). A local test run does fail on slack — tighten the
+file with (runs in babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
