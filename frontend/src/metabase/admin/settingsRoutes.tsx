@@ -7,7 +7,13 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { Route, type RouteComponent, redirect } from "metabase/router";
+import {
+  Outlet,
+  Route,
+  type RouteComponent,
+  redirect,
+  withRouteProps,
+} from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 
@@ -35,6 +41,10 @@ import { UpdatesSettingsPage } from "./settings/components/SettingsPages/Updates
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
 
+const RoutedCustomVisualizationsFormPage = withRouteProps(
+  CustomVisualizationsFormPage,
+);
+
 export const getSettingsRoutes = (
   store: Store<State>,
   IsAdmin: RouteComponent,
@@ -46,59 +56,62 @@ export const getSettingsRoutes = (
 
   return (
     <Route
-      component={({ children }) => (
+      element={
         <AdminSettingsLayout sidebar={<SettingsNav />}>
-          {children}
+          <Outlet />
         </AdminSettingsLayout>
-      )}
+      }
     >
       <Route index component={redirect("general")} />
-      <Route path="general" component={GeneralSettingsPage} />
-      <Route path="updates" component={UpdatesSettingsPage} />
-      <Route path="email" component={EmailSettingsPage} />
-      <Route path="slack" component={SlackSettingsPage} />
-      <Route path="webhooks" component={WebhooksSettingsPage} />
+      <Route path="general" element={<GeneralSettingsPage />} />
+      <Route path="updates" element={<UpdatesSettingsPage />} />
+      <Route path="email" element={<EmailSettingsPage />} />
+      <Route path="slack" element={<SlackSettingsPage />} />
+      <Route path="webhooks" element={<WebhooksSettingsPage />} />
       <Route
         path="authentication"
-        component={() => <AuthenticationSettingsPage tab="authentication" />}
+        element={<AuthenticationSettingsPage tab="authentication" />}
       />
       <Route
         path="authentication/user-provisioning"
-        component={() => <AuthenticationSettingsPage tab="user-provisioning" />}
+        element={<AuthenticationSettingsPage tab="user-provisioning" />}
       />
       <Route
         path="authentication/api-keys"
-        component={() => <AuthenticationSettingsPage tab="api-keys" />}
+        element={<AuthenticationSettingsPage tab="api-keys" />}
       />
-      <Route path="authentication/google" component={GoogleAuthForm} />
-      <Route path="authentication/ldap" component={SettingsLdapForm} />
+      <Route path="authentication/google" element={<GoogleAuthForm />} />
+      <Route path="authentication/ldap" element={<SettingsLdapForm />} />
       <Route
         path="authentication/saml"
-        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
+        element={<PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
       />
       <Route
         path="authentication/jwt"
-        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+        element={<PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
       />
       <Route
         path="authentication/oidc"
-        component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+        element={<PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
       />
-      <Route path="remote-sync" component={RemoteSyncSettingsPage} />
-      <Route path="maps" component={MapsSettingsPage} />
-      <Route path="localization" component={LocalizationSettingsPage} />
+      <Route path="remote-sync" element={<RemoteSyncSettingsPage />} />
+      <Route path="maps" element={<MapsSettingsPage />} />
+      <Route path="localization" element={<LocalizationSettingsPage />} />
       <Route
         path="custom-visualizations"
         /* do not allow users with "Settings access" permissions to access custom viz pages */
         element={<IsAdmin />}
       >
-        <Route index component={CustomVisualizationsManagePage} />
-        <Route path="new" component={CustomVisualizationsFormPage} />
-        <Route path="edit/:id" component={CustomVisualizationsFormPage} />
+        <Route index element={<CustomVisualizationsManagePage />} />
+        <Route path="new" element={<RoutedCustomVisualizationsFormPage />} />
+        <Route
+          path="edit/:id"
+          element={<RoutedCustomVisualizationsFormPage />}
+        />
         {devModeEnabled && (
           <Route
             path="development"
-            component={CustomVisualizationsDevelopmentPage}
+            element={<CustomVisualizationsDevelopmentPage />}
           />
         )}
       </Route>
@@ -108,30 +121,30 @@ export const getSettingsRoutes = (
         } /* do not allow users with "Settings access" permissions to access data apps pages */
         element={<IsAdmin />}
       >
-        <Route index component={DataAppsManagePage} />
+        <Route index element={<DataAppsManagePage />} />
       </Route>
-      <Route path="uploads" component={UploadSettingsPage} />
+      <Route path="uploads" element={<UploadSettingsPage />} />
       <Route
         path="python-runner"
-        component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
+        element={<PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage />}
       />
-      <Route path="public-sharing" component={PublicSharingSettingsPage} />
-      <Route path="license" component={LicenseSettingsPage} />
-      <Route path="appearance" component={() => <AppearanceSettingsPage />} />
+      <Route path="public-sharing" element={<PublicSharingSettingsPage />} />
+      <Route path="license" element={<LicenseSettingsPage />} />
+      <Route path="appearance" element={<AppearanceSettingsPage />} />
       <Route
         path="whitelabel"
-        component={() => <AppearanceSettingsPage tab="branding" />}
+        element={<AppearanceSettingsPage tab="branding" />}
       />
       <Route
         path="whitelabel/branding"
-        component={() => <AppearanceSettingsPage tab="branding" />}
+        element={<AppearanceSettingsPage tab="branding" />}
       />
       <Route
         path="whitelabel/conceal-metabase"
-        component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
+        element={<AppearanceSettingsPage tab="conceal-metabase" />}
       />
-      <Route path="cloud" component={CloudSettingsPage} />
-      <Route path="*" component={NotFound} />
+      <Route path="cloud" element={<CloudSettingsPage />} />
+      <Route path="*" element={<NotFound />} />
     </Route>
   );
 };
