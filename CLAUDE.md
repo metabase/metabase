@@ -96,7 +96,7 @@ genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and d
 PR.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
-flags, then `--seed` records the budget — no big-bang cleanup. To burn debt down, `./bin/mage
+flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup. To burn debt down, `./bin/mage
 kondo-redundant-ignores` lists ignores that are no longer needed (slow: full kondo run).
 
 ## Tool Preferences
