@@ -31,8 +31,10 @@
     (-> (case (lib/normalized-mbql-version definition)
           (:mbql-version/mbql5 :mbql-version/legacy)
           definition
-          ;; default: MBQL4 fragment - wrap it in a full query
-          (let [table-id    (:source-table definition)
+          ;; default: MBQL4 fragment - wrap it in a full query. Some legacy fragments carry a stray
+          ;; :aggregation, which segments cannot have; strip it like the model migration does.
+          (let [definition  (dissoc definition :aggregation)
+                table-id    (:source-table definition)
                 _           (api/check-400 (pos-int? table-id)
                                            (tru "Segment definition must specify a source table."))
                 database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
