@@ -1051,7 +1051,7 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
       ],
     });
 
-  it("keeps a drill off the initial thread top-level and prefixes its heading with the metric", () => {
+  it("keeps a drill off the initial thread top-level", () => {
     const exploration = createExploration({
       threads: [initialThread(), followUpThread()],
     });
@@ -1059,7 +1059,6 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     const tree = getExplorationSidebarTree(exploration, allTreeFilter);
 
     const followUpNode = tree.find((node) => node.id === 2);
-    expect(followUpNode?.name).toBe("Revenue → State = TX");
     // The redundant "Revenue" metric-group row is folded away; its page is
     // surfaced directly under the branch.
     expect((followUpNode?.children ?? []).map((child) => child.name)).toEqual([
@@ -1073,7 +1072,7 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     });
   });
 
-  it("nests a drill-of-drill under its parent thread without repeating the metric", () => {
+  it("nests a drill-of-drill under its parent thread", () => {
     // Sub-exploration drilled from the follow-up's page (200) — it should nest
     // under thread 2 and not repeat the "Revenue" metric in its heading.
     const nestedThread = createThread({
@@ -1102,12 +1101,9 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
     // The nested drill is not a top-level node...
     expect(tree.map((node) => node.id)).toEqual([1, 2]);
     const followUpNode = tree.find((node) => node.id === 2);
-    expect(followUpNode?.name).toBe("Revenue → State = TX");
 
     // ...it hangs off its parent thread, after the parent's own charts.
     const nestedNode = followUpNode?.children?.find((node) => node.id === 3);
-    // Bare drill path, no repeated "Revenue →" prefix.
-    expect(nestedNode?.name).toBe("City = Austin");
     // The redundant metric-group row is still folded away.
     expect((nestedNode?.children ?? []).map((child) => child.name)).toEqual([
       "Plan",

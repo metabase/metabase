@@ -619,6 +619,7 @@ export function ExplorationPage({
               page={selectedPage.page}
               queries={selectedPage.queries}
               blockType={selectedPage.block.type}
+              exploreFilters={selectedPage.block.explore_filters}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}

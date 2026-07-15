@@ -17,6 +17,8 @@
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -273,31 +275,32 @@
             (keyword? (:semantic_type dim))  (update :semantic_type u/qualified-name)))
         dimensions))
 
-(def ^:private leading-aggregation-prefix-re
-  "Strips a metric name's leading aggregation words (\"Number of \", \"Count of \", \"Sum of \",
-  \"Total \", \"Average \") so `Number of bugs` reduces to the bare noun `bugs`."
-  #"(?i)^(number|count|sum|total|average|avg)\s+(of\s+)?")
+(defn- format-explore-filter-for-thread-name
+  [{:keys [display_name display_value value]}]
+  (let [value-str (or (some-> display_value str/trim not-empty)
+                      (some-> value str))]
+    (if (and display_name (not (str/blank? value-str)))
+      (str display_name ": " value-str)
+      value-str)))
 
 (defn- explore-further-thread-name
-  "Build the sidebar name for an \"Explore further\" thread from the metric Card name and the
-  clicked `values` — e.g. card `Number of bugs` + value `open` → `Open bugs`.
+  "Build the sidebar name for an \"Explore further\" thread from enriched `explore_filters`.
+  Top-level follow-ups (drilled from the initial investigation) prefix the metric name;
+  nested follow-ups use only the formatted filters."
+  [card-name enriched-filters top-level-follow-up?]
+  (let [formatted (->> enriched-filters
+                       (keep format-explore-filter-for-thread-name)
+                       (str/join ", ")
+                       not-empty)]
+    (cond
+      (and top-level-follow-up? formatted card-name)
+      (str card-name " → " formatted)
 
-  A click carries one value per breakout the chart has, so a grouped bar or a table/map cell
-  yields several: all of them are joined, the same way the block's chart titles join them (see
-  `metabase.explorations.blocks`), so `Number of bugs` clicked at (`open`, `2024`) becomes
-  `Open / 2024 bugs`. Naming the thread after only one of the clicked values would describe a
-  narrower scope than the queries actually run under. Falls back to the card name when no value
-  is usable."
-  [card-name values]
-  (let [head (->> values
-                  (keep #(some-> % str str/trim not-empty))
-                  (map u/capitalize-first-char)
-                  (str/join " / ")
-                  not-empty)]
-    (if (nil? head)
-      card-name
-      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")]
-        (str/trim (str head " " noun))))))
+      formatted
+      formatted
+
+      :else
+      card-name)))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
@@ -379,11 +382,18 @@
    anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or
    `By <dimension>`). `:position` is the block's 0-indexed authoring slot."
   [:map
-   [:id       ms/PositiveInt]
-   [:type     [:enum "metric" "dimension"]]
-   [:name     [:maybe :string]]
-   [:position ms/IntGreaterThanOrEqualToZero]
-   [:pages    [:sequential ::ExplorationPageNode]]])
+   [:id              ms/PositiveInt]
+   [:type            [:enum "metric" "dimension"]]
+   [:name            [:maybe :string]]
+   [:position        ms/IntGreaterThanOrEqualToZero]
+   [:explore_filters {:optional true}
+    [:maybe [:sequential
+             [:map
+              [:field_ref     [:sequential :any]]
+              [:value         :any]
+              [:display_value {:optional true} [:maybe :string]]
+              [:display_name  {:optional true} [:maybe :string]]]]]]
+   [:pages           [:sequential ::ExplorationPageNode]]])
 
 (mr/def ::ExplorationDocument
   "Schema for a document attached to an exploration thread."
@@ -503,8 +513,10 @@
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
   [:map
-   [:field_ref [:sequential :any]]
-   [:value     :any]])
+   [:field_ref     [:sequential :any]]
+   [:value         :any]
+   [:display_value {:optional true} [:maybe :string]]
+   [:display_name  {:optional true} [:maybe :string]]])
 
 (def ^:private ExploreFurther
   "Body schema for `POST /api/exploration/:id/explore-further`. `page_id` is the clicked chart's
@@ -629,6 +641,7 @@
           block         (api/check-404 (t2/select-one :model/ExplorationBlock
                                                       :id (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
+          src-thread    (t2/select-one :model/ExplorationThread :id src-thread-id)
           ;; The clicked page must live in *this* exploration — a page keys off a block off a
           ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
           ;; is already viewing here. Reject anything else with a 404: without this check a caller
@@ -636,11 +649,16 @@
           ;; and the queries the planner then runs) into an exploration they can write (IDOR).
           _             (api/check-404 (t2/exists? :model/ExplorationThread
                                                    :id src-thread-id :exploration_id id))
-          card-id       (:card_id (first (:metrics block)))
-          card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
+          metric        (first (:metrics block))
+          card-id       (:card_id metric)
+          card          (api/check-404 (when card-id (t2/select-one :model/Card :id card-id)))
+          card-name     (:name card)
+          mp            (lib-be/application-database-metadata-provider (:database_id card))
+          enriched-filters (qp.context/enrich-explore-filters mp card block metric explore_filters)
+          top-level-follow-up? (nil? (:source_page_id src-thread))
           ;; Append, don't overwrite: a source block that itself came from a prior drill already
           ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.
-          metrics'      (mapv #(update % :explore_filters (fnil into []) explore_filters)
+          metrics'      (mapv #(update % :explore_filters (fnil into []) enriched-filters)
                               (:metrics block))
           timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
                                           :exploration_thread_id src-thread-id
@@ -655,7 +673,8 @@
                              :model/ExplorationThread
                              {:exploration_id id
                               :name           (explore-further-thread-name card-name
-                                                                           (map :value explore_filters))
+                                                                           enriched-filters
+                                                                           top-level-follow-up?)
                               :position       next-position
                               ;; drill lineage — lets the sidebar nest this thread
                               ;; under the one owning the drilled page
