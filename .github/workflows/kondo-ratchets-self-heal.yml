@@ -1,8 +1,8 @@
 name: Kondo Ratchets Self-Heal
 
-# Removing an ignore doesn't require touching .clj-kondo/ratchets.edn, so PRs accumulate slack.
-# On PRs labelled kondo-ratchets-self-healing, this commits the lowered budgets back to the PR
-# branch, same pattern as the OpenAPI check. Unlabelled PRs get tightened by local test runs instead.
+# Stale budgets in .clj-kondo/ratchets.edn (above the actual ignore counts) fail CI. On PRs
+# labelled kondo-ratchets-self-healing, this commits the lowered budgets to the branch;
+# unlabelled PRs rely on local test runs to tighten the file.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]

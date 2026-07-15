@@ -11,8 +11,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; Outside CI, tighten the budgets before asserting: slack is fixed on the spot and the file change rides
-;; along in your next commit. The self-heal workflow does the same for labelled PRs.
+;; Outside CI, tighten the budgets before asserting — the fix rides along in your next commit.
+;; The self-heal workflow does the same for labelled PRs.
 (use-fixtures :once (fn [thunk]
                       (when-not (System/getenv "CI")
                         (kondo-ratchet/fix!))
@@ -27,7 +27,7 @@
                 "Budget too low: remove an ignore, or raise the budget by hand and defend it in the PR\n"
                 "(a linter with no entry has budget 0).\n"
                 "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
-                "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a *local*\n"
+                "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a local\n"
                 "run means `fix!` itself is broken, since the test fixture just ran it.")
     (is (= {}
            (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
