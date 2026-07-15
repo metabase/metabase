@@ -32,7 +32,7 @@ import {
   assertNotVisible,
   assertVisible,
   chat,
-  chatTitle,
+  conversationTitle,
   closeChatButton,
   createMockSSEStream,
   createPauses,
@@ -42,7 +42,7 @@ import {
   lastReqBody,
   mockAgentEndpoint,
   newConversationButton,
-  queryChatTitle,
+  queryConversationTitle,
   setup,
   showMetabot,
   whoIsYourFavoriteResponse,
@@ -61,7 +61,7 @@ describe("metabot > ui", () => {
 
     expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
     expect(screen.queryByTestId("metabot-chat-header")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-chat-title")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-conversation-title")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-new-conversation"),
     ).not.toBeInTheDocument();
@@ -410,7 +410,7 @@ describe("metabot > ui", () => {
       expect(
         await screen.findByTestId("metabot-empty-chat-info"),
       ).toBeInTheDocument();
-      expect(queryChatTitle()).not.toBeInTheDocument();
+      expect(queryConversationTitle()).not.toBeInTheDocument();
 
       // stream text first, then withhold the title until we resolve the pause
       const [titlePause] = createPauses(1);
@@ -419,7 +419,7 @@ describe("metabot > ui", () => {
           (async function* () {
             yield { type: "text-delta", id: "t1", delta: "On it" };
             await titlePause.promise;
-            yield { type: "data-chat-title", data: "Orders by Month" };
+            yield { type: "data-conversation-title", data: "Orders by Month" };
           })(),
         ),
       });
@@ -427,13 +427,13 @@ describe("metabot > ui", () => {
       await enterChatMessage("Show me orders by month");
 
       // a muted placeholder shows while title generation is pending
-      expect(await chatTitle()).toHaveTextContent("New conversation");
+      expect(await conversationTitle()).toHaveTextContent("New conversation");
 
       titlePause.resolve();
 
       // the generated title replaces the placeholder once it arrives
       await waitFor(() =>
-        expect(queryChatTitle()).toHaveTextContent("Orders by Month"),
+        expect(queryConversationTitle()).toHaveTextContent("Orders by Month"),
       );
     });
 
@@ -471,13 +471,13 @@ describe("metabot > ui", () => {
       await enterChatMessage("Show me orders by month");
 
       // a muted placeholder shows while the title is polled for
-      expect(await chatTitle()).toHaveTextContent("New conversation");
+      expect(await conversationTitle()).toHaveTextContent("New conversation");
 
       // the next poll resolves with the generated title
       titleReady = true;
 
       await waitFor(
-        () => expect(queryChatTitle()).toHaveTextContent("Orders by Month"),
+        () => expect(queryConversationTitle()).toHaveTextContent("Orders by Month"),
         { timeout: 5000 },
       );
     });
@@ -611,7 +611,7 @@ describe("metabot > ui", () => {
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
       ]);
-      expect(await chatTitle()).toHaveTextContent("Orders by month");
+      expect(await conversationTitle()).toHaveTextContent("Orders by month");
 
       await waitFor(() => {
         expect(
@@ -719,7 +719,7 @@ describe("metabot > ui", () => {
         await screen.findByTestId("metabot-empty-chat-info"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByTestId("metabot-chat-title"),
+        screen.queryByTestId("metabot-conversation-title"),
       ).not.toBeInTheDocument();
     });
   });

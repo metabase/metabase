@@ -56,8 +56,8 @@ export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
-export const chatTitle = () => screen.findByTestId("metabot-chat-title");
-export const queryChatTitle = () => screen.queryByTestId("metabot-chat-title");
+export const conversationTitle = () => screen.findByTestId("metabot-conversation-title");
+export const queryConversationTitle = () => screen.queryByTestId("metabot-conversation-title");
 export const chatMessages = () =>
   screen.findAllByTestId("metabot-chat-message");
 export const lastChatMessage = async () => (await chatMessages()).at(-1);

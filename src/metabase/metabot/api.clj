@@ -166,7 +166,7 @@
            (reduced acc)))))))
 
 (defn- inject-title-events-xf
-  "Emit a `data-chat-title` SSE event inline the moment the title becomes
+  "Emit a `data-conversation-title` SSE event inline the moment the title becomes
    available mid-stream. If it isn't ready by the time the stream ends, nothing
    is emitted and the client polls the title endpoint on its own."
   [title-job conversation-id]

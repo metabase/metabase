@@ -72,7 +72,7 @@ describe("MetabotAsk", () => {
     expect(await screen.findByText("Show me all orders")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-chat-title")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-conversation-title")).not.toBeInTheDocument();
     expect(getMetabotVisible(store.getState(), "omnibot")).toBe(false);
   });
 
@@ -94,12 +94,12 @@ describe("MetabotAsk", () => {
   it("replaces the untitled placeholder with the generated title", async () => {
     setupMetabotAsk();
     mockAgentEndpoint({
-      events: [{ type: "data-chat-title", data: "Orders by Month" }],
+      events: [{ type: "data-conversation-title", data: "Orders by Month" }],
     });
 
     await enterChatMessage("Show orders by month");
 
-    expect(await screen.findByTestId("metabot-chat-title")).toHaveTextContent(
+    expect(await screen.findByTestId("metabot-conversation-title")).toHaveTextContent(
       "Orders by Month",
     );
   });

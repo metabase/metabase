@@ -68,9 +68,9 @@
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                   (testing "response is an SSE stream of typed events ending with [DONE]"
                     (is (= "data: [DONE]" (last lines)))
-                    (is (= ["start" "data-chat-title" "start-step"] (mapv :type (take 3 events))))
+                    (is (= ["start" "data-conversation-title" "start-step"] (mapv :type (take 3 events))))
                     (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
-                    (is (=? {:type "data-chat-title" :data "Orders by Month"}
+                    (is (=? {:type "data-conversation-title" :data "Orders by Month"}
                             (second events)))
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
@@ -99,7 +99,7 @@
           start-line      (self.core/format-sse-event {:type "start" :messageId "msg-1"})
           text-line       (self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta "Hello"})
           finish-line     (self.core/format-sse-event {:type "finish"})
-          title-line      (self.core/format-sse-event {:type "data-chat-title" :data "Orders by Month"})
+          title-line      (self.core/format-sse-event {:type "data-conversation-title" :data "Orders by Month"})
           lines           (reify clojure.lang.IReduceInit
                             (reduce [_ rf init]
                               (let [result (rf init start-line)]

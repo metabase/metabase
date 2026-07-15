@@ -57,6 +57,7 @@ describe("multi-convo support", () => {
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Test 1 response" },
         { type: "text-end", id: "t1" },
+        { type: "data-conversation-title", data: "T1" },
       ],
     });
     const msg1 = { ...input, message: "test1", agentId: "test_1" } as const;
@@ -67,6 +68,7 @@ describe("multi-convo support", () => {
         { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "Test 2 response" },
         { type: "text-end", id: "t2" },
+        { type: "data-conversation-title", data: "T2" },
       ],
     });
     const msg2 = { ...input, message: "test2", agentId: "test_2" } as const;
@@ -96,13 +98,13 @@ describe("multi-convo support", () => {
   });
 
   it("should be able to reset a conversation", async () => {
-    setupGetMetabotConversationTitleEndpoint({ status: "ready", title: "T" });
     const { hook, store } = setup({ agentIds: ["test_1"] });
     mockAgentEndpoint({
       events: [
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "response" },
         { type: "text-end", id: "t1" },
+        { type: "data-conversation-title", data: "T" },
       ],
     });
     await store.dispatch(

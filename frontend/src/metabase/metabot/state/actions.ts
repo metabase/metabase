@@ -506,7 +506,7 @@ export const sendAgentRequest = createAsyncThunk<
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "data-state" }, (part) => (state = part.data))
-              .with({ type: "data-chat-title" }, (part) => {
+              .with({ type: "data-conversation-title" }, (part) => {
                 receivedTitle = true;
                 dispatchToConvo(
                   setConversationTitle({ agentId, title: part.data }),

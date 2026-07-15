@@ -99,7 +99,7 @@ export const MetabotChat = ({
               fw={metabot.title ? "bold" : "normal"}
               truncate
               title={title}
-              data-testid="metabot-chat-title"
+              data-testid="metabot-conversation-title"
             >
               {title}
             </Text>
