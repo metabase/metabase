@@ -29,19 +29,20 @@
    :read-file  (fn [p] (get path->content p))})
 
 (defn- app-config
-  "Render a per-app data_app.yml from `{:name :slug :path :allowed_hosts}`."
-  [{:keys [name slug path allowed_hosts]}]
-  (str (format "name: %s\nslug: %s\npath: %s\n" name slug path)
+  "Render a per-app data_app.yaml from `{:name :path :allowed_hosts}`. No slug: an
+   app's slug is the name of the directory the config sits in."
+  [{:keys [name path allowed_hosts]}]
+  (str (format "name: %s\npath: %s\n" name path)
        (when (seq allowed_hosts)
          (apply str "allowed_hosts:\n"
                 (map #(format "  - %s\n" %) allowed_hosts)))))
 
 (defn- app-files
-  "Repo files for one data app under `data_apps/<dir>/`: its data_app.yml plus a
+  "Repo files for one data app under `data_apps/<dir>/`: its data_app.yaml plus a
    bundle at `path` with `bundle` content."
   [dir {:keys [path bundle] :as cfg}]
-  {(format "data_apps/%s/data_app.yml" dir) (app-config cfg)
-   (format "data_apps/%s/%s" dir path)      bundle})
+  {(format "data_apps/%s/data_app.yaml" dir) (app-config cfg)
+   (format "data_apps/%s/%s" dir path)       bundle})
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
@@ -124,8 +125,8 @@
 (deftest import-materializes-apps-test
   (mt/with-model-cleanup [:model/DataApp]
     (let [result (data-app.sync/import-from-snapshot!
-                  (snapshot (merge (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "SALES-BUNDLE"})
-                                   (app-files "ops"   {:name "Ops"   :slug "ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
+                  (snapshot (merge (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "SALES-BUNDLE"})
+                                   (app-files "ops"   {:name "Ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
       (is (=? {:synced 2} result))
       (is (= #{"sales" "ops"} (t2/select-fn-set :name :model/DataApp)))
       (let [sales (t2/select-one :model/DataApp :name "sales")]
@@ -138,27 +139,27 @@
 
 (deftest import-stores-allowed-hosts-test
   (mt/with-model-cleanup [:model/DataApp]
-    (testing "allowed_hosts from data_app.yml are persisted on the row"
+    (testing "allowed_hosts from data_app.yaml are persisted on the row"
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "B"
+       (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"
                                      :allowed_hosts ["https://api.example.com" "https://*.acme.com"]})))
       (is (= ["https://api.example.com" "https://*.acme.com"]
              (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))
     (testing "re-syncing without allowed_hosts clears them to an empty list"
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "B"})))
+       (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"})))
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
 (deftest import-keeps-apps-absent-from-snapshot-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
-     (snapshot (merge (app-files "keep" {:name "Keep" :slug "keep" :path "index.js" :bundle "KEEP"})
-                      (app-files "gone" {:name "Gone" :slug "gone" :path "index.js" :bundle "GONE"}))))
+     (snapshot (merge (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})
+                      (app-files "gone" {:name "Gone" :path "index.js" :bundle "GONE"}))))
     (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp)))
     ;; A sync never deletes: an app missing from a later snapshot is kept, not
     ;; pruned. Removal is an explicit admin action (DELETE /api/apps/:slug).
     (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "keep" {:name "Keep" :slug "keep" :path "index.js" :bundle "KEEP"})))
+     (snapshot (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})))
     (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp))
         "the app absent from the later snapshot is kept")))
 
@@ -180,11 +181,11 @@
 (deftest import-preserves-enabled-across-syncs-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "V1"})))
+     (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
     (t2/update! :model/DataApp :name "a" {:enabled false})
     ;; a new bundle must not flip the admin's enabled toggle back on
     (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "V2"})))
+     (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V2"})))
     (let [a (t2/select-one :model/DataApp :name "a")]
       (is (false? (:enabled a)) "the disabled toggle is preserved")
       (is (= "V2" (String. ^bytes (:bundle a) "UTF-8")) "the bundle is still updated"))))
@@ -193,9 +194,9 @@
   (testing "a missing bundle file fails just that app, not the whole import"
     (mt/with-model-cleanup [:model/DataApp]
       (data-app.sync/import-from-snapshot!
-       (snapshot (merge (app-files "good" {:name "Good" :slug "good" :path "index.js" :bundle "GOOD"})
+       (snapshot (merge (app-files "good" {:name "Good" :path "index.js" :bundle "GOOD"})
                         ;; "bad" declares a path that doesn't exist
-                        {"data_apps/bad/data_app.yml" (app-config {:name "Bad" :slug "bad" :path "missing.js"})})))
+                        {"data_apps/bad/data_app.yaml" (app-config {:name "Bad" :path "missing.js"})})))
       (is (= #{"good" "bad"} (t2/select-fn-set :name :model/DataApp)))
       (let [good (t2/select-one :model/DataApp :name "good")
             bad  (t2/select-one :model/DataApp :name "bad")]
@@ -204,49 +205,41 @@
         (is (nil? (:bundle bad)))
         (is (str/includes? (:sync_error bad) "missing.js"))))))
 
-(deftest import-duplicate-slugs-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"share a slug"
-         (data-app.sync/import-from-snapshot!
-          (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "A"})
-                           (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "B"}))))))))
+(deftest import-serves-each-app-from-its-directory-test
+  (testing "the directory an app lives in is the slug it's served at — two apps can't collide on one"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (merge (app-files "one" {:name "One" :path "a.js" :bundle "A"})
+                        (app-files "two" {:name "Two" :path "b.js" :bundle "B"}))))
+      (is (= #{"one" "two"} (t2/select-fn-set :name :model/DataApp))))))
 
 (deftest import-isolates-bad-config-test
-  (testing "a malformed data_app.yml is isolated: other apps still sync, the bad one is reported, nothing is pruned"
+  (testing "a malformed data_app.yaml is isolated: other apps still sync, the bad one is reported, nothing is pruned"
     (mt/with-model-cleanup [:model/DataApp]
       ;; pre-existing app that must survive a sync where another config is broken
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "existing" {:name "Existing" :slug "existing" :path "i.js" :bundle "E"})))
+       (snapshot (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})))
       (let [result (data-app.sync/import-from-snapshot!
-                    (snapshot (merge (app-files "good" {:name "Good" :slug "good" :path "i.js" :bundle "GOOD"})
-                                     {"data_apps/bad/data_app.yml" "name: [unterminated"})))]
+                    (snapshot (merge (app-files "good" {:name "Good" :path "i.js" :bundle "GOOD"})
+                                     {"data_apps/bad/data_app.yaml" "name: [unterminated"})))]
         (is (=? {:synced 1} result))
         (is (= 1 (count (:config-errors result))))
         (is (= #{"existing" "good"} (t2/select-fn-set :name :model/DataApp))
             "the good app is added and the pre-existing app is NOT pruned despite the bad config")))))
 
 (deftest sync-from-snapshot!-never-throws-test
-  (testing "a malformed data_app.yml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
+  (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
     (mt/with-model-cleanup [:model/DataApp]
       (let [result (data-app.sync/sync-from-snapshot!
-                    (snapshot {"data_apps/x/data_app.yml" "name: [unterminated"}))]
+                    (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
         (is (seq (:config-errors result)))
         (is (empty? (t2/select-fn-set :name :model/DataApp))))))
   (testing "a clean sync materializes the app with no config errors"
     (mt/with-model-cleanup [:model/DataApp]
       (let [result (data-app.sync/sync-from-snapshot!
-                    (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "A"})))]
+                    (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
         (is (empty? (:config-errors result)))
         (is (= #{"a"} (t2/select-fn-set :name :model/DataApp)))))))
-
-(deftest import-accepts-yaml-extension-test
-  (testing "data_app.yaml (not just .yml) is discovered"
-    (mt/with-model-cleanup [:model/DataApp]
-      (data-app.sync/import-from-snapshot!
-       (snapshot {"data_apps/y/data_app.yaml" (app-config {:name "Y" :slug "y" :path "i.js"})
-                  "data_apps/y/i.js"          "YBUNDLE"}))
-      (is (= #{"y"} (t2/select-fn-set :name :model/DataApp))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
@@ -255,7 +248,7 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp]
         (data-app.sync/import-from-snapshot!
-         (snapshot (app-files "demo" {:name "Demo app" :slug "demo" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
+         (snapshot (app-files "demo" {:name "Demo app" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
         (testing "GET / lists the synced apps"
           (is (=? [{:name "demo" :display_name "Demo app"
                     :bundle_path "data_apps/demo/dist/index.js" :enabled true}]
@@ -281,7 +274,7 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp]
         (data-app.sync/import-from-snapshot!
-         (snapshot (app-files "demo" {:name "Demo" :slug "demo" :path "index.js" :bundle "BUNDLE"})))
+         (snapshot (app-files "demo" {:name "Demo" :path "index.js" :bundle "BUNDLE"})))
         (testing "PUT /:slug can disable an app"
           (is (=? {:name "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))

@@ -652,7 +652,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
 - Search touched files for `row[0]`, `row[1]`, `row.orderedAt`, `row.orderDate`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, result-key guesses, entity `<select>` filters, and unsupported business-field interpretations.
 - Verify every date preset bar includes Custom last unless explicitly omitted, every visible date filter affects the current page, and no page shows duplicate date filters for one scope.
-- Verify `data_app.yml` / `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
+- Verify `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
 - For every visible filter, verify "All" maps to no filter, selected values come from runtime query results, and each non-All option changes every card it claims to affect.
 
 ## Common Mistakes

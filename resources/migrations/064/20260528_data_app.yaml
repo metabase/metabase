@@ -2,7 +2,7 @@
 ##
 ## Data apps come from the repository connected via the remote-sync feature. The
 ## repo root has a `data_apps/` directory; each subdirectory is one app and
-## contains a `data_app.yml` (name/slug/path) plus its built bundle. Each app dir
+## contains a `data_app.yaml` (name/path) plus its built bundle. Each app dir
 ## is materialized as one row in this table on sync. The `bundle` / `bundle_hash`
 ## columns cache the last successfully synced bytes (nullable until first sync).
 
@@ -31,7 +31,7 @@ databaseChangeLog:
               - column:
                   name: name
                   type: varchar(254)
-                  remarks: Slug from the app's data_app.yml; unique, used in the URL /data-app/:name
+                  remarks: Slug, used in the URL /apps/:name
                   constraints:
                     nullable: false
                     unique: true

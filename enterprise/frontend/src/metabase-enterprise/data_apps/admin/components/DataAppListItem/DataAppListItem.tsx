@@ -11,7 +11,13 @@ type Props = {
 };
 
 export const DataAppListItem = ({ app, canRemove = false }: Props) => (
-  <Flex justify="space-between" align="center" gap="md" p="md">
+  <Flex
+    data-testid={`data-app-list-item-${app.name}`}
+    justify="space-between"
+    align="center"
+    gap="md"
+    p="md"
+  >
     <DataAppSummary app={app} />
 
     <Group flex="0 0 auto" gap="md" wrap="nowrap" align="center">

@@ -41,6 +41,8 @@ await bundle({
 
 const { dataAppConfig } = await import(pathToFileURL(dataAppDevEntry).href);
 
+process.chdir(appDir);
+
 await build({
   root: appDir,
   configFile: false,

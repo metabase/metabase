@@ -21,14 +21,16 @@
    :read-file  (fn [p] (get path->content p))})
 
 (defn- app-files
-  [dir {:keys [name slug path bundle]}]
-  {(format "data_apps/%s/data_app.yml" dir)
-   (format "name: %s\nslug: %s\npath: %s\n" name slug path)
+  "The repo files for one app in `data_apps/<dir>`. `dir` is the app's slug — the
+   config declares no slug, it is the directory's name."
+  [dir {:keys [name path bundle]}]
+  {(format "data_apps/%s/data_app.yaml" dir)
+   (format "name: %s\npath: %s\n" name path)
    (format "data_apps/%s/%s" dir path) bundle})
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp]
-    (let [files (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "V1"})]
+    (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
       (testing "the first sync counts the new app"
         (is (=? {:synced 1 :changed 1}
                 (data-app.sync/import-from-snapshot! (snapshot files)))))
@@ -39,25 +41,25 @@
       (testing "a metadata-only change counts"
         (is (=? {:changed 1}
                 (data-app.sync/import-from-snapshot!
-                 (snapshot (app-files "a" {:name "A renamed" :slug "a" :path "index.js" :bundle "V1"}))))))
+                 (snapshot (app-files "a" {:name "A renamed" :path "index.js" :bundle "V1"}))))))
       (testing "a bundle content change counts"
         (is (=? {:changed 1}
                 (data-app.sync/import-from-snapshot!
-                 (snapshot (app-files "a" {:name "A renamed" :slug "a" :path "index.js" :bundle "V2"})))))))))
+                 (snapshot (app-files "a" {:name "A renamed" :path "index.js" :bundle "V2"})))))))))
 
 (deftest sync-across-repos-keeps-overrides-and-adds-test
   (testing "linking repo A, unlinking, then linking repo B: keep A-only apps, override shared slugs with B, add B-only apps"
     (mt/with-model-cleanup [:model/DataApp]
       ;; Repo A: Foo + Bar
       (data-app.sync/import-from-snapshot!
-       (snapshot (merge (app-files "foo" {:name "Foo" :slug "foo" :path "index.js" :bundle "FOO"})
-                        (app-files "bar" {:name "Bar A" :slug "bar" :path "index.js" :bundle "BAR-A"}))))
+       (snapshot (merge (app-files "foo" {:name "Foo" :path "index.js" :bundle "FOO"})
+                        (app-files "bar" {:name "Bar A" :path "index.js" :bundle "BAR-A"}))))
       (is (= #{"foo" "bar"} (t2/select-fn-set :name :model/DataApp)))
       ;; Unlinking A doesn't sync (nothing prunes). Linking repo B (Bar + Baz)
       ;; and importing it keeps Foo, overrides Bar by slug, and adds Baz.
       (data-app.sync/import-from-snapshot!
-       (snapshot (merge (app-files "bar" {:name "Bar B" :slug "bar" :path "index.js" :bundle "BAR-B"})
-                        (app-files "baz" {:name "Baz" :slug "baz" :path "index.js" :bundle "BAZ"}))))
+       (snapshot (merge (app-files "bar" {:name "Bar B" :path "index.js" :bundle "BAR-B"})
+                        (app-files "baz" {:name "Baz" :path "index.js" :bundle "BAZ"}))))
       (is (= #{"foo" "bar" "baz"} (t2/select-fn-set :name :model/DataApp))
           "Foo (from repo A) is kept and Baz (from repo B) is added")
       (is (= "Foo" (:display_name (t2/select-one :model/DataApp :name "foo")))
@@ -75,7 +77,7 @@
   (testing "a bundle over the size cap is rejected with a sync_error, no bundle cached"
     (mt/with-model-cleanup [:model/DataApp]
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "big" {:name "Big" :slug "big" :path "index.js"
+       (snapshot (app-files "big" {:name "Big" :path "index.js"
                                    :bundle (oversized-bundle)})))
       (let [app (t2/select-one :model/DataApp :name "big")]
         (is (some? app) "the app still appears in the list")
@@ -86,11 +88,30 @@
   (testing "an oversized re-sync sets sync_error but keeps the last good bundle"
     (mt/with-model-cleanup [:model/DataApp]
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "app" {:name "App" :slug "app" :path "index.js" :bundle "GOOD"})))
+       (snapshot (app-files "app" {:name "App" :path "index.js" :bundle "GOOD"})))
       (data-app.sync/import-from-snapshot!
-       (snapshot (app-files "app" {:name "App" :slug "app" :path "index.js"
+       (snapshot (app-files "app" {:name "App" :path "index.js"
                                    :bundle (oversized-bundle)})))
       (let [app (t2/select-one :model/DataApp :name "app")]
         (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
             "the previously cached bundle is retained")
         (is (str/includes? (:sync_error app) "MiB"))))))
+
+(deftest a-directory-without-a-config-is-not-an-app-test
+  (testing "a data_apps/<dir> that ships a bundle but no data_app.yaml is not discovered — no app, no error"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/import-from-snapshot!
+                    (snapshot {"data_apps/orphan/index.js" "BUNDLE"}))]
+        (is (=? {:synced 0 :changed 0 :config-errors []} result))
+        (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
+
+(deftest an-unreadable-config-is-a-config-error-test
+  (testing "a data_app.yaml the snapshot lists but can't read is isolated as a config-error, not a crash"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/import-from-snapshot!
+                    {:sha        fake-sha
+                     :list-files (fn [] ["data_apps/ghost/data_app.yaml"])
+                     :read-file  (fn [_] nil)})]
+        (is (= 1 (count (:config-errors result))))
+        (is (str/includes? (first (:config-errors result)) "data_apps/ghost/data_app.yaml"))
+        (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
