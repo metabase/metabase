@@ -143,10 +143,10 @@ function SavedEntityPickerInner({
       if (node.id === PERSONAL_COLLECTIONS.id) {
         return;
       }
-      // Tree erases node ids to string | number, but these nodes are always
-      // collection tree items keyed by CollectionId.
       const collection = findCollectionById(
         collectionTree,
+        // Tree erases node ids to string | number, but these nodes are always
+        // collection tree items keyed by CollectionId.
         node.id as CollectionId,
       );
       if (collection) {

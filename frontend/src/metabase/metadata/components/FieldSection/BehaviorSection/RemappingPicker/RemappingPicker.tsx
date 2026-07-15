@@ -286,6 +286,8 @@ export const RemappingPicker = ({
               selectedFieldId={fkRemappingField?.id}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
+              // once DataSelector's entity props use structural interfaces.
               tables={tables as unknown as MetadataTable[]}
               triggerElement={
                 <Select

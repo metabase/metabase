@@ -739,7 +739,7 @@ export class UnconnectedDataSelector extends Component<
 
   getNextStep(): DataSelectorStep | null {
     const { steps } = this.props;
-    const index = steps.indexOf(this.state.activeStep as DataSelectorStep);
+    const index = steps.findIndex((step) => step === this.state.activeStep);
     return index < steps.length - 1 ? steps[index + 1] : null;
   }
 

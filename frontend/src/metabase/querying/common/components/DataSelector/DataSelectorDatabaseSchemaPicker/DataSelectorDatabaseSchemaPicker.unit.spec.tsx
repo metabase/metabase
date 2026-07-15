@@ -53,6 +53,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
+      // The picker only reads database id/name and getSchemas, so a partial
+      // mock is enough here.
       const databases = [
         {
           id: 1,
@@ -81,6 +83,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
+      // The picker only reads database id/name, is_saved_questions and
+      // getSchemas, so a partial mock is enough here.
       const databases = [
         {
           id: 1,

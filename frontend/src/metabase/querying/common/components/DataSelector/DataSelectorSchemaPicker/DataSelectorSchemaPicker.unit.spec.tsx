@@ -8,6 +8,7 @@ import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 describe("DataSelectorSchemaPicker", () => {
   it("displays schema name", () => {
     const schemaName = "Schema name";
+    // The picker only reads schema names, so a partial mock is enough here.
     const schemas = [{ name: schemaName }] as Schema[];
     render(
       <DataSelectorSchemaPicker

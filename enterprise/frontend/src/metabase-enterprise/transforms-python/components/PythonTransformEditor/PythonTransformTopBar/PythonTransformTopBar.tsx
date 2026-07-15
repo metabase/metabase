@@ -67,6 +67,10 @@ export function PythonTransformTopBar({
             databases={(databases?.data ?? []) as unknown as MetadataDatabase[]}
             readOnly={!isEditMode}
             databaseIsDisabled={
+              // DataSelector types this callback against metabase-lib databases;
+              // the predicate only reads plain API database fields.
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
+              // once DataSelector's entity props use structural interfaces.
               ((database: Database) =>
                 !doesDatabaseSupportTransforms(database) ||
                 !hasFeature(database, "transforms/python")) as unknown as (
