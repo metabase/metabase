@@ -161,15 +161,19 @@
 (defn- path
   "Path for the YAML config file Metabase should use for initialization and Settings values."
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
-    (if (u.files/exists? path*)
-      (log/info (u/format-color :magenta
-                                "Found config file at path %s; Metabase will be initialized with values from this file"
-                                (pr-str (str path*)))
-                (u/emoji "🗄️"))
-      (log/info (u/format-color :yellow "No config file found at path %s" (pr-str (str path*)))))
-    path*))
+  (let [paths-to-try (or (some-> (get *env* :mb-config-file-path) u.files/get-path list)
+                         [(u.files/get-path (System/getProperty "user.dir") "config.yml")
+                          (u.files/get-path (System/getProperty "user.dir") "config.yaml")])]
+    (if-let [path* (first (filter u.files/exists? paths-to-try))]
+      (do
+        (log/info (u/format-color :magenta
+                                  "Found config file at path %s; Metabase will be initialized with values from this file"
+                                  (pr-str (str path*)))
+                  (u/emoji "🗄️"))
+        path*)
+      (log/info (u/format-color :yellow "No config file found at path %s" (str/join " or "
+                                                                                    (map #(pr-str (str %))
+                                                                                         paths-to-try)))))))
 
 (defmulti ^:private expand-parsed-template-form
   {:arglists '([form])}
