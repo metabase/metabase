@@ -583,7 +583,7 @@
         client       (ws-database-details->client details)
         iam-client   (ws-database-details->iam-client details)
         project-id   (bigquery.common/get-project-id details)
-        dataset-name (driver.u/workspace-isolation-namespace-name workspace)]
+        dataset-name (:schema workspace)]
     (try
       (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
       ;; Delete the dataset if it exists (deleteContents=true removes all tables)
@@ -594,6 +594,15 @@
       (finally
         (.close iam-client)))))
 
+(defmethod driver/workspace-isolation-details :bigquery-cloud-sdk
+  [_driver database workspace]
+  (let [details    (driver.conn/effective-details database)
+        project-id (bigquery.common/get-project-id details)
+        sa-email   (format "%s@%s.iam.gserviceaccount.com" (ws-service-account-id workspace) project-id)]
+    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+     :database_details {:user                        sa-email
+                        :impersonate-service-account sa-email}}))
+
 (defmethod driver/init-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]
   (let [details       (driver.conn/effective-details database)
@@ -601,7 +610,7 @@
         iam-client    (ws-database-details->iam-client details)
         project-id    (bigquery.common/get-project-id details)
         main-sa-email (.getClientEmail (ws-service-account-credentials details))
-        dataset-name  (driver.u/workspace-isolation-namespace-name workspace)]
+        dataset-name  (:schema workspace)]
     (try
       ;; Create the workspace service account (or get existing)
       (let [ws-sa-email (ws-create-service-account! iam-client project-id workspace)
@@ -628,11 +637,6 @@
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
         (ws-grant-dataset-acl! client dataset-id ws-sa-email "roles/bigquery.dataEditor")
-        ;; Return workspace connection details for impersonation
-        ;; :user is used by grant-read-access-to-tables! to know which SA to grant access to
-        ;; :impersonate-service-account is used by the connection swap to use impersonated credentials
-        {:schema           dataset-name
-         :database_details {:user                        ws-sa-email
-                            :impersonate-service-account ws-sa-email}})
+        nil)
       (finally
         (.close iam-client)))))

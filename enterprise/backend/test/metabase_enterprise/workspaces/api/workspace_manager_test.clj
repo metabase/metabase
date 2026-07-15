@@ -21,8 +21,9 @@
 
 (defn- stub-provisioner []
   (reify provisioning/Provisioner
-    (init! [_ _ _ _]
+    (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (init! [_ _ _ _] nil)
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
 

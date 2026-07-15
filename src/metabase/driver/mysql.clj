@@ -1316,9 +1316,8 @@
   [_driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
   ;; We create a separate database for workspace isolation.
-  (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
-        user             (driver.u/workspace-isolation-user-name workspace)
-        password         (driver.u/random-workspace-password)
+  (let [db-name          (:schema workspace)
+        {:keys [user password]} (:database_details workspace)
         escaped-password (sql.u/escape-sql password :ansi)
         quoted-db        (quote-schema db-name)
         quoted-user      (quote-field user)]
@@ -1345,15 +1344,7 @@
             (.executeBatch ^Statement stmt)
             (catch Throwable t
               (throw (driver.u/scrub-exceptions t [password escaped-password])))))))
-    {:schema           db-name
-     ;; Intentionally omit `:db` from `:database_details`: when the workspace
-     ;; loader merges these over the canonical Database's `:details`, we must
-     ;; not overwrite the connection's bound database. MySQL workspace users
-     ;; need to read from the canonical input DB (granted via `GRANT SELECT
-     ;; ON <input-db>.*`) while output writes go to `db-name` via fully
-     ;; qualified `INSERT INTO <db-name>.<table>`. The output DB lives in
-     ;; the WSD row's `:output_namespace`, not in connection details.
-     :database_details {:user user, :password password}}))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]

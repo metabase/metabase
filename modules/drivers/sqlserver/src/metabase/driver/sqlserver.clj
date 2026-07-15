@@ -1166,9 +1166,9 @@
 
 (defmethod driver/init-workspace-isolation! :sqlserver
   [_driver database workspace]
-  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username         (driver.u/workspace-isolation-user-name workspace)
-        password         (driver.u/random-workspace-password)
+  (let [schema-name      (:schema workspace)
+        {:keys [user password]} (:database_details workspace)
+        username         user
         escaped-password (sql.u/escape-sql password :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
@@ -1196,14 +1196,12 @@
         (jdbc/execute! conn-spec [sql]))
       (catch Throwable t
         (throw (driver.u/scrub-exceptions t [password escaped-password]))))
-    {:schema           schema-name
-     :database_details {:user     username
-                        :password password}}))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [_driver database workspace]
-  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username         (driver.u/workspace-isolation-user-name workspace)
+  (let [schema-name      (:schema workspace)
+        username         (-> workspace :database_details :user)
         escaped-schema   (sql.u/escape-sql schema-name :ansi)
         escaped-username (sql.u/escape-sql username :ansi)
         quoted-schema    (quote-schema schema-name)

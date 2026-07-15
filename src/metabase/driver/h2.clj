@@ -749,14 +749,22 @@
   (let [[_file options] (connection-string->file+options connection-string)]
     (get options "USER")))
 
+(defmethod driver/workspace-isolation-details :h2
+  [_driver database workspace]
+  ;; H2 embeds credentials in the :db connection string, so build a new one off the
+  ;; connection's (admin-overlay-resolved) string rather than returning :user/:password.
+  (let [username    (driver.u/workspace-isolation-user-name workspace)
+        password    (driver.u/random-workspace-password)
+        original-db (:db (driver.conn/effective-details database))]
+    {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+     :database_details {:db (replace-credentials original-db username password)}}))
+
 (defmethod driver/init-workspace-isolation! :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        password    (driver.u/random-workspace-password)
-        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (:db (driver.conn/effective-details database))
-        new-db      (replace-credentials original-db username password)]
+  (let [schema-name (:schema workspace)
+        [_file {:strs [USER PASSWORD]}] (connection-string->file+options (-> workspace :database_details :db))
+        username    USER
+        password    PASSWORD]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
@@ -767,13 +775,12 @@
           (.executeBatch ^Statement stmt)
           (catch Throwable t
             (throw (driver.u/scrub-exceptions t [password]))))))
-    {:schema           schema-name
-     :database_details {:db new-db}}))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :db get-user-from-connection-string)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema

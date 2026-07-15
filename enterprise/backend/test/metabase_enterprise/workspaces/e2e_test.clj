@@ -414,7 +414,7 @@
                             (is (= (:db admin-details) (:db (:details ws-db)))
                                 (str "loader must preserve canonical :db on the workspace Database. "
                                      "If you see the isolation DB here, a driver's "
-                                     "init-workspace-isolation! is putting :db into :database_details, "
+                                     "workspace-isolation-details is putting :db into :database_details, "
                                      "which the workspace config-loader merges over canonical :details "
                                      "and breaks the connection's bound database for sync."))
                             (mt/with-db ws-db

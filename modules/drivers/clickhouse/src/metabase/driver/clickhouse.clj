@@ -548,10 +548,9 @@
 
 (defmethod driver/init-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name             (driver.u/workspace-isolation-namespace-name workspace)
+  (let [db-name             (:schema workspace)
         canonical-db        (:db (driver.conn/effective-details database))
-        read-user           {:user     (driver.u/workspace-isolation-user-name workspace)
-                             :password (driver.u/random-workspace-password)}
+        read-user           (:database_details workspace)
         quoted-db           (quote-schema db-name)
         quoted-user         (quote-field (:user read-user))
         quoted-canonical-db (when-not (str/blank? canonical-db)
@@ -578,8 +577,7 @@
           (.executeBatch ^Statement stmt)
           (catch Throwable t
             (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
-    {:schema           db-name
-     :database_details read-user}))
+    nil))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
   [_driver database workspace schemas]
@@ -606,8 +604,8 @@
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [_driver database workspace]
-  (let [db-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username     (driver.u/workspace-isolation-user-name workspace)
+  (let [db-name      (:schema workspace)
+        username     (-> workspace :database_details :user)
         quoted-db    (quote-schema db-name)
         quoted-user  (quote-field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]

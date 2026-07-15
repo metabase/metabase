@@ -22,8 +22,9 @@
 ;;; Stub provisioner: records calls but doesn't hit real drivers.
 (defn- stub-provisioner []
   (reify provisioning/Provisioner
-    (init! [_ _ _ _]
+    (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
+    (init! [_ _ _ _] nil)
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
 
@@ -73,6 +74,7 @@
                                                        :database_ids [Integer/MAX_VALUE]}))))
         (testing "provisioning failure rolls back the workspace and its database rows"
           (let [failing-provisioner (reify provisioning/Provisioner
+                                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                                       (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
                                       (grant!   [_ _ _ _ _] nil)
                                       (destroy! [_ _ _ _]   nil))]
@@ -154,6 +156,7 @@
             (testing "is deleted when ignore-pending? is true; the warehouse is left untouched"
               ;; destroy! must NOT be called for a pending row — fail loudly if it is.
               (let [exploding (reify provisioning/Provisioner
+                                (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                                 (init!    [_ _ _ _]   nil)
                                 (grant!   [_ _ _ _ _] nil)
                                 (destroy! [_ _ _ _]   (throw (ex-info "destroy! must not run for a pending row" {}))))]
@@ -171,6 +174,7 @@
                        (add-database! (:id ws) (mt/id) ["PUBLIC"]))
               wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
               boom   (reify provisioning/Provisioner
+                       (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                        (init!    [_ _ _ _]   nil)
                        (grant!   [_ _ _ _ _] nil)
                        (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))

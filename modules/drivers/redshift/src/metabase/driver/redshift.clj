@@ -1003,9 +1003,8 @@
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
-  (let [schema-name    (driver.u/workspace-isolation-namespace-name workspace)
-        read-user      {:user     (driver.u/workspace-isolation-user-name workspace)
-                        :password (driver.u/random-workspace-password)}
+  (let [schema-name    (:schema workspace)
+        read-user      (:database_details workspace)
         quoted-schema  (quote-schema schema-name)
         quoted-user    (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
@@ -1027,8 +1026,7 @@
             (.executeBatch ^Statement stmt)
             (catch Throwable t
               (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
-    {:schema           schema-name
-     :database_details read-user}))
+    nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
   [_driver database workspace schemas]

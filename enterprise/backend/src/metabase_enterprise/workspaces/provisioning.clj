@@ -19,8 +19,12 @@
   "Wrapper around driver workspace-isolation multimethods for testability.
    The default [[dispatching-provisioner]] delegates to the real driver multimethods.
    Tests can reify custom implementations that fail on demand, count calls, etc."
+  (details  [this driver database workspace]
+    "Compute {:schema ... :database_details ...} for the workspace without touching
+     the warehouse. Called before init! so destroy! can clean up a partial init.")
   (init!    [this driver database workspace]
-    "Create isolated schema + user. Returns {:schema ... :database_details ...}.")
+    "Create isolated schema + user. `workspace` carries the precomputed `:schema`
+     and `:database_details` from [[details]].")
   (grant!   [this driver database workspace schemas]
     "Grant read access on `schemas` to the workspace user/role. `schemas` is a
      vector of driver-opaque schema-name strings. 3-slot drivers (SQL Server,
@@ -35,8 +39,13 @@
    driver impls acquire connections via the database's `:admin-details` overlay
    (when configured). Workspace DDL — `CREATE USER`, `CREATE SCHEMA`, `GRANT` —
    typically needs higher-privilege credentials than the regular query user, and
-   the admin overlay is how operators provide them."
+   the admin overlay is how operators provide them. `details` computes no DDL but
+   still binds the overlay: some drivers derive connection strings/catalogs from
+   the effective details."
   (reify Provisioner
+    (details [_ driver database workspace]
+      (driver.conn/with-admin-connection
+        (driver/workspace-isolation-details driver database workspace)))
     (init! [_ driver database workspace]
       (driver.conn/with-admin-connection
         (driver/init-workspace-isolation! driver database workspace)))
@@ -90,21 +99,25 @@
         (when-not (= :provisioning (:status wsd))
           (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
                           {:id workspace-database-id :status (:status wsd)})))
-        (let [db          (t2/select-one :model/Database :id (:database_id wsd))
-              driver      (driver.u/database->driver db)
-              workspace   {:id workspace-database-id :name (str "wsd-" workspace-database-id)}
-              init-result (init! provisioner driver db workspace)
-              ws-details  (merge workspace init-result)
-              schemas     (vec (:input_schemas wsd))]
+        (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+              driver     (driver.u/database->driver db)
+              workspace  {:id workspace-database-id :name (str "wsd-" workspace-database-id)}
+              ws-details (merge workspace (details provisioner driver db workspace))
+              schemas    (vec (:input_schemas wsd))]
           (try
+            (init! provisioner driver db ws-details)
             (grant! provisioner driver db ws-details schemas)
             (catch Throwable t
-              (destroy! provisioner driver db ws-details)
+              (try
+                (destroy! provisioner driver db ws-details)
+                (catch Throwable destroy-t
+                  (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
+                             workspace-database-id)))
               (throw t)))
           (t2/update! :model/WorkspaceDatabase
                       {:id workspace-database-id}
-                      {:output_namespace (:schema init-result)
-                       :database_details (:database_details init-result)
+                      {:output_namespace (:schema ws-details)
+                       :database_details (:database_details ws-details)
                        :status           :provisioned}))))
     (catch Throwable t
       (t2/update! :model/WorkspaceDatabase
@@ -214,9 +227,10 @@
   of the warehouse outcome.
 
   Works from ANY non-`:unprovisioned` state: the iso schema and user names are
-  deterministic from the row id (see [[metabase.driver.util/workspace-isolation-namespace-name]]),
-  so the destroy target is reconstructable even for a row stuck in `:provisioning`
-  that never stored its `:output_namespace`/`:database_details`.
+  deterministic from the row id (recomputed via the provisioner's `details`, i.e.
+  [[metabase.driver/workspace-isolation-details]]), so the destroy target is
+  reconstructable even for a row stuck in `:provisioning` that never stored its
+  `:output_namespace`/`:database_details`.
 
   Returns `{:status :success}` when the warehouse objects were dropped, or
   `{:status :failure :workspace_database_id .. :database_id .. :driver .. :schema ..
@@ -224,34 +238,31 @@
   left behind for manual cleanup."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
-    (let [db        (t2/select-one :model/Database :id (:database_id wsd))
-          driver    (driver.u/database->driver db)
-          iso-ws    {:id (:id wsd) :name (str "wsd-" (:id wsd))}
-          schema    (or (not-empty (:output_namespace wsd))
-                        (driver.u/workspace-isolation-namespace-name iso-ws))
-          user      (or (get-in wsd [:database_details :user])
-                        (driver.u/workspace-isolation-user-name iso-ws))
-          ;; prefer the stored details verbatim (some drivers stash more than :user
-          ;; there); synthesize a minimal map only for a crashed :provisioning row
-          ;; that never recorded anything.
-          details   (if (seq (:database_details wsd))
-                      (:database_details wsd)
-                      {:user user})
-          workspace (assoc iso-ws :schema schema :database_details details)
-          result    (try
-                      (destroy! provisioner driver db workspace)
-                      {:status :success}
-                      (catch Throwable t
-                        (log/warnf t (str "Workspace database %d: warehouse cleanup failed; leaving schema \"%s\" "
-                                          "and user \"%s\" on database %d for manual removal")
-                                   (:id wsd) schema user (:database_id wsd))
-                        {:status                :failure
-                         :workspace_database_id (:id wsd)
-                         :database_id           (:database_id wsd)
-                         :driver                driver
-                         :schema                schema
-                         :user                  user
-                         :reason                (ex-message t)}))]
+    (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+          driver     (driver.u/database->driver db)
+          iso-ws     {:id (:id wsd) :name (str "wsd-" (:id wsd))}
+          computed   (details provisioner driver db iso-ws)
+          schema     (or (not-empty (:output_namespace wsd))
+                         (:schema computed))
+          db-details (if (seq (:database_details wsd))
+                       (:database_details wsd)
+                       (:database_details computed))
+          user       (:user db-details)
+          workspace  (assoc iso-ws :schema schema :database_details db-details)
+          result     (try
+                       (destroy! provisioner driver db workspace)
+                       {:status :success}
+                       (catch Throwable t
+                         (log/warnf t (str "Workspace database %d: warehouse cleanup failed; leaving schema \"%s\" "
+                                           "and user \"%s\" on database %d for manual removal")
+                                    (:id wsd) schema user (:database_id wsd))
+                         {:status                :failure
+                          :workspace_database_id (:id wsd)
+                          :database_id           (:database_id wsd)
+                          :driver                driver
+                          :schema                schema
+                          :user                  user
+                          :reason                (ex-message t)}))]
       ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
       ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
       ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
