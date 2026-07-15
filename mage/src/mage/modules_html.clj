@@ -108,6 +108,11 @@ main{flex:1;display:flex;min-height:0}
 .badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.03em}
 .badge.ent{background:var(--accent-soft);color:var(--accent)}
 .badge.star{color:var(--uses);border:1px solid var(--uses);padding:0 4px}
+.badge.debt{background:transparent;border:1px solid var(--uses);color:var(--uses);padding:0 4px}
+.badge.bypass{background:transparent;border:1px dashed var(--group);color:var(--group);padding:0 4px}
+.submini{font-size:10px;color:var(--group);margin-left:5px}
+.row.flat{padding-left:8px}
+.ghost.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
 .mini{font-size:10.5px;color:var(--ink-soft);margin-left:2px}
 .cnt-in{color:var(--usedby);font-weight:600}
 .cnt-out{color:var(--uses);font-weight:600}
@@ -158,8 +163,14 @@ main{flex:1;display:flex;min-height:0}
     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>
     <input id=q type=search placeholder='Filter modules…' autocomplete=off spellcheck=false>
   </div>
+  <button class=ghost id=debt title='Show only modules with an unfilled boundary (:any / :bypass)'>Debt only</button>
+  <button class=ghost id=view title='Toggle flat coupling-hotspots view'>Hotspots</button>
   <button class=ghost id=expand>Expand all</button>
   <button class=ghost id=collapse>Collapse</button>
+  <select class=ghost id=sortby title='Sort hotspots by'>
+    <option value='used-by'>by used-by</option>
+    <option value='uses'>by uses</option>
+  </select>
   <label class='themepick ghost' title='Theme'>
     <svg class=ticon viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='2'><circle cx='12' cy='12' r='9'/><path d='M12 3a9 9 0 0 0 0 18' fill='currentColor' stroke='none'/></svg>
     <select id=theme>
@@ -200,6 +211,8 @@ for(const m of MODULES){
     if(i===m.path.length-1) cur.module = m;
   });
 }
+// number of modules under each node (shown as a count on group/parent rows)
+(function countSub(node){ let n=0; for(const k of node.children.values()){ n += (k.module?1:0)+countSub(k); } node.sub=n; return n; })(root);
 function sortedKids(node){
   return [...node.children.values()].sort((a,b)=>{
     const ax=a.seg==='enterprise'?1:0, bx=b.seg==='enterprise'?1:0;   // enterprise sorts last
@@ -219,13 +232,17 @@ function refreshTeamChips(){
 }
 let selected = null;               // module id
 let query = '';
+let debtOnly = false, view = 'tree', sortBy = 'used-by';
+function isDebt(m){ return !!(m && (m['uses-any'] || m['api-any'] || m['model-imports-bypass'])); }
+function teamOk(m){ return !m || !m.team || teamActive(m.team); }
 
 // ---- header stats + legend ----------------------------------------------
 const ent = MODULES.filter(m=>m.enterprise).length;
 const starred = MODULES.filter(m=>m['ns-prefix']).length;
+const debtN = MODULES.filter(isDebt).length;
 document.getElementById('stats').innerHTML =
   `<span><b>${MODULES.length}</b> modules</span><span><b>${ent}</b> enterprise</span>`+
-  `<span><b>${starred}</b> ns-prefixed</span><span><b>${TEAMS.length}</b> teams</span>`;
+  `<span><b>${starred}</b> ns-prefixed</span><span><b>${debtN}</b> unfilled</span><span><b>${TEAMS.length}</b> teams</span>`;
 
 const legend = document.getElementById('legend');
 legend.innerHTML = '<span class=lbl>Teams</span>';
@@ -246,12 +263,13 @@ const treeEl = document.getElementById('tree');
 
 // which module ids match the current query (module + its ancestors stay visible)
 function matches(m){
+  if(debtOnly && !isDebt(m)) return false;
   if(!query) return true;
   return m.id.toLowerCase().includes(query) || (m.team||'').toLowerCase().includes(query);
 }
-// precompute, for a query, the set of node-keys that must remain visible
+// precompute, for an active filter, the set of node-keys that must remain visible
 function visibleKeys(){
-  if(!query) return null;
+  if(!query && !debtOnly) return null;
   const keep = new Set();
   (function walk(node, path){
     let any=false;
@@ -278,7 +296,40 @@ function appendDepMarks(row, m){
   if(s['used-by'].includes(m.id)) mark('usedby', 'uses '+selected);
 }
 
+let visibleIds = [];   // module ids currently rendered, in visual order (for keyboard nav)
+
+function appendBadges(row, m){
+  if(m.enterprise){ const b=document.createElement('span'); b.className='badge ent'; b.textContent='EE'; row.appendChild(b); }
+  if(m['ns-prefix']){ const b=document.createElement('span'); b.className='badge star'; b.textContent='∗'; b.title='namespaces not yet moved: '+m['ns-prefix']; row.appendChild(b); }
+  if(m['api-any']||m['uses-any']){ const b=document.createElement('span'); b.className='badge debt'; b.textContent='any';
+    b.title=[m['api-any']?'no API namespace (:api :any)':'', m['uses-any']?'unrestricted deps (:uses :any)':''].filter(Boolean).join(' · '); row.appendChild(b); }
+  if(m['model-imports-bypass']){ const b=document.createElement('span'); b.className='badge bypass'; b.textContent='bypass'; b.title='imports any model (:model-imports :bypass)'; row.appendChild(b); }
+}
+function appendCounts(row, m){
+  const c=document.createElement('span'); c.className='mini';
+  const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
+  const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
+  c.append(inN, ' →●→ ', outN);   // used-by → (this module) → uses
+  c.title=`${m['used-by'].length} used by · uses ${m.uses.length}`; row.appendChild(c);
+}
+// Build a row's shared content (caret slot, team dot, name, badges, counts, dep-marks).
+function buildRow(m, label, hasKids){
+  const row=document.createElement('div');
+  row.className='row'+(m&&m.id===selected?' sel':'')+((m&&!teamOk(m))?' dim':'');
+  if(m) row.dataset.id=m.id;
+  const caret=document.createElement('span'); caret.className='caret'+(hasKids?'':' none'); caret.textContent='▶'; row.appendChild(caret);
+  const dot=document.createElement('span'); dot.className='dot'+(m?'':' group');
+  if(m&&m.team) dot.style.background=teamColor[m.team]; else if(m) dot.style.background='var(--group)';
+  row.appendChild(dot);
+  const name=document.createElement('span'); name.className='name'+(m?'':' group'); name.textContent=label; row.appendChild(name);
+  if(m){ appendBadges(row,m); appendCounts(row,m); }
+  appendDepMarks(row,m);
+  return {row, caret};
+}
+
 function render(){
+  visibleIds=[];
+  if(view==='hotspots') return renderHotspots();
   const scroll = treeEl.scrollTop;   // full rebuild resets scroll; restore it so selecting a node doesn't jump
   const keep = visibleKeys();
   treeEl.innerHTML='';
@@ -289,52 +340,41 @@ function render(){
       const key = kpath.join('/');
       if(keep && !keep.has(key)) continue;
       const m = kid.module;
-      const teamOk = !m || !m.team || teamActive(m.team);
       const hasKids = kid.children.size>0;
-
-      const row = document.createElement('div');
-      row.className='row'+(m&&m.id===selected?' sel':'')+((m&&!teamOk)?' dim':'');
+      const {row, caret} = buildRow(m, kid.seg, hasKids);
       const isOpen = open.has(key) || (keep && keep.has(key));
       if(hasKids && isOpen) row.classList.add('open');
-
-      const caret=document.createElement('span');
-      caret.className='caret'+(hasKids?'':' none'); caret.textContent='▶';
-      row.appendChild(caret);
-
-      const dot=document.createElement('span');
-      dot.className='dot'+(m?'':' group');
-      if(m&&m.team) dot.style.background=teamColor[m.team];
-      else if(m) dot.style.background='var(--group)';
-      row.appendChild(dot);
-
-      const name=document.createElement('span');
-      name.className='name'+(m?'':' group'); name.textContent=kid.seg;
-      row.appendChild(name);
-
-      if(m&&m.enterprise){ const b=document.createElement('span'); b.className='badge ent'; b.textContent='EE'; row.appendChild(b); }
-      if(m&&m['ns-prefix']){ const b=document.createElement('span'); b.className='badge star'; b.textContent='∗'; b.title='namespaces not yet moved: '+m['ns-prefix']; row.appendChild(b); }
-      if(m){ const c=document.createElement('span'); c.className='mini';
-        const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
-        const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
-        c.append(inN, ' →●→ ', outN);   // used-by → (this module) → uses
-        c.title=`${m['used-by'].length} used by · uses ${m.uses.length}`; row.appendChild(c); }
-      appendDepMarks(row, m);
-
+      if(hasKids){ const sc=document.createElement('span'); sc.className='submini'; sc.textContent=kid.sub; sc.title=kid.sub+' modules below'; row.appendChild(sc); }
+      if(m) visibleIds.push(m.id);
       const kidsBox=document.createElement('div');
       kidsBox.className='kids'+(hasKids&&isOpen?'':' hidden');
-
       const toggle=()=>{ if(open.has(key)) open.delete(key); else open.add(key); render(); };
       if(hasKids) caret.onclick=(e)=>{ e.stopPropagation(); toggle(); };
-      row.onclick=(e)=>{
-        e.stopPropagation();
-        if(m) select(m.id);            // module row: select (caret handles expand/collapse)
-        else if(hasKids) toggle();     // pure group row: whole row toggles
-      };
+      row.onclick=(e)=>{ e.stopPropagation(); if(m) select(m.id); else if(hasKids) toggle(); };
       container.appendChild(row);
       container.appendChild(kidsBox);
       if(hasKids) walk(kid, kpath, kidsBox);
     }
   })(root, [], frag);
+  treeEl.appendChild(frag);
+  treeEl.scrollTop = scroll;
+}
+
+// Flat, sortable coupling view: rank modules by fan-in (used-by) or fan-out (uses).
+function renderHotspots(){
+  const scroll = treeEl.scrollTop;
+  treeEl.innerHTML='';
+  const frag = document.createDocumentFragment();
+  const list = MODULES.filter(m => matches(m) && teamOk(m))
+    .sort((a,b) => (sortBy==='uses' ? b.uses.length-a.uses.length : b['used-by'].length-a['used-by'].length)
+                   || a.id.localeCompare(b.id));
+  for(const m of list){
+    const {row} = buildRow(m, m.id, false);
+    row.classList.add('flat');
+    row.onclick=(e)=>{ e.stopPropagation(); select(m.id); };
+    visibleIds.push(m.id);
+    frag.appendChild(row);
+  }
   treeEl.appendChild(frag);
   treeEl.scrollTop = scroll;
 }
@@ -361,10 +401,16 @@ function section(title, items, opts={}){
   s.appendChild(box);
   return s;
 }
+function expandAncestors(id){ const p=byId[id]&&byId[id].path; if(!p) return; for(let i=1;i<p.length;i++) open.add(p.slice(0,i).join('/')); }
+function scrollToSelected(){ if(!selected) return; const el=treeEl.querySelector('[data-id='+JSON.stringify(selected)+']'); if(el) el.scrollIntoView({block:'center'}); }
+function syncHash(){ history.replaceState(null,'', selected ? '#'+encodeURIComponent(selected) : location.pathname+location.search); }
 function select(id){
   selected = (selected===id)?null:id;
+  if(selected && view==='tree') expandAncestors(selected);   // reveal: open the path down to it
   render();
+  syncHash();
   if(!selected){ detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
+  scrollToSelected();
   const m=byId[id];
   detailEl.classList.add('show');
   detailEl.innerHTML='';
@@ -424,9 +470,47 @@ function applyTheme(v){ v ? rootEl.setAttribute('data-theme',v) : rootEl.removeA
 try{ const saved=localStorage.getItem('mb-modtree-theme'); if(saved!==null){ themeSel.value=saved; applyTheme(saved); } }catch(e){}
 themeSel.onchange=()=>{ applyTheme(themeSel.value); try{ localStorage.setItem('mb-modtree-theme', themeSel.value); }catch(e){} };
 
+// tech-debt lens + hotspots view + sort
+const qInput=document.getElementById('q');
+const debtBtn=document.getElementById('debt');
+debtBtn.onclick=()=>{ debtOnly=!debtOnly; debtBtn.classList.toggle('on',debtOnly); render(); };
+const viewBtn=document.getElementById('view');
+const sortSel=document.getElementById('sortby');
+function syncView(){
+  viewBtn.textContent = view==='tree' ? 'Hotspots' : 'Tree';
+  viewBtn.classList.toggle('on', view==='hotspots');
+  document.getElementById('expand').style.display = view==='tree' ? '' : 'none';
+  document.getElementById('collapse').style.display = view==='tree' ? '' : 'none';
+  sortSel.style.display = view==='hotspots' ? '' : 'none';
+}
+viewBtn.onclick=()=>{ view = view==='tree'?'hotspots':'tree'; syncView();
+  if(view==='tree'&&selected) expandAncestors(selected); render(); if(view==='tree'&&selected) scrollToSelected(); };
+sortSel.onchange=()=>{ sortBy=sortSel.value; render(); };
+syncView();
+
+// keyboard: / focuses search, Esc clears/deselects, ↑/↓ move selection through visible rows
+document.addEventListener('keydown', e=>{
+  if(e.key==='/' && document.activeElement!==qInput){ e.preventDefault(); qInput.focus(); qInput.select(); return; }
+  if(e.key==='Escape'){
+    if(document.activeElement===qInput && qInput.value){ qInput.value=''; query=''; render(); qInput.blur(); }
+    else if(selected){ select(selected); }
+    return;
+  }
+  if((e.key==='ArrowDown'||e.key==='ArrowUp') && visibleIds.length){
+    e.preventDefault();
+    let i=visibleIds.indexOf(selected);
+    if(e.key==='ArrowDown') i = i<0 ? 0 : Math.min(i+1, visibleIds.length-1);
+    else                    i = i<0 ? visibleIds.length-1 : Math.max(i-1, 0);
+    if(visibleIds[i] && visibleIds[i]!==selected) select(visibleIds[i]);
+  }
+});
+// deep-link: reflect selection in the URL hash, and honor it on load / back-forward
+window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h] && h!==selected) select(h); });
+
 // open the top level by default
 for(const kid of root.children.values()) if(kid.children.size) open.add(kid.seg);
 render();
+{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) select(h); }
 ")
 
 (def ^:private html-head
