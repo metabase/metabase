@@ -11,7 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import type {
   Collection,
   CurrentWorkspace,
@@ -248,7 +248,7 @@ export const setup = ({
 
   renderWithProviders(
     <Route path="/" element={<DataStudioLayout />}>
-      <IndexRoute element={<div data-testid="content">{"Content"}</div>} />
+      <Route index element={<div data-testid="content">{"Content"}</div>} />
     </Route>,
     {
       storeInitialState: state,
