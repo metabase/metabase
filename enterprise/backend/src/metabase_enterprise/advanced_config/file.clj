@@ -163,7 +163,7 @@
   ^java.nio.file.Path []
   (let [configured-path (get *env* :mb-config-file-path)
         paths-to-try    (if-not (str/blank? configured-path)
-                          [configured-path]
+                          [(u.files/get-path configured-path)]
                           [(u.files/get-path (System/getProperty "user.dir") "config.yml")
                            (u.files/get-path (System/getProperty "user.dir") "config.yaml")])]
     (if-let [path* (first (filter u.files/exists? paths-to-try))]
