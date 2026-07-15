@@ -1,7 +1,7 @@
 (ns metabase.core.kondo-ratchet-test
   "Ratchet on inline kondo ignore forms: budgets live in `.clj-kondo/ratchets.edn` and only move down.
-  This file is in [[dev.kondo-ratchet]]'s exclusion list: the ignore forms below are fixtures, not
-  suppressions."
+  The ignore forms in this file are string fixtures — the scanner masks string literals, so they don't
+  count as suppressions."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; Outside CI, tighten the budgets before asserting — the fix rides along in your next commit.
+;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
 ;; The self-heal workflow does the same for labelled PRs.
 (use-fixtures :once (fn [thunk]
                       (when-not (System/getenv "CI")
@@ -19,13 +19,13 @@
                       (thunk)))
 
 ;;;; ---------------------------------------------------------------------------
-;;;; The ratchet itself
+;;;; The ratchets themselves
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel budgets-match-actual-counts-test
   (testing (str "\nBudgets in " kondo-ratchet/ratchets-file " must match the actual inline ignore counts.\n"
-                "Budget too low: remove an ignore, or raise the budget by hand and defend it in the PR\n"
-                "(a linter with no entry has budget 0).\n"
+                "Budget too low: remove an ignore, or seed the budget with\n"
+                "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
                 "Budget too high: run `./bin/mage fix-kondo-ratchets`, or label the PR\n"
                 "kondo-ratchets-self-healing and CI commits the fix to your branch. Too high in a local\n"
                 "run means `fix!` itself is broken, since the test fixture just ran it.")
@@ -33,15 +33,47 @@
            (kondo-ratchet/drift (:ignore-counts (kondo-ratchet/read-ratchets))
                                 (kondo-ratchet/scan))))))
 
+(deftest ^:parallel ignores-are-justified-test
+  (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
+                "(or trailing on the same line) saying why the suppression is warranted.\n"
+                "Linters in :comment-exempt in " kondo-ratchet/ratchets-file " are grandfathered;\n"
+                "widening that set is a hand edit to defend in the PR.")
+    (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
+      (is (= []
+             (map #(dissoc % :justified?)
+                  (kondo-ratchet/unjustified exempt (kondo-ratchet/scan))))))))
+
+(deftest ^:parallel no-stale-exemptions-test
+  (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
+                "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`, or label\n"
+                "the PR kondo-ratchets-self-healing.")
+    (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
+      (is (= #{}
+             (kondo-ratchet/stale-exemptions comment-exempt (kondo-ratchet/scan)))))))
+
 (deftest ^:parallel ratchets-file-normalized-test
   (testing (str "\n" kondo-ratchet/ratchets-file " should be sorted and aligned exactly as the generator"
                 " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the formatting.")
-    (is (= (kondo-ratchet/render (:ignore-counts (kondo-ratchet/read-ratchets)))
+    (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
            (slurp kondo-ratchet/ratchets-file)))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
 ;;;; ---------------------------------------------------------------------------
+
+(deftest ^:parallel mask-strings-and-comments-test
+  (are [expected content] (= expected (kondo-ratchet/mask-strings-and-comments content))
+    "(f \"     \" x)"        "(f \"a ; b\" x)"
+    "(f)      \n(g)"         "(f) ; hey\n(g)"
+    "(f \"   \n  \")"        "(f \"a b\nc \")"
+    ;; escaped quote stays inside the string; char literals never open one
+    "(f \"      \")"         "(f \"a\\\"b c\")"
+    "[\\\" \"   \"]"         "[\\\" \"abc\"]")
+  (testing "masking preserves length and newline positions"
+    (let [content "(f \"a\nb\") ; c\n(g)"
+          masked  (kondo-ratchet/mask-strings-and-comments content)]
+      (is (= (count content) (count masked)))
+      (is (= [5 13] (keep-indexed #(when (= %2 \newline) %1) masked))))))
 
 (deftest ^:parallel line-linters-test
   (are [expected line] (= expected (kondo-ratchet/line-linters line))
@@ -55,7 +87,6 @@
     [:all]              "  #_ :clj-kondo/ignore (foo)"
     [:all]              "  ^:clj-kondo/ignore (foo)"
     ;; lookalikes that must NOT count
-    []                  "\"prose mentioning :clj-kondo/ignore in a string\""
     []                  "#_:clj-kondo/ignore-my-advice"
     []                  "(defn foo [x] (inc x))"))
 
@@ -63,18 +94,28 @@
   (let [dir (.toFile (java.nio.file.Files/createTempDirectory
                       "kondo-ratchet-test"
                       (make-array java.nio.file.attribute.FileAttribute 0)))]
-    (spit (io/file dir "a.clj") (str "(ns a)\n"
-                                     "#_{:clj-kondo/ignore [:x :y]}\n"
-                                     "(defn f [] 1)\n"
-                                     "#_:clj-kondo/ignore\n"
-                                     "(defn g [] 2)\n"))
-    (spit (io/file dir "b.clj") "(ns b)\n(defn h [] 3)\n")
-    (spit (io/file dir "c.txt") "#_{:clj-kondo/ignore [:not-a-clojure-file]}\n")
+    (spit (io/file dir "a.clj")
+          (str "(ns a)\n"
+               "#_{:clj-kondo/ignore [:x :y]}\n"
+               "(defn f [] 1)\n"
+               ";; g is only used from the REPL\n"
+               "#_:clj-kondo/ignore\n"
+               "(defn g [] 2)\n"
+               "(def h \"docstring with #_{:clj-kondo/ignore [:in-a-string]}\" 3)\n"
+               "#_{:clj-kondo/ignore [:multi\n"
+               "                      :line]}\n"
+               "(defn i [] 4) #_{:clj-kondo/ignore [:trailing]} ;; trailing needs suppressing here\n"
+               ";; #_{:clj-kondo/ignore [:commented-out]}\n"
+               "(defn j [] 5)\n"))
+    (spit (io/file dir "b.clj") "(ns b)\n(defn k [] 6)\n")
     (let [occurrences (kondo-ratchet/scan [(.getPath dir)])]
-      (is (= [{:file (.getPath (io/file dir "a.clj")), :line 2, :linters [:x :y]}
-              {:file (.getPath (io/file dir "a.clj")), :line 4, :linters [:all]}]
-             occurrences))
-      (is (= {:x 1, :y 1, :all 1}
+      (is (= [{:file (.getPath (io/file dir "a.clj")), :line 2,  :linters [:x :y],        :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all],         :justified? true}
+              {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line], :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing],    :justified? true}]
+             occurrences)
+          "strings and commented-out forms don't count; multi-line vectors and trailing comments do")
+      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1}
              (kondo-ratchet/actual-counts occurrences))))))
 
 ;;;; ---------------------------------------------------------------------------
@@ -83,22 +124,35 @@
 
 (deftest ^:parallel render-test
   (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
-    (let [counts {:discouraged-var 3, :all 1, :metabase/modules 2}
-          text   (kondo-ratchet/render counts)]
-      (is (str/ends-with? text (str "{:ignore-counts {:all              1\n"
-                                    "                 :discouraged-var  3\n"
-                                    "                 :metabase/modules 2}}\n")))
-      (is (= {:ignore-counts counts} (edn/read-string text)))
-      (is (= text (kondo-ratchet/render (:ignore-counts (edn/read-string text)))))))
-  (testing "empty budgets"
-    (is (str/ends-with? (kondo-ratchet/render {}) "{:ignore-counts {}}\n"))))
+    (let [ratchets {:ignore-counts  {:discouraged-var 3, :all 1, :metabase/modules 2}
+                    :comment-exempt #{:metabase/modules :discouraged-var}}
+          text     (kondo-ratchet/render ratchets)]
+      (is (str/ends-with? text (str "{:ignore-counts  {:all              1\n"
+                                    "                  :discouraged-var  3\n"
+                                    "                  :metabase/modules 2}\n"
+                                    " :comment-exempt #{:discouraged-var\n"
+                                    "                   :metabase/modules}}\n")))
+      (is (= ratchets (edn/read-string text)))
+      (is (= text (kondo-ratchet/render (edn/read-string text))))))
+  (testing "empty ratchets"
+    (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :comment-exempt #{}})
+                        "{:ignore-counts  {}\n :comment-exempt #{}}\n"))))
 
 (deftest ^:parallel lowered-counts-test
   (is (= {:lower 3, :over-budget 5}
          (kondo-ratchet/lowered-counts {:lower 5, :over-budget 5, :gone 5}
-                                       {:lower 3, :over-budget 7, :new-linter 9}))
+                                       {:lower 3, :over-budget 7, :new-linter 9}
+                                       []))
       "budgets only ever move down: :lower shrinks to actual, :over-budget stays (the test's business),
-       :gone is dropped, :new-linter is not added"))
+       :gone is dropped, :new-linter is not added")
+  (testing "seeding is the escape hatch: sets the budget to actual, adding or raising"
+    (is (= {:new-linter 9, :raised 7}
+           (kondo-ratchet/lowered-counts {:raised 5}
+                                         {:new-linter 9, :raised 7}
+                                         [:new-linter :raised])))
+    (is (= {}
+           (kondo-ratchet/lowered-counts {} {} [:nothing-to-seed]))
+        "seeding a linter with no ignores adds nothing")))
 
 (deftest ^:parallel drift-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a]}
@@ -117,11 +171,39 @@
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
+;;;; ---------------------------------------------------------------------------
+;;;; Justification bookkeeping unit tests
+;;;; ---------------------------------------------------------------------------
+
+(deftest ^:parallel unjustified-test
+  (let [occurrences [{:file "f.clj", :line 1, :linters [:a],    :justified? false}
+                     {:file "f.clj", :line 2, :linters [:a :b], :justified? false}
+                     {:file "f.clj", :line 3, :linters [:a],    :justified? true}
+                     {:file "f.clj", :line 4, :linters [:all],  :justified? false}]]
+    (is (= [2 4]
+           (map :line (kondo-ratchet/unjustified #{:a} occurrences)))
+        "line 1 is fully exempt, line 2 still owes :b a comment, line 3 is justified,
+         line 4's :all is not exempt")))
+
+(deftest ^:parallel stale-exemptions-test
+  (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
+                     {:file "f.clj", :line 2, :linters [:b], :justified? true}]]
+    (is (= #{:b}
+           (kondo-ratchet/stale-exemptions #{:a :b} occurrences))
+        ":a still has an unjustified ignore; :b's are all justified so its exemption is stale")))
+
 (deftest ^:parallel change-report-test
-  (is (= ["dropped :gone (no ignores left)"
-          "lowered :lower 5 -> 3"
-          "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores or raise the budget by hand"
-          "WARNING: :new has 9 ignores but no budget entry -- add one by hand"]
-         (kondo-ratchet/change-report {:lower 5, :over 5, :gone 5, :same 4}
-                                      {:lower 3, :over 7, :new 9, :same 4}))
-      "an untouched budget (:same) earns no line"))
+  (let [occurrences (concat (for [[linter n] {:lower 3, :over 7, :new 9, :same 4}
+                                  i          (range n)]
+                              {:file "f.clj", :line (inc i), :linters [linter], :justified? false})
+                            [{:file "g.clj", :line 1, :linters [:polite], :justified? true}])]
+    (is (= ["seeded :new at 9"
+            "dropped :gone (no ignores left)"
+            "lowered :lower 5 -> 3"
+            "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
+            "unexempted :polite (all its ignores are justified now)"]
+           (kondo-ratchet/change-report {:ignore-counts  {:lower 5, :over 5, :gone 5, :same 4, :polite 1}
+                                         :comment-exempt #{:lower :polite}}
+                                        occurrences
+                                        [:new]))
+        "an untouched budget (:same) and a still-needed exemption (:lower) earn no line")))
