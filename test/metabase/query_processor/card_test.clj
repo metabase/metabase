@@ -1,4 +1,4 @@
-(ns metabase.query-processor.card-test
+(ns ^:mb/driver-tests metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.queries-rest.api.card-test]]."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
@@ -223,14 +223,15 @@
 
 (deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
-    (mt/with-temp [:model/Card card {:dataset_query
-                                     (mt/mbql-query venues
-                                       {:aggregation [[:count]]})
-                                     :display :pivot}]
-      (let [result (run-query-for-card card)]
-        (is (=? {:status :completed}
-                result))
-        (is (= [[100]] (mt/rows result)))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/with-temp [:model/Card card {:dataset_query
+                                       (mt/mbql-query venues
+                                         {:aggregation [[:count]]})
+                                       :display :pivot}]
+        (let [result (run-query-for-card card)]
+          (is (=? {:status :completed}
+                  result))
+          (is (= [[100]] (mt/rows result))))))))
 
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"

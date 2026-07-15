@@ -25,7 +25,6 @@ export interface Segment {
 
 export interface CreateSegmentRequest {
   name: string;
-  table_id: TableId;
   definition: DatasetQuery;
   description?: string;
 }

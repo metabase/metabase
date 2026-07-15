@@ -159,7 +159,8 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{ai-tracing
+              api
               auth-identity
               channel
               collections
@@ -192,6 +193,15 @@
            metabase.agent-lib.representations.resolve}
    :uses #{lib
            models
+           util}}
+
+  ai-tracing
+  {:team "Metabot"
+   :api  #{metabase.ai-tracing.api
+           metabase.ai-tracing.core
+           metabase.ai-tracing.init}
+   :uses #{api
+           settings
            util}}
 
   analytics
@@ -1125,6 +1135,7 @@
            metabase.lib.metadata
            metabase.lib.metadata.protocols
            metabase.lib.options
+           metabase.lib.pivot
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1253,6 +1264,7 @@
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
+           ai-tracing
            api
            app-db
            config
@@ -1298,6 +1310,7 @@
               slackbot}
    :uses    #{activity-feed
               agent-lib
+              ai-tracing
               analytics
               analytics-interface
               api
@@ -1982,12 +1995,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{driver
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database
-                    :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
   {:team "UX West"
@@ -2342,6 +2355,7 @@
            permissions
            premium-features
            search
+           session
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card

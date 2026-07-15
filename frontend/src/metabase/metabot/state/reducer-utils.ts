@@ -102,7 +102,6 @@ export const createConversation = (
     isProcessing: false,
     messages: [],
     visible: false,
-    history: [],
     state: {},
     activeToolCalls: [],
     profileOverride: undefined,
