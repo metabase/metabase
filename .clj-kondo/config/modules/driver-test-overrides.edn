@@ -19,9 +19,7 @@
    auth-provider
    batch-processing
    channel
-   classloader
    collections
-   config
    content-verification
    contextual-interestingness
    core.initialization-status
@@ -67,6 +65,8 @@
    tracing
    users
    util
+   util.classloader
+   util.config
    warehouses.schema
    warehouses.secrets
    enterprise/api
