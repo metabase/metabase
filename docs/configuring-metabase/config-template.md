@@ -242,7 +242,6 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
-    query-caching-max-concurrent-writes: 0
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     queue-backend: quartz
