@@ -8,7 +8,12 @@ import { PLUGIN_API } from "metabase/plugins";
 import { useInitData } from "./use-init-data-internal";
 
 // Keep the test scoped to the header wiring; the viz registry is irrelevant.
-jest.mock("metabase/visualizations/register", () => jest.fn());
+// `registerVisualizations` is a named export, so the mock must expose it under
+// that name — a bare `jest.fn()` module leaves it `undefined`, and the
+// `_.once(registerVisualizations)` call then throws on `undefined.apply`.
+jest.mock("metabase/visualizations/register", () => ({
+  registerVisualizations: jest.fn(),
+}));
 jest.mock("metabase/dashboard/visualizations/register", () => jest.fn());
 
 const fakeReduxStore = () =>
