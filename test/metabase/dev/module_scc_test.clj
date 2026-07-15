@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
+   [dev.deps-graph :as deps-graph]
    [dev.module-scc :as module-scc]))
 
 (set! *warn-on-reflection* true)
@@ -19,21 +20,21 @@
 (deftest ^:parallel strongly-connected-components-test
   (testing "decomposes into the 3-cycle plus singletons"
     (is (= #{'#{a b c} '#{d} '#{e} '#{f}}
-           (set (module-scc/strongly-connected-components cyclic-graph)))))
+           (set (deps-graph/strongly-connected-components cyclic-graph)))))
   (testing "nodes appearing only as successors are included"
-    (is (contains? (set (module-scc/strongly-connected-components '{a #{b}}))
+    (is (contains? (set (deps-graph/strongly-connected-components '{a #{b}}))
                    '#{b})))
   (testing "an acyclic graph is all singletons"
     (is (every? #(= 1 (count %))
-                (module-scc/strongly-connected-components '{a #{b}, b #{c}, c #{}})))))
+                (deps-graph/strongly-connected-components '{a #{b}, b #{c}, c #{}})))))
 
 (deftest ^:parallel largest-scc-test
-  (is (= '#{a b c} (module-scc/largest-scc cyclic-graph))))
+  (is (= '#{a b c} (deps-graph/largest-scc cyclic-graph))))
 
 (deftest ^:parallel empty-graph-scc-test
   (testing "a graph with no nodes has no SCC — largest-scc is empty rather than throwing"
-    (is (= #{} (module-scc/largest-scc {})))
-    (is (= #{} (module-scc/largest-scc {} []))))
+    (is (= #{} (deps-graph/largest-scc {})))
+    (is (= #{} (deps-graph/largest-scc {} []))))
   (testing "SCC summary and cut analyses handle degenerate graphs without throwing"
     ;; a node-cut of the sole node leaves an empty graph, so the internal `(apply max-key count sccs)`
     ;; must tolerate an empty SCC list rather than blowing up mid-analysis
@@ -42,7 +43,7 @@
     (is (seq (module-scc/node-cut-impacts '{a #{}})))))
 
 (deftest ^:parallel condensation-test
-  (let [sccs (module-scc/strongly-connected-components cyclic-graph)
+  (let [sccs (deps-graph/strongly-connected-components cyclic-graph)
         {:keys [node->scc graph]} (module-scc/condensation cyclic-graph sccs)]
     (testing "cycle members share an SCC id; the condensed graph has no self-edges"
       (is (= (node->scc 'a) (node->scc 'b) (node->scc 'c)))

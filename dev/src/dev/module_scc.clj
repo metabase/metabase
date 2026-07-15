@@ -26,55 +26,12 @@
 (set! *warn-on-reflection* true)
 
 ;;;; ------------------------------------------------------------------------------------------------
-;;;; SCC computation (Tarjan)
+;;;; SCC structure (Tarjan itself lives in [[dev.deps-graph]], which also tracks the component sizes
+;;;; as committed module-boundary stats)
 ;;;; ------------------------------------------------------------------------------------------------
 
 (defn- graph-nodes [graph]
   (into (set (keys graph)) (mapcat val) graph))
-
-(defn strongly-connected-components
-  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`. Returns a vector of sets,
-  one per SCC, including singletons. Recursive; fine for graphs a few thousand nodes deep."
-  [graph]
-  (let [index    (volatile! {})
-        lowlink  (volatile! {})
-        on-stack (volatile! #{})
-        stack    (volatile! [])
-        counter  (volatile! 0)
-        sccs     (volatile! [])]
-    (letfn [(strongconnect [v]
-              (vswap! index assoc v @counter)
-              (vswap! lowlink assoc v @counter)
-              (vswap! counter inc)
-              (vswap! stack conj v)
-              (vswap! on-stack conj v)
-              (doseq [w (get graph v)]
-                (cond
-                  (not (contains? @index w))
-                  (do (strongconnect w)
-                      (vswap! lowlink update v min (get @lowlink w)))
-
-                  (contains? @on-stack w)
-                  (vswap! lowlink update v min (get @index w))))
-              (when (= (get @lowlink v) (get @index v))
-                (loop [component #{}]
-                  (let [w (peek @stack)]
-                    (vswap! stack pop)
-                    (vswap! on-stack disj w)
-                    (let [component (conj component w)]
-                      (if (= w v)
-                        (vswap! sccs conj component)
-                        (recur component)))))))]
-      (doseq [v (sort (graph-nodes graph))]
-        (when-not (contains? @index v)
-          (strongconnect v))))
-    @sccs))
-
-(defn largest-scc
-  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes. With two
-  args, picks from precomputed `sccs`."
-  ([graph] (largest-scc graph (strongly-connected-components graph)))
-  ([_graph sccs] (if (seq sccs) (apply max-key count sccs) #{})))
 
 (defn condensation
   "Condense `graph` by its SCCs. Returns `{:node->scc {node scc-index}, :graph {scc-index #{scc-index}}}`
@@ -107,9 +64,9 @@
 (defn scc-summary
   "Repo-level SCC stats for `graph`."
   [graph]
-  (let [sccs       (strongly-connected-components graph)
+  (let [sccs       (deps-graph/strongly-connected-components graph)
         nontrivial (filter #(> (count %) 1) sccs)
-        giant      (largest-scc graph sccs)]
+        giant      (deps-graph/largest-scc graph sccs)]
     {:num-sccs              (count sccs)
      :num-nontrivial-sccs   (count nontrivial)
      :nontrivial-scc-sizes  (sort > (map count nontrivial))
@@ -125,8 +82,8 @@
   "Score `graph'` (a modified copy of `graph`) against the original `giant` SCC. `:num-freed` counts former
   giant members that fell out of the new largest SCC."
   [graph' giant]
-  (let [sccs'    (strongly-connected-components graph')
-        largest' (largest-scc graph' sccs')]
+  (let [sccs'    (deps-graph/strongly-connected-components graph')
+        largest' (deps-graph/largest-scc graph' sccs')]
     {:new-largest-size (count largest')
      :num-freed        (count (remove largest' giant))
      :fragmentation    (sum-squared-scc-sizes sccs')}))
@@ -144,7 +101,7 @@
   `:edge :new-largest-size :num-freed :fragmentation`, best cuts first. Single edges rarely split a dense
   SCC — rank by `:fragmentation`, which still distinguishes them."
   [graph]
-  (let [giant (largest-scc graph)]
+  (let [giant (deps-graph/largest-scc graph)]
     (->> (intra-scc-edges graph giant)
          (map (fn [[v w :as edge]]
                 (assoc (cut-impact (update graph v disj w) giant)
@@ -155,7 +112,7 @@
   "For every member of the largest SCC, delete the module outright (all in- and out-edges) and recompute.
   An unrealistic cut, but an upper bound on what any refactor of that one module could buy."
   [graph]
-  (let [giant (largest-scc graph)]
+  (let [giant (deps-graph/largest-scc graph)]
     (->> giant
          (map (fn [m]
                 (let [graph' (reduce-kv (fn [acc v ws] (assoc acc v (disj ws m)))
@@ -172,7 +129,7 @@
   else. `:severed-edges` lists the requires that would need inverting; fewer severed edges with more
   modules freed = better experiment."
   [graph]
-  (let [giant (largest-scc graph)]
+  (let [giant (deps-graph/largest-scc graph)]
     (->> giant
          (map (fn [m]
                 (let [back-deps (into (sorted-set) (filter giant) (get graph m))]
@@ -191,7 +148,7 @@
   dependent (a REST layer belongs inside the feature) or inverting it via events; high-churn feature
   modules are where this pays, so rank these against commit frequency, not alone."
   [graph]
-  (let [giant (largest-scc graph)]
+  (let [giant (deps-graph/largest-scc graph)]
     (->> giant
          (map (fn [m]
                 (let [in-deps (into (sorted-set)

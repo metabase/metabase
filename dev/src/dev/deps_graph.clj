@@ -74,6 +74,62 @@
                             (not= (root m) (root d)))]
              [m d]))))
 
+;;; Tarjan SCC lives here rather than in `dev.module-scc` (whose cut-scoring toolkit builds on top of it)
+;;; so [[module-boundary-stats]] can size the components without a circular require.
+
+(defn- graph-nodes [graph]
+  (into (set (keys graph)) (mapcat val) graph))
+
+(defn strongly-connected-components
+  "Tarjan's algorithm over an adjacency map of `node -> coll of successor nodes`. Returns a vector of sets,
+  one per SCC, including singletons. Recursive; fine for graphs a few thousand nodes deep."
+  [graph]
+  (let [index    (volatile! {})
+        lowlink  (volatile! {})
+        on-stack (volatile! #{})
+        stack    (volatile! [])
+        counter  (volatile! 0)
+        sccs     (volatile! [])]
+    (letfn [(strongconnect [v]
+              (vswap! index assoc v @counter)
+              (vswap! lowlink assoc v @counter)
+              (vswap! counter inc)
+              (vswap! stack conj v)
+              (vswap! on-stack conj v)
+              (doseq [w (get graph v)]
+                (cond
+                  (not (contains? @index w))
+                  (do (strongconnect w)
+                      (vswap! lowlink update v min (get @lowlink w)))
+
+                  (contains? @on-stack w)
+                  (vswap! lowlink update v min (get @index w))))
+              (when (= (get @lowlink v) (get @index v))
+                (loop [component #{}]
+                  (let [w (peek @stack)]
+                    (vswap! stack pop)
+                    (vswap! on-stack disj w)
+                    (let [component (conj component w)]
+                      (if (= w v)
+                        (vswap! sccs conj component)
+                        (recur component)))))))]
+      (doseq [v (sort (graph-nodes graph))]
+        (when-not (contains? @index v)
+          (strongconnect v))))
+    @sccs))
+
+(defn largest-scc
+  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes. With two
+  args, picks from precomputed `sccs`."
+  ([graph] (largest-scc graph (strongly-connected-components graph)))
+  ([_graph sccs] (if (seq sccs) (apply max-key count sccs) #{})))
+
+(defn- largest-cyclic-scc
+  "The largest nontrivial SCC of `graph`, or `#{}` when the graph is acyclic."
+  [graph]
+  (let [component (largest-scc graph)]
+    (if (> (count component) 1) component #{})))
+
 (defn module-boundary-debt
   "Current module-boundary anti-pattern counts. One-way ratchets: each may only go down.
   Raising one is a deliberate act — edit `ratchets.edn` by hand and justify it in the commit."
@@ -105,7 +161,16 @@
   each is a module name that lies about where its namespaces live, usually a config-only nesting whose
   source rename hasn't happened yet. An explicit prefix equal to the default is documentation, not a
   mismatch, and does not count. Expected to grow with config-only carves; a candidate ratchet once the
-  source renames catch up."
+  source renames catch up.
+
+  The SCC stats size the mutual-dependency blob at both granularities. `:largest-scc-modules` and
+  `:largest-scc-namespaces` are the largest strongly connected component of the module graph, in modules
+  and in the namespaces those modules own — the namespace weighting is the honest coupling number, since
+  splitting a blob module in config raises the module count without moving a single namespace out of the
+  cycle. `:largest-ns-scc` is the largest SCC of the namespace graph itself: static requires form a DAG,
+  so it consists entirely of dynamic edges (`requiring-resolve` and friends) and is the floor no module
+  re-partitioning can get under — only breaking real runtime cycles moves it. All three grow with
+  ordinary feature work inside the blob, so they are stats rather than ratchets."
   ([]
    (let [config (kondo-config)]
      (module-boundary-stats (dependencies (build-prefix->module config)) config)))
@@ -115,9 +180,17 @@
                              (when (set? api)
                                (count api)))
                            values)
-         any-modules (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)]
+         any-modules (into #{} (keep (fn [[m cfg]] (when (= :any (:api cfg)) m))) config)
+         module-scc  (largest-cyclic-scc (module-dependencies deps))
+         ns-scc      (largest-cyclic-scc (into {}
+                                               (map (fn [{ns-sym :namespace, required :deps}]
+                                                      [ns-sym (into #{} (map :namespace) required)]))
+                                               deps))]
      {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
       :largest-api        (reduce max 0 api-sizes)
+      :largest-ns-scc     (count ns-scc)
+      :largest-scc-modules (count module-scc)
+      :largest-scc-namespaces (count (filter #(contains? module-scc (:module %)) deps))
       :module-count       (count config)
       :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
       :ns-prefix-overrides (count (filter (fn [[m {:keys [ns-prefix]}]]

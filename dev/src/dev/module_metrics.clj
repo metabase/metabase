@@ -114,7 +114,7 @@
 (defn- largest-cyclic-component
   "Largest nontrivial strongly connected component, or an empty set when the graph is acyclic."
   [graph sccs]
-  (let [component (module-scc/largest-scc graph sccs)]
+  (let [component (deps-graph/largest-scc graph sccs)]
     (if (> (count component) 1) component #{})))
 
 (defn- build-graph-context
@@ -150,7 +150,7 @@
                                                           deps config prefix->mod (get module->sources module))]))
                                           modules')
         all-test-files           (into (sorted-set) (mapcat val) module->relevant-test-files)
-        sccs                     (module-scc/strongly-connected-components direct-deps-graph)
+        sccs                     (deps-graph/strongly-connected-components direct-deps-graph)
         module->scc              (into {} (for [component sccs, m component] [m component]))]
     {:prefix->mod              prefix->mod
      :modules                  modules'
