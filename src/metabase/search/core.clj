@@ -99,26 +99,28 @@
   (seq (search.engine/active-engines)))
 
 (defn check-for-removed-env-vars!
-  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is still set, naming the exact
-  MB_SEARCH_ENGINE value the switch would have fallen back to when semantic is now serving search."
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is still set, and would have been
+  required to disable the engine, naming the exact configuration change that keeps semantic search off.
+  Otherwise just log a warning."
   []
   ;; An empty value is "explicitly unset" per the usual env-var semantics, so only a non-blank value trips this.
   (when-not (str/blank? (env/env :mb-semantic-search-enabled))
     (let [engines           (search.engine/supported-engines)
-          semantic-serving? (= :search.engine/semantic (first engines))
-          fallback          (when semantic-serving? (second engines))]
-      (throw (ex-info
-              (cond
-                fallback
-                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
-                     (name fallback))
+          semantic-default? (= :search.engine/semantic (first engines))
+          semantic-active?  (contains? (set (search.engine/active-engines)) :search.engine/semantic)
+          fallback          (when semantic-default? (second engines))]
+      (if-let [msg (cond
+                     fallback
+                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                          (name fallback))
 
-                semantic-serving?
-                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
+                     semantic-default?
+                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
 
-                :else
-                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
-              {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
+                     semantic-active?
+                     (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Remove semantic from additional-search-engines to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."))]
+        (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
+        (log/warn "MB_SEMANTIC_SEARCH_ENABLED is no longer supported; remove it from your configuration.")))))
 
 (defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
   (check-for-removed-env-vars!))
