@@ -96,7 +96,9 @@
         (is (some? result))
         (is (some? (:stored_result_id result)))
         (is (some? sr))
-        (is (pos? (count (:result_data sr))))))))
+        (is (pos? (count (:result_data sr))))
+        (is (= 1 (:row_count sr))
+            "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
 
 (deftest run-one-iteration-records-stored-result-use-test
   (testing "Running a query records a stored_result_use row tying the snapshot to the exploration"

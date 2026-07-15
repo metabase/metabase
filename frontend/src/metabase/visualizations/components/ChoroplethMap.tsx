@@ -7,13 +7,12 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Flex, Text } from "metabase/ui";
+import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import {
   HEAT_MAP_ZERO_COLOR,
@@ -306,7 +305,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   if (!geoJson) {
     return (
       <div className={cx(className, CS.flex, CS.layoutCentered)}>
-        <LoadingSpinner />
+        <Loader size="lg" />
       </div>
     );
   }

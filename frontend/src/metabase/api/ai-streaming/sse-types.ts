@@ -14,6 +14,9 @@ export type MessageMetadata = {
   // a typed error's code, ridden on the trailing `finish` event so the client
   // can branch on it (e.g. the usage-limit upgrade prompt)
   errorCode?: string;
+  // the turn's user message row external_id, ridden on the `start` event so
+  // the client can retry the prompt later
+  userMessageId?: string;
 };
 
 export type ProviderMetadata = Record<string, Record<string, unknown>>;
@@ -27,7 +30,11 @@ export type FinishReason =
   | "other";
 
 // lifecycle events
-export type StartEvent = { type: "start"; messageId?: string };
+export type StartEvent = {
+  type: "start";
+  messageId?: string;
+  messageMetadata?: MessageMetadata;
+};
 export type StartStepEvent = { type: "start-step" };
 export type FinishStepEvent = { type: "finish-step" };
 export type FinishEvent = {

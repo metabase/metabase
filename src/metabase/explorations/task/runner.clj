@@ -452,6 +452,7 @@
                         :creator_id        creator-id
                         :database_id       db-id
                         :dataset_query     (:dataset_query row)
+                        :row_count         (:row_count qp-result)
                         :data_access_token token}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id             (:id row)
