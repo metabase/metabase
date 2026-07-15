@@ -3,6 +3,8 @@
  :largest-ns-scc 505
  :largest-scc-modules 102
  :largest-scc-namespaces 1356
+ :max-file-deftests 17540
+ :max-file-test-namespaces 1388
  :module-count 196
  :module-exports 0
  :ns-prefix-overrides 0

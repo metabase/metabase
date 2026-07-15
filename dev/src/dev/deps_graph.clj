@@ -37,7 +37,7 @@
   (edn/read-string (slurp driver-test-overrides-path)))
 
 (declare kondo-config module-parent module-ancestor-chain external-usages module-dependencies
-         dependencies build-prefix->module default-ns-prefix module-team)
+         dependencies build-prefix->module default-ns-prefix module-team module->test-files)
 
 (defn friend-reach-count
   "Number of actual privileged reaches: (friend namespace → internal namespace) require pairs that are
@@ -149,6 +149,46 @@
       :top-level-modules     (count (remove #(module-parent declared %) (keys config)))
       :uses-any              (count (filter #(= :any (:uses %)) values))})))
 
+(defn- deftest-form-count
+  "Number of `deftest` forms (bare or alias-qualified) in the test file at `filename`."
+  [filename]
+  (count (re-seq #"\((?:[\w.-]+/)?deftest\s" (slurp filename))))
+
+(defn- max-test-blast-radius
+  "Worst-case test blast radius of a single source-file change: the largest test set the
+  module-granularity selection ([[source-filenames->relevant-test-filenames]]) reruns for one file.
+  Selection is module-granular — a file reruns the tests of its module and all transitive dependents —
+  so the per-file maximum is the per-module maximum.
+  Returns `{:test-namespaces _, :deftests _}` — the worst case counted in whole test namespaces and in
+  individual `deftest` forms, each maximized over modules independently."
+  [deps config]
+  (let [prefix->mod    (build-prefix->module config)
+        modules        (into (sorted-set) (keep :module) deps)
+        module->tests  (into {}
+                             (map (juxt identity #(module->test-files config prefix->mod %)))
+                             modules)
+        file->deftests (into {}
+                             (map (juxt identity deftest-form-count))
+                             (into #{} (mapcat val) module->tests))
+        dependents     (reduce-kv (fn [acc m direct-deps]
+                                    (reduce (fn [acc dep]
+                                              (update acc dep (fnil conj #{}) m))
+                                            acc
+                                            direct-deps))
+                                  {}
+                                  (module-dependencies deps))
+        blast-files    (fn [module]
+                         (loop [queue (vec (get dependents module)), seen #{module}]
+                           (if-let [dependent (peek queue)]
+                             (if (contains? seen dependent)
+                               (recur (pop queue) seen)
+                               (recur (into (pop queue) (get dependents dependent))
+                                      (conj seen dependent)))
+                             (into #{} (mapcat module->tests) seen))))
+        blasts         (mapv blast-files modules)]
+    {:test-namespaces (reduce max 0 (map count blasts))
+     :deftests        (reduce max 0 (map #(transduce (keep file->deftests) + 0 %) blasts))}))
+
 (defn module-boundary-stats
   "Public-surface size stats. Expected to move in both directions — carving a child module grows
   `:total-api` and `:module-exports` while shrinking `:largest-api`, and none of those directions is
@@ -176,7 +216,11 @@
   splitting a blob module in config raises the module count without moving a namespace out of the cycle.
   `:largest-ns-scc` is the largest SCC of the namespace graph itself:
   static requires form a DAG, so the component is pure dynamic edges (`requiring-resolve` and friends)
-  and is the floor no module re-partitioning can get under."
+  and is the floor no module re-partitioning can get under.
+
+  `:max-file-test-namespaces` and `:max-file-deftests` are the worst-case selective-CI cost of touching
+  a single source file — see [[max-test-blast-radius]]. They fall when a cut shrinks some module's
+  dependent set, but ordinary test-writing inside the blob pushes them back up."
   ([]
    (let [config (kondo-config)]
      (module-boundary-stats (dependencies (build-prefix->module config)) config)))
@@ -192,12 +236,15 @@
          ns-scc      (largest-cyclic-scc (into {}
                                                (map (fn [{ns-sym :namespace, required :deps}]
                                                       [ns-sym (into #{} (map :namespace) required)]))
-                                               deps))]
+                                               deps))
+         test-blast  (max-test-blast-radius deps config)]
      {:api-any-namespaces (count (filter #(contains? any-modules (:module %)) deps))
       :largest-api        (reduce max 0 api-sizes)
       :largest-ns-scc     (count ns-scc)
       :largest-scc-modules (count module-scc)
       :largest-scc-namespaces (count (filter #(contains? module-scc (:module %)) deps))
+      :max-file-deftests  (:deftests test-blast)
+      :max-file-test-namespaces (:test-namespaces test-blast)
       :module-count       (count config)
       :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
       :ns-prefix-overrides (count (filter (fn [[m {:keys [ns-prefix]}]]
