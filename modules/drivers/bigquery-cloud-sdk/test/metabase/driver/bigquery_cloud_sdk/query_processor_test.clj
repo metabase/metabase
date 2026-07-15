@@ -1276,7 +1276,7 @@
 (deftest ^:parallel test-bigquery-log
   (testing "correct format of log10 for BigQuery"
     (is (= ["LOG(150, 10)"]
-           (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))
+           (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log {} 150]))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
