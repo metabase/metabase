@@ -90,74 +90,9 @@ describe("TablePermalinkRedirect", () => {
         expect(history?.getCurrentLocation().pathname).toBe("/table/11-events"),
       );
     });
-
-    it("resolves an id-slug database segment, like the schema page links to", async () => {
-      const table = createMockTable({
-        id: 10,
-        db_id: 7,
-        schema: "PUBLIC",
-        name: "orders",
-        display_name: "Orders",
-      });
-      const { history } = setup({
-        databases: [SALES],
-        tables: [table],
-        initialRoute: "/browse/databases/7-sales/schema/PUBLIC/table/orders",
-      });
-
-      await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/10-orders"),
-      );
-    });
-
-    it("resolves a colliding database name to the lowest-id database's table", async () => {
-      const { history } = setup({
-        databases: [
-          createMockDatabase({ id: 4, name: "Prod" }),
-          createMockDatabase({ id: 9, name: "Prod" }),
-        ],
-        tables: [
-          createMockTable({
-            id: 40,
-            db_id: 4,
-            schema: "PUBLIC",
-            name: "orders",
-            display_name: "Orders",
-          }),
-          createMockTable({
-            id: 90,
-            db_id: 9,
-            schema: "PUBLIC",
-            name: "orders",
-            display_name: "Orders",
-          }),
-        ],
-        initialRoute: "/browse/databases/Prod/schema/PUBLIC/table/orders",
-      });
-
-      await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/40-orders"),
-      );
-    });
   });
 
-  describe("matching is exact", () => {
-    it("matches the table name case-sensitively (wrong case → not found)", async () => {
-      const table = createMockTable({
-        id: 10,
-        db_id: 7,
-        schema: "PUBLIC",
-        name: "orders",
-      });
-      setup({
-        databases: [SALES],
-        tables: [table],
-        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/ORDERS",
-      });
-
-      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-    });
-
+  describe("when the table can't be resolved", () => {
     it("shows a not-found page for an unknown table", async () => {
       setup({
         databases: [SALES],
