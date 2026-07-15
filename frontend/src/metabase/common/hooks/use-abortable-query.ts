@@ -29,10 +29,8 @@ type UseAbortableQueryOptions = {
  *
  * Caching mirrors `useQuery`: cache-first by default.
  *
- * Each hook instance gets its own RTK cache entry: the arg is disambiguated
- * with an injected `RTK_CACHE_KEY_PARAM` (stripped in `baseQuery`, never sent
- * to the server), so aborting never cancels a request another subscriber is
- * waiting on. The trade-off is that instances don't share cached responses and
+ * Each hook instance gets its own RTK cache entry, so aborting is safe.
+ * The trade-off is that instances don't share cached responses and
  * identical concurrent requests aren't deduplicated.
  */
 export function useAbortableQuery<
