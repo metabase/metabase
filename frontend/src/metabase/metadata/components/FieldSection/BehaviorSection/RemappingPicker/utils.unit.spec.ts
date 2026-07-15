@@ -46,9 +46,24 @@ describe("RemappingPicker/utils", () => {
       );
     });
 
-    it("drops non-numeric keys", () => {
-      const values: FieldValue[] = [["small"], ["large"]];
-      expect(getFieldRemappedValues(values)).toEqual(new Map());
+    it("keeps non-numeric keys (e.g. boolean or string remappings)", () => {
+      expect(
+        getFieldRemappedValues([
+          [true, "Yes"],
+          [false, "No"],
+        ]),
+      ).toEqual(
+        new Map([
+          [true, "Yes"],
+          [false, "No"],
+        ]),
+      );
+      expect(getFieldRemappedValues([["small"], ["large"]])).toEqual(
+        new Map([
+          ["small", undefined],
+          ["large", undefined],
+        ]),
+      );
     });
 
     it("returns an empty map for empty or missing values", () => {

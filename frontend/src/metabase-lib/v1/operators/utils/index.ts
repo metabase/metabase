@@ -4,7 +4,9 @@ import {
   FILTER_OPERATORS_BY_TYPE_ORDERED,
 } from "metabase-lib/v1/operators/constants";
 
-export function doesOperatorExist(operatorName?: string): boolean {
+export function doesOperatorExist(
+  operatorName?: string,
+): operatorName is string {
   return operatorName != null && Boolean(FIELD_FILTER_OPERATORS[operatorName]);
 }
 

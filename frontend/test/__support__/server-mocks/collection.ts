@@ -124,7 +124,7 @@ export function setupCollectionsEndpoints({
 function getCollectionVirtualSchemaURLs(collection: Collection) {
   const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
   const schemaName = getCollectionVirtualSchemaName(collection);
-  const schema = encodeURIComponent(schemaName ?? "");
+  const schema = encodeURIComponent(schemaName);
 
   const questions = ["path:/api/database/", db, "/schema/", schema].join("");
   const models = ["path:/api/database/", db, "/datasets/", schema].join("");

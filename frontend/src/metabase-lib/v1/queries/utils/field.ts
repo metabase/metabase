@@ -14,17 +14,23 @@ type RawField = {
   remappings?: FieldValue[];
 };
 
+// Already [[value], [value, label], ...] tuples vs deprecated flat scalars; an array-valued
+// first row is ambiguous either way (metabase#3417).
+function isFieldValueTuples(
+  values: RowValue[] | FieldValue[],
+): values is FieldValue[] {
+  return values.length === 0 || Array.isArray(values[0]);
+}
+
 // Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417
 export function getFieldValues(field?: RawField | null): FieldValue[] {
   const values = field && field.values;
   if (Array.isArray(values)) {
-    if (values.length === 0 || Array.isArray(values[0])) {
-      // already [[value], ...] tuples (or empty); the [0] check can't narrow RowValue[] to FieldValue[]
-      return values as FieldValue[];
+    if (isFieldValueTuples(values)) {
+      return values;
     } else {
-      // deprecated flat scalars; cast collapses the RowValue[] | FieldValue[] union so .map is callable
-      return (values as RowValue[]).map((value): FieldValue => [value]);
+      return values.map((value): FieldValue => [value]);
     }
   } else if (values && Array.isArray(values.values)) {
     if (Array.isArray(values.human_readable_values)) {
@@ -45,4 +51,13 @@ export function getRemappings(field?: RawField | null): FieldValue[] {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
   return [...fieldValues, ...remappings];
+}
+
+// Build a value -> label map.
+export function fieldValuesToMap(
+  values: FieldValue[],
+): Map<RowValue, string | undefined> {
+  // new Map() pads [value] 1-tuples with undefined at runtime, but its constructor
+  // overload requires 2-tuples, hence the cast.
+  return new Map(values as [RowValue, string | undefined][]);
 }

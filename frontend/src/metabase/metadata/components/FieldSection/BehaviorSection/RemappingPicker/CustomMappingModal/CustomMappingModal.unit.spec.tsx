@@ -183,4 +183,25 @@ describe("CustomMappingModal", () => {
     });
     expect(screen.getByDisplayValue("1")).toBeInTheDocument();
   });
+
+  it("treats null labels from legacy data as unset and fills them", async () => {
+    const onChange = jest.fn();
+    setup({
+      value: new Map([
+        [1, null],
+        [2, "Two"],
+      ]),
+      onChange,
+    });
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(
+        new Map([
+          [1, "1"],
+          [2, "Two"],
+        ]),
+        { isAutomatic: true },
+      );
+    });
+  });
 });

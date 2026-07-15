@@ -241,7 +241,7 @@ export const RemappingPicker = ({
               values: Array.from(
                 mapping,
                 ([key, label]): FieldValue =>
-                  label === undefined ? [key] : [key, label],
+                  label == null ? [key] : [key, label],
               ),
             });
 

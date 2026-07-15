@@ -5,7 +5,10 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { is403Error } from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
-import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+import {
+  fieldValuesToMap,
+  getFieldValues,
+} from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
 
@@ -78,19 +81,11 @@ function hasOnlyMappableNumeralValues(
   );
 }
 
-// Seed for the custom-mapping editor: value -> label, labels unset (undefined) until the admin fills
-// them. Only reached once hasOnlyMappableNumeralValues holds, so keys are numeric/null at runtime.
+// Seed for the custom-mapping editor: value -> label, labels unset until the admin fills them.
 export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
 ): DraftMapping {
-  return new Map(
-    getFieldValues({ values: fieldValues })
-      .filter(
-        (entry): entry is [number | null] | [number | null, string] =>
-          typeof entry[0] === "number" || entry[0] === null,
-      )
-      .map(([key, label]): [number | null, string | undefined] => [key, label]),
-  );
+  return fieldValuesToMap(getFieldValues({ values: fieldValues }));
 }
 
 /**

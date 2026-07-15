@@ -18,12 +18,10 @@ import {
 describe("saved question helpers", () => {
   describe("getCollectionVirtualSchemaName", () => {
     it("should return 'Everything else' for root collection", () => {
-      expect(getCollectionVirtualSchemaName({ id: null })).toBe(
-        "Everything else",
-      );
-      expect(getCollectionVirtualSchemaName({ id: "root" })).toBe(
-        "Everything else",
-      );
+      expect(getCollectionVirtualSchemaName(null)).toBe("Everything else");
+      expect(
+        getCollectionVirtualSchemaName({ id: "root", name: "Our analytics" }),
+      ).toBe("Everything else");
     });
 
     it("should return 'Everything else' if collection is not passed", () => {
@@ -55,11 +53,11 @@ describe("saved question helpers", () => {
         expectedName: encodeURIComponent("Everything else"),
       },
       {
-        collection: { id: null },
+        collection: null,
         expectedName: encodeURIComponent("Everything else"),
       },
       {
-        collection: { id: "root" },
+        collection: { id: "root" as const, name: "Our analytics" },
         expectedName: encodeURIComponent("Everything else"),
       },
       { collection: { id: 3, name: "Marketing" }, expectedName: "Marketing" },
@@ -100,6 +98,11 @@ describe("saved question helpers", () => {
       expect(isVirtualCardId(0)).toBe(false);
       expect(isVirtualCardId(-1)).toBe(false);
       expect(isVirtualCardId("1")).toBe(false);
+    });
+
+    it("should return false for card__ ids without a numeric card id", () => {
+      expect(isVirtualCardId("card__")).toBe(false);
+      expect(isVirtualCardId("card__abc")).toBe(false);
     });
   });
 

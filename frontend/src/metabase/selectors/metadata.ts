@@ -12,6 +12,7 @@ import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
+  fieldValuesToMap,
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
@@ -28,7 +29,6 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  RowValue,
   Segment,
 } from "metabase-types/api";
 
@@ -362,12 +362,7 @@ function hydrateField(field: Field, metadata: Metadata) {
   field.target = hydrateFieldTarget(field, metadata);
   field.name_field = hydrateNameField(field, metadata);
   field.values = getFieldValues(field);
-  // pad getRemappings' [value] 1-tuples to [value, undefined] so new Map accepts them
-  field.remapping = new Map(
-    getRemappings(field).map(
-      ([value, label]): [RowValue, string | undefined] => [value, label],
-    ),
-  );
+  field.remapping = fieldValuesToMap(getRemappings(field));
 }
 
 function hydrateTableForeignKeys(

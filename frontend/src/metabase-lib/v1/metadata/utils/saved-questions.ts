@@ -15,17 +15,18 @@ const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
 // exists on enriched collection-tree items; plain Collections fall back to `name`.
 type VirtualSchemaCollection = {
   id?: Collection["id"] | null;
-  name?: Collection["name"];
+  name: Collection["name"];
   schemaName?: string;
 };
 
-export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
-  id: null,
-});
+export const ROOT_COLLECTION_VIRTUAL_SCHEMA = generateSchemaId(
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME,
+);
 
 export function getCollectionVirtualSchemaName(
   collection?: VirtualSchemaCollection | null,
-): string | undefined {
+): string {
   const isRoot =
     !collection || collection.id === null || collection.id === "root";
   return isRoot
@@ -47,7 +48,7 @@ export function getQuestionVirtualTableId(id: string | number): string {
 export function isVirtualCardId(
   tableId?: TableId | null,
 ): tableId is VirtualCardId {
-  return typeof tableId === "string" && tableId.startsWith("card__");
+  return typeof tableId === "string" && /^card__\d+$/.test(tableId);
 }
 
 export function getQuestionIdFromVirtualTableId(

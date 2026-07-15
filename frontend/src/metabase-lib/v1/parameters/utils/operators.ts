@@ -41,10 +41,7 @@ export function getOperatorDisplayName(
 }
 
 export function getParameterOperatorName(maybeOperatorName?: string) {
-  if (maybeOperatorName && doesOperatorExist(maybeOperatorName)) {
-    return maybeOperatorName;
-  }
-  return "=";
+  return doesOperatorExist(maybeOperatorName) ? maybeOperatorName : "=";
 }
 
 export function deriveFieldOperatorFromParameter(parameter: Parameter) {
