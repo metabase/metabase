@@ -77,6 +77,23 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+## Kondo Ignore Ratchets
+
+`.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
+tree may contain. `metabase.core.kondo-ratchet-test` fails when any count exceeds its budget, so ignores can
+be removed freely but never silently added. Prefer fixing the underlying warning over adding an ignore.
+
+After removing ignores, ratchet the budgets down (runs in babashka, no JVM; a no-op prints `unchanged`):
+
+```bash
+./bin/mage fix-kondo-ratchets
+```
+
+The task never raises a budget or adds an entry. If a new ignore is genuinely required, raise the budget by
+hand (the task's `WARNING:` output tells you the actual count) and defend the increase in the PR. The same
+applies when introducing a new linter: add an entry at the current actual count instead of cleaning up every
+occurrence first.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.
