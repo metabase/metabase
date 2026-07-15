@@ -46,9 +46,6 @@ describe("BrowseSchemas name-based permalinks", () => {
         "/browse/databases/Sales",
       );
     });
-
-    // Name collisions (lowest-id wins) are owned by findDatabaseByName's own
-    // tests in common/utils/database.unit.spec.ts; not re-tested per component.
   });
 
   describe("preserving the url form when drilling into a schema", () => {
