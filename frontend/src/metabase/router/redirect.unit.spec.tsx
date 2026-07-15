@@ -1,11 +1,18 @@
 import type { PropsWithChildren } from "react";
 
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { redirect } from "./redirect";
 import { Route } from "./route";
 
 const Parent = ({ children }: PropsWithChildren) => <div>{children}</div>;
+const DataLayout = ({ children }: PropsWithChildren) => (
+  <div>
+    <aside data-testid="perm-side">side</aside>
+    {children}
+  </div>
+);
+const GroupPage = () => <div>group page</div>;
 
 function mountRoutes(tree: JSX.Element, initialRoute: string) {
   const { history } = renderWithProviders(tree, {
@@ -16,6 +23,31 @@ function mountRoutes(tree: JSX.Element, initialRoute: string) {
 }
 
 describe("router/redirect", () => {
+  it("resolves a chained two-level index redirect (permissions repro)", async () => {
+    const history = mountRoutes(
+      <Route path="/admin">
+        <Route path="permissions" component={Parent}>
+          <Route>
+            <Route index component={redirect("data")} />
+            <Route path="data" component={DataLayout}>
+              <Route index component={redirect("group")} />
+              <Route path="group" component={GroupPage} />
+            </Route>
+          </Route>
+        </Route>
+      </Route>,
+      "/admin/permissions",
+    );
+
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/admin/permissions/data/group",
+      ),
+    );
+    expect(await screen.findByTestId("perm-side")).toBeInTheDocument();
+    expect(await screen.findByText("group page")).toBeInTheDocument();
+  });
+
   it("redirects to an absolute target", async () => {
     const history = mountRoutes(
       <Route path="start" component={redirect("/browse/models")} />,

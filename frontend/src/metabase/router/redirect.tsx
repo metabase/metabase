@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { useState } from "react";
 
 import { Navigate } from "./Navigate";
 import { type PlainRoute, formatPattern } from "./react-router";
@@ -18,12 +19,22 @@ type RouteParams = Record<string, string | undefined>;
 export function redirect(to: string): ComponentType {
   return function RedirectRoute(): JSX.Element {
     const { routes, params, location } = useRouter();
-    const pathname = resolveTarget(to, routes, params);
+
+    // Resolve the target once, from the match this redirect was rendered into.
+    // The router context is shared and updates as soon as the redirect fires, so
+    // a later render (before this component unmounts) would resolve a relative
+    // `to` against the already-changed, deeper location. v3's <Redirect> computed
+    // its target once in `onEnter`, so freeze it here to match.
+    const [target] = useState(() => ({
+      pathname: resolveTarget(to, routes, params),
+      search: location.search,
+      state: location.state,
+    }));
 
     return (
       <Navigate
-        to={{ pathname, search: location.search }}
-        state={location.state}
+        to={{ pathname: target.pathname, search: target.search }}
+        state={target.state}
         replace
       />
     );
