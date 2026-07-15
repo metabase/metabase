@@ -69,6 +69,6 @@
    warehouses.secrets
    workspaces
    enterprise/api
-   enterprise/scim
    enterprise/serialization
-   enterprise/sso}}
+   enterprise/sso
+   enterprise/sso.scim}}

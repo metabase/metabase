@@ -2992,9 +2992,9 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
-           enterprise/scim
            enterprise/semantic-search
-           enterprise/sso}
+           enterprise/sso
+           enterprise/sso.scim}
    :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/analytics.internal-stats
@@ -3454,21 +3454,12 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
-  enterprise/permission-debug
-  {:team "UX West"
-   :api  #{metabase-enterprise.permission-debug.api}
-   :uses #{api
-           lib
-           models
-           permissions
-           query-processor
-           util}
-   :model-imports #{:model/Card :model/User}}
 
   enterprise/permissions
   {:team "UX West"
    :ns-prefix "metabase-enterprise.advanced-permissions"
-   :module-exports #{enterprise/permissions.impersonation
+   :module-exports #{enterprise/permissions.debug
+                     enterprise/permissions.impersonation
                      enterprise/permissions.sandbox}
    :api  #{metabase-enterprise.advanced-permissions.api.routes
            metabase-enterprise.advanced-permissions.common
@@ -3492,6 +3483,18 @@
                     :model/PermissionsGroupMembership
                     :model/Sandbox
                     :model/Table}}
+
+  enterprise/permissions.debug
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.permission-debug"
+   :api  #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}
+   :model-imports #{:model/Card :model/User}}
 
   enterprise/permissions.impersonation
   {:team "Graphy"
@@ -3617,26 +3620,6 @@
                     :model/Table
                     :model/Transform}}
 
-  enterprise/scim
-  {:team "UX West"
-   :api  #{metabase-enterprise.scim.core
-           metabase-enterprise.scim.init
-           metabase-enterprise.scim.routes}
-   :uses #{analytics.interface
-           api
-           api-keys
-           models
-           permissions
-           server
-           settings
-           system
-           users
-           util
-           enterprise/serialization}
-   :model-imports #{:model/ApiKey
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/User}}
 
   enterprise/search
   {:team "UX West"
@@ -3739,6 +3722,7 @@
 
   enterprise/sso
   {:team "UX West"
+   :module-exports #{enterprise/sso.scim}
    :api  #{metabase-enterprise.sso.api.routes
            metabase-enterprise.sso.init
            metabase-enterprise.sso.settings}
@@ -3754,8 +3738,30 @@
            system
            task
            util
-           enterprise/scim}
+           enterprise/sso.scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
+
+  enterprise/sso.scim
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.scim"
+   :api  #{metabase-enterprise.scim.core
+           metabase-enterprise.scim.init
+           metabase-enterprise.scim.routes}
+   :uses #{analytics.interface
+           api
+           api-keys
+           models
+           permissions
+           server
+           settings
+           system
+           users
+           util
+           enterprise/serialization}
+   :model-imports #{:model/ApiKey
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/User}}
 
   enterprise/staleness
   {:team "UX West"
