@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-
 import {
   fireEvent,
   renderWithProviders,
@@ -342,6 +341,44 @@ describe("ExplorationSidebar", () => {
           hidden: false,
         });
       });
+    });
+  });
+
+  describe("hidden page indicator", () => {
+    const mixedBlock = createBlock({
+      id: 70,
+      name: "Costs",
+      pages: [
+        createPage({
+          id: 750,
+          name: "Hidden chart",
+          query_ids: [15],
+          hidden: true,
+        }),
+        createPage({ id: 751, name: "Visible chart", query_ids: [16] }),
+      ],
+    });
+    const mixedQueries = [
+      createQuery({ id: 15, name: "Hidden chart", status: "done" }),
+      createQuery({ id: 16, name: "Visible chart", status: "done" }),
+    ];
+
+    it("marks hidden pages with a crossed-eye icon when the filter shows them", async () => {
+      setup({
+        queries: mixedQueries,
+        blocks: [mixedBlock],
+        showHidden: true,
+        selectedEntityId: { type: "page", id: "750" },
+      });
+
+      const indicator = within(getRow("Hidden chart")).getByLabelText("Hidden");
+      expect(indicator).toBeInTheDocument();
+      expect(
+        within(getRow("Visible chart")).queryByLabelText("Hidden"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.hover(indicator);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Hidden");
     });
   });
 
