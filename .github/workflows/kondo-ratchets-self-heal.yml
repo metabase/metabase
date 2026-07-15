@@ -3,6 +3,9 @@ name: Kondo Ratchets Self-Heal
 # Stale budgets in .clj-kondo/ratchets.edn (above the actual ignore counts) fail CI. On PRs
 # labelled kondo-ratchets-self-healing, this commits the lowered budgets to the branch;
 # unlabelled PRs rely on local test runs to tighten the file.
+permissions:
+  contents: read
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
