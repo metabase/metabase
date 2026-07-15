@@ -150,7 +150,16 @@
       (t2/update! :model/Database (:id old-sample-db)
                   (cond-> {:engine engine, :details details}
                     settings (assoc :settings settings)))
-      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)}))
+      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
+      ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
+      ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
+      ;; the model's before-update rejects all updates, and delete+reinsert would churn ids for a rename that
+      ;; doesn't change any permission value.
+      (t2/query {:update (t2/table-name :model/DataPermissions)
+                 :set    {:schema_name (table-schema-for-engine engine)}
+                 :where  [:and
+                          [:= :db_id (:id old-sample-db)]
+                          [:not= :table_id nil]]}))
     (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
 
 (defn update-sample-database-if-needed!
