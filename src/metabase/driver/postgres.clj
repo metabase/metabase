@@ -1729,7 +1729,7 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
         ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
@@ -1738,12 +1738,15 @@
         ;; actually used as inputs need to be locked down — schemas the workspace
         ;; never touches can keep their default ACLs.
         ;; read-only probes — one connection, no transaction needed
-        _              (jdbc/with-db-connection [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-                         (doseq [s source-schemas]
-                           (assert-no-public-create-grant!       check-conn s)
-                           (assert-has-usage-grant-option!       check-conn s)
-                           (assert-has-grant-option!             check-conn s)
-                           (assert-can-alter-default-privileges! check-conn s)))
+        _              (sql-jdbc.execute/do-with-connection-with-options
+                        driver database nil
+                        (fn [^Connection conn]
+                          (let [check-conn {:connection conn}]
+                            (doseq [s source-schemas]
+                              (assert-no-public-create-grant!       check-conn s)
+                              (assert-has-usage-grant-option!       check-conn s)
+                              (assert-has-grant-option!             check-conn s)
+                              (assert-can-alter-default-privileges! check-conn s)))))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

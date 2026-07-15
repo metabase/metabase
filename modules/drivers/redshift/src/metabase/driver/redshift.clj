@@ -1029,7 +1029,7 @@
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         quoted-user    (quote-field username)
         source-schemas (set schemas)
@@ -1044,10 +1044,13 @@
     ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
-    (jdbc/with-db-connection [t-conn spec]
-      (doseq [s source-schemas]
-        (assert-no-public-create-grant!       t-conn s)
-        (assert-can-alter-default-privileges! t-conn s)))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database nil
+     (fn [^Connection conn]
+       (let [check-conn {:connection conn}]
+         (doseq [s source-schemas]
+           (assert-no-public-create-grant!       check-conn s)
+           (assert-can-alter-default-privileges! check-conn s)))))
     ;; Grants run as auto-commit per statement so privileges are immediately
     ;; observable to a subsequent describe-database from a different connection.
     (doseq [s   source-schemas

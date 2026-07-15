@@ -547,7 +547,7 @@
 ;;; ------------------------------------------ Workspace Isolation ------------------------------------------
 
 (defmethod driver/init-workspace-isolation! :clickhouse
-  [_driver database workspace]
+  [driver database workspace]
   (let [db-name             (:schema workspace)
         canonical-db        (:db (driver.conn/effective-details database))
         read-user           (:database_details workspace)
@@ -557,32 +557,34 @@
                               (quote-schema canonical-db))]
     ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
     ;; immediately. Failure recovery is compensation via the idempotent destroy.
-    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
-                             (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
-                                     quoted-user (:password read-user))
-                             ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
-                             ;; owner auto-privileges, so grant each verb explicitly):
-                             ;;   SELECT       - read its own tables
-                             ;;   INSERT       - CTAS populate + incremental insert
-                             ;;   CREATE TABLE - transform target
-                             ;;   DROP TABLE   - swap/cleanup
-                             ;; (these four also satisfy the atomic-swap RENAME TABLE.)
-                             (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
-                                     quoted-db quoted-user)]
-                      quoted-canonical-db
-                      (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
-                                    quoted-canonical-db quoted-user)))]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
+                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                                      quoted-user (:password read-user))
+                              ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
+                              ;; owner auto-privileges, so grant each verb explicitly):
+                              ;;   SELECT       - read its own tables
+                              ;;   INSERT       - CTAS populate + incremental insert
+                              ;;   CREATE TABLE - transform target
+                              ;;   DROP TABLE   - swap/cleanup
+                              ;; (these four also satisfy the atomic-swap RENAME TABLE.)
+                              (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
+                                      quoted-db quoted-user)]
+                       quoted-canonical-db
+                       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
+                                     quoted-canonical-db quoted-user)))]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
         quoted-user    (quote-field read-user-name)]
     (when-not read-user-name
@@ -598,25 +600,29 @@
                  (format "GRANT SELECT ON %s.* TO %s"
                          (quote-schema schema)
                          quoted-user))]
-      (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql sqls]
-            (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [stmt (.createStatement conn)]
+           (doseq [sql sqls]
+             (.addBatch ^Statement stmt ^String sql))
+           (.executeBatch ^Statement stmt)))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
-  [_driver database workspace]
+  [driver database workspace]
   (let [db-name      (:schema workspace)
         username     (-> workspace :database_details :user)
         quoted-db    (quote-schema db-name)
         quoted-user  (quote-field username)]
-    (jdbc/with-db-connection [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                     (format "DROP DATABASE IF EXISTS %s" quoted-db)
-                     (format "DROP USER IF EXISTS %s" quoted-user)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql [;; DROP DATABASE cascades to all tables within it
+                      (format "DROP DATABASE IF EXISTS %s" quoted-db)
+                      (format "DROP USER IF EXISTS %s" quoted-user)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")
