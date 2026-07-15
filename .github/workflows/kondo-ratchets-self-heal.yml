@@ -30,7 +30,6 @@ jobs:
         run: ./bin/mage fix-kondo-ratchets
       - name: Commit to the PR branch if any budget decreased
         env:
-          # via env rather than inline: branch names are untrusted input (actionlint [expression])
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           if git diff --quiet .clj-kondo/ratchets.edn; then
