@@ -91,10 +91,17 @@ To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 ./bin/mage fix-kondo-ratchets
 ```
 
-Budget too low (you added an ignore): the task never raises a budget or adds an entry. If the ignore is
-genuinely required, raise the budget by hand (the task's `WARNING:` output tells you the actual count) and
-defend the increase in the PR. The same applies when introducing a new linter: add an entry at the current
-actual count instead of cleaning up every occurrence first.
+Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
+genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
+PR.
+
+Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment on the line
+above (or trailing on the same line). The set only shrinks: once a linter's last uncommented ignore gains
+a comment, the fixer drops its exemption.
+
+Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
+flags, then `--seed` records the budget — no big-bang cleanup. To burn debt down, `./bin/mage
+kondo-redundant-ignores` lists ignores that are no longer needed (slow: full kondo run).
 
 ## Tool Preferences
 
