@@ -5,8 +5,8 @@
  :largest-scc-namespaces 1122
  :max-file-deftests 17538
  :max-file-test-namespaces 1388
- :module-count 199
- :module-exports 67
- :ns-prefix-overrides 77
+ :module-count 200
+ :module-exports 68
+ :ns-prefix-overrides 78
  :parent-team-mismatches 26
  :total-api 561}
