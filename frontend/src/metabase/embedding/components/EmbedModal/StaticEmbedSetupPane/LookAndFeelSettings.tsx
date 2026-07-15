@@ -33,12 +33,14 @@ const THEME_OPTIONS = [
     get label() {
       return t`Light`;
     },
+    // Unjustified type cast. FIXME
     value: "light" as DisplayTheme,
   },
   {
     get label() {
       return t`Dark`;
     },
+    // Unjustified type cast. FIXME
     value: "night" as DisplayTheme,
   },
 ] as const;

@@ -159,6 +159,7 @@ function buildSingleSeries(
 
   return [
     {
+      // Unjustified type cast. FIXME
       card: {
         display: displayType,
         visualization_settings: {

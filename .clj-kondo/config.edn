@@ -179,6 +179,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
@@ -453,6 +454,9 @@
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.entity-retrieval.reconcile-test/with-isolated-index                 clojure.core/fn
+  metabase-enterprise.mfa.enrollment-flow-test/with-fresh-user-session!                  clojure.core/fn
+  metabase-enterprise.mfa.login-flow-test/with-enrolled-rasta!                           clojure.core/fn
+  metabase-enterprise.mfa.recovery-codes-test/with-confirmed-enrollment!                 clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
@@ -621,6 +625,9 @@
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.mq.core/with-queue                                                                                               hooks.common/let-second
+   metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
+   metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*

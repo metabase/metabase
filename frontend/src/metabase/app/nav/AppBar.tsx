@@ -1,4 +1,5 @@
 import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { QuestionLineage } from "metabase/app/nav/QuestionLineage";
 import {
   getCollectionId,
   getIsAppSwitcherVisible,
@@ -18,7 +19,6 @@ import {
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import type { AppBarProps } from "metabase/nav/components/AppBar/AppBar";
-import { QuestionLineage } from "metabase/nav/components/QuestionLineage";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -97,6 +97,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     dashboardId != null ? { id: dashboardId } : skipToken,
   );
 
+  // Unjustified type cast. FIXME
   const locationState = props.location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {

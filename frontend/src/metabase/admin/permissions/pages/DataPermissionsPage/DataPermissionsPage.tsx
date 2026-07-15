@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { useAsync } from "react-use";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
   useListDatabasesQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Route } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
@@ -27,7 +27,7 @@ import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;
-  route: typeof Route;
+  route: Route;
   params: {
     databaseId: DatabaseId;
   };

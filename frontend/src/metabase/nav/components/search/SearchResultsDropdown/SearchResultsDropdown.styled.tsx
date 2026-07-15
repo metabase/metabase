@@ -11,6 +11,7 @@ import {
 import type { GroupProps, PaperProps } from "metabase/ui";
 import { Group, Paper } from "metabase/ui";
 
+// Unjustified type cast. FIXME
 export const SearchResultsContainer = styled(Paper)<PaperProps>`
   display: flex;
   flex-direction: column;

@@ -10,7 +10,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,

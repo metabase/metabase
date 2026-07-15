@@ -57,7 +57,8 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   ) => {
     const update =
       destination.model === "dashboard"
-        ? { dashboard_id: destination.id as number }
+        ? // Unjustified type cast. FIXME
+          { dashboard_id: destination.id as number }
         : {
             dashboard_id: null,
             collection_id: canonicalCollectionId(destination.id),

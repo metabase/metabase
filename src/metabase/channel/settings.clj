@@ -337,17 +337,3 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
-
-(defsetting static-viz-mode
-  "How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
-  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
-  pool of external Node.js child processes (requires a `node` binary on the host's PATH)."
-  :type       :keyword
-  :visibility :internal
-  :default    :graalvm
-  :export?    false
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:graalvm :node} (keyword new-value))
-                          (tru "Invalid static-viz-mode! Only values of graalvm and node are allowed.")))
-                (setting/set-value-of-type! :keyword :static-viz-mode new-value)))

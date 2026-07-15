@@ -102,6 +102,30 @@
   (testing "no scope list is rendered when none were requested"
     (is (not (re-find #"class=\"scopes\"" (render-with-scopes! nil))))))
 
+(defn- render-with-redirect-uri! [redirect-uri]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (consent-page/render-consent-page
+     {:client-name  "Test App"
+      :oauth-params (cond-> {:response_type "code" :client_id "abc123"}
+                      redirect-uri (assoc :redirect_uri redirect-uri))
+      :nonce        "test-nonce"
+      :csrf-token   "test-csrf"})))
+
+(deftest consent-page-redirect-destination-test
+  (testing "the destination host the code will be sent to is shown"
+    (let [html (render-with-redirect-uri! "https://claude.ai/api/mcp/callback")]
+      (is (re-find #"Redirects to" html))
+      (is (re-find #"<strong>claude\.ai</strong>" html))))
+  (testing "only the parsed host is shown as the destination — userinfo can't spoof the bold host"
+    (let [html (render-with-redirect-uri! "https://evil.example@good.example/cb")]
+      (is (re-find #"<strong>good\.example</strong>" html))
+      (is (not (re-find #"<strong>evil\.example" html)))))
+  (testing "no destination row when there is no meaningful host (custom-scheme native redirect)"
+    (let [html (render-with-redirect-uri! "com.example.app:/oauth2redirect")]
+      (is (not (re-find #"Redirects to" html)))))
+  (testing "no destination row when redirect_uri is absent"
+    (is (not (re-find #"Redirects to" (render-with-redirect-uri! nil))))))
+
 (deftest consent-page-full-access-warning-test
   (testing "a full-access scope shows an explicit warning that it grants complete account access"
     (let [html (render-with-scopes! [{:scope        "mb:full"

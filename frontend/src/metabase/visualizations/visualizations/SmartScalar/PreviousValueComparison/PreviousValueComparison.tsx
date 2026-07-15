@@ -42,7 +42,8 @@ export function PreviousValueComparison({
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChangeAutoPrecision(percentChange as number, {
+      ? // Unjustified type cast. FIXME
+        formatChangeAutoPrecision(percentChange as number, {
           fontFamily,
           fontWeight: 900,
           width: getChangeWidth(width),

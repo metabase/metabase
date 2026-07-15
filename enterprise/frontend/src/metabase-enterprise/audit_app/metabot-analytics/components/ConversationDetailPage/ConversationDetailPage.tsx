@@ -11,6 +11,7 @@ import {
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import { useBranchableMessages } from "metabase/metabot/hooks";
 import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
@@ -56,13 +57,24 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     refetchOnMountOrArgChange: true,
   });
 
-  const chatMessages = useMemo(() => {
-    return normalizeFetchedChatMessages(conversation?.chat_messages ?? [], {
-      isSlack:
-        conversation?.profile_id === "slackbot" ||
-        conversation?.profile_id === "slack",
-    });
-  }, [conversation]);
+  const isSlack =
+    conversation?.profile_id === "slackbot" ||
+    conversation?.profile_id === "slack";
+
+  const conversationMessages = useMemo(
+    () => conversation?.messages ?? [],
+    [conversation?.messages],
+  );
+
+  const { messages, getExtraActions } = useBranchableMessages(
+    conversationMessages,
+    { isSlack },
+  );
+
+  const feedbackChatMessages = normalizeFetchedChatMessages(
+    conversationMessages,
+    { isSlack },
+  );
 
   if (isLoading || error) {
     return (
@@ -108,7 +120,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <FeedbackCard
                   key={item.id}
                   feedback={item}
-                  chatMessages={chatMessages}
+                  chatMessages={feedbackChatMessages}
                 />
               ))}
             </Stack>
@@ -126,7 +138,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
-              messages={chatMessages}
+              messages={messages}
+              getExtraActions={getExtraActions}
               isDoingScience={false}
               debug
               readonly
@@ -170,18 +183,14 @@ function FeedbackCard({
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
 }) {
-  const agentResponse = useMemo(
-    () =>
-      feedback.external_id
-        ? chatMessages.find(
-            (m): m is MetabotAgentTextChatMessage =>
-              m.role === "agent" &&
-              m.type === "text" &&
-              m.externalId === feedback.external_id,
-          )
-        : undefined,
-    [feedback.external_id, chatMessages],
-  );
+  const agentResponse = feedback.external_id
+    ? chatMessages.find(
+        (message): message is MetabotAgentTextChatMessage =>
+          message.role === "agent" &&
+          message.type === "text" &&
+          message.externalId === feedback.external_id,
+      )
+    : undefined;
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null

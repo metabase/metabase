@@ -421,6 +421,7 @@ class TagEditorParamInner extends Component<
                   });
 
                   if (tag.default != null) {
+                    // Unjustified type cast. FIXME
                     if (
                       !newTemporalUnits.includes(tag.default as TemporalUnit)
                     ) {

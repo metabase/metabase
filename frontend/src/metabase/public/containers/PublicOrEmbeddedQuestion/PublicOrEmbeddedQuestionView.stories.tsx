@@ -223,6 +223,7 @@ export const PivotTableLightTheme = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const cell = await within(canvasElement).findByText("field-123");
+    // Unjustified type cast. FIXME
     (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
   },
 };
@@ -356,6 +357,7 @@ export const SmartScalarLightThemeTooltip = {
     const value = "vs. July 21, 2024, 12:00 AM";
     const valueElement = await within(canvasElement).findByText(value);
     await userEvent.hover(valueElement);
+    // Unjustified type cast. FIXME
     const tooltip = document.documentElement.querySelector(
       '[role="tooltip"]',
     ) as HTMLElement;
@@ -388,10 +390,12 @@ export const TableLightTheme = {
     card: createMockCard({
       id: getNextId(),
       display: "table",
+      // Unjustified type cast. FIXME
       ...(TABLE_MOCK_DATA.variousColumnSettings[0].card as any),
     }),
     result: createMockDataset({
       data: createMockDatasetData(
+        // Unjustified type cast. FIXME
         TABLE_MOCK_DATA.variousColumnSettings[0].data as any,
       ),
     }),

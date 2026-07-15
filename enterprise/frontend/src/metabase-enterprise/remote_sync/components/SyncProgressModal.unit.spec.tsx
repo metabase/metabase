@@ -191,6 +191,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "teleported" } as unknown as RemoteSyncOutcome,
       });
 
@@ -203,6 +204,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "import",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "pulled" } as unknown as RemoteSyncOutcome,
       });
 
@@ -215,6 +217,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "pushed", count: 3 } as unknown as RemoteSyncOutcome,
       });
 
@@ -227,6 +230,7 @@ describe("SyncProgressModal", () => {
       setup({
         taskType: "export",
         isSuccess: true,
+        // Unjustified type cast. FIXME
         outcome: { kind: "merged", pulled: 1 } as unknown as RemoteSyncOutcome,
       });
 

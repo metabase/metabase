@@ -106,6 +106,7 @@ function PinnedItemCard({
     event: MouseEvent<HTMLDivElement>,
     setterFn: Dispatch<SetStateAction<boolean>>,
   ) => {
+    // Unjustified type cast. FIXME
     const target = event.target as HTMLDivElement;
     const isTargetElWiderThanCard = target?.scrollWidth > target?.clientWidth;
     if (isTargetElWiderThanCard) {

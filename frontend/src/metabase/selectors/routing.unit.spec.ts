@@ -28,6 +28,7 @@ describe("getLocation", () => {
   });
 
   it("falls back to a default location when routing is absent", () => {
+    // Unjustified type cast. FIXME
     const state = { ...createMockState(), routing: undefined } as any;
 
     expect(getLocation(state)).toEqual(createMockLocation({ pathname: "" }));

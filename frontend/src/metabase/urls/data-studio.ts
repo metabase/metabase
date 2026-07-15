@@ -39,6 +39,7 @@ export function isDataStudioTableMetadataTab(
   tab: unknown,
 ): tab is DataStudioTableMetadataTab {
   return DATA_STUDIO_TABLE_METADATA_TABS.includes(
+    // Unjustified type cast. FIXME
     tab as DataStudioTableMetadataTab,
   );
 }

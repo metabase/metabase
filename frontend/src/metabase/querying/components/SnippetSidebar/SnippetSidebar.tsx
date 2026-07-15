@@ -447,11 +447,13 @@ function Row(props: RowProps) {
   // `type` tells us what `item` is, but TS can't correlate independent props
   if (props.type === "collection") {
     const CollectionRow = PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection;
+    // Unjustified type cast. FIXME
     return CollectionRow ? (
       <CollectionRow {...props} item={props.item as Collection} />
     ) : null;
   }
   if (props.type === "snippet") {
+    // Unjustified type cast. FIXME
     return <SnippetRow {...props} item={props.item as NativeQuerySnippet} />;
   }
   return null;

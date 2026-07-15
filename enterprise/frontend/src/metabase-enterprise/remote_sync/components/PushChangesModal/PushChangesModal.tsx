@@ -41,6 +41,7 @@ export const PushChangesModal = ({
   ] = useExportChangesMutation();
 
   const { errorMessage } = useMemo(
+    // Unjustified type cast. FIXME
     () => parseSyncError(exportError as SyncError),
     [exportError],
   );

@@ -75,6 +75,7 @@ describe("NotebookStepList", () => {
 });
 
 function assertActionButtonsOrder(buttonNames: string[]) {
+  // Unjustified type cast. FIXME
   const actionButtonsContainer = screen
     .getAllByTestId("action-buttons")
     .at(-1) as HTMLElement;

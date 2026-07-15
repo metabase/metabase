@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [get-in some not-empty])
+  (:refer-clojure :exclude [get-in mapv some not-empty])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as jio]
@@ -51,7 +51,7 @@
   mysql.actions/keep-me
   mysql.ddl/keep-me)
 
-(driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :mysql, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
@@ -417,7 +417,7 @@
   :signed)
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [text (sql.qp/->honeysql driver text)
         div  (sql.qp/->honeysql driver divider)
         pos  (sql.qp/->honeysql driver position)]
@@ -443,21 +443,21 @@
       div -1]]))
 
 (defmethod sql.qp/->honeysql [:mysql :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
 
 ;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
 ;; `CHAR`.
 (defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "char"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "char")))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:mysql :length]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:char_length (sql.qp/->honeysql driver arg)])
 
 (def ^:private database-type->mysql-cast-type-name
@@ -497,10 +497,10 @@
         [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
-  [driver [_ id-or-name opts :as mbql-clause]]
+  [driver [_ opts id-or-name :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
       (not (driver-api/json-field? stored-field))
@@ -607,7 +607,7 @@
        (temporal-cast (h2x/database-type expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
         timestamp? (or (sql.qp.u/field-with-tz? arg)
                        (h2x/is-of-type? expr "timestamp"))]
@@ -1377,10 +1377,10 @@
   [username schemas]
   (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
-    (perf/mapv (fn [db]
-                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (quote-schema db) quoted-user))
-               source-databases)))
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (quote-schema db) quoted-user))
+          source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]

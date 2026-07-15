@@ -3,10 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";

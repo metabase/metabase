@@ -610,6 +610,8 @@
    Matches Python Dashboard.llm_representation exactly."
   [{:keys [id name description verified collection dashcards]}]
   ;; Group cards by tab and sort
+  ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
+  ;; resources/fetch-dashboard-items; align on position
   (let [tabs (group-by :dashboard_tab_id dashcards)
         sorted-tabs (sort-by first tabs)
         tabs-xml (when (seq dashcards)
@@ -859,7 +861,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 
@@ -889,13 +891,22 @@
       :page      1
       :pages     1}
 
+   An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
+   block ahead of the items; items reference tabs via their `tab_id` attribute.
+
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages]}]
+  [{:keys [list-type items total page pages tabs]}]
   (let [type-attr (clojure.core/name (or list-type :items))
+        tabs-xml  (when (seq tabs)
+                    (str "<tabs>\n"
+                         (str/join "\n" (map (fn [{:keys [id name]}]
+                                               (str "  <tab tab_id=\"" id "\" name=\"" (escape-xml name) "\"/>"))
+                                             tabs))
+                         "\n</tabs>"))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
         truncated (< page pages)
@@ -907,6 +918,7 @@
          "\" pages=\"" (or pages 1)
          "\" showing=\"" showing
          "\" truncated=\"" (boolean truncated) "\">\n"
+         (when tabs-xml (str tabs-xml "\n"))
          (when (seq items) (str item-xml "\n"))
          (when note (str note "\n"))
          "</list>")))

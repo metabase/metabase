@@ -11,6 +11,7 @@ function getNonDisabledEmbeddingParams(
     }
 
     return result;
+    // Unjustified type cast. FIXME
   }, {} as EmbeddingParameters);
 }
 

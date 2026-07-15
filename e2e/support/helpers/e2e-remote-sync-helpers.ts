@@ -127,6 +127,7 @@ export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();
   cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
     cy.wrap(
+      // Unjustified type cast. FIXME
       (files as string[]).filter(
         (file: string) => !file.includes(".git") && file.includes(".yaml"),
       ),
@@ -164,6 +165,7 @@ export const updateRemoteQuestion = (
 ) => {
   wrapSyncedCollectionFiles();
   cy.get("@syncedCollectionFiles").then((syncedCollectionFiles) => {
+    // Unjustified type cast. FIXME
     const questionFilePath = (
       syncedCollectionFiles as unknown as string[]
     ).find((file) => file.includes("remote_sync_test_question.yaml"));
@@ -171,6 +173,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
+      // Unjustified type cast. FIXME
       const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);

@@ -73,6 +73,7 @@ export const DataSelectorFieldPicker = ({
         field={item.field}
         position="top-end"
         size={18}
+        // Unjustified type cast. FIXME
         icon={item.field.icon() as unknown as IconName}
       />
     );

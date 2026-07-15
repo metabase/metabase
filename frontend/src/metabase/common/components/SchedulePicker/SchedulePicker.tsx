@@ -176,6 +176,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           onChange={(value) =>
             this.handleChangeProperty(
               "schedule_frame",
+              // Unjustified type cast. FIXME
               value as ScheduleFrameType,
             )
           }
@@ -211,6 +212,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           minButtonWidth={110}
           value={schedule.schedule_day ?? ""}
           onChange={(value) =>
+            // Unjustified type cast. FIXME
             this.handleChangeProperty("schedule_day", value as ScheduleDayType)
           }
           data={toMantineData(getDayOfWeekOptions())}
@@ -221,6 +223,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 
   renderMinutePicker() {
     const { schedule } = this.props;
+    // Unjustified type cast. FIXME
     const minuteOfHour = isNaN(schedule.schedule_minute as number)
       ? 0
       : (schedule.schedule_minute ?? 0);
@@ -247,6 +250,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
   renderHourPicker() {
     const { schedule, timezone, textBeforeSendTime } = this.props;
 
+    // Unjustified type cast. FIXME
     const hourOfDay = isNaN(schedule.schedule_hour as number)
       ? 8
       : schedule.schedule_hour || 0;

@@ -54,10 +54,6 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import routing from `metabase/router` instead.",
     },
     {
-      name: "react-router-redux",
-      message: "Please import routing from `metabase/router` instead.",
-    },
-    {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
     },
@@ -379,6 +375,7 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
       "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
@@ -652,10 +649,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
-              name: "react-router-redux",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
             },
@@ -693,10 +686,6 @@ const configs = [
             },
             {
               name: "react-router",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
-              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {
@@ -878,10 +867,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
-              name: "react-router-redux",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -956,10 +941,6 @@ const configs = [
           paths: [
             {
               name: "react-router",
-              message: "Please import routing from `metabase/router` instead.",
-            },
-            {
-              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {

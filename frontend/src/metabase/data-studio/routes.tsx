@@ -1,5 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
-
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
@@ -9,8 +7,9 @@ import {
   PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { IndexRoute, Route, type RouteComponent } from "metabase/router";
+import { Navigate, Route, type RouteComponent } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
@@ -31,7 +30,6 @@ import {
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
-  store: Store<State>,
   CanAccessDataStudio: RouteComponent,
   CanAccessDataModel: RouteComponent,
   IsAdmin: RouteComponent,
@@ -39,11 +37,7 @@ export function getDataStudioRoutes(
   return (
     <Route component={CanAccessDataStudio}>
       <Route path="data-studio" component={DataStudioLayout}>
-        <IndexRoute
-          onEnter={(_state, replace) => {
-            replace(getIndexPath(store.getState()));
-          }}
-        />
+        <Route index component={DataStudioIndexRedirect} />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes(IsAdmin)}
@@ -93,6 +87,11 @@ export function getDataStudioRoutes(
       </Route>
     </Route>
   );
+}
+
+function DataStudioIndexRedirect() {
+  const indexPath = useSelector(getIndexPath);
+  return <Navigate to={indexPath} replace />;
 }
 
 function getIndexPath(state: State) {

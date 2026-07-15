@@ -13,7 +13,7 @@ import { getLocation } from "metabase/selectors/routing";
 
 // Keystone characterization test for the navigation TRANSPORT seam.
 //
-// `metabase/router` re-owns react-router-redux's `push`/`replace`/`goBack`
+// `metabase/router` owns the `push`/`replace`/`goBack`
 // action creators + `routerMiddleware` + `routing` reducer +
 // `syncHistoryWithStore`. This test pins the observable contract that the
 // replacement preserves byte-for-byte:
@@ -46,6 +46,7 @@ const setup = () => {
 
   const locationChanges = () =>
     actions.filter((a) => a.type === LOCATION_CHANGE);
+  // Unjustified type cast. FIXME
   const location = () => getLocation(store.getState() as any);
 
   return { store, history: syncedHistory, location, locationChanges };

@@ -186,6 +186,7 @@ describe("InviteToViewModal", () => {
       method: "POST",
     })[0];
     const body = JSON.parse(
+      // Unjustified type cast. FIXME
       await (call.options?.body as unknown as Promise<string>),
     );
     expect(body.invite_target).toEqual(INVITE_TARGET);

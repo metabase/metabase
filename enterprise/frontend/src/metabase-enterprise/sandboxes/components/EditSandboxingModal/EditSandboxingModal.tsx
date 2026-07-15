@@ -49,6 +49,7 @@ const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
@@ -147,7 +148,7 @@ const EditSandboxingModal = ({
   if (loadingCard || loadingTabe) {
     return (
       <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Center>
     );
   }

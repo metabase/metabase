@@ -363,6 +363,7 @@ describe("Schedule", () => {
       "%s",
       async (_label, initialCronString, clicks, expectedCron) => {
         const { onScheduleChange } = setupHarness({ initialCronString });
+        // Unjustified type cast. FIXME
         for (const entry of Object.entries(clicks) as [
           ScheduleComponentType,
           string,
