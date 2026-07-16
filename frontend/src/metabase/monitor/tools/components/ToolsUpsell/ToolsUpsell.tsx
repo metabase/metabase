@@ -1,14 +1,19 @@
 import { t } from "ttag";
 
-import { UpsellPerformanceTools } from "metabase/admin/upsells";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { Stack } from "metabase/ui";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import { BaseUpsellPage } from "metabase/monitor/upsells";
 
 export const ToolsUpsell = () => {
+  usePageTitle(t`Erroring questions`);
+
   return (
-    <Stack gap="lg">
-      <MonitorHeaderTitle>{t`Erroring questions`}</MonitorHeaderTitle>
-      <UpsellPerformanceTools source="settings-tools" />
-    </Stack>
+    <BaseUpsellPage
+      campaign="audit-tools"
+      location="settings-tools"
+      header={t`Erroring questions`}
+      title={t`Troubleshoot faster`}
+      description={t`Find and fix issues fast, with an overview of all errors and model caching logs.`}
+      image="app/assets/img/upsell-performance-tools.png"
+    />
   );
 };
