@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.content-verification.core :as moderation]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,6 +25,10 @@
 (def ^:private relative-support-ok?        @#'insights/relative-support-ok?)
 (def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
 (def ^:private composite-atomsets-memo     @#'insights/existing-composite-atomsets*-memo)
+(def ^:private candidate-source-cards      @#'insights/candidate-source-cards)
+(def ^:private existing-measure-signatures @#'insights/existing-measure-signatures)
+(def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
+(def ^:private segment-signature           @#'insights/segment-signature)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -246,3 +251,162 @@
                (composite-opts (mt/id :orders)))))
     (finally
       (memoize/memo-clear! composite-atomsets-memo))))
+
+;;; ---------- deterministic candidate mining tests ----------
+
+(defn- orders-base-query []
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn- orders-measure-query []
+  (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+        subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (lib/aggregate (orders-base-query) (lib/sum subtotal))))
+
+(defn- orders-segment-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (lib/filter (orders-base-query)
+                (lib/and (lib/= product-id 987654)
+                         (lib/> subtotal 12345)))))
+
+(defn- orders-three-atom-segment-query [quantity-value]
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))
+        quantity   (lib.metadata/field mp (mt/id :orders :quantity))]
+    (lib/filter (orders-base-query)
+                (lib/and (lib/= product-id 987654)
+                         (lib/> subtotal 12345)
+                         (lib/= quantity quantity-value)))))
+
+(defn- candidates-from-card
+  [card-id candidates]
+  (filterv (fn [candidate]
+             (some #(= card-id (:id %)) (get-in candidate [:evidence :source-items])))
+           candidates))
+
+(deftest candidate-source-cards-use-curation-or-popularity-test
+  (let [query (orders-base-query)]
+    (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
+                   :model/Card {plain-id :id} {:name "candidate mining plain"
+                                               :type :question
+                                               :dataset_query query
+                                               :view_count 9}
+                   :model/Card {official-id :id} {:name "candidate mining official"
+                                                  :type :model
+                                                  :dataset_query query
+                                                  :collection_id official-collection-id
+                                                  :view_count 0}
+                   :model/Card {verified-id :id} {:name "candidate mining verified"
+                                                  :type :question
+                                                  :dataset_query query
+                                                  :view_count 0}
+                   :model/Card {popular-id :id} {:name "candidate mining popular"
+                                                 :type :question
+                                                 :dataset_query query
+                                                 :view_count 10}]
+      (moderation/create-review! {:moderated_item_id   verified-id
+                                  :moderated_item_type "card"
+                                  :moderator_id        (mt/user->id :crowberto)
+                                  :status              "verified"})
+      (let [cards (candidate-source-cards {:min-view-count 10})
+            by-id (into {} (map (juxt :id identity)) cards)]
+        (is (not (contains? by-id plain-id)))
+        (is (true? (:official-collection? (by-id official-id))))
+        (is (= :model (:type (by-id official-id))))
+        (is (true? (:verified? (by-id verified-id))))
+        (is (true? (:popular? (by-id popular-id))))))))
+
+(deftest candidate-measures-return-valid-definition-and-skip-existing-test
+  (let [query (orders-measure-query)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining measure"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 1000000}]
+      (testing "explicit nil options use defaults"
+        (let [candidates (candidates-from-card
+                          card-id
+                          (insights/candidate-measures {:min-view-count nil :limit nil}))]
+          (is (= 1 (count candidates)))
+          (is (= {:type :sum
+                  :field {:id           (mt/id :orders :subtotal)
+                          :name         "SUBTOTAL"
+                          :display-name "Subtotal"}}
+                 (:aggregation (first candidates))))
+          (is (= #{:lib/type :database :stages}
+                 (set (keys (:definition (first candidates))))))))
+      (mt/with-temp [:model/Measure _measure {:name "Existing candidate mining measure"
+                                              :creator_id (mt/user->id :crowberto)
+                                              :definition query}]
+        (testing "an exact existing Measure suppresses the candidate"
+          (is (empty? (candidates-from-card
+                       card-id
+                       (insights/candidate-measures {:min-view-count 10 :limit 1000})))))))))
+
+(deftest candidate-segments-keep-atoms-when-composite-exists-test
+  (let [query (orders-segment-query)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining segment"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 1000000}]
+      (moderation/create-review! {:moderated_item_id   card-id
+                                  :moderated_item_type "card"
+                                  :moderator_id        (mt/user->id :crowberto)
+                                  :status              "verified"})
+      (testing "a verified two-atom source produces two atomic candidates and its conjunction"
+        (let [candidates (candidates-from-card
+                          card-id
+                          (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
+          (is (= 3 (count candidates)))
+          (is (= 2 (count (remove :composite? candidates))))
+          (is (every? #(= 1 (:atom-count %)) (remove :composite? candidates)))
+          (is (= [2] (mapv :atom-count (filter :composite? candidates))))))
+      (mt/with-temp [:model/Segment _segment {:name "Existing candidate mining segment"
+                                              :creator_id (mt/user->id :crowberto)
+                                              :definition query}]
+        (testing "the saved conjunction is excluded without suppressing either atom"
+          (let [expected-signature (segment-signature (mt/id :orders) (lib/atomic-filters query 0))
+                existing           (existing-segment-signatures)
+                candidates         (candidates-from-card
+                                    card-id
+                                    (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
+            (is (contains? existing expected-signature)
+                (str "Expected " expected-signature " among existing signatures " existing))
+            (is (= 2 (count candidates)))
+            (is (every? (complement :composite?) candidates))))))))
+
+(deftest candidate-segments-mine-recurring-filter-subsets-test
+  (let [query-a (orders-three-atom-segment-query 111)
+        query-b (orders-three-atom-segment-query 222)]
+    (mt/with-temp [:model/Card {card-a-id :id} {:name "candidate mining recurring segment A"
+                                                :type :question
+                                                :dataset_query query-a
+                                                :view_count 1000000}
+                   :model/Card {card-b-id :id} {:name "candidate mining recurring segment B"
+                                                :type :model
+                                                :dataset_query query-b
+                                                :view_count 1000000}]
+      (let [candidates (candidates-from-card
+                        card-a-id
+                        (insights/candidate-segments {:min-view-count 1000000 :limit 1000}))
+            composites (filterv :composite? candidates)]
+        (testing "only the shared two-atom subset survives; one-off subsets from the popular source do not"
+          (is (= 1 (count composites)))
+          (is (= 2 (:atom-count (first composites))))
+          (is (= 2 (get-in (first composites) [:evidence :distinct-source-count])))
+          (is (= #{card-a-id card-b-id}
+                 (into #{} (map :id) (get-in (first composites) [:evidence :source-items])))))))))
+
+(deftest malformed-existing-candidate-definitions-are-ignored-test
+  (testing "a malformed Measure does not abort candidate mining"
+    (with-redefs [t2/select (fn [& _]
+                              [{:table_id (mt/id :orders)
+                                :definition {:not :a-query}}])]
+      (is (= #{} (existing-measure-signatures)))))
+  (testing "a malformed Segment does not abort candidate mining"
+    (with-redefs [t2/select (fn [& _]
+                              [{:table_id (mt/id :orders)
+                                :definition {:not :a-query}}])]
+      (is (= #{} (existing-segment-signatures))))))
