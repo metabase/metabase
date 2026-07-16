@@ -52,7 +52,12 @@
    [:verified?            :boolean]
    [:official-collection? :boolean]
    [:popular?             :boolean]
-   [:view-count           nat-int?]])
+   [:view-count           nat-int?]
+   [:model-lineage        {:optional true}
+    [:sequential {:min 1}
+     [:map {:closed true}
+      [:id   pos-int?]
+      [:name [:maybe :string]]]]]])
 
 (mr/def ::candidate-evidence
   [:map {:closed true}
@@ -72,8 +77,13 @@
    [:source      ::source]
    [:definition  :map]
    [:aggregation [:map {:closed true}
-                  [:type  [:enum :count :sum :avg :min :max :distinct]]
-                  [:field [:maybe ::field]]]]
+                  [:type  [:enum :count :sum :avg :min :max :distinct :median :stddev :var :percentile
+                           :count-where :distinct-where :sum-where]]
+                  [:field [:maybe ::field]]
+                  [:percentile           {:optional true} [:and number? [:>= 0] [:<= 1]]]
+                  [:condition            {:optional true} ::mbql-clause]
+                  [:condition-fields     {:optional true} [:sequential {:min 1} ::field]]
+                  [:condition-atom-count {:optional true} pos-int?]]]
    [:evidence    ::candidate-evidence]])
 
 (mr/def ::candidate-segment
