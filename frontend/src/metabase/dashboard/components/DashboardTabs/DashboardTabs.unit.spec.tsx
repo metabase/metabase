@@ -15,6 +15,7 @@ import {
   Link,
   Route,
   type WithRouterProps,
+  withRouteProps,
   withRouter,
 } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
@@ -81,32 +82,31 @@ function setup({
     );
   };
 
+  const DashboardRoute = withRouteProps((props: WithRouterProps) => {
+    return (
+      <MockDashboardContext
+        dashboardId={1}
+        dashboard={{
+          ...TEST_DASHBOARD_STATE.dashboards[1],
+          dashcards: dashcards
+            ? Object.values(dashcards)
+            : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
+                (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
+              ),
+          tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
+        }}
+        navigateToNewCardFromDashboard={null}
+        isEditing={isEditing}
+      >
+        <RoutedDashboardComponent {...props} />
+      </MockDashboardContext>
+    );
+  });
+
   const { store } = renderWithProviders(
     <>
-      <Route
-        path="dashboard/:slug(/:tabSlug)"
-        component={(props: WithRouterProps) => {
-          return (
-            <MockDashboardContext
-              dashboardId={1}
-              dashboard={{
-                ...TEST_DASHBOARD_STATE.dashboards[1],
-                dashcards: dashcards
-                  ? Object.values(dashcards)
-                  : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
-                      (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
-                    ),
-                tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
-              }}
-              navigateToNewCardFromDashboard={null}
-              isEditing={isEditing}
-            >
-              <RoutedDashboardComponent {...props} />
-            </MockDashboardContext>
-          );
-        }}
-      />
-      <Route path="someotherpath" component={OtherComponent} />
+      <Route path="dashboard/:slug(/:tabSlug)" element={<DashboardRoute />} />
+      <Route path="someotherpath" element={<OtherComponent />} />
     </>,
     {
       storeInitialState: { dashboard },
