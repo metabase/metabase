@@ -89,8 +89,10 @@
     [commit message report-progress]
     "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.
 
-    `report-progress`, when given, is an optional 1-arg fn called with a progress fraction after the local
-    commit is durable and just before the network push begins; nil to skip.")
+    `report-progress`, when given, is an optional reporter fn accepting `(fraction)` or `(fraction opts)`;
+    nil to skip. It is called once, forced, at the commit checkpoint just after the local commit is durable
+    and before the network push begins, and then repeatedly (throttled) by the push's ProgressMonitor as
+    the push proceeds.")
   (abort-commit! [commit]
     "Release the commit's resources without committing or pushing. Returns nil."))
 

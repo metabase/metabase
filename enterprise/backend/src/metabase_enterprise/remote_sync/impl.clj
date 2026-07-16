@@ -669,7 +669,8 @@
   "Open a commit on `snapshot`, stage into it via `stage-fn`, then finish it.
 
   `stage-fn` will be passed the open commit. It should return the synced write-rows. `report-progress`, when
-  non-nil, is a 1-arg fn forwarded to `finish-commit!` (fired at the commit checkpoint, before the push).
+  non-nil, is a reporter fn forwarded unchanged to `finish-commit!` (fired forced at the commit checkpoint,
+  before the push, then throttled during the push itself).
 
   Will abort the commit if it is empty.
 
@@ -1084,12 +1085,13 @@
             [synced version] (commit-staged! snapshot message
                                              (fn [commit]
                                                (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                                               (stage-writes commit opts export-rows
-                                                             (fn [staged]
-                                                               (report (+ export-progress-plan-done
-                                                                          (* span (/ staged total)))))))
-                                             (fn [f] (report f {:force? true})))]
-        (report export-progress-serialize {:force? true})
+                                               (let [synced (stage-writes commit opts export-rows
+                                                                          (fn [staged]
+                                                                            (report (+ export-progress-plan-done
+                                                                                       (* span (/ staged total))))))]
+                                                 (report export-progress-serialize {:force? true})
+                                                 synced))
+                                             report)]
         (t2/with-transaction [_]
           (when-not (= version :remote-sync/empty-commit)
             (remote-sync.task/set-version! task-id version))
@@ -1119,9 +1121,9 @@
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
+                                               (report export-progress-serialize {:force? true})
                                                synced))
-                                           (fn [f] (report f {:force? true})))]
-      (report export-progress-serialize {:force? true})
+                                           report)]
       (t2/with-transaction [_]
         (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))

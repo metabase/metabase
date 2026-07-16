@@ -265,19 +265,22 @@
 
 (defn- ->push-progress-monitor
   "A JGit ProgressMonitor that maps the client-side \"Writing objects\" phase onto
-  [push-progress-start, push-progress-end] and calls `report-progress` (a 1-arg fraction fn). Other phases
-  only advance the underlying push; they do not move the reported bar. Upstream throttling/monotonicity is
-  handled by the reporter."
+  [push-progress-start, push-progress-end] and calls `report-progress` (a 1-arg fraction fn) on every
+  `update` tick — even outside the writing phase, falling back to `push-progress-start` — so the push
+  always heartbeats regardless of JVM locale (which can rename or suppress the \"Writing objects\" title)
+  or an unknown (zero) total. Upstream throttling/monotonicity is handled by the reporter, so the repeated
+  fallback values are cheap and safe."
   ^ProgressMonitor [report-progress]
   (let [writing? (volatile! false)
         total    (volatile! 0)
         done     (volatile! 0)
         report!  (fn []
-                   (when (and @writing? (pos? @total))
-                     (let [frac (+ push-progress-start
-                                   (* (- push-progress-end push-progress-start)
-                                      (min 1.0 (/ (double @done) @total))))]
-                       (report-progress frac))))]
+                   (report-progress
+                    (if (and @writing? (pos? @total))
+                      (+ push-progress-start
+                         (* (- push-progress-end push-progress-start)
+                            (min 1.0 (/ (double @done) @total))))
+                      push-progress-start)))]
     (reify ProgressMonitor
       (start [_ _total-tasks])
       (beginTask [_ title tot]
@@ -396,7 +399,8 @@
         (doto (.updateRef repo branch-ref)
           (.setNewObjectId commit-id)
           (.update))
-        (when report-progress (report-progress commit-progress-checkpoint))   ; local commit durable; push about to start
+        ;; local commit durable; push about to start — force this one-shot checkpoint past the throttle
+        (when report-progress (report-progress commit-progress-checkpoint {:force? true}))
         (push-branch! snapshot (when report-progress (->push-progress-monitor report-progress)))
         (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
         (.name commit-id))))

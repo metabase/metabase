@@ -7,11 +7,13 @@
 (set! *warn-on-reflection* true)
 
 (deftest push-progress-monitor-maps-writing-objects-into-tail-test
-  (testing "the push monitor reports [0.8, ~0.99] over the Writing objects phase and ignores other phases"
+  (testing "the push monitor reports [0.8, ~0.99] over the Writing objects phase and heartbeats 0.8 during
+            other phases (so a locale where JGit never titles a phase \"Writing objects\", or reports an
+            unknown/zero total, still gets liveness pings)"
     (let [reported (atom [])
           ^org.eclipse.jgit.lib.ProgressMonitor mon
           (#'git/->push-progress-monitor (fn [f] (swap! reported conj f)))]
-      ;; a non-writing phase should not move the bar
+      ;; a non-writing phase still heartbeats at push-progress-start, not the writing-phase ramp
       (.beginTask mon "Finding sources" 10)
       (.update mon 5)
       (.endTask mon)
@@ -21,6 +23,8 @@
       (.update mon 50)   ; done    -> ~0.99
       (.endTask mon)
       (let [xs @reported]
-        (is (seq xs) "reported at least once during Writing objects")
+        (is (seq xs) "reported at least once")
         (is (every? #(<= 0.8 % 0.99) xs) "all reports within the push tail band")
-        (is (apply <= xs) "monotonic non-decreasing")))))
+        (is (apply <= xs) "monotonic non-decreasing")
+        (is (= 0.8 (first xs)) "non-writing phase heartbeats at push-progress-start")
+        (is (> (last xs) 0.98) "writing phase ramp reaches close to the push tail's end")))))

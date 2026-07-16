@@ -42,10 +42,10 @@
                      (replace-all! [_] nil)
                      (empty-commit? [_] false)
                      (finish-commit! [_ _message] "sha")
-                     (finish-commit! [_ _message report] (when report (report 0.8)) "sha")
+                     (finish-commit! [_ _message report] (when report (report 0.8 {:force? true})) "sha")
                      (abort-commit! [_] nil))]
       (with-redefs [source.p/open-commit (fn [_] commit)]
         (#'impl/commit-staged! {:managed-dirs []} "msg"
                                (fn [_c] [{:id 1}])
-                               (fn [f] (swap! reported conj f))))
+                               (fn [f & _] (swap! reported conj f))))
       (is (= [0.8] @reported)))))
