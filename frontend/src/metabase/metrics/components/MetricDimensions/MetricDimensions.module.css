@@ -19,6 +19,10 @@
   min-width: 0;
   min-height: 0;
   padding: var(--mantine-spacing-xl);
+
+  .searchInput {
+    border-radius: var(--mantine-radius-md);
+  }
 }
 
 .scrollArea {
@@ -27,6 +31,7 @@
 }
 
 .row {
+  min-height: 2.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
@@ -39,7 +44,6 @@
 .rowActive,
 .rowActive:hover {
   border-color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-lighter);
 }
 
 .rowButton {
@@ -55,6 +59,7 @@
 }
 
 .addableRow {
+  min-height: 2.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);

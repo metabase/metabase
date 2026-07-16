@@ -73,7 +73,7 @@ export function DimensionList({
       pt="lg"
     >
       <Group justify="space-between" wrap="nowrap" align="center">
-        <Title order={4}>{t`Add, remove, edit, or reorder dimensions`}</Title>
+        <Title order={4}>{t`Dimensions of this metric`}</Title>
         <Group gap="md" wrap="nowrap" align="center">
           {hasChecked && (
             <ActionIcon
@@ -86,23 +86,23 @@ export function DimensionList({
             </ActionIcon>
           )}
           <Button
-            variant="filled"
             disabled={isAddDisabled}
             onClick={onAdd}
             size="sm"
-          >{t`Add`}</Button>
+          >{t`Available dimensions`}</Button>
         </Group>
       </Group>
 
       <TextInput
-        placeholder={t`Search…`}
-        value={search}
+        classNames={{ input: S.searchInput }}
         leftSection={<Icon name="search" />}
         onChange={(event) => onSearchChange(event.currentTarget.value)}
+        placeholder={t`Search…`}
+        value={search}
       />
 
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <ScrollArea className={S.scrollArea}>
+        <ScrollArea className={S.scrollArea} offsetScrollbars="present">
           <Stack gap="sm">
             <SortableList
               items={dimensions}

@@ -61,6 +61,7 @@ export function DimensionRow({
           <Checkbox
             aria-label={dimension.display_name}
             checked={checked}
+            size="xs"
             onChange={(event) => onToggle(event.currentTarget.checked)}
           />
           <UnstyledButton className={S.rowButton} onClick={onEdit}>
@@ -77,7 +78,7 @@ export function DimensionRow({
                   tooltip={t`This column is no longer available in the metric's data`}
                 />
               )}
-              <Icon name="chevronright" c="text-secondary" />
+              <Icon name="chevronright" c="text-secondary" size={12} />
             </Group>
           </UnstyledButton>
         </Group>

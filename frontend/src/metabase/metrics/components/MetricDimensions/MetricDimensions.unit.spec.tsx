@@ -145,9 +145,10 @@ describe("MetricDimensions", () => {
 
     expect(getListPanel().getByText("Created At")).toBeInTheDocument();
     expect(getListPanel().getByText("Country")).toBeInTheDocument();
+    expect(screen.getByText("Dimensions of this metric")).toBeInTheDocument();
     expect(
-      screen.getByText("Add, remove, edit, or reorder dimensions"),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: "Available dimensions" }),
+    ).toHaveAttribute("data-variant", "default");
   });
 
   it("shows no detail panel until the user acts", async () => {
@@ -206,10 +207,12 @@ describe("MetricDimensions", () => {
     setup();
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available dimensions" }),
+    );
 
     const addPanel = within(await screen.findByTestId("add-dimensions-panel"));
-    expect(addPanel.getByText("Add more dimensions")).toBeInTheDocument();
+    expect(addPanel.getByText("Add available dimensions")).toBeInTheDocument();
     expect(
       await addPanel.findByText("Some FK-linked table"),
     ).toBeInTheDocument();
@@ -233,7 +236,9 @@ describe("MetricDimensions", () => {
     setup();
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available dimensions" }),
+    );
 
     const addPanel = within(await screen.findByTestId("add-dimensions-panel"));
     await userEvent.click(

@@ -77,7 +77,7 @@ export function AddDimensionsPanel({
     <Stack gap="md" className={S.column} data-testid="add-dimensions-panel">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box>
-          <Title order={4}>{t`Add more dimensions`}</Title>
+          <Title order={4}>{t`Add available dimensions`}</Title>
           <Text
             c="text-secondary"
             size="sm"
@@ -88,6 +88,7 @@ export function AddDimensionsPanel({
       </Group>
 
       <TextInput
+        classNames={{ input: S.searchInput }}
         placeholder={t`Search…`}
         value={search}
         leftSection={<Icon name="search" />}
@@ -95,7 +96,7 @@ export function AddDimensionsPanel({
       />
 
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <ScrollArea className={S.scrollArea}>
+        <ScrollArea className={S.scrollArea} offsetScrollbars="present">
           <Accordion
             key={groupIds.join(",")}
             className={S.accordion}
