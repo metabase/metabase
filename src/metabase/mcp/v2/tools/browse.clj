@@ -191,6 +191,14 @@
                         (throw e))))))
         [nil ""]))
 
+(defn- matches-search?
+  "Case-insensitive substring match on either name the row exposes. `display_name` is nullable and
+   is what an admin edits when renaming a table, so it is the name the caller was most likely
+   shown — matching only `name` loses renamed tables."
+  [needle table]
+  (boolean (some #(and % (str/includes? (u/lower-case-en %) needle))
+                 [(:name table) (:display_name table)])))
+
 (defn- list-tables
   [{:keys [database_id schema search include_hidden] :as args}]
   (check-database! database_id)
@@ -199,7 +207,7 @@
                    (named-schema-tables database_id schema include_hidden))
         filtered (if search
                    (let [needle (u/lower-case-en search)]
-                     (filterv #(str/includes? (u/lower-case-en (:name %)) needle) tables))
+                     (filterv (partial matches-search? needle) tables))
                    (vec tables))]
     (paged-list-content args filtered :search #(project-rows :table args %))))
 
@@ -461,7 +469,7 @@
    [:schema {:optional true}
     [:maybe [:string {:description "list_tables only: the schema to list. Omit (or pass \"\") for databases without schemas."}]]]
    [:search {:optional true}
-    [:maybe [:string {:min 1 :description "list_tables only: case-insensitive substring filter on table name, applied before paging."}]]]
+    [:maybe [:string {:min 1 :description "list_tables only: case-insensitive substring filter on table name or display name, applied before paging."}]]]
    [:table_ids {:optional true}
     [:maybe [:sequential {:description "get_fields only: numeric table ids (tables have no entity_id), at most 20 per call."}
              [:int {:min 1}]]]]

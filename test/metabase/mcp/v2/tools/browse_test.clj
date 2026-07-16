@@ -256,6 +256,37 @@
             (is (= 2 (:total envelope))
                 "total reflects the filtered set, not the whole schema")))))))
 
+(deftest list-tables-search-matches-display-name-test
+  (testing "GHY-4138: `search` matches display_name as well as name — display_name is what an admin
+            edits when renaming a table, so it is the name the caller was shown"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   ;; renamed by an admin: display_name has diverged from the physical name
+                   :model/Table    _ {:db_id db-id :schema "public" :name "PEOPLE"
+                                      :display_name "Customers"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "orders"
+                                      :display_name "Orders"}
+                   ;; display_name is nullable — the filter must not throw on it
+                   :model/Table    _ {:db_id db-id :schema "public" :name "legacy_log"
+                                      :display_name nil}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (testing "the renamed table is findable by the display name"
+            (let [[envelope] (call! {:action "list_tables" :database_id db-id
+                                     :schema "public"      :search      "customer"})]
+              (is (= ["PEOPLE"] (map :name (:data envelope))))))
+          (testing "the physical name still matches"
+            (let [[envelope] (call! {:action "list_tables" :database_id db-id
+                                     :schema "public"      :search      "people"})]
+              (is (= ["PEOPLE"] (map :name (:data envelope))))))
+          (testing "a substring inside a display-name word matches, no word-start trick needed"
+            (let [[envelope] (call! {:action "list_tables" :database_id db-id
+                                     :schema "public"      :search      "ustom"})]
+              (is (= ["PEOPLE"] (map :name (:data envelope))))))
+          (testing "a null display_name neither throws nor matches"
+            (let [[envelope] (call! {:action "list_tables" :database_id db-id
+                                     :schema "public"      :search      "legacy"})]
+              (is (= ["legacy_log"] (map :name (:data envelope)))))))))))
+
 (deftest list-tables-paging-test
   (testing "GHY-4138: limit/offset page the filtered set and steer with a truncation line"
     (mt/with-temp [:model/Database {db-id :id} {}
