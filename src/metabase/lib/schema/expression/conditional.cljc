@@ -76,6 +76,9 @@
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
+;;
+;; In MBQL 4, the optional default value is part of the options map; in MBQL 5 it is an optional final standalone
+;; value.
 (doseq [tag [:case :if]]
   (mbql-clause/define-mbql-clause
     tag
