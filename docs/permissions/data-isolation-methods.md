@@ -1,16 +1,16 @@
 ---
-title: Choosing a data isolation method
-summary: Compare the ways Metabase can restrict data access in multi-tenant setups, including row and column security, impersonation, database routing, and locked parameters.
+title: Data isolation methods
+summary: Compare the ways Metabase can restrict data access for internal analytics or multi-tenant setups, including row and column security, impersonation, database routing, and locked parameters.
 ---
  
-# Choosing a data isolation method
+# Data isolation methods
 
 > Row and column security, impersonation, and database routing are only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-Metabase offers several ways to ensure people only see the data they're supposed to see. The best method depends on how you store your data and where you want to enforce access rules:
+Metabase offers several ways to ensure people only see the data they're supposed to see, whether you're restricting data by team for internal analytics or isolating customer data in a multi-tenant setup. The best method depends on how you store your data and where you want to enforce access rules:
 
-- If tenant data lives in the same tables, use [row and column security](#row-and-column-security) to filter data, or [impersonation](#impersonation) to enforce access rules.
-- If each tenant has their own database, use [database routing](#database-routing).
+- If all data lives in the same tables, use [row and column security](#row-and-column-security) to filter data in Metabase, or [impersonation](#impersonation) to enforce access rules at the database level.
+- If each customer or team has their own database, use [database routing](#database-routing).
 - If you're embedding dashboards for people without Metabase accounts, use [locked parameters](#locked-parameters).
 
 You can combine these methods. For example, you can use locked parameters for a guest embed while using row and column security for signed-in users.
@@ -23,7 +23,7 @@ You can combine these methods. For example, you can use locked parameters for a 
 
 Use row and column security when:
 
-- You need granular control over which rows and columns each group, customer, or tenant can see.
+- You need granular control over which rows and columns each group or customer can see.
 - You want to manage access rules in the Metabase UI instead of in your database.
 
 Don't use row and column security when:
@@ -50,19 +50,19 @@ Don't use impersonation when:
 
 ## Database routing
 
-[Database routing](./database-routing.md) sends each person's queries to their own database. You build questions and dashboards once against a primary database, and Metabase routes queries to the right destination database based on each person's [user attribute](../people-and-groups/managing.md#adding-a-user-attribute). Database routing requires that each tenant's data lives in a separate database with an identical schema.
+[Database routing](./database-routing.md) sends each person's queries to their own database. You build questions and dashboards once against a primary database, and Metabase routes queries to the right destination database based on each person's [user attribute](../people-and-groups/managing.md#adding-a-user-attribute). Database routing requires that each group's data lives in a separate database, and that all destination databases have identical schemas.
 
 ![Database routing](./images/database-routing-diagram.png)
 
 Use database routing when:
 
-- You want the strongest isolation. Each tenant's data lives in a separate database.
-- You want to avoid one tenant's queries affecting the performance of another tenant's queries.
+- You want the strongest isolation. Each group's data lives in a separate database.
+- You want to avoid one group's queries affecting the performance of another group's queries.
 
 Don't use database routing when:
 
-- Tenants share tables. Use [row and column security](#row-and-column-security) or [impersonation](#impersonation) instead.
-- You want to manage access rules in the Metabase UI instead of maintaining a separate database for each tenant.
+- Groups share tables. Use [row and column security](#row-and-column-security) or [impersonation](#impersonation) instead.
+- You want to manage access rules in the Metabase UI instead of maintaining a separate database for each group.
 
 ## Locked parameters
 
@@ -72,7 +72,7 @@ Don't use database routing when:
 
 Use locked parameters when:
 
-- You want tenant isolation without setting up Metabase accounts, user attributes, or permissions.
+- You want to restrict data without setting up Metabase accounts, user attributes, or permissions.
 - You want to filter data without exposing the filter or its values to the people viewing the embed.
 
 Don't use locked parameters when:
