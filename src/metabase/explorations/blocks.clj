@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.query-plan.variants :as variants]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -121,6 +122,17 @@
           (tru "By {0} {1}" dim qualifier)
           (by-dimension dim))))))
 
+(defn- block-explore-filter-value
+  "For an \"Explore further\" block (its metric selections carry an `:explore_filters` chain), the
+   clicked segment values as a display string, capitalized and joined — e.g. `Texas`, or
+   `Texas / 2024` for a compound drill. Prefixed onto every chart title in the block. Returns nil
+   for a normal block."
+  [block]
+  (when-let [filters (seq (:explore_filters (first (:metrics block))))]
+    (->> filters
+         (map (comp u/capitalize-first-char str :value))
+         (str/join " / "))))
+
 ;;; ------------------------------------------ scoring ------------------------------------------
 
 (defn- effective-score
@@ -143,15 +155,31 @@
 
 ;;; -------------------------------------------- tree -------------------------------------------
 
+(defn- page-long-title
+  "The self-describing page name, with the clicked value prefixed for filtered blocks —
+   `<value> <metric> by <dimension> <variant>` (e.g. `Texas Orders by User → Created At`). Plain
+   `page-long-name` when there's no filter."
+  [page queries card-name-by-id filter-value]
+  (let [long-name (page-long-name page queries card-name-by-id)]
+    (if (str/blank? filter-value)
+      long-name
+      (str filter-value " " long-name))))
+
 (defn- page-node
-  [block page queries card-name-by-id]
-  {:id          (:id page)
-   :name        (page-short-name block page queries card-name-by-id)
-   :long_name   (page-long-name page queries card-name-by-id)
-   :query_ids   (mapv :id queries)
-   :starred     (:starred page)
-   :hidden      (:hidden page)
-   ::max-score  (max-score queries)})
+  [block page queries card-name-by-id filter-value]
+  ;; For a filtered ("Explore further") block, the metric name matters — every chart shares one
+  ;; segment, so the self-describing `<value> <metric> by <dimension>` title reads better than the
+  ;; heading-relative `By <dimension>` short name. Unfiltered blocks keep the concise short name.
+  (let [long-title (page-long-title page queries card-name-by-id filter-value)]
+    {:id          (:id page)
+     :name        (if (str/blank? filter-value)
+                    (page-short-name block page queries card-name-by-id)
+                    long-title)
+     :long_name   long-title
+     :query_ids   (mapv :id queries)
+     :starred     (:starred page)
+     :hidden      (:hidden page)
+     ::max-score  (max-score queries)}))
 
 (defn blocks-tree
   "Given a thread's persisted `ExplorationBlock` rows (authoring order), its `ExplorationPage`
@@ -186,11 +214,12 @@
     (into []
           (map-indexed
            (fn [block-pos block]
-             (let [block-pages (->> (get pages-by-block (:id block) [])
+             (let [filter-value (block-explore-filter-value block)
+                   block-pages (->> (get pages-by-block (:id block) [])
                                     (map (fn [page]
                                            (page-node block page
                                                       (get queries-by-page (:id page) [])
-                                                      card-name-by-id)))
+                                                      card-name-by-id filter-value)))
                                     (sort-by page-sort-key)
                                     (map-indexed (fn [pos node]
                                                    (-> node

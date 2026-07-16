@@ -154,6 +154,7 @@
                                      llm.settings/llm-bedrock-session-token nil
                                      llm.settings/llm-bedrock-region "us-east-1"]
     (with-redefs [self.core/sse-reducible identity
+                  self.core/reducible-with-api-errors (fn [r _ _] r)
                   debug/capture-stream    (fn [r _] r)
                   http/request            (fn [req] {:body req})]
       (bedrock/bedrock-raw opts))))

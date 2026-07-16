@@ -1,5 +1,10 @@
+import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type {
+  ClickObject,
+  HighlightedObject,
+} from "metabase/visualizations/types";
 import type {
   Dataset,
   ExplorationQuery,
@@ -14,7 +19,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  type SeriesGroup,
   buildSeriesGroup,
+  canExploreFurther,
+  getCommentLabel,
+  getExploreFurtherFilters,
   getHeatMapSeries,
   getMaxTimelineInterestingness,
   getMostInterestingTimelineId,
@@ -274,6 +283,293 @@ describe("getMostInterestingTimelineId", () => {
       new Set([10, 20]),
     );
     expect(id).toBe(20);
+  });
+});
+
+function makeClickObject(
+  overrides: Partial<ClickObject> & {
+    dimensions?: ClickObject["dimensions"];
+  } = {},
+): ClickObject {
+  const categoryColumn = createMockColumn({
+    name: "category",
+    source: "breakout",
+    field_ref: ["field", 1, null],
+  });
+  return {
+    value: 10,
+    column: createMockColumn({ name: "count", source: "aggregation" }),
+    dimensions: [{ column: categoryColumn, value: "Gadget" }],
+    settings: {},
+    cardId: 101,
+    ...overrides,
+  };
+}
+
+describe("canExploreFurther", () => {
+  it("returns false when there are no dimensions", () => {
+    expect(
+      canExploreFurther(
+        makeClickObject({ dimensions: [] }),
+        "metric",
+        "default",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for dimension blocks", () => {
+    expect(canExploreFurther(makeClickObject(), "dimension", "default")).toBe(
+      false,
+    );
+  });
+
+  it("returns false for top-n-other clicks on the Other bucket", () => {
+    expect(
+      canExploreFurther(
+        makeClickObject({
+          dimensions: [
+            {
+              column: createMockColumn({
+                name: "category",
+                source: "breakout",
+              }),
+              value: OTHER_BUCKET_LABEL,
+            },
+          ],
+        }),
+        "metric",
+        "top-n-other",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns true for eligible metric-block clicks with real dimension values", () => {
+    expect(canExploreFurther(makeClickObject(), "metric", "default")).toBe(
+      true,
+    );
+  });
+
+  it("returns true when multiple dimensions are present", () => {
+    expect(
+      canExploreFurther(
+        makeClickObject({
+          dimensions: [
+            {
+              column: createMockColumn({
+                name: "category",
+                source: "breakout",
+              }),
+              value: "Gadget",
+            },
+            {
+              column: createMockColumn({ name: "source", source: "breakout" }),
+              value: "Affiliate",
+            },
+          ],
+        }),
+        "metric",
+        "default",
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("getExploreFurtherFilters", () => {
+  it("projects dimensions with field_ref into explore filters", () => {
+    const clicked = makeClickObject({
+      dimensions: [
+        {
+          column: createMockColumn({
+            name: "category",
+            source: "breakout",
+            field_ref: ["field", 10, null],
+          }),
+          value: "Gadget",
+        },
+        {
+          column: createMockColumn({
+            name: "source",
+            source: "breakout",
+            field_ref: ["field", 11, null],
+          }),
+          value: "Affiliate",
+        },
+      ],
+    });
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      { field_ref: ["field", 10, null], value: "Gadget" },
+      { field_ref: ["field", 11, null], value: "Affiliate" },
+    ]);
+  });
+
+  it("preserves null dimension values when field_ref is present", () => {
+    const clicked = makeClickObject({
+      dimensions: [
+        {
+          column: createMockColumn({
+            name: "category",
+            source: "breakout",
+            field_ref: ["field", 10, null],
+          }),
+          value: null,
+        },
+      ],
+    });
+
+    expect(getExploreFurtherFilters(clicked)).toEqual([
+      { field_ref: ["field", 10, null], value: null },
+    ]);
+  });
+});
+
+describe("getCommentLabel", () => {
+  const categoryColumn = createMockColumn({
+    name: "category",
+    base_type: "type/Text",
+  });
+  const tsColumn = createMockColumn({
+    name: "ts",
+    base_type: "type/DateTime",
+    unit: "month",
+  });
+
+  function makeSeriesGroup(
+    series: SingleSeries[],
+    legendItems: SeriesGroup["legendItems"],
+  ): SeriesGroup {
+    return {
+      series,
+      legendItems,
+      isTimeseries: false,
+    };
+  }
+
+  it("returns null when highlighted or series group is missing", () => {
+    const group = makeSeriesGroup([], []);
+    expect(getCommentLabel(undefined, group)).toBeNull();
+    expect(
+      // Unjustified type cast. FIXME
+      getCommentLabel({ cardId: 1 } as HighlightedObject, undefined),
+    ).toBeNull();
+  });
+
+  it("formats a single-series label from dimension values", () => {
+    const card = createMockCard({ id: 101, name: "Revenue" });
+    const seriesGroup = makeSeriesGroup(
+      [
+        {
+          card,
+          data: createMockDatasetData({
+            cols: [categoryColumn, createMockColumn({ name: "count" })],
+            rows: [["Gadget", 10]],
+          }),
+        },
+      ],
+      [{ name: "(All)", color: "#000" }],
+    );
+    const highlighted: HighlightedObject = {
+      cardId: 101,
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+    };
+
+    expect(getCommentLabel(highlighted, seriesGroup)).toBe("Gadget");
+  });
+
+  it("appends the segment name for multi-series groups", () => {
+    const seriesGroup = makeSeriesGroup(
+      [
+        {
+          card: createMockCard({ id: 101, name: "US" }),
+          data: createMockDatasetData({
+            cols: [categoryColumn, createMockColumn({ name: "count" })],
+            rows: [["Gadget", 10]],
+          }),
+        },
+        {
+          card: createMockCard({ id: 102, name: "EU" }),
+          data: createMockDatasetData({
+            cols: [categoryColumn, createMockColumn({ name: "count" })],
+            rows: [["Gadget", 20]],
+          }),
+        },
+      ],
+      [
+        { name: "US", color: "#111" },
+        { name: "EU", color: "#222" },
+      ],
+    );
+
+    const highlighted: HighlightedObject = {
+      cardId: 102,
+      columnName: "count",
+      dimensions: [{ columnName: "category", value: "Gadget" }],
+    };
+
+    expect(getCommentLabel(highlighted, seriesGroup)).toBe("Gadget, EU");
+  });
+
+  it("formats dates and null values for display", () => {
+    const seriesGroup = makeSeriesGroup(
+      [
+        {
+          card: createMockCard({ id: 101 }),
+          data: createMockDatasetData({
+            cols: [tsColumn, createMockColumn({ name: "count" })],
+            rows: [["2025-01-01T00:00:00Z", 10]],
+          }),
+        },
+      ],
+      [{ name: "(All)", color: "#000" }],
+    );
+
+    expect(
+      getCommentLabel(
+        {
+          cardId: 101,
+          columnName: "count",
+          dimensions: [{ columnName: "ts", value: "2025-01-01T00:00:00Z" }],
+        },
+        seriesGroup,
+      ),
+    ).toMatch(/Jan/);
+
+    expect(
+      getCommentLabel(
+        {
+          cardId: 101,
+          columnName: "count",
+          dimensions: [{ columnName: "ts", value: null }],
+        },
+        seriesGroup,
+      ),
+    ).toBe("(empty)");
+  });
+
+  it("skips missing columns and unknown card ids", () => {
+    const seriesGroup = makeSeriesGroup(
+      [
+        {
+          card: createMockCard({ id: 101 }),
+          data: createMockDatasetData({
+            cols: [categoryColumn],
+            rows: [["Gadget"]],
+          }),
+        },
+      ],
+      [{ name: "(All)", color: "#000" }],
+    );
+
+    expect(
+      getCommentLabel(
+        {
+          cardId: 999,
+          dimensions: [{ columnName: "missing", value: "x" }],
+        },
+        seriesGroup,
+      ),
+    ).toBe("");
   });
 });
 

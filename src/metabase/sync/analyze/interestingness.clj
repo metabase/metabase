@@ -53,19 +53,31 @@
               fields))
     {:fields-scored 0 :fields-failed 0}))
 
+(defonce ^:private failed-leftover-field-ids
+  ;; Field IDs whose leftover scoring attempt failed earlier in this process. The leftovers pass
+  ;; selects on `dimension_interestingness IS NULL`, so without a marker a deterministically-failing
+  ;; field would be re-attempted on every sync forever. Process-local by design (no schema change,
+  ;; no sentinel score leaking into product surfaces): a restart makes the field eligible again, so
+  ;; transient failures still get retried eventually.
+  (atom #{}))
+
 (mu/defn- score-missing-leftovers!
   "Backup pass after the per-table sweep: any Field in `database` whose persisted
   `dimension_interestingness` is still `NULL` gets one more compute attempt. This catches Fields
   on tables that aren't in `reducible-sync-tables` plus any fields the normal pipeline missed
   (initial backfill, prior compute failure, null'ed interestingness to force a recompute).
-  Independent of fingerprint state; doesn't touch `last_analyzed`."
+  Independent of fingerprint state; doesn't touch `last_analyzed`. Fields whose attempt already
+  failed in this process are skipped (see [[failed-leftover-field-ids]])."
   [database :- i/DatabaseInstance]
-  (transduce (map t2.realize/realize)
+  (transduce (comp (remove #(contains? @failed-leftover-field-ids (u/the-id %)))
+                   (map t2.realize/realize))
              (completing
               (fn [stats field]
                 (let [result (score-and-save! field)]
                   (if (instance? Exception result)
-                    (update stats :fields-failed inc)
+                    (do
+                      (swap! failed-leftover-field-ids conj (u/the-id field))
+                      (update stats :fields-failed inc))
                     (update stats :fields-scored inc)))))
              {:fields-scored 0 :fields-failed 0}
              (t2/reducible-select :model/Field

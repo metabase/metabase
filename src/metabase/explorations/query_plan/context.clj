@@ -199,6 +199,47 @@
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
+(defn- filter-ref-from-click
+  "Given a normalized click ref and its resolved metric-query column, return a filter target with
+  the click's temporal bucket or numeric binning applied so `= value` matches the clicked point."
+  [ref-clause col]
+  (let [target  (or col ref-clause)
+        unit    (lib/raw-temporal-bucket ref-clause)
+        ;; Use raw options from the click ref — [[lib/binning]] enriches with a :metadata-fn that
+        ;; cannot be Nippy-frozen when the filtered query is cached.
+        binning (:binning (lib/options ref-clause))]
+    (cond
+      unit    (lib/with-temporal-bucket target unit)
+      binning (lib/with-binning target binning)
+      :else   target)))
+
+(defn- apply-single-explore-filter
+  "Apply one `{:field_ref ... :value ...}` filter spec to `card`'s `dataset_query`."
+  [mp card {:keys [field_ref value] :as filter-spec}]
+  (when-not field_ref
+    (throw (ex-info "Explore filter missing :field_ref" {:filter-spec filter-spec})))
+  (let [base       (lib/query mp (:dataset_query card))
+        ref-clause (qp.mbql/normalize-target-ref field_ref)
+        col        (or (lib/find-matching-column base -1 ref-clause
+                                                 (lib/breakoutable-columns base))
+                       (throw (ex-info "Could not resolve explore filter field ref on metric query"
+                                       {:field-ref field_ref})))
+        fref       (filter-ref-from-click ref-clause col)
+        filtered   (lib/filter base (lib/= fref value))]
+    (assoc card :dataset_query filtered)))
+
+(defn- apply-explore-filters
+  "When the block's metric selection carries `:explore_filters` (added by the \"Explore further\"
+  chart drill), scope the metric Card's `dataset_query` to each `[<bucketed dimension> = <value>]`
+  in order so *every* variant built from it inherits the segment — a single injection point, since
+  all the variant builders re-wrap `(lib/query mp (:dataset_query card))`. Returns `card` untouched
+  when there are no filters."
+  [mp card explore-filters]
+  (reduce (fn [card' ef]
+            (apply-single-explore-filter mp card' ef))
+          card
+          explore-filters))
+
 (defn build-row-context
   "Resolve everything the variant multimethods need to finalize a single
   pending `ExplorationQuery` row at execution time. Returns the ctx map
@@ -224,18 +265,24 @@
         dim-by-id  (u/index-by :dimension_id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
     (when (and card block metric thread-dim)
-      (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
-            mappings     (:dimension_mappings metric)
-            target       (qp.mbql/find-dimension-target dimension_id mappings)
-            segment      (when segment_id
-                           (try
-                             (let [q (lib/query mp (:dataset_query card))]
-                               (some #(when (= segment_id (:id %)) %)
-                                     (lib/available-segments q)))
-                             (catch Exception _ nil)))
-            t-dim-id     (:temporal_dimension_id params)
-            t-target     (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
-            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))]
+      (let [mp              (lib-be/application-database-metadata-provider (:database_id card))
+            mappings        (:dimension_mappings metric)
+            explore-filters (:explore_filters metric)
+            ;; "Explore further" drills persist their clicked segments as `:explore_filters` on
+            ;; the block's metric selection; bake them into the Card query so all variants inherit.
+            ;; An unresolvable filter throws out of here — the runner records a row-level error
+            ;; rather than render an unfiltered chart the title still labels with the segment.
+            card            (apply-explore-filters mp card explore-filters)
+            target          (qp.mbql/find-dimension-target dimension_id mappings)
+            segment         (when segment_id
+                              (try
+                                (let [q (lib/query mp (:dataset_query card))]
+                                  (some #(when (= segment_id (:id %)) %)
+                                        (lib/available-segments q)))
+                                (catch Exception _ nil)))
+            t-dim-id        (:temporal_dimension_id params)
+            t-target        (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
+            t-thread-dim    (when t-dim-id (get dim-by-id t-dim-id))]
         {:mp              mp
          :card            card
          :target          target
@@ -243,5 +290,6 @@
          :dim-label       (or (:display_name thread-dim) dimension_id)
          :segment         segment
          :params          params
+         :explore-filters explore-filters
          :temporal-target t-target
          :temporal-dim    t-thread-dim}))))

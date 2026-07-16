@@ -21,6 +21,7 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   Exploration,
+  ExplorationBlockNode,
   ExplorationPageNode,
   ExplorationPageNodeId,
   ExplorationQuery,
@@ -41,6 +42,7 @@ import {
 } from "../components/ExplorationSidebar";
 import {
   type ExplorationTreeNode,
+  flattenTree,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
@@ -50,10 +52,20 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
-import type { CommentDrafts } from "../components/ExplorationVisualization/ActionToolbar";
 import { getMostInterestingTimelineId } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
-import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
+import {
+  type ExplorationSortOrder,
+  getExplorationSortOrder,
+  getReadExplorationPageIds,
+  setExplorationPageRead,
+  setExplorationSortOrder,
+} from "../sidebar-preferences";
+import {
+  type CommentDrafts,
+  type ExplorationSidebarTab,
+  isExplorationSidebarTab,
+} from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const NO_TIMELINE_PARAM = "none";
@@ -134,16 +146,29 @@ export function ExplorationPage({
     [location.pathname, location.search],
   );
 
+  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
+
   const getSelectedEntityIdUrl = useCallback(
-    (entityId: SelectedEntityId) => {
-      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
+    (entityId: SelectedEntityId, options?: { tab?: ExplorationSidebarTab }) => {
+      const search = new URLSearchParams(location.search);
+      if (options?.tab) {
+        search.set("tab", options.tab);
+      }
+      const searchString = search.toString();
+      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${searchString ? `?${searchString}` : ""}`;
     },
     [params.id, location.search],
   );
 
   const setSelectedEntityId = useCallback(
-    (entityId: SelectedEntityId) => {
-      dispatch(push(getSelectedEntityIdUrl(entityId)));
+    (
+      entityId: SelectedEntityId,
+      options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
+    ) => {
+      if (options?.scrollIntoView) {
+        shouldScrollSelectionRef.current = true;
+      }
+      dispatch(push(getSelectedEntityIdUrl(entityId, options)));
     },
     [dispatch, getSelectedEntityIdUrl],
   );
@@ -155,6 +180,20 @@ export function ExplorationPage({
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
+  const [sortOrder, setSortOrder] = useState<ExplorationSortOrder>(() =>
+    getExplorationSortOrder(Number(params.id)),
+  );
+  const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(() =>
+    getReadExplorationPageIds(Number(params.id)),
+  );
+
+  const handleChangeSortOrder = useCallback(
+    (order: ExplorationSortOrder) => {
+      setSortOrder(order);
+      setExplorationSortOrder(Number(params.id), order);
+    },
+    [params.id],
+  );
 
   const {
     data: exploration,
@@ -211,8 +250,17 @@ export function ExplorationPage({
       ? tabFilter
       : (node: ITreeNodeItem<ExplorationTreeNode>) =>
           tabFilter(node) && !isHiddenTreeItem(node);
-    return getExplorationSidebarTree(exploration, treeItemFilter);
-  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo, showHidden]);
+
+    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
+      keepEmptyInitialThread: selectedSidebarTab === "all",
+    });
+  }, [
+    exploration,
+    selectedSidebarTab,
+    explorationSidebarTabsInfo,
+    showHidden,
+    sortOrder,
+  ]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -251,6 +299,50 @@ export function ExplorationPage({
     }
     return pickInitialSidebarEntity(tree);
   }, [params.entityType, params.entityId, tree]);
+
+  const orderedPageIds = useMemo(
+    () =>
+      flattenTree(tree).flatMap((item) =>
+        item.data?.type === "page" ? [item.data.page_id] : [],
+      ),
+    [tree],
+  );
+  const currentPageIndex =
+    selectedEntityId?.type === "page"
+      ? orderedPageIds.indexOf(selectedEntityId.id)
+      : -1;
+  const previousPageId =
+    currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
+  const nextPageId =
+    currentPageIndex !== -1 && currentPageIndex < orderedPageIds.length - 1
+      ? orderedPageIds[currentPageIndex + 1]
+      : undefined;
+  const goToPreviousPage = useCallback(() => {
+    if (previousPageId != null) {
+      setSelectedEntityId(
+        { type: "page", id: previousPageId },
+        { scrollIntoView: true },
+      );
+    }
+  }, [previousPageId, setSelectedEntityId]);
+  const goToNextPage = useCallback(() => {
+    if (nextPageId != null) {
+      setSelectedEntityId(
+        { type: "page", id: nextPageId },
+        { scrollIntoView: true },
+      );
+    }
+  }, [nextPageId, setSelectedEntityId]);
+
+  useEffect(() => {
+    if (
+      selectedEntityId?.type === "page" &&
+      !readPageIds.has(selectedEntityId.id)
+    ) {
+      setExplorationPageRead(Number(params.id), selectedEntityId.id);
+      setReadPageIds((prev) => new Set(prev).add(String(selectedEntityId.id)));
+    }
+  }, [selectedEntityId, readPageIds, params.id]);
 
   // AI Summary generates its document asynchronously: the FE shows a
   // placeholder "Analysis underway…" Document while the worker runs, and
@@ -309,12 +401,54 @@ export function ExplorationPage({
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
 
+  // Detect new threads (from "Explore further") and toast when their first
+  // page lands. Threads arrive without pages while query planning is still
+  // running, so we wait for a page before marking a thread as seen.
+  const seenThreadIdsRef = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const threads = exploration?.threads;
+    if (!threads) {
+      return;
+    }
+
+    if (seenThreadIdsRef.current == null) {
+      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
+      return;
+    }
+
+    const seen = seenThreadIdsRef.current;
+    for (const thread of threads) {
+      if (seen.has(thread.id)) {
+        continue;
+      }
+      const firstPage = thread.blocks?.flatMap((b) => b.pages ?? [])?.[0];
+      if (!firstPage) {
+        continue;
+      }
+      seen.add(thread.id);
+      if (thread.name) {
+        sendToast({
+          icon: "bolt",
+          message: c("{0} is the name of a new research thread")
+            .t`Added ${thread.name}`,
+          actionLabel: t`View`,
+          action: () =>
+            setSelectedEntityId(
+              { type: "page", id: String(firstPage.id) },
+              { tab: "all", scrollIntoView: true },
+            ),
+        });
+      }
+    }
+  }, [exploration, sendToast, setSelectedEntityId]);
+
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
     {
       page: ExplorationPageNode;
       thread: ExplorationThread;
       queries: ExplorationQuery[];
+      block: ExplorationBlockNode;
     }
   > = useMemo(() => {
     const map = new Map<
@@ -323,6 +457,7 @@ export function ExplorationPage({
         page: ExplorationPageNode;
         thread: ExplorationThread;
         queries: ExplorationQuery[];
+        block: ExplorationBlockNode;
       }
     >();
     for (const thread of exploration?.threads ?? []) {
@@ -332,7 +467,7 @@ export function ExplorationPage({
           const queries = page.query_ids
             .map((id) => queriesById.get(id))
             .filter((q): q is ExplorationQuery => q !== undefined);
-          map.set(String(page.id), { page, thread, queries });
+          map.set(String(page.id), { page, thread, queries, block });
         }
       }
     }
@@ -465,9 +600,13 @@ export function ExplorationPage({
             selectedEntityId={selectedEntityId}
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+            shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
+            readPageIds={readPageIds}
             showHidden={showHidden}
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
+            sortOrder={sortOrder}
+            onChangeSortOrder={handleChangeSortOrder}
           />
           {selectedPage && (
             <ExplorationGroupVisualization
@@ -479,6 +618,7 @@ export function ExplorationPage({
               explorationId={exploration.id}
               page={selectedPage.page}
               queries={selectedPage.queries}
+              blockType={selectedPage.block.type}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
@@ -486,6 +626,10 @@ export function ExplorationPage({
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+              onPreviousPage={
+                previousPageId != null ? goToPreviousPage : undefined
+              }
+              onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
           {selectedDocument && (

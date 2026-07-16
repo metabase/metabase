@@ -407,6 +407,7 @@
     {:creator-id creator-id
      :db-id      db-id
      :bytes      (serialize-result qp-result)
+     :row-count  (:row_count qp-result)
      :token      token
      :stats      stats
      :score      (safe-score row chart-config stats)
@@ -416,7 +417,7 @@
   "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.
 
   Returns false when a peer delivery already persisted this query."
-  [row ^OffsetDateTime started {:keys [creator-id db-id bytes token stats score ctx]}]
+  [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token stats score ctx]}]
   (try
     (t2/with-transaction [_conn]
       (let [sr-id (first
@@ -426,6 +427,7 @@
                      :creator_id        creator-id
                      :database_id       db-id
                      :dataset_query     (:dataset_query row)
+                     :row_count         row-count
                      :data_access_token token}))]
         (t2/insert! :model/ExplorationQueryResult
                     {:exploration_query_id             (:id row)

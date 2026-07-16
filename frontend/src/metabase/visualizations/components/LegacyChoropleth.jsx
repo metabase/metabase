@@ -12,6 +12,8 @@ export const LegacyChoropleth = ({
   projection,
   projectionFrame,
   getColor,
+  isFeatureHighlighted,
+  highlightedKey,
   onHoverFeature,
   onClickFeature,
 }) => {
@@ -35,8 +37,10 @@ export const LegacyChoropleth = ({
     >
       <ShouldUpdate
         series={series}
+        highlightedKey={highlightedKey}
         shouldUpdate={(props, nextProps) =>
-          !isSameSeries(props.series, nextProps.series)
+          !isSameSeries(props.series, nextProps.series) ||
+          props.highlightedKey !== nextProps.highlightedKey
         }
       >
         {() => (
@@ -44,33 +48,40 @@ export const LegacyChoropleth = ({
             className={cx(CS.flexFull, CS.m1)}
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
-            {geoJson.features.map((feature, index) => (
-              <path
-                data-testid="choropleth-feature"
-                key={index}
-                d={geo(feature, index)}
-                stroke="white"
-                strokeWidth={1}
-                fill={getColor(feature)}
-                onMouseMove={(e) =>
-                  onHoverFeature({
-                    feature: feature,
-                    event: e.nativeEvent,
-                  })
-                }
-                onMouseLeave={() => onHoverFeature(null)}
-                className={cx({ [CS.cursorPointer]: !!onClickFeature })}
-                onClick={
-                  onClickFeature
-                    ? (e) =>
-                        onClickFeature({
-                          feature: feature,
-                          event: e.nativeEvent,
-                        })
-                    : undefined
-                }
-              />
-            ))}
+            {geoJson.features.map((feature, index) => {
+              const opacity =
+                isFeatureHighlighted?.(feature) === false ? 0.3 : 1;
+
+              return (
+                <path
+                  data-testid="choropleth-feature"
+                  key={index}
+                  d={geo(feature, index)}
+                  stroke="white"
+                  strokeWidth={1}
+                  fill={getColor(feature)}
+                  opacity={opacity}
+                  style={{ transition: "opacity 0.15s ease" }}
+                  onMouseMove={(e) =>
+                    onHoverFeature({
+                      feature: feature,
+                      event: e.nativeEvent,
+                    })
+                  }
+                  onMouseLeave={() => onHoverFeature(null)}
+                  className={cx({ [CS.cursorPointer]: !!onClickFeature })}
+                  onClick={
+                    onClickFeature
+                      ? (e) =>
+                          onClickFeature({
+                            feature: feature,
+                            event: e.nativeEvent,
+                          })
+                      : undefined
+                  }
+                />
+              );
+            })}
           </svg>
         )}
       </ShouldUpdate>

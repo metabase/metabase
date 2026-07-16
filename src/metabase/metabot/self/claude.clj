@@ -544,11 +544,15 @@
                                     :headers {"anthropic-version" "2023-06-01"
                                               "content-type"      "application/json"}
                                     :body    (json/encode req)})]
+        ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+        ;; the reducible so mid-stream IO/timeout failures get the same
+        ;; provider-friendly translation as request-time errors.
         (-> (core/sse-reducible (:body response))
             (debug/capture-stream {:provider "anthropic"
                                    :model    model
                                    :url      "/v1/messages"
-                                   :request  req})))
+                                   :request  req})
+            (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
       (catch Exception e
         (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 

@@ -166,6 +166,13 @@
                  :name                  auto-doc-name
                  :archived              false))
 
+(defn- explore-further-thread?
+  [thread-id]
+  (->> (t2/select :model/ExplorationBlock :exploration_thread_id thread-id)
+       (mapcat :metrics)
+       (some (comp seq :explore_filters))
+       boolean))
+
 ;;; ----- Error document — used when a phase fatally fails validation -----
 
 (defn error-doc
@@ -501,6 +508,11 @@
   (log/infof "No usable chart blocks for thread %d; skipping AI Summary" thread-id)
   :skip-no-charts)
 
+(defn- skip-explore-further!
+  [thread-id]
+  (log/infof "Thread %d came from an \"Explore further\" drill; skipping AI Summary" thread-id)
+  :skip-explore-further)
+
 (defn- handle-uncaught-error!
   "Best-effort cleanup after an uncaught throwable in [[generate-ai-summary!]]:
   swap the placeholder doc for an error body so the user doesn't stare at a
@@ -540,8 +552,9 @@
 
   Returns `:ok` on success, a keyword reason on graceful skip
   (`:skip-metabot-disabled`, `:skip-no-llm`, `:skip-usage-limit`, `:skip-no-permission`,
-  `:skip-no-charts`), `:phase-1-failed` / `:phase-2-failed` when the corresponding phase
-  couldn't be repaired, or `nil` on an uncaught throwable (logged but never thrown)."
+  `:skip-no-charts`, `:skip-explore-further`), `:phase-1-failed` / `:phase-2-failed` when the
+  corresponding phase couldn't be repaired, or `nil` on an uncaught throwable (logged but never
+  thrown)."
   [thread-id]
   (try
     (b/cond
@@ -550,6 +563,9 @@
 
       (nil? thread)
       (do (log/warnf "Thread %d not found" thread-id) nil)
+
+      (explore-further-thread? thread-id)
+      (skip-explore-further! thread-id)
 
       :let [exploration (t2/select-one [:model/Exploration :creator_id :collection_id]
                                        :id (:exploration_id thread))
@@ -566,11 +582,10 @@
       (empty? prepped)
       (skip-no-charts! thread-id)
 
-      ;; The placeholder doc was created up-front by the exploration POST endpoint so the FE
-      ;; sidebar shows it the moment the exploration is created. Every branch in `run-phases!`
+      ;; The placeholder doc is created up-front by the exploration POST endpoint so the FE sidebar
+      ;; shows it the moment the exploration is created. Every branch in `run-phases!`
       ;; (phase-1-failed, phase-2-failed, ok) swaps this doc's body in place — we never insert a
-      ;; second doc. For threads created before the endpoint started pre-creating it,
-      ;; `run-phases!` falls back to creating one.
+      ;; second doc. When it's missing, `run-phases!` re-creates it.
       :else
       (run-phases! {:thread-id     thread-id
                     :thread        thread
