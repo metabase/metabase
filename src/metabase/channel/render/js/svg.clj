@@ -11,7 +11,8 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
-   [metabase.premium-features.core :as premium-features])
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -63,6 +64,72 @@
         (.setTextContent ""))
       node)))
 
+(defn- hsl->rgb
+  "Convert an HSL color to `[r g b]` (each an int in 0-255). `h` is in degrees; `s` and `l` are in [0,1]."
+  [h s l]
+  (let [h  (mod (double h) 360.0)
+        s  (double s)
+        l  (double l)
+        c  (* (- 1.0 (Math/abs (- (* 2.0 l) 1.0))) s)
+        hp (/ h 60.0)
+        x  (* c (- 1.0 (Math/abs (- (mod hp 2.0) 1.0))))
+        [r1 g1 b1] (cond
+                     (< hp 1.0) [c x 0.0]
+                     (< hp 2.0) [x c 0.0]
+                     (< hp 3.0) [0.0 c x]
+                     (< hp 4.0) [0.0 x c]
+                     (< hp 5.0) [x 0.0 c]
+                     :else      [c 0.0 x])
+        m  (- l (/ c 2.0))]
+    (mapv #(long (Math/round (* 255.0 (+ (double %) m)))) [r1 g1 b1])))
+
+(defn- ->hex-component ^String [n]
+  (format "%02X" (long (max 0 (min 255 (long (Math/round (double n))))))))
+
+(defn- css-color-fn->hex+alpha
+  "Parse a CSS `hsl()/hsla()/rgba()` color string into `[hex alpha]`, where `hex` is `#RRGGBB` and `alpha` is a double
+  in [0,1]. Positional parsing relies on the function name: `hsl*` treats the 2nd/3rd numbers as percentages, `rgb*`
+  treats the first three as 0-255. Returns nil if it can't be parsed."
+  [^String value]
+  (let [lower (u/lower-case-en (str/trim value))
+        nums  (mapv #(Double/parseDouble %) (re-seq #"-?\d*\.?\d+" lower))
+        alpha (get nums 3 1.0)]
+    (cond
+      (str/starts-with? lower "hsl")
+      (let [[h s l] nums
+            [r g b] (hsl->rgb h (/ s 100.0) (/ l 100.0))]
+        [(str "#" (->hex-component r) (->hex-component g) (->hex-component b)) alpha])
+
+      (str/starts-with? lower "rgb")
+      (let [[r g b] nums]
+        [(str "#" (->hex-component r) (->hex-component g) (->hex-component b)) alpha])
+
+      :else nil)))
+
+(defn- format-alpha ^String [alpha]
+  (-> (format "%.4f" (double alpha))
+      (str/replace #"0+$" "")
+      (str/replace #"\.$" "")))
+
+(def ^:private batik-unsafe-color-attr-re
+  ;; Batik implements CSS2, so its `fill`/`stroke` parser only understands hex/`rgb()`/named colors -- not the CSS3
+  ;; `hsl()`/`hsla()`/`rgba()` forms. Custom-viz plugin SVGs (and some ECharts label tints) emit these verbatim,
+  ;; making Batik throw "invalid CSS value" at transcode time.
+  #"(?i)(fill|stroke)=\"\s*(hsla?\([^\"]*\)|rgba\([^\"]*\))\s*\"")
+
+(defn- normalize-colors-for-batik
+  "Rewrite any `fill`/`stroke` attribute whose value is an `hsl()/hsla()/rgba()` color into a Batik-safe hex value plus
+  a separate `*-opacity` attribute (which Batik does support). No-op for colors Batik already understands."
+  [svg-string]
+  (str/replace svg-string batik-unsafe-color-attr-re
+               (fn [[whole attr value]]
+                 (if-let [[hex alpha] (css-color-fn->hex+alpha value)]
+                   (let [attr (u/lower-case-en attr)]
+                     (if (< (double alpha) 1.0)
+                       (str attr "=\"" hex "\" " attr "-opacity=\"" (format-alpha alpha) "\"")
+                       (str attr "=\"" hex "\"")))
+                   whole))))
+
 (defn- sanitize-svg
   "Using a regex of negated allowed characters according to the XML 1.0 spec, replace disallowed characters with an
   empty string."
@@ -78,7 +145,7 @@
     (str/replace svg-string allowed-chars "")))
 
 (defn- parse-svg-string [^String s]
-  (let [s (sanitize-svg s)
+  (let [s (-> s sanitize-svg normalize-colors-for-batik)
         factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes ^String s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
@@ -176,20 +243,27 @@
       svg-string->bytes))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
-  [cards-with-data dashcard-viz-settings]
+  "Clojure entrypoint to render javascript visualizations. This function is dynamic only for testing purposes.
+  `custom-viz-bundles` is an optional seq of `{:identifier str :source str}` maps for custom visualization
+  plugins. When present, rendering runs in a sandboxed UNTRUSTED isolate (the plugin code is untrusted
+  third-party JS); built-in charts keep using the fast pooled in-process context. See
+  [[metabase.channel.render.js.graal]]."
+  [cards-with-data dashcard-viz-settings custom-viz-bundles]
   (-> (js.protocol/chart
        (renderer/renderer)
-       {:rawSeries        cards-with-data
-        :dashcardSettings dashcard-viz-settings
-        :options          (cond-> {:applicationColors (appearance/application-colors)
-                                   :startOfWeek (lib-be/start-of-week)
-                                   :customFormatting (appearance/custom-formatting)
-                                   :tokenFeatures (premium-features/token-features)}
-                            *chart-size*
-                            (assoc :width (:width *chart-size*)
-                                   :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
+       (cond-> {:rawSeries        cards-with-data
+                :dashcardSettings dashcard-viz-settings
+                :options          (cond-> {:applicationColors (appearance/application-colors)
+                                           :startOfWeek (lib-be/start-of-week)
+                                           :customFormatting (appearance/custom-formatting)
+                                           :tokenFeatures (premium-features/token-features)}
+                                    *chart-size*
+                                    (assoc :width (:width *chart-size*)
+                                           :height (:height *chart-size*)
+                                           :fitWithinBounds (boolean (:fit-within? *chart-size*))))}
+         (seq custom-viz-bundles)
+         (assoc :customVizBundles (vec custom-viz-bundles))))
+      (update :type (fnil keyword "unknown"))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"

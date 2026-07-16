@@ -20,6 +20,87 @@ const ENTERPRISE_SRC_PATH =
 
 const devMode = WEBPACK_BUNDLE !== "production";
 
+const SLIM_BUNDLE_NAME = "lib-static-viz-custom";
+const SLIM_BUNDLE_ASSET = `${SLIM_BUNDLE_NAME}.bundle.js`;
+// The slim bundle exists so the untrusted custom-viz isolate never parses the
+// built-in chart stack (ECharts/zrender/visx + the 13 chart components — several
+// MB of the full bundle). The budget fails the build if that stack (or another
+// big dependency) silently leaks back in.
+//
+// The current floor is set by the settings/formatting machinery the custom-viz
+// SSR path shares with the app (lib/settings plus cljs metabase-lib for MBQL
+// normalization). With the #77658 import optimizations now in, this budget can
+// likely be tightened substantially — measure a build and lower it.
+const SLIM_BUNDLE_MAX_BYTES = 10 * 1024 * 1024;
+// Built-in chart machinery that must never enter the slim custom-viz bundle.
+const SLIM_BUNDLE_FORBIDDEN_MODULE_RE =
+  /node_modules[\\/](echarts|zrender|@visx)[\\/]|static-viz[\\/]register\.ts|StaticVisualization[\\/]StaticVisualization\.tsx|StaticChoropleth/;
+
+class SlimStaticVizGuardPlugin {
+  apply(compiler) {
+    compiler.hooks.afterEmit.tap("SlimStaticVizGuardPlugin", (compilation) => {
+      const asset = compilation.getAsset(SLIM_BUNDLE_ASSET);
+      if (!asset) {
+        compilation.errors.push(
+          new Error(
+            `[slim static-viz] expected asset ${SLIM_BUNDLE_ASSET} was not emitted`,
+          ),
+        );
+        return;
+      }
+
+      const size = asset.source.size();
+      if (size > SLIM_BUNDLE_MAX_BYTES) {
+        compilation.errors.push(
+          new Error(
+            `[slim static-viz] ${SLIM_BUNDLE_ASSET} is ${size} bytes, over its ${SLIM_BUNDLE_MAX_BYTES}-byte budget. ` +
+              `This bundle is cold-parsed by the untrusted custom-viz isolate; a size jump usually means ` +
+              `the built-in chart stack (ECharts/visx/chart components) leaked back in via a new import.`,
+          ),
+        );
+      }
+
+      // Module-level tripwire: attribute every module (including ones nested in
+      // concatenated groups, which inherit their group's chunk membership) to the
+      // slim chunk and reject the build if any forbidden module landed in it.
+      const { chunks = [], modules = [] } = compilation.getStats().toJson({
+        all: false,
+        ids: true,
+        chunks: true,
+        modules: true,
+        nestedModules: true,
+        modulesSpace: Infinity,
+        nestedModulesSpace: Infinity,
+      });
+      const slimChunkId = chunks.find((chunk) =>
+        (chunk.names ?? []).includes(SLIM_BUNDLE_NAME),
+      )?.id;
+      const leakedModules = [];
+      const walk = (moduleList, inheritedMembership) => {
+        for (const module of moduleList ?? []) {
+          const inSlimChunk = module.chunks
+            ? module.chunks.includes(slimChunkId)
+            : inheritedMembership;
+          const name = module.nameForCondition || module.name || "";
+          if (inSlimChunk && SLIM_BUNDLE_FORBIDDEN_MODULE_RE.test(name)) {
+            leakedModules.push(name);
+          }
+          walk(module.modules, inSlimChunk);
+        }
+      };
+      walk(modules, false);
+      if (leakedModules.length > 0) {
+        compilation.errors.push(
+          new Error(
+            `[slim static-viz] built-in chart modules leaked into ${SLIM_BUNDLE_ASSET}:\n` +
+              leakedModules.slice(0, 20).join("\n"),
+          ),
+        );
+      }
+    });
+  }
+}
+
 module.exports = (env) => {
   return {
     mode: "production",
@@ -34,11 +115,24 @@ module.exports = (env) => {
       hints: devMode ? false : "error",
       maxAssetSize: 3.5 * 1024 * 1024,
       maxEntrypointSize: 3.5 * 1024 * 1024,
+      // The slim custom-viz bundle has its own (larger, for now) budget enforced
+      // by SlimStaticVizGuardPlugin below.
+      assetFilter: (assetFilename) => assetFilename !== SLIM_BUNDLE_ASSET,
     },
 
     entry: {
       "lib-static-viz": {
         import: "./app-static-viz.ts",
+        library: {
+          name: "MetabaseStaticViz",
+          type: "var",
+        },
+      },
+      // Slim custom-viz-only bundle for the untrusted plugin isolate. Reuses the
+      // `MetabaseStaticViz` global so the Clojure render path calls the same
+      // interface either way (each isolate loads exactly one of the two bundles).
+      [SLIM_BUNDLE_NAME]: {
+        import: "./app-static-viz-custom.ts",
         library: {
           name: "MetabaseStaticViz",
           type: "var",
@@ -148,6 +242,7 @@ module.exports = (env) => {
       minimize: true,
     },
     plugins: [
+      new SlimStaticVizGuardPlugin(),
       new rspack.EnvironmentPlugin({
         IS_EMBEDDING_SDK_BUILD: false,
       }),

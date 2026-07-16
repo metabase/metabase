@@ -7,6 +7,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -148,6 +149,12 @@
                           tyype (pr-str card-name) (apply format reason args))
               tyype)]
       (cond
+        (when-let [identifier (render.util/custom-viz-identifier display-type)]
+          (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
+                  custom-viz-plugin/resolve-bundle
+                  :content))
+        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
+
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
             (= [[nil]] (-> data :rows)))
@@ -195,6 +202,9 @@
 
         (= :pivot display-type)
         (chart-type :pivot "display-type is pivot")
+
+        (render.util/custom-viz-display? display-type)
+        (chart-type :table "display-type is a custom visualization without static support, falling back to table")
 
         :else
         (chart-type :table "no other chart types match")))))

@@ -1,11 +1,8 @@
 import { getSubpathSafeUrl } from "metabase/urls";
 import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
-import type {
-  ColumnSettings,
-  CustomVizPluginId,
-  CustomVizPluginRuntime,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { ColumnSettings, CustomVizPluginId } from "metabase-types/api";
+
+export { defineSetting, getCustomPluginIdentifier } from "./custom-viz-core";
 
 export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {
@@ -39,16 +36,3 @@ export function resolveCustomVizAssetUrl(
 ): Promise<string | undefined> {
   return Promise.resolve(getPluginAssetUrl(pluginId, assetPath));
 }
-
-export function getCustomPluginIdentifier(
-  pluginOrIdentifier: Pick<CustomVizPluginRuntime, "identifier"> | string,
-): VisualizationDisplay {
-  const identifier =
-    typeof pluginOrIdentifier === "string"
-      ? pluginOrIdentifier
-      : pluginOrIdentifier.identifier;
-
-  return `custom:${identifier}`;
-}
-
-export const defineSetting = <T>(definition: T) => definition;
