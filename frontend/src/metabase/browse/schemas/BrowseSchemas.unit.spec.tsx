@@ -1,10 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { BrowseSchemas } from "./BrowseSchemas";
 
@@ -22,64 +23,115 @@ const setup = ({
   );
 };
 
+const MULTI_SCHEMA_SALES = createMockDatabase({
+  id: 7,
+  name: "Sales",
+  tables: [
+    createMockTable({ id: 10, db_id: 7, schema: "PUBLIC" }),
+    createMockTable({ id: 11, db_id: 7, schema: "ANALYTICS" }),
+  ],
+});
+
 describe("BrowseSchemas name-based permalinks", () => {
-  it("renders the database browse page in place, keeping the name url", async () => {
-    const { history } = setup({
-      databases: [createMockDatabase({ id: 7, name: "Sales" })],
-      initialRoute: "/browse/databases/Sales",
-    });
+  describe("resolving the database from the url segment", () => {
+    it("shows the database's schemas under the name url, without redirecting", async () => {
+      const { history } = setup({
+        databases: [MULTI_SCHEMA_SALES],
+        initialRoute: "/browse/databases/Sales",
+      });
 
-    expect(await screen.findByTestId("browse-schemas")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
-      "/browse/databases/Sales",
-    );
+      expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
+      expect(screen.getByText("ANALYTICS")).toBeInTheDocument();
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/browse/databases/Sales",
+      );
+    });
   });
 
-  it("resolves to the lowest id when names collide", async () => {
-    setup({
-      databases: [
-        createMockDatabase({ id: 9, name: "Prod" }),
-        createMockDatabase({ id: 4, name: "Prod" }),
-      ],
-      initialRoute: "/browse/databases/Prod",
+  describe("preserving the url form when drilling into a schema", () => {
+    it("stays on the name url", async () => {
+      const { history } = setup({
+        databases: [MULTI_SCHEMA_SALES],
+        initialRoute: "/browse/databases/Sales",
+      });
+
+      await userEvent.click(await screen.findByText("PUBLIC"));
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/browse/databases/Sales/schema/PUBLIC",
+      );
     });
 
-    expect(await screen.findByTestId("browse-schemas")).toBeInTheDocument();
-    // the page shows the lowest-id database's schemas
-    expect(
-      fetchMock.callHistory.calls("path:/api/database/4/schemas"),
-    ).toHaveLength(1);
-    expect(
-      fetchMock.callHistory.calls("path:/api/database/9/schemas"),
-    ).toHaveLength(0);
+    it("stays on the id url", async () => {
+      const { history } = setup({
+        databases: [MULTI_SCHEMA_SALES],
+        initialRoute: "/browse/databases/7-sales",
+      });
+
+      await userEvent.click(await screen.findByText("PUBLIC"));
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/browse/databases/7-sales/schema/PUBLIC",
+      );
+    });
   });
 
-  it("matches names case-sensitively", async () => {
-    setup({
-      databases: [createMockDatabase({ id: 7, name: "Sales" })],
-      initialRoute: "/browse/databases/sales",
+  describe("schema layout", () => {
+    it("renders the tables inline when the database has a single schema", async () => {
+      setup({
+        databases: [
+          createMockDatabase({
+            id: 7,
+            name: "Sales",
+            tables: [
+              createMockTable({
+                id: 10,
+                db_id: 7,
+                schema: "PUBLIC",
+                name: "orders",
+                display_name: "Orders",
+              }),
+            ],
+          }),
+        ],
+        initialRoute: "/browse/databases/Sales",
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
     });
 
-    expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+    it("tells the user when the database has no tables", async () => {
+      setup({
+        databases: [createMockDatabase({ id: 7, name: "Sales", tables: [] })],
+        initialRoute: "/browse/databases/Sales",
+      });
+
+      expect(
+        await screen.findByText("This database doesn't have any tables."),
+      ).toBeInTheDocument();
+    });
   });
 
-  it("shows a not-found page for an unknown name", async () => {
-    setup({
-      databases: [createMockDatabase({ id: 7, name: "Sales" })],
-      initialRoute: "/browse/databases/Unknown",
+  describe("when the database can't be resolved", () => {
+    it("shows a not-found page for an unknown name", async () => {
+      setup({
+        databases: [createMockDatabase({ id: 7, name: "Sales" })],
+        initialRoute: "/browse/databases/Unknown",
+      });
+
+      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
     });
 
-    expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-  });
+    it("shows an error instead of not-found when the databases request fails", async () => {
+      fetchMock.get("path:/api/database", 500);
+      setup({
+        databases: [createMockDatabase({ id: 7, name: "Sales" })],
+        initialRoute: "/browse/databases/Sales",
+      });
 
-  it("shows an error instead of not-found when the databases request fails", async () => {
-    fetchMock.get("path:/api/database", 500);
-    renderWithProviders(
-      <Route path="/browse/databases/:slug" component={BrowseSchemas} />,
-      { withRouter: true, initialRoute: "/browse/databases/Sales" },
-    );
-
-    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
-    expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+      expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
+    });
   });
 });

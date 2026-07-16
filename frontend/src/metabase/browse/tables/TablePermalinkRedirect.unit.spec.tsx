@@ -52,89 +52,79 @@ const setup = ({
 const SALES = createMockDatabase({ id: 7, name: "Sales" });
 
 describe("TablePermalinkRedirect", () => {
-  it("redirects a table permalink to the canonical /table/:id-:slug url", async () => {
-    const table = createMockTable({
-      id: 10,
-      db_id: 7,
-      schema: "PUBLIC",
-      name: "orders",
-      display_name: "Orders",
-    });
-    const { history } = setup({
-      databases: [SALES],
-      tables: [table],
-      initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
+  describe("redirecting to the query builder", () => {
+    it("redirects a table permalink to the canonical /table/:id-:slug url", async () => {
+      const table = createMockTable({
+        id: 10,
+        db_id: 7,
+        schema: "PUBLIC",
+        name: "orders",
+        display_name: "Orders",
+      });
+      const { history } = setup({
+        databases: [SALES],
+        tables: [table],
+        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
+      });
+
+      await waitFor(() =>
+        expect(history?.getCurrentLocation().pathname).toBe("/table/10-orders"),
+      );
     });
 
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/table/10-orders"),
-    );
+    it("redirects a schema-less table permalink (null schema)", async () => {
+      const table = createMockTable({
+        id: 11,
+        db_id: 7,
+        schema: undefined,
+        name: "events",
+        display_name: "Events",
+      });
+      const { history } = setup({
+        databases: [SALES],
+        tables: [table],
+        initialRoute: "/browse/databases/Sales/table/events",
+      });
+
+      await waitFor(() =>
+        expect(history?.getCurrentLocation().pathname).toBe("/table/11-events"),
+      );
+    });
   });
 
-  it("redirects a schema-less table permalink (null schema)", async () => {
-    const table = createMockTable({
-      id: 11,
-      db_id: 7,
-      schema: undefined,
-      name: "events",
-      display_name: "Events",
-    });
-    const { history } = setup({
-      databases: [SALES],
-      tables: [table],
-      initialRoute: "/browse/databases/Sales/table/events",
-    });
+  describe("when the table can't be resolved", () => {
+    it("shows a not-found page for an unknown table", async () => {
+      setup({
+        databases: [SALES],
+        tables: [],
+        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/nope",
+      });
 
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/table/11-events"),
-    );
+      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+    });
   });
 
-  it("matches the table name case-sensitively (wrong case → not found)", async () => {
-    const table = createMockTable({
-      id: 10,
-      db_id: 7,
-      schema: "PUBLIC",
-      name: "orders",
-    });
-    setup({
-      databases: [SALES],
-      tables: [table],
-      initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/ORDERS",
-    });
+  describe("handle failing requests", () => {
+    it("shows an error instead of not-found when the databases request fails", async () => {
+      setup({
+        databases: 500,
+        tables: [],
+        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
+      });
 
-    expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-  });
-
-  it("shows a not-found page for an unknown table", async () => {
-    setup({
-      databases: [SALES],
-      tables: [],
-      initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/nope",
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+      expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
     });
 
-    expect(await screen.findByLabelText("error page")).toBeInTheDocument();
-  });
+    it("shows an error instead of not-found when the tables request fails", async () => {
+      setup({
+        databases: [SALES],
+        tables: 500,
+        initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
+      });
 
-  it("shows an error instead of not-found when the databases request fails", async () => {
-    setup({
-      databases: 500,
-      tables: [],
-      initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
+      expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+      expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
     });
-
-    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
-    expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
-  });
-
-  it("shows an error instead of not-found when the tables request fails", async () => {
-    setup({
-      databases: [SALES],
-      tables: 500,
-      initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
-    });
-
-    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
-    expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
   });
 });

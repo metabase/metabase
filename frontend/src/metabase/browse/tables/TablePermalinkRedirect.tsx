@@ -42,7 +42,13 @@ export const TablePermalinkRedirect = ({
     term: tableName,
   });
 
-  const database = findDatabaseByName(databasesData?.data ?? [], dbName);
+  const databases = databasesData?.data ?? [];
+  const dbId = Urls.extractEntityId(dbName);
+  const database =
+    dbId == null
+      ? findDatabaseByName(databases, dbName)
+      : databases.find((database) => database.id === dbId);
+
   const table = database
     ? findTable(tables ?? [], database.id, schemaName, tableName)
     : undefined;
