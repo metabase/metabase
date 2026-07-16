@@ -84,6 +84,7 @@
                               :index/fetch                    true
                               :index/standalone-create        true
                               :metadata/table-existence-check true
+                              :native-pivot-tables            true
                               :now                            true
                               :persist-models                 true
                               :rename                         true

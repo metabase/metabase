@@ -3,8 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.classloader.core :as classloader]
+   [metabase.mq.listener :as listener]
    [metabase.mq.quartz-affinity :as affinity]
+   [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.quartz :as q.quartz]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
@@ -117,3 +120,53 @@
         (is (= #{"aff-sync"} (acquire! sched #{"nonexistent"}))
             "capable of an unrelated queue → only the non-queue job")
         (finally (cleanup! sched))))))
+
+;;; The test above pins the filter against a hand-supplied capability set. This one wires up the *real*
+;;; capability fn (`q.quartz/capable-queue-names`) and proves the thing the concurrency cap actually
+;;; depends on: a node at its `:max-concurrent-batches` stops acquiring that queue's triggers from the
+;;; shared store — the same way it stops acquiring a queue it has no listener for.
+
+(defn- acquire-with-real-capability-fn! [sched]
+  (let [the-atom @#'affinity/capability-fn*
+        prev     @the-atom
+        now      (epoch-ms)]
+    (affinity/set-capability-fn! q.quartz/capable-queue-names)
+    (try
+      (t2/with-connection [conn]
+        (->> (affinity/select-trigger-to-acquire conn (+ now 3600000) (- now 3600000) 100 (test-rtp sched))
+             (map (fn [^TriggerKey k] (.getName k)))
+             set))
+      (finally (reset! the-atom prev)))))
+
+(deftest at-capacity-queue-is-not-acquired-against-appdb-test
+  (testing "a node at a queue's :max-concurrent-batches stops acquiring its triggers, so they stay
+            WAITING in the shared store for a node with a free slot"
+    (let [sched    (str "AFFINITY_CAP_TEST_" (random-uuid))
+          capped   (keyword "queue" (str "affcap-capped-" (random-uuid)))
+          uncapped (keyword "queue" (str "affcap-uncapped-" (random-uuid)))]
+      (q.registry/register-queue! capped {:transactional :try :max-concurrent-batches 1})
+      (q.registry/register-queue! uncapped {:transactional :try})
+      (listener/batch-listen! capped (fn [_] nil))
+      (listener/batch-listen! uncapped (fn [_] nil))
+      (cleanup! sched)
+      (seed! sched [[(name capped) mq-group] [(name uncapped) mq-group] ["affcap-sync" "DEFAULT"]])
+      (try
+        (testing "with a free slot, the capped queue's trigger is acquirable"
+          (is (= #{(name capped) (name uncapped) "affcap-sync"}
+                 (acquire-with-real-capability-fn! sched))))
+        (q.concurrency/with-slot capped
+          (testing "at capacity, its trigger is not selected by the acquire query at all"
+            (is (= #{(name uncapped) "affcap-sync"}
+                   (acquire-with-real-capability-fn! sched))
+                "the node at its cap leaves the capped queue's work in the store — and an uncapped
+                 queue and non-queue jobs (sync, pulses) are untouched, so a saturated queue can't
+                 starve them")))
+        (testing "once the slot is released, its trigger is acquirable again"
+          (is (= #{(name capped) (name uncapped) "affcap-sync"}
+                 (acquire-with-real-capability-fn! sched))))
+        (finally
+          (cleanup! sched)
+          (listener/unlisten! capped)
+          (listener/unlisten! uncapped)
+          (swap! q.registry/*queues* dissoc capped)
+          (swap! q.registry/*queues* dissoc uncapped))))))

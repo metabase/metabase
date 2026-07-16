@@ -36,6 +36,7 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { SandboxedPluginContainer } from "./components/SandboxedPluginContainer";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -536,10 +537,10 @@ function createCustomVizWrapper(
     );
 
     return (
-      <div
-        ref={containerRef}
-        data-plugin-sandbox={pluginId}
-        style={{ width: "100%", height: "100%" }}
+      <SandboxedPluginContainer
+        containerRef={containerRef}
+        fill
+        pluginId={pluginId}
       />
     );
   };

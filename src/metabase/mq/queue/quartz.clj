@@ -30,9 +30,12 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.registry :as q.registry]
+   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -44,6 +47,13 @@
 (def backend-id
   "This backend's identifier, registered with `metabase.mq.init`; its `name` labels metrics."
   :queue.backend/quartz)
+
+;; Install the queue node-affinity DriverDelegate when Quartz's JDBC properties are set. Registered at
+;; load time, and here rather than in `metabase.mq.init`, because it is a property of *this* backend —
+;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `task`,
+;; not the reverse, so `task.bootstrap` calls back into this rather than referencing `mq`.)
+;; install-delegate! falls back to the plain per-DB delegate if the affinity subclass can't be loaded.
+(task.bootstrap/register-jdbc-property-setter! quartz-affinity/install-delegate!)
 
 (def ^:private job-group
   "Quartz group every queue job/trigger lives in, so they're easy to isolate from the rest of the
@@ -105,11 +115,64 @@
   rare race where the listener was torn down between acquisition and execution.
 
   We must *re-schedule* not refire: a refire re-runs on THIS node and bypasses acquisition, so it would
-  loop here until node shutdown and never reach a capable node."
-  [^Scheduler scheduler queue payload attempt]
+  loop here until node shutdown and never reach a capable node.
+
+  The re-queued trigger keeps the batch's original `start-at` instead of taking `now`. The age reaper
+  ([[metabase.mq.task.queue-reaper]]) gives up on a never-acquired queue trigger by its `start_time`,
+  and a bounce writes a *fresh* trigger — so stamping `now` would reset the message's reaper clock on
+  every bounce, and a message nobody can handle could never age out. That is exactly the message the
+  reaper exists to drop, and nothing else bounds this path: a bounce carries no backoff and spends no
+  retry budget. An already-due `start-at` is also what we want on the way out: the batch should reach
+  a capable node as soon as one asks for work."
+  [^Scheduler scheduler queue payload attempt ^Date start-at]
   (analytics/inc! :metabase-mq/batches-retried {:channel (name queue) :reason "no-listener"})
   (log/debugf "Queue %s has no listener on this node; re-queuing for a node that does." queue)
-  (schedule-message-trigger! scheduler queue payload attempt (Date.)))
+  (schedule-message-trigger! scheduler queue payload attempt start-at))
+
+;;; ------------------------------------ Waking the acquire loop ------------------------------------
+
+(task/defjob ^{:doc "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call
+                     `resumeJob` on."}
+  QueueSlotNudgeJob
+  [_ctx])
+
+(def ^:private nudge-job-key (jobs/key "queue-slot-nudge" job-group))
+
+(defonce ^:private nudge-job-ensured? (atom false))
+
+(defn- ensure-nudge-job!
+  "Idempotently creates the durable, trigger-less job that [[wake-scheduler!]] pokes."
+  [^Scheduler scheduler]
+  (when-not @nudge-job-ensured?
+    (.addJob scheduler
+             (jobs/build
+              (jobs/of-type QueueSlotNudgeJob)
+              (jobs/with-identity nudge-job-key)
+              (jobs/store-durably))
+             true)
+    (reset! nudge-job-ensured? true)))
+
+(defn- wake-scheduler!
+  "Tells Quartz's trigger-acquisition loop to look again, right now.
+
+  This is *required* for `:max-concurrent-batches` to work, not an optimization. Once the acquisition
+  filter excludes a queue we're at capacity on, the scheduler thread finds nothing to acquire and
+  parks on its `sigLock` for up to `idleWaitTime` (30s by default) — and nothing wakes it when one of
+  our batches finishes and frees a slot, because Quartz only signals on completion for
+  `@DisallowConcurrentExecution` jobs. Without this poke a capped queue would drain N batches, sleep
+  30s, drain N more.
+
+  `resumeJob` is the cheapest *public* API that signals that loop: `QuartzScheduler.resumeJob` ends in
+  `notifySchedulerThread(0L)`, which is exactly the signal the acquire loop is waiting on. We aim it at
+  a job with no triggers, so the resume itself has nothing to resume and the whole call is a zero-row
+  no-op — we are calling it purely for that side effect on the scheduler thread."
+  [^Scheduler scheduler queue]
+  (when (q.registry/max-concurrent-batches queue)
+    (try
+      (ensure-nudge-job! scheduler)
+      (.resumeJob scheduler nudge-job-key)
+      (catch Throwable t
+        (log/debugf t "Could not wake the Quartz acquire loop after freeing a slot on %s" queue)))))
 
 (defn- deliver-batch!
   "Shared job body. Reads the merged job+trigger data and dispatches on the delivery result:
@@ -131,29 +194,39 @@
   on Quartz's worker threads; in a cluster the retry lands in the shared JDBC store so any node can
   pick it up."
   [^JobExecutionContext ctx]
-  (let [data    (.getMergedJobDataMap ctx)
-        queue   (keyword "queue" (.getString data data-queue))
-        payload (.getString data data-payload)
-        attempt (Integer/parseInt (or (.getString data data-attempt) "0"))]
+  (let [data      (.getMergedJobDataMap ctx)
+        queue     (keyword "queue" (.getString data data-queue))
+        payload   (.getString data data-payload)
+        attempt   (Integer/parseInt (or (.getString data data-attempt) "0"))
+        scheduler (.getScheduler ctx)]
     (try
-      (let [result (mq.impl/deliver! queue payload)]
-        (cond
-          (= mq.impl/no-listener result)
-          (requeue-no-listener! (.getScheduler ctx) queue payload attempt)
+      (q.concurrency/with-slot queue
+        (let [result (mq.impl/deliver! queue payload)]
+          (cond
+            (= mq.impl/no-listener result)
+            ;; read the trigger lazily — only this path needs it
+            (requeue-no-listener! scheduler queue payload attempt
+                                  (.getStartTime (.getTrigger ctx)))
 
-          (instance? Throwable result)
-          (let [next-attempt (inc attempt)]
-            (q.impl/handle-batch-failure-policy!
-             queue attempt result
-             #(schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
-                                         (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
-             (constantly nil)))))
+            (instance? Throwable result)
+            (let [next-attempt (inc attempt)]
+              (q.impl/handle-batch-failure-policy!
+               queue payload attempt result
+               #(schedule-message-trigger! scheduler queue payload next-attempt
+                                           (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
+               (constantly nil))))))
+      ;; `with-slot` has returned, so the slot is already released — and a freed slot is invisible to
+      ;; Quartz's acquire loop, which may be parked for up to `idleWaitTime` with this queue filtered
+      ;; out. Tell it to look again. (Waking *before* the release would be pointless: the loop would
+      ;; re-check, still see us at capacity, and park again.)
+      (wake-scheduler! scheduler queue)
       ;; Delivered, or the retry/requeue is durably committed. Return nil so Quartz completes the
       ;; one-shot trigger.
       nil
       (catch Throwable t
         ;; We couldn't hand the message off (couldn't schedule the retry, etc.). Don't let Quartz drop
-        ;; the fired one-shot — have it re-run this job instead.
+        ;; the fired one-shot — have it re-run this job instead. `with-slot` has already released the
+        ;; slot on its way out, so the refire won't find the queue at capacity because of us.
         (backoff-before-refire!)
         (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
@@ -208,6 +281,21 @@
                  true)))
     (swap! ensured-jobs conj [queue exclusive?])))
 
+;;; ------------------------------------ Node affinity (acquisition) ------------------------------------
+
+(defn capable-queue-names
+  "The queue names this node is willing to acquire triggers for *right now* — the set the affinity
+  delegate splices into Quartz's acquire query.
+
+  Quartz's shape of the backend-agnostic [[q.concurrency/takeable-queues]]: strings, because that's what
+  a Quartz job is named. A queue drops out for having no listener here or for being at its
+  `:max-concurrent-batches`, which mean the same thing to the acquisition filter — don't take this work,
+  leave it in the shared store for a node that can run it.
+
+  Called on every acquire, so a listener registering and a slot freeing up both take effect at once."
+  []
+  (into #{} (map name) (q.concurrency/takeable-queues)))
+
 (defrecord QuartzQueueBackend []
   q.backend/QueueBackend
   (backend-id [_this] backend-id)
@@ -230,11 +318,18 @@
                       queue)
               {:queue queue :backend backend-id}))))
 
+  ;; There is no poll loop to start. What this backend *does* need at startup is its node-affinity
+  ;; filter: tell the delegate which queues we'll acquire triggers for. That is a Quartz-specific
+  ;; acquisition strategy, so it's wired here rather than in `metabase.mq.init` — the init ns shouldn't
+  ;; have to know that one particular backend gates its own intake.
+  (start! [_this]
+    (quartz-affinity/set-capability-fn! capable-queue-names))
+
+  (shutdown! [_this])
+
   ;; Push backend — Quartz drives everything below, so these poll-driver hooks are never invoked
   ;; (the poll loop is never started) and exist only to satisfy the protocol.
-  (start! [_this])
-  (shutdown! [_this])
-  (fetch! [_this _available-queues] nil)
+  (fetch! [_this _queue->free-slots] nil)
   (queue-depths [_this] nil)
   (batch-successful! [_this _queue-name _batch-id] nil)
   (failure-count [_this _queue-name _batch-id] nil)
