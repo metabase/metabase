@@ -1,21 +1,35 @@
 (ns metabase.mcp.v2.tools.query
-  "The v2 MCP `execute_query` tool: one surface where v1 shipped three (`construct_query` +
-   `query` + `execute_query`). A fresh portable MBQL 5 `query` runs the representations
-   pipeline (validate → repair → resolve against database metadata, with teaching errors); a
+  "The v2 MCP query-execution tools.
+
+   `execute_query`: one surface where v1 shipped three (`construct_query` + `query` +
+   `execute_query`). A fresh portable MBQL 5 `query` runs the representations pipeline
+   (validate → repair → resolve against database metadata, with teaching errors); a
    `query_handle` or `cursor` resolves through the handle store with the fresh-query guards
    re-run. Every call mints a handle — what the agent later saves or visualizes through it is
    byte-identical to what ran — and a truncated MBQL page mints a keyset `next_cursor` so the
-   model continues with one opaque string, never a hand-written keyset filter."
+   model continues with one opaque string, never a hand-written keyset filter.
+
+   `execute_sql`: raw SQL in the same response envelope, gated by the `mcp-execute-sql-enabled`
+   kill switch and native-query permission. It also mints a handle on every call (including
+   `validate_only`, which replaces v1's `construct_native_query`), so saving or visualizing SQL
+   needs no separate construct step. Never a cursor: arbitrary SQL can't be rewritten with a
+   server-side keyset predicate, so truncation steers to narrowing the SQL or `export`."
   (:require
+   [clojure.string :as str]
+   [medley.core :as m]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.tools.construct :as metabot.construct]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -208,3 +222,147 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     (if (true? validate_only)
       (validate-only-response session-id serialized-query prompt)
       (execute-response session-id serialized-query prompt (or row_limit default-row-limit)))))
+
+;;; ------------------------------------------------ execute_sql ---------------------------------------------------
+
+(defn- check-execute-sql-gates!
+  "The execute_sql pre-checks, in order: the `mcp-execute-sql-enabled` kill switch, the
+   collapsed not-found for a database the caller can't see (identical for \"doesn't exist\" and
+   \"exists but unreadable\", so the response never forms an existence oracle), then native-query
+   permission. The permission error is only reachable for a database the caller can already
+   browse — native permission implies `can-read?` — so its distinct message discloses nothing.
+   All three run on the execute AND `validate_only` paths — a handle minted without them would
+   make `validate_only` a kill-switch bypass and a native-permission oracle. Running them on
+   `validate_only` is a deliberate tightening over v1's `construct_native_query`, which only
+   read-checked the database. They run at the tool layer (the QP permissions middleware
+   re-checks inside `process-query`) so a refusal short-circuits before any query machinery
+   spins up."
+  [database-id]
+  (when-not (agent-api.settings/mcp-execute-sql-enabled)
+    (throw (ex-info (str "execute_sql is disabled on this instance — an admin can re-enable it "
+                         "with the mcp-execute-sql-enabled setting.")
+                    {:status-code 403})))
+  (when-not (mi/can-read? :model/Database database-id)
+    (common/throw-not-found :model/Database database-id))
+  (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
+    (throw (ex-info "You do not have permission to run native queries against this database."
+                    {:status-code 403 :database_id database-id}))))
+
+(defn- value->tag-type
+  "The template-tag (and parameter) type for a supplied binding value, from its JSON type. The
+   tag type drives the QP's value parsing, so a number value must flip the extracted tag's
+   default `:text` to `:number` to bind as a numeric prepared-statement parameter."
+  [value]
+  (cond
+    (number? value)  :number
+    (boolean? value) :boolean
+    :else            :text))
+
+(defn- bind-template-tag-values
+  "Bind `template-tag-values` into `query` (a live lib native query whose `{{tag}}` occurrences
+   are already extracted as `:text` tag declarations). Returns
+   `{:query <query with retyped tags> :parameters <parameter list>}` — the parameters ride
+   outside the query because [[metabase.lib.core/prepare-for-serialization]] strips
+   `:parameters` at every level as runtime-only; the caller re-attaches them top-level after
+   serializing, where the QP's parameter middleware picks them up and compiles them to
+   driver-level prepared-statement bind params. A name with no matching `{{tag}}` in the SQL
+   is a teaching error, as is naming a snippet or card-reference tag — those splice
+   server-side SQL text, never caller values."
+  [query template-tag-values]
+  (let [tags     (lib/template-tags query)
+        by-name  (m/index-by :name tags)
+        bindings (mapv (fn [[k value]]
+                         (let [tag-name (u/qualified-name k)
+                               {tag-type :type :as tag} (get by-name tag-name)]
+                           (cond
+                             (nil? tag)
+                             (common/throw-teaching-error
+                              (format "No {{%s}} template tag in the SQL — template_tag_values keys must name a {{tag}} placeholder that appears in sql. Tags found: %s."
+                                      tag-name
+                                      (if-let [names (seq (map :name tags))]
+                                        (str/join ", " names)
+                                        "none")))
+
+                             (contains? #{:card :snippet} tag-type)
+                             (common/throw-teaching-error
+                              (format "{{%s}} is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."
+                                      tag-name (name tag-type)))
+
+                             :else
+                             {:tag (assoc tag :type (value->tag-type value)) :value value})))
+                       template-tag-values)]
+    {:query      (lib/with-template-tags query (mapv :tag bindings))
+     :parameters (mapv (fn [{:keys [tag value]}]
+                         {:type   (:type tag)
+                          :target [:variable [:template-tag (:name tag)]]
+                          :value  value})
+                       bindings)}))
+
+(defn- sql-steering-line
+  [returned]
+  (format "returned %d rows — narrow the SQL (add filters/aggregation) or export for the full set"
+          returned))
+
+(defn- validate-sql-response
+  [session-id serialized-query]
+  (let [counts {:query_handle (mint-handle! session-id serialized-query nil)
+                :returned     0
+                :truncated    false}]
+    (common/success-content
+     (str (json/encode counts)
+          "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
+
+(defn- execute-sql-response
+  [session-id serialized-query row-limit]
+  (let [result     (execute! serialized-query row-limit)
+        cols       (get-in result [:data :cols])
+        rows       (get-in result [:data :rows])
+        returned   (count rows)
+        ;; Native rows arrive already truncated by the `:max-results` constraint, so a page
+        ;; that fills `row-limit` is reported truncated — a result set exactly that size is
+        ;; the same false positive execute_query accepts.
+        truncated? (and (pos? returned) (= returned row-limit))
+        counts     {:query_handle (mint-handle! session-id serialized-query nil)
+                    :returned     returned
+                    :truncated    truncated?}
+        payload    (assoc counts
+                          :cols (response-cols cols)
+                          :rows rows)]
+    (common/success-content
+     (cond-> (json/encode payload)
+       truncated? (str "\n" (sql-steering-line returned))))))
+
+(def ^:private execute-sql-args-schema
+  [:map {:closed true}
+   [:database_id
+    [:int {:min 1 :description "Numeric id of the database to run the SQL against. Requires native-query permission on it."}]]
+   [:sql
+    [:string {:min 1 :description "The raw SQL text, run verbatim against the database. Put caller-supplied values behind {{tag}} placeholders bound via template_tag_values — never splice them into this string."}]]
+   [:template_tag_values {:optional true}
+    [:maybe [:map-of {:description "Values for the {{tag}} placeholders in sql, keyed by tag name. Each value binds as a driver-level prepared-statement parameter (injection-safe): strings bind as text, numbers as numbers. Snippet ({{snippet: …}}) and card-reference ({{#123}}) tags cannot be populated here."}
+             :keyword [:or :string number? :boolean]]]]
+   [:validate_only {:optional true}
+    [:maybe [:boolean {:description "true mints a query_handle without executing — template tags and permissions are checked, the SQL text itself is not (default false)."}]]]
+   [:row_limit {:optional true}
+    [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
+
+(registry/deftool execute-sql
+  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the target database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql string runs verbatim against the warehouse, so it is the injection surface — never splice caller-supplied or user-supplied values into it. Put values behind {{tag}} placeholders and pass them in template_tag_values instead: they bind as driver-level prepared-statement parameters, injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (template tags and permissions checked; the SQL text itself is not validated) — use it to stage SQL for saving or visualizing without pulling rows into context. Every call returns a query_handle accepted by question_write and visualize_query; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination for SQL: when a result is truncated, narrow the SQL (add filters/aggregation) or export for the full set."
+  {:name  "execute_sql"
+   :scope metabot.scope/agent-sql-execute
+   :args  execute-sql-args-schema}
+  [{:keys [database_id sql template_tag_values validate_only row_limit]} {:keys [session-id]}]
+  (check-execute-sql-gates! database_id)
+  (let [mp    (lib-be/application-database-metadata-provider database_id)
+        query (lib/native-query mp sql)
+        {:keys [query parameters]} (if (seq template_tag_values)
+                                     (bind-template-tag-values query template_tag_values)
+                                     {:query query})
+        ;; Re-attached after serialization (which strips `:parameters` as runtime-only) so the
+        ;; execution and the minted handle both carry the bound values: what the agent later
+        ;; visualizes or re-runs through the handle is exactly what ran here.
+        serialized (cond-> (lib/prepare-for-serialization query)
+                     (seq parameters) (assoc :parameters parameters))]
+    (if (true? validate_only)
+      (validate-sql-response session-id serialized)
+      (execute-sql-response session-id serialized (or row_limit default-row-limit)))))
