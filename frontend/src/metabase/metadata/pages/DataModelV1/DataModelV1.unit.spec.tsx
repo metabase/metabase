@@ -21,7 +21,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link, Route, redirect } from "metabase/router";
+import { Link, Route, redirect, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -57,6 +57,8 @@ import { DataModelV1 } from "./DataModelV1";
 import type { ParsedRouteParams } from "./types";
 
 registerVisualizations();
+
+const RoutedDataModelV1 = withRouteProps(DataModelV1);
 
 const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
@@ -216,22 +218,22 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
         <Route index element={redirect("database")} />
-        <Route path="database" component={DataModelV1} />
-        <Route path="database/:databaseId" component={DataModelV1} />
+        <Route path="database" element={<RoutedDataModelV1 />} />
+        <Route path="database/:databaseId" element={<RoutedDataModelV1 />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModelV1}
+          element={<RoutedDataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId"
-          component={DataModelV1}
+          element={<RoutedDataModelV1 />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-          component={DataModelV1}
+          element={<RoutedDataModelV1 />}
         />
       </Route>
     </>,

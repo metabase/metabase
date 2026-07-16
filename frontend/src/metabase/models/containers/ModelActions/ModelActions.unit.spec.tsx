@@ -234,7 +234,7 @@ async function setup({
           })}
         </Route>
       </Route>
-      <Route path="/question/:slug" component={() => null} />
+      <Route path="/question/:slug" element={null} />
     </>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
