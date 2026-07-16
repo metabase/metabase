@@ -2667,7 +2667,7 @@
   task
   {:team "UX West"
    :module-exports #{task.history}
-   :api  #{metabase.task.bootstrap metabase.task.core}
+   :api  #{metabase.task.core}
    :uses #{app-db
            tracing
            util
