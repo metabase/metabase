@@ -76,9 +76,10 @@
 (defn- params->where
   [{:keys [status task]}]
   (when (or status task)
+    ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
     {:where (cond-> [:and]
-              task   (conj [:= :task task])
-              status (conj [:= :status (name status)]))}))
+              task   (conj [:= :task_history.task task])
+              status (conj [:= :task_history.status (name status)]))}))
 
 (def FilterParams
   "Schema for filter for task history."

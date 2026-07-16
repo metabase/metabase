@@ -918,3 +918,34 @@
         (testing "invalid sort_column returns 400"
           (is (=? {:errors {:sort_column some?}}
                   (mt/user-http-request :crowberto :get 400 "task/runs" :sort_column :bogus))))))))
+
+(deftest ^:synchronized runs-filter-with-sort-test
+  ;; the entity_name/task_count sorts add joins, so filter columns must stay unambiguous. Notably `report_card` and
+  ;; `report_dashboard` have their own `entity_id` column.
+  (t2/delete! :model/TaskRun)
+  (t2/delete! :model/TaskHistory)
+  (let [now (t/zoned-date-time)]
+    (mt/with-temp [:model/Database db {:name "Some DB"}
+                   :model/Card card {:name "Some Card"}
+                   :model/TaskRun run-db {:run_type    :sync
+                                          :entity_type :database
+                                          :entity_id   (:id db)
+                                          :status      :success
+                                          :started_at  now}
+                   :model/TaskRun run-card {:run_type    :fingerprint
+                                            :entity_type :card
+                                            :entity_id   (:id card)
+                                            :status      :failed
+                                            :started_at  now}]
+      (letfn [(ids [& args]
+                (->> (apply mt/user-http-request :crowberto :get 200 "task/runs" args)
+                     :data
+                     (map :id)
+                     (filter #{(:id run-db) (:id run-card)})))]
+        (testing "entity filter composes with the entity_name sort joins"
+          (is (= [(:id run-db)]
+                 (ids :entity-type "database" :entity-id (:id db)
+                      :sort_column :entity_name :sort_direction :asc))))
+        (testing "status filter composes with the task_count sort join"
+          (is (= [(:id run-card)]
+                 (ids :status "failed" :sort_column :task_count :sort_direction :asc))))))))

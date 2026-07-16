@@ -192,12 +192,14 @@
 
 (defn- build-run-where-clause
   [{:keys [run-type entity-type entity-id status started-at]}]
+  ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
+  ;; (e.g. report_card.entity_id)
   (let [conditions (cond-> []
-                     run-type    (conj [:= :run_type run-type])
-                     entity-type (conj [:= :entity_type entity-type])
-                     entity-id   (conj [:= :entity_id entity-id])
-                     status      (conj [:= :status status])
-                     started-at  (conj (timestamp-constraint :started_at started-at)))]
+                     run-type    (conj [:= :task_run.run_type run-type])
+                     entity-type (conj [:= :task_run.entity_type entity-type])
+                     entity-id   (conj [:= :task_run.entity_id entity-id])
+                     status      (conj [:= :task_run.status status])
+                     started-at  (conj (timestamp-constraint :task_run.started_at started-at)))]
     (if (seq conditions)
       {:where (into [:and] conditions)}
       {})))
