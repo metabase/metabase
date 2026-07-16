@@ -8,6 +8,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
@@ -226,7 +227,12 @@
 
 (def ^:private candidate-default-min-view-count 10)
 (def ^:private candidate-default-limit 50)
-(def ^:private candidate-aggregation-operators #{:count :sum :avg :min :max :distinct})
+(def ^:private candidate-aggregation-operators
+  #{:count :sum :avg :min :max :distinct :median :stddev :var :percentile})
+(def ^:private conditional-aggregation-operators
+  #{:count-where :distinct-where :sum-where})
+(def ^:private categorical-filter-operators
+  #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
 (defn- canonical-signature
   "Canonical JSON used only for deterministic candidate grouping and exact collision checks."
@@ -269,17 +275,99 @@
          (sort-by :id)
          vec)))
 
-(defn- simple-physical-table-query
-  [database-id dataset-query]
+(defn- candidate-model-index
+  []
+  (into {}
+        (map (juxt :id identity))
+        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                   :archived false
+                   :type :model)))
+
+(defn- clauses-of-type
+  [clause-type x]
+  (filter #(lib/clause-of-type? % clause-type)
+          (tree-seq sequential? seq x)))
+
+(defn- physical-field-references?
+  "Whether every Field reference in `x` is a persisted, numeric Field id.
+
+  Source-card queries can legally refer to result columns by name. We deliberately reject those
+  when resolving model lineage because they cannot be copied safely into a physical-table
+  Measure or Segment definition without a separate rewrite step."
+  [x]
+  (every? #(pos-int? (nth % 2 nil)) (clauses-of-type :field x)))
+
+(declare direct-columns)
+
+(defn- transparent-model-query?
+  [query table-id]
+  (let [stage  (when (= 1 (lib/stage-count query))
+                 (lib/query-stage query 0))
+        fields (:fields stage)]
+    (and (= :mbql.stage/mbql (:lib/type stage))
+         (not (seq (:joins stage)))
+         (not (seq (:expressions stage)))
+         (not (seq (:filters stage)))
+         (not (seq (:aggregation stage)))
+         (not (seq (:breakout stage)))
+         (not (seq (:order-by stage)))
+         (nil? (:pivot stage))
+         (nil? (:limit stage))
+         (nil? (:page stage))
+         (or (not (seq fields))
+             (every? (fn [field]
+                       (and (lib/clause-of-type? field :field)
+                            (physical-field-references? field)
+                            (= 1 (count (direct-columns query field table-id)))))
+                     fields)))))
+
+(defn- resolve-model-source
+  [database-id source-card-id model-index seen]
+  (when (and (pos-int? source-card-id)
+             (not (contains? seen source-card-id)))
+    (when-let [{model-database-id :database_id
+                model-query-map   :dataset_query
+                :keys             [id name type]} (model-index source-card-id)]
+      (when (and (= type :model)
+                 (= database-id model-database-id))
+        (when-let [model-query (wrap-query database-id model-query-map)]
+          (let [stage (when (= 1 (lib/stage-count model-query))
+                        (lib/query-stage model-query 0))
+                source
+                (cond
+                  (pos-int? (:source-table stage))
+                  {:table-id (:source-table stage)
+                   :model-lineage []}
+
+                  (pos-int? (:source-card stage))
+                  (resolve-model-source database-id
+                                        (:source-card stage)
+                                        model-index
+                                        (conj seen source-card-id)))]
+            (when (and source
+                       (transparent-model-query? model-query (:table-id source)))
+              (update source :model-lineage conj {:id id :name name}))))))))
+
+(defn- simple-query-context
+  [database-id dataset-query model-index]
   (when-let [query (wrap-query database-id dataset-query)]
     (let [stage (when (= 1 (lib/stage-count query))
-                  (lib/query-stage query 0))]
-      (when (and (= :mbql.stage/mbql (:lib/type stage))
-                 (pos-int? (:source-table stage))
+                  (lib/query-stage query 0))
+          source
+          (cond
+            (pos-int? (:source-table stage))
+            {:table-id (:source-table stage)
+             :model-lineage []}
+
+            (pos-int? (:source-card stage))
+            (resolve-model-source database-id (:source-card stage) model-index #{})
+
+            :else nil)]
+      (when (and source
+                 (= :mbql.stage/mbql (:lib/type stage))
                  (not (seq (:joins stage)))
                  (not (seq (:expressions stage))))
-        {:query query
-         :table-id (:source-table stage)}))))
+        (assoc source :query query)))))
 
 (defn- minimal-definition
   [query table-id clause-key clause]
@@ -300,6 +388,11 @@
       (log/debug e "Failed to resolve candidate fields")
       nil)))
 
+(defn- lineage-safe-clause?
+  [model-lineage clause]
+  (or (empty? model-lineage)
+      (physical-field-references? clause)))
+
 (defn- field-summary
   [{:keys [id name display-name]}]
   {:id           id
@@ -308,32 +401,98 @@
 
 (defn- simple-aggregation
   [query aggregation table-id]
-  (let [operator (first aggregation)]
+  (let [operator   (first aggregation)
+        arg-count  (count aggregation)
+        field-arg? (and (<= 3 arg-count)
+                        (lib/clause-of-type? (nth aggregation 2 nil) :field))
+        valid-shape?
+        (case operator
+          :count      (or (= arg-count 2) (and (= arg-count 3) field-arg?))
+          :percentile (and (= arg-count 4)
+                           field-arg?
+                           (number? (nth aggregation 3))
+                           (<= 0 (nth aggregation 3) 1))
+          (and (= arg-count 3) field-arg?))]
     (when (and (contains? candidate-aggregation-operators operator)
-               (if (= operator :count)
-                 (= 2 (count aggregation))
-                 (and (= 3 (count aggregation))
-                      (lib/clause-of-type? (nth aggregation 2) :field))))
-      (let [columns (if (= operator :count)
+               valid-shape?)
+      (let [plain-count? (and (= operator :count) (= arg-count 2))
+            columns (if plain-count?
                       []
                       (direct-columns query aggregation table-id))]
-        (when (or (= operator :count) (= 1 (count columns)))
-          {:type  operator
-           :field (some-> (first columns) field-summary)})))))
+        (when (or plain-count? (= 1 (count columns)))
+          (cond-> {:type  operator
+                   :field (some-> (first columns) field-summary)}
+            (= operator :percentile) (assoc :percentile (nth aggregation 3))))))))
+
+(defn- categorical-column?
+  [column]
+  ((some-fn lib.types.isa/category?
+            lib.types.isa/boolean?
+            lib.types.isa/string?
+            lib.types.isa/foreign-key?
+            lib.types.isa/primary-key?)
+   column))
+
+(defn- filter-atoms
+  [query table-id categorical-only?]
+  (into []
+        (keep (fn [predicate]
+                (when-let [columns (direct-columns query predicate table-id)]
+                  (when (and (or (not categorical-only?)
+                                 (and (contains? categorical-filter-operators (first predicate))
+                                      (= 1 (count columns))
+                                      (categorical-column? (first columns))))
+                             (physical-field-references? predicate))
+                    {:predicate predicate
+                     :columns   columns}))))
+        (lib/atomic-filters query 0)))
+
+(declare segment-subsets)
+
+(defn- predicate-candidates
+  [atoms]
+  (let [atom-candidates (mapv #(assoc % :predicates [(:predicate %)]) atoms)
+        composite-candidates
+        (when (<= 2 (count atoms) 5)
+          (for [subset (segment-subsets atoms)]
+            {:predicate  (lib/simplify-compound-filter
+                          (apply lib/and (map :predicate subset)))
+             :predicates (mapv :predicate subset)
+             :columns    (vec (distinct (mapcat :columns subset)))}))]
+    (into atom-candidates composite-candidates)))
+
+(defn- conditional-aggregation
+  [aggregation aggregation-info {:keys [predicate predicates columns]}]
+  (let [operator (:type aggregation-info)
+        field    (nth aggregation 2 nil)
+        clause   (case operator
+                   :count    (when-not (:field aggregation-info)
+                               (lib/count-where predicate))
+                   :distinct (lib/distinct-where field predicate)
+                   :sum      (lib/sum-where field predicate)
+                   nil)]
+    (when clause
+      {:clause clause
+       :info   {:type                 (first clause)
+                :field                (:field aggregation-info)
+                :condition            predicate
+                :condition-fields     (mapv field-summary columns)
+                :condition-atom-count (count predicates)}})))
 
 (defn- segment-signature
   [table-id predicates]
   [table-id (vec (sort (map canonical-signature predicates)))])
 
 (defn- source-item-evidence
-  [{:keys [id name type verified? official-collection? popular? view-count]}]
-  {:id                   id
-   :name                 name
-   :type                 type
-   :verified?            verified?
-   :official-collection? official-collection?
-   :popular?             popular?
-   :view-count           view-count})
+  [{:keys [id name type verified? official-collection? popular? view-count model-lineage]}]
+  (cond-> {:id                   id
+           :name                 name
+           :type                 type
+           :verified?            verified?
+           :official-collection? official-collection?
+           :popular?             popular?
+           :view-count           view-count}
+    (seq model-lineage) (assoc :model-lineage model-lineage)))
 
 (defn- candidate-evidence
   [source-items]
@@ -346,11 +505,11 @@
      :total-view-count      (reduce + 0 (map :view-count items))}))
 
 (defn- candidate-sort-key
-  [{:keys [atom-count evidence], signature ::signature}]
+  [{:keys [atom-count aggregation evidence], signature ::signature}]
   [(if (pos? (:verified-source-count evidence)) 0 1)
    (if (pos? (:official-source-count evidence)) 0 1)
    (- (:distinct-source-count evidence))
-   (or atom-count 0)
+   (or atom-count (:condition-atom-count aggregation) 0)
    (- (:total-view-count evidence))
    signature])
 
@@ -376,21 +535,30 @@
         (mapv #(dissoc % ::signature)))))
 
 (defn- raw-measure-candidates
-  [cards]
+  [cards model-index]
   (into []
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
-           (when-let [{:keys [query table-id]} (simple-physical-table-query database_id dataset_query)]
-             (for [aggregation (lib/aggregations query 0)
-                   :let [aggregation-info (simple-aggregation query aggregation table-id)]
-                   :when aggregation-info
-                   :let [definition (minimal-definition query table-id :aggregation aggregation)]
-                   :when (mr/validate ::lib.schema.measure/definition definition)]
-               {::signature  [table-id (canonical-signature aggregation)]
-                ::table-id   table-id
-                ::source-item card
-                :definition  definition
-                :aggregation aggregation-info}))))
+           (when-let [{:keys [query table-id model-lineage]}
+                      (simple-query-context database_id dataset_query model-index)]
+             (let [source-item (assoc card :model-lineage model-lineage)
+                   categorical-predicates
+                   (predicate-candidates (filter-atoms query table-id true))]
+               (for [aggregation (lib/aggregations query 0)
+                     :when (lineage-safe-clause? model-lineage aggregation)
+                     :let [aggregation-info (simple-aggregation query aggregation table-id)]
+                     :when aggregation-info
+                     {:keys [clause info]}
+                     (into [{:clause aggregation :info aggregation-info}]
+                           (keep #(conditional-aggregation aggregation aggregation-info %))
+                           categorical-predicates)
+                     :let [definition (minimal-definition query table-id :aggregation clause)]
+                     :when (mr/validate ::lib.schema.measure/definition definition)]
+                 {::signature  [table-id (canonical-signature clause)]
+                  ::table-id   table-id
+                  ::source-item source-item
+                  :definition  definition
+                  :aggregation info})))))
         cards))
 
 (defn- full-segment-predicate
@@ -448,32 +616,21 @@
   (mapcat #(combinations % atoms) (range 2 (inc (count atoms)))))
 
 (defn- raw-segment-candidates
-  [cards]
+  [cards model-index]
   (into []
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
-           (when-let [{:keys [query table-id]} (simple-physical-table-query database_id dataset_query)]
-             (let [atoms (into []
-                               (keep (fn [predicate]
-                                       (when-let [columns (direct-columns query predicate table-id)]
-                                         {:predicate predicate
-                                          :columns   columns})))
-                               (lib/atomic-filters query 0))
-                   atom-candidates (mapv #(assoc % :predicates [(:predicate %)]) atoms)
-                   composite-candidates
-                   (when (<= 2 (count atoms) 5)
-                     (for [subset (segment-subsets atoms)]
-                       {:predicate  (lib/simplify-compound-filter
-                                     (apply lib/and (map :predicate subset)))
-                        :predicates (mapv :predicate subset)
-                        :columns    (vec (distinct (mapcat :columns subset)))}))
-                   candidates (into atom-candidates composite-candidates)]
+           (when-let [{:keys [query table-id model-lineage]}
+                      (simple-query-context database_id dataset_query model-index)]
+             (let [source-item (assoc card :model-lineage model-lineage)
+                   candidates  (predicate-candidates (filter-atoms query table-id false))]
                (for [{:keys [predicate predicates columns]} candidates
+                     :when (lineage-safe-clause? model-lineage predicate)
                      :let [definition (minimal-definition query table-id :filters predicate)]
                      :when (mr/validate ::lib.schema/query definition)]
                  {::signature  (segment-signature table-id predicates)
                   ::table-id   table-id
-                  ::source-item card
+                  ::source-item source-item
                   :definition  definition
                   :predicate   predicate
                   :fields      (mapv field-summary columns)
@@ -488,20 +645,34 @@
       (pos? (:official-source-count evidence))
       (>= (:distinct-source-count evidence) 2)))
 
+(defn- eligible-measure-candidate?
+  [{:keys [aggregation evidence]}]
+  (or (not (contains? conditional-aggregation-operators (:type aggregation)))
+      (pos? (:verified-source-count evidence))
+      (pos? (:official-source-count evidence))
+      (>= (:distinct-source-count evidence) 2)))
+
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Creation-ready Measure candidates mined from qualifying questions and models.
 
   A source qualifies when it is verified, directly in an official collection, or has at least
   `:min-view-count` lifetime views. Only primitive aggregations over one physical-table field are
-  considered; native queries, source cards, joins, expressions, and existing exact Measures are skipped."
+  considered. Conditional count/distinct/sum Measures are also synthesized from categorical filter
+  subsets and retained when curated or recurring. Native queries, joins, expressions, non-transparent
+  model sources, and existing exact Measures are skipped."
   ([] (candidate-measures {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
      (let [limit      (or limit candidate-default-limit)
            cards      (candidate-source-cards opts)
-           candidates (raw-measure-candidates cards)
+           models     (candidate-model-index)
+           candidates (raw-measure-candidates cards models)
            source-idx (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
-       (merge-candidates candidates source-idx (existing-measure-signatures) limit)))))
+       (merge-candidates candidates
+                         source-idx
+                         (existing-measure-signatures)
+                         limit
+                         eligible-measure-candidate?)))))
 
 (mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
   "Creation-ready Segment candidates mined from qualifying questions and models.
@@ -509,13 +680,15 @@
   Each eligible direct-table filter becomes an atomic candidate. Queries with two to five eligible
   atoms also contribute every multi-atom subset. A composite is retained when it recurs across at
   least two source Cards or has verified/official evidence. Existing exact Segment definitions are
-  skipped without allowing a saved conjunction to suppress its atomic constituents."
+  skipped without allowing a saved conjunction to suppress its atomic constituents. Questions and
+  models sourced through projection-only MBQL model chains are attributed to the physical source table."
   ([] (candidate-segments {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
      (let [limit       (or limit candidate-default-limit)
            cards       (candidate-source-cards opts)
-           candidates  (raw-segment-candidates cards)
+           models      (candidate-model-index)
+           candidates  (raw-segment-candidates cards models)
            source-idx  (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
        (merge-candidates candidates
                          source-idx

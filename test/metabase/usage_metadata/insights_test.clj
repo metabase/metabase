@@ -263,6 +263,28 @@
         subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
     (lib/aggregate (orders-base-query) (lib/sum subtotal))))
 
+(defn- orders-extended-measures-query []
+  (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+        subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (reduce lib/aggregate
+            (orders-base-query)
+            [(lib/count subtotal)
+             (lib/median subtotal)
+             (lib/stddev subtotal)
+             (lib/var subtotal)
+             (lib/percentile subtotal 0.9)])))
+
+(defn- orders-conditional-measure-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        user-id    (lib.metadata/field mp (mt/id :orders :user_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (reduce lib/aggregate
+            (lib/filter (orders-base-query) (lib/= product-id 987654))
+            [(lib/count)
+             (lib/distinct user-id)
+             (lib/sum subtotal)])))
+
 (defn- orders-segment-query []
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
         product-id (lib.metadata/field mp (mt/id :orders :product_id))
@@ -270,6 +292,11 @@
     (lib/filter (orders-base-query)
                 (lib/and (lib/= product-id 987654)
                          (lib/> subtotal 12345)))))
+
+(defn- model-source-query
+  [card-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (lib/query mp (lib.metadata/card mp card-id))))
 
 (defn- orders-three-atom-segment-query [quantity-value]
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
@@ -344,6 +371,120 @@
           (is (empty? (candidates-from-card
                        card-id
                        (insights/candidate-measures {:min-view-count 10 :limit 1000})))))))))
+
+(deftest candidate-measures-support-remaining-direct-aggregations-test
+  (let [query (orders-extended-measures-query)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining extended measures"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 1000000}]
+      (let [candidates (candidates-from-card
+                        card-id
+                        (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+            by-type    (into {} (map (juxt #(get-in % [:aggregation :type]) identity)) candidates)]
+        (is (= #{:count :median :stddev :var :percentile} (set (keys by-type))))
+        (is (= (mt/id :orders :subtotal)
+               (get-in by-type [:count :aggregation :field :id])))
+        (is (= 0.9
+               (get-in by-type [:percentile :aggregation :percentile])))
+        (is (every? #(= (mt/id :orders) (get-in % [:source :id])) candidates))))))
+
+(deftest candidate-measures-synthesize-curated-categorical-condition-test
+  (let [query (orders-conditional-measure-query)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining conditional measure"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 0}]
+      (moderation/create-review! {:moderated_item_id   card-id
+                                  :moderated_item_type "card"
+                                  :moderator_id        (mt/user->id :crowberto)
+                                  :status              "verified"})
+      (let [candidates  (candidates-from-card
+                         card-id
+                         (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+            conditional (filterv #(contains? #{:count-where :distinct-where :sum-where}
+                                             (get-in % [:aggregation :type]))
+                                 candidates)]
+        (is (= #{:count-where :distinct-where :sum-where}
+               (into #{} (map #(get-in % [:aggregation :type])) conditional)))
+        (is (every? #(= 1 (get-in % [:aggregation :condition-atom-count])) conditional))
+        (is (every? #(= [(mt/id :orders :product_id)]
+                        (mapv :id (get-in % [:aggregation :condition-fields])))
+                    conditional))
+        (is (every? #(lib/clause-of-type?
+                      (get-in % [:aggregation :condition])
+                      :=)
+                    conditional))
+        (is (every? #(= 1 (get-in % [:evidence :verified-source-count])) conditional))))))
+
+(deftest candidate-measures-drop-one-off-popular-conditions-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining one-off condition"
+                                            :type :question
+                                            :dataset_query (orders-conditional-measure-query)
+                                            :view_count 1000000}]
+    (let [candidates (candidates-from-card
+                      card-id
+                      (insights/candidate-measures {:min-view-count 10 :limit 1000}))]
+      (is (not-any? #(contains? #{:count-where :distinct-where :sum-where}
+                                (get-in % [:aggregation :type]))
+                    candidates)))))
+
+(deftest candidate-measures-and-segments-resolve-transparent-model-lineage-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (mt/with-temp [:model/Card {base-model-id :id} {:name "candidate mining base model"
+                                                    :type :model
+                                                    :dataset_query (lib/with-fields
+                                                                     (orders-base-query)
+                                                                     [product-id subtotal])
+                                                    :view_count 0}
+                   :model/Card {outer-model-id :id} {:name "candidate mining outer model"
+                                                     :type :model
+                                                     :dataset_query (model-source-query base-model-id)
+                                                     :view_count 0}
+                   :model/Card {card-id :id} {:name "candidate mining model-backed question"
+                                              :type :question
+                                              :dataset_query (-> (model-source-query outer-model-id)
+                                                                 (lib/filter (lib/= product-id 987654))
+                                                                 (lib/aggregate (lib/sum subtotal)))
+                                              :view_count 1000000}]
+      (let [measure    (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
+                            (candidates-from-card card-id)
+                            (filter #(= :sum (get-in % [:aggregation :type])))
+                            first)
+            segment    (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
+                            (candidates-from-card card-id)
+                            first)
+            lineage    [{:id base-model-id :name "candidate mining base model"}
+                        {:id outer-model-id :name "candidate mining outer model"}]]
+        (is (= (mt/id :orders) (get-in measure [:source :id])))
+        (is (= lineage (get-in measure [:evidence :source-items 0 :model-lineage])))
+        (is (= (mt/id :orders) (get-in segment [:source :id])))
+        (is (= lineage (get-in segment [:evidence :source-items 0 :model-lineage])))))))
+
+(deftest candidate-mining-rejects-semantic-model-transformations-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (mt/with-temp [:model/Card {model-id :id} {:name "candidate mining filtered model"
+                                               :type :model
+                                               :dataset_query (lib/filter
+                                                               (orders-base-query)
+                                                               (lib/= product-id 987654))
+                                               :view_count 0}
+                   :model/Card {card-id :id} {:name "candidate mining unsafe model question"
+                                              :type :question
+                                              :dataset_query (lib/aggregate
+                                                              (model-source-query model-id)
+                                                              (lib/sum subtotal))
+                                              :view_count 1000000}]
+      (is (empty? (candidates-from-card
+                   card-id
+                   (insights/candidate-measures {:min-view-count 10 :limit 1000}))))
+      (is (empty? (candidates-from-card
+                   card-id
+                   (insights/candidate-segments {:min-view-count 10 :limit 1000})))))))
 
 (deftest candidate-segments-keep-atoms-when-composite-exists-test
   (let [query (orders-segment-query)]
