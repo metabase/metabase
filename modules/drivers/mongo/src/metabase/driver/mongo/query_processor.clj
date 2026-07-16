@@ -822,7 +822,7 @@ function(bin) {
 (defn- interval? [expr]
   (and (vector? expr) (= (first expr) :interval)))
 
-(defn- summarize-interval [op date-expr [_ amount unit]]
+(defn- summarize-interval [op date-expr [_ _opts amount unit]]
   {op {:startDate date-expr
        :unit unit
        :amount amount}})
@@ -830,13 +830,14 @@ function(bin) {
 (defn- summarize-num-or-interval
   [query stage-number number-op date-op mongo-expr mbql-expr]
   (cond
-    (interval? mbql-expr) (summarize-interval date-op mongo-expr mbql-expr)
+    (interval? mbql-expr)            (summarize-interval date-op mongo-expr mbql-expr)
     (contains? mongo-expr number-op) (update mongo-expr number-op conj (->rvalue query stage-number mbql-expr))
-    :else {number-op [mongo-expr (->rvalue query stage-number mbql-expr)]}))
+    :else                            {number-op [mongo-expr (->rvalue query stage-number mbql-expr)]}))
 
-(def ^:private num-or-interval-reducer
-  {:+ (partial summarize-num-or-interval "$add" "$dateAdd")
-   :- (partial summarize-num-or-interval "$subtract" "$dateSubtract")})
+(defn- num-or-interval-reducer [query stage-number plus-or-minus]
+  (case plus-or-minus
+    :+ #(summarize-num-or-interval query stage-number "$add"      "$dateAdd"      %1 %2)
+    :- #(summarize-num-or-interval query stage-number "$subtract" "$dateSubtract" %1 %2)))
 
 (mu/defmethod ->rvalue :+
   [query stage-number [_ _opts & args] :- :mbql.clause/+]
@@ -849,7 +850,7 @@ function(bin) {
     (if-let [[arg others] (u/pick-first (complement interval?) args)]
       (do
         (check-date-operations-supported query)
-        (reduce (num-or-interval-reducer :+) (->rvalue query stage-number arg) others))
+        (reduce (num-or-interval-reducer query stage-number :+) (->rvalue query stage-number arg) others))
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     {"$add" (mapv (partial ->rvalue query stage-number) args)}))
 
@@ -860,7 +861,7 @@ function(bin) {
   (if (some interval? others)
     (do
       (check-date-operations-supported query)
-      (reduce (num-or-interval-reducer :-) (->rvalue query stage-number arg) others))
+      (reduce (num-or-interval-reducer query stage-number :-) (->rvalue query stage-number arg) others))
     {"$subtract" (mapv (partial ->rvalue query stage-number) args)}))
 
 (mu/defmethod ->rvalue :*
@@ -943,6 +944,8 @@ function(bin) {
 (mu/defmethod ->rvalue :datetime-add
   [query stage-number [_ _opts inp amount unit] :- :mbql.clause/datetime-add]
   (check-date-operations-supported query)
+  (assert (keyword? unit))
+  (println "unit:" unit) ; NOCOMMIT
   {"$dateAdd" {:startDate (->rvalue query stage-number inp)
                :unit      unit
                :amount    amount}})
@@ -1023,14 +1026,14 @@ function(bin) {
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
   {:added "0.39.0" :arglists '([query stage-number clause])}
-  (mu/fn [_query _stage-number clause :- ::lib.schema.expression/boolean]
+  (fn [_query _stage-number clause]
     (driver-api/dispatch-by-clause-name-or-class clause)))
 
 (defmethod compile-filter :between
-  [query stage-number [_ field min-val max-val]]
-  (compile-filter query stage-number [:and
-                                      [:>= field min-val]
-                                      [:<= field max-val]]))
+  [query stage-number [_ _opts expr min-val max-val]]
+  (compile-filter query stage-number (lib/and
+                                      (lib/>= expr min-val)
+                                      (lib/<= expr max-val))))
 
 (defn- str-match-pattern [query stage-number field options prefix value suffix]
   (if (driver-api/is-clause? ::not value)
@@ -1048,16 +1051,16 @@ function(bin) {
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
 ;; native query substitution we need a string and the explicit regex form is better there
-(mu/defmethod compile-filter :contains
-  [query stage-number [_ opts field v] :- :mbql.clause/contains]
+(defmethod compile-filter :contains
+  [query stage-number [_ opts field v]]
   {$expr (str-match-pattern query stage-number field opts nil v nil)})
 
-(mu/defmethod compile-filter :starts-with
-  [query stage-number [_ opts field v] :- :mbql.clause/starts-with]
+(defmethod compile-filter :starts-with
+  [query stage-number [_ opts field v]]
   {$expr (str-match-pattern query stage-number field opts "^" v nil)})
 
-(mu/defmethod compile-filter :ends-with
-  [query stage-number [_ opts field v] :- :mbql.clause/ends-with]
+(defmethod compile-filter :ends-with
+  [query stage-number [_ opts field v]]
   {$expr (str-match-pattern query stage-number field opts nil v "$")})
 
 (defn- rvalue-is-variable? [rvalue]
@@ -1102,36 +1105,36 @@ function(bin) {
       ;;    {$expr {$lte [{$add [$field 1]} 100]}}
       {$expr {operator [field-rvalue value-rvalue]}})))
 
-(mu/defmethod compile-filter :=
-  [query stage-number [_ _opts field value] :- :mbql.clause/=]
+(defmethod compile-filter :=
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $eq field value))
 
-(mu/defmethod compile-filter :!=
-  [query stage-number [_ _opts field value] :- :mbql.clause/!=]
+(defmethod compile-filter :!=
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $ne field value))
 
-(mu/defmethod compile-filter :<
-  [query stage-number [_ _opts field value] :- :mbql.clause/<]
+(defmethod compile-filter :<
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $lt field value))
 
-(mu/defmethod compile-filter :>
-  [query stage-number [_ _opts field value] :- :mbql.clause/>]
+(defmethod compile-filter :>
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $gt field value))
 
-(mu/defmethod compile-filter :<=
-  [query stage-number [_ _opts field value] :- :mbql.clause/<=]
+(defmethod compile-filter :<=
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $lte field value))
 
-(mu/defmethod compile-filter :>=
-  [query stage-number [_ _opts field value] :- :mbql.clause/>=]
+(defmethod compile-filter :>=
+  [query stage-number [_ _opts field value]]
   (filter-expr query stage-number $gte field value))
 
-(mu/defmethod compile-filter :and
-  [query stage-number [_and _opts & args] :- :mbql.clause/and]
+(defmethod compile-filter :and
+  [query stage-number [_and _opts & args]]
   {$and (mapv (partial compile-filter query stage-number) args)})
 
-(mu/defmethod compile-filter :or
-  [query stage-number [_or _opts & args] :- :mbql.clause/or]
+(defmethod compile-filter :or
+  [query stage-number [_or _opts & args]]
   {$or (mapv (partial compile-filter query stage-number) args)})
 
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
@@ -1141,27 +1144,27 @@ function(bin) {
   {:arglists '([mbql-clause])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(mu/defmethod negate :default :- ::lib.schema.expression/boolean
+(mu/defmethod negate :default :- vector?
   [expr :- ::lib.schema.expression/boolean]
   (lib/negate-boolean-expression expr))
 
-(mu/defmethod negate :and :- ::lib.schema.expression/boolean
+(mu/defmethod negate :and :- vector?
   [[_ opts & subclauses] :- :mbql.clause/and]
   (into [:or opts]  (map negate) subclauses))
 
-(mu/defmethod negate :or  :- ::lib.schema.expression/boolean
+(mu/defmethod negate :or  :- vector?
   [[_ opts & subclauses] :- :mbql.clause/or]
   (into [:and opts] (map negate) subclauses))
 
-(mu/defmethod negate :contains :- ::lib.schema.expression/boolean
+(mu/defmethod negate :contains :- vector?
   [[_ opts field v] :- :mbql.clause/contains]
   [:contains opts field [::not v]])
 
-(mu/defmethod negate :starts-with :- ::lib.schema.expression/boolean
+(mu/defmethod negate :starts-with :- vector?
   [[_ opts field v] :- :mbql.clause/starts-with]
   [:starts-with opts field [::not v]])
 
-(mu/defmethod negate :ends-with :- ::lib.schema.expression/boolean
+(mu/defmethod negate :ends-with :- vector?
   [[_ opts field v] :- :mbql.clause/ends-with]
   [:ends-with opts field [::not v]])
 

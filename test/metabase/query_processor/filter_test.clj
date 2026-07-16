@@ -176,19 +176,15 @@
 (deftest between-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between with dates"
-      ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
-      ;; test's results
-      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-      (when (= driver/*driver* :snowflake)
-        (driver/notify-database-updated driver/*driver* (mt/id)))
-      (is (=? {:rows [[29]]
-               :cols [(qp.test-util/aggregate-col :count)]}
-              (qp.test-util/rows-and-cols
-               (mt/format-rows-by
-                [int]
-                (mt/run-mbql-query checkins
-                  {:aggregation [[:count]]
-                   :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (is (=? {:rows [[29]]
+                 :cols [(qp.test-util/aggregate-col :count)]}
+                (qp.test-util/rows-and-cols
+                 (mt/format-rows-by
+                  [int]
+                  (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:between !day.date "2015-04-01" "2015-05-01"]})))))))))
 
 (defn- timezone-arithmetic-drivers []
   (set/intersection
@@ -1036,25 +1032,26 @@
                    :order-by [[$id :asc]]
                    :limit 1}))))))))
 
-(deftest ^:parallel order-by-nulls-test
+(deftest order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
       (mt/test-drivers (mt/normal-drivers)
-        ;; the rows returned should be the ones with a nil count, in increasing ID order
-        (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
-                 ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
-                 [[1 "2018-09-20T00:00:00Z" nil]
-                  [8 "2018-09-27T00:00:00Z" nil]
-                  [15 "2018-10-04T00:00:00Z" nil]]
-                 ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
-                 [[2 "2018-09-21T00:00:00Z" 0]
-                  [3 "2018-09-22T00:00:00Z" 0]
-                  [9 "2018-09-28T00:00:00Z" 0]])
-               (mt/formatted-rows
-                [int identity int]
-                (mt/run-mbql-query bird-count
-                  {:order-by [[:asc $count] [:asc $id]]
-                   :limit    3}))))))))
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
+          ;; the rows returned should be the ones with a nil count, in increasing ID order
+          (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
+                   ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
+                   [[1 "2018-09-20T00:00:00Z" nil]
+                    [8 "2018-09-27T00:00:00Z" nil]
+                    [15 "2018-10-04T00:00:00Z" nil]]
+                   ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
+                   [[2 "2018-09-21T00:00:00Z" 0]
+                    [3 "2018-09-22T00:00:00Z" 0]
+                    [9 "2018-09-28T00:00:00Z" 0]])
+                 (mt/formatted-rows
+                  [int identity int]
+                  (mt/run-mbql-query bird-count
+                    {:order-by [[:asc $count] [:asc $id]]
+                     :limit    3})))))))))
 
 (deftest filter-on-specific-date-test
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
