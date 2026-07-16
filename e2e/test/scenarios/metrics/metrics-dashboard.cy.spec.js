@@ -58,6 +58,36 @@ const PRODUCTS_TIMESERIES_METRIC = {
   display: "line",
 };
 
+function curateMetricDimension(metricId, displayName) {
+  cy.request("GET", `/api/metric/${metricId}`);
+  return cy
+    .request({
+      method: "GET",
+      url: `/api/metric/${metricId}/dimension`,
+      qs: { with_addable: true },
+    })
+    .then(({ body }) => {
+      const dimension = body.addable
+        .flatMap(({ dimensions }) => dimensions)
+        .find(({ display_name }) => display_name === displayName);
+
+      expect(dimension, `${displayName} metric dimension`).not.to.be.undefined;
+      if (!dimension) {
+        return;
+      }
+
+      return cy
+        .request("POST", `/api/metric/${metricId}/dimension/remove`, {
+          dimension_ids: body.added.map(({ id }) => id),
+        })
+        .then(() =>
+          cy.request("POST", `/api/metric/${metricId}/dimension/add`, {
+            dimensions: [dimension],
+          }),
+        );
+    });
+}
+
 describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
@@ -179,10 +209,12 @@ describe("scenarios > metrics > dashboard", () => {
     });
   });
 
-  it("should be able to add a filter and drill thru", () => {
+  it("should use curated metric dimensions for dashboard filters (UXW-4770)", () => {
+    cy.signIn("normal", { skipCache: true });
     H.createDashboardWithQuestions({
       questions: [ORDERS_SCALAR_METRIC],
-    }).then(({ dashboard }) => {
+    }).then(({ dashboard, questions: [metric] }) => {
+      curateMetricDimension(metric.id, "Category");
       H.visitDashboard(dashboard.id);
     });
     H.getDashboardCard().findByText("18,760").should("be.visible");
@@ -192,7 +224,12 @@ describe("scenarios > metrics > dashboard", () => {
     });
     H.popover().findByText("Text or Category").click();
     H.getDashboardCard().findByText("Select…").click();
-    H.popover().findByText("Category").click();
+    H.popover().within(() => {
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Title").should("not.exist");
+      cy.findByText("Product").should("not.exist");
+      cy.findByText("Category").click();
+    });
     H.saveDashboard();
     H.filterWidget().click();
     H.popover().within(() => {
