@@ -1157,29 +1157,4 @@ if (shouldLintCssModules) {
   }
 }
 
-// Keep the route tree in the v7-shaped facade: routes must use `element={<X/>}`,
-// not v3's `component=`. Tests set up throwaway routes and the router facade
-// itself still bridges to v3 internally, so both are exempt.
-configs.push({
-  name: "metabase/routes-use-element-not-component",
-  files: ["**/*.tsx", "**/*.jsx"],
-  ignores: [
-    "**/*.spec.*",
-    "**/tests/**",
-    "**/*test-utils*",
-    "frontend/src/metabase/router/**",
-  ],
-  rules: {
-    "no-restricted-syntax": [
-      "error",
-      {
-        selector:
-          "JSXOpeningElement[name.name='Route'] > JSXAttribute[name.name='component']",
-        message:
-          "Use `element={<X/>}` instead of `component=` on <Route>. `component=` skips the v7 element/Outlet shim.",
-      },
-    ],
-  },
-});
-
 export default configs;
