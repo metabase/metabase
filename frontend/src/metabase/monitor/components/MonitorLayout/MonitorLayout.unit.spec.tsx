@@ -8,7 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockLocation,
+  createMockRoutingState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -91,12 +95,15 @@ const setup = ({
 
   const state = createMockState({
     currentUser: user,
+    routing: createMockRoutingState({
+      locationBeforeTransitions: createMockLocation({ pathname: initialRoute }),
+    }),
     settings,
   });
 
   renderWithProviders(
     <Route
-      path="/monitor"
+      path="*"
       component={() => <MonitorLayout>{children}</MonitorLayout>}
     />,
     {
@@ -107,28 +114,65 @@ const setup = ({
   );
 };
 
+const CONTENT_MANAGEMENT_GROUP = "Content management";
+const LOGS_AND_ACTIVITY_GROUP = "Logs and activity";
+
 describe("MonitorLayout", () => {
-  it("renders a navbar with tabs for each Monitor section", async () => {
+  it("groups the sections under static headings with a link for each Monitor section", async () => {
     setup();
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
+    expect(
+      screen.getByRole("heading", { name: CONTENT_MANAGEMENT_GROUP }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
+    ).toBeInTheDocument();
+
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
-      ["Tasks", Urls.monitorTasks()],
-      ["Jobs", Urls.monitorJobs()],
-      ["Logs", Urls.monitorLogs()],
       ["Erroring questions", Urls.monitorErroringQuestions()],
-      ["Model cache log", Urls.monitorModelCaching()],
       ["Alerts management", Urls.monitorNotifications()],
+      ["Background tasks", Urls.monitorTasks()],
+      ["Scheduled jobs", Urls.monitorJobs()],
+      ["Application logs", Urls.monitorLogs()],
+      ["Model caching log", Urls.monitorModelCaching()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     });
   });
+
+  const SECTION_CASES: { label: string; route: string }[] = [
+    { label: "Dependency diagnostics", route: Urls.dependencyDiagnostics() },
+    { label: "Erroring questions", route: Urls.monitorErroringQuestions() },
+    { label: "Alerts management", route: Urls.monitorNotifications() },
+    { label: "Background tasks", route: Urls.monitorTasks() },
+    { label: "Scheduled jobs", route: Urls.monitorJobs() },
+    { label: "Application logs", route: Urls.monitorLogs() },
+    { label: "Model caching log", route: Urls.monitorModelCaching() },
+  ];
+
+  it.each(SECTION_CASES)(
+    "marks $label as the current page for its route",
+    async ({ label, route }) => {
+      setup({ initialRoute: route });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      const activeLink = screen.getByRole("link", { name: label });
+      expect(activeLink).toHaveAttribute("aria-current", "page");
+      expect(screen.getAllByRole("link", { current: "page" })).toEqual([
+        activeLink,
+      ]);
+    },
+  );
 
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
     setup({
@@ -144,14 +188,18 @@ describe("MonitorLayout", () => {
     });
 
     expect(
+      screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
+    ).not.toBeInTheDocument();
+
+    expect(
       screen.getByRole("link", { name: "Dependency diagnostics" }),
     ).toBeInTheDocument();
     [
-      "Tasks",
-      "Jobs",
-      "Logs",
+      "Background tasks",
+      "Scheduled jobs",
+      "Application logs",
       "Erroring questions",
-      "Model cache log",
+      "Model caching log",
       "Alerts management",
     ].forEach((name) => {
       expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
@@ -174,7 +222,12 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Dependency diagnostics" }),
     ).not.toBeInTheDocument();
-    ["Tasks", "Jobs", "Logs", "Model cache log"].forEach((name) => {
+    [
+      "Background tasks",
+      "Scheduled jobs",
+      "Application logs",
+      "Model caching log",
+    ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });
     expect(
@@ -195,6 +248,9 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
+    expect(
+      screen.getByRole("link", { name: "Erroring questions" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
     ).not.toBeInTheDocument();
@@ -259,7 +315,6 @@ describe("MonitorLayout", () => {
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
-    // dependencies present (Dependency diagnostics ungated), audit_app absent.
     setup({ tokenFeatures: { dependencies: true, audit_app: false } });
 
     await waitFor(() => {

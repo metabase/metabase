@@ -314,7 +314,7 @@ export const NotificationsAdminPage = ({
     <>
       <Flex ref={containerRef} h="100%" wrap="nowrap">
         <Stack className={S.main} flex={1} gap="md">
-          <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
+          <MonitorHeaderTitle mb="sm">{t`Alerts management`}</MonitorHeaderTitle>
 
           <NotificationsTabs
             tab={urlState.tab}

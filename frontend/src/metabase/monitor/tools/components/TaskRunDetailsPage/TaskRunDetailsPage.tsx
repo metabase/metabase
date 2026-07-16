@@ -46,7 +46,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="md">
+      <Stack className={S.main} flex={1} gap="lg">
         <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
 
         <MonitorPageContent className={S.content}>

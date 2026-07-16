@@ -7,9 +7,11 @@ import {
 } from "react";
 
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import {
+  AreaContent,
+  CONTENT_PADDING_X,
+} from "metabase/nav/components/AreaLayout";
 import { Box } from "metabase/ui";
-
-import { AreaContent, CONTENT_PADDING_X } from "./AreaContent";
 
 type MonitorContentProps = {
   children?: ReactNode;

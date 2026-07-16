@@ -116,7 +116,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     <>
       <Flex h="100%" wrap="nowrap">
         <Stack className={S.main} flex={1} gap="md">
-          <MonitorHeaderTitle>{t`Questions that errored when last run`}</MonitorHeaderTitle>
+          <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
           {pageError != null ? (
             <Center flex={1}>

@@ -84,8 +84,7 @@ describe("issue 14636", () => {
 
     cy.location("search").should("eq", "");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Troubleshooting logs");
+    cy.findByRole("heading", { name: "Background tasks" }).should("be.visible");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -521,12 +520,12 @@ describe("monitor > tools", () => {
     cy.visit("/monitor/errors");
 
     cy.findByRole("heading", {
-      name: "Questions that errored when last run",
+      name: "Erroring questions",
     }).should("be.visible");
 
     cy.log("We should be able to switch to the model caching page");
 
-    cy.findByTestId("monitor-nav").findByText("Model cache log").click();
+    cy.findByTestId("monitor-nav").findByText("Model caching log").click();
     cy.location("pathname").should("eq", "/monitor/model-caching");
 
     cy.log(

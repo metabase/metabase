@@ -62,7 +62,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="md">
+      <Stack className={S.main} flex={1} gap="lg">
         <MonitorBackLink
           to={Urls.monitorTasksList()}
           label={t`Back to Tasks`}
