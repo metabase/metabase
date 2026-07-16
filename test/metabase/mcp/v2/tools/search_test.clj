@@ -10,6 +10,9 @@
 (def ^:private add-collection-paths
   #'tools.search/add-collection-paths)
 
+(def ^:private validate-filters!
+  #'tools.search/validate-filters!)
+
 (defn- path-for
   "`:collection_path` that `user` sees for a row contained in `collection-id`."
   [user collection-id]
@@ -31,6 +34,31 @@
           (is (= "Alpha/Bravo/Charlie" (path-for :crowberto (:id c)))))
         (testing "a user who cannot read Bravo never sees its name"
           (is (= "Alpha/Charlie" (path-for :rasta (:id c)))))))))
+
+;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `validate-filters!` as
+;; destructive, though it only validates and throws
+(deftest snippet-type-is-exclusive-test
+  (testing "GHY-4137: snippets are served by a separate listing and paged separately, so mixing
+            them with engine-backed types silently dropped snippets on a full page and repeated
+            them on an underfilled one. The combination is a teaching error instead."
+    (testing "snippet alone is fine"
+      (is (some? (validate-filters! {:type ["snippet"]}))))
+    (testing "engine types alone are fine"
+      (is (some? (validate-filters! {:type ["question" "dashboard"]}))))
+    (testing "no type at all is fine"
+      (is (some? (validate-filters! {}))))
+    (testing "snippet alongside another type names the offending types and how to split the call"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"cannot be combined with other types"
+                                    (validate-filters! {:type ["question" "snippet"]})))]
+        (is (re-find #"question" (ex-message e))
+            "the error should name what to move to the other call"))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"cannot be combined with other types"
+                            (validate-filters! {:type ["snippet" "dashboard" "table"]}))))
+    (testing "the teaching error is a 400, not a server error"
+      (is (= 400 (:status-code (ex-data (try (validate-filters! {:type ["question" "snippet"]})
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must

@@ -160,6 +160,11 @@
 (defn- validate-filters!
   [{:keys [type created_by archived] :as args}]
   (let [types (set type)]
+    (when (and (contains? types "snippet") (next types))
+      (common/throw-teaching-error
+       (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
+                    "search index and are paged separately. List them in their own call, and search %s in another.")
+               (str/join ", " (sort (disj types "snippet"))))))
     (when created_by
       (when-let [bad (seq (sort (remove created-by-types types)))]
         (common/throw-teaching-error
@@ -282,8 +287,9 @@
 
 (def ^:private type-desc
   (str "Restrict results to these entity types. \"snippet\" is served by a separate listing "
-       "(snippets aren't in the search index) and requires the " metabot.scope/agent-snippets-read
-       " scope. Omit to search every type this tool supports."))
+       "(snippets aren't in the search index), requires the " metabot.scope/agent-snippets-read
+       " scope, and must be requested on its own — combining it with other types is an error. "
+       "Omit to search every type this tool supports except snippets."))
 
 (def ^:private search-args-schema
   [:map {:closed true}
@@ -323,7 +329,7 @@
       (mapv #(projections/project :search-result fmt %) rows))))
 
 (registry/deftool search-tool
-  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type, collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you can read; queries narrow snippets by name substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace: \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it unknowable."
+  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type, collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you can read and must be requested on its own, not alongside other types; queries narrow snippets by name substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace: \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it unknowable."
   {:name         "search"
    :scope        metabot.scope/agent-search
    :extra-scopes #{metabot.scope/agent-snippets-read}
@@ -348,25 +354,18 @@
                   (common/response-format args))
             {:keys [rows total]} (recents-page args fmt limit offset)]
         (common/list-content rows total {:param :type :offset offset :limit limit}))
-      (let [types         (into [] (distinct) type)
-            snippet?      (contains? (set types) "snippet")
-            engine-types  (if (seq types)
-                            (into [] (remove #{"snippet"}) types)
-                            (into [] (remove #{"snippet"}) all-types))
-            snippet-only? (and snippet? (empty? engine-types))
-            collection-id (when (contains? args :collection_id)
-                            (resolve-collection-filter collection_id))
-            engine        (when (seq engine-types)
-                            (engine-results args engine-types collection-id limit offset))
-            snippets      (when snippet?
-                            (snippet-rows (concat term_queries semantic_queries) archived))
-            snippets-page (if snippet-only?
-                            (into [] (comp (drop offset) (take limit)) snippets)
-                            snippets)
-            rows          (vec (take limit (concat (:rows engine) snippets-page)))
-            total         (cond
-                            snippet-only?         (count snippets)
-                            (and (not snippet?)
-                                 (:total engine)) (:total engine))]
+      ;; `validate-filters!` has already rejected snippet alongside any other type, so these
+      ;; two listings are mutually exclusive and each pages on its own terms.
+      (let [types              (into [] (distinct) type)
+            {:keys [rows total]}
+            (if (contains? (set types) "snippet")
+              (let [snippets (snippet-rows (concat term_queries semantic_queries) archived)]
+                {:rows  (into [] (comp (drop offset) (take limit)) snippets)
+                 :total (count snippets)})
+              (let [engine-types  (into [] (remove #{"snippet"}) (if (seq types) types all-types))
+                    collection-id (when (contains? args :collection_id)
+                                    (resolve-collection-filter collection_id))
+                    engine        (engine-results args engine-types collection-id limit offset)]
+                {:rows (vec (:rows engine)) :total (:total engine)}))]
         (common/list-content (project-rows args rows) total
                              {:param :type :offset offset :limit limit})))))
