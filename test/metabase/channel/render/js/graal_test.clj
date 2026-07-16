@@ -60,8 +60,7 @@
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
     (let [^Context context (graal/untrusted-plugin-context)
           ;; Retain a steadily growing list of materialized arrays until the per-context heap cap
-          ;; (`sandbox.MaxHeapMemory`, derived at startup from the pod limit — see isolate-memory-config)
-          ;; is hit. A single huge allocation can slip past the sampling-based limit, but
+          ;; (`sandbox.MaxHeapMemory`) is hit. A single huge allocation can slip past the sampling-based limit, but
           ;; sustained retention cannot. This stays within the isolate's own heap, so the host JVM
           ;; isn't the one running out of memory.
           ex      (try
@@ -77,40 +76,3 @@
             "termination should be resource exhaustion (heap limit), not some other error")
         (finally
           (.close context true))))))
-
-(deftest isolate-heap-bytes-test
-  (testing "isolate heap cap is derived to fail closed below the pod/cgroup ceiling"
-    (let [mb       (* 1024 1024)
-          gb       (* 1024 mb)
-          floor    (* 384 mb)
-          target   (* 1024 mb)
-          overhead (* 384 mb)]
-      (testing "a large pod is capped at the target — no benefit to handing a runaway more room"
-        (is (= target (#'graal/isolate-heap-bytes (* 32 gb) (* 8 gb)))))
-      (testing "a mid-size pod shrinks the cap so JVM heap + cap + overhead + 12% margin fits under the pod"
-        (let [pod  (* 2 gb)
-              heap (* 512 mb)
-              cap  (#'graal/isolate-heap-bytes pod heap)]
-          (is (< floor cap target) "cap lands strictly between floor and target")
-          (is (<= (+ heap cap overhead (long (* 0.12 pod))) pod)
-              "the reserved sum stays within the pod memory limit")))
-      (testing "the real PR-env case (2.8GB pod, 1.5GB -Xmx) now yields a renderable isolate (regression:
-                the old 512MB overhead + 15% margin left only ~431MB, right at the bundle cold-parse peak,
-                so custom-viz OOMed intermittently)"
-        (let [cap (#'graal/isolate-heap-bytes (* 2917 mb) (* 1536 mb))]
-          (is (<= (* 600 mb) cap target)
-              "isolate cap clears ~600MB — comfortably above the measured ~431MB render peak")))
-      (testing "a pod too small for a safe budget clamps to the floor (caller warns)"
-        (is (= floor (#'graal/isolate-heap-bytes (* 1 gb) (* 256 mb))))))))
-
-(deftest isolate-memory-config-test
-  (testing "the startup-computed caps are valid GraalVM size strings"
-    (let [cfg      @@#'graal/isolate-memory-config
-          ->mb     (fn [s] (Long/parseLong (subs s 0 (- (count s) 2))))]
-      (is (re-matches #"\d+MB" (:max-isolate-memory cfg)))
-      (is (re-matches #"\d+MB" (:max-heap-memory cfg)))
-      (testing "per-context heap is strictly below engine-wide isolate memory (GraalVM requires it)"
-        (is (< (->mb (:max-heap-memory cfg)) (->mb (:max-isolate-memory cfg)))))
-      (testing "the single pooled context gets nearly the whole isolate (heap = isolate - 96MB reserve),
-                not an iso/2 split that would halve the guest heap"
-        (is (= (->mb (:max-heap-memory cfg)) (- (->mb (:max-isolate-memory cfg)) 96)))))))

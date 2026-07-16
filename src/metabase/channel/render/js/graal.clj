@@ -18,16 +18,13 @@
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
-   [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.memory :as memory])
+   [metabase.util.malli :as mu])
   (:import
-   (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
+   (io.aleph.dirigiste Pool)
    (java.io OutputStream)
-   (java.util.concurrent TimeUnit)
    (org.graalvm.polyglot Context Engine HostAccess PolyglotException SandboxPolicy Source Value)))
 
 (set! *warn-on-reflection* true)
@@ -207,107 +204,37 @@
       ([_])
       ([_ _ _]))))
 
-;;; ---- Isolate memory sizing (fail closed below the pod ceiling) ----
+;;; ---- Isolate memory caps (fail closed, catchable) ----
 ;;;
 ;;; The isolate is a separate heap but runs in the *same OS process* as the JVM, so its native memory counts
-;;; against the same pod/container cgroup. If it grows unbounded it pushes process RSS over the cgroup limit and
-;;; the kernel OOM-killer SIGKILLs the whole pod (uncatchable). To avoid that we size the isolate's own hard cap
-;;; (`engine.MaxIsolateMemory`) *below* the pod limit, so a runaway render hits the isolate's limit first and
-;;; throws a catchable `PolyglotException` (which the render path degrades to a placeholder) instead of getting
-;;; the pod killed. The cap is derived at startup from the detected pod limit rather than hard-coded, so it
-;;; self-adapts to the pod size.
+;;; against the same pod/container cgroup. If it grew unbounded it would push process RSS over the cgroup limit
+;;; and the kernel OOM-killer would SIGKILL the whole pod (uncatchable). Capping the isolate makes a runaway
+;;; render hit the isolate's own limit first and throw a catchable `PolyglotException`, which the render path
+;;; degrades to a placeholder — the app survives, only that render fails. The slim custom-viz bundle is small
+;;; enough that a fixed cap works everywhere; no pod-size-derived budget needed.
 
-(def ^:private isolate-memory-overhead-bytes
-  "Conservative reserve (bytes) for process memory that is neither the JVM max heap nor the isolate heap:
-  metaspace, code cache, thread stacks, direct byte buffers (e.g. Batik image buffers), and the GraalVM
-  host-side runtime. Subtracted from the pod memory limit when sizing the isolate so their sum stays under the
-  cgroup ceiling. Kept generous (underestimating risks an OOM-kill of the whole pod) but not so large that a
-  big `-Xmx` starves the isolate below a renderable size — see [[isolate-heap-bytes]]. The remaining slack is
-  covered by [[isolate-memory-safety-margin-ratio]] on top of this."
-  (* 384 1024 1024))
+(def ^:private max-isolate-memory
+  "`engine.MaxIsolateMemory`: hard cap on the untrusted isolate's whole heap. Comfortably covers the slim
+  custom-viz bundle plus a real render, while staying small enough not to threaten the pod's cgroup limit."
+  "512MB")
 
-(def ^:private isolate-memory-safety-margin-ratio
-  "Fraction of the pod memory limit kept free as headroom, on top of the explicit reserves."
-  0.12)
-
-(def ^:private isolate-nonheap-reserve-bytes
-  "Headroom (bytes) kept between the per-context `sandbox.MaxHeapMemory` and the engine-wide
-  `engine.MaxIsolateMemory` for the isolate's own non-guest-heap memory (code cache, metadata, GC
-  bookkeeping). GraalVM requires `MaxHeapMemory` strictly below `MaxIsolateMemory`; the untrusted pool holds
-  exactly one context (see [[untrusted-static-viz-context-pool]]), so the single context's guest heap gets the
-  whole isolate minus this reserve — no need to halve the isolate for a second context that never exists."
-  (* 96 1024 1024))
-
-(def ^:private target-max-isolate-memory-bytes
-  "Isolate heap cap used when the pod can afford it. The ~16MB static-viz bundle plus a real render peak at
-  <=512MB (measured), so 1GB is comfortably enough; a larger cap would only let a runaway plugin grow bigger
-  before failing closed."
-  (* 1024 1024 1024))
-
-(def ^:private min-max-isolate-memory-bytes
-  "Floor for the derived isolate cap. Below this the bundle + echarts/React runtime can't reliably parse and
-  render. If the computed budget is below this, the pod is too small to render custom-viz safely — we clamp
-  here and warn; the residual OOM-kill risk is then a deployment problem (raise the pod limit / lower -Xmx)."
-  (* 384 1024 1024))
-
-(defn- isolate-heap-bytes
-  "Pure: isolate heap cap (bytes) such that `jvm-max-heap + cap + overhead + margin <= pod-limit`, clamped to
-  [[[min-max-isolate-memory-bytes]], [[target-max-isolate-memory-bytes]]]. A cap at the floor means the pod is
-  too small for a safe budget (caller warns)."
-  ^long [^long pod-limit ^long jvm-max-heap]
-  (let [margin (long (* isolate-memory-safety-margin-ratio pod-limit))
-        budget (- pod-limit jvm-max-heap isolate-memory-overhead-bytes margin)]
-    (-> budget
-        (min target-max-isolate-memory-bytes)
-        (max min-max-isolate-memory-bytes))))
-
-(defn- bytes->mb-option
-  "Format a byte count as an integer-megabyte GraalVM size-option string, e.g. 750780416 -> \"716MB\"."
-  ^String [^long bytes]
-  (str (quot bytes (* 1024 1024)) "MB"))
-
-(defonce ^:private
-  ^{:doc "Isolate memory caps, computed once from the detected pod/container memory limit so the isolate fails
-          closed (catchable) below the cgroup ceiling instead of getting the pod OOM-killed:
-          `{:max-isolate-memory <opt-str> :max-heap-memory <opt-str>}`. `:max-heap-memory` (per-context) is
-          kept strictly below `:max-isolate-memory` (engine-wide), as GraalVM requires."}
-  isolate-memory-config
-  (delay
-    (let [pod-limit    (memory/container-memory-limit)
-          jvm-max-heap (.maxMemory (Runtime/getRuntime))
-          iso-bytes    (if pod-limit
-                         (isolate-heap-bytes pod-limit jvm-max-heap)
-                         target-max-isolate-memory-bytes)
-          ;; per-context heap must be < engine-wide isolate memory. The pool holds exactly one context, so give
-          ;; that single context the whole isolate minus a small non-heap reserve rather than halving it (the
-          ;; old iso/2 needlessly capped guest heap at 50% for a second context that never exists).
-          heap-bytes   (- iso-bytes isolate-nonheap-reserve-bytes)
-          config       {:max-isolate-memory (bytes->mb-option iso-bytes)
-                        :max-heap-memory    (bytes->mb-option heap-bytes)}]
-      (when (and pod-limit (<= iso-bytes min-max-isolate-memory-bytes))
-        (log/warnf (str "static-viz isolate memory budget is at its floor (%s) for pod limit %s + JVM max heap "
-                        "%s; custom-viz rendering may still pressure the pod. Raise the pod memory limit or "
-                        "lower -Xmx.")
-                   (:max-isolate-memory config)
-                   (u.format/format-bytes pod-limit)
-                   (u.format/format-bytes jvm-max-heap)))
-      (log/infof "static-viz isolate memory: MaxIsolateMemory=%s MaxHeapMemory=%s (pod limit %s, JVM max heap %s)"
-                 (:max-isolate-memory config) (:max-heap-memory config)
-                 (if pod-limit (u.format/format-bytes pod-limit) "unknown")
-                 (u.format/format-bytes jvm-max-heap))
-      config)))
+(def ^:private max-heap-memory
+  "`sandbox.MaxHeapMemory`: per-context guest-heap cap. GraalVM requires it strictly below the engine-wide
+  [[max-isolate-memory]]; the gap covers the isolate's non-guest-heap memory (code cache, metadata, GC
+  bookkeeping)."
+  "416MB")
 
 (defn- new-untrusted-plugin-engine
   "Build the isolate `Engine` shared by every untrusted-plugin context. `engine.MaxIsolateMemory` caps the
-  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]];
-  both are derived from the pod memory limit at startup (see [[isolate-memory-config]]) so the isolate fails
-  closed below the cgroup ceiling instead of OOM-killing the pod."
+  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in
+  [[untrusted-plugin-context]], so the isolate fails closed below the cgroup ceiling instead of OOM-killing
+  the pod."
   ^Engine []
   (.. (Engine/newBuilder (into-array String ["js"]))
       ;; A shared engine and its contexts must declare the same sandbox policy, so the engine sets UNTRUSTED
       ;; too — otherwise creating an UNTRUSTED context on it would fail the engine/context policy-match check.
       (sandbox SandboxPolicy/UNTRUSTED)
-      (option "engine.MaxIsolateMemory" (:max-isolate-memory @isolate-memory-config))
+      (option "engine.MaxIsolateMemory" max-isolate-memory)
       (out discarding-output-stream)
       (err discarding-output-stream)
       (build)))
@@ -329,11 +256,10 @@
 (def pool-max-cpu-time
   "`sandbox.MaxCPUTime` for a *pooled*, long-lived untrusted context (the prod path). MaxCPUTime is a
   *cumulative* per-context lifetime budget, not per-render: it must cover the one-time cold parse of the
-  slim bundle at pool generation (>10s of guest CPU) plus the many renders the context then serves before the
-  pool recycles it. When exceeded the context is cancelled — the pool disposes and regenerates it. Sized
-  generously so, under normal load, the 10-minute pool expiry recycles a context before this cumulative cap
-  does; it still bounds a runaway plugin (to this many seconds of accumulated CPU) without a per-render cap.
-  Trade-off of pooling for speed: there is no tight per-render CPU bound, only this coarse cumulative one plus
+  slim bundle at pool generation plus the many renders the context then serves. When exceeded the context is
+  cancelled — [[do-with-untrusted-static-viz-context]] disposes it and the pool regenerates a fresh one. It
+  still bounds a runaway plugin (to this many seconds of accumulated CPU) without a per-render cap. Trade-off
+  of pooling for speed: there is no tight per-render CPU bound, only this coarse cumulative one plus
   MaxHeapMemory."
   "180s")
 
@@ -344,8 +270,8 @@
   `js-isolate-community` on the classpath. The `sandbox.*` limits below are all mandatory under `UNTRUSTED` —
   the context fails to build if any is unset. `max-cpu-time` is the `sandbox.MaxCPUTime` budget (default
   [[render-max-cpu-time]] for the dev fresh-context path; the pool passes the larger cumulative
-  [[pool-max-cpu-time]]). `sandbox.MaxHeapMemory` is derived from the pod memory limit at startup (see
-  [[isolate-memory-config]]) so a runaway render fails closed below the cgroup ceiling."
+  [[pool-max-cpu-time]]). `sandbox.MaxHeapMemory` ([[max-heap-memory]]) makes a runaway render fail closed
+  (catchable) instead of OOM-killing the pod."
   (^Context [] (untrusted-plugin-context render-max-cpu-time))
   (^Context [^String max-cpu-time]
    (.. (Context/newBuilder (into-array String ["js"]))
@@ -362,7 +288,7 @@
        ;; allowExperimentalOptions left at default false
        ;; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a multi-second budget.
        (option "sandbox.MaxCPUTime" max-cpu-time)
-       (option "sandbox.MaxHeapMemory" (:max-heap-memory @isolate-memory-config))
+       (option "sandbox.MaxHeapMemory" max-heap-memory)
        (option "sandbox.MaxASTDepth" "5000")
        (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
        (option "sandbox.MaxOutputStreamSize" "16MB")
@@ -387,56 +313,37 @@
                (/ (- (System/nanoTime) start) 1e6))
     ctx))
 
+(defn- destroy-untrusted-context!
+  "Close an untrusted isolate context reaped or disposed by the pool. The shared untrusted engine is a
+  process-lifetime singleton, so unlike [[destroy-context!]] there is no engine ref to drop."
+  [^Context context]
+  (log/debug "custom-viz: disposing untrusted static-viz isolate context")
+  (try (.close context true) (catch Exception _)))
+
 (def ^:private ^Pool untrusted-static-viz-context-pool
   "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
   [[static-viz-context-pool]] but for the isolate path, and loads the slim custom-viz-only bundle
   ([[metabase.channel.render.js.common/custom-viz-bundle-resource-path]]) instead of the full one — this pool
   only ever renders `custom:` cards, so the built-in chart stack would be pure parse-time/heap dead weight.
-  Pooling is still the point: the bundle is parsed *once* per pooled context (a multi-second cold parse, far
-  worse on CPU-throttled hardware) and reused across renders, instead of the old unpooled path that re-parsed
-  on every render (the 55s pulse-test regression).
+  Pooling means the bundle is parsed once per pooled context and reused across renders, instead of the old
+  unpooled path that re-parsed on every render (the 55s pulse-test regression).
 
-  Capped at 1 context: each holds the bundle plus up to the derived isolate heap (see
-  [[isolate-memory-config]]), and native isolate memory is what previously OOM-killed the server, so we keep
-  exactly one and let per-context serialization handle concurrency. Unlike the trusted pool this one never
-  shrinks to 0 (the custom controller vetoes the last decrement) so the parsed bundle stays warm; instead,
-  contexts expire after 10 minutes (Truffle can leak) and are recycled on acquire. A context whose cumulative
-  `sandbox.MaxCPUTime` ([[pool-max-cpu-time]]) is exhausted is cancelled and disposed by
+  Capped at 1 context: native isolate memory is what previously OOM-killed the server, so we keep exactly one
+  (up to [[max-isolate-memory]]) and let per-context serialization handle concurrency. Like the trusted pool it
+  shrinks to 0 when idle; the first render after an idle gap re-parses the slim bundle. A context whose
+  cumulative `sandbox.MaxCPUTime` ([[pool-max-cpu-time]]) is exhausted is cancelled and disposed by
   [[do-with-untrusted-static-viz-context]] so the pool regenerates a fresh one.
 
   Trade-off vs. a fresh-context-per-render design: reused contexts share JS global state across renders
   (acceptable — the isolate still fully contains plugins from the host), and there is no tight per-render
   CPU bound (only the coarse cumulative one)."
-  (let [base-controller (Pools/utilizationController 1.0 1 1)]
-    (Pool. (reify IPool$Generator
-             (generate [_ _]
-               ;; Generate a tuple of the context and the expiry timestamp.
-               [(generate-untrusted-context!)
-                (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
-             (destroy [_ _ [^Context ctx _expiry]]
-               (log/debug "custom-viz: disposing untrusted static-viz isolate context")
-               (try
-                 (.close ctx true) ;; force close - can't wait for running code
-                 (catch Exception _))))
-           (reify IPool$Controller
-             (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
-             (adjustment [_ stats]
-               (let [adj         (.adjustment base-controller stats)
-                     n           (some-> ^Stats (:engines stats) .getNumWorkers)
-                     engines-adj (:engines adj)]
-                 (if (and n engines-adj (<= (+ n engines-adj) 0))
-                   {}
-                   adj))))
-           65000
-           25
-           10000
-           TimeUnit/MILLISECONDS)))
+  (common/create-pool generate-untrusted-context! destroy-untrusted-context! {:max-size 1, :idle-minutes 10}))
 
 (defn do-with-untrusted-static-viz-context
   "Acquire a pooled `SandboxPolicy/UNTRUSTED` isolate context ([[untrusted-static-viz-context-pool]]) with the
   slim custom-viz bundle already loaded, run `f` with it, then release it back to the pool. In dev, uses a
   fresh context each time (mirrors [[do-with-static-viz-context]]) so a fresh `bun run build-static-viz` is
-  picked up without a REPL restart. A context cancelled by exhausting its cumulative `sandbox.MaxCPUTime` is
+  picked up without a REPL restart. A context that hits a sandbox limit (cancelled / resource-exhausted) is
   disposed (not released) so the pool regenerates."
   [f]
   (if config/is-dev?
@@ -446,26 +353,22 @@
         (f context)
         (finally
           (try (.close context true) (catch Throwable _)))))
-    (loop []
-      (let [[^Context context expiry-ts :as tuple] (.acquire untrusted-static-viz-context-pool :engines)]
-        (if (>= (System/nanoTime) expiry-ts)
-          (do (.dispose untrusted-static-viz-context-pool :engines tuple)
-              (recur))
-          (let [disposed? (volatile! false)]
-            (try
-              (f context)
-              (catch PolyglotException e
-                ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
-                ;; regenerates a fresh one rather than handing a dead context to the next render.
-                (when (or (.isCancelled e) (.isResourceExhausted e))
-                  (vreset! disposed? true)
-                  (log/warnf "custom-viz: untrusted static-viz context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
-                             (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
-                  (.dispose untrusted-static-viz-context-pool :engines tuple))
-                (throw e))
-              (finally
-                (when-not @disposed?
-                  (.release untrusted-static-viz-context-pool :engines tuple))))))))))
+    (let [^Context context (.acquire untrusted-static-viz-context-pool pool-key)
+          disposed?        (volatile! false)]
+      (try
+        (f context)
+        (catch PolyglotException e
+          ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
+          ;; regenerates a fresh one rather than handing a dead context to the next render.
+          (when (or (.isCancelled e) (.isResourceExhausted e))
+            (vreset! disposed? true)
+            (log/warnf "custom-viz: untrusted static-viz context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                       (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
+            (.dispose untrusted-static-viz-context-pool pool-key context))
+          (throw e))
+        (finally
+          (when-not @disposed?
+            (.release untrusted-static-viz-context-pool pool-key context)))))))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
