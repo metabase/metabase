@@ -26,7 +26,7 @@ export function useAdminSettingWithDebouncedInput<T>(
 
   const { inputValue, setInputValueFromUser } = useHydratedInput<T>({
     // Unjustified type cast. FIXME
-    value: (settingValue || defaultValue) as T,
+    value: (settingValue ?? defaultValue) as T,
     isLoading,
   });
 
