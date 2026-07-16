@@ -25,6 +25,7 @@
    [clojure.string :as str]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.config.core :as config]
+   [metabase.config.jekyll :as jekyll]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -148,17 +149,30 @@
   (env->db-type env))
 
 (when (= db-type :h2)
-  (log/warn
-   (u/format-color
-    :red
-    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
-    ;; this and thus the site locale is unavailable.
-    (str/join
-     " "
-     ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
-      "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
-      "If you decide to continue to use H2, please be sure to back up the database file regularly."
-      "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
+  (if (jekyll/jekyll?)
+    ;; Jekyll mode: a disposable H2 is the design, not a hazard — don't warn about it.
+    (log/info
+     (u/format-color
+      :cyan
+      (str "\n"
+           "     _      _          _ _                        _\n"
+           "    (_) ___| | ___   _| | |  _ __ ___   ___   __| | ___\n"
+           "    | |/ _ \\ |/ / | | | | | | '_ ` _ \\ / _ \\ / _` |/ _ \\\n"
+           "    | |  __/   <| |_| | | | | | | | | | (_) | (_| |  __/\n"
+           "   _/ |\\___|_|\\_\\\\__,_|_|_| |_| |_| |_|\\___/ \\__,_|\\___|\n"
+           "  |__/\n"
+           "  ur usin jekyll mode now — this app-db is disposable; git is the source of truth\n")))
+    (log/warn
+     (u/format-color
+      :red
+      ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+      ;; this and thus the site locale is unavailable.
+      (str/join
+       " "
+       ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+        "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
+        "If you decide to continue to use H2, please be sure to back up the database file regularly."
+        "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"])))))
 
 (defn db-file
   "Path to our H2 DB file from env var or app config."

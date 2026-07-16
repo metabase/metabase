@@ -1,4 +1,4 @@
-(ns metabase.core.jekyll
+(ns metabase.config.jekyll
   "Jekyll mode: a stripped child-instance boot that holds nothing precious — no
   scheduler, no sample/audit DB, no notification seeding. Precious state lives in
   git; the box authors transforms, previews them, and reloads from its branch on
@@ -10,10 +10,11 @@
   so it is not readable at the earliest cut point. An env flag is the only
   boot-safe primitive (env resolves before app-db and before config-from-file)."
   (:require
-   [environ.core :as env]
-   [metabase.util :as u]))
+   [environ.core :as env]))
+
+(set! *warn-on-reflection* true)
 
 (defn jekyll?
   "True when Jekyll mode is active (`MB_JEKYLL_MODE=true`)."
   []
-  (= "true" (some-> (env/env :mb-jekyll-mode) u/lower-case-en)))
+  (boolean (some-> (env/env :mb-jekyll-mode) Boolean/parseBoolean)))
