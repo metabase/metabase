@@ -49,7 +49,8 @@
             result      (mcp.resources/read-resource uri token-scopes options)]
         (case (:status result)
           (:not-found :scope-denied) (transport/jsonrpc-error id -32602 "Resource not found")
-          :ok                        (transport/jsonrpc-response id {:contents (:contents result)}))))))
+          :ok                        (transport/jsonrpc-response id {:contents (:contents result)})
+          (transport/jsonrpc-error id -32603 (str "Unexpected resource status: " (:status result))))))))
 
 (defn- handle-ping [id _params]
   (transport/jsonrpc-response id {}))
