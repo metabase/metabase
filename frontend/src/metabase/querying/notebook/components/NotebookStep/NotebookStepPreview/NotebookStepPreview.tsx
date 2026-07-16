@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import type { QuestionResultLoaderChildrenProps } from "metabase/common/components/QuestionResultLoader";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon } from "metabase/ui";
@@ -10,7 +11,7 @@ import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { Dataset, RawSeries } from "metabase-types/api";
+import type { Dataset } from "metabase-types/api";
 
 import type { NotebookStep } from "../../../types";
 
@@ -99,11 +100,10 @@ export const NotebookStepPreview = ({
   );
 };
 
-type VisualizationPreviewProps = {
-  rawSeries: RawSeries | null;
-  result: Dataset | null;
-  error: unknown;
-};
+type VisualizationPreviewProps = Pick<
+  QuestionResultLoaderChildrenProps,
+  "rawSeries" | "result" | "error"
+>;
 
 export const VisualizationPreview = ({
   rawSeries,
