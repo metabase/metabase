@@ -81,6 +81,9 @@ describe("SettingsJWTForm", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Set up key/ }),
     );
+    // The secret-key input is disabled until the generated token arrives; wait
+    // for the loaded (editable) state before clearing it.
+    await screen.findByDisplayValue("1234abcd");
     await userEvent.clear(await screen.findByLabelText(/New secret key/));
     await userEvent.type(
       await screen.findByLabelText(/New secret key/),

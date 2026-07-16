@@ -69,7 +69,7 @@ function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
 
   renderWithSDKProviders(<QuestionAlertsButton />, {
     componentProviderProps: {
-      authConfig: createMockSdkConfig(),
+      authConfig: createMockSdkConfig(isGuestEmbed ? { isGuest: true } : {}),
     },
     storeInitialState: state,
   });

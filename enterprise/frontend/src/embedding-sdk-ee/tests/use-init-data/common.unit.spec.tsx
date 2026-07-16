@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import {
   setupMockJwtEndpoints,
   setupMockSamlEndpoints,
@@ -19,9 +19,11 @@ describe.each(["jwt"] as const)("useInitData - %s authentication", (method) => {
   it("should set isLoggedIn to true if login is successful", async () => {
     setupCommon(method);
 
-    expect(await screen.findByTestId("test-component")).toHaveAttribute(
-      "data-is-logged-in",
-      "true",
+    await waitFor(() =>
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-is-logged-in",
+        "true",
+      ),
     );
 
     expect(screen.getByTestId("test-component")).toHaveAttribute(
@@ -35,9 +37,11 @@ describe.each(["jwt"] as const)("useInitData - %s authentication", (method) => {
       metabaseInstanceUrl: "http://oisin-is-really-cool",
     });
 
-    expect(await screen.findByTestId("test-component")).toHaveAttribute(
-      "data-login-status",
-      "error",
+    await waitFor(() =>
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-login-status",
+        "error",
+      ),
     );
 
     expect(screen.getByTestId("test-component")).toHaveAttribute(

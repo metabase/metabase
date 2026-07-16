@@ -155,7 +155,10 @@ describe("impersonation modal", () => {
     );
     await userEvent.click(await screen.findByText("foo"));
 
-    expect(await screen.findByRole("button", { name: /save/i })).toBeEnabled();
+    // The save button enables once the selected attribute lands in form state.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
+    });
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {

@@ -36,7 +36,8 @@ const grandfathered: string[] = require("./real-timers-grandfather.js");
 const testPath = expect.getState().testPath ?? "";
 const enrolled =
   !process.env.DISABLE_FAST_TESTS &&
-  !grandfathered.some((path) => testPath.endsWith(path));
+  (Boolean(process.env.FAST_TESTS_FORCE) ||
+    !grandfathered.some((path) => testPath.endsWith(path)));
 
 if (enrolled) {
   jest.useFakeTimers();

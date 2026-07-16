@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   type JwtMockConfig,
@@ -40,9 +40,11 @@ describe("useInitData - JWT authentication", () => {
       providerResponse: 500,
     });
 
-    expect(await screen.findByTestId("test-component")).toHaveAttribute(
-      "data-error-message",
-      "Failed to fetch JWT token from http://test_uri/sso/metabase, status: 500.",
+    await waitFor(() =>
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Failed to fetch JWT token from http://test_uri/sso/metabase, status: 500.",
+      ),
     );
   });
 
@@ -57,9 +59,11 @@ describe("useInitData - JWT authentication", () => {
       }),
     );
 
-    expect(await screen.findByTestId("test-component")).toHaveAttribute(
-      "data-error-message",
-      "Your fetchRefreshToken function must return an object with the shape { jwt: string }",
+    await waitFor(() =>
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        "Your fetchRefreshToken function must return an object with the shape { jwt: string }",
+      ),
     );
   });
 
@@ -68,9 +72,11 @@ describe("useInitData - JWT authentication", () => {
       providerResponse: { oisin: "is cool" },
     });
 
-    expect(await screen.findByTestId("test-component")).toHaveAttribute(
-      "data-error-message",
-      'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"oisin":"is cool"}',
+    await waitFor(() =>
+      expect(screen.getByTestId("test-component")).toHaveAttribute(
+        "data-error-message",
+        'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"oisin":"is cool"}',
+      ),
     );
   });
 
@@ -78,13 +84,15 @@ describe("useInitData - JWT authentication", () => {
     setupJwt();
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
 
-    const lastCallRequest = fetchMock.callHistory.lastCall(
-      "path:/api/user/current",
-    )?.request;
+    await waitFor(() => {
+      const lastCallRequest = fetchMock.callHistory.lastCall(
+        "path:/api/user/current",
+      )?.request;
 
-    expect(lastCallRequest?.headers.get("X-Metabase-Session")).toEqual(
-      "TEST_SESSION_TOKEN",
-    );
+      expect(lastCallRequest?.headers.get("X-Metabase-Session")).toEqual(
+        "TEST_SESSION_TOKEN",
+      );
+    });
   });
 
   it("should use a custom fetchRefreshToken function when specified", async () => {
@@ -95,7 +103,9 @@ describe("useInitData - JWT authentication", () => {
     const { rerender } = setupJwt({ fetchRequestToken });
 
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
-    expect(fetchRequestToken).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(fetchRequestToken).toHaveBeenCalledTimes(1),
+    );
 
     const newFetchRequestToken = jest.fn(async () => ({
       jwt: "TEST_JWT_TOKEN",
@@ -108,6 +118,8 @@ describe("useInitData - JWT authentication", () => {
     rerender(<TestComponent config={authConfig} />);
     await userEvent.click(screen.getByText("Refresh Token"));
 
-    expect(newFetchRequestToken).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(newFetchRequestToken).toHaveBeenCalledTimes(1),
+    );
   });
 });

@@ -169,7 +169,7 @@ describe("DatabaseReplicationForm", () => {
   });
 
   it("renders DatabaseReplicationError when preview fails", async () => {
-    setup({ previewResponse: { status: 500 } });
+    await setup({ previewResponse: { status: 500 } });
 
     await waitFor(() => {
       expect(

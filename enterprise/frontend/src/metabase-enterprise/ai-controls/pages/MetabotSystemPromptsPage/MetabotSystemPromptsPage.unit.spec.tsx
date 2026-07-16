@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -70,6 +71,11 @@ async function setup({
     </>,
   );
   const textarea = await screen.findByRole("textbox", { name: title });
+  // Force the properties request to resolve so the hook's hydration effect
+  // (which resets inputValue from the loaded setting) fires now, before the
+  // test types. Otherwise it can fire mid-type and wipe typed characters --
+  // toHaveValue("") alone can't detect it when the loaded value is empty.
+  await findRequests("GET");
   // Wait for the hook to hydrate inputValue from the loaded setting.
   await waitFor(() => expect(textarea).toHaveValue(settingValue ?? ""));
   return { ...view, textarea };
