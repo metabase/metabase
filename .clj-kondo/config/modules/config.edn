@@ -157,6 +157,15 @@
                     :model/QueryExecution
                     :model/Table}}
 
+  ai-tracing
+  {:team "Metabot"
+   :api  #{metabase.ai-tracing.api
+           metabase.ai-tracing.core
+           metabase.ai-tracing.init}
+   :uses #{api
+           settings
+           util}}
+
   analytics
   {:team "UX West"
    :module-exports #{analytics.interface
@@ -1041,6 +1050,7 @@
            metabase.lib.field.util
            metabase.lib.init
            metabase.lib.options
+           metabase.lib.pivot
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.walk}
@@ -1209,9 +1219,11 @@
            metabase.mcp.usage}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
-   :uses #{api
+   :uses #{ai-tracing
+           api
            app-db
            mcp.oauth-server
+           metabot
            metabot.agent-api
            metabot.llm
            premium-features
@@ -1272,6 +1284,7 @@
                      metabot.llm
                      metabot.slackbot}
    :uses    #{activity-feed
+              ai-tracing
               analytics
               analytics.interface
               api
@@ -1307,7 +1320,6 @@
               server
               settings
               sql-tools
-              store-api
               sync
               system
               task
@@ -1324,6 +1336,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/Document
                     :model/Field
@@ -1341,7 +1355,8 @@
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{ai-tracing
+              api
               channel
               collections
               dashboards
@@ -1362,6 +1377,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/Table
                     :model/User}}
@@ -1499,6 +1515,17 @@
                     :model/Segment
                     :model/Table
                     :model/User}}
+
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.init}
+   :uses #{analytics.interface
+           app-db
+           settings
+           startup
+           task
+           util
+           util.classloader}}
 
   native-query-snippets
   {:team "Graphy"
@@ -1930,6 +1957,7 @@
            batch-processing
            cache
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -2073,12 +2101,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{driver
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database
-                    :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
   {:team "UX West"
@@ -2198,6 +2226,7 @@
            app-db
            channel
            events
+           premium-features
            request
            settings
            sso
@@ -2294,8 +2323,8 @@
   sql-tools.parsing
   {:team "DevEx"
    :ns-prefix "metabase.sql-parsing"
-   :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
-   :uses #{analytics.interface settings util}}
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics.interface util}}
 
   sso
   {:team "UX West"
@@ -2450,6 +2479,7 @@
            permissions
            premium-features
            search
+           session
            util
            util.config}
    :model-imports #{:model/AiUsageLog
@@ -3025,6 +3055,7 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
+           enterprise/mfa
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
@@ -3254,7 +3285,6 @@
            query-processor
            settings
            util
-           util.config
            warehouses
            warehouses.schema
            workspaces}
@@ -3490,6 +3520,22 @@
                     :model/ModerationReview
                     :model/Table}}
 
+  enterprise/mfa
+  {:team "Graphy"
+   :api  #{metabase-enterprise.mfa.core
+           metabase-enterprise.mfa.init
+           metabase-enterprise.mfa.routes}
+   :uses #{api
+           appearance
+           channel
+           events
+           premium-features
+           settings
+           sso
+           util
+           util.config}
+   :model-imports #{:model/AuthIdentity :model/User}}
+
   enterprise/native-query-snippets
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.snippet-collections"
@@ -3696,6 +3742,7 @@
            collections
            connection-pool
            events
+           lib.be
            metabot
            metabot.llm
            models
