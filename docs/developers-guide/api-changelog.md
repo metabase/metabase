@@ -10,8 +10,8 @@ title: API changelog
 
 - The endpoints that fetch prefill values for action forms have been converted from GET to POST so that parameter
   values (which may contain sensitive data) are sent in the JSON request body instead of the URL query string, where
-  they could leak into browser history, referrer headers, and server logs. `parameters` is now a JSON object in the
-  request body rather than a JSON-encoded query-string parameter:
+  they could leak into server and proxy access logs and other URL-recording infrastructure. `parameters` is now a
+  JSON object in the request body rather than a JSON-encoded query-string parameter:
 
   - `GET /api/action/:action-id/execute` has been replaced by `POST /api/action/:action-id/execute/values`.
   - `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute` has been replaced by
