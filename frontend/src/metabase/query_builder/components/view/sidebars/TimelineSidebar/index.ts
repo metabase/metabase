@@ -1,1 +1,1 @@
-export { TimelineSidebar } from "./TimelineSidebar";
+export { TimelineSidebar, type TimelineSidebarProps } from "./TimelineSidebar";

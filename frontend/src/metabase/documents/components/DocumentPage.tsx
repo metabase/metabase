@@ -24,6 +24,7 @@ import {
   useDeleteBookmarkMutation,
   useGetDocumentQuery,
   useListBookmarksQuery,
+  useListTimelinesQuery,
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
@@ -65,12 +66,12 @@ import { PrintContext } from "../contexts/PrintContext";
 import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
   clearDraftCards,
-  openVizSettingsSidebar,
   resetDocuments,
   setChildTargetId,
   setCurrentDocument,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
+  updateSelectedEmbedIndex,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { usePrintContextValue } from "../hooks/use-print-context-value";
@@ -82,6 +83,7 @@ import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
+  getSidebarMode,
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
@@ -90,6 +92,7 @@ import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
+import { TimelineEventsSidebar } from "./TimelineEventsSidebar";
 
 // The prefetch queue tracks every card embed's in-flight load, so it doubles
 // as the print-readiness signal: printing waits until nothing is loading.
@@ -136,6 +139,7 @@ export const DocumentPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const draftCards = useSelector(getDraftCards);
+  const sidebarMode = useSelector(getSidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -162,6 +166,7 @@ export const DocumentPage = ({
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
+  useListTimelinesQuery({ include: "events" }); // warm the cache for the timeline sidebar
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
   });
@@ -482,7 +487,7 @@ export const DocumentPage = ({
         selectedEmbedIndex !== null
       ) {
         // Only update the selected embed index if the sidebar is already open
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(updateSelectedEmbedIndex(embedIndex));
       }
     },
     [dispatch, selectedEmbedIndex],
@@ -551,7 +556,8 @@ export const DocumentPage = ({
 
             {selectedQuestionId &&
               selectedEmbedIndex !== null &&
-              editorInstance && (
+              editorInstance &&
+              sidebarMode === "viz-settings" && (
                 <Box
                   className={styles.sidebar}
                   data-testid="document-card-sidebar"
@@ -559,6 +565,23 @@ export const DocumentPage = ({
                   <EmbedQuestionSettingsSidebar
                     cardId={selectedQuestionId}
                     editorInstance={editorInstance}
+                  />
+                </Box>
+              )}
+
+            {selectedQuestionId &&
+              selectedEmbedIndex !== null &&
+              editorInstance &&
+              sidebarMode === "timeline-events" && (
+                <Box
+                  className={styles.sidebar}
+                  data-testid="document-timeline-sidebar"
+                >
+                  <TimelineEventsSidebar
+                    cardId={selectedQuestionId}
+                    selectedEmbedIndex={selectedEmbedIndex}
+                    editorInstance={editorInstance}
+                    collectionId={documentData?.collection_id ?? null}
                   />
                 </Box>
               )}

@@ -14,9 +14,6 @@ import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
-import EditEventModal from "metabase/query_builder/components/timelines/containers/EditEventModal";
-import MoveEventModal from "metabase/query_builder/components/timelines/containers/MoveEventModal";
-import NewEventModal from "metabase/query_builder/components/timelines/containers/NewEventModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import {
   getQuestionWithoutComposing,
@@ -28,6 +25,9 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { push } from "metabase/router";
+import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
+import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";

@@ -98,7 +98,7 @@ export const StructuredQueryRightSidebar = ({
     )
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
-        question={question}
+        collectionId={question.collectionId()}
         timelines={timelines}
         visibleTimelineEventIds={visibleTimelineEventIds}
         selectedTimelineEventIds={selectedTimelineEventIds}

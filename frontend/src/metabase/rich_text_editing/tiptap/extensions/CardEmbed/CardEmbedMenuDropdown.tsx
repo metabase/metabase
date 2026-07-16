@@ -16,6 +16,7 @@ export interface CardEmbedMenuContext {
   commentsPath: string;
   hasUnsavedChanges: boolean;
   unresolvedCommentsCount: number;
+  shouldShowTimelineEventsMenu: boolean;
 }
 
 export interface CardEmbedMenuActions {
@@ -25,6 +26,7 @@ export interface CardEmbedMenuActions {
     enablePivot: boolean;
   }) => Promise<void>;
   handleEditVisualizationSettings: () => void;
+  handleEditTimelineEvents: () => void;
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
   handleRemoveNode: () => void;
@@ -49,9 +51,11 @@ export const CardEmbedMenuDropdown = ({
   commentsPath,
   hasUnsavedChanges,
   unresolvedCommentsCount,
+  shouldShowTimelineEventsMenu,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
+  handleEditTimelineEvents,
   setIsModifyModalOpen,
   handleReplaceQuestion,
   handleRemoveNode,
@@ -126,6 +130,15 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Replace`}
       </Menu.Item>
+      {shouldShowTimelineEventsMenu && (
+        <Menu.Item
+          leftSection={<Icon name="calendar" size={14} />}
+          onClick={handleEditTimelineEvents}
+          disabled={!canWrite}
+        >
+          {t`Events`}
+        </Menu.Item>
+      )}
       {canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
