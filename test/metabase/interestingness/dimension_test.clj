@@ -24,6 +24,17 @@
   (testing "missing top-3-fraction falls through to the bucket-count score (no gate on absence)"
     (is (> (dim/cardinality {:fingerprint {:global {:distinct-count 12}
                                            :type   {:type/Text {:average-length 8}}}}) 0.1)))
+  (testing "high-cardinality binnable numeric hits the auto-binnable branch"
+    (is (= 0.9 (dim/cardinality {:fingerprint {:global {:distinct-count 1000}
+                                               :type   {:type/Number {:min 1 :max 1000}}}}))))
+  (testing "keys (PK/FK) are excluded from the auto-binnable branch — the QP refuses to bin
+            :Relation/* columns, so they score by raw distinct count instead"
+    (doseq [sem-type [:type/FK :type/PK]]
+      (is (< (dim/cardinality {:semantic-type sem-type
+                               :fingerprint   {:global {:distinct-count 1000}
+                                               :type   {:type/Number {:min 1 :max 1000}}}})
+             0.3)
+          (str sem-type " should fall through to bucket-count-score"))))
   (testing "missing fingerprint returns nil (no signal)"
     (is (nil? (dim/cardinality {})))
     (is (nil? (dim/cardinality {:fingerprint {}})))))
@@ -164,6 +175,20 @@
     (is (= 0.0 (dim/dimension-interestingness
                 {:semantic-type :type/PK
                  :fingerprint   {:global {:distinct-count 1000 :nil% 0.0}}}))))
+  (testing "numeric FK scores 0.0 regardless of how good its fingerprint looks (UXW-4757)"
+    (is (= 0.0 (dim/dimension-interestingness
+                {:semantic-type  :type/FK
+                 :effective-type :type/Integer
+                 :fingerprint    {:global {:distinct-count 1000 :nil% 0.0}
+                                  :type   {:type/Number {:min 1 :max 1000}}}})))
+    (is (= 0.0 (dim/dimension-interestingness
+                {:semantic_type  :type/FK
+                 :effective_type :type/BigInteger})))
+    (testing "but a non-numeric FK stays scoreable"
+      (is (pos? (dim/dimension-interestingness
+                 {:semantic-type  :type/FK
+                  :effective-type :type/Text
+                  :fingerprint    {:global {:distinct-count 15 :nil% 0.0}}})))))
   (testing "structured-blob fields score 0.0 even with no fingerprint"
     (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/Collection})))
     (is (= 0.0 (dim/dimension-interestingness {:semantic-type :type/Structured}))))
