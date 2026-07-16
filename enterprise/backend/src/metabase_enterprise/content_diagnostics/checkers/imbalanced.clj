@@ -13,10 +13,10 @@
     with too few dashcards **total** across tabs. A tabless dashboard counts as one implicit tab.
   - **Document:** `empty` = no content of any kind (fail closed - an unknown node type counts as
     content); `crowded` = too many embedded cards.
-  - **Card** (`empty` only): the latest clean (unparameterized, non-cache-hit, error-free) execution
-    returned 0 rows. Never run cleanly -> skipped (unknown, not empty); a newer parameterized,
-    cache-hit, or errored run is outside the evidence set - it neither flags nor clears. `as_of` = the
-    deciding run's start.
+  - **Card** (`empty` only): the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free)
+    execution returned 0 rows. Never run cleanly -> skipped (unknown, not empty); a newer parameterized,
+    sandboxed, cache-hit, or errored run is outside the evidence set - it neither flags nor clears.
+    `as_of` = the deciding run's start.
   - **Transform** (`empty` only): the target table's synced `estimated_row_count` is literally 0 and
     the table is still active (a dropped target is inactive; nil estimate = unknown -> skipped).
     `as_of` = the table row's `updated_at` (sync-freshness proxy). No live warehouse counting.
@@ -61,10 +61,11 @@
 
 (defn- empty-card-id->as-of
   "`{card-id -> started_at of the deciding run}` for every **non-archived** card whose latest clean
-  (unparameterized, non-cache-hit, error-free) execution returned 0 rows. One windowed query (executions
-  are not serialized, so a grouped MAX can't pick the latest row). `parameterized = false` strictly: a
-  NULL (pre-column legacy row) is unknown, and unknown runs are outside the evidence set - as are
-  errored runs, whose rows also stamp `result_rows` 0 (a crashed run means \"broken\", not \"empty\")."
+  (unparameterized, unsandboxed, non-cache-hit, error-free) execution returned 0 rows. One windowed query
+  (executions are not serialized, so a grouped MAX can't pick the latest row). `parameterized = false`
+  strictly: a NULL (pre-column legacy row) is unknown, and unknown runs are outside the evidence set - as
+  are errored runs, whose rows also stamp `result_rows` 0 (a crashed run means \"broken\", not \"empty\"),
+  and sandboxed runs (the sandbox filters rows per-user, so their 0 rows is not instance-wide evidence)."
   []
   (into {}
         (map (juxt :card_id :started_at))
@@ -79,6 +80,7 @@
                               :where  [:and
                                        [:= :c.archived false]
                                        [:= :qe.parameterized false]
+                                       [:not= :qe.is_sandboxed true]
                                        [:not= :qe.cache_hit true]
                                        [:= :qe.error nil]]}
                              :ranked]]

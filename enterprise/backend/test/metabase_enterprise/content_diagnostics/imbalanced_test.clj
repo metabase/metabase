@@ -134,7 +134,7 @@
 ;;; ------------------------------------------------ checker: cards ----------------------------------------
 
 (deftest imbalanced-card-empty-test
-  (testing "card-empty rides the latest clean (unparameterized, non-cache-hit, error-free) execution; other runs neither flag nor clear"
+  (testing "card-empty rides the latest clean (unparameterized, unsandboxed, non-cache-hit, error-free) execution; other runs neither flag nor clear"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [now (t/offset-date-time)
@@ -176,6 +176,11 @@
              :model/QueryExecution _ {:card_id only-errored :started_at (ago 5)
                                       :parameterized false :cache_hit false :result_rows 0
                                       :error "Table not found"}
+             ;; skipped: a sandboxed run's 0 rows is per-user filtering, not instance-wide emptiness
+             :model/Card {only-sandboxed :id} {:collection_id coll}
+             :model/QueryExecution _ {:card_id only-sandboxed :started_at (ago 5)
+                                      :parameterized false :cache_hit false :result_rows 0
+                                      :is_sandboxed true}
              ;; excluded: archived card with a 0-row latest run
              :model/Card {archived-card :id} {:collection_id coll :archived true}
              :model/QueryExecution _ {:card_id archived-card :started_at (ago 5)
@@ -203,6 +208,8 @@
                 (is (nil? (by-entity [:card only-param]))))
               (testing "an errored run's result_rows 0 does not flag - errored runs are outside the evidence set"
                 (is (nil? (by-entity [:card only-errored]))))
+              (testing "a sandboxed run's result_rows 0 does not flag - sandboxed runs are outside the evidence set"
+                (is (nil? (by-entity [:card only-sandboxed]))))
               (testing "archived card excluded even with a 0-row latest run"
                 (is (nil? (by-entity [:card archived-card]))))
               (testing "a collection holding only a flagged-empty card is empty"
