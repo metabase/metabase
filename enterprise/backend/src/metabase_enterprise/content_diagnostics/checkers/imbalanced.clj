@@ -35,6 +35,7 @@
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -67,24 +68,23 @@
   are errored runs, whose rows also stamp `result_rows` 0 (a crashed run means \"broken\", not \"empty\"),
   and sandboxed runs (the sandbox filters rows per-user, so their 0 rows is not instance-wide evidence)."
   []
-  (into {}
-        (map (juxt :card_id :started_at))
-        (t2/query {:select [:card_id :started_at]
-                   :from   [[{:select [:qe.card_id :qe.started_at :qe.result_rows
-                                       [[:over [[:row_number] {:partition-by :qe.card_id
-                                                               :order-by     [[:qe.started_at :desc]
-                                                                              [:qe.id :desc]]}]]
-                                        :rn]]
-                              :from   [[:query_execution :qe]]
-                              :join   [[:report_card :c] [:= :c.id :qe.card_id]]
-                              :where  [:and
-                                       [:= :c.archived false]
-                                       [:= :qe.parameterized false]
-                                       [:not= :qe.is_sandboxed true]
-                                       [:not= :qe.cache_hit true]
-                                       [:= :qe.error nil]]}
-                             :ranked]]
-                   :where  [:and [:= :rn 1] [:= :result_rows 0]]})))
+  (u/index-by :card_id :started_at
+              (t2/query {:select [:card_id :started_at]
+                         :from   [[{:select [:qe.card_id :qe.started_at :qe.result_rows
+                                             [[:over [[:row_number] {:partition-by :qe.card_id
+                                                                     :order-by     [[:qe.started_at :desc]
+                                                                                    [:qe.id :desc]]}]]
+                                              :rn]]
+                                    :from   [[:query_execution :qe]]
+                                    :join   [[:report_card :c] [:= :c.id :qe.card_id]]
+                                    :where  [:and
+                                             [:= :c.archived false]
+                                             [:= :qe.parameterized false]
+                                             [:not= :qe.is_sandboxed true]
+                                             [:not= :qe.cache_hit true]
+                                             [:= :qe.error nil]]}
+                                   :ranked]]
+                         :where  [:and [:= :rn 1] [:= :result_rows 0]]})))
 
 (defn- card-findings
   "Leaf card `empty` findings, `as_of` frozen to the deciding run's start."
@@ -199,7 +199,7 @@
   and all its ancestors (parsed from `location`); the guard drops leaves whose collection is outside
   the eligible set (e.g. audit content), so they can't mark ancestors."
   [collections leaf-coll-ids]
-  (let [id->location (into {} (map (juxt :id :location)) collections)]
+  (let [id->location (u/index-by :id :location collections)]
     (into #{}
           (mapcat (fn [id]
                     (when-let [location (get id->location id)]
@@ -259,11 +259,10 @@
                                    (t2/query {:select   [:dashboard_id :dashboard_tab_id [[:count :*] :cnt]]
                                               :from     [:report_dashboardcard]
                                               :group-by [:dashboard_id :dashboard_tab_id]}))
-        tab-counts       (into {}
-                               (map (juxt :dashboard_id :cnt))
-                               (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-                                          :from     [:dashboard_tab]
-                                          :group-by [:dashboard_id]}))
+        tab-counts       (u/index-by :dashboard_id :cnt
+                                     (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
+                                                :from     [:dashboard_tab]
+                                                :group-by [:dashboard_id]}))
         documents        (t2/select [:model/Document :id :collection_id :document :content_type]
                                     :archived false)
         collections      (eligible-collections)
