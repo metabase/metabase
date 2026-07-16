@@ -122,17 +122,18 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                 |
-| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                             |
-| `getName()`              | `() => string`                      | Display name shown in the chart type picker.                                                                                |
-| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                |
-| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                               |
-| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                |
-| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the viz cannot render with the current data or settings. Metabase shows the error message to the user. |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                    |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                           |
+| Property                       | Type                                | Description                                                                                                                 |
+| ------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`                           | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                             |
+| `getName()`                    | `() => string`                      | Display name shown in the chart type picker.                                                                                |
+| `minSize`                      | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                |
+| `defaultSize`                  | `{ width, height }`                 | Default dashboard grid size.                                                                                                |
+| `noHeader`                     | `boolean`                           | When `true`, hides the default card title/description header.                                                               |
+| `canSavePng`                   | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                |
+| `checkRenderable`              | `(series, settings) => void`        | Throw here to signal the viz cannot render with the current data or settings. Metabase shows the error message to the user. |
+| `settings`                     | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                    |
+| `VisualizationComponent`       | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                           |
+| `StaticVisualizationComponent` | `React.ComponentType`               | Optional. Component used for email, Slack, and PDF rendering (see below).                                                   |
 
 ### VisualizationComponent props
 
@@ -252,6 +253,49 @@ Keep the icon **simple and monochromatic** — avoid gradients and multiple colo
 
 ---
 
-## Static Visualizations (Email / Slack)
+## Static Visualizations (Email / Slack / PDF)
 
-Custom visualizations are not rendered in emails or Slack messages. In those contexts rendering falls back to a default visualization for the underlying query.
+Provide a `StaticVisualizationComponent` to enable rendering in non-interactive contexts: email attachments, Slack previews, and PDF exports.
+
+```tsx
+const StaticVisualizationComponent = ({
+  series,
+  settings,
+  renderingContext,
+}: CustomStaticVisualizationProps<Settings>) => {
+  const { getColor, fontFamily } = renderingContext;
+
+  return (
+    <svg viewBox={`0 0 540 360`} xmlns="http://www.w3.org/2000/svg">
+      {/* Pure rendering — no event handlers */}
+    </svg>
+  );
+};
+```
+
+### RenderingContext
+
+| Property                         | Type                       | Description                                                                   |
+| -------------------------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| `getColor(name)`                 | `(name: string) => string` | Returns a hex color for the given Metabase color name.                        |
+| `measureText(text, style)`       | `TextWidthMeasurer`        | Measures the rendered width of a text string.                                 |
+| `measureTextHeight(text, style)` | `TextHeightMeasurer`       | Measures the rendered height of a text string.                                |
+| `fontFamily`                     | `string`                   | The font family in use. Apply to root elements for consistent text rendering. |
+
+### GraalJS limitations
+
+Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine**. The following are unavailable:
+
+- Browser globals: `window`, `document`, `navigator`, `localStorage`
+- Network: `fetch`, `XMLHttpRequest`
+- Timers: `setTimeout`, `setInterval`
+- Dynamic imports: `import()`
+
+**Guidelines:**
+
+- Use fixed dimensions (e.g. `width: 540, height: 360`) — no responsive sizing.
+- Return a valid React SVG component.
+- Do not use `width`/`height` props (they are not passed in static context).
+- Avoid external dependencies that rely on browser APIs.
+- Inline images as base64 `data:` URLs or inline `<svg>` (see [Using Images](#using-images) above).
+- Keep rendering pure: data and settings in, JSX out.
