@@ -36,6 +36,7 @@ import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
 import { ExplorationPage, NewExplorationPage } from "metabase/explorations";
+import { NewExplorationPlanPage } from "metabase/explorations/pages/NewExplorationPlanPage";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
@@ -229,8 +230,10 @@ export const getRoutes = (store: AppStore) => {
             <Route index component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
+            <Route path="explore" component={NewExplorationPage} />
             <Route path="research">
               <Route index component={NewExplorationPage} />
+              <Route path="plan" component={NewExplorationPlanPage} />
               <Route path=":id" component={ExplorationPage} />
               <Route
                 path=":id/:entityType/:entityId"
