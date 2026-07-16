@@ -25,10 +25,12 @@
   ;; overwritten), or participant. Originator covers the rare case of a row
   ;; existing without the originator's first message yet persisted.
   ([{conversation-id :id originator-id :user_id}]
-   (or api/*is-superuser?*
-       (when (and conversation-id api/*current-user-id*)
-         (or (= originator-id api/*current-user-id*)
-             (participant? conversation-id api/*current-user-id*)))))
+   (let [user-id api/*current-user-id*]
+     (or api/*is-superuser?*
+         (and conversation-id
+              user-id
+              (or (= originator-id user-id)
+                  (participant? conversation-id user-id))))))
   ([_model pk]
    (when-let [instance (t2/select-one [:model/MetabotConversation :id :user_id] :id pk)]
      (mi/can-read? instance))))

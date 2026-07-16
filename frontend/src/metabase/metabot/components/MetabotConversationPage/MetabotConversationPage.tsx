@@ -19,8 +19,6 @@ import { getSettingsLoading } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-// While a resumed conversation's latest turn is still streaming (owned by
-// another session), re-fetch on this cadence until it finishes.
 export const IN_PROGRESS_POLL_MS = 2500;
 
 export const MetabotConversationPage = ({

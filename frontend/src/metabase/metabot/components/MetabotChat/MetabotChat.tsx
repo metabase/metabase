@@ -74,12 +74,7 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const hasSubmittedMessage = metabot.messages.some(
-    (message) => message.role === "user",
-  );
-  const title = hasSubmittedMessage
-    ? metabot.title || t`New conversation`
-    : undefined;
+  const title = hasMessages ? metabot.title || t`New conversation` : undefined;
 
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;
