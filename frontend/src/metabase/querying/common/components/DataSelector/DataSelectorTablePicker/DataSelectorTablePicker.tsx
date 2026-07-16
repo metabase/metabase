@@ -131,6 +131,8 @@ export const DataSelectorTablePicker = ({
             maxHeight={Infinity}
             width="100%"
             searchable={isSearchable}
+            // keep the search box + "no results" state visible when a search matches no tables
+            globalSearch={isSearchable}
             onChange={handleChange}
             showSpinner={showSpinner}
             itemIsSelected={checkIfItemIsSelected}

@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -12,6 +14,8 @@ const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 interface SetupOpts {
   database: Database;
+  hasFiltering?: boolean;
+  minTablesToShowSearch?: number;
 }
 
 const setup = (opts: SetupOpts) => {
@@ -28,6 +32,8 @@ const setup = (opts: SetupOpts) => {
       selectedDatabase={database}
       schemas={schemas}
       tables={tables}
+      hasFiltering={opts.hasFiltering}
+      minTablesToShowSearch={opts.minTablesToShowSearch}
       onChangeTable={jest.fn()}
     />,
     { storeInitialState: state },
@@ -70,5 +76,28 @@ describe("DataSelectorTablePicker", () => {
     expect(screen.getByText(database.name)).toBeInTheDocument();
     expect(screen.getByText(table.display_name)).toBeInTheDocument();
     expect(screen.getByLabelText("More info")).toBeInTheDocument();
+  });
+
+  it("keeps the search box visible and shows an empty state when no table matches the search (GDGT-2845)", async () => {
+    setup({
+      database: createMockDatabase({
+        tables: [
+          createMockTable({ id: 1, display_name: "Table 1" }),
+          createMockTable({ id: 2, display_name: "Table 2" }),
+        ],
+      }),
+      hasFiltering: true,
+      minTablesToShowSearch: 2,
+    });
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Find..."),
+      "xyznonexistent",
+    );
+
+    expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+    expect(screen.queryByText("Table 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Table 2")).not.toBeInTheDocument();
   });
 });

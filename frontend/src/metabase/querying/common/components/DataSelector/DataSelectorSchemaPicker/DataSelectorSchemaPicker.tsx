@@ -43,6 +43,8 @@ export const DataSelectorSchemaPicker = ({
         hasInitialFocus={hasInitialFocus}
         sections={sections}
         searchable={hasFiltering}
+        // keep the search box + "no results" state visible when a search matches no schemas
+        globalSearch={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
         itemIsSelected={(item: { schema: Schema }) =>
           item?.schema.id === selectedSchemaId
