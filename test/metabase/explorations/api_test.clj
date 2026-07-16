@@ -1065,7 +1065,9 @@
           (is (contains? s :contextual_interestingness_score)
               "contextual score is included via the result-table left-join")
           (is (nil? (:contextual_interestingness_score s))
-              "pending queries have no result row, hence nil contextual score"))))))
+              "pending queries have no result row, hence nil contextual score")
+          (is (contains? s :row_count) "row_count is included via the result-table left-join")
+          (is (nil? (:row_count s)) "pending queries have no result row, hence nil row_count"))))))
 
 (deftest exploration-list-queries-includes-score-from-result-test
   (testing "GET /:id/queries surfaces both interestingness scores via the result-table left-join"
@@ -1079,7 +1081,8 @@
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
         (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                     {:result_data (byte-array [0])}))]
+                                                     {:result_data (byte-array [0])
+                                                      :row_count   37}))]
           (t2/insert! :model/ExplorationQueryResult
                       {:exploration_query_id             qid
                        :stored_result_id                 sr-id
@@ -1087,7 +1090,8 @@
                        :contextual_interestingness_score 0.83}))
         (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
           (is (= 0.42 (:interestingness_score s)))
-          (is (= 0.83 (:contextual_interestingness_score s))))))))
+          (is (= 0.83 (:contextual_interestingness_score s)))
+          (is (= 37 (:row_count s)) "row_count surfaces from the linked stored_result"))))))
 
 (deftest exploration-get-includes-interestingness-on-queries-test
   (testing "GET /:id hydrates both interestingness scores on each nested query"
@@ -1108,10 +1112,13 @@
             (is (contains? q :interestingness_score))
             (is (nil? (:interestingness_score q)))
             (is (contains? q :contextual_interestingness_score))
-            (is (nil? (:contextual_interestingness_score q)))))
+            (is (nil? (:contextual_interestingness_score q)))
+            (is (contains? q :row_count))
+            (is (nil? (:row_count q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                       {:result_data (byte-array [0])}))]
+                                                       {:result_data (byte-array [0])
+                                                        :row_count   37}))]
             (t2/insert! :model/ExplorationQueryResult
                         {:exploration_query_id             qid
                          :stored_result_id                 sr-id
@@ -1119,7 +1126,8 @@
                          :contextual_interestingness_score 0.83}))
           (let [q (fetch-query)]
             (is (= 0.42 (:interestingness_score q)))
-            (is (= 0.83 (:contextual_interestingness_score q)))))))))
+            (is (= 0.83 (:contextual_interestingness_score q)))
+            (is (= 37 (:row_count q)) "row_count hydrates from the linked stored_result")))))))
 
 (deftest exploration-list-queries-permissions-test
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
