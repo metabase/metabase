@@ -106,7 +106,7 @@
               total       (transduce (map :cnt) + 0 tab-rows)
               max-per-tab (transduce (map :cnt) max 0 tab-rows)
               tabs        (max 1 (long (get tab-counts id 0)))
-              f           (cond
+              verdict     (cond
                             (zero? total)
                             (finding :dashboard id :empty 0 {:threshold 0 :unit "dashcards"})
 
@@ -120,8 +120,8 @@
                             (< total sparse-dashboard-dashcards)
                             (finding :dashboard id :sparse total
                                      {:threshold sparse-dashboard-dashcards :unit "dashcards"}))]
-        :when f]
-    f))
+        :when verdict]
+    verdict))
 
 ;;; ------------------------------------------------ documents ------------------------------------------------
 
@@ -152,14 +152,14 @@
   [documents {:keys [crowded-document-cards]}]
   (for [doc   documents
         :when (= (:content_type doc) prose-mirror/prose-mirror-content-type)
-        :let  [f (if (document-empty? doc)
-                   (finding :document (:id doc) :empty 0 {:threshold 0 :unit "cards"})
-                   (let [n (count (prose-mirror/card-ids doc))]
-                     (when (> n crowded-document-cards)
-                       (finding :document (:id doc) :crowded n
-                                {:threshold crowded-document-cards :unit "cards"}))))]
-        :when f]
-    f))
+        :let  [verdict (if (document-empty? doc)
+                         (finding :document (:id doc) :empty 0 {:threshold 0 :unit "cards"})
+                         (let [n (count (prose-mirror/card-ids doc))]
+                           (when (> n crowded-document-cards)
+                             (finding :document (:id doc) :crowded n
+                                      {:threshold crowded-document-cards :unit "cards"}))))]
+        :when verdict]
+    verdict))
 
 ;;; ------------------------------------------------ transforms -----------------------------------------------
 
@@ -212,18 +212,18 @@
   count (empty items still count)."
   [collections direct-counts non-empty-colls {:keys [crowded-collection-items sparse-collection-items]}]
   (for [{:keys [id]} collections
-        :let [n (long (get direct-counts id 0))
-              f (cond
-                  (not (contains? non-empty-colls id))
-                  (finding :collection id :empty 0 {:threshold 0 :unit "items"})
+        :let [n       (long (get direct-counts id 0))
+              verdict (cond
+                        (not (contains? non-empty-colls id))
+                        (finding :collection id :empty 0 {:threshold 0 :unit "items"})
 
-                  (> n crowded-collection-items)
-                  (finding :collection id :crowded n {:threshold crowded-collection-items :unit "items"})
+                        (> n crowded-collection-items)
+                        (finding :collection id :crowded n {:threshold crowded-collection-items :unit "items"})
 
-                  (< n sparse-collection-items)
-                  (finding :collection id :sparse n {:threshold sparse-collection-items :unit "items"}))]
-        :when f]
-    f))
+                        (< n sparse-collection-items)
+                        (finding :collection id :sparse n {:threshold sparse-collection-items :unit "items"}))]
+        :when verdict]
+    verdict))
 
 ;;; ------------------------------------------------- checker -------------------------------------------------
 
