@@ -551,12 +551,31 @@ export type InvalidCardRequest = {
   collection_id?: CollectionId | null;
 } & PaginationRequest;
 
+/**
+ * In-memory re-sort applied to the cached rows of a `stored_result` snapshot when the
+ * card-query endpoint is called with `stored_result_id`. The server applies the sort before
+ * responding; consumers (static `cardEmbed` nodes) only need to forward the value.
+ */
+export type StoredResultSort =
+  | "value_asc"
+  | "value_desc"
+  | "label_asc"
+  | "label_desc";
+
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
+  /**
+   * When set, the endpoint serves the cached `stored_result` snapshot identified by this id
+   * instead of re-running the card's query. Used by static `cardEmbed` nodes in documents.
+   * The server validates that the snapshot's `dataset_query` matches the card's.
+   */
+  stored_result_id?: number;
+  /** Only honored when `stored_result_id` is set. */
+  sort?: StoredResultSort;
 };
 
 export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;

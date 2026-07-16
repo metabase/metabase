@@ -10,7 +10,12 @@ import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/Editor
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
-import type { Card, Dataset, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  RawSeries,
+  StoredResultSort,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { getCardWithDraft } from "../selectors";
@@ -18,6 +23,8 @@ import { getCardWithDraft } from "../selectors";
 interface UseCardDataProps {
   id: number;
   skip?: boolean;
+  storedResultId?: number; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  storedResultSort?: StoredResultSort; // Sort to apply in-memory when reading a static snapshot. Static-mode only
 }
 
 function buildAdhocQueryParams(card: Card) {
@@ -77,6 +84,8 @@ function selectIsLoadingDataset(
 export function useCardData({
   id,
   skip = false,
+  storedResultId,
+  storedResultSort,
 }: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
   const shouldSkipSavedCard = !id || isDraft || skip;
@@ -110,13 +119,23 @@ export function useCardData({
     }
   }, [isDraft, isPivotTable, cardToUse, metadata]);
 
-  const shouldSkipRegularQuery = !id || isDraft || !card || skip;
-  const canQueryDraftCard = isDraft && cardToUse?.dataset_query && !skip;
+  const shouldUseDraftQuery = isDraft && storedResultId == null;
+  const shouldSkipRegularQuery = !id || shouldUseDraftQuery || !card || skip;
+  const canQueryDraftCard =
+    shouldUseDraftQuery && cardToUse?.dataset_query && !skip;
   const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
   const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 
   const { data: regularDataset, isLoading: isLoadingRegularDataset } =
-    useGetCardQueryQuery({ cardId: id }, { skip: shouldSkipRegularQuery });
+    useGetCardQueryQuery(
+      {
+        cardId: id,
+        ...(storedResultId != null
+          ? { stored_result_id: storedResultId, sort: storedResultSort }
+          : {}),
+      },
+      { skip: shouldSkipRegularQuery },
+    );
 
   const { data: draftDataset, isLoading: isLoadingDraftDataset } =
     useGetAdhocQueryQuery(
