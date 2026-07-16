@@ -436,18 +436,13 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source]} source-range-params]
-  (let [{query-type :type} source]
-    (assert (= :query (keyword query-type)))
-    (let [query  (:query source)
-          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
-      (binding [driver/*compile-with-inline-parameters*
-                (or (= :clickhouse driver)
-                    driver/*compile-with-inline-parameters*)]
-        (-> query
-            (preprocess-incremental-query source-range-params)
-            massage-sql-query
-            qp.compile/compile)))))
+  [{:keys [source] :as transform} source-range-params]
+  (let [{:keys [query]} source]
+    (assert (query-transform? transform))
+    (-> query
+        (preprocess-incremental-query source-range-params)
+        massage-sql-query
+        qp.compile/compile)))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
