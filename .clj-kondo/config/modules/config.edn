@@ -1258,34 +1258,50 @@
                     :model/McpToolCallLog}
    :uses #{activity-feed
            agent-api
+           agent-lib
            ai-tracing
            api
            app-db
            collections
            config
+           dashboards
+           documents
            eid-translation
            lib
            lib-be
            llm
            metabot
+           metrics
            models
+           notification
            oauth-server
            parameters
+           permissions
            premium-features
+           pulse
+           queries
            request
            server
            session
            settings
            system
            task
+           transforms
            util
            warehouse-schema}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/Database
+                    :model/Document
                     :model/Field
+                    :model/Measure
                     :model/NativeQuerySnippet
-                    :model/Table}}
+                    :model/Notification
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   measures
   {:team "Graphy"
@@ -1313,7 +1329,8 @@
               metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
-              metabase.metabot.tools.search}
+              metabase.metabot.tools.search
+              metabase.metabot.tools.shared.content-store}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics

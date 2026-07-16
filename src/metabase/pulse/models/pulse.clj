@@ -403,6 +403,49 @@
           hydrate-notification
           notification->pulse))))
 
+(defn maybe-filter-pulses-recipients
+  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
+  [pulses]
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (not api/*is-superuser?*)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                   (:recipients channel)))))))))
+
+(defn maybe-filter-pulse-recipients
+  "[[maybe-filter-pulses-recipients]] for a single pulse."
+  [pulse]
+  (first (maybe-filter-pulses-recipients [pulse])))
+
+(defn maybe-strip-sensitive-metadata
+  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
+  being the creator or a recipient, we return it with some metadata removed."
+  [pulse]
+  (if (mi/current-user-has-full-permissions? :read pulse)
+    pulse
+    (-> (dissoc pulse :cards)
+        (update :channels
+                (fn [channels]
+                  (map #(dissoc % :recipients) channels))))))
+
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
