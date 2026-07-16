@@ -4829,7 +4829,13 @@
             }
           },
           "required" : [ "channel_type", "details" ]
-        }, { } ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { }
+          },
+          "required" : [ "channel_type" ]
+        } ]
       },
       "metabase.channel.models.channel.ChannelTemplateEmailDetails" : {
         "oneOf" : [ {
@@ -4898,7 +4904,13 @@
             }
           },
           "required" : [ "channel_type", "details" ]
-        }, { } ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { }
+          },
+          "required" : [ "channel_type" ]
+        } ]
       },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
