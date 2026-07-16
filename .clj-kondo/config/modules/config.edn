@@ -1280,6 +1280,7 @@
            premium-features
            pulse
            queries
+           query-processor
            request
            server
            session
@@ -1329,6 +1330,7 @@
               metabase.metabot.scope
               metabase.metabot.self
               metabase.metabot.settings
+              metabase.metabot.tools.construct
               metabase.metabot.tools.search
               metabase.metabot.tools.shared.content-store}
    :friends #{agent-api
