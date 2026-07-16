@@ -259,6 +259,7 @@ export interface ExplorationQuery {
   segment_id: SegmentId | null;
   segment_name: string | null;
   params?: ExplorationQueryParams | null;
+  row_count?: number | null;
 }
 
 export interface ExplorationDocument {
@@ -313,6 +314,9 @@ export function getExplorationQueryGroupStatus(
   }
   if (queries.some((q) => q.status === "canceled")) {
     return "canceled";
+  }
+  if (queries.every((q) => q.row_count === 0)) {
+    return "error";
   }
   return "done";
 }

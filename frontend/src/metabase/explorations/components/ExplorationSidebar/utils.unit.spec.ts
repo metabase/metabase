@@ -263,6 +263,56 @@ describe("getExplorationSidebarTree sorting", () => {
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1", "2", "3"]);
   });
 
+  it("orders zero-row pages with errors at the bottom", () => {
+    const done = createQuery({
+      id: 1,
+      name: "Done",
+      status: "done",
+    });
+    const running = createQuery({ id: 2, name: "Running", status: "pending" });
+    const empty = createQuery({
+      id: 3,
+      name: "Empty",
+      status: "done",
+      row_count: 0,
+    });
+
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [empty, running, done],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({
+              id: 3,
+              name: "Empty",
+              position: 0,
+              query_ids: [empty.id],
+            }),
+            createPage({
+              id: 2,
+              name: "Running",
+              position: 1,
+              query_ids: [running.id],
+            }),
+            createPage({
+              id: 1,
+              name: "Done",
+              position: 2,
+              query_ids: [done.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const heading = getMetricHeadings(tree)[0];
+    expect(getLeafIds(heading)).toEqual(["1", "2", "3"]);
+    expect(getPageData(heading, "3")).toMatchObject({ status: "error" });
+  });
+
   it("orders metric headings by their best settled child score", () => {
     const metricALeaf = createQuery({
       id: 1,
