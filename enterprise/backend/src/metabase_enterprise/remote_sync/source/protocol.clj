@@ -84,8 +84,13 @@
   (empty-commit? [commit]
     "True if the staged tree is identical to the parent's, i.e. finishing would introduce no changes. Always
     false for a root commit (no parent).")
-  (finish-commit! [commit message]
-    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.")
+  (finish-commit!
+    [commit message]
+    [commit message report-progress]
+    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.
+
+    `report-progress`, when given, is an optional 1-arg fn called with a progress fraction after the local
+    commit is durable and just before the network push begins; nil to skip.")
   (abort-commit! [commit]
     "Release the commit's resources without committing or pushing. Returns nil."))
 

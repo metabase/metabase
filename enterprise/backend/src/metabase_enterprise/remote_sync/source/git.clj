@@ -251,6 +251,10 @@
                 (recur (update acc bucket conj (.getPathString tw))))
               acc)))))))
 
+(def ^:private commit-progress-checkpoint
+  "Export progress fraction reported once the local commit is durable, just before the network push begins."
+  0.8)
+
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
@@ -332,6 +336,9 @@
                (.equals (written-tree-id this) ^ObjectId parent-tree-id))))
 
   (finish-commit! [this message]
+    (source.p/finish-commit! this message nil))
+
+  (finish-commit! [this message report-progress]
     (let [^Git git   (:git snapshot)
           repo       (.getRepository git)
           branch-ref (qualify-branch (:branch snapshot))
@@ -348,6 +355,7 @@
         (doto (.updateRef repo branch-ref)
           (.setNewObjectId commit-id)
           (.update))
+        (when report-progress (report-progress commit-progress-checkpoint))   ; local commit durable; push about to start
         (push-branch! snapshot)
         (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
         (.name commit-id))))

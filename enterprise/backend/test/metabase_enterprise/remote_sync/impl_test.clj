@@ -1794,6 +1794,7 @@ serdes/meta:
          (replace-all! [_] nil)
          (empty-commit? [_] empty?)
          (finish-commit! [_ _] "written-version")
+         (finish-commit! [_ _ report-progress] (when report-progress (report-progress 0.8)) "written-version")
          (abort-commit! [_] nil))))))
 
 (defn- export-test-source

@@ -668,24 +668,26 @@
 (defn- commit-staged!
   "Open a commit on `snapshot`, stage into it via `stage-fn`, then finish it.
 
-  `stage-fn` will be passed the open commit. It should return the synced write-rows.
+  `stage-fn` will be passed the open commit. It should return the synced write-rows. `report-progress`, when
+  non-nil, is a 1-arg fn forwarded to `finish-commit!` (fired at the commit checkpoint, before the push).
 
   Will abort the commit if it is empty.
 
   Returns `[version, write-rows]` where version is the new commit SHA or `:remote-sync/empty-commit` if empty.
 
   Will abort the commit and throw on any Throwable."
-  [snapshot message stage-fn]
-  (let [commit (source.p/open-commit snapshot)]
-    (try
-      (let [synced  (stage-fn commit)
-            version (if (source.p/empty-commit? commit)
-                      (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
-                      (source.p/finish-commit! commit message))]
-        [synced version])
-      (catch Throwable e
-        (source.p/abort-commit! commit)
-        (throw e)))))
+  ([snapshot message stage-fn] (commit-staged! snapshot message stage-fn nil))
+  ([snapshot message stage-fn report-progress]
+   (let [commit (source.p/open-commit snapshot)]
+     (try
+       (let [synced  (stage-fn commit)
+             version (if (source.p/empty-commit? commit)
+                       (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
+                       (source.p/finish-commit! commit message report-progress))]
+         [synced version])
+       (catch Throwable e
+         (source.p/abort-commit! commit)
+         (throw e))))))
 
 (defn- export-merged!
   "Export when the remote branch has advanced beyond the last synced version. Runs an entity-identity 3-way merge of
@@ -1085,7 +1087,8 @@
                                                (stage-writes commit opts export-rows
                                                              (fn [staged]
                                                                (report (+ export-progress-plan-done
-                                                                          (* span (/ staged total))))))))]
+                                                                          (* span (/ staged total)))))))
+                                             (fn [f] (report f {:force? true})))]
         (report export-progress-serialize {:force? true})
         (t2/with-transaction [_]
           (when-not (= version :remote-sync/empty-commit)
@@ -1116,7 +1119,8 @@
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
-                                               synced)))]
+                                               synced))
+                                           (fn [f] (report f {:force? true})))]
       (report export-progress-serialize {:force? true})
       (t2/with-transaction [_]
         (when-not (= version :remote-sync/empty-commit)
