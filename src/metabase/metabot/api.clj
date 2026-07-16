@@ -228,10 +228,15 @@
             ;; the socket cleanly when this body fn returns. The error is fully
             ;; captured in the row via the `finally` below and in the log here.
             (vreset! thrown t)
-            (log/error t "Native agent stream failed"
-                       {:conversation-id conversation-id
-                        :assistant-msg-id assistant-msg-id
-                        :external-id     external-id})
+            ;; Expected config errors (no API key, proxy unconfigured) get a one-liner —
+            ;; a full stack trace is just noise for "you haven't set this up yet".
+            (if (self.core/config-error? t)
+              (log/warn "Native agent stream failed:" (ex-message t)
+                        {:conversation-id conversation-id})
+              (log/error t "Native agent stream failed"
+                         {:conversation-id conversation-id
+                          :assistant-msg-id assistant-msg-id
+                          :external-id     external-id}))
             ;; Stream a well-formed AI SDK error tail so the client surfaces the failure
             ;; instead of treating the truncated stream as a silent success. Unlike binary
             ;; downloads (which abort the connection), an event stream carries its own error

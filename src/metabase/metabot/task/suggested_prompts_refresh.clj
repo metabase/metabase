@@ -10,6 +10,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.request.core :as request]
@@ -49,9 +50,18 @@
               ;; Better to keep stale prompts than to leave the Metabot with none.
               (throw (ex-info "no new prompts generated" {::preserve true :status status}))))))
       (catch clojure.lang.ExceptionInfo e
-        (if (::preserve (ex-data e))
+        (cond
+          (::preserve (ex-data e))
           (log/infof "Kept existing suggested prompts for Metabot %s (regeneration produced %s)"
                      metabot-id (:status (ex-data e)))
+
+          ;; Config errors (no API key, proxy unconfigured) are expected on unconfigured
+          ;; instances — no stack trace, message only.
+          (self.core/config-error? e)
+          (log/warnf "Failed to regenerate suggested prompts for Metabot %s: %s"
+                     metabot-id (ex-message e))
+
+          :else
           (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))
       (catch Throwable e
         (log/warnf e "Failed to regenerate suggested prompts for Metabot %s" metabot-id)))))

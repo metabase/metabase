@@ -13,6 +13,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
@@ -165,7 +166,12 @@
                               (try
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item")
+                                  ;; Config errors (no API key, proxy unconfigured) are expected on
+                                  ;; unconfigured instances — no stack trace, message only.
+                                  (if (self.core/config-error? e)
+                                    (log/warn "Example question generation failed for one item:"
+                                              (ex-message e))
+                                    (log/warn e "Example question generation failed for one item"))
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

@@ -3,9 +3,11 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.metabot.example-question-generator :as native-generator]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,6 +107,31 @@
            (native-generator/generate-example-questions
             {:tables [{:name "T1" :fields [{:name "a" :type "number"}]}]
              :metrics []}))))))
+
+(deftest generate-example-questions-config-error-no-stacktrace-test
+  (let [payload {:tables  [{:name "T1" :fields [{:name "a" :type "number"}]}]
+                 :metrics []}]
+    (testing "config errors (missing API key / unconfigured proxy) warn message-only — no stack trace"
+      (mt/with-dynamic-fn-redefs [native-generator/call-llm
+                                  (fn [_] (throw (self.core/missing-api-key-ex "OpenAI")))]
+        (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.example-question-generator :warn]]
+                     (is (thrown-with-msg? Exception #"No OpenAI API key is set"
+                                           (native-generator/generate-example-questions payload)))
+                     (msgs))
+              warn (first msgs)]
+          (is (some? warn))
+          (is (nil? (:e warn)) "no throwable attached — nothing to print a stack trace from")
+          (is (re-find #"No OpenAI API key is set" (:message warn))))))
+    (testing "unexpected errors keep the throwable (stack trace preserved)"
+      (mt/with-dynamic-fn-redefs [native-generator/call-llm
+                                  (fn [_] (throw (ex-info "provider exploded" {:api-error true})))]
+        (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.example-question-generator :warn]]
+                     (is (thrown-with-msg? Exception #"provider exploded"
+                                           (native-generator/generate-example-questions payload)))
+                     (msgs))
+              warn (first msgs)]
+          (is (some? warn))
+          (is (some? (:e warn))))))))
 
 (deftest generate-example-questions-routes-through-openrouter-test
   (testing "generate-example-questions routes LLM calls through openrouter when provider is openrouter/*"

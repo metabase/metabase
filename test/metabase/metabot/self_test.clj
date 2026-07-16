@@ -55,6 +55,18 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
 
+(deftest ^:parallel config-error?-test
+  (testing "true for expected configuration errors, anywhere in the cause chain"
+    (is (self.core/config-error? (self.core/missing-api-key-ex "OpenAI")))
+    (is (self.core/config-error? (ex-info "AI proxy is not configured"
+                                          {:api-error true :error-code :proxy-not-configured})))
+    (is (self.core/config-error? (ex-info "wrapper" {}
+                                          (self.core/missing-api-key-ex "Anthropic")))))
+  (testing "false for anything else"
+    (is (not (self.core/config-error? (ex-info "provider error"
+                                               {:api-error true :error-code :provider-api-error}))))
+    (is (not (self.core/config-error? (NullPointerException.))))))
+
 (deftest call-llm-tool-choice-test
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]

@@ -794,6 +794,14 @@
            {:api-error  true
             :error-code :api-key-missing}))
 
+(defn config-error?
+  "Whether a throwable (or anything in its cause chain) is an expected configuration error —
+  a missing API key or an unconfigured AI proxy. These mean the instance isn't set up for LLM
+  calls, not that something exceptional happened, so log them without a stack trace."
+  [t]
+  (boolean (some #(#{:api-key-missing :proxy-not-configured} (:error-code (ex-data %)))
+                 (u/full-exception-chain t))))
+
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
