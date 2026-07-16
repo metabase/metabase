@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
@@ -38,9 +40,7 @@ export const useSyncStatus = () => {
   const hasPendingMutation = useSelector(getHasPendingMutation);
 
   const minutesSinceLastUpdate = lastProgressReportAt
-    ? Math.floor(
-        (Date.now() - new Date(lastProgressReportAt).getTime()) / 60000,
-      )
+    ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
     : null;
 
   const shouldPoll = isRunning && showModal && !hasPendingMutation;
