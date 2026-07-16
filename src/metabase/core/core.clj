@@ -167,7 +167,9 @@
                         which initializes the scheduler into standby but never starts it.
     :health-check    -- warehouse connection health checks at startup
     :queue-listeners -- in-process queue listeners (search indexing, etc.)
-    :audit-db        -- installing the audit / instance-analytics content"
+    :audit-db        -- installing the audit / instance-analytics content
+
+  `java -jar metabase.jar --mode preview` presets all of these (see [[metabase.core.bootstrap]])."
   #{:scheduler :health-check :queue-listeners :audit-db})
 
 (defn- disabled-subsystems
