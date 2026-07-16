@@ -32,6 +32,11 @@ describe(
       }).then(({ body: question }) => {
         cy.wrap(question.id).as("questionId");
       });
+
+      cy.log(
+        "Sign out so the donor request is anonymous and must pass the Sec-Fetch gate instead of the session-auth bypass",
+      );
+      cy.signOut();
     });
 
     it("renders the custom visualization when allowedCustomVisualizations includes the display", () => {
@@ -82,10 +87,10 @@ describe(
         cy.wait("@getCardQuery");
 
         frame.within(() => {
-          cy.findByText("Custom viz rendered successfully").should("not.exist");
           // The count question renders with its sensible default (a scalar)
           // when the custom viz is not allowlisted.
           cy.findByTestId("scalar-container").should("be.visible");
+          cy.findByText("Custom viz rendered successfully").should("not.exist");
         });
       });
     });
