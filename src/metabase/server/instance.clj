@@ -17,7 +17,8 @@
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.ee9.servlet ServletContextHandler ServletHandler)
-   (org.eclipse.jetty.server Server)))
+   (org.eclipse.jetty.http UriCompliance UriCompliance$Violation)
+   (org.eclipse.jetty.server Connector HttpConnectionFactory Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -72,6 +73,27 @@
   (when-let [^Server server (instance)]
     (.. server getURI getPort)))
 
+(def ^:private uri-compliance
+  "Jetty's default URI compliance, plus percent-encoded slashes (`%2F`) allowed in paths, which Jetty
+  otherwise rejects with a 400: schema names can contain slashes, and the frontend sends them
+  percent-encoded (#77353). This is safe because routing matches on the still-encoded URI and only decodes
+  matched route params, so an encoded slash can never change which route a request matches. All other
+  ambiguous-URI protections remain in effect."
+  (.with UriCompliance/DEFAULT "metabase"
+         (into-array UriCompliance$Violation [UriCompliance$Violation/AMBIGUOUS_PATH_SEPARATOR])))
+
+(defn- set-uri-compliance!
+  "Set [[uri-compliance]] on all of `server`'s connectors."
+  [^Server server]
+  (let [factories (for [^Connector connector (.getConnectors server)
+                        factory              (.getConnectionFactories connector)
+                        :when                (instance? HttpConnectionFactory factory)]
+                    factory)]
+    (when (empty? factories)
+      (log/warn "No HTTP connection factories found; URI compliance not configured"))
+    (doseq [^HttpConnectionFactory factory factories]
+      (.setUriCompliance (.getHttpConfiguration factory) uri-compliance))))
+
 (defn- async-proxy-handler ^ServletHandler [handler timeout]
   (proxy [ServletHandler] []
     (doHandle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
@@ -116,7 +138,8 @@
                           (.insertHandler (statistics-handler/new-handler))
                           (.setServletHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-      (.setHandler servlet-handler))))
+      (.setHandler servlet-handler)
+      (set-uri-compliance!))))
 
 (mu/defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
