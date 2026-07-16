@@ -595,6 +595,19 @@
       ;; ignores Retry-After > 60s
       500  1 (ex-info "err" {:status 429 :headers {"retry-after" "120"}}))))
 
+(deftest parse-retry-after-header-test
+  (let [parse #'self/parse-retry-after-header]
+    (testing "parses a plain string Retry-After into milliseconds"
+      (is (= 3000 (parse (ex-info "e" {:headers {"retry-after" "3"}}))))
+      (is (= 3000 (parse (ex-info "e" {:headers {"Retry-After" "3"}})))))
+    (testing "ignores values over 60s and non-numeric values"
+      (is (nil? (parse (ex-info "e" {:headers {"retry-after" "120"}}))))
+      (is (nil? (parse (ex-info "e" {:headers {"retry-after" "soon"}})))))
+    (testing "returns nil when the header is absent"
+      (is (nil? (parse (ex-info "e" {})))))
+    (testing "does not throw on a vector-valued header (duplicate Retry-After); uses the first value"
+      (is (= 3000 (parse (ex-info "e" {:headers {"retry-after" ["3" "5"]}})))))))
+
 (deftest with-retries-test
   (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
     (testing "succeeds on first attempt without retrying"
@@ -644,6 +657,87 @@
                           (throw (java.net.ConnectException. "refused")))
                         :ok)))))
         (is (= 2 @calls))))))
+
+(defn- malformed-tool-input-response
+  "A reducible LLM stream whose forced tool call streams invalid JSON, so
+  `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel."
+  []
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (reduce rf init [{:type :start :messageId "m1"}
+                       {:type :tool-input-start :toolCallId "c1" :toolName "json"}
+                       {:type :tool-input-delta :toolCallId "c1" :inputTextDelta "{not valid json"}
+                       {:type :tool-input-available :toolCallId "c1" :toolName "json"}]))))
+
+(deftest call-llm-structured-rejects-malformed-json-test
+  (testing "malformed tool-call JSON is rejected as an error, not returned as a bogus result"
+    (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                openrouter/openrouter (constantly (malformed-tool-input-response))]
+      (mt/with-log-level [metabase.metabot.self.core :fatal]
+        (let [e (try
+                  (self/call-llm-structured "openrouter/test-model"
+                                            [{:role "user" :content "test"}]
+                                            {:type "object" :properties {:answer {:type "string"}}}
+                                            0.3 1024 {:tag "metabot_agent"})
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo e)
+              "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
+          (is (= "structured-output-invalid" (:error-code (ex-data e)))))))))
+
+(deftest call-llm-structured-surfaces-provider-error-test
+  (testing "a provider mid-stream :error part surfaces its message, not a generic 'no tool call' error"
+    (mt/with-dynamic-fn-redefs [self/retry-delay-ms      (constantly 0)
+                                openrouter/openrouter    (constantly
+                                                          (test-util/mock-llm-response
+                                                           [{:type :error :errorText "content policy violation"}]))]
+      (mt/with-log-level [metabase.metabot.self :fatal]
+        (let [e (try
+                  (self/call-llm-structured "openrouter/test-model"
+                                            [{:role "user" :content "test"}]
+                                            {:type "object" :properties {:answer {:type "string"}}}
+                                            0.3 1024 {:tag "metabot_agent"})
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo e))
+          (is (re-find #"content policy violation" (ex-message e))
+              "the provider error message is surfaced, not hidden behind 'no tool call'")
+          (is (= "llm-stream-error" (:error-code (ex-data e)))))))))
+
+(deftest call-llm-does-not-replay-after-partial-emission-test
+  (testing "a retryable failure AFTER parts were emitted does not replay the stream (no duplicate output / re-run tools)"
+    (mt/with-dynamic-fn-redefs
+      [self/retry-delay-ms   (constantly 0)
+       openrouter/openrouter (constantly
+                              (reify clojure.lang.IReduceInit
+                                (reduce [_ rf init]
+                                  ;; emit one chunk, then fail mid-stream with an otherwise-retryable error
+                                  (let [acc (rf init {:type :start :messageId "m1"})]
+                                    (throw (ex-info "mid-stream boom" {:status 500}))))))]
+      (mt/with-log-level [metabase.metabot.self :fatal]
+        (let [seen       (atom [])
+              collect-rf (fn ([acc] acc) ([acc x] (swap! seen conj x) acc))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"mid-stream boom"
+               (reduce collect-rf nil (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+          (is (= 1 (count (filter #(= :start (:type %)) @seen)))
+              "the :start part reaches the consumer exactly once, not once per retry attempt"))))))
+
+(deftest call-llm-still-retries-before-any-emission-test
+  (testing "a retryable failure BEFORE any part is emitted is still retried (clean replay)"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [self/retry-delay-ms   (constantly 0)
+         openrouter/openrouter (fn [_opts]
+                                 (reify clojure.lang.IReduceInit
+                                   (reduce [_ rf init]
+                                     (if (< (swap! calls inc) 3)
+                                       (throw (ex-info "rate limited" {:status 429}))
+                                       (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
+        (mt/with-log-level [metabase.metabot.self :fatal]
+          (let [seen (atom [])]
+            (reduce (fn [acc x] (swap! seen conj x) acc) nil
+                    (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
+            (is (= 3 @calls) "retries until the pre-emission failures clear")
+            (is (= 1 (count (filter #(= :start (:type %)) @seen))))))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
