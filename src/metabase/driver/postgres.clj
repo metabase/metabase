@@ -60,7 +60,7 @@
 ;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
 ;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
 ;; `standard_conforming_strings = off` (#73721).
-(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
+(driver/register! :postgres, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -84,6 +84,7 @@
                               :index/fetch                    true
                               :index/standalone-create        true
                               :metadata/table-existence-check true
+                              :native-pivot-tables            true
                               :now                            true
                               :persist-models                 true
                               :rename                         true

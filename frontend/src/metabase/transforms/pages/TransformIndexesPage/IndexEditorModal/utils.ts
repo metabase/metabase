@@ -85,6 +85,11 @@ export function toStructured(
   for (const field of fields) {
     const value = values[field.name];
     if (field.type === "columns" && Array.isArray(value)) {
+      // Omit an optional column list left empty (e.g. a Redshift DISTSTYLE ALL/EVEN distkey): the backend
+      // rejects [] but accepts the key being absent.
+      if (!field.required && value.length === 0) {
+        continue;
+      }
       structured[field.name] = field.directions
         ? value.map((column) => ({
             name: column.name,
@@ -92,6 +97,11 @@ export function toStructured(
           }))
         : value.map((column) => ({ name: column.name }));
     } else {
+      // Omit an optional scalar left blank -- null (e.g. a ClickHouse skip-index granularity) or "" (a blank
+      // string or empty-option select): the backend rejects those but accepts the key being absent.
+      if (!field.required && (value == null || value === "")) {
+        continue;
+      }
       structured[field.name] = value;
     }
   }

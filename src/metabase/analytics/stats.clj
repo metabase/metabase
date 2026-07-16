@@ -795,7 +795,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search :workspaces]]
+  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search :workspaces]]
     (map
      (fn [feature]
        {:name      feature
@@ -885,7 +885,7 @@
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
-    :enabled   (some? (get env/env :mb-config-file-path))}
+    :enabled   (not (str/blank? (get env/env :mb-config-file-path)))}
    {:name      :content-translation
     :available (premium-features/enable-content-translation?)
     :enabled   (premium-features/enable-content-translation?)}

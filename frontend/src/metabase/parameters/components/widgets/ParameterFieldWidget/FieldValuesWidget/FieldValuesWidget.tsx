@@ -18,7 +18,6 @@ import {
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
@@ -560,7 +559,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={16} />
+    <Loader size="xs" />
   </div>
 );
 

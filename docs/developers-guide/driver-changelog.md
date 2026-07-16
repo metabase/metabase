@@ -4,7 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.63.0
+## Metabase 0.64.0
+
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
@@ -34,8 +38,10 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
-  - `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
-    statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
+## Metabase 0.63.0
+
+- `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
+  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support

@@ -100,6 +100,10 @@ export {
 } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
+  PLUGIN_MULTI_FACTOR_AUTH,
+  type AuthChallengeFormProps,
+} from "./oss/multi-factor-auth";
+export {
   PLUGIN_MODERATION,
   type RevisionOrModerationEvent,
 } from "./oss/moderation";
@@ -205,6 +209,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeMultiFactorAuth } from "./oss/multi-factor-auth";
 import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
@@ -250,6 +255,7 @@ export function reinitialize() {
   reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
+  reinitializeMultiFactorAuth();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();

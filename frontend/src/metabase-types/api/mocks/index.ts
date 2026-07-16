@@ -22,6 +22,7 @@ export * from "./metric";
 export * from "./metabot";
 export * from "./modelIndexes";
 export * from "./models";
+export * from "./multi-factor-auth";
 export * from "./notification";
 export * from "./oauth";
 export * from "./parameters";

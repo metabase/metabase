@@ -39,9 +39,8 @@
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (with-redefs [config/is-dev? true]
-        (let [conversation-id    (str (random-uuid))
-              question           {:role "user" :content "Test native streaming"}
-              historical-message {:role "user" :content "previous message"}]
+        (let [conversation-id (str (random-uuid))
+              question        {:role "user" :content "Test native streaming"}]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                               (mut/mock-llm-response
                                                                [{:type :start :id "msg-1"}
@@ -55,7 +54,6 @@
                                                      {:message         (:content question)
                                                       :context         {}
                                                       :conversation_id conversation-id
-                                                      :history         [historical-message]
                                                       :state           {}})
                       lines    (->> (str/split-lines response)
                                     (filter #(str/starts-with? % "data: ")))
@@ -173,7 +171,7 @@
                               http/post                                      (fn [url opts]
                                                                                (real-http-post url (assoc opts :decompress-body false)))
                               metabot.context/create-context                 (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn!   (fn [_conv-id _pk parts & kwargs]
+                              metabot.persistence/finalize-assistant-turn!   (fn [_pk parts & kwargs]
                                                                                (reset! stored-parts parts)
                                                                                (reset! stored-kwargs (apply hash-map kwargs)))
                               sr/async-cancellation-poll-interval-ms         5]
@@ -191,7 +189,6 @@
                                       {:message         "Test closure"
                                        :context         {}
                                        :conversation_id conversation-id
-                                       :history         []
                                        :state           {}})]
                         (.read ^java.io.InputStream (:body response)) ;; start the handler
                         ;; Close the underlying client, not the body stream: closing the body would
@@ -231,7 +228,7 @@
                           (throw (ex-info "agent setup exploded"
                                           {:status 503 :provider :test})))
                         metabot.persistence/finalize-assistant-turn!
-                        (fn [_conv-id _pk parts & kwargs]
+                        (fn [_pk parts & kwargs]
                           (reset! stored-parts parts)
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -240,7 +237,6 @@
                                                    {:message         "go"
                                                     :context         {}
                                                     :conversation_id (str (random-uuid))
-                                                    :history         []
                                                     :state           {}})]
                 (u/poll {:thunk       #(deref stored-kwargs)
                          :done?       some?
@@ -757,7 +753,6 @@
                         {:message "Test"
                          :context {}
                          :conversation_id (str (random-uuid))
-                         :history []
                          :state {}}))))
     (testing "/feedback"
       (is (= "Unauthenticated"
@@ -812,7 +807,6 @@
       (let [base-request {:message         "Test"
                           :context         {}
                           :conversation_id (str (random-uuid))
-                          :history         []
                           :state           {}}]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -864,6 +858,374 @@
                                       (assoc base-request
                                              :metabot_id metabot.config/embedded-metabot-id
                                              :conversation_id (str (random-uuid))))))))))))
+
+(defn- streamed-start-event
+  "Parse a raw agent-streaming SSE response body and return the `start` event."
+  [response]
+  (->> (str/split-lines response)
+       (filter #(str/starts-with? % "data: "))
+       (remove #(= "data: [DONE]" %))
+       (map #(json/decode+kw (subs % 6)))
+       (u/seek #(= "start" (:type %)))))
+
+(defn- streamed-message-id
+  [response]
+  (:messageId (streamed-start-event response)))
+
+(defn- streamed-user-message-id
+  [response]
+  (get-in (streamed-start-event response) [:messageMetadata :userMessageId]))
+
+(def ^:private default-mock-parts
+  [{:type :start :id "msg-1"}
+   {:type :text :text "hi"}
+   {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
+    :model "test-model" :id "msg-1"}])
+
+(def ^:private error-mock-parts
+  [{:type :start :id "msg-1"}
+   {:type :error :error {:message "boom"}}])
+
+(defn- with-mock-streaming-provider!
+  "Runs `thunk` with the LLM provider mocked. Each provider call consumes the next
+  parts vector from `responses`, falling back to `default-mock-parts` once exhausted."
+  ([thunk] (with-mock-streaming-provider! [] thunk))
+  ([responses thunk]
+   (let [queue (atom (vec responses))]
+     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+         (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                     (fn [_]
+                                       (let [[[parts]] (swap-vals! queue (comp vec rest))]
+                                         (mut/mock-llm-response (or parts default-mock-parts))))]
+           (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+             (thunk)
+             (is (empty? @queue) "unconsumed mock LLM responses"))))))))
+
+(deftest agent-streaming-rejects-stale-parent-message-id-test
+  (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    {:message         "first"
+                                                     :context         {}
+                                                     :conversation_id conversation-id
+                                                     :state           {}})
+              stale-id        (streamed-message-id first-response)]
+          (is (string? stale-id))
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                {:message            "second"
+                                 :context            {}
+                                 :conversation_id    conversation-id
+                                 :state              {}
+                                 :parent_message_id  stale-id})
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                {:message            "third"
+                                 :context            {}
+                                 :conversation_id    conversation-id
+                                 :state              {}
+                                 :parent_message_id  stale-id}))))))
+
+(deftest agent-streaming-rejects-missing-parent-message-id-for-existing-conversation-test
+  (testing "agent-streaming rejects an omitted parent_message_id once the conversation already has a leaf"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))]
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                {:message         "first"
+                                 :context         {}
+                                 :conversation_id conversation-id
+                                 :state           {}})
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                {:message         "second"
+                                 :context         {}
+                                 :conversation_id conversation-id
+                                 :state           {}}))))))
+
+(defn- agent-request
+  [conversation-id message & {:as extra}]
+  (merge {:message         message
+          :context         {}
+          :conversation_id conversation-id
+          :state           {}}
+         extra))
+
+(defn- conversation-rows
+  [conversation-id]
+  (t2/select [:model/MetabotMessage :id :external_id :role :deleted_at :deleted_by_user_id]
+             :conversation_id conversation-id
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(deftest agent-streaming-start-event-carries-user-message-id-test
+  (testing "the start event's messageMetadata.userMessageId is the persisted user row's external_id"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              response        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              user-message-id (streamed-user-message-id response)]
+          (is (string? user-message-id))
+          (is (= user-message-id
+                 (t2/select-one-fn :external_id :model/MetabotMessage
+                                   :conversation_id conversation-id :role "user"))))))))
+
+(deftest agent-streaming-honors-client-minted-message-ids-test
+  (testing "rows persist under client-sent ids, the start event echoes them, and a retry honors its fresh assistant id"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              user-id         (str (random-uuid))
+              assistant-id    (str (random-uuid))
+              response        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"
+                                                                   :user_message_id user-id
+                                                                   :assistant_message_id assistant-id))]
+          (is (= assistant-id (streamed-message-id response)))
+          (is (= user-id (streamed-user-message-id response)))
+          (is (= {:user user-id :assistant assistant-id}
+                 (t2/select-fn->fn :role :external_id :model/MetabotMessage
+                                   :conversation_id conversation-id)))
+          (let [retry-assistant-id (str (random-uuid))]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "first"
+                                                 :retry_message_id user-id
+                                                 :assistant_message_id retry-assistant-id))
+            (is (= retry-assistant-id
+                   (metabot.persistence/leaf-external-id conversation-id)))))))))
+
+(deftest agent-streaming-rejects-taken-client-minted-id-test
+  (testing "a client-sent id colliding with an existing message 409s"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"))
+              parent-id       (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                (agent-request conversation-id "second"
+                                               :parent_message_id parent-id
+                                               :assistant_message_id parent-id)))))))
+
+(deftest agent-streaming-rejects-malformed-client-minted-id-test
+  (testing "a non-uuid client-sent id fails request validation"
+    (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                          (agent-request (str (random-uuid)) "first"
+                                         :assistant_message_id "not-a-uuid"))))
+
+(deftest agent-streaming-replaces-trailing-failed-turn-test
+  (testing "a resubmit whose parent points before a mid-stream-errored turn replaces the failed pair"
+    (with-mock-streaming-provider!
+      [default-mock-parts error-mock-parts default-mock-parts]
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"))
+              parent-1        (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                (agent-request conversation-id "second (fails)"
+                                               :parent_message_id parent-1))
+          (let [third-response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request conversation-id "third"
+                                                                    :parent_message_id parent-1))
+                rows           (conversation-rows conversation-id)
+                deleted        (filter :deleted_at rows)
+                live           (remove :deleted_at rows)]
+            (is (= [:user :assistant] (map :role deleted))
+                "the failed turn's user + assistant rows are soft-deleted")
+            (is (= #{(mt/user->id :rasta)} (into #{} (map :deleted_by_user_id) deleted)))
+            (is (= [:user :assistant :user :assistant] (map :role live)))
+            (is (= (streamed-message-id third-response)
+                   (metabot.persistence/leaf-external-id conversation-id)))))))))
+
+(deftest agent-streaming-retry-test
+  (testing "retry_message_id regenerates the response without inserting a new user row"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              user-ext-id     (streamed-user-message-id first-response)
+              retry-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"
+                                                                   :retry_message_id user-ext-id))
+              rows            (conversation-rows conversation-id)]
+          (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows))))
+              "retry records no new user row")
+          (is (= [:assistant] (map :role (filter :deleted_at rows)))
+              "only the superseded response is soft-deleted")
+          (is (= (streamed-message-id retry-response)
+                 (metabot.persistence/leaf-external-id conversation-id)))
+          (testing "the same prompt can be retried again"
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "hello"
+                                                 :retry_message_id user-ext-id))
+            (let [rows (conversation-rows conversation-id)]
+              (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows)))))
+              (is (= 2 (count (filter :deleted_at rows)))))))))))
+
+(deftest agent-streaming-rejects-non-user-retry-id-test
+  (testing "retry_message_id pointing at an assistant (non-user) message 409s"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              assistant-ext   (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                (agent-request conversation-id "hello"
+                                               :retry_message_id assistant-ext)))))))
+
+(deftest agent-streaming-serializes-concurrent-retries-test
+  (testing "two concurrent retries of the same prompt leave exactly one live reply"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              user-ext-id     (streamed-user-message-id
+                               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request conversation-id "hello")))
+              start           (java.util.concurrent.CountDownLatch. 1)
+              retry!          (fn []
+                                (.await start)
+                                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "hello"
+                                                                     :retry_message_id user-ext-id)))
+              f1              (future (retry!))
+              f2              (future (retry!))]
+          (.countDown start)
+          @f1
+          @f2
+          (is (= 1 (->> (conversation-rows conversation-id)
+                        (filter #(and (= :assistant (:role %)) (nil? (:deleted_at %))))
+                        count))
+              "the conversation lock serializes the retries, so exactly one live reply survives"))))))
+
+(defn- input-messages
+  "The `[role text]` of each message-shaped part in an LLM request's `:input`,
+  in order — skips tool and preload parts. Lets a test assert the exact
+  reconstructed turn sequence (roles, order, content) rather than substrings."
+  [request]
+  (keep (fn [part]
+          (cond
+            (:role part)           [(:role part) (:content part)]
+            (= :text (:type part)) [:assistant (:text part)]))
+        (:input request)))
+
+(defn- with-captured-llm-requests!
+  "Runs `thunk` with the provider mocked, appending each provider-call opts map
+  to `requests` and replying with `reply-text`."
+  [requests reply-text thunk]
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [opts]
+                                    (swap! requests conj opts)
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text reply-text}
+                                      {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
+                                       :model "test-model" :id "msg-1"}]))]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (thunk))))))
+
+(deftest agent-streaming-reconstructs-prior-turn-for-the-llm-test
+  (testing "a follow-up turn reconstructs the prior prompt + reply from the DB and sends them to the LLM"
+    (let [requests (atom [])]
+      (with-captured-llm-requests!
+        requests "prior-assistant-reply"
+        (fn []
+          (let [conversation-id (str (random-uuid))
+                first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "prior-user-prompt"))
+                parent-id       (streamed-message-id first-response)]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "follow-up-prompt"
+                                                 :parent_message_id parent-id))
+            (let [msgs (input-messages (last @requests))]
+              (is (= 2 (count @requests)))
+              (is (= [[:user "prior-user-prompt"]
+                      [:assistant "prior-assistant-reply"]]
+                     (take 2 msgs))
+                  "prior turn replayed with the right roles, order, and content")
+              (is (= 3 (count msgs))
+                  "exactly prior user + prior assistant + new prompt — no duplicated turns")
+              (is (= :user (first (nth msgs 2))))
+              (is (str/includes? (second (nth msgs 2)) "follow-up-prompt")
+                  "the new prompt is the final user message"))))))))
+
+(deftest agent-streaming-retry-excludes-superseded-reply-from-llm-test
+  (testing "after a retry the regenerated call does not replay the superseded reply"
+    (let [requests (atom [])]
+      (with-captured-llm-requests!
+        requests "superseded-reply"
+        (fn []
+          (let [conversation-id (str (random-uuid))
+                first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "the-question"))
+                user-ext-id     (streamed-user-message-id first-response)]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "the-question"
+                                                 :retry_message_id user-ext-id))
+            (let [msgs (input-messages (last @requests))]
+              (is (= 2 (count @requests)))
+              (is (= 1 (count msgs))
+                  "only the retried prompt is sent — the superseded reply is not replayed")
+              (is (= :user (first (first msgs))))
+              (is (str/includes? (second (first msgs)) "the-question")
+                  "the retried prompt is still sent")
+              (is (not-any? (fn [[_ text]] (str/includes? (str text) "superseded-reply")) msgs)
+                  "the superseded reply is excluded from the reconstructed history"))))))))
+
+(deftest agent-streaming-reconstructs-state-from-db-test
+  (testing "the loop is seeded from DB-reconstructed state — no client echo — and a retry rewinds it"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [seeded-states (atom [])
+              turn-states   (atom [{:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
+                                   {:queries {"q_1" {:database 1} "q_2" {:database 2}} :todos [{:id "b" :status "done"}]}
+                                   nil])]
+          (with-redefs [agent/run-agent-loop
+                        (fn [{:keys [state memory-atom]}]
+                          (swap! seeded-states conj state)
+                          (let [[turn-state] @turn-states]
+                            (swap! turn-states subvec 1)
+                            ;; mirror the real loop: populate the caller's atom so
+                            ;; finalize can persist this turn's state
+                            (some-> memory-atom
+                                    (reset! {:turn-state (or turn-state {})}))
+                            (cond-> [{:type :start :id "msg-1"}
+                                     {:type :text :text "ok"}]
+                              turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (let [conversation-id (str (random-uuid))
+                    turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}
+                    first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                          {:message         "make a query"
+                                                           :context         {}
+                                                           :conversation_id conversation-id})
+                    parent-id       (streamed-message-id first-response)
+                    user-ext-id     (streamed-user-message-id first-response)
+                    second-response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                          {:message           "another"
+                                                           :context           {}
+                                                           :conversation_id   conversation-id
+                                                           :parent_message_id parent-id})
+                    second-user-id  (streamed-user-message-id second-response)]
+                (is (string? user-ext-id))
+                (is (= {} (first @seeded-states))
+                    "a new conversation seeds the loop with empty state")
+                (is (= turn-1-state (second @seeded-states))
+                    "the follow-up turn is seeded from the DB partial, keywordized — no client echo")
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      {:message          "another"
+                                       :context          {}
+                                       :conversation_id  conversation-id
+                                       :retry_message_id second-user-id})
+                (is (= turn-1-state (nth @seeded-states 2))
+                    "retrying the last prompt rewinds state to before its superseded reply")
+                (is (= turn-1-state (metabot.persistence/conversation-state
+                                     (metabot.persistence/live-messages conversation-id)))
+                    "reconstruction excludes the soft-deleted turn's state")))))))))
 
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
@@ -926,7 +1288,7 @@
                                             conv-id "internal"
                                             {:role "user" :content "hi"})]
             (metabot.persistence/finalize-assistant-turn!
-             conv-id assistant-msg-id
+             assistant-msg-id
              [{:type :start :id "msg-1"}
               {:type :text :text "Hello"}
               ;; SSE usage parts carry bare model names (from provider API response)
@@ -952,7 +1314,7 @@
              (:usage msg))))))
 
 (deftest finalize-assistant-turn-data-part-filtering-test
-  (testing "persistable data parts land in MetabotMessage.data; state is salvaged to conversation and excluded from data"
+  (testing "persistable data parts land in MetabotMessage.data; the turn-state lands on the row and is excluded from data"
     (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
       (let [conv-id (str (random-uuid))]
         (try
@@ -961,7 +1323,7 @@
                                               conv-id "internal"
                                               {:role "user" :content "hi"})]
               (metabot.persistence/finalize-assistant-turn!
-               conv-id assistant-msg-id
+               assistant-msg-id
                [{:type :start :id "msg-1"}
                 {:type :text :text "Hi"}
                 {:type :data :data-type "navigate_to" :data "/question/1"}
@@ -972,9 +1334,9 @@
                 {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
                 {:type :data :data-type "state" :data {:step 1}}
                 {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
-                {:type :finish}])
+                {:type :finish}]
+               :turn-state {:step 1})
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
-                    conv       (t2/select-one :model/MetabotConversation :id conv-id)
                     part-types (into #{} (map :type) (:data msg))
                     data-types (into #{}
                                      (keep #(when (str/starts-with? % "data-") (subs % 5)))
@@ -986,8 +1348,8 @@
                     "text parts survive")
                 (is (not-any? part-types #{"start" "usage" "finish"})
                     "stream metadata is dropped")
-                (is (= {:step 1} (:state conv))
-                    "state value is salvaged to MetabotConversation.state"))))
+                (is (= {:step 1} (:state msg))
+                    "the turn's partial state lands on the message row"))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
@@ -1139,42 +1501,46 @@
   (testing "streaming-request passes metabot-id to native-agent-streaming-request"
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
-      (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                                  api/check-conversation-access!        (constantly nil)
-                                  metabot.persistence/start-turn!       (fn [& _]
-                                                                          {:assistant-msg-id 1
-                                                                           :assistant-external-id "ext-id"})
-                                  api/native-agent-streaming-request    (fn [args]
-                                                                          (reset! captured-args args)
-                                                                          ;; Return a minimal streaming response
-                                                                          nil)]
-        (api/streaming-request {:metabot_id      test-metabot-id
-                                :profile_id      nil
-                                :message         "test message"
-                                :context         {}
-                                :history         []
-                                :conversation_id (str (random-uuid))
-                                :state           {}
-                                :debug           false}
-                               {:origin nil :referer nil :user-agent nil :ip-address nil})
-        (testing "metabot-id is included in the arguments"
-          (is (some? (:metabot-id @captured-args))
-              "metabot-id should not be nil")
-          (is (= test-metabot-id (:metabot-id @captured-args))
-              "metabot-id should match the input metabot_id"))))))
+      (mt/with-model-cleanup [:model/MetabotMessage
+                              [:model/MetabotConversation :created_at]]
+        (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                    api/check-conversation-access!        (constantly nil)
+                                    metabot.persistence/leaf-external-id  (constantly nil)
+                                    metabot.persistence/live-messages     (constantly [])
+                                    metabot.persistence/history           (constantly [])
+                                    metabot.persistence/start-turn!       (fn [& _]
+                                                                            {:assistant-msg-id 1
+                                                                             :assistant-external-id "ext-id"})
+                                    api/native-agent-streaming-request    (fn [args]
+                                                                            (reset! captured-args args)
+                                                                            ;; Return a minimal streaming response
+                                                                            nil)]
+          (api/streaming-request {:metabot_id      test-metabot-id
+                                  :profile_id      nil
+                                  :message         "test message"
+                                  :context         {}
+                                  :conversation_id (str (random-uuid))
+                                  :state           {}
+                                  :debug           false}
+                                 {:origin nil :referer nil :user-agent nil :ip-address nil})
+          (testing "metabot-id is included in the arguments"
+            (is (some? (:metabot-id @captured-args))
+                "metabot-id should not be nil")
+            (is (= test-metabot-id (:metabot-id @captured-args))
+                "metabot-id should match the input metabot_id")))))))
 
 (deftest streaming-request-ip-address-test
   (mt/with-model-cleanup [:model/MetabotMessage
                           [:model/MetabotConversation :created_at]]
-    (let [request-body (fn [conversation-id]
-                         {:metabot_id      metabot.config/embedded-metabot-id
-                          :profile_id      nil
-                          :message         "hi"
-                          :context         {}
-                          :history         []
-                          :conversation_id conversation-id
-                          :state           {}
-                          :debug           false})
+    (let [request-body (fn [conversation-id & [parent-message-id]]
+                         (cond-> {:metabot_id      metabot.config/embedded-metabot-id
+                                  :profile_id      nil
+                                  :message         "hi"
+                                  :context         {}
+                                  :conversation_id conversation-id
+                                  :state           {}
+                                  :debug           false}
+                           parent-message-id (assoc :parent_message_id parent-message-id)))
           ip-for       (fn [conversation-id]
                          (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
           info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
@@ -1187,7 +1553,9 @@
                 (let [conversation-id (str (random-uuid))]
                   (api/streaming-request (request-body conversation-id) (info-with-ip "1.2.3.4"))
                   (is (= "1.2.3.4" (ip-for conversation-id)))
-                  (api/streaming-request (request-body conversation-id) (info-with-ip "5.6.7.8"))
+                  (api/streaming-request (request-body conversation-id
+                                                       (metabot.persistence/leaf-external-id conversation-id))
+                                         (info-with-ip "5.6.7.8"))
                   (is (= "1.2.3.4" (ip-for conversation-id)))))
               (testing "null IP on pre-feature rows is backfilled on next call"
                 (let [conversation-id (str (random-uuid))]
@@ -1203,15 +1571,15 @@
 (deftest streaming-request-embedding-fields-test
   (mt/with-model-cleanup [:model/MetabotMessage
                           [:model/MetabotConversation :created_at]]
-    (let [request-body (fn [conversation-id]
-                         {:metabot_id      metabot.config/embedded-metabot-id
-                          :profile_id      nil
-                          :message         "hi"
-                          :context         {}
-                          :history         []
-                          :conversation_id conversation-id
-                          :state           {}
-                          :debug           false})
+    (let [request-body (fn [conversation-id & [parent-message-id]]
+                         (cond-> {:metabot_id      metabot.config/embedded-metabot-id
+                                  :profile_id      nil
+                                  :message         "hi"
+                                  :context         {}
+                                  :conversation_id conversation-id
+                                  :state           {}
+                                  :debug           false}
+                           parent-message-id (assoc :parent_message_id parent-message-id)))
           info-with    (fn [embed-referrer]
                          {:origin     embed-referrer
                           :referer    embed-referrer
@@ -1235,7 +1603,8 @@
                 (let [conversation-id (str (random-uuid))]
                   (api/streaming-request (request-body conversation-id)
                                          (info-with "https://host.example.com/page"))
-                  (api/streaming-request (request-body conversation-id)
+                  (api/streaming-request (request-body conversation-id
+                                                       (metabot.persistence/leaf-external-id conversation-id))
                                          (info-with "https://other.example.com/other"))
                   (let [convo (convo-for conversation-id)]
                     (is (= "host.example.com" (:embedding_hostname convo)))
@@ -1277,7 +1646,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
@@ -1291,7 +1659,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
@@ -1304,7 +1671,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:embedding_hostname convo)))
@@ -1317,7 +1683,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "Mozilla/5.0 (TestAgent)" (:user_agent convo)))
@@ -1329,7 +1694,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:user_agent           convo)))
@@ -1349,7 +1713,6 @@
                             {:message         "test message"
                              :context         {}
                              :conversation_id (str (random-uuid))
-                             :history         []
                              :state           {}}))))
 
 ;;; ------------------------------------------------ Bedrock settings ------------------------------------------------

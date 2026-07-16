@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
 
-import { getMetabotRequestState } from "metabase/metabot/state";
+import { waitFor } from "__support__/ui";
+import {
+  getMetabotConversation,
+  getMetabotRequestState,
+} from "metabase/metabot/state";
 
 import {
   assertConversation,
@@ -8,9 +13,14 @@ import {
   createPauses,
   enterChatMessage,
   erroredResponse,
+  hideMetabot,
+  lastReqBody,
   mockAgentEndpoint,
+  resetChatButton,
   setup,
+  showMetabot,
   stopResponseButton,
+  whoIsYourFavoriteResponse,
 } from "./utils";
 
 describe("metabot > convo state", () => {
@@ -112,5 +122,56 @@ describe("metabot > convo state", () => {
     await userEvent.click(await stopResponseButton());
     const reqState = getMetabotRequestState(store.getState(), "omnibot");
     expect(reqState).toEqual({ testing: 123 });
+  });
+
+  it("should keep the conversation thread when metabot is hidden or opened", async () => {
+    const { store } = setup();
+    const agentSpy = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
+
+    await enterChatMessage("Who is your favorite?");
+    await waitFor(() => expect(agentSpy).toHaveBeenCalledTimes(1));
+
+    hideMetabot(store.dispatch);
+    showMetabot(store.dispatch);
+    await enterChatMessage("Hi!");
+    const reqBody = await lastReqBody(agentSpy);
+    // the thread survives hide/show: the next request still points at the prior turn
+    expect(reqBody.parent_message_id).toBe("msg_test_favorite");
+  });
+
+  it("should reset the conversation when the reset button is clicked", async () => {
+    const { store } = setup();
+    const getState = () => getMetabotConversation(store.getState(), "omnibot");
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", "You, but don't tell anyone."],
+    ]);
+
+    const beforeResetState = getState();
+    expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
+      role: "user",
+      type: "text",
+      message: "Who is your favorite?",
+    });
+    expect(
+      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
+    ).toStrictEqual({
+      role: "agent",
+      type: "text",
+      message: "You, but don't tell anyone.",
+    });
+
+    await userEvent.click(await resetChatButton());
+
+    const afterResetState = getState();
+    expect(afterResetState.conversationId).not.toBe(
+      beforeResetState.conversationId,
+    );
+    expect(afterResetState.messages).toStrictEqual([]);
   });
 });

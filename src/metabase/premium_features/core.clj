@@ -71,6 +71,7 @@
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
+  enable-multi-factor-auth?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?

@@ -20,103 +20,24 @@ const ENTERPRISE_SRC_PATH =
 
 const devMode = WEBPACK_BUNDLE !== "production";
 
-const moduleConfig = {
-  rules: [
-    {
-      test: /\.css$/i,
-      use: "null-loader",
-    },
-    {
-      test: /\.(tsx?|jsx?)$/,
-      exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
-      use: [
-        {
-          loader: "builtin:swc-loader",
-          options: {
-            jsc: {
-              loose: true,
-              transform: {
-                react: {
-                  runtime: "automatic",
-                  refresh: false,
-                },
-              },
-              parser: {
-                syntax: "typescript",
-                tsx: true,
-              },
-              experimental: {
-                plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
-              },
-            },
-
-            sourceMaps: false,
-            minify: true,
-            env: {
-              targets: ["defaults"],
-            },
-          },
-        },
-      ],
-    },
-    {
-      test: /\.svg/,
-      type: "asset/source",
-      resourceQuery: /source/, // *.svg?source
-    },
-    {
-      test: /\.svg$/i,
-      issuer: /\.[jt]sx?$/,
-      resourceQuery: /component/, // *.svg?component
-      use: [
-        {
-          loader: "@svgr/webpack",
-          options: {
-            ref: true,
-            svgoConfig: SVGO_CONFIG,
-          },
-        },
-      ],
-    },
-    {
-      test: /\.svg$/,
-      type: "asset/resource",
-      resourceQuery: { not: [/component|source/] },
-    },
-  ],
-};
-
-const resolveAlias = {
-  assets: ASSETS_PATH,
-  metabase: SRC_PATH,
-  "metabase-enterprise": ENTERPRISE_SRC_PATH,
-  cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-  "metabase-lib": LIB_SRC_PATH,
-  "metabase-types": TYPES_SRC_PATH,
-  embedding: EMBEDDING_SRC_PATH,
-  "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-  "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
-  "process/browser": require.resolve("process/browser"),
-  "ee-overrides":
-    process.env.MB_EDITION === "ee"
-      ? ENTERPRISE_SRC_PATH + "/static-viz-overrides"
-      : SRC_PATH + "/utils/noop",
-};
-
-const resolveExtensions = [".web.js", ".js", ".jsx", ".ts", ".tsx"];
-
 module.exports = (env) => {
-  const graalConfig = {
-    name: "graal",
+  return {
     mode: "production",
     context: SRC_PATH,
 
     performance: {
-      hints: false,
+      // The static-viz bundle runs inside the backend's GraalVM context, so its size is
+      // a startup-time and memory cost. Fail the build if it grows past the budget -
+      // sudden growth almost always means app code (metabase/ui, api, metabase-lib) leaked in.
+      // Dev builds use the unminified cljs_dev output, so the budget only applies to
+      // production builds.
+      hints: devMode ? false : "error",
+      maxAssetSize: 3.5 * 1024 * 1024,
+      maxEntrypointSize: 3.5 * 1024 * 1024,
     },
 
     entry: {
-      "app-static-viz": {
+      "lib-static-viz": {
         import: "./app-static-viz.ts",
         library: {
           name: "MetabaseStaticViz",
@@ -132,10 +53,89 @@ module.exports = (env) => {
       globalObject: "globalThis",
     },
 
-    module: moduleConfig,
+    module: {
+      rules: [
+        {
+          test: /\.css$/i,
+          use: "null-loader",
+        },
+        {
+          test: /\.(tsx?|jsx?)$/,
+          exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+          use: [
+            {
+              loader: "builtin:swc-loader",
+              options: {
+                jsc: {
+                  loose: true,
+                  transform: {
+                    react: {
+                      runtime: "automatic",
+                      refresh: false,
+                    },
+                  },
+                  parser: {
+                    syntax: "typescript",
+                    tsx: true,
+                  },
+                  experimental: {
+                    plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+                  },
+                },
+
+                sourceMaps: false,
+                minify: true,
+                env: {
+                  targets: ["defaults"],
+                },
+              },
+            },
+          ],
+        },
+        {
+          test: /\.svg/,
+          type: "asset/source",
+          resourceQuery: /source/, // *.svg?source
+        },
+        {
+          test: /\.svg$/i,
+          issuer: /\.[jt]sx?$/,
+          resourceQuery: /component/, // *.svg?component
+          use: [
+            {
+              loader: "@svgr/webpack",
+              options: {
+                ref: true,
+                svgoConfig: SVGO_CONFIG,
+              },
+            },
+          ],
+        },
+        {
+          test: /\.svg$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
+        },
+      ],
+    },
     resolve: {
-      extensions: resolveExtensions,
-      alias: resolveAlias,
+      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      alias: {
+        assets: ASSETS_PATH,
+        metabase: SRC_PATH,
+        "metabase-enterprise": ENTERPRISE_SRC_PATH,
+        cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+        "metabase-lib": LIB_SRC_PATH,
+        "metabase-types": TYPES_SRC_PATH,
+        embedding: EMBEDDING_SRC_PATH,
+        "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+        "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
+        "process/browser": require.resolve("process/browser"),
+        "ee-overrides":
+          process.env.MB_EDITION === "ee"
+            ? ENTERPRISE_SRC_PATH + "/static-viz-overrides"
+            : SRC_PATH + "/utils/noop",
+      },
       fallback: {
         crypto: require.resolve("crypto-browserify"),
         stream: require.resolve("stream-browserify"),
@@ -179,46 +179,9 @@ module.exports = (env) => {
               )
               .map((module) =>
                 module.nameForCondition.replace(`${__dirname}/`, ""),
-              )
-              .concat(["frontend/src/metabase/app-static-viz-cli.ts"]),
+              ),
           }),
       }),
     ],
   };
-
-  const nodeCliConfig = {
-    name: "node-cli",
-    mode: "production",
-    context: SRC_PATH,
-    target: "node",
-
-    performance: {
-      hints: false,
-    },
-
-    entry: {
-      "app-static-viz-cli": "./app-static-viz-cli.ts",
-    },
-
-    output: {
-      path: BUILD_PATH + "/app/dist",
-      filename: "[name].bundle.js",
-    },
-
-    module: moduleConfig,
-    resolve: {
-      extensions: resolveExtensions,
-      alias: resolveAlias,
-    },
-    optimization: {
-      minimize: true,
-    },
-    plugins: [
-      new rspack.EnvironmentPlugin({
-        IS_EMBEDDING_SDK_BUILD: false,
-      }),
-    ],
-  };
-
-  return [graalConfig, nodeCliConfig];
 };

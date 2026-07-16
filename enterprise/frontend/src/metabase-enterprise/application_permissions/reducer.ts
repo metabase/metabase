@@ -79,10 +79,9 @@ const SAVE_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/data/SAVE_APPLICATION_PERMISSIONS";
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
-  () => async (dispatch, getState) => {
-    const { applicationPermissions, applicationPermissionsRevision } = (
-      getState() as ApplicationPermissionsState
-    ).plugins.applicationPermissionsPlugin;
+  () => async (dispatch, getState: () => ApplicationPermissionsState) => {
+    const { applicationPermissions, applicationPermissionsRevision } =
+      getState().plugins.applicationPermissionsPlugin;
 
     const result = await runRtkEndpoint(
       {

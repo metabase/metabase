@@ -10,11 +10,16 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; raw t2/collections.tu access below runs before any auto-initializing mt helper, so the app db must be
+;; set up explicitly — on the appdb-mode CI job this namespace can be the first db touch in the JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; OsiAiContext write hooks fire request-entity-sync!, which would spawn a background targeted reconcile
 ;; using the *real* configured embedding model and race these tests — they drive reconcile! / reconcile-entity!
