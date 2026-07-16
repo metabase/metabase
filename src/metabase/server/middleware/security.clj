@@ -224,7 +224,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [nonce allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -270,11 +270,13 @@
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (if (server.settings/csp-img-enabled)
-                                  (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
-                                                (map-tile-server->hosts))
-                                    config/is-dev? (conj frontend-address))
-                                  (into ["*"] always-allowed-resource-hosts))
+                  :img-src      (cond-> (if (server.settings/csp-img-enabled)
+                                          (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                        (map-tile-server->hosts))
+                                            config/is-dev? (conj frontend-address))
+                                          (into ["*"] always-allowed-resource-hosts))
+                                  ;; EAJS custom viz icons load as blob: URLs from the SDK asset manager
+                                  allow-blob-img? (conj "blob:"))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
@@ -296,8 +298,8 @@
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes? nonce]
-  (update (content-security-policy-header nonce)
+  [allow-iframes? nonce allow-blob-img?]
+  (update (content-security-policy-header nonce allow-blob-img?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
                                                   (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
@@ -390,12 +392,12 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
-      :or   {allow-iframes? false, allow-cache? false}}]
+  [& {:keys [origin nonce allow-iframes? allow-cache? allow-blob-img?]
+      :or   {allow-iframes? false, allow-cache? false, allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce allow-blob-img?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
@@ -427,7 +429,9 @@
                  :origin         (get (:headers request) "origin")
                  :nonce          (:nonce request)
                  :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :allow-cache?   (request/cacheable? request)
+                 ;; EAJS embed page renders custom viz icons as blob: <img> URLs
+                 :allow-blob-img? (request/embed-sdk-eajs-entrypoint? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
