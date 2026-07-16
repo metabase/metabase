@@ -155,7 +155,7 @@
                (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))))))
 
 (deftest downgrade-detection-recorded-version-test
-  (testing "downgrade detection uses the version recorded in databasechangelog_version for the last deployment"
+  (testing "downgrade detection goes off the recorded version of the last deployment; a synthetic (dev) version warns"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
@@ -165,11 +165,16 @@
                 latest-available (liquibase/latest-available-major-version liquibase)]
             ;; pretend this binary is at the latest available major version
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest-available))]
-              (testing "throws when the recorded version of the last deployment is a newer major than this binary"
+              (testing "a recorded synthetic (development) version does NOT block a real binary -- it only warns"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.1000.0.0'" versions-table)])
+                (is (= "x.1000.0.0" (liquibase/last-deployment-version conn db)))
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
+                    "a dev build having touched the DB is the developer's problem, not a reason to refuse to boot"))
+              (testing "a recorded real version newer than this binary is a genuine downgrade and blocks"
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.999.0'" versions-table)])
                 (is (= "x.999.0" (liquibase/last-deployment-version conn db)))
                 (is (thrown-with-msg?
-                     Exception #"ERROR: Downgrade detected"
+                     Exception #"migrate down` from version 999"
                      (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
               (testing "does not throw when the recorded version is not newer than this binary"
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest-available)])

@@ -716,3 +716,50 @@
               (is (has? "v64.legacy-version-tracking"))
               (is (= 64 (liquibase/latest-applied-major-version conn db))
                   "older binaries still see 64 -- the schema really is still at 64"))))))))
+
+(deftest version-table-ordering-tiebreak-test
+  (testing "current-schema-major resolves ties on deployed_at using the autoincrement id (the row inserted last wins)"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db   (.getDatabase liquibase)
+                vt   liquibase/databasechangelog-versions-table
+                same (java.time.Instant/parse "2020-01-01T00:00:00Z")]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; identical deployed_at (this is all MySQL's second-precision timestamp can promise); the newer major is
+            ;; inserted last, so its higher id must break the tie -- without it the "current major" would be arbitrary
+            (insert-version-row! conn vt "old" "x.64.0.0" same)
+            (insert-version-row! conn vt "new" "x.65.0.0" same)
+            (is (= 65 (liquibase/current-schema-major conn db)))))))))
+
+(deftest default-rollback-targets-previous-recorded-major-test
+  (testing "the default `migrate down` target is the previous *recorded* major, even across a skipped major (63 -> 65)"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db  (.getDatabase liquibase)
+                vt  liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; instance ran 63, then upgraded directly to 65 -- 64 was never a recorded deployment
+            (insert-version-row! conn vt "d63" "x.63.0.0" (ago 20))
+            (insert-version-row! conn vt "d65" "x.65.0.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
+              (is (= 63 (liquibase/previous-recorded-major conn db false))
+                  "previous recorded major is 63, not (dec 65)=64 which was never deployed and would fail to resolve"))))))))
+
+(deftest default-rollback-no-earlier-version-test
+  (testing "the default `migrate down` no-ops (rather than throwing) when there is no earlier recorded major"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                vt liquibase/databasechangelog-versions-table]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; a single (e.g. fresh dev) deployment -- there is nothing earlier to roll back to
+            (insert-version-row! conn vt "only" "x.1000.0.0" (java.time.Instant/now))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+              (is (nil? (liquibase/previous-recorded-major conn db false)))
+              (is (nil? (liquibase/rollback-major-version! conn liquibase false))
+                  "no earlier recorded version -> logs and returns without throwing"))))))))

@@ -222,35 +222,45 @@
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
       (let [database          (.getDatabase liquibase)
-            ;; compare against this binary's own version (for real builds this equals the bundled changelog's max major;
-            ;; for dev builds it is the synthetic version, so a dev DB doesn't look 'downgraded' against itself).
+            ;; this binary's own major (for dev builds this is the synthetic version, so a dev DB doesn't look
+            ;; 'downgraded' against itself).
             current-major     (liquibase/current-recorded-major)
-            ;; the version recorded for the last deployment tells us which binary last migrated this database
-            ;; (last-deployment-version lazily creates and backfills the version table for existing instances). Fall
-            ;; back to parsing the major version out of the last applied changeset id if there is no recorded version
-            ;; (e.g. a deployment whose changeset ids carry no parseable version).
+            ;; The version recorded for the last deployment
             recorded-version  (liquibase/last-deployment-version conn database)
-            recorded-major    (some-> recorded-version liquibase/version->major)
-            latest-applied    (or recorded-major
-                                  (liquibase/latest-applied-major-version conn database))]
-        ;; `latest-applied` will be `nil` for fresh installs
-        (when (and latest-applied current-major (< current-major latest-applied))
-          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) current-major latest-applied)]
-            (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
-                                      latest-applied current-major))
-            (doseq [cs later-changesets]
-              (log/warn (u/format-color 'red "  - %s" cs))))
-          (throw (ex-info
-                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
-                       "\n\n"
-                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
-                       "\n\n"
-                       (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." latest-applied)
-                       "\n\n"
-                       (trs "Once your database has been downgraded, try running the application again.")
-                       "\n\n"
-                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
-                  {})))))))
+            recorded-major    (some-> recorded-version liquibase/version->major)]
+        (cond
+          ;; nothing recorded yet (fresh install), we can't tell our own version, or the DB is at/behind us -> fine
+          (or (nil? recorded-major) (nil? current-major) (>= current-major recorded-major))
+          nil
+
+          ;; The DB was last written by a *development* build.
+          ;; Never block a real binary on that -- the dev DB may carry un-released migrations, but that is the developer's to
+          ;; sort out, not a reason to refuse to boot. Just warn.
+          (liquibase/synthetic-dev-major? recorded-major)
+          (log/warn (u/format-color 'yellow
+                                    (str "This database was last written by a development build (%s), which is "
+                                         "newer than this version (v%d). If your database is acting weird, you may need to rebuild it.")
+                                    recorded-version current-major))
+
+          ;; A genuine downgrade: a newer *released* version migrated this database.
+          :else
+          (do
+            (let [later-changesets (liquibase/changesets-from-later-version conn database current-major recorded-major)]
+              (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
+                                        recorded-major current-major))
+              (doseq [cs later-changesets]
+                (log/warn (u/format-color 'red "  - %s" cs))))
+            (throw (ex-info
+                    (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                         "\n\n"
+                         (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                         "\n\n"
+                         (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." recorded-major)
+                         "\n\n"
+                         (trs "Once your database has been downgraded, try running the application again.")
+                         "\n\n"
+                         (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                    {}))))))))
 
 (mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
