@@ -1596,6 +1596,35 @@
                     (first (:channel/email pulse-results))
                     #"Aviary KPIs")))))))))
 
+(deftest dashboard-sub-include-pdf-metric-test
+  (testing "Each email dashboard-subscription send records the dashboard-subscription-send counter, labeled by include-pdf"
+    (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+      (mt/with-prometheus-system! [_ system]
+        (letfn [(send-with-pdf! [include-pdf?]
+                  (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                                     :dataset_query (mt/mbql-query orders {:limit 1})}
+                                 :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                                 :model/DashboardCard _ {:dashboard_id dashboard-id
+                                                         :card_id      card-id}
+                                 :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                                      :dashboard_id dashboard-id}
+                                 :model/PulseCard     _ {:pulse_id pulse-id
+                                                         :card_id  card-id
+                                                         :position 0}
+                                 :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                                   :channel_type "email"
+                                                                   :details      {:include_pdf include-pdf?}}
+                                 :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                                 :pulse_channel_id pc-id}]
+                    (pulse.test-util/with-captured-channel-send-messages!
+                      (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))]
+          (send-with-pdf! true)
+          (send-with-pdf! false)
+          (is (= 1.0 (mt/metric-value system :metabase-notification/dashboard-subscription-send
+                                      {:channel-type :channel/email :include-pdf true})))
+          (is (= 1.0 (mt/metric-value system :metabase-notification/dashboard-subscription-send
+                                      {:channel-type :channel/email :include-pdf false}))))))))
+
 (deftest dashboard-sub-slack-include-pdf-test
   (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
     (notification.tu/with-channel-fixtures [:channel/slack]
@@ -1615,18 +1644,22 @@
                           (reset! render-args {:dashboard-id dashboard-id :user-id user-id
                                                :parameters parameters :parts parts})
                           (.getBytes "%PDF-1.4 stub" "UTF-8"))]
-            (pulse.test-util/slack-test-setup!
-             (let [results (pulse.test-util/with-captured-channel-send-messages!
-                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
-                   msg     (first (:channel/slack results))]
-               (testing "renderer is called with the subscription's dashboard id"
-                 (is (= dashboard-id (:dashboard-id @render-args))))
-               (testing "the slack message carries the rendered PDF"
-                 (is (bytes? (-> msg :pdf :bytes)))
-                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
-               (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
-                 (is (empty? (:blocks msg)))
-                 (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))))))))))
+            (mt/with-prometheus-system! [_ system]
+              (pulse.test-util/slack-test-setup!
+               (let [results (pulse.test-util/with-captured-channel-send-messages!
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                     msg     (first (:channel/slack results))]
+                 (testing "renderer is called with the subscription's dashboard id"
+                   (is (= dashboard-id (:dashboard-id @render-args))))
+                 (testing "the slack message carries the rendered PDF"
+                   (is (bytes? (-> msg :pdf :bytes)))
+                   (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
+                 (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
+                   (is (empty? (:blocks msg)))
+                   (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))
+                 (testing "the slack send is recorded with channel-type=slack and include-pdf=true"
+                   (is (= 1.0 (mt/metric-value system :metabase-notification/dashboard-subscription-send
+                                               {:channel-type :channel/slack :include-pdf true})))))))))))))
 
 (deftest dashboard-sub-slack-no-pdf-sends-images-test
   (testing "Without :include_pdf, Slack still sends chart images and no PDF"

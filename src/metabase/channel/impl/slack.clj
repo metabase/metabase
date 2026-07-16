@@ -1,6 +1,7 @@
 (ns metabase.channel.impl.slack
   (:require
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.util :as impl.util]
@@ -284,6 +285,9 @@
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
+        _                (analytics/inc! :metabase-notification/dashboard-subscription-send
+                                         {:channel-type :channel/slack
+                                          :include-pdf  (boolean include_pdf)})
         pdf              (some-> (when include_pdf
                                    (dashboard-pdf dashboard creator_id all-params (:dashboard_parts payload)))
                                  (assoc :comment (slack-dashboard-caption dashboard (:common_name creator)

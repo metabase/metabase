@@ -6,7 +6,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -168,9 +169,9 @@
                          ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dash)})
+    (analytics.core/track-event! :snowplow/dashboard
+                                 {:event        :dashboard-created
+                                  :dashboard-id (u/the-id dash)})
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -592,9 +593,9 @@
                              (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
                                                                            collection_id)
                                (collections/check-non-remote-synced-dependencies <>)))))]
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dashboard)})
+    (analytics.core/track-event! :snowplow/dashboard
+                                 {:event        :dashboard-created
+                                  :dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
@@ -645,6 +646,9 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
+(defmethod analytics.core/known-labels :metabase-dashboard/pdf-export [_]
+  [{:status "success"} {:status "error"}])
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/pdf" :- :any
   "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
@@ -682,11 +686,13 @@
           filename  (str (or (not-empty (u/slugify (:name dashboard)))
                              (str "dashboard-" id))
                          ".pdf")]
+      (analytics/inc! :metabase-dashboard/pdf-export {:status "success"})
       (respond {:status  200
                 :headers {"Content-Type"        "application/pdf"
                           "Content-Disposition" (format "attachment; filename=\"%s\"" filename)}
                 :body    (java.io.ByteArrayInputStream. pdf-bytes)}))
     (catch Throwable e
+      (analytics/inc! :metabase-dashboard/pdf-export {:status "error"})
       (raise e))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -917,23 +923,23 @@
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
-      (analytics/track-event! :snowplow/dashboard
-                              {:event        :question-added-to-dashboard
-                               :dashboard-id dashboard-id
-                               :question-id  card_id})))
+      (analytics.core/track-event! :snowplow/dashboard
+                                   {:event        :question-added-to-dashboard
+                                    :dashboard-id dashboard-id
+                                    :question-id  card_id})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (analytics/track-event! :snowplow/dashboard
-                            {:event          :dashboard-tab-deleted
-                             :dashboard-id   dashboard-id
-                             :num-tabs       (count deleted-tab-ids)
-                             :total-num-tabs total-num-tabs}))
+    (analytics.core/track-event! :snowplow/dashboard
+                                 {:event          :dashboard-tab-deleted
+                                  :dashboard-id   dashboard-id
+                                  :num-tabs       (count deleted-tab-ids)
+                                  :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
-    (analytics/track-event! :snowplow/dashboard
-                            {:event          :dashboard-tab-created
-                             :dashboard-id   dashboard-id
-                             :num-tabs       (count created-tab-ids)
-                             :total-num-tabs total-num-tabs})))
+    (analytics.core/track-event! :snowplow/dashboard
+                                 {:event          :dashboard-tab-created
+                                  :dashboard-id   dashboard-id
+                                  :num-tabs       (count created-tab-ids)
+                                  :total-num-tabs total-num-tabs})))
 
 ;;;;;;;;;;;; Bad pulse check & repair
 
