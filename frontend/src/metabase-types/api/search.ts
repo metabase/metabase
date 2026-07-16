@@ -156,8 +156,6 @@ export type SearchRequest = {
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
   include_metadata?: boolean | null;
-  non_temporal_dim_ids?: string | null;
-  has_temporal_dim?: boolean | null;
   search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 

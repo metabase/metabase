@@ -1168,18 +1168,6 @@
        (is (= "Orders, Metric A"
               (:query_description (t2/select-one :model/Card :id b-id))))))))
 
-(deftest extract-temporal-info-metric-reference-cycle-test
-  (testing "extract-temporal-info on a query aggregating a cycle-involved metric throws a cycle error (#74954)"
-    (do-with-metric-cycle
-     (fn [a-id _b-id]
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metric cycle detected"
-                             (#'card/extract-temporal-info
-                              {:dataset_query (json/encode {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :orders)
-                                                                       :aggregation  [["metric" a-id]]}})
-                               :query_type    "query"})))))))
-
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
