@@ -117,13 +117,13 @@
    :offset (or (:offset args) 0)})
 
 (defn- paged-list-content
-  "Slice `rows` (the full filtered set) per `limit`/`offset` and build the envelope content,
-   naming `param` when one narrows this action. `project-fn` runs on the page only."
-  [args rows param project-fn]
+  "Slice `rows` (the full filtered set) per `limit`/`offset` and build the envelope content.
+   `project-fn` runs on the page only; `opts` pass through to [[common/list-content]]."
+  [args rows opts project-fn]
   (let [{:keys [limit offset]} (page-args args)
         page (into [] (comp (drop offset) (take limit)) rows)]
     (common/list-content (project-fn page) (count rows)
-                         {:param param :offset offset :limit limit})))
+                         (assoc opts :offset offset :limit limit))))
 
 (defn- project-rows
   [type args rows]
@@ -143,17 +143,25 @@
   ;; row — nothing projected reads them, and `mi/can-read?` needs only `:id`.
   (into [:model/Database] database-detailed-keys))
 
+(def ^:private no-databases-hint
+  "Steering for an empty list_databases: without it an empty envelope reads as `this instance has
+   no data`, and the caller stops instead of reporting the permission gap."
+  ;; Deliberately does not distinguish \"none exist\" from \"none readable\" — same collapse as
+  ;; [[common/throw-not-found]], and true either way.
+  "No databases are visible to you — browsing data needs query-builder or table-metadata permission on at least one database.")
+
 (defn- list-databases
   [args]
   (let [dbs (->> (t2/select database-select-columns :is_audit false {:order-by [[:%lower.name :asc]]})
                  (filterv mi/can-read?))]
-    (paged-list-content args dbs nil #(project-rows :database args %))))
+    (paged-list-content args dbs {:empty-hint no-databases-hint}
+                        #(project-rows :database args %))))
 
 (defn- list-schemas
   [{:keys [database_id include_hidden] :as args}]
   (check-database! database_id)
   (let [schemas (vec (schema.table/database-schemas database_id {:include-hidden? include_hidden}))]
-    (paged-list-content args schemas nil identity)))
+    (paged-list-content args schemas {} identity)))
 
 (defn- named-schema-tables
   [database-id schema include-hidden?]
@@ -201,7 +209,7 @@
                    (let [needle (u/lower-case-en search)]
                      (filterv (partial matches-search? needle) tables))
                    (vec tables))]
-    (paged-list-content args filtered :search #(project-rows :table args %))))
+    (paged-list-content args filtered {:param :search} #(project-rows :table args %))))
 
 (def ^:private question-select-columns
   "Columns `list_models` selects for the `:question` projection."
@@ -220,7 +228,7 @@
                                :archived false
                                {:order-by [[:%lower.name :asc]]})
                     (filterv mi/can-read?))]
-    (paged-list-content args models nil #(project-rows :question args %))))
+    (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
 

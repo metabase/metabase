@@ -53,6 +53,19 @@
     (let [text (-> (common/list-content [{:id 1}] 1 {:offset 0 :limit 50})
                    :content first :text)]
       (is (= {:data [{:id 1}] :returned 1 :total 1} (json/decode+kw text)))
+      (is (not (str/includes? text "\n")))))
+  (testing "empty-hint replaces the steering line when nothing matched at all"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (= "{\"data\":[],\"returned\":0,\"total\":0}\nNothing here." text))))
+  (testing "empty-hint stays quiet when rows exist — an empty page past the end is a paging
+            result, not an empty set, and the hint would be a lie"
+    (let [text (-> (common/list-content [] 214 {:offset 500 :limit 50 :empty-hint "Nothing here."})
+                   :content first :text)]
+      (is (not (str/includes? text "Nothing here.")))))
+  (testing "empty-hint is opt-in — an empty list without one stays bare"
+    (let [text (-> (common/list-content [] 0 {:offset 0 :limit 50})
+                   :content first :text)]
       (is (not (str/includes? text "\n"))))))
 
 (deftest ^:parallel teaching-error-test

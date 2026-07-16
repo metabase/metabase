@@ -119,12 +119,15 @@
 
 (defn list-content
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
-   block, with the truncation steering line appended when the page is truncated. `data` is
-   already the page; `opts` carries `:offset`/`:limit` and an optional `:param` naming what
-   narrows this list. Text-only — list data never rides `structuredContent` by reflex."
-  [data total opts]
+   block, with a steering line appended. `data` is already the page; `opts` carries
+   `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
+   `:empty-hint` used in place of the truncation line when nothing matched at all. Text-only —
+   list data never rides `structuredContent` by reflex."
+  [data total {:keys [empty-hint] :as opts}]
   (let [envelope (list-envelope data total)
-        line     (truncation-line (assoc opts :total total))]
+        line     (if (and empty-hint (= 0 total))
+                   empty-hint
+                   (truncation-line (assoc opts :total total)))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
 

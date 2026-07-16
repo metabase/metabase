@@ -194,6 +194,15 @@
           (let [[envelope] (call! {:action "list_databases" :limit 500})]
             (is (not (contains? (set (map :id (:data envelope))) db-id))
                 "a database the caller has no perms on is absent from the listing")))
+        (testing "an empty list says why — an unexplained empty envelope reads as `this instance
+                  has no data`, and the caller stops instead of reporting the permission gap"
+          (mt/with-test-user :rasta
+            (let [[envelope hint] (call! {:action "list_databases" :limit 500})]
+              (is (zero? (:total envelope))
+                  "with every database blocked, rasta sees none")
+              (is (= (str "No databases are visible to you — browsing data needs query-builder "
+                          "or table-metadata permission on at least one database.")
+                     hint)))))
         ;; Database visibility keys off create-queries, not view-data — see the `mi/can-read?`
         ;; impl for :model/Database.
         (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
