@@ -180,6 +180,40 @@
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest-available)])
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))))))
 
+(deftest noop-boot-of-newer-binary-preserves-downgrade-test
+  (testing "a newer binary that boots without running any migrations must not block the previous binary from booting"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+        (liquibase/with-liquibase [liquibase conn]
+          (let [versions-table liquibase/databasechangelog-versions-table
+                latest         (liquibase/latest-available-major-version liquibase)]
+            ;; make the recorded install version deterministic: this DB was installed by v0.<latest>
+            (jdbc/execute! {:connection conn}
+                           [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest)])
+            (testing "a no-op boot of the NEXT major is recorded as history, but does not move the schema's version"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" (inc latest)))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))
+                (mdb.setup/migrate! (mdb.connection/data-source) :up))
+              (is (= 1 (count (jdbc/query {:connection conn}
+                                          [(format "SELECT 1 FROM %s WHERE metabase_version LIKE 'x.%d.%%'"
+                                                   versions-table (inc latest))])))
+                  "the newer major's boot is captured in history"))
+            (testing "the previous binary still boots"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))
+            (testing "even a much newer stamp on the deployment cannot mask the version that ran it: the earliest row wins"
+              (let [last-dep (:deployment_id (first (jdbc/query {:connection conn}
+                                                                [(format "SELECT deployment_id FROM %s LIMIT 1" versions-table)])))]
+                (jdbc/execute! {:connection conn}
+                               [(format "INSERT INTO %s (deployment_id, metabase_version, deployed_at) VALUES (?, ?, ?)" versions-table)
+                                last-dep
+                                (format "x.%d.0" (+ latest 2))
+                                (java.sql.Timestamp/from (.plus (java.time.Instant/now) (java.time.Duration/ofMinutes 5)))]))
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
+                    "the stamp does not block the binary whose major actually ran the deployment")))))))))
+
 (deftest downgrade-check-creates-persistent-version-table-test
   (testing "the version table lazily created during downgrade detection persists (committed) for other connections"
     ;; This guards the in-memory \"already created\" tracking in ensure-databasechangelog-versions-table!: if the
