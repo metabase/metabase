@@ -709,7 +709,8 @@
   pasted as a mention). Falls back to the queries state when the id is actually a query id."
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
-    (let [query (first (:queries chart))]
+    (let [query (or (first (:queries chart))
+                    (get (shared/current-queries-state) (:query_id chart)))]
       (when-let [database-id (and (map? query) (:database query))]
         (api/read-check :model/Database database-id))
       (entity-result
