@@ -31,7 +31,7 @@ export function useJobHeaderState(jobId: TransformJobId | undefined) {
   }, [transforms, transformsDatabases]);
 
   const handleNameChange = async (name: string) => {
-    if (jobId == null) {
+    if (jobId === undefined) {
       return;
     }
     const { error } = await updateJob({ id: jobId, name });

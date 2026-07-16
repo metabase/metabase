@@ -163,11 +163,11 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
       data-testid="job-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        {job != null && jobId != null && (
+        {job !== undefined && (
           <JobHeader
             job={job}
             menu={!readOnly && <JobMoreMenu job={job} />}
-            tabs={<JobTabs jobId={jobId} />}
+            tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
             showMetabotButton
             onNameChange={onNameChange}
