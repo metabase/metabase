@@ -558,32 +558,49 @@ describe("scenarios > explorations > detail page", () => {
   });
 
   it("preserves the URL `timeline` param across navigation and reload", () => {
-    cy.request("POST", "/api/timeline", {
-      name: "Releases",
-      collection_id: null,
-      icon: "star",
-      default: false,
-    }).then(({ body: timeline }) => {
-      // Unjustified type cast. FIXME
-      const timelineId = timeline.id as number;
-      H.createExplorationViaApi({
-        name: "Timeline persistence fixture",
-        timelineIds: [timelineId],
-      }).then((id) => {
-        cy.visit(`/question/research/${id}?timeline=${timelineId}`);
-        // Sidebar treeitems appear once the BE returns query rows.
-        cy.findAllByRole("treeitem", { timeout: 15000 })
-          .first()
-          .should("be.visible");
-        cy.location("search").should("include", `timeline=${timelineId}`);
+    createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
+      cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+        // Unjustified type cast. FIXME
+        const data = body as GetExplorationDataResponse;
+        const temporalDimension = data.dimension_groups
+          .flatMap((group) => group.dimensions)
+          .find((dim) => dim.effective_type.includes("Date"));
+        expect(temporalDimension, "sample DB exposes a temporal dimension").to
+          .exist;
 
-        // Reload — the URL param is the source of truth and the
-        // router shouldn't rewrite it away on hydration.
-        cy.reload();
-        cy.findAllByRole("treeitem", { timeout: 15000 })
-          .first()
-          .should("be.visible");
-        cy.location("search").should("include", `timeline=${timelineId}`);
+        H.createExplorationViaApi({
+          name: "Timeline persistence fixture",
+          timelineIds: [timelineId],
+          dimensionIds: [temporalDimension!.id],
+        }).then((id) => {
+          cy.visit(`/question/research/${id}?timeline=${timelineId}`);
+          // Sidebar treeitems appear once the BE returns query rows.
+          cy.findAllByRole("treeitem", { timeout: 15000 })
+            .first()
+            .should("be.visible");
+
+          cy.findByRole("treeitem", {
+            name: new RegExp(`${temporalDimension!.display_name}$`), // anchor at end so we don't match day of week or hour of day
+          }).click();
+
+          cy.findByTestId("exploration-chart-grid").within(() => {
+            H.timelineEventChip("Releases event").should("be.visible");
+          });
+
+          cy.location("search").should("include", `timeline=${timelineId}`);
+
+          // Reload — the URL param is the source of truth and the
+          // router shouldn't rewrite it away on hydration.
+          cy.reload();
+          cy.findAllByRole("treeitem", { timeout: 15000 })
+            .first()
+            .should("be.visible");
+          cy.location("search").should("include", `timeline=${timelineId}`);
+
+          cy.findByTestId("exploration-chart-grid").within(() => {
+            H.timelineEventChip("Releases event").should("be.visible");
+          });
+        });
       });
     });
   });
