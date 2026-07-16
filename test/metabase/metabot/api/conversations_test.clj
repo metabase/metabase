@@ -373,10 +373,34 @@
                    (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id :display]
                                   :id (:id created))))
             (testing "the conversation detail lists the saved entity"
-              (is (= [{:card_id (:id created) :chart_id "chart-1" :name "Venues by price"}]
+              (is (= [{:card_id (:id created) :chart_id "chart-1"}]
+                     (:saved_entities
+                      (mt/user-http-request :crowberto :get 200
+                                            (str "metabot/conversations/" convo-id))))))
+            (testing "archived cards drop out of saved_entities"
+              (t2/update! :model/Card (:id created) {:archived true})
+              (is (= []
                      (:saved_entities
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))))))))
+
+(deftest record-saved-entity-collection-mismatch-test
+  (testing "an explicit collection_id that doesn't match the dashboard's own collection 400s"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Collection {coll-id :id} {}
+                       :model/Dashboard {dash-id :id} {}]
+          (mt/user-http-request :crowberto :post 400
+                                (str "metabot/conversations/" convo-id "/saved-entity")
+                                {:chart_id "chart-1"
+                                 :card     {:name          "x"
+                                            :dataset_query (venues-query)
+                                            :display       "bar"
+                                            :dashboard_id  dash-id
+                                            :collection_id coll-id}})
+          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))))))
 
 (deftest record-saved-entity-permissions-test
   (let [user-id (mt/user->id :crowberto)
