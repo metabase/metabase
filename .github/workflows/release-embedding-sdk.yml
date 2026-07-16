@@ -94,7 +94,6 @@ jobs:
         "test",
         "build-sdk",
         "publish-npm",
-        "tag-latest",
         "git-tag",
       ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -388,15 +387,6 @@ jobs:
         working-directory: sdk
         run: |
           npm publish --tag 62-stable
-
-  # When a newer release branch goes gold, remove this entire job from this branch.
-  tag-latest:
-    name: Tag npm release as latest
-    needs: [publish-npm, determine-sdk-version]
-    uses: ./.github/workflows/embedding-sdk-tag-latest.yml
-    with:
-      version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
-    secrets: inherit
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
