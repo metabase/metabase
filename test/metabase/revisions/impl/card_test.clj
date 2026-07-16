@@ -156,9 +156,6 @@
                          ;; No description is needed for `card_schema`, because it is an internal, bookkeeping matter
                          ;; and does not change independently.
                          :card_schema
-                         ;; The Metabot origin columns are internal bookkeeping. They are stamped outside the Card update pipeline
-                         ;; and cleared only alongside a user-visible query, display, or visualization change.
-                         :metabot_conversation_id :metabot_chart_id
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
                          :dataset_query_metrics_v2_migration_backup}
@@ -190,6 +187,13 @@
                        :model/Dashboard
                        before
                        changes)))))))))
+
+(deftest card-revision-excludes-metabot-origin-test
+  (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
+    (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
+      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+        (is (not (contains? serialized :metabot_chart_id)))
+        (is (not (contains? serialized :metabot_conversation_id)))))))
 
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"

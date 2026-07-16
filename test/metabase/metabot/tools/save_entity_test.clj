@@ -111,6 +111,26 @@
             (is (= {:type "dashboard" :id (:id dash)}
                    (get-in result [:data-parts 0 :data :destination])))))))))
 
+(deftest save-seeded-chart-display-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (testing "charts seeded from the viewing context carry no :visualization_settings, so the display falls back to :chart_config :display_type"
+        (let [query  (venues-query)
+              memory (atom {:state   {:queries {}
+                                      :charts  {"c-2" {:chart_id "c-2"
+                                                       :queries  [query]
+                                                       :visualization_settings nil
+                                                       :chart_config {:display_type "line"}}}}
+                            :context {}})
+              result (binding [shared/*memory-atom* memory]
+                       (save-entity/save-entity-tool
+                        {:chart_id    "c-2"
+                         :name        "Seeded chart"
+                         :description "Seeded from the viewing context."
+                         :destination {:target_type "collection" :collection_id nil}}))
+              card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
+          (is (= :line (:display card))))))))
+
 (deftest unknown-chart-test
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "a missing chart id returns an agent-facing error and creates nothing"

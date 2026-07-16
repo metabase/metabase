@@ -9,6 +9,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -25,7 +26,8 @@
 
 (def ^:private save-entity-schema
   [:map {:closed true}
-   [:chart_id :string]
+   ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
+   [:chart_id [:string {:min 1 :max 36}]]
    [:name :string]
    [:description :string]
    [:destination
@@ -56,12 +58,21 @@
        (tru (str "No generated chart found with id `{0}`. Create a chart with "
                  "`construct_notebook_query` first, then save it using the id it returns.")
             chart-id)))
+    ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
+    ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
+    ;; and keep the raw config under `:chart_config` instead
     {:dataset_query (links/->legacy-mbql query)
      :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
+                        (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
 
 (defn- personal-collection-id []
-  (:id (collection/user->personal-collection api/*current-user-id*)))
+  (or (:id (collection/user->personal-collection api/*current-user-id*))
+      ;; API-key users have no personal collection; without this check the nil would
+      ;; silently save into the root collection instead
+      (agent-error!
+       (tru (str "The current user has no personal collection. Pass an explicit "
+                 "`collection_id` (or `null` for the root collection) instead.")))))
 
 (defn- collection-name
   "Current display name of a collection target, for the LLM-facing save summary.
@@ -85,7 +96,8 @@
                  :display                display
                  :visualization_settings {}
                  :collection_id          collection-id}
-                {:id api/*current-user-id*})]
+                {:id api/*current-user-id*}
+                :delay-event)]
       {:card             card
        :destination      {:type "collection" :id collection-id}
        :destination-name (collection-name collection-id)
@@ -105,7 +117,8 @@
                  :display                display
                  :visualization_settings {}
                  :dashboard_id           dashboard-id}
-                {:id api/*current-user-id*})]
+                {:id api/*current-user-id*}
+                :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
        :destination-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
@@ -138,18 +151,24 @@
                 :dataset_query  dataset_query
                 :display        display
                 :destination    destination}
+          ;; Create the card and stamp which conversation + generated chart it came
+          ;; from in ONE transaction, so a reloaded conversation can't observe the
+          ;; card without its origin. The stamp is a raw table update — it should not
+          ;; run the Card model's heavy before-update pipeline. The `:card-create`
+          ;; event is delayed until after the transaction commits so subscribers see
+          ;; the card.
           {:keys [card link destination-name] saved-destination :destination}
-          (case (:target_type destination)
-            "collection" (save-to-collection! args)
-            "dashboard"  (save-to-dashboard! args))
-          ;; Record which conversation + generated chart this card came from, so a
-          ;; reloaded conversation can mark the inline chart as saved. Raw table
-          ;; update — the origin stamp should not run the Card model's heavy
-          ;; before-update pipeline.
-          _ (when-let [conversation-id (shared/current-conversation-id)]
-              (t2/update! (t2/table-name :model/Card) (:id card)
-                          {:metabot_conversation_id conversation-id
-                           :metabot_chart_id        chart_id}))
+          (t2/with-transaction [_conn]
+            (let [saved (case (:target_type destination)
+                          "collection" (save-to-collection! args)
+                          "dashboard"  (save-to-dashboard! args))]
+              (when-let [conversation-id (shared/current-conversation-id)]
+                (t2/update! (t2/table-name :model/Card) (:id (:card saved))
+                            {:metabot_conversation_id conversation-id
+                             :metabot_chart_id        chart_id}))
+              saved))
+          _ (events/publish-event! :event/card-create
+                                   {:object card :user-id api/*current-user-id*})
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
                             ""
