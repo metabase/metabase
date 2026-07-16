@@ -5,12 +5,13 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import type { IconName } from "metabase-types/api";
 
 export const TenantUsersPersonalCollectionList = () => {
   const { tenantId: tenantIdParam } = useParams();
-  const tenantId = parseInt(tenantIdParam ?? "", 10);
+  const tenantId = parseInt(checkNotNull(tenantIdParam), 10);
 
   const { data: tenant } = useGetTenantQuery(tenantId);
   const { data, isLoading } = useListUsersQuery({ tenant_id: tenantId });
