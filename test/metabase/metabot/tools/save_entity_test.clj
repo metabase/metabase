@@ -184,9 +184,9 @@
           (testing "omitting position appends a card embed at the end of the document"
             (is (= (conj (:content document-ast) (card-embed (:id card)))
                    (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content]))))
-          (testing "the location points at the document"
+          (testing "the destination points at the document"
             (is (= {:type "document" :id (:id doc)}
-                   (get-in result [:data-parts 0 :data :location])))))))))
+                   (get-in result [:data-parts 0 :data :destination])))))))))
 
 (deftest save-to-document-position-test
   (mt/with-current-user (mt/user->id :crowberto)

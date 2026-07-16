@@ -176,9 +176,9 @@ describe("AgentMessage", () => {
         part: {
           type: "data-entity_saved",
           data: {
-            entity_id: "chart-1",
+            chart_id: "chart-1",
             card_id: 99,
-            location: { type: "document", id: 7 },
+            destination: { type: "document", id: 7 },
           },
         },
       });
