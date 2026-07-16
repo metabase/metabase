@@ -97,11 +97,25 @@
   (when location
     (mapv parse-long (re-seq #"\d+" location))))
 
+(defn- readable-id->name
+  "Map of collection id -> name for the given ids, omitting collections the current user cannot
+   read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
+  [ids]
+  (when (seq ids)
+    (into {}
+          (comp (filter mi/can-read?)
+                (map (juxt :id :name)))
+          (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))))
+
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
    containing collection's own name — to every row that has a `:collection`. Collection rows
    use their own `:location` (path of their ancestors). Two batched lookups total; rows with
-   no collection context (root items, snippets, tables, databases) get no path."
+   no collection context (root items, snippets, tables, databases) get no path.
+
+   Ancestors the current user cannot read are omitted from the path, matching the breadcrumb
+   semantics of [[metabase.collections.models.collection/effective-ancestors]]: for A > B > C
+   where B is unreadable, the path reads \"A/C\"."
   [rows]
   (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
         parents        (when (seq parent-ids)
@@ -113,9 +127,8 @@
                                    (remove parent-ids))
                              (concat (map second (vals parents))
                                      (keep :location rows)))
-        ancestor-names (when (seq ancestor-ids)
-                         (t2/select-pk->fn :name :model/Collection :id [:in ancestor-ids]))
-        id->name       (merge ancestor-names (update-vals parents first))
+        id->name       (merge (readable-id->name ancestor-ids)
+                              (update-vals parents first))
         location-path  (fn [location]
                          (when-let [segments (seq (keep id->name (location->ids location)))]
                            (str/join "/" segments)))]
