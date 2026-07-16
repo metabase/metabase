@@ -40,7 +40,16 @@ export function useSdkIframeEmbedEventBus({
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
-      if (!isWithinIframe() || !event.data) {
+      // Accept only browser-delivered messages from the embedding parent window.
+      // `isTrusted` is false for events forged via dispatchEvent (e.g. a sandboxed
+      // custom-viz plugin reaching the bus), and the source check rejects any other
+      // window able to postMessage at this receiver.
+      if (
+        !isWithinIframe() ||
+        !event.data ||
+        !event.isTrusted ||
+        event.source !== window.parent
+      ) {
         return;
       }
 
