@@ -83,7 +83,7 @@
     (is (= (registry/tools-hash nil) (registry/tools-hash nil)))
     (is (not= (registry/tools-hash nil) (registry/tools-hash #{"agent:metadata:read"})))))
 
-(defn- capture-usage-records
+(defn- capture-usage-records!
   "Run `thunk` with `record-mcp-tool-call!` redefed to capture its arg maps into a vector,
    which is returned. Lets the usage-logging contract be asserted without the EE DB writer."
   [thunk]
@@ -96,7 +96,7 @@
 (deftest usage-logging-contract-test
   (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
     (testing "success → status \"success\", no error"
-      (let [records (capture-usage-records #(registry/call-tool #{"agent:search"} nil "ping_v2" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:search"} nil "ping_v2" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "ping_v2" (:tool-name r)))
@@ -104,7 +104,7 @@
           (is (nil? (:error-code r)))
           (is (nil? (:error-message r))))))
     (testing "scope denied → status \"error\", invalid-request code"
-      (let [records (capture-usage-records #(registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "ping_v2" (:tool-name r)))
@@ -112,7 +112,7 @@
           (is (= common/error-code-invalid-request (:error-code r)))
           (is (= "Insufficient scope to call tool: ping_v2" (:error-message r))))))
     (testing "unknown tool → status \"error\", method-not-found code"
-      (let [records (capture-usage-records #(registry/call-tool nil nil "does_not_exist" {}))]
+      (let [records (capture-usage-records! #(registry/call-tool nil nil "does_not_exist" {}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "does_not_exist" (:tool-name r)))
@@ -120,7 +120,7 @@
           (is (= common/error-code-method-not-found (:error-code r)))
           (is (= "Unknown tool: does_not_exist" (:error-message r))))))
     (testing "validation failure → status \"error\", invalid-params code"
-      (let [records (capture-usage-records #(registry/call-tool #{"agent:search"} nil "ping_v2" {:message 42}))]
+      (let [records (capture-usage-records! #(registry/call-tool #{"agent:search"} nil "ping_v2" {:message 42}))]
         (is (= 1 (count records)))
         (let [r (first records)]
           (is (= "ping_v2" (:tool-name r)))
