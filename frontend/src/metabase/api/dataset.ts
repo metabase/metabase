@@ -9,21 +9,13 @@ import type {
   NativeDatasetResponse,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
-
-interface RefetchDeps {
-  /**
-   * This attribute won't be a part of the API request and can be used to invalidate
-   * the cache of a given RTK query using its built-in caching mechanism.
-   */
-  _refetchDeps?: unknown;
-}
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -63,9 +55,9 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      DatasetQuery & RefetchDeps & IgnorableError
+      DatasetQuery & RtkCacheKeyed & IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
@@ -85,10 +77,10 @@ export const datasetApi = Api.injectEndpoints({
         pivot_cols?: number[];
         show_row_totals?: boolean;
         show_column_totals?: boolean;
-      } & RefetchDeps &
+      } & RtkCacheKeyed &
         IgnorableError
     >({
-      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+      query: ({ ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset/pivot",
         body,

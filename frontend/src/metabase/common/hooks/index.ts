@@ -1,4 +1,5 @@
 export * from "./entity-framework";
+export * from "./use-abortable-query";
 export * from "./use-confirmation";
 export * from "./use-dnd-sensors";
 export * from "./use-docs-url";

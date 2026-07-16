@@ -454,10 +454,10 @@ export type CardQueryMetadata = {
   fields: Field[];
 };
 
-export interface ListCardsRequest {
+export type ListCardsRequest = {
   f?: CardFilterOption;
   model_id?: CardId;
-}
+};
 
 export interface GetCardRequest {
   id: CardId | EntityToken;
