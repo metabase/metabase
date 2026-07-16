@@ -1,6 +1,7 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 
 import { Outlet } from "./Outlet";
 import { Route } from "./route";
@@ -93,5 +94,48 @@ describe("router/Route element adapter", () => {
     });
 
     expect(await screen.findByText("child-page")).toBeInTheDocument();
+  });
+});
+
+describe("router/Route element memoization", () => {
+  it("reuses a shared element component across sibling routes instead of remounting it", async () => {
+    let mounts = 0;
+    const Shared = () => {
+      useEffect(() => {
+        mounts += 1;
+      }, []);
+      return (
+        <div>
+          <span>shared-chrome</span>
+          <Outlet />
+        </div>
+      );
+    };
+    const PageA = () => <div>page-a</div>;
+    const PageB = () => <div>page-b</div>;
+
+    const { history } = renderWithProviders(
+      <Route path="shared">
+        <Route path=":a" element={<Shared />}>
+          <Route index element={<PageA />} />
+        </Route>
+        <Route path=":a/:b" element={<Shared />}>
+          <Route index element={<PageB />} />
+        </Route>
+      </Route>,
+      { withRouter: true, initialRoute: "/shared/1" },
+    );
+
+    expect(await screen.findByText("page-a")).toBeInTheDocument();
+    expect(mounts).toBe(1);
+
+    act(() => {
+      checkNotNull(history).push("/shared/1/2");
+    });
+
+    // The sibling route renders the same `Shared` component, so it reconciles
+    // across the navigation instead of remounting: `mounts` stays at 1.
+    expect(await screen.findByText("page-b")).toBeInTheDocument();
+    expect(mounts).toBe(1);
   });
 });
