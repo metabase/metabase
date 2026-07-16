@@ -2181,6 +2181,8 @@
    :api  #{metabase.segments.api}
    :uses #{api
            events
+           lib
+           lib.be
            models
            util
            xrays}
