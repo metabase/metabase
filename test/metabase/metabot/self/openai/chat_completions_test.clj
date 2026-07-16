@@ -152,6 +152,47 @@
               :cacheReadTokens     4200}
              (:usage usage))))))
 
+(deftest ^:parallel usage-emitted-once-at-stream-end-test
+  (testing "usage is buffered (last-wins) and emitted exactly once at stream completion, after content —
+            even when the endpoint repeats usage on every chunk (the OpenAI spec sends it once on a final
+            content-free chunk, but some compatible endpoints attach it to content chunks)"
+    (let [chunks [{:id "m" :model "mdl" :choices [{:delta {:role "assistant" :content "Hi"}}]
+                   :usage {:prompt_tokens 10 :completion_tokens 1 :total_tokens 11}}
+                  {:choices [{:delta {:content " there"} :finish_reason "stop"}]
+                   :usage {:prompt_tokens 10 :completion_tokens 2 :total_tokens 12}}]
+          out   (into [] (cc/cc->aisdk-chunks-xf) chunks)
+          usages (filterv #(= :usage (:type %)) out)]
+      (is (= :usage (:type (last out)))
+          "the single usage part is emitted last, after the text block closes")
+      (is (= 1 (count usages)) "exactly one usage part despite usage on every chunk")
+      (is (= {:promptTokens 10 :completionTokens 2 :cacheCreationTokens 0 :cacheReadTokens 0}
+             (:usage (first usages)))
+          "last-wins: the final chunk's completion count is reported"))))
+
+(deftest ^:parallel usage-on-tool-call-chunk-does-not-orphan-tool-test
+  (testing "an endpoint that attaches usage to the tool-call chunk (Gemini's OpenAI-compat shape: whole tool
+            call in one delta, usage on that chunk, finish_reason on a later empty chunk) streams through the
+            full pipeline without crashing, and the tool call is captured with parsed arguments"
+    ;; Regression for `No matching clause: :tool-input-available` — inline usage used to split the tool group
+    ;; and orphan the closing :tool-input-available.
+    (let [chunks [{:id "m1" :model "gemini-3.5-flash"
+                   :choices [{:index 0 :delta {:role "assistant"
+                                               :tool_calls [{:id "call_1" :type "function"
+                                                             :function {:name "structured_output" :arguments "{\"x\":1}"}}]}}]
+                   :usage {:prompt_tokens 49 :completion_tokens 14 :total_tokens 167}}
+                  {:id "m1" :model "gemini-3.5-flash"
+                   :choices [{:index 0 :delta {:role "assistant"} :finish_reason "stop"}]
+                   :usage {:prompt_tokens 49 :completion_tokens 14 :total_tokens 167}}]]
+      (is (=? [{:type :start}
+               {:type      :tool-input
+                :id        "call_1"
+                :function  "structured_output"
+                :arguments {:x 1}}
+               {:type  :usage
+                :model "gemini-3.5-flash"
+                :usage {:promptTokens 49 :completionTokens 14}}]
+              (into [] (comp (cc/cc->aisdk-chunks-xf) (self.core/aisdk-xf)) chunks))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth / HTTP tests
 ;;; ──────────────────────────────────────────────────────────────────

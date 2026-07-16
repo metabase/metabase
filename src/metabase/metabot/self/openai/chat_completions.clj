@@ -214,6 +214,14 @@
           message-id   (volatile! nil)
           model-name   (volatile! nil)
           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+          ;; Latest-wins usage buffer. The OpenAI spec sends usage once, on a final content-free
+          ;; chunk; but some OpenAI-compatible endpoints (e.g. Gemini's compat layer) attach usage
+          ;; to *every* chunk, including the one carrying a tool call. Emitting usage inline there
+          ;; would interleave a self-contained :usage chunk between a tool call's :tool-input-delta
+          ;; and its closing :tool-input-available, which the downstream aisdk grouping then splits
+          ;; into an orphan tool block. So we buffer it and emit exactly one :usage at stream end,
+          ;; after any open block is closed — matching claude.clj/openai.clj, which also emit usage once.
+          usage-acc    (volatile! nil)
           close!       (fn [result]
                          (u/prog1 (rf result (merge {:type (case @current-type
                                                              :text          :text-end
@@ -224,11 +232,18 @@
                            (vreset! payload {})))]
       (fn
         ([result]
-         (cond-> result
-           @current-type (close!)
-           true          (rf)))
+         (-> result
+             (cond-> @current-type (close!))
+             (cond-> @usage-acc (rf {:type  :usage
+                                     :usage @usage-acc
+                                     :id    @message-id
+                                     :model @model-name}))
+             (rf)))
 
         ([result {:keys [id model choices usage] :as _chunk}]
+         ;; Buffer usage (last-wins); it is emitted once at stream completion. See usage-acc above.
+         (when (some? usage)
+           (vreset! usage-acc (usage->aisdk-usage usage)))
          (let [choice        (first choices)
                delta         (:delta choice)
                finish-reason (:finish_reason choice)
@@ -291,12 +306,7 @@
                                                                    :inputTextDelta (:arguments (:function tool-call))})
              ;; Finish reason — close whatever is open
              (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
-             ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+                                                               @current-type (close!)))))))))
 
 ;;; HTTP request
 
