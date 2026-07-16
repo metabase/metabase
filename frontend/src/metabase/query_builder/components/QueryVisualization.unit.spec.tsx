@@ -101,6 +101,7 @@ describe("QueryVisualization run-button overlay (metabase#12586)", () => {
 
   it("hides the run-button overlay when the query run errored", () => {
     setupOverlay({
+      // a minimal result carrying only the error the overlay logic reads
       result: { error: { status: 500 } } as QueryVisualizationResult,
     });
 

@@ -33,6 +33,7 @@ const mockApiRunQuestionQuery = jest.mocked(apiRunQuestionQuery);
 // A query in flight sets a loading document title and arms a timeout that changes it to "Still Here...".
 // These constants seed that in-flight state.
 const LOADING_TITLE = "Doing science...";
+// the store types timeoutId as string, but setTimeout hands back a number
 const FAKE_TIMEOUT_ID = 1234 as unknown as string;
 
 function setupErroredStore() {
@@ -100,6 +101,7 @@ function setupRunOrCancel({ isRunning }: SetupOpts) {
   });
 
   const getState: GetState = () => state;
+  // a thunk-running dispatch double: invoke thunks, pass plain actions through
   const dispatch: Dispatch = ((action: unknown) =>
     typeof action === "function"
       ? action(dispatch, getState)
@@ -113,6 +115,7 @@ describe("runOrCancelQuestionOrSelectedQuery (metabase#59356)", () => {
     jest.clearAllMocks();
     mockApiRunQuestionQuery.mockImplementation(
       () =>
+        // resolved value is unused; cast the empty promise to the run fn's type
         Promise.resolve({}) as unknown as ReturnType<
           typeof apiRunQuestionQuery
         >,

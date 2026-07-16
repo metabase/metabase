@@ -7,6 +7,12 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import { underlyingRecordsDrill } from "./underlying-records-drill";
 
+// underlyingRecordsDrill reads drillInfo/applyDrill, not the opaque Lib.DrillThru
+// handle it is passed, so an empty stub suffices.
+const STUB_DRILL = {} as Lib.DrillThru;
+// likewise, the drill never reads the raw Lib.ClickObject.
+const STUB_CLICKED = {} as Lib.ClickObject;
+
 // A pivot table question whose viz settings should partially survive the drill:
 // the pivot-specific flag must be cleared, but unrelated settings must be kept.
 const PIVOT_SETTINGS = {
@@ -34,13 +40,13 @@ function getDrilledQuestion(sourceQuestion: Question): Question {
     question: sourceQuestion,
     query: sourceQuestion.query(),
     stageIndex: -1,
-    drill: {} as Lib.DrillThru,
+    drill: STUB_DRILL,
     drillInfo: {
       type: "drill-thru/underlying-records",
       rowCount: 1,
       tableName: "Products",
     },
-    clicked: {} as Lib.ClickObject,
+    clicked: STUB_CLICKED,
     applyDrill,
   });
 
@@ -104,13 +110,13 @@ describe("underlyingRecordsDrill title translation (metabase#33079)", () => {
       question,
       query: question.query(),
       stageIndex: -1,
-      drill: {} as Lib.DrillThru,
+      drill: STUB_DRILL,
       drillInfo: {
         type: "drill-thru/underlying-records",
         rowCount,
         tableName: "Orders",
       },
-      clicked: {} as Lib.ClickObject,
+      clicked: STUB_CLICKED,
       applyDrill: () => question,
     });
     return action.title;

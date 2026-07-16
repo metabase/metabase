@@ -687,6 +687,7 @@ describe("syncVizSettingsWithSeries", () => {
     });
 
     it("should ignore updates when the new series has no data yet (metabase#44415)", () => {
+      // a series entry deliberately missing `data`, to exercise the no-data path
       const seriesWithoutData = [
         { card: createMockCard() },
       ] as unknown as Series;
@@ -700,6 +701,7 @@ describe("syncVizSettingsWithSeries", () => {
     });
 
     it("should ignore updates when the old series has no data yet (metabase#44415)", () => {
+      // a series entry deliberately missing `data`, to exercise the no-data path
       const seriesWithoutData = [
         { card: createMockCard() },
       ] as unknown as Series;

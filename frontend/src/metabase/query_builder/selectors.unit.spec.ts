@@ -506,6 +506,7 @@ describe("getSubmittableQuestion", () => {
       cardQuery: { "source-table": PRODUCTS_ID },
       lastRunQuery: { "source-table": ORDERS_ID },
     });
+    // the seeded state always resolves to a question
     const question = getQuestion(state) as Question;
 
     expect(getIsResultDirty(state)).toBe(true);
@@ -519,6 +520,7 @@ describe("getSubmittableQuestion", () => {
       cardQuery: { "source-table": ORDERS_ID },
       lastRunQuery: { "source-table": ORDERS_ID },
     });
+    // the seeded state always resolves to a question
     const question = getQuestion(state) as Question;
 
     expect(getIsResultDirty(state)).toBe(false);
@@ -592,6 +594,7 @@ describe("getIsVisualized", () => {
   // remains. The question must still count as visualized so the display toggle
   // stays available to switch back to the pivot visualization.
   it("should be true when display is table and only `table.pivot_column` is set (metabase#56094)", () => {
+    // getIsVisualized.resultFunc reads only display(), so a stub suffices
     const question = { display: () => "table" } as unknown as Question;
     const settings = { "table.pivot_column": "CATEGORY" };
 

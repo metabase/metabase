@@ -157,6 +157,7 @@ describe("SaveQuestionForm utils", () => {
     // otherwise the default title flashes in the input before the modal closes.
     it("should keep the display name over the query description for a new ad-hoc question (metabase#55631)", () => {
       const savedCard = createMockCard({
+        // a new ad-hoc card has no id yet, though the type requires a number
         id: undefined as unknown as number,
         name: "Custom",
         type: "question",

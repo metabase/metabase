@@ -10,7 +10,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card } from "metabase-types/api";
 import {
   createSampleDatabase,
@@ -176,29 +176,21 @@ describe("QB Actions > apiCreateQuestion", () => {
 
     const loadMetadataSpy = jest
       .spyOn(questionsActions, "loadMetadataForCard")
-      .mockReturnValue(
-        (async () => undefined) as unknown as ReturnType<
-          typeof questionsActions.loadMetadataForCard
-        >,
-      );
+      .mockReturnValue(async () => undefined);
     jest
       .spyOn(querying, "runQuestionQuery")
-      .mockReturnValue((() => {}) as unknown as ReturnType<
-        typeof querying.runQuestionQuery
-      >);
+      .mockReturnValue(async () => undefined);
     jest.spyOn(analytics, "trackNewQuestionSaved").mockImplementation(() => {});
 
-    // createQuestionCard is the only thunk dispatched.
-    // Resolve it to the persisted card and pass plain actions through unchanged.
+    // createQuestionCard is the only thunk dispatched. Resolve it to the
+    // persisted card and pass plain actions through unchanged; the jest.fn is a
+    // hand-rolled double, so cast it to the thunk's Dispatch type.
     const dispatch = jest.fn((action) =>
       typeof action === "function" ? Promise.resolve(createdCard) : action,
-    );
-    const getState = () => ({ ...createMockState(), entities });
+    ) as unknown as Dispatch;
+    const getState: GetState = () => createMockState({ entities });
 
-    await apiCreateQuestion(question!)(
-      dispatch as unknown as Dispatch,
-      getState as unknown as GetState,
-    );
+    await apiCreateQuestion(question!)(dispatch, getState);
 
     expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
     expect(loadMetadataSpy).toHaveBeenCalledWith(

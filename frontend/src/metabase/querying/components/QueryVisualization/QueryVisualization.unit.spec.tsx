@@ -41,6 +41,7 @@ function setup(errorType?: string) {
   });
   const question = checkNotNull(metadata.question(card.id));
 
+  // a minimal result carrying only the error fields the component reads
   const result = {
     error: "You'll need to pick a value for 'State' before this query can run.",
     error_type: errorType,
