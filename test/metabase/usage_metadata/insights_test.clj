@@ -308,6 +308,34 @@
                          (lib/> subtotal 12345)
                          (lib/= quantity quantity-value)))))
 
+(defn- orders-multi-stage-query []
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (-> (orders-base-query)
+        (lib/with-fields [product-id subtotal])
+        lib/append-stage
+        (lib/filter -1 (lib/= product-id 987654))
+        (lib/aggregate -1 (lib/sum subtotal)))))
+
+(defn- orders-joined-query []
+  (let [mp               (lib-be/application-database-metadata-provider (mt/id))
+        products         (lib.metadata/table mp (mt/id :products))
+        orders-product   (lib.metadata/field mp (mt/id :orders :product_id))
+        orders-subtotal  (lib.metadata/field mp (mt/id :orders :subtotal))
+        products-id      (lib.metadata/field mp (mt/id :products :id))
+        products-category (lib.metadata/field mp (mt/id :products :category))
+        join-alias       "Products"]
+    (-> (orders-base-query)
+        (lib/join (-> (lib/join-clause
+                       products
+                       [(lib/= orders-product (lib/with-join-alias products-id join-alias))])
+                      (lib/with-join-alias join-alias)))
+        (lib/filter (lib/= orders-subtotal 12345))
+        (lib/filter (lib/= (lib/with-join-alias products-category join-alias) "Gadget"))
+        (lib/filter (lib/= orders-product (lib/with-join-alias products-id join-alias)))
+        (lib/aggregate (lib/sum orders-subtotal)))))
+
 (defn- candidates-from-card
   [card-id candidates]
   (filterv (fn [candidate]
@@ -462,6 +490,78 @@
         (is (= lineage (get-in measure [:evidence :source-items 0 :model-lineage])))
         (is (= (mt/id :orders) (get-in segment [:source :id])))
         (is (= lineage (get-in segment [:evidence :source-items 0 :model-lineage])))))))
+
+(deftest candidate-mining-supports-multi-stage-physical-lineage-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining multi-stage question"
+                                            :type :question
+                                            :dataset_query (orders-multi-stage-query)
+                                            :view_count 1000000}]
+    (let [measure  (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
+                        (candidates-from-card card-id)
+                        first)
+          segment  (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
+                        (candidates-from-card card-id)
+                        first)
+          field-id (fn [clause]
+                     (->> clause
+                          (tree-seq sequential? seq)
+                          (filter #(and (vector? %) (= :field (first %))))
+                          first
+                          (#(nth % 2))))]
+      (is (= :sum (get-in measure [:aggregation :type])))
+      (is (= (mt/id :orders :subtotal)
+             (field-id (get-in measure [:definition :stages 0 :aggregation 0]))))
+      (is (= (mt/id :orders :product_id)
+             (field-id (:predicate segment))))
+      (is (= [1] (get-in measure [:evidence :source-items 0 :stage-numbers])))
+      (is (= [1] (get-in segment [:evidence :source-items 0 :stage-numbers])))
+      (is (false? (get-in segment [:evidence :source-items 0 :joined?]))))))
+
+(deftest candidate-mining-inspects-stage-zero-before-a-semantic-barrier-test
+  (let [query (-> (orders-conditional-measure-query)
+                  lib/append-stage)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining stage zero question"
+                                              :type :question
+                                              :dataset_query query
+                                              :view_count 1000000}]
+      (let [measures (candidates-from-card
+                      card-id
+                      (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+            segments (candidates-from-card
+                      card-id
+                      (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
+        (is (seq measures))
+        (is (seq segments))
+        (is (every? #(= [0] (:stage-numbers %))
+                    (concat (get-in (first measures) [:evidence :source-items])
+                            (get-in (first segments) [:evidence :source-items]))))))))
+
+(deftest candidate-segments-support-single-owner-join-filters-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining joined question"
+                                            :type :question
+                                            :dataset_query (orders-joined-query)
+                                            :view_count 1000000}]
+    (let [segments (candidates-from-card
+                    card-id
+                    (insights/candidate-segments {:min-view-count 10 :limit 1000}))
+          measures (candidates-from-card
+                    card-id
+                    (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+          by-table (group-by #(get-in % [:source :id]) segments)]
+      (testing "single-owner filters become Segments on their actual physical owner"
+        (is (= 2 (count segments))
+            "the cross-table filter is not representable as a table-bound Segment")
+        (is (= #{(mt/id :orders) (mt/id :products)} (set (keys by-table))))
+        (is (= #{(mt/id :orders :subtotal)}
+               (into #{} (map :id) (:fields (first (by-table (mt/id :orders)))))))
+        (is (= #{(mt/id :products :category)}
+               (into #{} (map :id) (:fields (first (by-table (mt/id :products)))))))
+        (is (nil? (get-in (first (by-table (mt/id :products)))
+                          [:predicate 2 1 :join-alias])))
+        (is (every? #(true? (get-in % [:evidence :source-items 0 :joined?])) segments))
+        (is (every? #(= [0] (get-in % [:evidence :source-items 0 :stage-numbers])) segments)))
+      (testing "aggregations from a joined stage remain excluded"
+        (is (empty? measures))))))
 
 (deftest candidate-mining-rejects-semantic-model-transformations-test
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
