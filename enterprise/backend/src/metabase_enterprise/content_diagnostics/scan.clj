@@ -84,7 +84,8 @@
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
-                                duration-ms entity-name entity-created-at entity-creator-id entity-creator-name]} chunk]
+                                duration-ms content-count entity-name entity-created-at entity-creator-id
+                                entity-creator-name]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -92,6 +93,7 @@
                      :scope_collection_id scope-collection-id
                      :last_active_at      last-active-at
                      :duration_ms         duration-ms
+                     :content_count       content-count
                      :entity_name         entity-name
                      :entity_created_at   entity-created-at
                      :entity_creator_id   entity-creator-id
