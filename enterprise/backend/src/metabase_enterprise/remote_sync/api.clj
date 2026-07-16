@@ -14,6 +14,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.config.jekyll :as jekyll]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -137,6 +138,18 @@
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [branch-name (check-branch-matches-setting! branch)
         user-id     api/*current-user-id*
+        ;; Jekyll: the work branch is created lazily, by the first export that has
+        ;; changes to push — booting a box and doing nothing must leave no remote
+        ;; footprint, and exports can never land on the default branch by accident.
+        _ (when (and (jekyll/jekyll?)
+                     (not (source/branch-exists? (source/source-from-settings) branch-name)))
+            (api/check-400 (remote-sync.object/dirty?)
+                           (format "No changes to push; not creating branch '%s'" branch-name))
+            (let [source (source/source-from-settings)
+                  base (source.p/default-branch source)]
+              (api/check-400 base "Remote has no default branch to base the work branch on")
+              (source.p/create-branch source branch-name base)
+              (log/infof "Jekyll mode: created work branch %s from %s" branch-name base)))
         {task-id :id}
         (impl/async-export!
          branch-name
@@ -248,6 +261,10 @@
        [:remote-sync-transforms {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
+  (api/check-400 (not (and (jekyll/jekyll?)
+                           (contains? settings :remote-sync-branch)
+                           (not= (:remote-sync-branch settings) (settings/remote-sync-branch))))
+                 "Jekyll boxes are pinned to their configured work branch; switch branches in the config file.")
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   ;; Filter out no-op collection changes before checking read-only mode or running bulk-set
@@ -313,6 +330,8 @@
    _query
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
+  (api/check-400 (not (jekyll/jekyll?))
+                 "Jekyll boxes are pinned to their configured work branch; switch branches in the config file.")
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
@@ -337,6 +356,8 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
+  (api/check-400 (not (jekyll/jekyll?))
+                 "Jekyll boxes are pinned to their configured work branch; switch branches in the config file.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (api/check-400 (source/source-from-settings) "Source not configured")
   (try

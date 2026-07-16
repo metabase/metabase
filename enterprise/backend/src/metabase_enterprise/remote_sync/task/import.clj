@@ -21,9 +21,10 @@
 
 (defn- import-if-changed!
   "Snapshot the configured source and import it unless its version matches the
-  last imported version. `task-history-name` labels the task-history row."
-  [task-history-name]
-  (let [branch (settings/remote-sync-branch)
+  last imported version. `task-history-name` labels the task-history row.
+  `:branch` overrides the configured remote-sync-branch."
+  [task-history-name & {:keys [branch]}]
+  (let [branch (or branch (settings/remote-sync-branch))
         source (source/source-from-settings branch)
         snapshot (source.p/snapshot source)
         snapshot-version (source.p/version snapshot)
@@ -99,7 +100,20 @@
   []
   (when (and (seq (settings/remote-sync-url))
              (seq (settings/remote-sync-branch)))
-    (import-if-changed! "jekyll-boot-import")
+    ;; Convention: the configured branch is the box's work branch, created lazily
+    ;; by the first export that has changes to push (a box that boots and does
+    ;; nothing leaves no remote footprint). Until then, import from the repo's
+    ;; default branch.
+    (let [configured (settings/remote-sync-branch)
+          source (source/source-from-settings)
+          branch (if (source/branch-exists? source configured)
+                   configured
+                   (source.p/default-branch source))]
+      (when (not= branch configured)
+        (log/infof "Jekyll mode: work branch %s does not exist yet; importing from default branch %s"
+                   configured (pr-str branch)))
+      (when branch
+        (import-if-changed! "jekyll-boot-import" :branch branch)))
     (jekyll-sync-conventions!)))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")

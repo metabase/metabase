@@ -111,6 +111,23 @@
             (when (seq top-level-ids)
               (t2/update! :model/Collection :id [:in top-level-ids] {:archived false}))))))))
 
+(deftest jekyll-boot-missing-work-branch-test
+  (testing "when the configured work branch doesn't exist, boot imports from the default branch and
+            creates nothing — the work branch appears only when the first export has changes to push"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "bcm-work"
+                                           remote-sync-type :read-write]
+          (let [branches-before @(:branches-atom mock-source)
+                imports-before (t2/count :model/AuditLog :topic "remote-sync-import")]
+            (task.import/jekyll-boot-import!)
+            (testing "no branch created"
+              (is (= branches-before @(:branches-atom mock-source))))
+            (testing "import still ran (from the default branch)"
+              (is (= (inc imports-before) (t2/count :model/AuditLog :topic "remote-sync-import"))))))))))
+
 (deftest jekyll-boot-import-unconfigured-test
   (testing "jekyll-boot-import! no-ops when url/branch are unset (remote-sync-enabled is derived from the url)"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
