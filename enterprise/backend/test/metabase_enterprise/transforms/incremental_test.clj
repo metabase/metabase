@@ -186,16 +186,30 @@
   "Insert new products into the transforms_products table."
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-        values-list (str/join ", "
-                              (map (fn [{:keys [name category price created-at]}]
-                                     (format "('%s', '%s', %s, '%s')" name category price created-at))
-                                   products))
-        insert-sql (format "INSERT INTO %s (%s) VALUES %s"
-                           (sql.u/quote-name driver/*driver* :table schema source-table-name)
-                           (str/join "," (map #(sql.u/quote-name driver/*driver* :field %) ["name" "category" "price" "created_at"]))
-                           values-list)]
-    (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
+        field-sql #(sql.u/quote-name driver/*driver* :field %)]
+    (if (= driver/*driver* :clickhouse)
+      ;; ClickHouse has no auto-increment: a plain INSERT leaves `id` at the column default (0), which
+      ;; falls below any existing integer checkpoint. Assign explicit ids continuing from the current max.
+      (driver/execute-raw-queries!
+       driver/*driver* spec
+       (vec (for [{:keys [name category price created-at]} products]
+              [(format "INSERT INTO %s (%s) SELECT max(%s) + 1, '%s', '%s', %s, '%s' FROM %s"
+                       table-sql
+                       (str/join "," (map field-sql ["id" "name" "category" "price" "created_at"]))
+                       (field-sql "id")
+                       name category price created-at
+                       table-sql)])))
+      (let [values-list (str/join ", "
+                                  (map (fn [{:keys [name category price created-at]}]
+                                         (format "('%s', '%s', %s, '%s')" name category price created-at))
+                                       products))
+            insert-sql (format "INSERT INTO %s (%s) VALUES %s"
+                               table-sql
+                               (str/join "," (map field-sql ["name" "category" "price" "created_at"]))
+                               values-list)]
+        (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))))
 
 (defn- delete-test-products!
   [products]
