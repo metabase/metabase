@@ -102,7 +102,12 @@ export const getSettingsRoutes = (
           />
         )}
       </Route>
-      <Route path={Urls.DATA_APP_URL_SEGMENT} component={IsAdmin}>
+      <Route
+        path={
+          Urls.DATA_APP_URL_SEGMENT
+        } /* do not allow users with "Settings access" permissions to access custom viz pages */
+        element={<IsAdmin />}
+      >
         <Route index component={DataAppsManagePage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />
