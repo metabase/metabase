@@ -1,8 +1,7 @@
 import { PLUGIN_DATA_PERMISSIONS, reinitialize } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-
-import type { SandboxesState } from "./types";
 
 import { initializePlugin } from "./index";
 
@@ -27,20 +26,20 @@ const createPolicy = (
   permission_id: null,
 });
 
-const createSandboxesState = (policies: GroupTableAccessPolicy[]) =>
-  // a state stub with only the slice these selectors read
-  ({
-    plugins: {
-      sandboxingPlugin: {
-        groupTableAccessPolicies: Object.fromEntries(
-          policies.map((policy) => [
-            `${policy.group_id}:${policy.table_id}`,
-            policy,
-          ]),
-        ),
-      },
+const createSandboxesState = (policies: GroupTableAccessPolicy[]) => ({
+  ...createMockState(),
+  plugins: {
+    shared: { attributes: null },
+    sandboxingPlugin: {
+      groupTableAccessPolicies: Object.fromEntries(
+        policies.map((policy) => [
+          `${policy.group_id}:${policy.table_id}`,
+          policy,
+        ]),
+      ),
     },
-  }) as unknown as SandboxesState;
+  },
+});
 
 describe("sandboxes initializePlugin", () => {
   beforeAll(() => {

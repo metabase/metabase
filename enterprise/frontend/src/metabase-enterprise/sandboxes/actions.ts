@@ -4,7 +4,6 @@ import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
-  type UpdateDataPermissionParams,
   type UpdateDataPermissionPayload,
   updateDataPermission,
 } from "metabase/admin/permissions/permissions";
@@ -26,19 +25,15 @@ export const UPDATE_TABLE_SANDBOXING_PERMISSION =
 export const updateTableSandboxingPermission = createThunkAction(
   UPDATE_TABLE_SANDBOXING_PERMISSION,
   (params: RawGroupTableAccessPolicyParams) => async (dispatch) => {
-    const { groupId, ...entityId } = params;
     return dispatch(
-      // the merged route params carry string-typed ids and no view; the
-      // graph code tolerates this shape at runtime
       updateDataPermission({
-        groupId,
+        ...params,
         permission: {
           type: DataPermissionType.ACCESS,
           permission: DataPermission.VIEW_DATA,
         },
         value: DataPermissionValue.SANDBOXED,
-        entityId,
-      } as unknown as UpdateDataPermissionParams),
+      }),
     );
   },
 );

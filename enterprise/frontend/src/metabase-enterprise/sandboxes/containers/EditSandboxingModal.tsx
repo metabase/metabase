@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetGroupTableAccessPolicyQuery,
@@ -17,12 +18,14 @@ import EditSandboxingModal from "../components/EditSandboxingModal";
 
 const EditSandboxingModalContainer = ({
   params,
+  location,
   onClose,
 }: ModalComponentProps) => {
   const dispatch = useDispatch();
 
   const groupId = parseIntParam(params.groupId);
   const tableId = parseIntParam(params.tableId);
+  const databaseId = parseIntParam(params.databaseId);
 
   const {
     data: fetchedPolicy,
@@ -49,7 +52,7 @@ const EditSandboxingModalContainer = ({
       : undefined,
   );
 
-  if (groupId == null || tableId == null) {
+  if (groupId == null || tableId == null || databaseId == null) {
     return <LoadingAndErrorWrapper error={t`Invalid table id`} />;
   }
 
@@ -68,7 +71,17 @@ const EditSandboxingModalContainer = ({
 
   const handleSave = async (policy: GroupTableAccessPolicy) => {
     dispatch(updatePolicy(policy));
-    dispatch(updateTableSandboxingPermission(params));
+    dispatch(
+      updateTableSandboxingPermission({
+        groupId,
+        entityId: { databaseId, schemaName: params.schemaName, tableId },
+        // the modal is mounted under both permissions editor views; only
+        // permission post-actions read the view
+        view: location.pathname.startsWith(GROUPS_BASE_PATH)
+          ? "group"
+          : "database",
+      }),
+    );
     onClose();
   };
 

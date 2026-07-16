@@ -1,3 +1,4 @@
+import type { UpdateDataPermissionParams } from "metabase/admin/permissions/permissions";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
@@ -8,11 +9,10 @@ import type {
   UserAttributeKey,
 } from "metabase-types/api";
 
-// ids as they arrive in the sandboxing modal route params
-export type RawGroupTableAccessPolicyParams = {
-  groupId?: string;
-  tableId?: string;
-};
+export type RawGroupTableAccessPolicyParams = Pick<
+  UpdateDataPermissionParams,
+  "entityId" | "groupId" | "view"
+>;
 
 // route-param strings and UPDATE_DATA_PERMISSION payload numbers template
 // into the same policy key
