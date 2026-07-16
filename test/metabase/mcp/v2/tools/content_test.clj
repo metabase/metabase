@@ -1,5 +1,6 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,6 +38,11 @@
 (defn- content-one
   ([args] (content-one nil args))
   ([token-scopes args] (first (content-results token-scopes args))))
+
+(defn- content-error
+  "The tool-level error text for calls rejected before any per-item work."
+  ([args] (content-error nil args))
+  ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
 (deftest get-content-question-concise-test
   (testing "GHY-4140: a question read returns its concise projection with the type tag"
@@ -187,3 +193,75 @@
           (is (nil? (:error row)))
           (is (= "t1" (:name row)))
           (is (= "t1_out" (-> row :target :name))))))))
+
+(deftest get-content-not-found-is-not-an-existence-oracle-test
+  (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
+            so responses never form an existence oracle across the permission boundary"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id
+                                                    :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms coll-id
+        (mt/with-test-user :rasta
+          (let [unreadable (:error (content-one {:items [{:type "question" :id card-id}]}))
+                missing    (:error (content-one {:items [{:type "question" :id 999999999}]}))]
+            (is (some? unreadable))
+            (is (some? missing))
+            (testing "the two messages are identical apart from the id"
+              (is (= (str/replace unreadable (str card-id) "ID")
+                     (str/replace missing "999999999" "ID"))))))))))
+
+(deftest get-content-fault-isolation-test
+  (testing "GHY-4140: one bad item becomes its own error object and the rest of the batch survives"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (mt/mbql-query venues)}]
+      (mt/with-test-user :crowberto
+        (let [rows (content-results {:items [{:type "question" :id card-id}
+                                             {:type "question" :id 999999999}]})]
+          (is (= 2 (count rows)))
+          (is (= "Good" (:name (first rows))))
+          (is (nil? (:error (first rows))))
+          (testing "the failing item names its type and id alongside the error"
+            (is (= {:type "question" :id 999999999} (select-keys (second rows) [:type :id])))
+            (is (some? (:error (second rows))))))))))
+
+(deftest get-content-card-type-mismatch-test
+  (testing "GHY-4140: asking for a model with type question teaches the actual type"
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+      (mt/with-test-user :crowberto
+        (let [error (:error (content-one {:items [{:type "question" :id card-id}]}))]
+          (is (some? error))
+          (is (re-find #"is a model" error))
+          (is (re-find #"type: \"model\"" error)))))))
+
+(deftest get-content-batch-cap-test
+  (testing "GHY-4140: the batch cap is a tool-level teaching error, not a silent truncation"
+    (mt/with-test-user :crowberto
+      (let [error (content-error {:items (vec (repeat 11 {:type "question" :id 1}))})]
+        (is (re-find #"at most 10" error))
+        (is (re-find #"you passed 11" error))))))
+
+(deftest get-content-extra-scope-gates-test
+  (testing "GHY-4140: alert reads require agent:notification:read on top of the base scope"
+    (notification.tu/with-card-notification
+      [notification {:card              {:dataset_query (mt/mbql-query venues)}
+                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :handlers          []}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one #{"agent:resource:read"}
+                               {:items [{:type "alert" :id (:id notification)}]})]
+          (is (re-find #"agent:notification:read" (:error row))))
+        (testing "granting the scope lets the same read through"
+          (let [row (content-one #{"agent:resource:read" "agent:notification:read"}
+                                 {:items [{:type "alert" :id (:id notification)}]})]
+            (is (nil? (:error row))))))))
+  (testing "GHY-4140: transform reads require agent:transforms:read"
+    (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                              :source {:type  :query
+                                                       :query {:database (mt/id)
+                                                               :type     "query"
+                                                               :query    {:source-table (mt/id :venues)}}}
+                                              :target {:type   :table
+                                                       :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                       :name   "t1_out"}}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one #{"agent:resource:read"} {:items [{:type "transform" :id id}]})]
+          (is (re-find #"agent:transforms:read" (:error row))))))))
