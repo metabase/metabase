@@ -2301,6 +2301,25 @@
           "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
         }
       },
+      "metabase-enterprise.security-center.schema.download-jar-url" : {
+        "description" : "A downloadable JAR for a given fixed version.",
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
+          }
+        },
+        "required" : [ "version", "url" ]
+      },
+      "metabase-enterprise.security-center.schema.download-jar-urls" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-url"
+        }
+      },
       "metabase-enterprise.security-center.schema.match-status" : {
         "type" : "string",
         "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
@@ -12015,60 +12034,59 @@
           }
         } ]
       },
-      "metabase.metabot.schema.message" : {
+      "metabase.metabot.schema.state" : {
         "type" : "object",
         "properties" : {
-          "content" : {
-            "oneOf" : [ {
+          "chart-configs" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "charts" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "link-registry" : {
+            "type" : "object",
+            "additionalProperties" : {
               "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            }
           },
-          "role" : {
-            "$ref" : "#/components/schemas/metabase.metabot.schema.role"
+          "queries" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_call_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+          "todos" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_calls" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "id", "name", "arguments" ]
-              }
-            }, {
-              "type" : "null"
-            } ]
+          "transforms" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           }
-        },
-        "required" : [ "role" ]
-      },
-      "metabase.metabot.schema.messages" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.metabot.schema.message"
         }
       },
-      "metabase.metabot.schema.role" : {
-        "type" : "string",
-        "enum" : [ "system", "user", "assistant", "tool" ]
+      "metabase.metabot.schema.state-map-key" : {
+        "description" : "A dynamic state-map key, normalized to its canonical string representation.",
+        "anyOf" : [ {
+          "type" : "string"
+        }, {
+          "type" : "string"
+        } ]
       },
       "metabase.metrics.api.BreakoutValuesResponse" : {
         "type" : "object",
@@ -28753,6 +28771,32 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "id" : {
+                            "type" : "string"
+                          },
+                          "parent_message_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "role" : {
+                            "type" : "string",
+                            "enum" : [ "user", "agent" ]
+                          },
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "parent_message_id", "role", "type" ]
+                      }
+                    },
                     "ip_address" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -28781,16 +28825,9 @@
                       }, {
                         "type" : "null"
                       } ]
-                    },
-                    "chat_messages" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : { }
-                      }
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
                 }
               }
             }
@@ -31177,6 +31214,9 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "download_jar_urls" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-urls"
+                          },
                           "published_at" : {
                             "type" : "string",
                             "format" : "date-time"
@@ -31253,7 +31293,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions" ]
+                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions", "download_jar_urls" ]
                       }
                     },
                     "last_checked_at" : {
@@ -37577,6 +37617,24 @@
                     "type" : "string",
                     "minLength" : 1
                   },
+                  "parent_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "retry_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "metabot_id" : {
                     "type" : "string"
                   },
@@ -37596,6 +37654,15 @@
                   "context" : {
                     "$ref" : "#/components/schemas/metabase.metabot.context.context"
                   },
+                  "user_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "debug" : {
                     "oneOf" : [ {
                       "type" : "boolean"
@@ -37606,9 +37673,11 @@
                   "profile_id" : {
                     "type" : "string"
                   },
-                  "history" : {
+                  "assistant_message_id" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.metabot.schema.messages"
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     }, {
                       "type" : "null"
                     } ]
@@ -37617,26 +37686,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : {
-                      "chart-configs" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "charts" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "queries" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      }
-                    }
                   }
                 },
-                "required" : [ "message", "context", "conversation_id", "history", "state" ]
+                "required" : [ "message", "context", "conversation_id" ]
               }
             }
           }
@@ -37774,6 +37826,13 @@
                     "created_at" : {
                       "type" : "string",
                       "format" : "date-time"
+                    },
+                    "state" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "summary" : {
                       "oneOf" : [ {
