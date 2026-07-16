@@ -52,7 +52,7 @@
       (listener messages)
       (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))
       nil
-      (catch Exception e
+      (catch Throwable e
         (log/error e (str "Error handling " (namespace channel) " message") labels)
         (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "error"))
         e)
