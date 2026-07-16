@@ -118,9 +118,6 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    // The transient "Saved" button label is cleared as soon as the post-save
-    // refetch of cache configs reinitializes the form, so don't assert on it —
-    // the updated launcher label below is the real signal that the save landed.
     expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
       "aria-label",
       "Edit default policy (currently: No caching)",
@@ -178,9 +175,6 @@ describe("StrategyEditorForDatabases", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    // The transient "Saved" button label is cleared as soon as the post-save
-    // refetch of cache configs reinitializes the form, so don't assert on it —
-    // the updated launcher label below is the real signal that the save landed.
     expect(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
     ).toHaveAttribute(

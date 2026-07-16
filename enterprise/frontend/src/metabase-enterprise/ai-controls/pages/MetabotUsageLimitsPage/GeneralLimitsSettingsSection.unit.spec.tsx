@@ -45,8 +45,6 @@ async function setup({
     storeInitialState: { settings: createMockSettingsState(settingValues) },
   });
 
-  // Wait for the section to render before returning so tests don't each repeat
-  // a load gate.
   await screen.findByText("How do you want to limit AI usage?");
 }
 
