@@ -239,6 +239,13 @@ export function ExplicitSize<T>({
           const box = entry.borderBoxSize?.[0];
           width = box ? box.inlineSize : entry.contentRect.width;
           height = box ? box.blockSize : entry.contentRect.height;
+        } else if (
+          this._printMediaQuery?.matches &&
+          element instanceof HTMLElement
+        ) {
+          /* Print layout dimensions must exclude browser zoom transforms. */
+          width = element.offsetWidth;
+          height = element.offsetHeight;
         } else {
           const rect = element.getBoundingClientRect();
           width = rect.width;

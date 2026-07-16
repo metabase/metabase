@@ -1026,7 +1026,6 @@
            app-db
            collections
            contextual-interestingness
-           documents
            events
            interestingness
            lib
@@ -1050,7 +1049,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
-                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse
@@ -1902,8 +1900,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
-                    :model/StoredResult
-                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions
@@ -1946,7 +1942,6 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
-              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -1967,6 +1962,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -3197,7 +3193,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3630,6 +3625,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models

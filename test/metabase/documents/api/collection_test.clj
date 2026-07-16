@@ -112,56 +112,6 @@
           (testing "Non-archived documents do not appear in trash"
             (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))
 
-(deftest archived-exploration-documents-appear-in-trash-with-flag
-  (testing "Thread-attached documents are hidden from collection listings by default,"
-    (testing "but appear in the Trash when show_exploration_documents=true (mirrors dashboard-questions behavior)."
-      (mt/with-temp [:model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
-                                                       :name "Test Exploration"}
-                     :model/ExplorationThread {thread-id :id} {:exploration_id expl-id
-                                                               :position 0}
-                     :model/Document {expl-doc-id :id} {:collection_id nil
-                                                        :name "Trashed Thread Doc"
-                                                        :exploration_thread_id thread-id
-                                                        :archived true
-                                                        :archived_directly true}]
-        (let [trash-id (collection/trash-collection-id)]
-          (testing "Without the flag, the trashed thread-attached document is hidden"
-            (let [items (mt/user-http-request :rasta :get 200
-                                              (format "collection/%d/items" trash-id))]
-              (is (not (some #(= expl-doc-id (:id %)) (:data items))))))
-          (testing "With show_exploration_documents=true, it appears with restore/delete affordances"
-            (let [items (mt/user-http-request :rasta :get 200
-                                              (format "collection/%d/items?show_exploration_documents=true" trash-id))
-                  hit   (first (filter #(= expl-doc-id (:id %)) (:data items)))]
-              (is (some? hit))
-              (is (= "document" (:model hit)))
-              (is (true? (:can_restore hit)))
-              (is (true? (:can_delete hit))))))))))
-
-(deftest thread-attached-documents-stay-hidden-in-collections
-  (testing "Non-archived thread-attached documents are hidden from a regular collection's items by default"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
-                                                     :name "Coll Exploration"}
-                   :model/ExplorationThread {thread-id :id} {:exploration_id expl-id
-                                                             :position 0}
-                   :model/Document {plain-doc-id :id} {:collection_id coll-id
-                                                       :name "Plain Doc"}
-                   :model/Document {thread-doc-id :id} {:collection_id coll-id
-                                                        :name "Thread Doc"
-                                                        :exploration_thread_id thread-id}]
-      (testing "Without the flag, only the plain document is listed"
-        (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
-              ids   (set (map :id (:data items)))]
-          (is (contains? ids plain-doc-id))
-          (is (not (contains? ids thread-doc-id)))))
-      (testing "With show_exploration_documents=true, both are listed"
-        (let [items (mt/user-http-request :rasta :get 200
-                                          (format "collection/%d/items?show_exploration_documents=true" coll-id))
-              ids   (set (map :id (:data items)))]
-          (is (contains? ids plain-doc-id))
-          (is (contains? ids thread-doc-id)))))))
-
 (deftest document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}

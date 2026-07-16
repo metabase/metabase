@@ -1,3 +1,6 @@
-export { SearchResults, SearchLoadingSpinner } from "./SearchResults";
+export {
+  EmptyStateContainer,
+  SearchLoadingSpinner,
+  SearchResults,
+} from "./SearchResults";
 export type { SearchResultsFooter } from "./SearchResults";
-export * from "./SearchResults.styled";

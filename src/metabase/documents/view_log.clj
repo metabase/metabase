@@ -65,10 +65,7 @@
       (view-log/increment-view-counts! :model/Document object-id)
       (update-document-last-viewed-at! object-id)
       (view-log/record-views! (view-log/generate-view :model :model/Document event))
-      ;; Exploration documents aren't first-class content — they're surfaced only through their
-      ;; owning Exploration, and are hidden from search and collection listings. Skip recording
-      ;; recent views for them so they don't crowd out real document views in the bucket cap.
-      (when (nil? (t2/select-one-fn :exploration_thread_id :model/Document :id object-id))
-        (activity-feed/update-users-recent-views! user-id :model/Document object-id :view))
+      ;; Update recent views alongside existing view log functionality
+      (activity-feed/update-users-recent-views! user-id :model/Document object-id :view)
       (catch Throwable e
         (log/warnf e "Failed to process document view event. %s" topic)))))
