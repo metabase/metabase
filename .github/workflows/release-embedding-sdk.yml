@@ -387,13 +387,11 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          npm publish --tag 63-beta
+          npm publish --tag 63-stable
 
   # When a newer release branch goes gold, remove this entire job from this branch.
   tag-latest:
     name: Tag npm release as latest
-    # Pre-gold: remove `if: false` once this branch becomes gold.
-    if: false
     needs: [publish-npm, determine-sdk-version]
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
