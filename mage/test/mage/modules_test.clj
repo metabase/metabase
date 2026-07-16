@@ -478,6 +478,7 @@
                  transforms.base      {:ns-prefix "metabase.transforms-base"}
                  transforms.base.deep {}
                  transforms.python    {:ns-prefix "metabase.transforms-python"}
+                 enterprise-tools     {}
                  enterprise/transforms {}
                  enterprise/billing   {}}
         tree   (#'mage.modules/module-display-tree config)
@@ -487,7 +488,8 @@
                                  (#'mage.modules/tree-node-lines config false [segment] node)))
                        (#'mage.modules/sorted-children tree)))]
     (testing "alphabetical roots, enterprise last among siblings, dotted display names, stars on :ns-prefix"
-      (is (= ["lib"
+      (is (= ["enterprise-tools"
+              "lib"
               "- lib.be *"
               "transforms"
               "- transforms.base *"

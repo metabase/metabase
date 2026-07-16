@@ -363,7 +363,11 @@
 (defn- sorted-children
   "Child entries of a tree node, alphabetical except `enterprise` always sorts last among its siblings."
   [node]
-  (sort-by (fn [[segment _]] [(if (str/starts-with? segment "enterprise") 1 0) segment])
+  (sort-by (fn [[segment _]] [(if (or (= segment "enterprise")
+                                      (str/starts-with? segment "enterprise/"))
+                                1
+                                0)
+                              segment])
            (:children node)))
 
 (defn- tree-node-lines
