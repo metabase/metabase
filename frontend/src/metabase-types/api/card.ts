@@ -554,6 +554,7 @@ export type InvalidCardRequest = {
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
+  dashboard_id?: DashboardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];

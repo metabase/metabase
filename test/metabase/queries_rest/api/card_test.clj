@@ -201,6 +201,46 @@
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
+(deftest dashboard-context-metric-query-uses-default-dimension-test
+  (testing "POST card query endpoints use the metric's default dimension in dashboard context (UXW-4769)"
+    (mt/dataset test-data
+      (let [mp           (mt/metadata-provider)
+            orders       (lib.metadata/table mp (mt/id :orders))
+            created-at   (lib.metadata/field mp (mt/id :orders :created_at))
+            product-id   (lib.metadata/field mp (mt/id :orders :product_id))
+            dimension-id (str (random-uuid))]
+        (mt/with-temp [:model/Card {metric-id :id}
+                       {:name               "Orders metric"
+                        :type               :metric
+                        :display            :line
+                        :database_id        (mt/id)
+                        :table_id           (mt/id :orders)
+                        :dataset_query      (-> (lib/query mp orders)
+                                                (lib/aggregate (lib/count))
+                                                (lib/breakout (lib/with-temporal-bucket created-at :month)))
+                        :dimensions         [{:id             dimension-id
+                                              :display-name   "Product ID"
+                                              :effective-type :type/Integer
+                                              :semantic-type  :type/FK
+                                              :status         :status/active
+                                              :sources        [{:type :field, :field-id (mt/id :orders :product_id)}]
+                                              :default        true}]
+                        :dimension_mappings [{:type         :table
+                                              :table-id     (mt/id :orders)
+                                              :dimension-id dimension-id
+                                              :target       (lib/ref product-id)}]}
+                       :model/Dashboard {dashboard-id :id} {}]
+          (let [path            (format "card/%d/query" metric-id)
+                canonical      (mt/user-http-request :crowberto :post 202 path)
+                stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
+            (is (= "CREATED_AT" (-> canonical mt/cols first :name)))
+            (doseq [query-path [path (format "card/pivot/%d/query" metric-id)]]
+              (let [result (mt/user-http-request :crowberto :post 202 query-path {:dashboard_id dashboard-id})]
+                (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
+                (is (= stored-metadata
+                       (t2/select-one-fn :result_metadata :model/Card :id metric-id)))))
+            (mt/user-http-request :crowberto :post 404 path {:dashboard_id Integer/MAX_VALUE})))))))
+
 (deftest execute-card-with-default-parameters-test
   (testing "GET /api/card/:id/query with parameters with default values"
     (mt/with-temp

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.permissions.metric :as permissions.metric]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -183,3 +184,13 @@
       (testing "both mappings are preserved"
         (is (= #{"resolvable" "unresolvable"}
                (into #{} (map :dimension-id) (:dimension_mappings result))))))))
+
+(deftest dimension-mapping-source-field-permissions-test
+  (testing "A dimension mapping requires access to its FK source field (UXW-4769)"
+    (let [mapping {:target [:field {:source-field (mt/id :orders :user_id)}
+                            (mt/id :people :state)]}]
+      (mt/with-test-user :rasta
+        (is (true? (permissions.metric/can-use-dimension-mapping? mapping))))
+      (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:visibility_type :sensitive}
+        (mt/with-test-user :rasta
+          (is (false? (permissions.metric/can-use-dimension-mapping? mapping))))))))

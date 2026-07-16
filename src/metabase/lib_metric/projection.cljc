@@ -180,11 +180,12 @@
                units)))
 
 (defn- mark-unit [options option-key unit]
-  (perf/mapv (fn [option]
-               (cond-> option
-                 (:default option)          (dissoc :default)
-                 (= (:unit option) unit)    (assoc option-key true)))
-             options))
+  (cond->> options
+    (perf/some #(= (:unit %) unit) options)
+    (perf/mapv (fn [option]
+                 (cond-> option
+                   (contains? option option-key) (dissoc option-key)
+                   (= (:unit option) unit)       (assoc option-key true))))))
 
 (defn- available-temporal-buckets-for-type
   "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
@@ -212,7 +213,7 @@
                                      (:temporal-unit (second proj))))
                                  flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (available-temporal-buckets-for-type effective-type :month selected-unit)
+      (available-temporal-buckets-for-type effective-type nil selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
@@ -329,6 +330,31 @@
                           (if binning-val
                             (assoc opts :binning binning-val)
                             (dissoc opts :binning))))))
+
+(defn- dimension-reference-with-default-options
+  [definition dimension]
+  (let [dimension-ref (lib-metric.dimension/reference dimension)]
+    (if-let [bucket (perf/some #(when (:default %) %)
+                               (available-temporal-buckets definition dimension))]
+      (with-temporal-bucket dimension-ref bucket)
+      (if-let [binning-option (perf/some #(when (:default %) %)
+                                         (available-binning-strategies definition dimension))]
+        (with-binning dimension-ref binning-option)
+        dimension-ref))))
+
+(mu/defn project-dimension :- ::lib-metric.schema/metric-definition
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension  :- ::lib-metric.schema/metadata-dimension]
+  (project definition (dimension-reference-with-default-options definition dimension)))
+
+(defn dimension-breakout
+  "Return the dimension's mapped field reference with its default projection options, or nil when it has no mapping."
+  [definition dimension]
+  (when-let [target (perf/get-in dimension [:dimension-mapping :target])]
+    (let [dimension-ref (dimension-reference-with-default-options definition dimension)
+          options       (perf/select-keys (second dimension-ref) [:temporal-unit :binning])]
+      (lib/update-options (lib/ensure-uuid target) #(merge % options)))))
 
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 

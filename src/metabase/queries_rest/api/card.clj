@@ -24,6 +24,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
@@ -883,6 +884,13 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
+(defn- card-for-query
+  [card-id dashboard-id]
+  (let [card (api/check-404 (t2/select-one :model/Card card-id))]
+    (when dashboard-id
+      (api/read-check :model/Dashboard dashboard-id))
+    card))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -897,18 +905,18 @@
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
-  ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
-  ;;
-  ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
-  ;;
-  ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
+        card             (card-for-query resolved-card-id dashboard_id)]
     (qp.card/process-query-for-card
-     (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
+     card :api
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :context (if collection_preview :collection :question)
+     :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+     :context (cond
+                collection_preview :collection
+                dashboard_id       :dashboard
+                :else              :question)
      :middleware   {:process-viz-settings? false})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1018,13 +1026,18 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters ignore_cache]
+   {:keys [parameters ignore_cache dashboard_id]
     :or   {ignore_cache false}} :- [:map
-                                    [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
-                                  :parameters   parameters
-                                  :qp           qp.pivot/run-pivot-query
-                                  :ignore-cache ignore_cache))
+                                    [:ignore_cache {:optional true} [:maybe :boolean]]
+                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [card (card-for-query card-id dashboard_id)]
+    (qp.card/process-query-for-card card :api
+                                    :parameters   parameters
+                                    :qp           qp.pivot/run-pivot-query
+                                    :ignore-cache ignore_cache
+                                    :dashboard-id dashboard_id
+                                    :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+                                    :context      (if dashboard_id :dashboard :question))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -59,6 +59,7 @@
      add-dimensions
      addable-pairs
      dimension
+     dimension-target->field-id
      dimensionable-query
      dimensions-changed?
      dimensions-for-measure
@@ -87,6 +88,8 @@
     [lib-metric.projection
      add-projection-positions
      default-breakout-dimensions
+     dimension-breakout
+     project-dimension
      projectable-dimensions])
    :cljs
    (do
@@ -104,6 +107,7 @@
      (def source-measure-id "See [[lib-metric.definition/source-measure-id]]." lib-metric.definition/source-measure-id)
      (def source-metric-id "See [[lib-metric.definition/source-metric-id]]." lib-metric.definition/source-metric-id)
      (def dimension "See [[lib-metric.dimension/dimension]]." lib-metric.dimension/dimension)
+     (def dimension-target->field-id "See [[lib-metric.dimension/dimension-target->field-id]]." lib-metric.dimension/dimension-target->field-id)
      (def dimensionable-query "See [[lib-metric.dimension/dimensionable-query]]." lib-metric.dimension/dimensionable-query)
      (def dimensions-for-measure "See [[lib-metric.dimension/dimensions-for-measure]]." lib-metric.dimension/dimensions-for-measure)
      (def dimensions-for-metric "See [[lib-metric.dimension/dimensions-for-metric]]." lib-metric.dimension/dimensions-for-metric)
@@ -117,4 +121,6 @@
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)
      (def add-projection-positions "See [[lib-metric.projection/add-projection-positions]]." lib-metric.projection/add-projection-positions)
      (def default-breakout-dimensions "See [[lib-metric.projection/default-breakout-dimensions]]." lib-metric.projection/default-breakout-dimensions)
+     (def dimension-breakout "See [[lib-metric.projection/dimension-breakout]]." lib-metric.projection/dimension-breakout)
+     (def project-dimension "See [[lib-metric.projection/project-dimension]]." lib-metric.projection/project-dimension)
      (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)))

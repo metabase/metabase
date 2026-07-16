@@ -471,6 +471,13 @@ export function project(
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
 }
 
+export function projectDimension(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): MetricDefinition {
+  return LibMetric.projectDimension(definition, dimension) as MetricDefinition;
+}
+
 export function projectionDimension(
   definition: MetricDefinition,
   dimension: ProjectionClause | DimensionMetadata,

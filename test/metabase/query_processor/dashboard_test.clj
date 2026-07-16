@@ -7,9 +7,11 @@
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.driver.common :as driver.common]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.test :as qp]
@@ -35,6 +37,33 @@
                                            (t2/select-one :model/DashboardCard :id dashcard-id)
                                            card-id
                                            params))
+
+(defn- count-of-orders-by-created-at-query []
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+    (-> (lib/query mp orders)
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/with-temporal-bucket created-at :month)))))
+
+(defn- set-default-metric-dimension! [metric-id display-name]
+  (metrics/sync-dimensions! :metadata/metric metric-id)
+  (let [metric    (t2/select-one :model/Card :id metric-id)
+        dimension (some #(when (= display-name (:display-name %)) %) (:dimensions metric))
+        dimensions (mapv #(if (= (:id dimension) (:id %))
+                            (assoc % :default true)
+                            (dissoc % :default))
+                         (:dimensions metric))]
+    (is (some? dimension) (str "Missing metric dimension " display-name))
+    (when dimension
+      (t2/update! :model/Card metric-id {:dimensions dimensions}))))
+
+(defn- default-metric-dimension [metric]
+  (let [provider (lib-metric/metadata-provider)]
+    (#'qp.dashboard/default-metric-dimension
+     provider
+     (lib/query provider (:dataset_query metric))
+     metric)))
 
 (deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -125,6 +154,110 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
+
+(deftest dashboard-metric-uses-default-curated-dimension-test
+  (testing "A dashboard metric uses its active curated default dimension (UXW-4769)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {metric-id :id} {:name                   "Orders metric"
+                                                  :type                   :metric
+                                                  :display                :line
+                                                  :database_id            (mt/id)
+                                                  :table_id               (mt/id :orders)
+                                                  :dataset_query          (count-of-orders-by-created-at-query)
+                                                  :visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                     :model/Dashboard {dashboard-id :id} {:parameters []}
+                     :model/DashboardCard {dashcard-id :id} {:card_id                metric-id
+                                                             :dashboard_id           dashboard-id
+                                                             :visualization_settings {:card.title "Dashboard metric"}}]
+        (testing "without a curated default, the saved breakout is unchanged"
+          (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+            (is (= "CREATED_AT" (-> result mt/cols first :name)))))
+        (let [stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
+          (set-default-metric-dimension! metric-id "Product ID")
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %) (dissoc :sources))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+          (testing "missing dimension sources are derived from the mapping"
+            (let [metric    (t2/select-one :model/Card :id metric-id)
+                  dimension (mt/as-admin (default-metric-dimension metric))]
+              (is (= [{:type :field, :field-id (mt/id :orders :product_id)}]
+                     (:sources dimension)))))
+          (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+            (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
+            (is (= 200 (count (mt/rows result)))))
+          (testing "the rewritten query does not replace the metric's saved result metadata"
+            (is (= stored-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %)
+                                    (assoc :sources [{:type :field, :field-id (mt/id :orders :tax)}]))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+          (testing "a curated default hidden from the current user is ignored"
+            (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:visibility_type :sensitive}
+              (mt/with-test-user :rasta
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (default-metric-dimension metric)))))))
+          (testing "a curated default that is no longer projectable is ignored"
+            (let [metric     (t2/select-one :model/Card :id metric-id)
+                  default-id (some (fn [dimension]
+                                     (when (:default dimension)
+                                       (:id dimension)))
+                                   (:dimensions metric))
+                  mappings   (mapv #(cond-> %
+                                      (= (:dimension-id %) default-id)
+                                      (assoc-in [:target 1 :source-field] (mt/id :orders :tax)))
+                                   (:dimension_mappings metric))]
+              (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
+          (testing "a curated default with a missing mapped field is ignored"
+            (let [metric     (t2/select-one :model/Card :id metric-id)
+                  default-id (some (fn [dimension]
+                                     (when (:default dimension)
+                                       (:id dimension)))
+                                   (:dimensions metric))
+                  mappings   (mapv #(cond-> %
+                                      (= (:dimension-id %) default-id)
+                                      (assoc :target [:field {} Integer/MAX_VALUE]))
+                                   (:dimension_mappings metric))]
+              (mt/with-temp-vals-in-db :model/Card metric-id {:dimension_mappings mappings}
+                (let [metric (t2/select-one :model/Card :id metric-id)]
+                  (is (nil? (mt/as-admin (default-metric-dimension metric))))))))
+          (let [metric     (t2/select-one :model/Card :id metric-id)
+                dimensions (mapv #(cond-> %
+                                    (:default %) (assoc :status :status/orphaned))
+                                 (:dimensions metric))]
+            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+          (testing "an orphaned curated default falls back to the saved breakout"
+            (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
+              (is (= "CREATED_AT" (-> result mt/cols first :name))))))))))
+
+(deftest native-dashboard-metric-keeps-saved-query-test
+  (testing "A native dashboard metric keeps its saved query because it cannot be reprojected (UXW-4769)"
+    (let [dimension-id (str (random-uuid))]
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:name               "Native metric"
+                      :type               :metric
+                      :database_id        (mt/id)
+                      :dataset_query      (mt/native-query {:query "SELECT COUNT(*) AS count FROM ORDERS"})
+                      :dimensions         [{:id             dimension-id
+                                            :display-name   "Count"
+                                            :effective-type :type/Integer
+                                            :status         :status/active
+                                            :default        true}]
+                      :dimension_mappings [{:type         :table
+                                            :dimension-id dimension-id
+                                            :target       [:field {:base-type :type/Integer
+                                                                   :lib/uuid  (str (random-uuid))}
+                                                           "count"]}]}]
+        (let [original (t2/select-one :model/Card :id metric-id)
+              card     (mt/as-admin
+                         (qp.dashboard/card-with-default-metric-dimension original))]
+          (is (= (:dataset_query original) (:dataset_query card))))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"

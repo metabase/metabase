@@ -656,6 +656,12 @@
   ([definition dimension-ref source-instance]
    (lib-metric.projection/project-for-source definition dimension-ref (->source-instance source-instance))))
 
+(defn ^:export projectDimension
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition dimension]
+  (assert-single-source! definition)
+  (lib-metric.projection/project-dimension definition dimension))
+
 (defn ^:export projectionDimension
   "Get the dimension metadata for a projection clause.
    Returns the dimension or null if not found."
