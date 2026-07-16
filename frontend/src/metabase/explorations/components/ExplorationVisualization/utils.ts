@@ -51,7 +51,6 @@ interface ExplorationQueryWithDataset extends ExplorationQuery {
 
 interface BuildSeriesGroupParams {
   queriesWithDatasets: ExplorationQueryWithDataset[];
-  selectedTimelineId: TimelineId | null;
 }
 
 export interface LegendItem {
@@ -68,7 +67,6 @@ export interface SeriesGroup {
 
 export function buildSeriesGroup({
   queriesWithDatasets,
-  selectedTimelineId,
 }: BuildSeriesGroupParams): SeriesGroup {
   let isTimeseries = false;
   let stackCount: number | undefined;
@@ -100,7 +98,6 @@ export function buildSeriesGroup({
         queryWithDataset,
         queriesWithDatasets.length,
         queriesWithSegments.length,
-        selectedTimelineId,
       );
       isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
       // this works because we should always get the same stackCount for all queries in a group
@@ -153,7 +150,6 @@ function getDisplay(
   queryWithDataset: ExplorationQueryWithDataset,
   numQueries: number,
   numSegmentQueries: number,
-  selectedTimelineId: TimelineId | null,
 ): GetDisplayResult {
   const { cols, rows } = queryWithDataset.dataset.data;
   const isTimeseries = cols.some(isDate);
@@ -184,8 +180,6 @@ function getDisplay(
         // the page header tells you the breakout column, not the date column
         // so we need an x axis label here
         "graph.x_axis.labels_enabled": true,
-        "timeline.selected_timeline_ids":
-          selectedTimelineId != null ? [selectedTimelineId] : undefined,
       },
       stackCount: shouldStack ? breakoutValues.size : undefined,
       isTimeseries,
@@ -199,8 +193,6 @@ function getDisplay(
       display: "line",
       settings: {
         "graph.split_panels": shouldStack,
-        "timeline.selected_timeline_ids":
-          selectedTimelineId != null ? [selectedTimelineId] : undefined,
       },
       stackCount: shouldStack ? numQueries : undefined,
       isTimeseries,

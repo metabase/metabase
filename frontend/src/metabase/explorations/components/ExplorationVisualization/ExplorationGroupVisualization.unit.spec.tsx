@@ -11,12 +11,14 @@ import type {
   ExplorationBlockNodeType,
   ExplorationQuery,
   Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
   createMockTimeline,
+  createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 
@@ -181,6 +183,7 @@ interface SetupOpts {
   errors?: Map<number, unknown>;
   availableTimelines?: Timeline[];
   selectedTimelineId?: number | null;
+  timelineEvents?: TimelineEvent[];
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
@@ -193,6 +196,7 @@ function setup({
   errors,
   availableTimelines = [],
   selectedTimelineId = null,
+  timelineEvents = [],
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
@@ -223,6 +227,7 @@ function setup({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
+          timelineEvents={timelineEvents}
           commentDrafts={{}}
           setCommentDrafts={jest.fn()}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
@@ -369,6 +374,31 @@ describe("ExplorationGroupVisualization", () => {
     expect(
       screen.getByRole("button", { name: "Select timeline" }),
     ).toBeInTheDocument();
+  });
+
+  it("passes selected timeline events to Visualization for timeseries charts", () => {
+    const releasesEvent = createMockTimelineEvent({
+      id: 10,
+      name: "Releases event",
+      timeline_id: 42,
+    });
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      availableTimelines: [
+        createMockTimeline({
+          id: 42,
+          name: "Releases",
+          events: [releasesEvent],
+        }),
+      ],
+      selectedTimelineId: 42,
+      timelineEvents: [releasesEvent],
+    });
+
+    expect(lastVisualizationProps?.timelineEvents).toEqual([releasesEvent]);
   });
 
   it("does not show the timeline dropdown for non-timeseries charts", () => {

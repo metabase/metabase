@@ -124,7 +124,6 @@ const smallTimeFacetDataset = makeDataset(
 function buildSeriesGroupFor(query: ExplorationQuery, dataset: Dataset) {
   return buildSeriesGroup({
     queriesWithDatasets: [{ ...query, dataset }],
-    selectedTimelineId: null,
   });
 }
 
@@ -659,7 +658,6 @@ describe("buildSeriesGroup", () => {
     );
     const group = buildSeriesGroup({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
-      selectedTimelineId: null,
     });
     expect(group.series[0].card.display).toBe("table");
   });
@@ -676,7 +674,6 @@ describe("buildSeriesGroup", () => {
           dataset: stateDataset,
         },
       ],
-      selectedTimelineId: null,
     });
     const ramp1 = group.series[0].card.visualization_settings["map.colors"];
     const ramp2 = group.series[1].card.visualization_settings["map.colors"];

@@ -27,6 +27,7 @@ import type {
   ExplorationQuery,
   ExplorationThread,
   Timeline,
+  TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -517,6 +518,16 @@ export function ExplorationPage({
     return getMostInterestingTimelineId(selectedQueries, availableTimelineIds);
   }, [selectedPage, location.query, selectedQueries, availableTimelineIds]);
 
+  const timelineEvents: TimelineEvent[] = useMemo(() => {
+    if (selectedTimelineId == null) {
+      return [];
+    }
+    return (
+      availableTimelines.find((timeline) => timeline.id === selectedTimelineId)
+        ?.events ?? []
+    );
+  }, [availableTimelines, selectedTimelineId]);
+
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
       // Update the `timeline` URL query param while preserving the
@@ -622,6 +633,7 @@ export function ExplorationPage({
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
+              timelineEvents={timelineEvents}
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
