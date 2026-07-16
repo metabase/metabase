@@ -42,7 +42,7 @@ export const CustomCodeBlock = CodeBlock.extend<
 
   addProseMirrorPlugins() {
     return [
-      createProseMirrorPlugin(CodeBlock.name),
+      createProseMirrorPlugin("codeBlock"),
       // this plugin creates a code block for pasted content from VS Code
       // we can also detect the copied code language
       //

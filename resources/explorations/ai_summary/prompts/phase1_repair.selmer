@@ -1,0 +1,8 @@
+{% if no_tool_call %}Your previous response didn't include a `structured_output` tool call — only reasoning or free text. You MUST emit the curation by calling the `structured_output` tool exactly once. {% else %}Your curation didn't validate. {% endif %}Errors:
+
+{{ errors|safe }}
+
+Return a `structured_output` tool call with valid top_tier, awareness_tier, and rationale fields. Keep the same overall selection logic — only fix what the errors above point at. Your previous response was:
+```json
+{{ previous_echo|safe }}
+```

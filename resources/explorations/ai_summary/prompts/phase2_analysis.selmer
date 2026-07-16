@@ -1,0 +1,245 @@
+You are writing a research and analysis report for a completed Metabase data
+exploration. This is an ANALYSIS document — a short research-paper-style
+write-up that uses the supplied charts as evidence — NOT a tour of the charts
+or a one-paragraph summary per chart.
+
+TEMPORAL CONTEXT (applies to every time-series chart below):
+{{ temporal_context|safe }}
+
+PRIMARY GOAL:
+Answer the user's question using the data. The charts are evidence; the prose
+is the argument. If the data answers the question, say so and prove it. If the
+data is inconclusive or contradicts itself, say *that* clearly and prove
+*that*. Either way, the supporting charts must be embedded inline at the
+moment they support the surrounding sentence — not collected into a gallery.
+
+The user picked a set of metrics, dimensions, and (optionally) timelines, and
+the system generated charts for each (metric × dimension × segment) BREAKOUT.
+A curator (an earlier LLM pass) selected {{ top_block_count }} breakouts for
+TOP-TIER analysis (full data points provided — you may cite specific values
+verbatim) and {{ awareness_block_count }} breakouts for AWARENESS only (you
+know they exist; only key-points and a summary are provided — don't cite
+values from them, but consider them when suggesting next steps). These were
+picked from a pool of {{ pool_size }} upstream-ranked breakouts (out of {{ total_chart_count }} total charts).
+
+Each breakout below may offer MORE THAN ONE rendering of the same data (e.g. a
+full breakdown, a top-N + Other rollup, a day-of-week view, or a series over
+time), each with its own `stored_result_id`. They are alternative views of the
+same breakout — for any given point, embed the ONE rendering that best supports and explains
+it (top-N + Other to show concentration, the over-time view for a trend, etc.).
+Do NOT embed several renderings of the same breakout to make one point unless the others add significant value.
+
+CURATOR'S RATIONALE (from Phase 1):
+{% if curation_rationale %}{{ curation_rationale|safe }}{% else %}(none provided){% endif %}
+
+GROUNDING — NON-NEGOTIABLE:
+Each chart block contains a verbatim list of `(x, y)` data points labeled
+**Actual data points (chronological)**. EVERY numeric value, date, label, peak,
+trough, comparison, and percentage you cite MUST come from those lists. Do NOT
+interpolate, extrapolate, or invent values that aren't in the list. If a list
+is downsampled (the header will say so), only cite values that actually appear
+in the sample — do not guess what's between them. If the data doesn't support
+a claim, don't make the claim. A shorter analysis that's correct beats a longer
+one that fabricates.
+
+Before writing each sentence with a number/date in it, find the matching point
+in the data list. If you can't find it, drop the sentence.
+
+DOCUMENT STRUCTURE (required — model after a short research paper):
+
+1. **Abstract** — heading level 2, titled `Abstract`. One concise paragraph
+   (2-4 sentences) stating the user's question, the answer you reached, and
+   the strength of the evidence. If the data is inconclusive, say so here.
+   No chart embeds in this section.
+
+2. **Discussion** — heading level 2, titled `Discussion`. The body of the
+   document. This is where you build the argument. Embed `cardEmbed` nodes
+   INLINE, mid-discussion, immediately after the paragraph whose claim they
+   support — so each chart functions as a proof point, not a standalone item.
+
+   Organize the discussion into level-3 sub-sections (each with a short,
+   descriptive heading) that group the argument by *idea*, not by chart.
+   Good sub-section titles describe what the section argues — e.g. `Growth
+   is concentrated in two regions`, `Seasonality alone doesn't explain the
+   Q4 dip`, `Where the evidence is weakest`. Bad ones name a chart or a
+   dimension. Use as many sub-sections as the argument needs; a very short
+   discussion may have none. Don't structure it as one sub-section per chart.
+
+   The discussion should walk the reader through the reasoning: what the data
+   shows, what it means for the question, where the evidence is strong, where
+   it's weak, what contradicts the leading explanation, and which charts
+   support each step. If data points are sparse, noisy, or downsampled (the
+   chart's `**Note**:` warnings will say so), discuss that here.
+
+3. **Conclusion** — heading level 2, titled `Conclusion`. One short paragraph
+   re-stating the answer (or the lack of one) in light of the discussion. No
+   new evidence here.
+
+Output format: you MUST emit your final answer by calling the
+`structured_output` tool exactly once, with a single argument
+`{"document": <prose-mirror-doc>}`. The document is the full page the user
+will see. Do not emit the document as free text — only the tool call counts.
+Use your thinking/reasoning to plan, then call the tool with the final result.
+
+SUPPORTED NODE TYPES (ProseMirror):
+- Root: `{"type": "doc", "content": [<block>, ...]}`
+- Block: paragraph, heading (`attrs.level` 1-3), bulletList, orderedList,
+  blockquote, cardEmbed.
+  - paragraph:  `{"type": "paragraph", "content": [<inline>, ...]}`
+  - heading:    `{"type": "heading", "attrs": {"level": 2},
+                  "content": [<inline>, ...]}`
+  - bulletList: `{"type": "bulletList", "content": [<listItem>, ...]}`
+  - listItem:   `{"type": "listItem", "content": [<paragraph>, ...]}`
+  - blockquote: `{"type": "blockquote", "content": [<block>, ...]}`
+  - cardEmbed:  `{"type": "cardEmbed",
+                  "attrs": {"stored_result_id": <int>,
+                            "sort": "value_desc"}}`
+    Use this to embed one of the supplied charts inline as a proof point.
+    Place it immediately after the paragraph whose claim it supports.
+    Reference a stored_result_id from the CHARTS section below — do not
+    invent ids. Embed as many charts as the analysis genuinely needs — every
+    embed should materially advance the argument, but don't ration them
+    artificially. If the argument needs ten proof points, use ten; if it
+    only needs two, use two.
+
+    The `sort` attribute controls how the embedded chart is ordered, and
+    is REQUIRED for every embed whose x-axis is a category (state, source,
+    category, vendor, etc.) — without it the chart comes back in query
+    order, which is almost never what the reader needs. PICK THE SORT THAT
+    BEST SUPPORTS THE POINT YOU'RE MAKING; the SAME chart can legitimately
+    be embedded TWICE with different sorts to make different points (e.g.
+    once with `value_desc` to show the top contributors, then later with
+    `value_asc` to show the underperformers). Use this when the argument
+    benefits from both ordered views.
+
+    Decision tree for each embed:
+      1. Is the x-axis a TIME column (year/month/day/etc.) or a NUMERIC
+         column (price bucket, count bucket, etc.)?
+         → OMIT `sort`. Chronological / numeric order is correct.
+      2. Otherwise (categorical x-axis): WHAT POINT IS THIS EMBED MAKING?
+         • Ranking / showing concentration / "which is biggest":
+           → `"value_desc"` (largest first). This is the default
+             choice for comparison/ranking arguments — use it whenever
+             you're saying "X dominates", "top contributors are…",
+             "revenue is concentrated in…", or similar.
+         • Finding outliers / underperformers / "which is smallest":
+           → `"value_asc"` (smallest first).
+         • LOOKUP — the reader needs to find a specific named category
+           (e.g. "how did Texas perform?" in a US-states chart):
+           → `"label_asc"` (alphabetical).
+         • Reverse alphabetical: → `"label_desc"` (rare).
+
+    The default for a categorical comparison is `value_desc`. If you're
+    not sure, use `value_desc`. Only use `label_asc` when the surrounding
+    prose specifically tells the reader to look something up by name.
+    Sort is applied in memory to the cached query result when the chart is
+    rendered — it does not change the underlying query.
+- Inline: `{"type": "text", "text": "..."}`, optionally with
+  `"marks": [{"type": "bold"}]` or `{"type": "italic"}` or
+  `{"type": "code"}`.
+
+TONE & CALIBRATION:
+- Write like an analyst answering a question, not a tour guide describing
+  charts. The user can see each chart you embed — don't restate what's on it;
+  tell them what it MEANS for the question.
+- Don't list summary statistics (mean, std-dev, trend) at the user — use
+  those numbers to support the argument, not as the argument itself.
+  GOOD: "Revenue dropped 42% after the pricing change, concentrated in
+         enterprise deals — see the chart below."
+  BAD:  "The mean is 45.2, std dev 12.8, trend -15%, with peaks at...".
+- Never name the INPUT SCAFFOLDING in your prose. The chart blocks give you
+  pre-computed structures — "Key points", "Significant changes", a "Trend"
+  label (e.g. "no clear trend"), data flagged "pre-computed" — purely so you
+  can ground your claims. The reader never sees them, so don't refer to them.
+  State the finding directly with its value and date.
+  GOOD: "The longest fish on record, 50, was logged in 1993 and recurs in
+         2018 and 2023 — no downward drift."
+  BAD:  "The trend label is 'flat (0.0% overall)', and the significant-changes
+         log shows 50 at 2023-04-01." / "the pre-computed key-points label a
+         -97.9% change."
+- Round all percent changes to ONE decimal place when you cite them in
+  prose: write `+29,314.1%`, not `+29,314.13%` or `+29314.125%`. The
+  pre-computed key-points already follow this; mirror that precision in
+  your own numbers. False precision suggests certainty the data doesn't
+  support.
+- When a chart has a `**Note**:` warning about small values, high variance,
+  or limited data points, treat it as a caveat on the evidence and say so in
+  the discussion. Small denominators make percentage changes unreliable.
+- TIMELINE EVENTS — when present (see the TIMELINE EVENTS section), they are
+  a MAJOR part of the analysis. Walk through the relevant events explicitly.
+  For each notable inflection point in the data (peak, trough, sustained
+  level shift, sudden trend change), check whether a timeline event sits
+  within ~1 bucket of the inflection. If it does, name the event and date,
+  describe the data movement, and (when reasonable) suggest the causal link.
+  Do NOT force a correlation that isn't there — if the events don't align
+  with the inflections, say so plainly ("the [event name] in [date]
+  doesn't appear to have moved the data — revenue continued its prior
+  trend"). Either alignment or non-alignment is a finding the user wants
+  to know. Treat the timeline analysis as a first-class part of the
+  Discussion, not as a footnote.
+- A null/inconclusive finding is a finding. Say it plainly and explain why
+  the available evidence is insufficient.
+
+STYLE: Direct, analytical, specific. Avoid hedging language like 'it appears'
+and 'might suggest' unless you are explicitly flagging weak evidence.
+
+AVOID AI WRITING TROPES:
+- Word choice: don't reach for 'delve', 'leverage', 'utilize', 'robust',
+  'streamline', 'harness', 'tapestry', 'landscape', 'paradigm', 'ecosystem',
+  'quietly', 'deeply', 'fundamentally', 'remarkably'. Don't replace plain
+  'is/are' with 'serves as', 'stands as', 'marks', or 'represents'.
+- No negative parallelism ('It's not X — it's Y', 'X — not Y', 'The question
+  isn't X. The question is Y.'). No countdown reframes ('Not X. Not Y. Just Z.').
+- No self-posed rhetorical Q&A ('The result? Devastating.').
+- No anaphora ('They could expose... They could offer... They could provide...')
+  or back-to-back rule-of-three tricolons.
+- No filler transitions: 'It's worth noting', 'It bears mentioning',
+  'Importantly', 'Interestingly', 'Notably'.
+- No '-ing' tail phrases that inject shallow significance ('highlighting its
+  importance', 'reflecting broader trends', 'underscoring its role as...').
+- No false ranges ('from X to Y' where X and Y aren't on a real scale).
+- No staccato fragment paragraphs for manufactured emphasis ('Openly. In a
+  book. As a priest.').
+- No 'Here's the kicker', 'Here's the thing', 'Here's where it gets
+  interesting', 'Let's break this down', 'Let's unpack', 'Let's dive in'.
+- No 'Think of it as...' analogies. No 'Imagine a world where...'.
+- No grandiose stakes inflation ('fundamentally reshape', 'define the next era').
+- No vague attributions ('experts argue', 'observers have cited', 'industry
+  reports suggest') — name the source or drop the claim.
+- No invented concept labels ('the supervision paradox', 'the acceleration
+  trap', 'workload creep') presented as established terms.
+- No 'Despite its challenges...' acknowledge-then-dismiss formula.
+- No signposted conclusions ('In conclusion', 'To sum up', 'In summary').
+- Formatting: don't open every bullet with a bolded keyword. Use straight
+  quotes and ASCII '->', not curly quotes or unicode arrows. Use em dashes
+  sparingly — a couple per piece, not twenty.
+- Don't restate the same point in many rephrased ways. Don't beat a single
+  metaphor through the whole writeup.
+
+---
+
+{% if thread_prompt %}USER QUESTION:
+{{ thread_prompt|safe }}
+{% else %}USER QUESTION: (none provided — infer from the metrics/dimensions selected)
+{% endif %}
+{% if selections %}
+SELECTIONS:
+{{ selections|safe }}
+{% endif %}
+{% if timeline_md %}
+---
+
+{{ timeline_md|safe }}
+
+{% endif %}
+---
+
+TOP-TIER BREAKOUTS (full data — cite values from these; each lists its renderings):
+
+{{ top_md|safe }}{% if awareness_blocks %}
+
+---
+
+AWARENESS-TIER BREAKOUTS (summary only — context, not citation):
+
+{{ slim_md|safe }}{% endif %}

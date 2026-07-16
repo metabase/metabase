@@ -3,9 +3,12 @@ import type {
   CancelExplorationThreadResponse,
   CreateExplorationRequest,
   Dataset,
+  DocumentId,
   Exploration,
+  ExplorationDocument,
   ExplorationId,
   ExplorationQueryId,
+  ExplorationThreadId,
   ExploreFurtherRequest,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
@@ -13,6 +16,8 @@ import type {
   GetMyExplorationsResponse,
   RestartExplorationRequest,
   UpdateExplorationRequest,
+  VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { getExplorationPages } from "metabase-types/api/exploration";
 
@@ -90,8 +95,17 @@ export const explorationApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/exploration/thread/${threadId}/restart`,
       }),
-      invalidatesTags: (_, error, { explorationId }) =>
-        invalidateTags(error, [idTag("exploration", explorationId)]),
+      invalidatesTags: (exploration, error, { explorationId }) =>
+        invalidateTags(error, [
+          idTag("exploration", explorationId),
+          // The thread's AI Summary doc was reset to its placeholder server-side; invalidate it
+          // so an open editor refetches instead of showing the previous run's summary.
+          ...(exploration?.threads ?? []).flatMap((thread) =>
+            thread.ai_summary_document_id != null
+              ? [idTag("document", thread.ai_summary_document_id)]
+              : [],
+          ),
+        ]),
     }),
     deleteExploration: builder.mutation<void, ExplorationId>({
       query: (id) => ({
@@ -124,6 +138,41 @@ export const explorationApi = Api.injectEndpoints({
       // subscriber unmounts so that flipping between previously-viewed queries
       // inside one session is instant (no skeleton flash on re-select).
       keepUnusedDataFor: 30 * 60,
+    }),
+    createExplorationDocument: builder.mutation<
+      ExplorationDocument,
+      {
+        explorationId: ExplorationId;
+        threadId: ExplorationThreadId;
+      }
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/documents`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
+    appendChartToDocument: builder.mutation<
+      ExplorationDocument,
+      {
+        threadId: ExplorationThreadId;
+        documentId: DocumentId;
+        exploration_query_ids: ExplorationQueryId[];
+        display?: VisualizationDisplay | null;
+        visualization_settings?: VisualizationSettings | null;
+      }
+    >({
+      query: ({ threadId, documentId, ...body }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/documents/${documentId}/append`,
+        body,
+      }),
+      invalidatesTags: (result, error) =>
+        invalidateTags(error, [
+          ...(result ? [idTag("document", result.id)] : []),
+          listTag("revision"),
+        ]),
     }),
     setPageStarred: builder.mutation<
       void,
@@ -209,6 +258,8 @@ export const {
   useDeleteExplorationMutation,
   useCancelExplorationThreadMutation,
   useGetExplorationQueryResultQuery,
+  useCreateExplorationDocumentMutation,
+  useAppendChartToDocumentMutation,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } = explorationApi;

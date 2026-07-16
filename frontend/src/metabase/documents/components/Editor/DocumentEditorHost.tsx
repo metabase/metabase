@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
+  DEFAULT_EDITOR_CAPABILITIES,
+  type EditorCapabilities,
   type EditorHost,
   EditorHostProvider,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -43,6 +45,7 @@ import {
  * extensions. Defined at module scope so its identity is stable.
  */
 export const documentEditorHost: EditorHost = {
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   selectors: {
     getCurrentDocument,
     getChildTargetId,
@@ -75,9 +78,15 @@ export const documentEditorHost: EditorHost = {
 };
 
 export const DocumentEditorHostProvider = ({
+  capabilities = DEFAULT_EDITOR_CAPABILITIES,
   children,
 }: {
+  capabilities?: EditorCapabilities;
   children: ReactNode;
-}) => (
-  <EditorHostProvider value={documentEditorHost}>{children}</EditorHostProvider>
-);
+}) => {
+  const host = useMemo(
+    () => ({ ...documentEditorHost, capabilities }),
+    [capabilities],
+  );
+  return <EditorHostProvider value={host}>{children}</EditorHostProvider>;
+};

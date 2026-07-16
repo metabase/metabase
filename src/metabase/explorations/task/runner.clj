@@ -25,6 +25,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
+   [metabase.explorations.ai-summary :as explorations.ai-summary]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
@@ -245,7 +246,8 @@
                                          [:= :s.scored_at nil]]]}]]})))
 
 (defn- mark-thread-fully-completed!
-  "Set `completed_at` to NOW(). This is what the UI polls on to decide it's done
+  "Set `completed_at` to NOW(). Called after the ai-summary handler has finished
+  (success, skip, or failure). This is what the UI polls on to decide it's done
   watching the thread."
   [thread-id]
   (t2/update! :model/ExplorationThread thread-id {:completed_at (OffsetDateTime/now)}))
@@ -253,15 +255,21 @@
 (defn- on-thread-completed
   "Single entry point for post-completion work. Always invoked with `thread-id` (a long)
   exactly once per thread, on a background daemon thread. Runs after the runner's row
-  transaction has committed, so it's free to do its own DB I/O.
+  transaction has committed, so it's free to do its own DB I/O, HTTP, LLM calls, etc.
 
-  Stamps `completed_at` so the UI's polling loop sees a clean done signal."
+  Stamps `completed_at` last so the UI's polling loop sees a clean done signal only
+  after the ai-summary doc has been written (or failed)."
   [thread-id]
-  (log/infof "Exploration thread %d: queries+scoring done" thread-id)
+  (log/infof "Exploration thread %d: queries+scoring done, running ai-summary" thread-id)
   (try
-    (mark-thread-fully-completed! thread-id)
+    (explorations.ai-summary/generate-ai-summary! thread-id)
     (catch Throwable e
-      (log/errorf e "Failed to set completed_at for thread %d" thread-id))))
+      (log/errorf e "generate-ai-summary! threw for thread %d" thread-id))
+    (finally
+      (try
+        (mark-thread-fully-completed! thread-id)
+        (catch Throwable e
+          (log/errorf e "Failed to set completed_at for thread %d" thread-id))))))
 
 (defn- maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`

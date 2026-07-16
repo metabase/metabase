@@ -8,15 +8,18 @@ import {
   useListCommentsQuery,
   useListTimelinesQuery,
 } from "metabase/api";
+import { Api } from "metabase/api/api";
+import { idTag } from "metabase/api/tags";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
-import { Group, Stack } from "metabase/ui";
+import { type Route, push } from "metabase/router";
+import { Box, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
+  DocumentId,
   Exploration,
   ExplorationBlockNode,
   ExplorationPageNode,
@@ -28,6 +31,11 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { trackExplorationAISummaryOpened } from "../analytics";
+import {
+  ExplorationDocument as ExplorationDocumentComponent,
+  type ExplorationDocumentWithIsAiSummary,
+} from "../components/ExplorationDocument";
 import {
   ExplorationSidebar,
   ExplorationTitle,
@@ -38,7 +46,7 @@ import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
-  pickInitialSidebarPage,
+  pickInitialSidebarEntity,
 } from "../components/ExplorationSidebar/utils";
 import {
   ExplorationChartAreaSkeleton,
@@ -72,9 +80,13 @@ interface ExplorationPageQuery {
 interface ExplorationPageProps {
   params: {
     id: string;
-    pageId?: string;
+    entityType?: "document" | "page";
+    entityId?: string;
+    childTargetId?: string;
   };
+  route: Route;
   location: Location<ExplorationPageQuery>;
+  children?: React.ReactNode;
 }
 
 function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
@@ -84,8 +96,10 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   // Keep polling while either:
   //   (a) any individual query is still running, OR
   //   (b) the thread has been started but isn't fully complete yet — the
-  //       backend only sets `completed_at` once its post-query handling
-  //       finishes, and we want the sidebar to pick up that final state via
+  //       backend's `completed_at` is set only after the post-query
+  //       AI Summary handler has written its document. While the handler
+  //       runs we want the placeholder "Analysis underway" doc to get
+  //       swapped for the real one in the sidebar, which only happens via
   //       a poll refresh. Draft threads (no `started_at`) don't trigger
   //       polling — they have nothing in flight.
   return exploration.threads.some(
@@ -95,7 +109,24 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
-export function ExplorationPage({ params, location }: ExplorationPageProps) {
+interface SelectedDocumentId {
+  type: "document";
+  id: DocumentId;
+}
+
+interface SelectedPageId {
+  type: "page";
+  id: ExplorationPageNodeId;
+}
+
+export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
+
+export function ExplorationPage({
+  params,
+  route,
+  location,
+  children,
+}: ExplorationPageProps) {
   const dispatch = useDispatch();
 
   const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
@@ -117,32 +148,29 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
 
   const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
-  const getSelectedPageUrl = useCallback(
-    (
-      pageId: ExplorationPageNodeId,
-      options?: { tab?: ExplorationSidebarTab },
-    ) => {
+  const getSelectedEntityIdUrl = useCallback(
+    (entityId: SelectedEntityId, options?: { tab?: ExplorationSidebarTab }) => {
       const search = new URLSearchParams(location.search);
       if (options?.tab) {
         search.set("tab", options.tab);
       }
       const searchString = search.toString();
-      return `${Urls.exploration(parseInt(params.id, 10))}/page/${encodeURIComponent(pageId)}${searchString ? `?${searchString}` : ""}`;
+      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${searchString ? `?${searchString}` : ""}`;
     },
     [params.id, location.search],
   );
 
-  const setSelectedPageId = useCallback(
+  const setSelectedEntityId = useCallback(
     (
-      pageId: ExplorationPageNodeId,
+      entityId: SelectedEntityId,
       options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
     ) => {
       if (options?.scrollIntoView) {
         shouldScrollSelectionRef.current = true;
       }
-      dispatch(push(getSelectedPageUrl(pageId, options)));
+      dispatch(push(getSelectedEntityIdUrl(entityId, options)));
     },
-    [dispatch, getSelectedPageUrl],
+    [dispatch, getSelectedEntityIdUrl],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
@@ -234,7 +262,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     sortOrder,
   ]);
 
-  // Selection comes from the URL. When the URL has no page yet
+  // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
   // the first query so the sidebar highlight, the scroll anchor, and
   // the right-pane chart all agree on the very first paint — without
@@ -245,29 +273,32 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   // Selection model:
   //
   //   - The URL is the "pinned by the user" indicator. Only user
-  //     clicks call `setSelectedPageId`, which pushes the page
-  //     into the URL. Once the URL carries a page, that's
+  //     clicks call `setSelectedEntityId`, which pushes the entity
+  //     into the URL. Once the URL carries an entity, that's
   //     authoritative — no more auto-tracking.
   //
   //   - Until then, every render (including ones triggered by polling
   //     bringing in fresh interestingness scores) re-derives the
   //     selection from the current top of the sidebar via
-  //     `pickInitialSidebarPage`. This is what makes the right pane
+  //     `pickInitialSidebarEntity`. This is what makes the right pane
   //     and the sidebar follow the "first, most interesting chart"
   //     as new data lands.
   //
   // We deliberately do NOT push the auto-derived selection into the
   // URL: doing so would freeze the selection at the first auto-pick
   // and prevent it from following subsequent data updates.
-  const selectedPageId: ExplorationPageNodeId | null = useMemo(() => {
-    if (params.pageId) {
+  const selectedEntityId: SelectedEntityId | null = useMemo(() => {
+    if (params.entityType && params.entityId) {
       // Page ids are opaque strings (the page's numeric PK stringified, the
       // same value comments anchor to) — we URL-encode them on push and
       // decode them here.
-      return decodeURIComponent(params.pageId);
+      if (params.entityType === "page") {
+        return { type: "page", id: decodeURIComponent(params.entityId) };
+      }
+      return { type: params.entityType, id: Number(params.entityId) };
     }
-    return pickInitialSidebarPage(tree);
-  }, [params.pageId, tree]);
+    return pickInitialSidebarEntity(tree);
+  }, [params.entityType, params.entityId, tree]);
 
   const orderedPageIds = useMemo(
     () =>
@@ -277,7 +308,9 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     [tree],
   );
   const currentPageIndex =
-    selectedPageId != null ? orderedPageIds.indexOf(selectedPageId) : -1;
+    selectedEntityId?.type === "page"
+      ? orderedPageIds.indexOf(selectedEntityId.id)
+      : -1;
   const previousPageId =
     currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
   const nextPageId =
@@ -286,21 +319,87 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
       : undefined;
   const goToPreviousPage = useCallback(() => {
     if (previousPageId != null) {
-      setSelectedPageId(previousPageId, { scrollIntoView: true });
+      setSelectedEntityId(
+        { type: "page", id: previousPageId },
+        { scrollIntoView: true },
+      );
     }
-  }, [previousPageId, setSelectedPageId]);
+  }, [previousPageId, setSelectedEntityId]);
   const goToNextPage = useCallback(() => {
     if (nextPageId != null) {
-      setSelectedPageId(nextPageId, { scrollIntoView: true });
+      setSelectedEntityId(
+        { type: "page", id: nextPageId },
+        { scrollIntoView: true },
+      );
     }
-  }, [nextPageId, setSelectedPageId]);
+  }, [nextPageId, setSelectedEntityId]);
 
   useEffect(() => {
-    if (selectedPageId != null && !readPageIds.has(selectedPageId)) {
-      setExplorationPageRead(Number(params.id), selectedPageId);
-      setReadPageIds((prev) => new Set(prev).add(String(selectedPageId)));
+    if (
+      selectedEntityId?.type === "page" &&
+      !readPageIds.has(selectedEntityId.id)
+    ) {
+      setExplorationPageRead(Number(params.id), selectedEntityId.id);
+      setReadPageIds((prev) => new Set(prev).add(String(selectedEntityId.id)));
     }
-  }, [selectedPageId, readPageIds, params.id]);
+  }, [selectedEntityId, readPageIds, params.id]);
+
+  // AI Summary generates its document asynchronously: the FE shows a
+  // placeholder "Analysis underway…" Document while the worker runs, and
+  // the worker UPDATES that same Document in place when generation
+  // finishes. Polling the exploration is enough to see the thread's
+  // `completed_at` flip, but the cached document body (served by RTKQ's
+  // `getDocument`) is independent of that response — so a user already
+  // viewing the AI Summary doc would otherwise keep seeing the
+  // placeholder until they hard-refreshed. Watch for the null → non-null
+  // transition on `completed_at` for each thread and:
+  //   1. Invalidate the AI Summary document tag. RTKQ refetches
+  //      the body for an active subscription (the open editor) and marks
+  //      inactive cache entries stale.
+  //   2. Always surface a toast that the analysis is ready — even when the
+  //      user is currently viewing the placeholder, since the swap happens
+  //      via a cache refetch and is otherwise easy to miss. When the user
+  //      is already on the doc the toast omits the `View` action (no place
+  //      to go).
+  const prevThreadCompletedAt = useRef<Map<number, string | null>>(new Map());
+  useEffect(() => {
+    const threads = exploration?.threads;
+    if (!threads) {
+      return;
+    }
+    for (const thread of threads) {
+      const prev = prevThreadCompletedAt.current.get(thread.id);
+      const justCompleted = prev === null && thread.completed_at != null;
+      prevThreadCompletedAt.current.set(thread.id, thread.completed_at);
+      if (!justCompleted || thread.canceled_at != null) {
+        continue;
+      }
+      const autoDoc = thread.documents?.find(
+        (d) => d.id === thread.ai_summary_document_id,
+      );
+      if (!autoDoc) {
+        continue;
+      }
+      dispatch(Api.util.invalidateTags([idTag("document", autoDoc.id)]));
+      const viewingThisDoc =
+        selectedEntityId?.type === "document" &&
+        selectedEntityId.id === autoDoc.id;
+      sendToast({
+        icon: "document",
+        message: c("{0} is the name of the document that is now ready to view")
+          .t`${autoDoc.name} ready`,
+        ...(viewingThisDoc
+          ? {}
+          : {
+              actionLabel: t`View`,
+              action: () => {
+                trackExplorationAISummaryOpened(exploration.id);
+                setSelectedEntityId({ type: "document", id: autoDoc.id });
+              },
+            }),
+      });
+    }
+  }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
 
   // Detect new threads (from "Explore further") and toast when their first
   // page lands. Threads arrive without pages while query planning is still
@@ -334,14 +433,14 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
             .t`Added ${thread.name}`,
           actionLabel: t`View`,
           action: () =>
-            setSelectedPageId(String(firstPage.id), {
-              tab: "all",
-              scrollIntoView: true,
-            }),
+            setSelectedEntityId(
+              { type: "page", id: String(firstPage.id) },
+              { tab: "all", scrollIntoView: true },
+            ),
         });
       }
     }
-  }, [exploration, sendToast, setSelectedPageId]);
+  }, [exploration, sendToast, setSelectedEntityId]);
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -376,10 +475,10 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   }, [exploration]);
 
   const selectedPage = useMemo(() => {
-    return selectedPageId != null
-      ? pageIdToPageAndQueries.get(selectedPageId)
+    return selectedEntityId?.type === "page"
+      ? pageIdToPageAndQueries.get(selectedEntityId.id)
       : undefined;
-  }, [selectedPageId, pageIdToPageAndQueries]);
+  }, [selectedEntityId, pageIdToPageAndQueries]);
 
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
@@ -437,8 +536,36 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     [dispatch, location.pathname, location.search],
   );
 
+  const documentIdToDocument: Map<
+    DocumentId,
+    ExplorationDocumentWithIsAiSummary
+  > = useMemo(() => {
+    return new Map(
+      (exploration?.threads ?? []).flatMap((thread) =>
+        (thread.documents ?? []).map((document) => [
+          document.id,
+          {
+            ...document,
+            isAiSummary: document.id === thread.ai_summary_document_id,
+            isCanceled:
+              document.id === thread.ai_summary_document_id &&
+              thread.canceled_at != null,
+          },
+        ]),
+      ),
+    );
+  }, [exploration]);
+
+  const selectedDocument = useMemo(() => {
+    return selectedEntityId?.type === "document"
+      ? documentIdToDocument.get(selectedEntityId.id)
+      : undefined;
+  }, [selectedEntityId, documentIdToDocument]);
+
   const isCommentsSidebarOpen = location.query?.comments === "true";
   const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
+  // documents use a different comments component and URL structure
+  const isCommentsSidesheetOpen = Boolean(children);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -470,9 +597,9 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
             selectedSidebarTab={selectedSidebarTab}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
-            selectedPageId={selectedPageId}
-            setSelectedPageId={setSelectedPageId}
-            getSelectedPageUrl={getSelectedPageUrl}
+            selectedEntityId={selectedEntityId}
+            setSelectedEntityId={setSelectedEntityId}
+            getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
             readPageIds={readPageIds}
@@ -505,11 +632,24 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
               onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
-          {!selectedPage && hasUnsettledQueries(exploration) && (
-            <ExplorationChartAreaSkeleton />
+          {selectedDocument && (
+            <ExplorationDocumentComponent
+              explorationId={exploration.id}
+              document={selectedDocument}
+              childTargetId={params.childTargetId}
+              route={route}
+              locationSearch={location.search}
+              isCommentsSidesheetOpen={isCommentsSidesheetOpen}
+            />
           )}
+          {!selectedPage &&
+            !selectedDocument &&
+            hasUnsettledQueries(exploration) && (
+              <ExplorationChartAreaSkeleton />
+            )}
         </Group>
       </Stack>
+      {isCommentsSidesheetOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );
 }
