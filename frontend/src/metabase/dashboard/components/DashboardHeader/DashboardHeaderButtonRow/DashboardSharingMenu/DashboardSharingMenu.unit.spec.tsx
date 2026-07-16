@@ -354,7 +354,7 @@ describe("DashboardSharingMenu", () => {
 
   describe("invite to view", () => {
     const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
-      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-groups", []);
       fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
       setupDashboardSharingMenu({
         isAdmin: true,
@@ -401,7 +401,7 @@ describe("DashboardSharingMenu", () => {
     });
 
     it("opens the invite modal for the dashboard", async () => {
-      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-groups", []);
       setupDashboardSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));

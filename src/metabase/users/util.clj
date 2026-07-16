@@ -72,10 +72,12 @@
               "tenant_id"
               (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
-    ;; internal users always belong to All Users; tolerate pickers that send only the additional groups
+    ;; the invite-to-view picker is scoped to groups with access to the item and may not know the All Users group at
+    ;; all, so imply that membership for invites; plain creates keep requiring it explicitly
     (let [all-users-id           (u/the-id (perms/all-users-group))
           user-group-memberships (cond-> user-group-memberships
                                    (and user-group-memberships
+                                        invite-target
                                         (nil? tenant-id)
                                         (not-any? #(= (:id %) all-users-id) user-group-memberships))
                                    (conj {:id all-users-id}))
