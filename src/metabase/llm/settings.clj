@@ -25,6 +25,14 @@
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
@@ -134,6 +142,30 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; ---------------------------------------- Generic Chat Completions -------------------------------------------
+;;; A provider-agnostic OpenAI-compatible Chat Completions (`/v1/chat/completions`) endpoint. Unlike the direct
+;;; providers, both the base URL and the model are admin-supplied, so there are no defaults and the API key has no
+;;; recognizable prefix to validate against.
+
+(defsetting llm-chat-completions-api-base-url
+  (deferred-tru "The base URL of an OpenAI-compatible Chat Completions endpoint, e.g. https://api.example.com/v1.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (fn [new-value]
+                 (setting/set-value-of-type! :string :llm-chat-completions-api-base-url (normalize-llm-base-url new-value))))
+
+(defsetting llm-chat-completions-api-key
+  (deferred-tru "The API key for the generic Chat Completions endpoint.")
+  ;; Generic endpoints use arbitrary key formats (or none), so unlike the direct-provider keys there is no
+  ;; format validation.
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-chat-completions-api-key))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
@@ -196,14 +228,6 @@
   :export?     false
   :doc         false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
-
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")
