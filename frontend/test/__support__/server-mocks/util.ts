@@ -9,9 +9,21 @@ type ResponseInfo = {
   body: any;
 };
 
+const fakeTimersEnabled = () =>
+  typeof jest !== "undefined" &&
+  ((setTimeout as any)._isMockFunction === true ||
+    Object.prototype.hasOwnProperty.call(setTimeout, "clock"));
+
 export async function findRequests(
   method: "PUT" | "POST" | "GET" | "DELETE",
 ): Promise<ResponseInfo[]> {
+  // Requests behind a debounce/setTimeout haven't been issued yet when the
+  // clock is faked; run pending timers so they fire before we inspect history.
+  if (fakeTimersEnabled()) {
+    // Bounded advance: enough to fire debounced saves, without leaping to
+    // far-future timers (polling intervals) the way runOnlyPendingTimers would.
+    await jest.advanceTimersByTimeAsync(510);
+  }
   // Ensure all async call history is complete
   await fetchMock.callHistory.flush();
 

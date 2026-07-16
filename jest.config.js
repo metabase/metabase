@@ -113,7 +113,13 @@ const baseConfig = {
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
-  setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
+  setupFilesAfterEnv: [
+    "<rootDir>/frontend/test/jest-setup-env.js",
+    "<rootDir>/frontend/test/fast-user-event.ts",
+  ],
+  // Fake the clock in every test: no real-time waits (debounces, waitFor
+  // polling), and time-dependent behavior must be advanced explicitly.
+  fakeTimers: { enableGlobally: true },
   globals: {
     ga: {},
   },
