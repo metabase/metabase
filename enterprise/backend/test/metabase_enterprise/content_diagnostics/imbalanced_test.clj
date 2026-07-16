@@ -431,7 +431,7 @@
 ;;; -------------------------------------------------- API -------------------------------------------------
 
 (deftest imbalanced-api-feature-gated-test
-  (testing "GET /imbalanced is gated on the :content-diagnostics premium feature (premium-handler)"
+  (testing "GET /imbalanced is gated on the :content-diagnostics premium feature"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
         (mt/with-premium-features #{:content-diagnostics}
