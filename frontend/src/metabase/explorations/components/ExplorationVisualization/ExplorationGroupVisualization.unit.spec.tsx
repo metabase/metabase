@@ -129,10 +129,25 @@ function makeTimeseriesDataset(): Dataset {
         createMockColumn({ name: "ts", base_type: "type/DateTime" }),
         createMockColumn({ name: "count", base_type: "type/Integer" }),
       ],
+      // Need more than MIN_ROWS_TO_SHOW_LINE_OR_BAR (3) to avoid row fallback.
       rows: [
         ["2025-01-01", 1],
         ["2025-02-01", 2],
+        ["2025-03-01", 3],
+        ["2025-04-01", 4],
       ],
+    }),
+  });
+}
+
+function makeSmallTimeseriesDataset(): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      rows: [["2025-01-01", 1]],
     }),
   });
 }
@@ -423,6 +438,27 @@ describe("ExplorationGroupVisualization", () => {
       ]),
       availableTimelines: [createMockTimeline({ id: 1, name: "Releases" })],
     });
+
+    expect(
+      screen.queryByRole("button", { name: "Select timeline" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the timeline dropdown when a timeseries group falls back to row charts", () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeSmallTimeseriesDataset()]]),
+      availableTimelines: [createMockTimeline({ id: 1, name: "Releases" })],
+    });
+
+    const rawSeries = JSON.parse(
+      screen
+        .getByTestId("visualization-stub")
+        .getAttribute("data-raw-series") ?? "[]",
+    );
+    expect(rawSeries[0].card.display).toBe("row");
 
     expect(
       screen.queryByRole("button", { name: "Select timeline" }),

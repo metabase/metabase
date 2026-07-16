@@ -212,7 +212,12 @@ function ExplorationGroupVisualizationChart({
   }, [queries, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
-    return seriesGroup?.isTimeseries && availableTimelines.length > 0;
+    return (
+      seriesGroup?.isTimeseries &&
+      availableTimelines.length > 0 &&
+      // row doesn't support timelines
+      !seriesGroup.series.some((s) => s.card.display === "row")
+    );
   }, [seriesGroup, availableTimelines]);
 
   const computedSettings = useMemo(
