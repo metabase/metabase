@@ -83,38 +83,39 @@
 (deftest imbalanced-collection-cascade-test
   (testing "collection emptiness is recursive over the same scan's verdicts; crowded/sparse stay on raw direct counts"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp
-          [;; a chain whose only leaf is an empty dashboard - every ancestor is empty
-           :model/Collection {gp :id} {}
-           :model/Collection {p :id}  {:location (collection/location-path gp)}
-           :model/Collection {c :id}  {:location (collection/location-path gp p)}
-           :model/Dashboard  {empty-dash :id} {:collection_id c}
-           ;; the same chain shape with one deep non-empty leaf - no ancestor is empty
-           :model/Collection {gp2 :id} {}
-           :model/Collection {p2 :id}  {:location (collection/location-path gp2)}
-           :model/Collection {c2 :id}  {:location (collection/location-path gp2 p2)}
-           :model/Card _ {:collection_id c2}
-           ;; 3 empty dashboards + 1 never-run card = non-empty with 4 raw direct items → sparse (<5)
-           :model/Collection {mixed :id} {}
-           :model/Dashboard _ {:collection_id mixed}
-           :model/Dashboard _ {:collection_id mixed}
-           :model/Dashboard _ {:collection_id mixed}
-           :model/Card _ {:collection_id mixed}]
-          (let [by-entity (imbalanced-findings-by-entity!)]
-            (testing "the empty-dashboard leaf makes the whole chain empty - the dashboards' own emptiness cascades"
-              (is (= :empty (:finding_type (by-entity [:dashboard empty-dash]))))
-              (doseq [coll-id [gp p c]]
-                (is (= :empty (:finding_type (by-entity [:collection coll-id])))
-                    (str "collection " coll-id))))
-            (testing "one deep non-empty leaf keeps the whole chain non-empty (each level then has 1 item → sparse)"
-              (doseq [coll-id [gp2 p2 c2]]
-                (is (= :sparse (:finding_type (by-entity [:collection coll-id])))
-                    (str "collection " coll-id))))
-            (testing "empty items still count toward the raw sparse count: 3 empty dashboards + 1 card = 4 items"
-              (let [f (by-entity [:collection mixed])]
-                (is (= :sparse (:finding_type f)))
-                (is (= 4 (:content_count f)))))))))))
+      (mt/with-temporary-setting-values [content-diagnostics-sparse-collection-threshold-items 5]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp
+            [;; a chain whose only leaf is an empty dashboard - every ancestor is empty
+             :model/Collection {gp :id} {}
+             :model/Collection {p :id}  {:location (collection/location-path gp)}
+             :model/Collection {c :id}  {:location (collection/location-path gp p)}
+             :model/Dashboard  {empty-dash :id} {:collection_id c}
+             ;; the same chain shape with one deep non-empty leaf - no ancestor is empty
+             :model/Collection {gp2 :id} {}
+             :model/Collection {p2 :id}  {:location (collection/location-path gp2)}
+             :model/Collection {c2 :id}  {:location (collection/location-path gp2 p2)}
+             :model/Card _ {:collection_id c2}
+             ;; 3 empty dashboards + 1 never-run card = non-empty with 4 raw direct items → sparse (<5)
+             :model/Collection {mixed :id} {}
+             :model/Dashboard _ {:collection_id mixed}
+             :model/Dashboard _ {:collection_id mixed}
+             :model/Dashboard _ {:collection_id mixed}
+             :model/Card _ {:collection_id mixed}]
+            (let [by-entity (imbalanced-findings-by-entity!)]
+              (testing "the empty-dashboard leaf makes the whole chain empty - the dashboards' own emptiness cascades"
+                (is (= :empty (:finding_type (by-entity [:dashboard empty-dash]))))
+                (doseq [coll-id [gp p c]]
+                  (is (= :empty (:finding_type (by-entity [:collection coll-id])))
+                      (str "collection " coll-id))))
+              (testing "one deep non-empty leaf keeps the whole chain non-empty (each level then has 1 item → sparse)"
+                (doseq [coll-id [gp2 p2 c2]]
+                  (is (= :sparse (:finding_type (by-entity [:collection coll-id])))
+                      (str "collection " coll-id))))
+              (testing "empty items still count toward the raw sparse count: 3 empty dashboards + 1 card = 4 items"
+                (let [f (by-entity [:collection mixed])]
+                  (is (= :sparse (:finding_type f)))
+                  (is (= 4 (:content_count f))))))))))))
 
 (deftest imbalanced-excluded-collection-subjects-test
   (testing "trash, snippet-namespace, archived, and instance-analytics collections are never subjects"
@@ -278,44 +279,45 @@
 (deftest imbalanced-dashboard-sparse-counts-across-tabs-test
   (testing "dashboard sparse counts dashcards across ALL tabs (per-tab counting is crowded-only); empty is never sparse"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp
-          [:model/Collection {coll :id} {}
-           ;; 3 dashcards on each of 2 tabs = 6 total → NOT sparse (default bound is <4 total)
-           :model/Dashboard    {two-tabs :id} {:collection_id coll}
-           :model/DashboardTab {tt-t1 :id} {:dashboard_id two-tabs}
-           :model/DashboardTab {tt-t2 :id} {:dashboard_id two-tabs}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-           :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
-           ;; 3 dashcards total < 4 → sparse
-           :model/Dashboard {sparse-dash :id} {:collection_id coll}
-           :model/DashboardCard _ {:dashboard_id sparse-dash}
-           :model/DashboardCard _ {:dashboard_id sparse-dash}
-           :model/DashboardCard _ {:dashboard_id sparse-dash}
-           ;; exactly at the bound (4) → no finding
-           :model/Dashboard {at-dash :id} {:collection_id coll}
-           :model/DashboardCard _ {:dashboard_id at-dash}
-           :model/DashboardCard _ {:dashboard_id at-dash}
-           :model/DashboardCard _ {:dashboard_id at-dash}
-           :model/DashboardCard _ {:dashboard_id at-dash}
-           ;; truly empty → empty, never sparse
-           :model/Dashboard {empty-dash :id} {:collection_id coll}]
-          (let [by-entity (imbalanced-findings-by-entity!)]
-            (testing "6 dashcards across 2 tabs is not sparse - the count spans tabs"
-              (is (nil? (by-entity [:dashboard two-tabs]))))
-            (testing "3 dashcards < 4 → sparse with the total as content_count"
-              (let [f (by-entity [:dashboard sparse-dash])]
-                (is (= :sparse (:finding_type f)))
-                (is (= 3 (:content_count f)))
-                (is (= {:threshold 4 :unit "dashcards"} (:details f)))))
-            (testing "exactly 4 dashcards → no finding (sparse is strictly <)"
-              (is (nil? (by-entity [:dashboard at-dash]))))
-            (testing "an empty dashboard is empty, never sparse"
-              (is (= :empty (:finding_type (by-entity [:dashboard empty-dash])))))))))))
+      (mt/with-temporary-setting-values [content-diagnostics-sparse-dashboard-threshold-dashcards 4]
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp
+            [:model/Collection {coll :id} {}
+             ;; 3 dashcards on each of 2 tabs = 6 total → NOT sparse (bound is <4 total)
+             :model/Dashboard    {two-tabs :id} {:collection_id coll}
+             :model/DashboardTab {tt-t1 :id} {:dashboard_id two-tabs}
+             :model/DashboardTab {tt-t2 :id} {:dashboard_id two-tabs}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t1}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
+             :model/DashboardCard _ {:dashboard_id two-tabs :dashboard_tab_id tt-t2}
+             ;; 3 dashcards total < 4 → sparse
+             :model/Dashboard {sparse-dash :id} {:collection_id coll}
+             :model/DashboardCard _ {:dashboard_id sparse-dash}
+             :model/DashboardCard _ {:dashboard_id sparse-dash}
+             :model/DashboardCard _ {:dashboard_id sparse-dash}
+             ;; exactly at the bound (4) → no finding
+             :model/Dashboard {at-dash :id} {:collection_id coll}
+             :model/DashboardCard _ {:dashboard_id at-dash}
+             :model/DashboardCard _ {:dashboard_id at-dash}
+             :model/DashboardCard _ {:dashboard_id at-dash}
+             :model/DashboardCard _ {:dashboard_id at-dash}
+             ;; truly empty → empty, never sparse
+             :model/Dashboard {empty-dash :id} {:collection_id coll}]
+            (let [by-entity (imbalanced-findings-by-entity!)]
+              (testing "6 dashcards across 2 tabs is not sparse - the count spans tabs"
+                (is (nil? (by-entity [:dashboard two-tabs]))))
+              (testing "3 dashcards < 4 → sparse with the total as content_count"
+                (let [f (by-entity [:dashboard sparse-dash])]
+                  (is (= :sparse (:finding_type f)))
+                  (is (= 3 (:content_count f)))
+                  (is (= {:threshold 4 :unit "dashcards"} (:details f)))))
+              (testing "exactly 4 dashcards → no finding (sparse is strictly <)"
+                (is (nil? (by-entity [:dashboard at-dash]))))
+              (testing "an empty dashboard is empty, never sparse"
+                (is (= :empty (:finding_type (by-entity [:dashboard empty-dash]))))))))))))
 
 ;;; --------------------------------------------- checker: documents ---------------------------------------
 
@@ -327,7 +329,9 @@
 (deftest imbalanced-document-rules-test
   (testing "document empty = no content of ANY kind (fail closed on unknown nodes); crowded = embedded card count"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-temporary-setting-values [content-diagnostics-crowded-document-threshold-cards 2]
+      ;; the sparse-collection bound backs the image-doc collection assertion below
+      (mt/with-temporary-setting-values [content-diagnostics-crowded-document-threshold-cards  2
+                                         content-diagnostics-sparse-collection-threshold-items 5]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
             [:model/Collection {coll :id} {}
