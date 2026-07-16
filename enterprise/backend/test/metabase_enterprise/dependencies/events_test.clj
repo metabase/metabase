@@ -7,11 +7,14 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -333,6 +336,47 @@
                      :to_entity_type :table,
                      :to_entity_id (mt/id :orders)}]
                    (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
+
+(defn- ingestion-in-memory
+  "Minimal in-memory Ingestable over already-extracted entities, for driving [[v2.load/load-metabase!]]
+  without files. Same trick as the helper in `metabase-enterprise.serialization.v2.load-test`."
+  [entities]
+  (let [no-labels (fn [path] (mapv #(dissoc % :label) path))
+        mapped    (into {} (for [entity entities]
+                             [(no-labels (serdes/path entity)) entity]))]
+    (reify v2.ingest/Ingestable
+      (ingest-list [_] (keys mapped))
+      (ingest-one [_ path] (get mapped (no-labels path)))
+      (ingest-errors [_] []))))
+
+(deftest ^:sequential serdes-update-invalidates-transform-analysis-test
+  (testing "GHY-4163 regression: a serdes load that changes a transform's source invalidates its dependency analysis"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [source          (fn [table] {:type  :query
+                                          :query (lib/query mp (lib.metadata/table mp (mt/id table)))})
+             upstream-tables (fn [id] (t2/select-fn-set :to_entity_id :model/Dependency
+                                                        :from_entity_type :transform
+                                                        :from_entity_id id
+                                                        :to_entity_type :table))]
+         (mt/with-temp [:model/Transform {id :id} {:source (source :orders)}]
+           ;; snapshot the transform with a PRODUCTS source, as an export would serialize it
+           (t2/update! :model/Transform id {:source (source :products)})
+           (let [snapshot (serdes/with-cache
+                            [(serdes/extract-one "Transform" {} (t2/select-one :model/Transform :id id))])]
+             ;; back on an ORDERS source, with fresh analysis: the graph says this transform reads orders
+             (t2/update! :model/Transform id {:source (source :orders)})
+             (deps.test/synchronously-run-backfill!)
+             (is (= #{(mt/id :orders)} (upstream-tables id)))
+             ;; an import applies the PRODUCTS snapshot as an in-place update, with entity events suppressed
+             (serdes/with-cache
+               (v2.load/load-metabase! (ingestion-in-memory snapshot)))
+             (testing "the load changed the stored source"
+               (is (= (mt/id :products)
+                      (-> (t2/select-one :model/Transform :id id) :source :query :stages first :source-table))))
+             (testing "so the analysis must be invalidated and the graph recomputed"
+               (deps.test/synchronously-run-backfill!)
+               (is (= #{(mt/id :products)} (upstream-tables id)))))))))))
 
 (deftest ^:sequential database-delete-marks-source-transforms-stale-test
   (testing "deleting a database marks its source transforms' analysis findings stale so they surface on /dependency-diagnostics/broken (GDGT-2447)"
