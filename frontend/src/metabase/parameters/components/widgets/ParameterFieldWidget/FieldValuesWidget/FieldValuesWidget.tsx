@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type KeyboardEvent,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -360,6 +361,26 @@ export const FieldValuesWidgetInner = forwardRef<
       : parseStringValue(value);
   };
 
+  const handleSingleValueChange = (newValue: string) => {
+    onInputChange(newValue);
+    const parsedValue = parseFreeformValue(newValue);
+    onChange(parsedValue !== null ? [parsedValue] : []);
+  };
+
+  const handleSingleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    const inputValue = event.currentTarget.value;
+    const firstOption = options
+      .map((option) => getOption(option))
+      .filter(isNotNull)[0];
+    if (firstOption && firstOption.value !== inputValue) {
+      event.preventDefault();
+      handleSingleValueChange(firstOption.value);
+    }
+  };
+
   return (
     <ErrorBoundary ref={ref}>
       <div
@@ -469,11 +490,8 @@ export const FieldValuesWidgetInner = forwardRef<
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} tc={tc} />
             )}
-            onChange={(newValue) => {
-              onInputChange(newValue);
-              const parsedValue = parseFreeformValue(newValue);
-              onChange(parsedValue !== null ? [parsedValue] : []);
-            }}
+            onKeyDown={handleSingleValueKeyDown}
+            onChange={handleSingleValueChange}
           />
         )}
       </div>
