@@ -266,6 +266,19 @@ export type SdkIframeEmbedBaseSettings = {
     // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
     handleLink?: (url: string) => { handled: boolean };
   };
+
+  // Type inlined (not CustomVizDisplayType) so hovering the public setting shows the format.
+  /**
+   * Opt-in support for EE custom visualization plugins inside the embed.
+   *
+   * Pass an allowlist of `custom:`-prefixed plugin identifiers (manifest
+   * `name`), e.g. `["custom:Thumbs", "custom:Calendar"]`. Only
+   * listed plugins are loaded. Omit or pass `[]` to disable.
+   *
+   * Ignored in guest embeds: custom visualizations need an authenticated
+   * session.
+   */
+  allowedCustomVisualizations?: `custom:${string}`[];
 };
 
 export type SdkIframeEmbedAuthTypeSettings = {

@@ -18,6 +18,7 @@ import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
 import type { OnBeforeRequestHandler } from "metabase/api/client";
@@ -33,6 +34,7 @@ import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
+import { resolveAllowedCustomVisualizations } from "../utils/validate-allowed-custom-visualizations";
 
 import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
@@ -70,6 +72,11 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 
   // Forward the host page URL so it's sent as X-Metabase-Embed-Referrer on API requests.
   _embedReferrer = settings?._embedReferrer;
+
+  // Custom viz allowlist, read by the plugin loaders via the props store.
+  ensureMetabaseProviderPropsStore().setProps({
+    allowedCustomVisualizations: resolveAllowedCustomVisualizations(settings),
+  });
 };
 
 const store = getSdkStore();
