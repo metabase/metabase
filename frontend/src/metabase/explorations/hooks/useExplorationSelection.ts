@@ -2,7 +2,9 @@ import {
   type Dispatch,
   type SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -211,6 +213,27 @@ export function useExplorationSelection(): ExplorationSelection {
     id: personalCollectionId,
     name: t`Personal collection`,
   });
+
+  // The current-user selector may resolve after the first render, in which
+  // case the useState initializer above captured `undefined`. Keep applying
+  // the personal-collection default until the user picks a collection.
+  const hasUserChosenCollection = useRef(false);
+  const setCollectionExplicitly = useCallback(
+    (collection: Required<ExplorationCollection>) => {
+      hasUserChosenCollection.current = true;
+      setCollection(collection);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (personalCollectionId != null && !hasUserChosenCollection.current) {
+      setCollection((prev) =>
+        prev.id === personalCollectionId
+          ? prev
+          : { id: personalCollectionId, name: t`Personal collection` },
+      );
+    }
+  }, [personalCollectionId]);
 
   const {
     data: allTimelines = [],
@@ -476,7 +499,7 @@ export function useExplorationSelection(): ExplorationSelection {
     setBlocks,
     setTimelines,
     setName,
-    setCollection,
+    setCollection: setCollectionExplicitly,
     addMetric,
     addDimension,
     addTimelinesById,

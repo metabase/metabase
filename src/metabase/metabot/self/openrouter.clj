@@ -392,11 +392,15 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "openrouter"
                                      :model    model
                                      :url      "/v1/chat/completions"
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "openrouter" openrouter-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 

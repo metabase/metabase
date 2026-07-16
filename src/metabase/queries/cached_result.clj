@@ -17,20 +17,32 @@
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
   served the creator's snapshot. See [[metabase.permissions.data-access-token]].
 
-  A `nil` `:data_access_token` (a pre-token snapshot, or a write that failed to capture one) is
-  treated as creator+admin-only; since this is only consulted for non-creators, that collapses to
-  admins-only. Token computation throwing — the viewer is missing a routing/impersonation
-  attribute the snapshot's database requires — means deny."
+  A `nil` `:data_access_token` (a pre-token snapshot, or a write that failed to capture one)
+  means no lens comparison is possible at all; the deliberate fallback is creator+admin-only,
+  and since this is only consulted for non-creators, that collapses to admins-only. (This branch
+  never consults `:dataset_query` — there is no token to compare it against.)
+
+  When a token IS present we are in strict lens-comparison land, and admins get no exemption —
+  an admin's own lens isn't necessarily neutral (database routing applies to admins too). So a
+  `nil` `:dataset_query`, which makes the viewer's sandbox lens uncomputable, denies everyone
+  including admins — deny rather than guess. Token computation throwing — the viewer is missing
+  a routing/impersonation attribute the snapshot's database requires — likewise means deny."
   [stored-result]
-  (if-let [creator-token (:data_access_token stored-result)]
+  (cond
+    (nil? (:data_access_token stored-result))
+    (boolean api/*is-superuser?*)
+
+    (nil? (:dataset_query stored-result))
+    false
+
+    :else
     (try
       (perms/data-access-compatible?
-       creator-token
+       (:data_access_token stored-result)
        (perms/data-access-token {:database-id (:database_id stored-result)
                                  :table-ids   (query-perms/query->source-table-ids
                                                (:dataset_query stored-result))}))
-      (catch Throwable _ false))
-    (boolean api/*is-superuser?*)))
+      (catch Throwable _ false))))
 
 (defn- cached-result-blocked-reason
   "If the current user must NOT be served the cached blob for `stored-result`, return a keyword

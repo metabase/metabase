@@ -814,6 +814,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
