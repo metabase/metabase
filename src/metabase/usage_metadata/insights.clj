@@ -2,6 +2,7 @@
   "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.walk :as walk]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -288,21 +289,71 @@
   (filter #(lib/clause-of-type? % clause-type)
           (tree-seq sequential? seq x)))
 
-(defn- physical-field-references?
-  "Whether every Field reference in `x` is a persisted, numeric Field id.
+(declare physical-clause)
 
-  Source-card queries can legally refer to result columns by name. We deliberately reject those
-  when resolving model lineage because they cannot be copied safely into a physical-table
-  Measure or Segment definition without a separate rewrite step."
-  [x]
-  (every? #(pos-int? (nth % 2 nil)) (clauses-of-type :field x)))
+(def ^:private contextual-field-option-keys
+  "Field-ref options that describe how to reach a column from the current query context.
 
-(declare direct-columns)
+  Once a clause is moved to a definition sourced directly from the owning physical table,
+  retaining these options would either make the ref invalid or silently reintroduce a join."
+  #{:join-alias :source-field :source-field-name :source-field-join-alias :inherited-temporal-unit})
 
-(defn- transparent-model-query?
-  [query table-id]
-  (let [stage  (when (= 1 (lib/stage-count query))
-                 (lib/query-stage query 0))
+(defn- direct-columns
+  [query stage-number clause]
+  (try
+    (let [columns (vec (distinct (lib/referenced-columns query stage-number clause)))]
+      (when (and (seq columns)
+                 (every? #(and (pos-int? (:id %)) (pos-int? (:table-id %))) columns))
+        columns))
+    (catch Throwable e
+      (log/debug e "Failed to resolve candidate fields")
+      nil)))
+
+(defn- physical-clause
+  "Rewrite every Field ref in `clause` to a direct physical Field-id ref.
+
+  Returns the rewritten clause, its resolved columns, and their single owning table. If
+  `expected-table-id` is non-nil, that table must be the owner. Clauses with unresolved,
+  cross-table, or context-dependent refs are rejected."
+  ([query stage-number clause expected-table-id]
+   (physical-clause query stage-number clause expected-table-id false))
+  ([query stage-number clause expected-table-id allow-no-fields?]
+   (let [columns   (direct-columns query stage-number clause)
+         table-ids (into #{} (map :table-id) columns)
+         valid?    (atom true)
+         rewritten
+         (walk/postwalk
+          (fn [x]
+            (if (lib/clause-of-type? x :field)
+              (let [field-columns (direct-columns query stage-number x)]
+                (if (= 1 (count field-columns))
+                  (let [column (first field-columns)]
+                    (if (or (nil? expected-table-id)
+                            (= expected-table-id (:table-id column)))
+                      (-> x
+                          (update 1 #(apply dissoc % contextual-field-option-keys))
+                          (assoc 2 (:id column)))
+                      (do (reset! valid? false) x)))
+                  (do (reset! valid? false) x)))
+              x))
+          clause)]
+     (when (and @valid?
+                (or (and allow-no-fields? (empty? (clauses-of-type :field clause)))
+                    (and (seq columns)
+                         (= 1 (count table-ids))
+                         (or (nil? expected-table-id)
+                             (= expected-table-id (first table-ids))))))
+       {:clause   rewritten
+        :columns  (or columns [])
+        :table-id (or expected-table-id (first table-ids))}))))
+
+(defn- projection-only-stage?
+  "Whether a stage preserves physical rows and field identity for a later stage.
+
+  Explicit field selection and renaming are allowed; operations that change population,
+  grain, values, or row multiplicity form a lineage barrier."
+  [query stage-number table-id]
+  (let [stage  (lib/query-stage query stage-number)
         fields (:fields stage)]
     (and (= :mbql.stage/mbql (:lib/type stage))
          (not (seq (:joins stage)))
@@ -317,9 +368,23 @@
          (or (not (seq fields))
              (every? (fn [field]
                        (and (lib/clause-of-type? field :field)
-                            (physical-field-references? field)
-                            (= 1 (count (direct-columns query field table-id)))))
+                            (not-any? #(get (second field) %)
+                                      [:temporal-unit :binning :source-field :join-alias])
+                            (some? (physical-clause query stage-number field table-id))))
                      fields)))))
+
+(defn- transparent-model-query?
+  [query table-id]
+  (and (= 1 (lib/stage-count query))
+       (projection-only-stage? query 0 table-id)))
+
+(defn- joined-stage?
+  [stage]
+  (or (boolean (seq (:joins stage)))
+      (boolean
+       (some (fn [[_tag opts _id-or-name]]
+               (or (:join-alias opts) (:source-field opts)))
+             (mapcat (partial clauses-of-type :field) (vals stage))))))
 
 (defn- resolve-model-source
   [database-id source-card-id model-index seen]
@@ -348,11 +413,10 @@
                        (transparent-model-query? model-query (:table-id source)))
               (update source :model-lineage conj {:id id :name name}))))))))
 
-(defn- simple-query-context
+(defn- query-stage-contexts
   [database-id dataset-query model-index]
   (when-let [query (wrap-query database-id dataset-query)]
-    (let [stage (when (= 1 (lib/stage-count query))
-                  (lib/query-stage query 0))
+    (let [stage (lib/query-stage query 0)
           source
           (cond
             (pos-int? (:source-table stage))
@@ -363,11 +427,23 @@
             (resolve-model-source database-id (:source-card stage) model-index #{})
 
             :else nil)]
-      (when (and source
-                 (= :mbql.stage/mbql (:lib/type stage))
-                 (not (seq (:joins stage)))
-                 (not (seq (:expressions stage))))
-        (assoc source :query query)))))
+      (when source
+        (loop [stage-number 0
+               contexts    []]
+          (if (= stage-number (lib/stage-count query))
+            contexts
+            (let [stage   (lib/query-stage query stage-number)
+                  context (when (= :mbql.stage/mbql (:lib/type stage))
+                            (assoc source
+                                   :query query
+                                   :stage-number stage-number
+                                   :joined? (joined-stage? stage)
+                                   :expressions? (boolean (seq (:expressions stage)))))
+                  contexts (cond-> contexts context (conj context))]
+              (if (and context
+                       (projection-only-stage? query stage-number (:table-id source)))
+                (recur (inc stage-number) contexts)
+                contexts))))))))
 
 (defn- minimal-definition
   [query table-id clause-key clause]
@@ -377,22 +453,6 @@
                       :source-table table-id}
                      clause-key [clause])]})
 
-(defn- direct-columns
-  [query clause table-id]
-  (try
-    (let [columns (vec (distinct (lib/referenced-columns query 0 clause)))]
-      (when (and (seq columns)
-                 (every? #(and (pos-int? (:id %)) (= table-id (:table-id %))) columns))
-        columns))
-    (catch Throwable e
-      (log/debug e "Failed to resolve candidate fields")
-      nil)))
-
-(defn- lineage-safe-clause?
-  [model-lineage clause]
-  (or (empty? model-lineage)
-      (physical-field-references? clause)))
-
 (defn- field-summary
   [{:keys [id name display-name]}]
   {:id           id
@@ -400,7 +460,7 @@
    :display-name (or display-name name)})
 
 (defn- simple-aggregation
-  [query aggregation table-id]
+  [query stage-number aggregation table-id]
   (let [operator   (first aggregation)
         arg-count  (count aggregation)
         field-arg? (and (<= 3 arg-count)
@@ -415,14 +475,14 @@
           (and (= arg-count 3) field-arg?))]
     (when (and (contains? candidate-aggregation-operators operator)
                valid-shape?)
-      (let [plain-count? (and (= operator :count) (= arg-count 2))
-            columns (if plain-count?
-                      []
-                      (direct-columns query aggregation table-id))]
-        (when (or plain-count? (= 1 (count columns)))
-          (cond-> {:type  operator
-                   :field (some-> (first columns) field-summary)}
-            (= operator :percentile) (assoc :percentile (nth aggregation 3))))))))
+      (let [plain-count? (and (= operator :count) (= arg-count 2))]
+        (when-let [{:keys [clause columns]}
+                   (physical-clause query stage-number aggregation table-id plain-count?)]
+          (when (or plain-count? (= 1 (count columns)))
+            {:clause clause
+             :info   (cond-> {:type  operator
+                              :field (some-> (first columns) field-summary)}
+                       (= operator :percentile) (assoc :percentile (nth aggregation 3)))}))))))
 
 (defn- categorical-column?
   [column]
@@ -434,18 +494,20 @@
    column))
 
 (defn- filter-atoms
-  [query table-id categorical-only?]
+  [query stage-number table-id categorical-only?]
   (into []
         (keep (fn [predicate]
-                (when-let [columns (direct-columns query predicate table-id)]
-                  (when (and (or (not categorical-only?)
-                                 (and (contains? categorical-filter-operators (first predicate))
-                                      (= 1 (count columns))
-                                      (categorical-column? (first columns))))
-                             (physical-field-references? predicate))
-                    {:predicate predicate
-                     :columns   columns}))))
-        (lib/atomic-filters query 0)))
+                (when-let [{rewritten-predicate :clause
+                            :keys               [columns table-id]}
+                           (physical-clause query stage-number predicate table-id)]
+                  (when (or (not categorical-only?)
+                            (and (contains? categorical-filter-operators (first predicate))
+                                 (= 1 (count columns))
+                                 (categorical-column? (first columns))))
+                    {:predicate rewritten-predicate
+                     :columns   columns
+                     :table-id  table-id}))))
+        (lib/atomic-filters query stage-number)))
 
 (declare segment-subsets)
 
@@ -484,19 +546,28 @@
   [table-id (vec (sort (map canonical-signature predicates)))])
 
 (defn- source-item-evidence
-  [{:keys [id name type verified? official-collection? popular? view-count model-lineage]}]
-  (cond-> {:id                   id
-           :name                 name
-           :type                 type
-           :verified?            verified?
-           :official-collection? official-collection?
-           :popular?             popular?
-           :view-count           view-count}
-    (seq model-lineage) (assoc :model-lineage model-lineage)))
+  [source-items]
+  (let [{:keys [id name type verified? official-collection? popular? view-count model-lineage]}
+        (first source-items)]
+    (cond-> {:id                   id
+             :name                 name
+             :type                 type
+             :verified?            verified?
+             :official-collection? official-collection?
+             :popular?             popular?
+             :view-count           view-count
+             :stage-numbers        (->> source-items (map :stage-number) distinct sort vec)
+             :joined?              (boolean (some :joined? source-items))}
+      (seq model-lineage) (assoc :model-lineage model-lineage))))
 
 (defn- candidate-evidence
   [source-items]
-  (let [items (->> source-items (map source-item-evidence) (sort-by :id) distinct vec)]
+  (let [items (->> source-items
+                   (group-by :id)
+                   vals
+                   (map source-item-evidence)
+                   (sort-by :id)
+                   vec)]
     {:source-items          items
      :distinct-source-count (count items)
      :verified-source-count (count (filter :verified? items))
@@ -539,26 +610,31 @@
   (into []
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
-           (when-let [{:keys [query table-id model-lineage]}
-                      (simple-query-context database_id dataset_query model-index)]
-             (let [source-item (assoc card :model-lineage model-lineage)
-                   categorical-predicates
-                   (predicate-candidates (filter-atoms query table-id true))]
-               (for [aggregation (lib/aggregations query 0)
-                     :when (lineage-safe-clause? model-lineage aggregation)
-                     :let [aggregation-info (simple-aggregation query aggregation table-id)]
-                     :when aggregation-info
-                     {:keys [clause info]}
-                     (into [{:clause aggregation :info aggregation-info}]
-                           (keep #(conditional-aggregation aggregation aggregation-info %))
-                           categorical-predicates)
-                     :let [definition (minimal-definition query table-id :aggregation clause)]
-                     :when (mr/validate ::lib.schema.measure/definition definition)]
-                 {::signature  [table-id (canonical-signature clause)]
-                  ::table-id   table-id
-                  ::source-item source-item
-                  :definition  definition
-                  :aggregation info})))))
+           (for [{:keys [query table-id model-lineage stage-number joined? expressions?]}
+                 (query-stage-contexts database_id dataset_query model-index)
+                 :when (and (not joined?) (not expressions?))
+                 :let [source-item (assoc card
+                                          :model-lineage model-lineage
+                                          :stage-number stage-number
+                                          :joined? joined?)
+                       categorical-predicates
+                       (predicate-candidates (filter-atoms query stage-number table-id true))]
+                 aggregation (lib/aggregations query stage-number)
+                 :let [{aggregation-clause :clause
+                        aggregation-info   :info}
+                       (simple-aggregation query stage-number aggregation table-id)]
+                 :when aggregation-info
+                 {:keys [clause info]}
+                 (into [{:clause aggregation-clause :info aggregation-info}]
+                       (keep #(conditional-aggregation aggregation-clause aggregation-info %))
+                       categorical-predicates)
+                 :let [definition (minimal-definition query table-id :aggregation clause)]
+                 :when (mr/validate ::lib.schema.measure/definition definition)]
+             {::signature   [table-id (canonical-signature clause)]
+              ::table-id    table-id
+              ::source-item source-item
+              :definition   definition
+              :aggregation  info})))
         cards))
 
 (defn- full-segment-predicate
@@ -620,22 +696,26 @@
   (into []
         (mapcat
          (fn [{:keys [database_id dataset_query] :as card}]
-           (when-let [{:keys [query table-id model-lineage]}
-                      (simple-query-context database_id dataset_query model-index)]
-             (let [source-item (assoc card :model-lineage model-lineage)
-                   candidates  (predicate-candidates (filter-atoms query table-id false))]
-               (for [{:keys [predicate predicates columns]} candidates
-                     :when (lineage-safe-clause? model-lineage predicate)
-                     :let [definition (minimal-definition query table-id :filters predicate)]
-                     :when (mr/validate ::lib.schema/query definition)]
-                 {::signature  (segment-signature table-id predicates)
-                  ::table-id   table-id
-                  ::source-item source-item
-                  :definition  definition
-                  :predicate   predicate
-                  :fields      (mapv field-summary columns)
-                  :composite?  (> (count predicates) 1)
-                  :atom-count  (count predicates)})))))
+           (for [{:keys [query model-lineage stage-number joined? expressions?]}
+                 (query-stage-contexts database_id dataset_query model-index)
+                 :when (not expressions?)
+                 [table-id atoms] (group-by :table-id
+                                            (filter-atoms query stage-number nil false))
+                 :let [source-item (assoc card
+                                          :model-lineage model-lineage
+                                          :stage-number stage-number
+                                          :joined? joined?)]
+                 {:keys [predicate predicates columns]} (predicate-candidates atoms)
+                 :let [definition (minimal-definition query table-id :filters predicate)]
+                 :when (mr/validate ::lib.schema/query definition)]
+             {::signature   (segment-signature table-id predicates)
+              ::table-id    table-id
+              ::source-item source-item
+              :definition   definition
+              :predicate    predicate
+              :fields       (mapv field-summary columns)
+              :composite?   (> (count predicates) 1)
+              :atom-count   (count predicates)})))
         cards))
 
 (defn- eligible-segment-candidate?
@@ -658,8 +738,9 @@
   A source qualifies when it is verified, directly in an official collection, or has at least
   `:min-view-count` lifetime views. Only primitive aggregations over one physical-table field are
   considered. Conditional count/distinct/sum Measures are also synthesized from categorical filter
-  subsets and retained when curated or recurring. Native queries, joins, expressions, non-transparent
-  model sources, and existing exact Measures are skipped."
+  subsets and retained when curated or recurring. Every eligible stage is inspected until a
+  non-projection stage forms a lineage barrier. Native queries, joined stages, expressions,
+  non-transparent model sources, and existing exact Measures are skipped."
   ([] (candidate-measures {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
@@ -681,7 +762,9 @@
   atoms also contribute every multi-atom subset. A composite is retained when it recurs across at
   least two source Cards or has verified/official evidence. Existing exact Segment definitions are
   skipped without allowing a saved conjunction to suppress its atomic constituents. Questions and
-  models sourced through projection-only MBQL model chains are attributed to the physical source table."
+  models sourced through projection-only MBQL model chains are attributed to the physical source
+  table. Multi-stage lineage is followed through projection-only stages, and filters from joined
+  stages are attributed only when every field in the filter belongs to one physical table."
   ([] (candidate-segments {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache

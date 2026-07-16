@@ -53,6 +53,8 @@
    [:official-collection? :boolean]
    [:popular?             :boolean]
    [:view-count           nat-int?]
+   [:stage-numbers        [:sequential {:min 1} nat-int?]]
+   [:joined?              :boolean]
    [:model-lineage        {:optional true}
     [:sequential {:min 1}
      [:map {:closed true}
