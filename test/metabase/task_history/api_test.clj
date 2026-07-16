@@ -539,8 +539,8 @@
             (is (= #{"t-a" "t-b" "t-nil"} (set asc)))
             (is (= 3 (count asc)))
             ;; AAA DB before ZZZ DB, and reversed for desc (nil position is DB-dependent, so only assert the two named)
-            (is (< (.indexOf asc "t-a") (.indexOf asc "t-b")))
-            (is (< (.indexOf desc "t-b") (.indexOf desc "t-a")))))
+            (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
+            (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc)))))
         (testing "sort by db_engine (aaa-engine < zzz-engine)"
           ;; Relabel engines via raw SQL (no Toucan hooks, so no driver init) purely to exercise ordering on the
           ;; `engine` column; reset to h2 before with-temp teardown so deletion doesn't init a bogus driver.
@@ -550,8 +550,8 @@
             (let [asc  (tracked :sort_column :db_engine :sort_direction :asc)
                   desc (tracked :sort_column :db_engine :sort_direction :desc)]
               (is (= 3 (count asc)))
-              (is (< (.indexOf asc "t-a") (.indexOf asc "t-b")))
-              (is (< (.indexOf desc "t-b") (.indexOf desc "t-a"))))
+              (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
+              (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc))))
             (finally
               (t2/query {:update :metabase_database :set {:engine "h2"} :where [:in :id [(:id db-a) (:id db-b)]]}))))))))
 
