@@ -321,20 +321,6 @@ export function getExplorationQueryGroupStatus(
   return "done";
 }
 
-export function getExplorationQueryGroupInterestingness(
-  queries: ExplorationQuery[],
-): number | null {
-  let max: number | null = null;
-  for (const q of queries) {
-    const score =
-      q.contextual_interestingness_score ?? q.interestingness_score ?? null;
-    if (score != null && (max == null || score > max)) {
-      max = score;
-    }
-  }
-  return max;
-}
-
 export interface ExplorationThread {
   id: ExplorationThreadId;
   exploration_id: ExplorationId;

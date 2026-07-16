@@ -17,7 +17,6 @@ import type {
 } from "metabase-types/api";
 import {
   getExplorationPages,
-  getExplorationQueryGroupInterestingness,
   getExplorationQueryGroupStatus,
 } from "metabase-types/api";
 
@@ -136,12 +135,25 @@ export function getExplorationSidebarTree(
     ExplorationThreadId,
     ITreeNodeItem<ExplorationTreeNode>
   >();
+
+  // use the initial thread's interestingness scores to sort all threads
+  // that means each thread has a consistent order
+  // plus we don't have to run the expensive contextual interestingness for each thread
+  const interestingnessByPageKey = getInterestingnessByPageKey(
+    threads[0]?.queries ?? [],
+  );
+
   threads.forEach((thread, index) => {
     const parentThreadId = getParentThreadId(thread);
     const isFollowUp = parentThreadId != null;
     const isTopLevelFollowUp = isFollowUp && parentThreadId === initialThreadId;
 
-    let children = getExplorationQueryTree(thread, treeItemFilter, sortOrder);
+    let children = getExplorationQueryTree(
+      thread,
+      treeItemFilter,
+      sortOrder,
+      interestingnessByPageKey,
+    );
     let metricName: string | undefined;
 
     if (
@@ -214,6 +226,32 @@ export function getExplorationSidebarTree(
   );
 }
 
+type PageKey = string;
+
+// every query in a page has the same card_id, dimension_id, and query_type
+// we use this to identify the same shaped pages across threads
+function getPageKey(query: ExplorationQuery): PageKey {
+  const { card_id, dimension_id, query_type } = query;
+  return `${card_id}-${dimension_id}-${query_type}`;
+}
+
+// max interestingness (contextual preferred) across all queries in a page
+function getInterestingnessByPageKey(
+  queries: ExplorationQuery[],
+): Record<PageKey, number | null> {
+  const interestingnessByPageKey: Record<PageKey, number | null> = {};
+  for (const q of queries) {
+    const key = getPageKey(q);
+    const score =
+      q.contextual_interestingness_score ?? q.interestingness_score ?? null;
+    const existingScore = interestingnessByPageKey[key];
+    if (score != null && (existingScore == null || score > existingScore)) {
+      interestingnessByPageKey[key] = score;
+    }
+  }
+  return interestingnessByPageKey;
+}
+
 function pruneEmptyHeadings(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
   initialThreadId: ExplorationThreadId | undefined,
@@ -281,6 +319,7 @@ function getExplorationQueryTree(
   thread: ExplorationThread,
   treeItemFilter: TreeItemFilter,
   sortOrder: ExplorationSortOrder,
+  interestingnessByPageKey: Record<PageKey, number | null>,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
@@ -300,6 +339,7 @@ function getExplorationQueryTree(
           return null;
         }
         const status = getExplorationQueryGroupStatus(queries);
+        const pageKey = getPageKey(queries[0]);
         return {
           id: String(page.id),
           name: page.name ?? "",
@@ -312,7 +352,7 @@ function getExplorationQueryTree(
             status,
             interestingness_score:
               status === "done"
-                ? getExplorationQueryGroupInterestingness(queries)
+                ? (interestingnessByPageKey[pageKey] ?? null)
                 : null,
             parent_id: String(block.id),
             hidden: page.hidden ?? false,
