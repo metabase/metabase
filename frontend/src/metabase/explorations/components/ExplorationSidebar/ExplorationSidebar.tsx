@@ -697,6 +697,7 @@ function ExplorationTreeItem({
 
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
+  const isHidden = pageData?.hidden === true;
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
 
@@ -729,6 +730,16 @@ function ExplorationTreeItem({
       >
         {item.name}
       </Ellipsified>
+      {isHidden && (
+        <Icon
+          name="eye_crossed_out"
+          c="icon-secondary"
+          size="1rem"
+          flex="none"
+          tooltip={t`Hidden`}
+          aria-label={t`Hidden`}
+        />
+      )}
       {isError && (
         <ExplorationErrorMarker
           message={t`We couldn't generate one or more of these charts.`}
