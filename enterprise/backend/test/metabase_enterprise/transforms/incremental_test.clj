@@ -181,16 +181,30 @@
   "Insert new products into the transforms_products table."
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-        values-list (str/join ", "
-                              (map (fn [{:keys [name category price created-at]}]
-                                     (format "('%s', '%s', %s, '%s')" name category price created-at))
-                                   products))
-        insert-sql (format "INSERT INTO %s (%s) VALUES %s"
-                           (sql.u/quote-name driver/*driver* :table schema source-table-name)
-                           (str/join "," (map #(sql.u/quote-name driver/*driver* :field %) ["name" "category" "price" "created_at"]))
-                           values-list)]
-    (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
+        field-sql #(sql.u/quote-name driver/*driver* :field %)]
+    (if (= driver/*driver* :clickhouse)
+      ;; ClickHouse has no auto-increment: a plain INSERT leaves `id` at the column default (0), which
+      ;; falls below any existing integer checkpoint. Assign explicit ids continuing from the current max.
+      (driver/execute-raw-queries!
+       driver/*driver* spec
+       (vec (for [{:keys [name category price created-at]} products]
+              [(format "INSERT INTO %s (%s) SELECT max(%s) + 1, '%s', '%s', %s, '%s' FROM %s"
+                       table-sql
+                       (str/join "," (map field-sql ["id" "name" "category" "price" "created_at"]))
+                       (field-sql "id")
+                       name category price created-at
+                       table-sql)])))
+      (let [values-list (str/join ", "
+                                  (map (fn [{:keys [name category price created-at]}]
+                                         (format "('%s', '%s', %s, '%s')" name category price created-at))
+                                       products))
+            insert-sql (format "INSERT INTO %s (%s) VALUES %s"
+                               table-sql
+                               (str/join "," (map field-sql ["name" "category" "price" "created_at"]))
+                               values-list)]
+        (driver/execute-raw-queries! driver/*driver* spec [[insert-sql]])))))
 
 (defn- delete-test-products!
   [products]
@@ -285,9 +299,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "Incremental Twice Product"
@@ -410,10 +422,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
-                               (not= driver/*driver* :clickhouse)
-                               ;; this *should* work see #68965 for context, will plan follow-up task
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
                       (testing "Add new data and run incrementally"
                         (with-insert-test-products!
                           [{:name "After Switch Product"
@@ -659,9 +668,7 @@
                         (transforms.execute/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "New Table Tag Product"
