@@ -463,9 +463,9 @@
             (is (str/includes? csp "default-src 'none'"))
             (is (str/includes? csp "script-src 'unsafe-eval'"))
             (is (not (str/includes? csp "sandbox")))
-            (is (str/includes? csp "frame-ancestors 'self'"))))
-        (testing "framing is allowed for same-origin (overrides the global X-Frame-Options: DENY)"
-          (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
+            (is (str/includes? csp "frame-ancestors *"))))
+        (testing "no X-Frame-Options is served (frame-ancestors is the framing policy, so EAJS customer pages can frame it)"
+          (is (nil? (get headers "X-Frame-Options"))))
         (testing "hardening headers are present"
           (is (= "nosniff"     (get headers "X-Content-Type-Options")))
           (is (= "no-referrer" (get headers "Referrer-Policy")))
@@ -476,10 +476,22 @@
       (mt/assert-has-premium-feature-error
        "Custom Visualizations"
        (mt/user-http-request :rasta :get 402 "ee/custom-viz-plugin/sandbox-host"))))
-  (testing "GET /sandbox-host requires authentication"
+  (testing "GET /sandbox-host does not require authentication (an iframe src cannot carry session auth)"
     (mt/with-premium-features #{:custom-viz}
-      (is (= "Unauthenticated"
-             (client/client :get 401 "ee/custom-viz-plugin/sandbox-host"))))))
+      (let [resp (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host")]
+        (is (str/includes? (:body resp) "<!doctype html>")))))
+  (testing "GET /sandbox-host is a 404 when the custom-viz kill switch is off"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-temporary-setting-values [custom-viz-enabled false]
+        (let [resp (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host")]
+          (testing "and the 404 never carries the eval-permitting CSP"
+            (is (not (str/includes? (str (get-in resp [:headers "Content-Security-Policy"])) "unsafe-eval")))))))))
+
+(deftest custom-viz-list-still-requires-auth-test
+  (testing "splitting out the unauthed donor route must not expose the other custom-viz routes"
+    (mt/with-premium-features #{:custom-viz}
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/list")))
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/"))))))
 
 ;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
 

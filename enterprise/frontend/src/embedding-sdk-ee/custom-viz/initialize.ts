@@ -4,6 +4,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { api } from "metabase/api/client";
 import type { IconData } from "metabase/common/utils/icon";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
@@ -28,7 +29,18 @@ import {
   unregisterCustomVizDisplay,
   useCustomVizPlugins,
 } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
+import type { SandboxMode } from "../../metabase-enterprise/custom_viz/sandbox";
 import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount";
+
+/**
+ * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
+ * uses the hosted donor document (served with a per-document eval CSP). The
+ * react-sdk npm package runs on the customer's own page and inherits its
+ * CSP, so "blank" (about:blank) works there.
+ */
+export function getSdkSandboxMode(): SandboxMode {
+  return isEmbeddingEajs() ? "hosted" : "blank";
+}
 
 /**
  * Allowlist of plugin identifiers from the `allowedCustomVisualizations`
@@ -137,8 +149,7 @@ export function initializeSdkCustomVizPlugin() {
       }
       return eeLoadCustomVizPlugin(plugin, {
         ...options,
-        // Note: in the future we might want to check the domain to check if we need "blank" or "sandbox" mode, to support data apps
-        sandboxMode: "blank",
+        sandboxMode: getSdkSandboxMode(),
       });
     },
 
@@ -161,7 +172,7 @@ export function initializeSdkCustomVizPlugin() {
           return null;
         }
         return await eeLoadCustomVizPlugin(plugin, {
-          sandboxMode: "blank",
+          sandboxMode: getSdkSandboxMode(),
         });
       } catch {
         return null;
@@ -183,7 +194,7 @@ export function initializeSdkCustomVizPlugin() {
       }, [display, allowed]);
 
       return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
-        sandboxMode: "blank",
+        sandboxMode: getSdkSandboxMode(),
       });
     },
 
