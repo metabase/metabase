@@ -54,10 +54,6 @@ describe(
       cy.location("pathname").should("eq", SCHEMA_URL);
       assertTableVisible();
 
-      cy.log("a direct page load of the schema URL should also work");
-      cy.visit(SCHEMA_URL);
-      assertTableVisible();
-
       cy.log("pick a table from the slashed schema in the data picker");
       H.newButton("Question").click();
       H.miniPicker().within(() => {

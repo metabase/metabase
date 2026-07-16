@@ -168,11 +168,22 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListDatabaseSchemaTablesRequest
     >({
-      query: ({ id, schema, ...params }) => ({
-        method: "GET",
-        url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
-        params,
-      }),
+      query: ({ id, schema, ...params }) => {
+        // schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer
+        // when percent-encoded in the URL path, so they are passed as a query parameter instead (#77353)
+        if (/[/\\%]/.test(schema)) {
+          return {
+            method: "GET",
+            url: `/api/database/${id}/schema/`,
+            params: { ...params, schema },
+          };
+        }
+        return {
+          method: "GET",
+          url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
+          params,
+        };
+      },
       providesTags: (tables = []) => [
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),

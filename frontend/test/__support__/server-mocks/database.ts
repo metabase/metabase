@@ -102,11 +102,22 @@ export const setupSchemaEndpoints = (db: Database) => {
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach((schema) => {
-    fetchMock.get(
-      `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
-      schemas[schema],
-      { name: `database-${db.id}-schema-${schema}` },
-    );
+    // mirrors listDatabaseSchemaTables: schema names with slashes, backslashes, or percent signs are
+    // passed as a query parameter, other names in the URL path (#77353)
+    if (/[/\\%]/.test(schema)) {
+      fetchMock.get({
+        url: `path:/api/database/${db.id}/schema/`,
+        query: { schema },
+        response: schemas[schema],
+        name: `database-${db.id}-schema-${schema}`,
+      });
+    } else {
+      fetchMock.get(
+        `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
+        schemas[schema],
+        { name: `database-${db.id}-schema-${schema}` },
+      );
+    }
   });
 };
 
