@@ -1,0 +1,139 @@
+import { test as base, BrowserContext, APIRequestContext } from "@playwright/test";
+
+import { MetabaseApi } from "./api";
+import { BASE_URL } from "./env";
+import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
+
+/**
+ * Port of the Cypress auth model (e2e/support/commands/user/authentication.ts):
+ * session ids cached at snapshot-creation time are injected as cookies, so no
+ * login request is needed. API requests run as the current user, mirroring
+ * cy.request's cookie-sharing behavior.
+ */
+class MetabaseHarness {
+  readonly api: MetabaseApi;
+  private sessionId: string | undefined;
+
+  constructor(
+    private context: BrowserContext,
+    request: APIRequestContext,
+    private sampleDbUrl?: string,
+  ) {
+    this.api = new MetabaseApi(request, () => this.sessionId);
+  }
+
+  async signIn(user: UserName = "admin") {
+    const cached = LOGIN_CACHE[user];
+    if (cached) {
+      this.sessionId = cached.sessionId;
+      await this.setSessionCookies(cached.sessionId, cached.deviceId);
+      return;
+    }
+
+    // Fallback for users without a cached session.
+    const { email: username, password } = USERS[user];
+    const response = await this.api.post("/api/session", {
+      username,
+      password,
+    });
+    const { id } = (await response.json()) as { id: string };
+    this.sessionId = id;
+    await this.setSessionCookies(id, "my-device-id");
+  }
+
+  signInAsAdmin() {
+    return this.signIn("admin");
+  }
+
+  signInAsNormalUser() {
+    return this.signIn("normal");
+  }
+
+  signInAsSandboxedUser() {
+    return this.signIn("sandboxed");
+  }
+
+  async signOut() {
+    this.sessionId = undefined;
+    await this.context.clearCookies({ name: "metabase.SESSION" });
+  }
+
+  async restore(name = "default") {
+    await this.api.restore(name);
+    if (this.sampleDbUrl) {
+      // Snapshots pin database 1 to the shared e2e/tmp H2 file, which only
+      // one JVM can hold — re-point it at this worker's private copy. Uses
+      // the cached admin session (valid post-restore) since restore usually
+      // runs before signIn.
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => LOGIN_CACHE.admin?.sessionId,
+      );
+      await adminApi.put("/api/database/1", {
+        details: { db: this.sampleDbUrl },
+      });
+    }
+  }
+
+  private async setSessionCookies(sessionId: string, deviceId: string) {
+    const { hostname } = new URL(BASE_URL);
+    const cookie = { domain: hostname, path: "/" };
+    await this.context.addCookies([
+      { name: "metabase.SESSION", value: sessionId, httpOnly: true, ...cookie },
+      { name: "metabase.TIMEOUT", value: "alive", ...cookie },
+      { name: "metabase.DEVICE", value: deviceId, httpOnly: true, ...cookie },
+    ]);
+  }
+}
+
+type Fixtures = {
+  mb: MetabaseHarness;
+};
+
+type WorkerFixtures = {
+  workerBackend: { url: string; sampleDbUrl?: string };
+};
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  // Per-worker backend experiment (PW_PER_WORKER_BACKEND=1): each worker
+  // boots its own Metabase so restore() calls can't collide across workers.
+  // Off by default — everything runs against the shared BASE_URL backend.
+  workerBackend: [
+    async ({}, use, workerInfo) => {
+      if (!process.env.PW_PER_WORKER_BACKEND) {
+        await use({ url: BASE_URL });
+        return;
+      }
+      const { startWorkerBackend } = await import("./worker-backend");
+      // parallelIndex, not workerIndex: replacement workers land on the same
+      // slot and reuse the still-running backend instead of booting another.
+      const backend = await startWorkerBackend(workerInfo.parallelIndex);
+      console.log(
+        `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] backend on :${backend.port} ${
+          backend.startupMs === 0
+            ? "(reused)"
+            : `ready in ${Math.round(backend.startupMs / 1000)}s`
+        }`,
+      );
+      // Deliberately not stopped here — global teardown kills slot backends,
+      // so a replacement worker on this slot can pick the backend up warm.
+      await use({
+        url: `http://localhost:${backend.port}`,
+        sampleDbUrl: backend.sampleDbUrl,
+      });
+    },
+    { scope: "worker", timeout: 11 * 60_000 },
+  ],
+
+  baseURL: async ({ workerBackend }, use) => {
+    await use(workerBackend.url);
+  },
+
+  mb: async ({ context, request, workerBackend }, use) => {
+    await use(
+      new MetabaseHarness(context, request, workerBackend.sampleDbUrl),
+    );
+  },
+});
+
+export { expect } from "@playwright/test";

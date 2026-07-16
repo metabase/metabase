@@ -1,0 +1,126 @@
+name: E2E Playwright (spike)
+
+# Runs the Playwright e2e spike (e2e-playwright/) against the EE uberjar,
+# mirroring the shape of e2e-test.yml. Non-blocking while it's a spike.
+#
+# Remaining Cypress dependency: snapshot generation (e2e/snapshot-creators)
+# is still a Cypress run. Porting default.cy.snap.js to a plain API script
+# would let this workflow drop the prepare-cypress + CLJS steps entirely.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "e2e-playwright/**"
+      - ".github/workflows/e2e-playwright.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+env:
+  DISPLAY: ""
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+
+jobs:
+  uberjar:
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  e2e-playwright:
+    needs: uberjar
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    name: e2e-playwright-ee
+    env:
+      MB_EDITION: ee
+      # resolveToken() in e2e-playwright/support/api.ts reads the
+      # CYPRESS_-prefixed names first — same secrets as e2e-test.yml.
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      # Only needed because snapshot generation is still a Cypress run.
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      # The snapshot-creator specs bundle e2e/support helpers, which need the
+      # compiled CLJS output. Not needed by the Playwright suite itself.
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        # -@external skips the QA-database snapshots (mongo/postgres/mysql
+        # containers) — nothing in the Playwright suite needs them yet.
+        run: node e2e/runner/run_cypress_ci.js snapshot --expose grepTags="-@external"
+
+      - name: Install Playwright dependencies
+        working-directory: e2e-playwright
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('e2e-playwright/bun.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e-playwright
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: e2e-playwright
+        run: bunx playwright test
+
+      # Plain GitHub artifact only — deliberately NOT the upload-test-results
+      # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
+      # pass or fail, for Cypress-vs-Playwright timing comparisons.
+      - name: Upload timing results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-timings
+          path: |
+            e2e-playwright/target/junit/playwright.xml
+            e2e-playwright/target/playwright-results.json
+          if-no-files-found: ignore
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e-playwright/playwright-report
+            e2e-playwright/test-results
+          if-no-files-found: ignore
