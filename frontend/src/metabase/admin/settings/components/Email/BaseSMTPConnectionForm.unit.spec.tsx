@@ -292,7 +292,7 @@ describe("BaseSMTPConnectionForm", () => {
       screen.getByRole("button", { name: /save changes/i }),
     );
 
-    expect(mockTrack).toHaveBeenCalled();
+    await waitFor(() => expect(mockTrack).toHaveBeenCalled());
   });
 
   it("should close modal after successful submission", async () => {
@@ -315,7 +315,7 @@ describe("BaseSMTPConnectionForm", () => {
       screen.getByRole("button", { name: /save changes/i }),
     );
 
-    expect(mockClose).toHaveBeenCalled();
+    await waitFor(() => expect(mockClose).toHaveBeenCalled());
   });
 
   it("should disable save button when required field is empty", async () => {
@@ -326,7 +326,7 @@ describe("BaseSMTPConnectionForm", () => {
 
     await userEvent.clear(hostInput);
 
-    expect(saveButton).toBeDisabled();
+    await waitFor(() => expect(saveButton).toBeDisabled());
   });
 
   it("should show env var message when field is set by env var", async () => {

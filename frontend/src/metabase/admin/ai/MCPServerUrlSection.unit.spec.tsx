@@ -1,12 +1,10 @@
-import userEvent from "@testing-library/user-event";
-
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
@@ -49,9 +47,11 @@ describe("McpServerUrlSection", () => {
 
   it("can copy the MCP server URL to the clipboard", async () => {
     setup();
-    await userEvent.click(
-      await screen.findByRole("img", { name: /copy icon/i }),
-    );
+    // Use fireEvent rather than userEvent here: userEvent.setup() (invoked by
+    // the fast-test regime's wrapped click) replaces navigator.clipboard with
+    // its own stub, which would shadow the jest.fn we assert on. fireEvent
+    // leaves navigator.clipboard.writeText as the mocked jest.fn.
+    fireEvent.click(await screen.findByRole("img", { name: /copy icon/i }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(MCP_URL);
   });
 });

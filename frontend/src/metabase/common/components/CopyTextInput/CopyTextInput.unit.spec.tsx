@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { CopyTextInput } from "./CopyTextInput";
 
 describe("CopyTextInput", () => {
   it("copies the value and calls onCopy when clicking the copy button", async () => {
-    jest.mocked(navigator.clipboard.writeText).mockClear();
     const onCopied = jest.fn();
     renderWithProviders(
       <CopyTextInput value="https://example.com" onCopied={onCopied} />,
@@ -14,9 +13,22 @@ describe("CopyTextInput", () => {
 
     await userEvent.click(screen.getByTestId("copy-button"));
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      "https://example.com",
-    );
+    // The fast-test regime routes userEvent through its own clipboard stub
+    // (writeText is not the global jest mock), so read the value back from it;
+    // in stock mode the global mock records the write instead. Either way we
+    // assert the exact value that was copied.
+    const { writeText } = navigator.clipboard;
+    if (jest.isMockFunction(writeText)) {
+      await waitFor(() =>
+        expect(writeText).toHaveBeenCalledWith("https://example.com"),
+      );
+    } else {
+      await waitFor(async () =>
+        expect(await navigator.clipboard.readText()).toBe(
+          "https://example.com",
+        ),
+      );
+    }
     expect(onCopied).toHaveBeenCalled();
   });
 

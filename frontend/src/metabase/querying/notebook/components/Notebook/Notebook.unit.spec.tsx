@@ -36,6 +36,10 @@ import {
 
 import { Notebook, type NotebookProps } from "./Notebook";
 
+// Set per-test for the entity-picker flows; a realistically-delayed instance
+// used in place of the regime's delay-null userEvent.
+let pickerUser: ReturnType<typeof userEvent.setup>;
+
 type SetupOpts = Pick<NotebookProps, "question"> &
   Partial<
     Pick<
@@ -251,6 +255,22 @@ describe("Notebook", () => {
   });
 
   describe("when filtering with modelsFilterList", () => {
+    // These flows drive the mini-picker popover and the multi-column entity
+    // picker modal, whose Mantine transitions never settle under the
+    // fake-timer regime; run them on real timers. Switching back to fake timers
+    // between the cases leaks each picker's pending real timers into the next
+    // test, so stay on real timers for the whole (final) block.
+    beforeEach(() => {
+      jest.useRealTimers();
+      // The entity picker persists its last-used tab in localStorage, which
+      // survives store recreation and leaks between these cases; reset it.
+      localStorage.clear();
+      // Drive these flows with a realistically-delayed userEvent (like stock):
+      // the regime's delay-null clicks race ahead of the picker's async, which
+      // then settles during the next case and corrupts it.
+      pickerUser = userEvent.setup({ delay: 10 });
+    });
+
     describe.each<Exclude<DataPickerValue["model"], "database">>([
       "metric",
       "card",
@@ -269,14 +289,14 @@ describe("Notebook", () => {
         } = dataPickerValueMap[entityType];
 
         await goToEntityModal();
-        await userEvent.click(await screen.findByText(/Our analytics/));
+        await pickerUser.click(await screen.findByText(/Our analytics/));
 
         await assertDataInPickerColumn({
           columnIndex: pickerColIdx,
           data: itemPickerData,
         });
 
-        await userEvent.click(await screen.findByText(/Recent items/));
+        await pickerUser.click(await screen.findByText(/Recent items/));
         await waitForLoaderToBeRemoved();
 
         await assertDataInPickerColumn({
@@ -289,10 +309,10 @@ describe("Notebook", () => {
 });
 
 const goToEntityModal = async () => {
-  await userEvent.click(screen.getByText("Orders"));
+  await pickerUser.click(screen.getByText("Orders"));
   const popover = await screen.findByTestId("mini-picker");
-  await userEvent.click(await within(popover).findByText("Sample Database"));
-  await userEvent.click(await within(popover).findByText("Browse all"));
+  await pickerUser.click(await within(popover).findByText("Sample Database"));
+  await pickerUser.click(await within(popover).findByText("Browse all"));
 
   expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
 

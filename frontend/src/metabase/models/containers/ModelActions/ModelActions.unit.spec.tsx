@@ -430,11 +430,13 @@ describe("ModelActions", () => {
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
         );
 
-        expect(
-          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-            method: "PUT",
-          }),
-        ).toHaveLength(1);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
         const call = fetchMock.callHistory.lastCall(
           `path:/api/action/${action.id}`,
           {
@@ -468,13 +470,15 @@ describe("ModelActions", () => {
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
-        for (const action of actions) {
-          expect(
-            fetchMock.callHistory.called(`path:/api/action/${action.id}`, {
-              method: "DELETE",
-            }),
-          ).toBe(true);
-        }
+        await waitFor(() => {
+          for (const action of actions) {
+            expect(
+              fetchMock.callHistory.called(`path:/api/action/${action.id}`, {
+                method: "DELETE",
+              }),
+            ).toBe(true);
+          }
+        });
       });
     });
 

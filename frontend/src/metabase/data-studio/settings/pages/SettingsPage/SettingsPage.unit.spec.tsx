@@ -16,8 +16,6 @@ import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { SettingsPage } from "./SettingsPage";
 
-const TRANSFORMS_ENABLED_PATH = "path:/api/setting/transforms-enabled";
-
 interface SetupOpts {
   isAdmin?: boolean;
   transformsEnabled?: boolean;
@@ -114,22 +112,28 @@ describe("SettingsPage", () => {
 
   it("should revert the switch and show a toast when the backend update fails", async () => {
     setup({ transformsEnabled: true });
-    fetchMock.put(TRANSFORMS_ENABLED_PATH, 400);
+    // Use the named helper so any leftover "update-setting" route from a prior
+    // test is replaced (beforeEach's removeRoutes doesn't clear it), otherwise a
+    // stale 204 route wins and the PUT would incorrectly succeed.
+    setupUpdateSettingEndpoint({ status: 400 });
 
     const toggle = screen.getByRole("switch");
     expect(toggle).toBeChecked();
 
     await userEvent.click(toggle);
 
-    await waitFor(async () => {
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-      expect(puts[0].body).toEqual({ value: false });
-    });
+    // findRequests advances the fake clock by a bounded amount, which lets the
+    // failing PUT reject (triggering the toast + revert) without leaping past
+    // the toast's 5s auto-dismiss the way an unbounded findByText poll can.
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toEqual({ value: false });
 
+    // At this point the switch has reverted and the toast is showing (both
+    // happen in the same tick as the failed PUT). Assert them synchronously:
+    // findByText would advance the clock further and race the toast's 5s
+    // auto-dismiss.
+    expect(screen.getByText("Failed to update setting")).toBeInTheDocument();
     expect(toggle).toBeChecked();
-    expect(
-      await screen.findByText("Failed to update setting"),
-    ).toBeInTheDocument();
   });
 });

@@ -493,7 +493,7 @@ describe("ObjectDetailPanel", () => {
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();
     expect(
-      within(modal).getByRole("heading", { name: "Update" }),
+      await within(modal).findByRole("heading", { name: "Update" }),
     ).toBeInTheDocument();
   });
 

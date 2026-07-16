@@ -109,9 +109,11 @@ describe("CreateDashboardModal", () => {
 
     await userEvent.click(screen.getByText("Create"));
 
-    expect(
-      fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
+      ).toHaveLength(1);
+    });
 
     // api called with typed form input
     const lastCall = fetchMock.callHistory.lastCall(`path:/api/dashboard`, {
@@ -123,7 +125,9 @@ describe("CreateDashboardModal", () => {
     });
 
     // called prop with api response
-    expect(onCreate).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledTimes(1);
+    });
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
 
@@ -214,6 +218,12 @@ describe("CreateDashboardModal", () => {
 
     await userEvent.click(screen.getByText("Create"));
 
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
+      ).toHaveLength(1);
+    });
+
     // api called with typed form input
     const createDashboardCall = fetchMock.callHistory.lastCall(
       `path:/api/dashboard`,
@@ -253,6 +263,12 @@ describe("CreateDashboardModal", () => {
     );
 
     await userEvent.click(screen.getByText("Create"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
+      ).toHaveLength(1);
+    });
 
     // api called with typed form input
     const createDashboardCall = fetchMock.callHistory.lastCall(

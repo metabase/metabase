@@ -127,16 +127,21 @@ describe("CollectionMenu", () => {
       await assertIndicatorVisible();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(
-        fetchMock.callHistory.calls(
-          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
-          { method: "PUT" },
-        ),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
+            { method: "PUT" },
+          ),
+        ).toHaveLength(1),
+      );
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      const cleanupItem = await screen.findByRole("menuitem", {
+        name: /Clear out unused items/,
+      });
+      await waitFor(() =>
+        expect(cleanupItem).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should not show an indicator if it has previously been dismissed, even if we recommend cleaning the collection", async () => {
@@ -156,9 +161,12 @@ describe("CollectionMenu", () => {
         ),
       ).toHaveLength(0);
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      const cleanupItem = await screen.findByRole("menuitem", {
+        name: /Clear out unused items/,
+      });
+      await waitFor(() =>
+        expect(cleanupItem).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should recommend cleaning collections to non-admins with write access", async () => {
@@ -170,9 +178,12 @@ describe("CollectionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(
-        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
-      ).toHaveTextContent("Recommended");
+      const cleanupItem = await screen.findByRole("menuitem", {
+        name: /Clear out unused items/,
+      });
+      await waitFor(() =>
+        expect(cleanupItem).toHaveTextContent("Recommended"),
+      );
     });
 
     it("should not show an indicator if there are no stale items in the collection", async () => {

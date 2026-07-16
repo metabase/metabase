@@ -20,10 +20,13 @@ jest.mock("metabase/common/search/term", () => ({
   shouldReportSearchTerm: jest.fn(() => false),
 }));
 
-// Real timers, not fake ones: underscore's `_.debounce` binds `Date.now` at import, before jest could
-// install fake timers, so `advanceTimersByTime` never moves the clock it reads. Wait past the 300ms
-// window (see DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS in analytics.ts) instead.
+// Past the 300ms debounce window (see DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS in analytics.ts).
 const SETTLE_WAIT_MS = 350;
+
+// jest's modern fake timers (@sinonjs) install a `clock` property on the replaced global timers;
+// real timers have none. That distinguishes the fast-test regime from a stock (real-timer) run.
+const usingFakeTimers = () =>
+  Object.prototype.hasOwnProperty.call(setTimeout, "clock");
 
 const makeRequest = (
   overrides: Partial<SearchRequest> = {},
@@ -35,7 +38,13 @@ const makeRequest = (
 
 const makeResponse = (): SearchResponse => createMockSearchResults();
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// Under the fast-test fake-timer regime, both underscore's captured `Date.now` and `setTimeout` are
+// faked (and thus consistent), so advancing the fake clock settles the debounce. On real timers we
+// actually wait. `_.debounce` reads `now()` and `setTimeout` from the same clock either way.
+const wait = (ms: number) =>
+  usingFakeTimers()
+    ? jest.advanceTimersByTimeAsync(ms)
+    : new Promise((resolve) => setTimeout(resolve, ms));
 
 // trackSearchRequest awaits hashSearchTerm before it fires, so let the microtask queue drain.
 const flushMicrotasks = async () => {

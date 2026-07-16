@@ -185,9 +185,10 @@ describe("HomepageSetting", () => {
 
   it("selects Dashboard mode when custom-homepage is on", async () => {
     setup({ "custom-homepage": true, "custom-homepage-dashboard": 4242 });
-    expect(
-      await screen.findByRole("radio", { name: "Dashboard" }),
-    ).toBeChecked();
+    const dashboardRadio = await screen.findByRole("radio", {
+      name: "Dashboard",
+    });
+    await waitFor(() => expect(dashboardRadio).toBeChecked());
     expect(await screen.findByText("My dashboard")).toBeInTheDocument();
   });
 
@@ -225,6 +226,11 @@ describe("HomepageSetting", () => {
 
   it("clears landing-page and turns custom-homepage off when switching to Default", async () => {
     setup({ withCustomUrlPlugin: true, "landing-page": "/some/url" });
+
+    // Wait for the loaded state (Custom URL selected) before switching away,
+    // otherwise the pre-load default selection makes the click a no-op.
+    const urlRadio = await screen.findByRole("radio", { name: "Custom URL" });
+    await waitFor(() => expect(urlRadio).toBeChecked());
 
     await userEvent.click(
       await screen.findByRole("radio", { name: "Default Metabase home" }),

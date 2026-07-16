@@ -52,7 +52,7 @@ describe("MetricPageShell", () => {
     });
 
     expect(
-      screen.getByText("This item has been permanently deleted."),
+      await screen.findByText("This item has been permanently deleted."),
     ).toBeInTheDocument();
   });
 });

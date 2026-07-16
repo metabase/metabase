@@ -68,7 +68,9 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    expect(screen.getByText("Remove uploaded image")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Remove uploaded image"),
+    ).toBeInTheDocument();
   });
 
   it("shows an image preview", async () => {
@@ -80,7 +82,9 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    expect(screen.getByLabelText("Image preview")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("Image preview"),
+    ).toBeInTheDocument();
   });
 
   it("can remove an uploaded image", async () => {
@@ -92,7 +96,7 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    await userEvent.click(screen.getByLabelText("close icon"));
+    await userEvent.click(await screen.findByLabelText("close icon"));
 
     const [{ url, body }] = await findRequests("PUT");
 

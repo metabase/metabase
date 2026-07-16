@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
 import {
@@ -108,6 +109,17 @@ describe("ActionCreator > Query Actions", () => {
           name: MODEL_NAME,
         });
         await setup({ model });
+
+        // The model is preselected from the metadata store, which is populated
+        // by the model's card query; wait for it to load before opening the
+        // save form so the picker initializes with the model selected.
+        await waitFor(() => {
+          expect(
+            fetchMock.callHistory.called(`path:/api/card/${model.id}`, {
+              method: "GET",
+            }),
+          ).toBe(true);
+        });
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");

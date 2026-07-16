@@ -30,6 +30,14 @@ import {
 } from "./utils";
 
 describe("metabot > ui", () => {
+  // The TipTap/ProseMirror prompt editor these tests drive processes input
+  // through real timers/microtasks; the fast-test regime's frozen fake timers
+  // prevent messages from ever being submitted. Opt this file back into real
+  // timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should be able to render metabot", async () => {
     setup();
     await assertVisible();

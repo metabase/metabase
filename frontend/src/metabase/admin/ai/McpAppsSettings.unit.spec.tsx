@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -54,7 +54,11 @@ describe("McpAppsSettings", () => {
   it("can toggle the MCP server", async () => {
     await setup();
 
-    await userEvent.click(screen.getByRole("switch", { name: "MCP server" }));
+    // The switch is disabled until the settings query resolves; clicking a
+    // disabled switch fires no update. Wait for the loaded (enabled) state.
+    const serverSwitch = screen.getByRole("switch", { name: "MCP server" });
+    await waitFor(() => expect(serverSwitch).toBeEnabled());
+    await userEvent.click(serverSwitch);
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
@@ -150,7 +154,11 @@ describe("McpAppsSettings", () => {
   it("hides MCP client configuration when the MCP server is off", async () => {
     await setup({ enabled: false });
 
-    expect(screen.queryByLabelText("Claude")).not.toBeInTheDocument();
+    // isEnabled defaults to true until the settings query resolves; wait for
+    // the loaded (disabled) state to hide the client configuration.
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Claude")).not.toBeInTheDocument(),
+    );
     expect(
       screen.queryByPlaceholderText("https://*.example.com"),
     ).not.toBeInTheDocument();

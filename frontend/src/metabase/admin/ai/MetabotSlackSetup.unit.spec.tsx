@@ -136,6 +136,12 @@ describe("MetabotSlackSetup", () => {
     await setup();
     setupMetabotSlackSettingsEndpointWithError(400, "Invalid credentials");
 
+    // While the settings query is loading, values is {} and
+    // Object.values({}).every(Boolean) is true, so the form renders in its
+    // configured (disabled) shell. The "Save changes" button only appears in
+    // the loaded, unconfigured form — await it before typing into the inputs.
+    await saveButton();
+
     await userEvent.type(await clientIdInput(), "123.456");
     await userEvent.type(await clientSecretInput(), "secret");
     await userEvent.type(await signingSecretInput(), "signing");
@@ -162,7 +168,11 @@ describe("MetabotSlackSetup", () => {
         expect.stringContaining("encrypting-database-details-at-rest"),
       );
 
-      expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();
+      // The configured-shell form shows while settings load; wait for the
+      // loaded state, where the notification hides the form entirely.
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument(),
+      );
     });
   });
 
@@ -176,7 +186,11 @@ describe("MetabotSlackSetup", () => {
 
       expect(screen.getByText("Connect to a provider")).toBeInTheDocument();
 
-      expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument();
+      // The configured-shell form shows while settings load; wait for the
+      // loaded state, where the notification hides the form entirely.
+      await waitFor(() =>
+        expect(screen.queryByLabelText("Client ID")).not.toBeInTheDocument(),
+      );
     });
   });
 
@@ -218,6 +232,11 @@ describe("MetabotSlackSetup", () => {
     it("submits settings via PUT /api/metabot/slack/settings", async () => {
       await setup();
 
+      // The "Save changes" button only appears in the loaded, unconfigured
+      // form; await it before typing so the inputs are enabled (not the
+      // disabled configured-shell inputs shown while settings load).
+      await saveButton();
+
       await userEvent.type(await clientIdInput(), "123.456");
       await userEvent.type(await clientSecretInput(), "secret123");
       await userEvent.type(await signingSecretInput(), "signing123");
@@ -255,9 +274,13 @@ describe("MetabotSlackSetup", () => {
       const link = await screen.findByRole("link", {
         name: "Basic Information",
       });
-      expect(link).toHaveAttribute(
-        "href",
-        "https://api.slack.com/apps/A123ABC/general",
+      // The link renders with a fallback href until the app-info query
+      // resolves; wait for the app_id-derived href.
+      await waitFor(() =>
+        expect(link).toHaveAttribute(
+          "href",
+          "https://api.slack.com/apps/A123ABC/general",
+        ),
       );
     });
 
@@ -314,10 +337,14 @@ describe("MetabotSlackSetup", () => {
       await setup({ clientId: "123.456", signingSecret: "signing123" });
       await screen.findByText("Natural language questions in Slack");
 
+      // The configured shell (with the enable toggle) shows while settings
+      // load; wait for the loaded, unconfigured form to replace it.
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Let people chat with Metabot"),
+        ).not.toBeInTheDocument(),
+      );
       expect(await clientIdInput()).toBeInTheDocument();
-      expect(
-        screen.queryByText("Let people chat with Metabot"),
-      ).not.toBeInTheDocument();
     });
 
     it("shows configured UI alongside missing scopes alert", async () => {

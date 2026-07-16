@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   changeInput,
@@ -55,10 +55,19 @@ describe("StrategyEditorForDatabases (OSS)", () => {
   it("does not regard form as dirty when a default value is entered into an input (metabase#42974)", async () => {
     await selectCacheStrategy(/Adaptive/i);
     await userEvent.click(await getSaveButton());
+    // Wait for the save to settle (the submit button disappears once the form
+    // is no longer dirty) before re-entering a value.
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument(),
+    );
     await changeInput(/multiplier/i, 10, 10);
     // The form is not considered dirty, so the save button is not present
-    expect(
-      screen.queryByTestId("strategy-form-submit-button"),
-    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

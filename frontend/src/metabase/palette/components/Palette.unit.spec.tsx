@@ -94,10 +94,12 @@ describe("command palette", () => {
     const calls = () =>
       fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
 
+    await waitFor(() => expect(calls()).toHaveLength(1));
     expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
+    await waitFor(() => expect(calls()).toHaveLength(2));
     expect(await calls().at(-1)?.request?.json()).toEqual({
       value: "auto",
     });

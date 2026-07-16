@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import { defaultPermissionsGraph, setup } from "./setup";
 
@@ -102,9 +102,11 @@ describe("Admin > CollectionPermissionsPage", () => {
       // are you sure you want to save?
       await userEvent.click(await screen.findByText("Yes"));
 
-      expect(
-        screen.queryByText("You've made changes to permissions."),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText("You've made changes to permissions."),
+        ).not.toBeInTheDocument();
+      });
 
       expect(await screen.findByText("Curate")).toBeInTheDocument();
       expect(await screen.findAllByText("View")).toHaveLength(2);
@@ -163,9 +165,11 @@ describe("Admin > CollectionPermissionsPage", () => {
       // are you sure you want to save?
       await userEvent.click(await screen.findByText("Yes"));
 
-      expect(
-        screen.queryByText("You've made changes to permissions."),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText("You've made changes to permissions."),
+        ).not.toBeInTheDocument();
+      });
 
       expect(await screen.findAllByText("Curate")).toHaveLength(3);
       expect(screen.queryByText("No access")).not.toBeInTheDocument();

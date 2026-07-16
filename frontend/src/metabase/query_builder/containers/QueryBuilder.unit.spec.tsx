@@ -29,6 +29,13 @@ import {
 
 registerVisualizations();
 
+// The query builder is a heavy integration surface driven by real timers
+// (query-run document-title/favicon timeouts, autosave, favicon polling). Its
+// re-run flow leaves the results view blank under the fast-test regime's fake
+// timers, so opt this file back into real timers — the behaviour under test is
+// query execution and downloads, not any timer semantics.
+jest.useRealTimers();
+
 describe("QueryBuilder", () => {
   beforeEach(() => {
     setupLastDownloadFormatEndpoints();
@@ -183,11 +190,13 @@ describe("QueryBuilder", () => {
         await screen.findByTestId("download-results-button"),
       );
 
-      expect(
-        fetchMock.callHistory.calls(
-          `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
-        ),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
+          ),
+        ).toHaveLength(1),
+      );
     });
 
     it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
@@ -218,6 +227,12 @@ describe("QueryBuilder", () => {
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/dataset/csv").length,
+        ).toBeGreaterThan(0),
       );
 
       const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");

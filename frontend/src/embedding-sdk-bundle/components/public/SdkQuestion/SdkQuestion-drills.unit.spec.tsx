@@ -111,13 +111,21 @@ describe("SdkQuestion onDrillThrough", () => {
 
     await setup({ onDrillThrough });
 
+    // Wait for the initial question load to fire its single card query before
+    // interacting, so the drill starts from the fully-loaded state.
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(queryPath)).toHaveLength(1);
+    });
+
     await userEvent.click(screen.getByText("Trigger Drill"));
 
     // Should be called with drill names and next card
-    expect(onDrillThrough).toHaveBeenCalledWith(
-      { drillName: "drill-thru/pk", nextCard: NEXT_CARD },
-      expect.any(Function),
-    );
+    await waitFor(() => {
+      expect(onDrillThrough).toHaveBeenCalledWith(
+        { drillName: "drill-thru/pk", nextCard: NEXT_CARD },
+        expect.any(Function),
+      );
+    });
 
     // One card query: defaultNavigate hasn't been called yet
     expect(fetchMock.callHistory.calls(queryPath)).toHaveLength(1);

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import * as Urls from "metabase/urls";
 import type { GetPublicCard } from "metabase-types/api";
@@ -117,6 +117,8 @@ describe("PublicSharingSettingsPage", () => {
     await userEvent.click(confirmButton);
     expect(mockRevoke).toHaveBeenCalledTimes(1);
     expect(mockRevoke).toHaveBeenCalledWith(publicCardData[0]);
-    expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument(),
+    );
   });
 });

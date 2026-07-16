@@ -216,11 +216,13 @@ describe("MetabotSettingsPanel", () => {
     setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED);
 
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
-      ).length,
-    ).toEqual(1); // should have loaded prompt suggestions
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/metabot/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
+        ).length,
+      ).toEqual(1),
+    ); // should have loaded prompt suggestions
 
     expect(await screen.findByText("Collection Two")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Pick a different collection"));
@@ -264,8 +266,11 @@ describe("MetabotSettingsPanel", () => {
       screen.queryByText(/Metabot is Metabase's AI assistant/),
     ).not.toBeInTheDocument();
 
-    // Toggle calls correct setting
-    await userEvent.click(await enabledToggle());
+    // Toggle calls correct setting. The switch is disabled until the setting
+    // query resolves; wait for the loaded (enabled) state before clicking.
+    const toggle = await enabledToggle();
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await userEvent.click(toggle);
     await waitForRequest(() =>
       getLastSettingUpdateCall("embedded-metabot-enabled?"),
     );

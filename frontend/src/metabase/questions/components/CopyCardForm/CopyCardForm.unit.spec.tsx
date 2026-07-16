@@ -5,7 +5,7 @@ import {
   setupDashboardEndpoints,
   setupGetCollectionEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CardType } from "metabase-types/api";
 import {
   createMockCollection,
@@ -94,12 +94,21 @@ describe("CopyQuestionForm", () => {
     };
     const { onSaved } = setup({ initialValues: values });
 
+    // The dashboard-tab select only reflects the selected tab once the
+    // dashboard has loaded; duplicating before then submits an undefined tab.
+    const tabSelect = await screen.findByLabelText(
+      /Which tab should this go on/,
+    );
+    await waitFor(() => expect(tabSelect).toHaveValue("Foo Tab 1"));
+
     await userEvent.click(
       await screen.findByRole("button", { name: "Duplicate" }),
     );
-    expect(onSaved).toHaveBeenCalledWith(values, {
-      dashboardTabId: values.dashboard_tab_id,
-    });
+    await waitFor(() =>
+      expect(onSaved).toHaveBeenCalledWith(values, {
+        dashboardTabId: values.dashboard_tab_id,
+      }),
+    );
   });
 
   it("should not show the dashboard tab input for models other than question", async () => {

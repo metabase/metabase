@@ -436,12 +436,18 @@ describe("Notebook Editor > Join Step", () => {
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("People"));
 
-    const { conditions } = getRecentJoin();
-    const [condition] = conditions;
-    expect(conditions).toHaveLength(1);
-    expect(condition.operator).toBe("=");
-    expect(condition.lhsExpression.longDisplayName).toBe("User ID");
-    expect(condition.rhsExpression.longDisplayName).toBe("People - User → ID");
+    // Selecting the new RHS table applies the suggested condition via an async
+    // query update; wait for it to land before inspecting the join.
+    await waitFor(() => {
+      const { conditions } = getRecentJoin();
+      const [condition] = conditions;
+      expect(conditions).toHaveLength(1);
+      expect(condition.operator).toBe("=");
+      expect(condition.lhsExpression.longDisplayName).toBe("User ID");
+      expect(condition.rhsExpression.longDisplayName).toBe(
+        "People - User → ID",
+      );
+    });
   });
 
   it("should allow to change the RHS table when there are no suggested join conditions", async () => {
@@ -689,37 +695,50 @@ describe("Notebook Editor > Join Step", () => {
 
   describe("join strategies", () => {
     it("should be able to change the join strategy for a new join clause", async () => {
-      const { getRecentJoin } = setup();
+      // This flow chains the entity-picker modal, a strategy popover, and two
+      // auto-opening column pickers. Under the fake-timer regime their portal
+      // transitions never settle and leak timers that corrupt later tests, so
+      // run just this test on real timers (restored in `finally`).
+      jest.useRealTimers();
+      try {
+        const { getRecentJoin } = setup();
 
-      await userEvent.click(
-        within(screen.getByLabelText("Right table")).getByRole("textbox"),
-      );
+        await userEvent.click(
+          within(screen.getByLabelText("Right table")).getByRole("textbox"),
+        );
 
-      await userEvent.click(
-        await screen.findByRole("menuitem", { name: /Browse all/ }),
-      );
-      const lhsTableModal = await screen.findByTestId("entity-picker-modal");
-      await userEvent.click(
-        await within(lhsTableModal).findByText("Databases"),
-      );
-      await userEvent.click(await screen.findByText(/Sample Database/));
-      await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: /Browse all/ }),
+        );
+        const lhsTableModal = await screen.findByTestId("entity-picker-modal");
+        await userEvent.click(
+          await within(lhsTableModal).findByText("Databases"),
+        );
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(
+          await within(lhsTableModal).findByText("Reviews"),
+        );
 
-      await userEvent.click(screen.getByLabelText("Change join type"));
-      const strategyPopover = await screen.findByTestId("select-list");
-      await userEvent.click(
-        within(strategyPopover).getByLabelText("Right outer join"),
-      );
+        await userEvent.click(await screen.findByLabelText("Change join type"));
+        const strategyPopover = await screen.findByTestId("select-list");
+        await userEvent.click(
+          within(strategyPopover).getByLabelText("Right outer join"),
+        );
 
-      await userEvent.click(screen.getByLabelText("Left column"));
-      const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
-      await userEvent.click(within(lhsColumnPopover).getByText("ID"));
+        await userEvent.click(await screen.findByLabelText("Left column"));
+        const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
+        await userEvent.click(await within(lhsColumnPopover).findByText("ID"));
 
-      const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
-      await userEvent.click(within(rhsColumnPopover).getByText("ID"));
+        const rhsColumnPopover = await screen.findByTestId("rhs-column-picker");
+        await userEvent.click(await within(rhsColumnPopover).findByText("ID"));
 
-      const { strategy } = getRecentJoin();
-      expect(strategy.shortName).toBe("right-join");
+        await waitFor(() => {
+          const { strategy } = getRecentJoin();
+          expect(strategy.shortName).toBe("right-join");
+        });
+      } finally {
+        jest.useFakeTimers();
+      }
     });
 
     it("should be able to change the join strategy of an existing join clause", async () => {
@@ -1156,9 +1175,11 @@ describe("Notebook Editor > Join Step", () => {
 
   describe("temporal bucket sync", () => {
     async function selectColumnWithBucket(bucketName: string) {
-      await userEvent.click(screen.getByLabelText("Temporal bucket"));
-      await userEvent.click(screen.getByText("More…"));
-      await userEvent.click(screen.getByText(bucketName));
+      // The bucket control and its submenus render after the column picker
+      // opens; wait for each before clicking.
+      await userEvent.click(await screen.findByLabelText("Temporal bucket"));
+      await userEvent.click(await screen.findByText("More…"));
+      await userEvent.click(await screen.findByText(bucketName));
     }
 
     it.each([
@@ -1282,11 +1303,11 @@ describe("Notebook Editor > Join Step", () => {
         await selectColumnWithBucket(oldBucketName);
 
         if (newLhsBucketName) {
-          await userEvent.click(screen.getByLabelText("Left column"));
+          await userEvent.click(await screen.findByLabelText("Left column"));
           await selectColumnWithBucket(newLhsBucketName);
         }
         if (newRhsBucketName) {
-          await userEvent.click(screen.getByLabelText("Right column"));
+          await userEvent.click(await screen.findByLabelText("Right column"));
           await selectColumnWithBucket(newRhsBucketName);
         }
 

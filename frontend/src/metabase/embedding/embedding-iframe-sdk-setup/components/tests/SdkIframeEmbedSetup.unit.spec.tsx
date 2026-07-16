@@ -115,7 +115,7 @@ describe("Embed flow > forward and backward navigation", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
-    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(await screen.findByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
     expect(
@@ -137,7 +137,7 @@ describe("Embed flow > forward and backward navigation", () => {
 
     // First step (experience + resource) > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(await screen.findByText("Behavior")).toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
 
     // Back to first step
@@ -434,7 +434,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(
-      screen.getByRole("checkbox", {
+      await screen.findByRole("checkbox", {
         name: "Allow people to drill through on data points",
       }),
     ).toBeEnabled();

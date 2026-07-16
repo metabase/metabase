@@ -152,12 +152,26 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
+    // The add-filter button is disabled until the query is derived from the
+    // selected table; clicking it while disabled won't open the popover. The
+    // disabled and enabled buttons are distinct elements, so re-query.
+    await waitFor(() =>
+      expect(
+        screen
+          .getByText("Add filters to narrow your answer")
+          .closest("button"),
+      ).toBeEnabled(),
+    );
     await userEvent.click(
       screen.getByText("Add filters to narrow your answer"),
     );
-    await userEvent.click(screen.getByText("ID"));
-    await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
-    await userEvent.click(screen.getByText("Add filter"));
+
+    await userEvent.click(await screen.findByText("ID"));
+    await userEvent.type(
+      await screen.findByPlaceholderText("Enter an ID"),
+      "1",
+    );
+    await userEvent.click(await screen.findByText("Add filter"));
     await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
     await userEvent.type(
       screen.getByLabelText("Describe Your Segment"),

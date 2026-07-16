@@ -162,7 +162,8 @@ describe("AISettingsPage", () => {
 
     expect(screen.getByText("Connect to an AI provider")).toBeInTheDocument();
     expect(screen.getByText("Metabot settings")).toBeInTheDocument();
-    expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
+    // The metabot panel renders after the metabots query resolves.
+    expect(await screen.findByText("Enable Metabot")).toBeInTheDocument();
     expect(screen.queryByText("MCP server")).not.toBeInTheDocument();
     expect(screen.queryByText("Agent API")).not.toBeInTheDocument();
 
@@ -191,9 +192,13 @@ describe("AISettingsPage", () => {
   it("hides every other section when AI features are disabled", async () => {
     await setup({ aiFeaturesEnabled: false });
 
-    expect(
-      screen.queryByText("Connect to an AI provider"),
-    ).not.toBeInTheDocument();
+    // areAiFeaturesEnabled defaults to true until the settings query resolves;
+    // wait for the loaded (disabled) state to hide the other sections.
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Connect to an AI provider"),
+      ).not.toBeInTheDocument(),
+    );
     expect(screen.queryByText("Metabot settings")).not.toBeInTheDocument();
     expect(screen.getByText("Disable all AI features")).toBeInTheDocument();
   });
@@ -201,18 +206,27 @@ describe("AISettingsPage", () => {
   it("keeps MCP settings enabled when Metabot is not configured", async () => {
     await setup({ page: "mcp", isConfigured: false });
 
-    expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled();
-    expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled();
+    // The switches are disabled until their settings queries resolve.
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled(),
+    );
   });
 
   it("disables MCP settings when all AI features are disabled", async () => {
     await setup({ page: "mcp", aiFeaturesEnabled: false });
 
-    expect(
-      screen.getByText("MCP server", {
-        selector: '[aria-disabled="true"] *',
-      }),
-    ).toBeInTheDocument();
+    // areAiFeaturesEnabled defaults to true until the settings query resolves;
+    // wait for the loaded (disabled) state.
+    await waitFor(() =>
+      expect(
+        screen.getByText("MCP server", {
+          selector: '[aria-disabled="true"] *',
+        }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
   });
 
@@ -225,7 +239,10 @@ describe("AISettingsPage", () => {
     expect(
       screen.getByRole("tab", { name: "Embedded", selected: true }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
+    // The metabot panel renders after the metabots query resolves.
+    expect(
+      await screen.findByText("Enable Embedded Metabot"),
+    ).toBeInTheDocument();
   });
 
   it("reflects the persisted use_verified_content state from the API", async () => {
@@ -282,9 +299,13 @@ describe("AISettingsPage", () => {
   it("persists disable ai features", async () => {
     await setup();
 
-    await userEvent.click(
-      screen.getByRole("switch", { name: "Disable all AI features" }),
-    );
+    // The switch is disabled until the settings query resolves; clicking a
+    // disabled switch fires no update.
+    const disableSwitch = screen.getByRole("switch", {
+      name: "Disable all AI features",
+    });
+    await waitFor(() => expect(disableSwitch).toBeEnabled());
+    await userEvent.click(disableSwitch);
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");

@@ -41,11 +41,13 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
+          method: "POST",
+        }),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Sync triggered!");
     });
@@ -63,11 +65,13 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
+          method: "POST",
+        }),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Sync triggered!");
     });
@@ -78,11 +82,13 @@ describe("SyncTableSchemaButton", () => {
 
     expect(button).toHaveTextContent("Sync triggered!");
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
-        method: "POST",
-      }),
-    ).toHaveLength(2);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
+          method: "POST",
+        }),
+      ).toHaveLength(2);
+    });
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -108,11 +114,13 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${table.id}/sync_schema`, {
+          method: "POST",
+        }),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Sync table schema");
     });

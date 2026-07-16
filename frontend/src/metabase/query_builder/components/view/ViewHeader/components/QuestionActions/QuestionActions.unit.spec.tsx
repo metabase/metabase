@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { findRequests } from "__support__/server-mocks";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
@@ -215,11 +216,20 @@ describe("QuestionActions", () => {
 
       await openActionsMenu();
 
+      // The acknowledgement value loads asynchronously; wait for the
+      // user-key-value fetch to settle so the "already acked" path is taken.
+      await waitFor(async () => {
+        const gets = await findRequests("GET");
+        expect(
+          gets.some(({ url }) => url.includes("turn_into_model_modal")),
+        ).toBe(true);
+      });
+
       await userEvent.click(screen.getByText("Turn into a model"));
       expect(onOpenModal).not.toHaveBeenCalled();
 
       // should still turn into a model
-      expect(turnQuestionIntoModelSpy).toHaveBeenCalled();
+      await waitFor(() => expect(turnQuestionIntoModelSpy).toHaveBeenCalled());
       turnQuestionIntoModelSpy.mockRestore();
     });
 

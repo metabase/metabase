@@ -566,6 +566,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
 
       const schemaDropdown =
         await screen.findByPlaceholderText("Select a schema");
+      await waitFor(() => expect(schemaDropdown).toBeEnabled());
       await userEvent.click(schemaDropdown);
 
       const schemaItem = await screen.findByText("uploads");

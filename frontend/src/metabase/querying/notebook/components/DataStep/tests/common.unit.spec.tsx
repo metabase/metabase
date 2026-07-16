@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
@@ -166,7 +166,7 @@ describe("DataStep", () => {
     await userEvent.click(screen.getByText("Orders"));
     await userEvent.click(await screen.findByText("Products"));
 
-    expect(getNextTableName()).toBe("Products");
+    await waitFor(() => expect(getNextTableName()).toBe("Products"));
   });
 
   describe("fields selection", () => {
@@ -357,13 +357,15 @@ describe("DataStep", () => {
       await userEvent.click(await screen.findByText("Products"));
 
       const { stageIndex } = step;
-      const nextQuery = getNextQuery();
-      const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
-      expect(nextAggregations).toHaveLength(1);
-      expect(
-        Lib.displayInfo(nextQuery, stageIndex, nextAggregations[0]),
-      ).toMatchObject({
-        displayName: "Count",
+      await waitFor(() => {
+        const nextQuery = getNextQuery();
+        const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
+        expect(nextAggregations).toHaveLength(1);
+        expect(
+          Lib.displayInfo(nextQuery, stageIndex, nextAggregations[0]),
+        ).toMatchObject({
+          displayName: "Count",
+        });
       });
     });
 
@@ -375,9 +377,11 @@ describe("DataStep", () => {
       await userEvent.click(await screen.findByText("Products"));
 
       const { stageIndex } = step;
-      const nextQuery = getNextQuery();
-      const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
-      expect(nextAggregations).toHaveLength(0);
+      await waitFor(() => {
+        const nextQuery = getNextQuery();
+        const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
+        expect(nextAggregations).toHaveLength(0);
+      });
     });
   });
 });

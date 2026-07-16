@@ -12,19 +12,31 @@ describe("EmbeddingDataPicker", () => {
 
   describe("multi-stage data picker", () => {
     it("should show tables when there is no models", async () => {
-      setup({ hasModels: false });
+      // Navigating from the single database straight into its tables relies on
+      // a picker transition that never settles under the fake-timer regime;
+      // run this one flow on real timers (restored in `finally`).
+      jest.useRealTimers();
+      // Selecting the database sets its id in state before the schema fetch is
+      // issued; the regime's delay-null clicks race ahead of that update and
+      // request `/api/database/null/schemas`, so use a delayed instance here.
+      const user = userEvent.setup({ delay: 10 });
+      try {
+        setup({ hasModels: false });
 
-      const databaseOption = await screen.findByText("Sample Database");
-      expect(databaseOption).toBeInTheDocument();
+        const databaseOption = await screen.findByText("Sample Database");
+        expect(databaseOption).toBeInTheDocument();
 
-      expect(screen.queryByText("Models")).not.toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
 
-      await userEvent.click(databaseOption);
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.getByText("People")).toBeInTheDocument();
-      expect(screen.getByText("Products")).toBeInTheDocument();
-      expect(screen.getByText("Reviews")).toBeInTheDocument();
+        await user.click(databaseOption);
+        expect(await screen.findByText("Orders")).toBeInTheDocument();
+        expect(screen.getByText("People")).toBeInTheDocument();
+        expect(screen.getByText("Products")).toBeInTheDocument();
+        expect(screen.getByText("Reviews")).toBeInTheDocument();
+      } finally {
+        jest.useFakeTimers();
+      }
     });
 
     it('should show "BUCKET" step when there are both models and tables', async () => {

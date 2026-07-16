@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import { defaultUser, setup } from "./setup";
 
@@ -28,19 +28,21 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
-      method: "PUT",
-    });
-    const req = await call?.request?.json();
+    await waitFor(async () => {
+      const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+        method: "PUT",
+      });
+      const req = await call?.request?.json();
 
-    expect(req).toEqual({
-      first_name: "Ash",
-      last_name: "Ketchum",
-      email: "pikachuboy97@example.com",
-      user_group_memberships: [],
-      login_attributes: {
-        favorite_pokemon: "Pikachu",
-      },
+      expect(req).toEqual({
+        first_name: "Ash",
+        last_name: "Ketchum",
+        email: "pikachuboy97@example.com",
+        user_group_memberships: [],
+        login_attributes: {
+          favorite_pokemon: "Pikachu",
+        },
+      });
     });
   });
 
@@ -70,19 +72,21 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
-      method: "PUT",
-    });
-    const req = await call?.request?.json();
+    await waitFor(async () => {
+      const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+        method: "PUT",
+      });
+      const req = await call?.request?.json();
 
-    expect(req).toEqual({
-      first_name: null,
-      last_name: null,
-      email: "pikachuboy97@example.com",
-      user_group_memberships: [],
-      login_attributes: {
-        favorite_pokemon: "Pikachu",
-      },
+      expect(req).toEqual({
+        first_name: null,
+        last_name: null,
+        email: "pikachuboy97@example.com",
+        user_group_memberships: [],
+        login_attributes: {
+          favorite_pokemon: "Pikachu",
+        },
+      });
     });
   });
 });

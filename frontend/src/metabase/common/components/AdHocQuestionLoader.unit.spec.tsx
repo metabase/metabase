@@ -22,6 +22,10 @@ describe("AdHocQuestionLoader", () => {
   let mockChild: jest.Mock;
 
   beforeEach(() => {
+    // This spec drives async loading via `delay(0)` (a real setTimeout wrapped
+    // in act); the fast-test fake-timer regime would leave those promises
+    // pending forever. Real timers are the sanctioned escape hatch here.
+    jest.useRealTimers();
     jest.resetAllMocks();
     mockChild = jest.fn().mockReturnValue(<div />);
     loadMetadataSpy = jest.fn();

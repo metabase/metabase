@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
+import {
+  findRequests,
+  setupCollectionTreeEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
@@ -100,6 +103,13 @@ describe("MoveDashboardStepContent", () => {
     const { onCompleted } = setup({ hasXrayDashboard: true });
 
     const moveButton = await screen.findByText("Move to shared collection");
+    // The move handler needs the shared collection tree to have loaded.
+    await waitFor(async () => {
+      const requests = await findRequests("GET");
+      expect(
+        requests.some((r) => r.url.includes("/api/collection/tree")),
+      ).toBe(true);
+    });
     await userEvent.click(moveButton);
 
     await waitFor(() => {
@@ -139,6 +149,13 @@ describe("MoveDashboardStepContent", () => {
     const { onCompleted } = setup({ hasXrayDashboard: false });
 
     const createButton = await screen.findByText("Create a sample dashboard");
+    // The create handler needs the shared collection tree to have loaded.
+    await waitFor(async () => {
+      const requests = await findRequests("GET");
+      expect(
+        requests.some((r) => r.url.includes("/api/collection/tree")),
+      ).toBe(true);
+    });
     await userEvent.click(createButton);
 
     await waitFor(() => {

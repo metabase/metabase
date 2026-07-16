@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotToggleWidget } from "./MetabotToggleWidget";
@@ -39,6 +39,9 @@ describe("MetabotToggleWidget", () => {
   it("should disable Metabot", async () => {
     setup(true);
 
+    // The switch renders unchecked before the setting loads; wait for the
+    // loaded (checked) state so clicking toggles it off, not on.
+    await waitFor(() => expect(screen.getByRole("switch")).toBeChecked());
     await userEvent.click(screen.getByText(TOGGLE_LABEL));
     const [put] = await findRequests("PUT");
     expect(put.url).toMatch(/show-metabot/);

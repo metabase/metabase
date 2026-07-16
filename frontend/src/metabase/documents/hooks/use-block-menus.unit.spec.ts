@@ -5,7 +5,6 @@ import fetchMock from "fetch-mock";
 import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import { delay } from "__support__/utils";
 import { initialState as documentsInitialState } from "metabase/documents/documents.slice";
 import {
   createMockNodeViewProps,
@@ -67,8 +66,11 @@ describe("useBlockMenus", () => {
     });
 
     setIntersecting(false);
-    // Give a potential (unwanted) comments request a chance to fire.
-    await delay(0);
+    // Give a potential (unwanted) comments request a chance to fire. Under fake
+    // timers a real setTimeout never resolves, so flush pending timers instead.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
 
     expect(fetchMock.callHistory.calls()).toHaveLength(0);
     expect(result.current.unresolvedCommentsCount).toBe(0);

@@ -99,9 +99,12 @@ describe("McpExploreButton", () => {
     const user = userEvent.setup();
     const { app, instanceUrl } = setup();
 
-    await user.click(
-      await screen.findByRole("button", { name: /explore in metabase/i }),
-    );
+    const button = await screen.findByRole("button", {
+      name: /explore in metabase/i,
+    });
+    // The button is disabled until the question finishes loading.
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
 
     await waitFor(() => {
       expect(app.openLink).toHaveBeenCalledWith({

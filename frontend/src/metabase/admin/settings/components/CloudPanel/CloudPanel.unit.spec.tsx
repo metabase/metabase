@@ -150,7 +150,9 @@ describe("CloudPanel", () => {
 
     await expectProgressState(metabaseStoreLink);
 
-    expect(mockMigrationStart).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(mockMigrationStart).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("should be able to start a new migration after a successful migration", async () => {
@@ -290,7 +292,7 @@ const startMigration = async (
   await expectStartConfirmationModal();
   await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
 
-  expect(mockMigrationStart).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(mockMigrationStart).toHaveBeenCalledTimes(1));
 
   return { store, metabaseStoreLink };
 };

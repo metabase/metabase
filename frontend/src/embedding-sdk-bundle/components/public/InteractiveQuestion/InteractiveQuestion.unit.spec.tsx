@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -28,6 +29,7 @@ import {
 import {
   mockGetBoundingClientRect,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -177,6 +179,17 @@ const setup = async ({
   );
 
   await waitForLoaderToBeRemoved();
+
+  // The question load fetches query metadata; under fake timers this can
+  // resolve after the test's assertions and leak into the next test's
+  // afterEach as an unmocked route. Wait for it to settle here.
+  await waitFor(() => {
+    expect(
+      fetchMock.callHistory.called(
+        `path:/api/card/${TEST_CARD_ID}/query_metadata`,
+      ),
+    ).toBe(true);
+  });
 };
 
 addQueryPropTests({ Component: InteractiveQuestionInternal });
@@ -255,9 +268,11 @@ describe("InteractiveQuestion", () => {
     });
 
     // Both buttons are visible in view mode
-    expect(screen.queryByRole("button", { name: "Alerts" })).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: "Download results" }),
+      await screen.findByRole("button", { name: "Alerts" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Download results" }),
     ).toBeVisible();
 
     expect(
@@ -326,7 +341,7 @@ describe('questionId: "new"', () => {
     ).toBeVisible();
 
     expect(
-      within(await findDataPickerPopover()).getByRole("link", {
+      await within(await findDataPickerPopover()).findByRole("link", {
         name: "Orders model",
       }),
     ).toBeVisible();

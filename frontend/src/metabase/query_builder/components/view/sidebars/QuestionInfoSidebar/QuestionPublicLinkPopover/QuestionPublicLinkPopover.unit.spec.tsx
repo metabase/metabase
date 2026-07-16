@@ -5,7 +5,7 @@ import { useState } from "react";
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -102,27 +102,31 @@ describe("QuestionPublicLinkPopover", () => {
   it("should call Card public link API when creating link", async () => {
     await setup({ hasPublicLink: false });
 
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/card/${TEST_CARD_ID}/public_link`,
-        {
-          method: "POST",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/card/${TEST_CARD_ID}/public_link`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1),
+    );
   });
 
   it("should call the Card public link API when deleting link", async () => {
     await setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/card/${TEST_CARD_ID}/public_link`,
-        {
-          method: "DELETE",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/card/${TEST_CARD_ID}/public_link`,
+          {
+            method: "DELETE",
+          },
+        ),
+      ).toHaveLength(1),
+    );
   });
 
   it("should not show non-admins the option to remove a public link", async () => {

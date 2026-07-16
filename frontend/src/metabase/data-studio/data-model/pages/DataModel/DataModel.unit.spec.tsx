@@ -321,7 +321,7 @@ describe("DataModel", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -519,7 +519,7 @@ describe("DataModel", () => {
       await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
 
       const input = getFieldSemanticTypeFkTargetInput();
-      expect(input).toHaveValue("Products → ID");
+      await waitFor(() => expect(input).toHaveValue("Products → ID"));
 
       await userEvent.click(input);
       const popover = within(await screen.findByRole("listbox"));
@@ -716,7 +716,7 @@ describe("DataModel", () => {
         );
 
         await waitForLoaderToBeRemoved();
-        expect(screen.getByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
 
         history?.goBack();
 
@@ -744,17 +744,19 @@ describe("DataModel", () => {
         await screen.findByRole("menuitem", { name: /Re-scan field values/ }),
       );
 
-      const calls = fetchMock.callHistory.calls(
-        "path:/api/data-studio/table/rescan-values",
-        {
-          method: "POST",
-        },
-      );
+      const getCalls = () =>
+        fetchMock.callHistory.calls(
+          "path:/api/data-studio/table/rescan-values",
+          {
+            method: "POST",
+          },
+        );
 
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        expect(getCalls().length).toBeGreaterThan(0);
       });
 
+      const calls = getCalls();
       const lastCall = calls[calls.length - 1];
       // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
@@ -777,17 +779,19 @@ describe("DataModel", () => {
           name: /Discard cached field values/,
         }),
       );
-      const calls = fetchMock.callHistory.calls(
-        "path:/api/data-studio/table/discard-values",
-        {
-          method: "POST",
-        },
-      );
+      const getCalls = () =>
+        fetchMock.callHistory.calls(
+          "path:/api/data-studio/table/discard-values",
+          {
+            method: "POST",
+          },
+        );
 
       await waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        expect(getCalls().length).toBeGreaterThan(0);
       });
 
+      const calls = getCalls();
       const lastCall = calls[calls.length - 1];
       // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
@@ -59,7 +59,9 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      expect(await screen.findByRole("textbox")).toHaveValue("A\nB\nC");
+      await waitFor(() =>
+        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC"),
+      );
     });
 
     it("should not show the connected fields option if parameter is not wired to any fields", async () => {
@@ -109,7 +111,9 @@ describe("ValuesSourceModal", () => {
           values: [["C"], ["D"]],
         }),
       });
-      expect(await screen.findByRole("textbox")).toHaveValue("C\nD");
+      await waitFor(() =>
+        expect(screen.getByRole("textbox")).toHaveValue("C\nD"),
+      );
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();

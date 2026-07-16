@@ -6,7 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
 import {
   createMockSettingsState,
@@ -106,9 +106,11 @@ describe("SetupSsoPage", () => {
     );
     await userEvent.click(enableJwtButton);
 
-    expect(
-      screen.getByRole("listitem", { name: "Set up JWT authentication" }),
-    ).toHaveAttribute("data-completed", "true");
+    await waitFor(() => {
+      expect(
+        screen.getByRole("listitem", { name: "Set up JWT authentication" }),
+      ).toHaveAttribute("data-completed", "true");
+    });
     expect(
       screen.getByRole("listitem", { name: "Add a new endpoint to your app" }),
     ).toHaveAttribute("data-locked", "false");

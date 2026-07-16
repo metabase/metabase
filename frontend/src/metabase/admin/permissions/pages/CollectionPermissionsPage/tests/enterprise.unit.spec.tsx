@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { CollectionPermissionsGraph } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -169,9 +169,11 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       // are you sure you want to save?
       await userEvent.click(await screen.findByText("Yes"));
 
-      expect(
-        screen.queryByText("You've made changes to permissions."),
-      ).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText("You've made changes to permissions."),
+        ).not.toBeInTheDocument();
+      });
 
       expect(await screen.findAllByText("View")).toHaveLength(2);
       expect(await screen.findByText("No access")).toBeInTheDocument();

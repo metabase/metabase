@@ -211,7 +211,9 @@ describe("TablePicker", () => {
 
       await waitLoading();
 
-      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument(),
+      );
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
 
       await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
@@ -221,7 +223,9 @@ describe("TablePicker", () => {
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
       });
 
-      expect(item(PRIVATE_SCHEMA)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(PRIVATE_SCHEMA)).toBeInTheDocument(),
+      );
       expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
       expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
 
@@ -233,8 +237,8 @@ describe("TablePicker", () => {
         schemaName: PUBLIC_SCHEMA.name,
       });
 
+      await waitFor(() => expect(item(BAR_TABLE)).toBeInTheDocument());
       expect(item(FOO_TABLE)).not.toBeInTheDocument();
-      expect(item(BAR_TABLE)).toBeInTheDocument();
 
       await clickItem(BAR_TABLE);
 
@@ -250,7 +254,9 @@ describe("TablePicker", () => {
       await clickItem(PUBLIC_SCHEMA);
       await waitLoading();
 
-      expect(item(FOO_TABLE)).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(FOO_TABLE)).not.toBeInTheDocument(),
+      );
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
       // first select, then collapse
@@ -259,7 +265,9 @@ describe("TablePicker", () => {
       await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
       await waitLoading();
 
-      expect(item(PUBLIC_SCHEMA)).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(PUBLIC_SCHEMA)).not.toBeInTheDocument(),
+      );
       expect(item(PRIVATE_SCHEMA)).not.toBeInTheDocument();
     });
 
@@ -268,7 +276,9 @@ describe("TablePicker", () => {
 
       await waitLoading();
 
-      expect(item(DATABASE_WITH_UNNAMED_SCHEMA)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(DATABASE_WITH_UNNAMED_SCHEMA)).toBeInTheDocument(),
+      );
       await clickItem(DATABASE_WITH_UNNAMED_SCHEMA);
 
       expect(onChange).toHaveBeenCalledWith({
@@ -279,7 +289,7 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // the schema does not render itself but it's children are rendered directly
-      expect(item(CORGE)).toBeInTheDocument();
+      await waitFor(() => expect(item(CORGE)).toBeInTheDocument());
       expect(item(GRAULT)).toBeInTheDocument();
 
       // Other schema's are still just rendered as normal
@@ -292,7 +302,9 @@ describe("TablePicker", () => {
 
       await waitLoading();
 
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument(),
+      );
       await clickItem(DATABASE_WITH_SINGLE_SCHEMA);
       await waitLoading();
 
@@ -300,18 +312,23 @@ describe("TablePicker", () => {
         databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
       });
 
-      expect(onChange).toHaveBeenCalledWith({
-        databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
-        schemaName: SINGLE_SCHEMA.name,
-      });
+      await waitFor(() =>
+        expect(onChange).toHaveBeenCalledWith({
+          databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
+          schemaName: SINGLE_SCHEMA.name,
+        }),
+      );
 
       // the schema is flattened into the parent
-      expect(item(QUU)).toBeInTheDocument();
+      await waitFor(() => expect(item(QUU)).toBeInTheDocument());
       expect(item(QUX)).toBeInTheDocument();
     });
 
     it("should be possible to navigate with the keyboard", async () => {
       const { onChange } = setup();
+
+      await waitLoading();
+      await screen.findByRole("treegrid");
 
       await userEvent.click(await screen.findByRole("textbox"));
 
@@ -350,6 +367,9 @@ describe("TablePicker", () => {
         "aria-expanded",
         "true",
       );
+
+      // wait for the expanded children to render before navigating into them
+      await waitFor(() => expect(item(QUU)).toBeInTheDocument());
 
       // arrow down moves to first table (QUU)
       await userEvent.keyboard("{ArrowDown}");
@@ -651,9 +671,10 @@ function item(input: string | { display_name?: string; name: string } | null) {
 async function clickItem(
   input: string | { display_name?: string; name: string } | null,
 ) {
-  const node = item(input);
-  expect(node).toBeInTheDocument();
-  if (node) {
-    await userEvent.click(node);
-  }
+  let node: Element | null = null;
+  await waitFor(() => {
+    node = item(input);
+    expect(node).toBeInTheDocument();
+  });
+  await userEvent.click(node!);
 }

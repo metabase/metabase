@@ -159,6 +159,11 @@ describe("DocumentHeader", () => {
     });
 
     it("should close the menu before opening the print dialog", async () => {
+      // This test's subject is real frame-painting order: the component closes
+      // the menu, awaits a double requestAnimationFrame, then calls
+      // window.print(). That rAF-gated ordering only holds under real timers.
+      jest.useRealTimers();
+
       const originalPrint = window.print;
       let menuExpandedAtPrintTime: string | null = null;
       window.print = jest.fn(() => {
@@ -167,18 +172,21 @@ describe("DocumentHeader", () => {
           .getAttribute("aria-expanded");
       });
 
-      setup();
+      try {
+        setup();
 
-      await userEvent.click(screen.getByLabelText("More options"));
-      await userEvent.click(screen.getByText("Print Document"));
-      await waitFor(() => expect(window.print).toHaveBeenCalled());
+        await userEvent.click(screen.getByLabelText("More options"));
+        await userEvent.click(screen.getByText("Print Document"));
+        await waitFor(() => expect(window.print).toHaveBeenCalled());
 
-      // The menu must already be closed when window.print() blocks the
-      // renderer, so no stale spinner frame is shown while the dialog is
-      // open or after it closes.
-      expect(menuExpandedAtPrintTime).toBe("false");
-
-      window.print = originalPrint;
+        // The menu must already be closed when window.print() blocks the
+        // renderer, so no stale spinner frame is shown while the dialog is
+        // open or after it closes.
+        expect(menuExpandedAtPrintTime).toBe("false");
+      } finally {
+        window.print = originalPrint;
+        jest.useFakeTimers();
+      }
     });
 
     it("should disable the print option only while preparing for print", async () => {
