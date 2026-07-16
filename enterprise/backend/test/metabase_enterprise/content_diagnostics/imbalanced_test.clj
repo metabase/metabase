@@ -134,20 +134,24 @@
 ;;; ------------------------------------------------ checker: cards ----------------------------------------
 
 (deftest imbalanced-card-empty-test
-  (testing "card-empty rides the latest unparameterized, non-cache-hit execution; unknown runs neither flag nor clear"
+  (testing "card-empty rides the latest clean (unparameterized, non-cache-hit, error-free) execution; other runs neither flag nor clear"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [now (t/offset-date-time)
               ago #(t/minus now (t/minutes %))]
           (mt/with-temp
             [:model/Collection {coll :id} {}
-             ;; flagged: deciding run (10m ago) returned 0 rows; the newer parameterized and cache-hit
-             ;; runs are outside the evidence set - they don't clear it
+             ;; flagged: deciding run (10m ago) returned 0 rows; the newer parameterized, cache-hit,
+             ;; and errored runs are outside the evidence set - they don't clear it (and the errored
+             ;; run's own result_rows 0 must not steal as_of)
              :model/Card {flagged :id} {:collection_id coll}
              :model/QueryExecution _ {:card_id flagged :started_at (ago 10)
                                       :parameterized false :cache_hit false :result_rows 0}
              :model/QueryExecution _ {:card_id flagged :started_at (ago 5)
                                       :parameterized true :cache_hit false :result_rows 5}
+             :model/QueryExecution _ {:card_id flagged :started_at (ago 2)
+                                      :parameterized false :cache_hit false :result_rows 0
+                                      :error "Table not found"}
              :model/QueryExecution _ {:card_id flagged :started_at (ago 1)
                                       :parameterized false :cache_hit true :result_rows 5}
              ;; healthy: the latest unparameterized run has rows; the older 0-row run is superseded
@@ -167,6 +171,11 @@
              :model/Card {only-param :id} {:collection_id coll}
              :model/QueryExecution _ {:card_id only-param :started_at (ago 5)
                                       :parameterized true :cache_hit false :result_rows 0}
+             ;; skipped: a crashed run stamps result_rows 0 but means "broken", not "empty"
+             :model/Card {only-errored :id} {:collection_id coll}
+             :model/QueryExecution _ {:card_id only-errored :started_at (ago 5)
+                                      :parameterized false :cache_hit false :result_rows 0
+                                      :error "Table not found"}
              ;; excluded: archived card with a 0-row latest run
              :model/Card {archived-card :id} {:collection_id coll :archived true}
              :model/QueryExecution _ {:card_id archived-card :started_at (ago 5)
@@ -192,6 +201,8 @@
               (testing "never run unparameterized → skipped (unknown, not empty)"
                 (is (nil? (by-entity [:card never])))
                 (is (nil? (by-entity [:card only-param]))))
+              (testing "an errored run's result_rows 0 does not flag - errored runs are outside the evidence set"
+                (is (nil? (by-entity [:card only-errored]))))
               (testing "archived card excluded even with a 0-row latest run"
                 (is (nil? (by-entity [:card archived-card]))))
               (testing "a collection holding only a flagged-empty card is empty"
