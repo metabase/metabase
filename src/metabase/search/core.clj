@@ -36,6 +36,10 @@
   model-set]
  [search.impl
   search
+  ;; The two halves of `search`, exposed so a caller holding several ranked sets can combine them
+  ;; and paginate the combination before anything is hydrated.
+  ranked-results
+  search-results
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
  [search.ingestion
