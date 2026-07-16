@@ -44,7 +44,9 @@ jobs:
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
-            const inputSpecs = "${{ inputs.specs }}";
+            // DEBUG: temporarily scope CI to only the data-app sync spec so it
+            // reproduces the hang fast. REVERT before merge.
+            const inputSpecs = "e2e/test/scenarios/data-apps/sync.cy.spec.ts";
             const inputChunks = Number(process.env.chunks);
             const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";

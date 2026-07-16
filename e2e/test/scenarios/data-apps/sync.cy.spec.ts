@@ -1,5 +1,15 @@
 const { H } = cy;
 
+// DEBUG: the app under test globally swallows uncaught exceptions
+// (`e2e/support/cypress.js` -> `uncaught:exception` returns false), which turns a
+// thrown React error into a silent hang. Re-log it to `console.error` so
+// `--enable-logging=stderr` (see MB_LOG_CONSOLE in config.js) forwards it to CI
+// stdout out-of-process, surviving the near-instant hang/crash.
+Cypress.on("uncaught:exception", (err) => {
+  console.error("[MB-UNCAUGHT]", err && err.message, "\n", err && err.stack);
+  return false;
+});
+
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` covers every
  * materialization outcome, and asserts each is handled the way the backend
@@ -29,6 +39,10 @@ describe("scenarios > data apps > repo sync", () => {
     H.configureGitAndPullChanges("read-write");
 
     cy.visit("/admin/settings/apps");
+    // DEBUG: verifies --enable-logging forwards page console to CI stdout.
+    cy.window().then((win) => {
+      win.console.error("[MB-CAPTURE-TEST] admin apps page visited");
+    });
     cy.findByTestId("admin-layout-content").within(() => {
       // The good app is materialized and shown as synced. Scope to its own row so
       // its status can't be satisfied by another app's — a "Sync failed" leaking

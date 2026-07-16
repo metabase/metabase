@@ -57,6 +57,91 @@ const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
+/**
+ * DEBUG: connect to Chrome's CDP HTTP endpoint, attach to every `page` target,
+ * `Runtime.enable`, and print each browser console message / uncaught exception
+ * to Node stdout in real time. Runs out-of-process, so it captures output even
+ * when the page hangs or the renderer crashes — unlike in-page capture, which
+ * can't flush once the JS thread is blocked. Uses Node 22 built-in
+ * `fetch` / `WebSocket`; no extra deps. Failures are swallowed so it can never
+ * break a run.
+ */
+function forwardBrowserConsoleViaCdp(port) {
+  const base = `http://127.0.0.1:${port}`;
+  const connected = new Set();
+  console.log(`🌐[MB-CDP] browser-console forwarder starting on port ${port}`);
+
+  const summarize = (arg) => {
+    if (arg == null) {
+      return "";
+    }
+    if ("value" in arg) {
+      return String(arg.value);
+    }
+    if (arg.unserializableValue) {
+      return String(arg.unserializableValue);
+    }
+    if (arg.description) {
+      return String(arg.description);
+    }
+    if (arg.preview?.properties) {
+      return `{${arg.preview.properties
+        .map((p) => `${p.name}: ${p.value}`)
+        .join(", ")}}`;
+    }
+    return arg.type ?? "";
+  };
+
+  const attach = (target) => {
+    if (connected.has(target.id) || !target.webSocketDebuggerUrl) {
+      return;
+    }
+    connected.add(target.id);
+    const ws = new WebSocket(target.webSocketDebuggerUrl);
+    let id = 1;
+    ws.addEventListener("open", () => {
+      ws.send(JSON.stringify({ id: id++, method: "Runtime.enable" }));
+    });
+    ws.addEventListener("message", (ev) => {
+      let msg;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      if (msg.method === "Runtime.consoleAPICalled") {
+        const text = (msg.params.args || []).map(summarize).join(" ");
+        console.log(`🌐[BROWSER:${msg.params.type}] ${text}`);
+      } else if (msg.method === "Runtime.exceptionThrown") {
+        const d = msg.params.exceptionDetails;
+        console.log(
+          `🌐[BROWSER:exception] ${d.text} ${d.exception?.description ?? ""}`,
+        );
+      }
+    });
+    ws.addEventListener("close", () => connected.delete(target.id));
+    ws.addEventListener("error", () => connected.delete(target.id));
+  };
+
+  // Poll for ~5 min: new page targets appear on each cy.visit/reload.
+  let ticks = 0;
+  const poll = async () => {
+    try {
+      const res = await fetch(`${base}/json/list`);
+      if (res.ok) {
+        const targets = await res.json();
+        targets.filter((t) => t.type === "page").forEach(attach);
+      }
+    } catch {
+      // Chrome not up yet, or between navigations — ignore and retry.
+    }
+    if (++ticks < 600) {
+      setTimeout(poll, 500);
+    }
+  };
+  poll();
+}
+
 // Persists raw __coverage__ counters per spec. The manifest builder reads
 // these later, applies baseline subtraction, and maps surviving files to
 // modules. We delete .nyc_output/out.json between specs so each entry
@@ -154,7 +239,10 @@ const defaultConfig = {
     // cypress-terminal-report
     if (isCI) {
       installLogsPrinter(on, {
-        printLogsToConsole: "never",
+        // DEBUG: print collected browser console to CI stdout on failure (was
+        // "never"). Secondary to the CDP forwarder above — this one only flushes
+        // if `afterEach` runs (i.e. a timeout, not a hard renderer crash).
+        printLogsToConsole: "onFail",
       });
     }
 
@@ -192,6 +280,23 @@ const defaultConfig = {
 
       if (browser.family === "chromium") {
         launchOptions.args.push("--force-prefers-reduced-motion");
+      }
+
+      // DEBUG: stream the browser's console to Node stdout via CDP.
+      // Out-of-process + real-time, so it survives a hung/crashed renderer where
+      // in-page capture (cypress-terminal-report) can't flush.
+      if (browser.name === "chrome" || browser.name === "chromium") {
+        let port = 9333;
+        const portArg = launchOptions.args.find((a) =>
+          a.startsWith("--remote-debugging-port="),
+        );
+        if (portArg) {
+          port = Number(portArg.split("=")[1]);
+        } else {
+          launchOptions.args.push(`--remote-debugging-port=${port}`);
+        }
+        // Fire and forget; polls the CDP HTTP endpoint until Chrome is up.
+        forwardBrowserConsoleViaCdp(port);
       }
 
       return launchOptions;
