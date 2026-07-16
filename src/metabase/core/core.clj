@@ -31,6 +31,7 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
+   [metabase.sync.core :as sync]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -242,9 +243,12 @@
   (when-not (jekyll/jekyll?)
     (ensure-audit-db-installed!)
     (notification/seed-notification!))
-  ;; Jekyll mode: reload content from the configured git branch so a fresh/wiped
-  ;; app-db converges to the branch. No-op when remote-sync is not configured.
+  ;; Jekyll mode: ingest warehouse metadata from the parent Metabase (no driver
+  ;; sync on a Jekyll box), then reload content from the configured git branch so
+  ;; a fresh/wiped app-db converges to the branch. Metadata comes first so
+  ;; imported MBQL content can resolve fields. Both no-op when unconfigured.
   (when (jekyll/jekyll?)
+    (sync/ingest-parent-metadata!)
     (jekyll-boot-import!))
 
   (init-status/set-progress! 0.85)
