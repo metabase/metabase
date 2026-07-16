@@ -51,7 +51,7 @@
   "Generates the DLQ table name keyword for a specific index (metadata record).
 
   Uses the index-table-qualifier format string from index-metadata to construct
-  a table name like 'index_table_dlq_{index-id}'."
+  a table name like 'dlq_{index-id}'."
   [index-metadata index-id]
   (let [{:keys [index-table-qualifier]} index-metadata]
     (keyword (format index-table-qualifier (str "dlq_" index-id)))))

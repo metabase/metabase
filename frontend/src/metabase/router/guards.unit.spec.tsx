@@ -14,7 +14,7 @@ import {
   IsNotAuthenticated,
   isBackendOnlyPath,
 } from "./guards";
-import { Route } from "./react-router";
+import { Route } from "./route";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
@@ -38,10 +38,10 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAuthenticated}>
+          <Route element={<IsAuthenticated />}>
             <Route path="/dashboard/:slug" component={Dashboard} />
           </Route>
-          <Route component={IsNotAuthenticated}>
+          <Route element={<IsNotAuthenticated />}>
             <Route path="/auth/login" component={LoginPage} />
           </Route>
         </>,
@@ -73,7 +73,7 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsAdmin}>
+          <Route element={<IsAdmin />}>
             <Route path="/admin/settings" component={Protected} />
           </Route>
           <Route path="/unauthorized" component={Unauthorized} />
@@ -101,7 +101,7 @@ describe("route-guards", () => {
 
       const { history } = renderWithProviders(
         <>
-          <Route component={IsNotAuthenticated}>
+          <Route element={<IsNotAuthenticated />}>
             <Route path="/auth/login" component={LoginPage} />
           </Route>
           <Route path="/" component={Home} />
@@ -137,7 +137,7 @@ describe("route-guards", () => {
       });
 
       const { history } = renderWithProviders(
-        <Route component={IsNotAuthenticated}>
+        <Route element={<IsNotAuthenticated />}>
           <Route path="/auth/login" component={LoginPage} />
         </Route>,
         {

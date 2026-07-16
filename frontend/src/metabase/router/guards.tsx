@@ -12,6 +12,7 @@ import { getBasename } from "metabase/utils/basename";
 import { isSameOrSiteUrlOrigin, replaceLocation } from "metabase/utils/dom";
 
 import { Navigate } from "./Navigate";
+import { Outlet } from "./Outlet";
 import type { Location } from "./types";
 import { useLocation } from "./use-location";
 
@@ -199,49 +200,63 @@ const UserCanAccessDataStudio = createRedirectGuard(
   "/unauthorized",
 );
 
-export const IsAuthenticated = ({ children }: Props) => (
-  <MetabaseIsSetup>
-    <UserIsAuthenticated>{children}</UserIsAuthenticated>
-  </MetabaseIsSetup>
-);
-
-export const IsAdmin = ({ children }: Props) => (
+export const IsAuthenticated = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
-      <UserIsAdmin>{children}</UserIsAdmin>
+      <Outlet />
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const IsNotAuthenticated = ({ children }: Props) => (
-  <MetabaseIsSetup>
-    <UserIsNotAuthenticated>{children}</UserIsNotAuthenticated>
-  </MetabaseIsSetup>
-);
-
-export const CanAccessSettings = ({ children }: Props) => (
+export const IsAdmin = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
-      <UserCanAccessSettings>{children}</UserCanAccessSettings>
+      <UserIsAdmin>
+        <Outlet />
+      </UserIsAdmin>
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const CanAccessOnboarding = ({ children }: Props) => (
-  <UserCanAccessOnboarding>{children}</UserCanAccessOnboarding>
+export const IsNotAuthenticated = () => (
+  <MetabaseIsSetup>
+    <UserIsNotAuthenticated>
+      <Outlet />
+    </UserIsNotAuthenticated>
+  </MetabaseIsSetup>
+);
+
+export const CanAccessSettings = () => (
+  <MetabaseIsSetup>
+    <UserIsAuthenticated>
+      <UserCanAccessSettings>
+        <Outlet />
+      </UserCanAccessSettings>
+    </UserIsAuthenticated>
+  </MetabaseIsSetup>
+);
+
+export const CanAccessOnboarding = () => (
+  <UserCanAccessOnboarding>
+    <Outlet />
+  </UserCanAccessOnboarding>
 );
 
 // Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
-export const CanAccessDataStudio = ({ children }: Props) => (
+export const CanAccessDataStudio = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
       <UserCanAccessDataStudio>
-        <AvailableInEmbedding>{children}</AvailableInEmbedding>
+        <AvailableInEmbedding>
+          <Outlet />
+        </AvailableInEmbedding>
       </UserCanAccessDataStudio>
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const CanAccessDataModel = ({ children }: Props) => (
-  <UserCanAccessDataModel>{children}</UserCanAccessDataModel>
+export const CanAccessDataModel = () => (
+  <UserCanAccessDataModel>
+    <Outlet />
+  </UserCanAccessDataModel>
 );
