@@ -324,11 +324,15 @@
                                     :as      :stream
                                     :headers {"Content-Type" "application/json"}
                                     :body    (json/encode req)})]
+        ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+        ;; the reducible so mid-stream IO/timeout failures get the same
+        ;; provider-friendly translation as request-time errors.
         (-> (core/sse-reducible (:body response))
             (debug/capture-stream {:provider "openai"
                                    :model    model
                                    :url      "/v1/responses"
-                                   :request  req})))
+                                   :request  req})
+            (core/reducible-with-api-errors "openai" openai-error-msg)))
       (catch Exception e
         (core/rethrow-api-error! "openai" openai-error-msg e)))))
 

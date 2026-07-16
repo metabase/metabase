@@ -1253,6 +1253,31 @@
       (is (= #{:api-error :provider :error-code :exception-class}
              (set (keys (ex-data ex))))))))
 
+(deftest ^:parallel reducible-with-api-errors-test
+  (testing "successful streams reduce transparently through the wrapper"
+    (is (= [1 2 3]
+           (into [] (self.core/reducible-with-api-errors
+                     (reify clojure.lang.IReduceInit
+                       (reduce [_ rf init]
+                         (reduce rf init [1 2 3])))
+                     "anthropic" (constantly "unused"))))))
+  (testing "mid-stream IO failures get the provider-friendly translation"
+    (let [boom      (java.net.SocketTimeoutException. "Read timed out")
+          reducible (self.core/reducible-with-api-errors
+                     (reify clojure.lang.IReduceInit
+                       (reduce [_ rf init]
+                         (rf init 1) ; one chunk arrives, then the socket times out
+                         (throw boom)))
+                     "anthropic" (constantly "unused"))
+          ex        (caught #(into [] reducible))]
+      (is (str/includes? (ex-message ex) "API request failed"))
+      (is (str/includes? (ex-message ex) "Read timed out"))
+      (is (=? {:api-error true :provider "anthropic" :error-code :provider-request-failed
+               :exception-class "java.net.SocketTimeoutException"}
+              (ex-data ex)))
+      (is (identical? boom (ex-cause ex))
+          "the raw socket exception is preserved as the cause"))))
+
 (deftest rethrow-api-error!-input-stream-test
   (testing "InputStream JSON bodies are decoded and structured-extracted"
     (let [json     (json/encode {:error {:message "model decommissioned"}})

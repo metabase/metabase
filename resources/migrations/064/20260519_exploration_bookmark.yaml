@@ -8,7 +8,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.2026-05-19T10:00:00
+      id: v64.2026-05-19T10:00:00
       author: denisberezin
       comment: Create exploration_bookmark table
       changes:
@@ -45,7 +45,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v63.2026-05-19T10:00:01
+      id: v64.2026-05-19T10:00:01
       author: denisberezin
       comment: Add index on exploration_bookmark.user_id
       changes:
@@ -57,7 +57,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: v63.2026-05-19T10:00:02
+      id: v64.2026-05-19T10:00:02
       author: denisberezin
       comment: Add index on exploration_bookmark.exploration_id
       changes:
@@ -69,7 +69,7 @@ databaseChangeLog:
                   name: exploration_id
 
   - changeSet:
-      id: v63.2026-05-19T10:00:03
+      id: v64.2026-05-19T10:00:03
       author: denisberezin
       comment: Add foreign key constraint for exploration_bookmark.user_id
       changes:
@@ -82,7 +82,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.2026-05-19T10:00:04
+      id: v64.2026-05-19T10:00:04
       author: denisberezin
       comment: Add foreign key constraint for exploration_bookmark.exploration_id
       changes:
@@ -95,7 +95,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.2026-05-19T10:00:05
+      id: v64.2026-05-19T10:00:05
       author: denisberezin
       comment: Add unique constraint for exploration_bookmark user_id and exploration_id
       changes:
