@@ -670,6 +670,31 @@
                   (is (= 2 (:content_count row)))
                   (is (not (contains? (:details row) :content_count))))))))))))
 
+(deftest imbalanced-api-unreadable-parent-breadcrumb-test
+  (testing "a readable collection under an unreadable parent serves its finding with a null breadcrumb - the parent's name never leaks"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {hidden-parent :id} {:name "Hidden Parent"}
+                         :model/Collection {child :id} {:location (collection/location-path hidden-parent)}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) child)
+            (let [prefix  (scope-prefix)
+                  fid     (insert-imbalanced! {:entity-type :collection :entity-id child
+                                               :name (str prefix " Child") :finding-type :sparse
+                                               :content-count 1})
+                  row-for (fn [user]
+                            (->> (mt/user-http-request user :get 200
+                                                       "ee/content-diagnostics/imbalanced" :query prefix)
+                                 :data
+                                 (filter #(= fid (:id %)))
+                                 first))]
+              (testing "the finding itself is served - the subject collection is readable"
+                (is (some? (row-for :rasta))))
+              (testing "the unreadable parent degrades to a null breadcrumb, same as root"
+                (is (nil? (get-in (row-for :rasta) [:details :collection]))))
+              (testing "an admin still gets the parent breadcrumb"
+                (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
+
 (deftest imbalanced-scan-shares-batch-and-supersedes-per-type-test
   (testing "one scan writes stale + imbalanced in a single scan_id batch; a rescan supersedes a resolved sparse finding while the still-stale entity stays active"
     (mt/with-premium-features #{:content-diagnostics}

@@ -163,10 +163,17 @@
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
   Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
-  needs `:location`). No entry for root/nil collections."
+  needs `:location`). No entry for root/nil collections.
+
+  A breadcrumb can be a collection the primary gate never checked (a `:collection` subject's breadcrumb
+  is its **parent**), so caller visibility is re-applied here - an unreadable breadcrumb collection gets
+  no entry and the finding's `collection` degrades to null, same as root."
   [coll-ids]
   (when (seq coll-ids)
-    (let [colls (t2/hydrate (t2/select :model/Collection :id [:in (set coll-ids)])
+    (let [colls (t2/hydrate (t2/select :model/Collection
+                                       {:where [:and
+                                                [:in :id (set coll-ids)]
+                                                (collection/visible-collection-filter-clause :id)]})
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
