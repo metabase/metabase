@@ -652,6 +652,28 @@ serdes/meta:
               (is (str/includes? (:source library) "def shared_func()")
                   "PythonLibrary source should be imported correctly"))))))))
 
+(deftest first-import-does-not-conflict-on-builtin-python-library-test
+  (testing "The built-in common.py exists on every instance (the test fixture strips it, so real boots
+            differ from most tests here) and must not count as unsynced local work: import cannot
+            delete it (see the PythonLibrary spec's removal-conditions), but counting it flagged a
+            spurious Transforms conflict on every first import"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
+                                                 :source ""
+                                                 :entity_id transforms-python/builtin-entity-id}]
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                  test-files {"main" {"python_libraries/common_py.yaml"
+                                      (generate-python-library-yaml transforms-python/builtin-entity-id
+                                                                    "common.py"
+                                                                    "def shared_func():\n    return 42")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "First import must not conflict on the built-in library. Result: " result)))))))))
+
 (deftest import-removes-python-library-not-on-remote-test
   (testing "Import removes local PythonLibrary that doesn't exist on the remote, but only when forced (GHY-3900)"
     (mt/with-premium-features #{:transforms-basic}
