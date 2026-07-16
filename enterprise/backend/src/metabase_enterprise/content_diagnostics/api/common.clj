@@ -23,12 +23,13 @@
   #{:card :dashboard :document :transform})
 
 (defn valid-clause
-  "Result set for one `finding-type`: its latest finding per entity, excluding entities whose latest row
-  is invalidated (an older valid row does not resurface)."
-  [finding-type]
+  "Result set for one **or many** `finding-types` (an umbrella endpoint spans several): the latest
+  finding per entity, excluding entities whose latest row is invalidated (an older valid row does not
+  resurface)."
+  [finding-types]
   [:and
    [:= :invalidated_at nil]
-   [:= :finding_type finding-type]
+   [:in :finding_type (u/one-or-many finding-types)]
    ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
    ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
    ;; partial scan hasn't re-written yet still shows its last finding.
@@ -98,17 +99,17 @@
           (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
-  "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
-  endpoint shares - personal-collection exclusion (when `:excluded-personal-collection-ids` is provided;
-  see `excluded-personal-collection-ids`), `entity-types`, and `query` name search - plus any
-  finding-type-specific `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not
-  conjoined as a null AND-term."
-  [finding-type {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
+  "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
+  caller-visible base narrowed by the filters every endpoint shares - personal-collection exclusion
+  (when `:excluded-personal-collection-ids` is provided; see `excluded-personal-collection-ids`),
+  `entity-types`, and `query` name search - plus any finding-type-specific `extra-filters`. Each filter
+  is precomputed so a nil (no-op) is skipped, not conjoined as a null AND-term."
+  [finding-types {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
   (let [personal-filter    (exclude-personal-collections-clause excluded-personal-collection-ids)
         entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
                              [:in :entity_type (mapv name types)])
         name-search-filter (name-search-clause query)]
-    (into (cond-> [:and (valid-clause finding-type) (visible-findings-clause)]
+    (into (cond-> [:and (valid-clause finding-types) (visible-findings-clause)]
             personal-filter    (conj personal-filter)
             entity-type-filter (conj entity-type-filter)
             name-search-filter (conj name-search-filter))
@@ -128,8 +129,10 @@
   [ids]
   (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
                           :id [:in (set ids)])
+        ;; default-fields select: :common_name is computed from first/last name, not a real column
         owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
-                 (t2/select-pk->fn identity [:model/User :id :common_name :email] :id [:in owner-ids]))]
+                 (t2/select-pk->fn #(select-keys % [:id :common_name :email])
+                                   :model/User :id [:in owner-ids]))]
     (m/index-by :id
                 (for [{:keys [location personal_owner_id] :as row} rows]
                   (assoc row
