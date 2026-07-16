@@ -156,8 +156,8 @@ describe("TaskRunsPage", () => {
       });
 
       const params = getLastRunsParams();
-      expect(params.get("sort_column")).toBe("started_at");
-      expect(params.get("sort_direction")).toBe("desc");
+      expect(params.get("sort-column")).toBe("started_at");
+      expect(params.get("sort-direction")).toBe("desc");
     });
 
     it("accepts sorting query params", async () => {
@@ -172,8 +172,8 @@ describe("TaskRunsPage", () => {
       });
 
       const params = getLastRunsParams();
-      expect(params.get("sort_column")).toBe("task_count");
-      expect(params.get("sort_direction")).toBe("asc");
+      expect(params.get("sort-column")).toBe("task_count");
+      expect(params.get("sort-direction")).toBe("asc");
     });
 
     it("sorts by each sortable column", async () => {
@@ -207,8 +207,8 @@ describe("TaskRunsPage", () => {
           ).toHaveAttribute("aria-sort", "ascending");
         });
         const params = getLastRunsParams();
-        expect(params.get("sort_column")).toBe(column);
-        expect(params.get("sort_direction")).toBe("asc");
+        expect(params.get("sort-column")).toBe(column);
+        expect(params.get("sort-direction")).toBe("asc");
         act(() => {
           jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
         });
@@ -236,7 +236,7 @@ describe("TaskRunsPage", () => {
           screen.getByRole("columnheader", { name: /Started at/ }),
         ).toHaveAttribute("aria-sort", "ascending");
       });
-      expect(getLastRunsParams().get("sort_direction")).toBe("asc");
+      expect(getLastRunsParams().get("sort-direction")).toBe("asc");
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
@@ -252,7 +252,7 @@ describe("TaskRunsPage", () => {
           screen.getByRole("columnheader", { name: /Started at/ }),
         ).toHaveAttribute("aria-sort", "descending");
       });
-      expect(getLastRunsParams().get("sort_direction")).toBe("desc");
+      expect(getLastRunsParams().get("sort-direction")).toBe("desc");
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
@@ -293,7 +293,7 @@ describe("TaskRunsPage", () => {
       await waitFor(() => {
         expect(getLastRunsParams().get("offset")).toBe("0");
       });
-      expect(getLastRunsParams().get("sort_column")).toBe("run_type");
+      expect(getLastRunsParams().get("sort-column")).toBe("run_type");
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });

@@ -900,24 +900,24 @@
         (testing "default order is started_at desc when no sort params given"
           (is (= [(:id run-card) (:id run-db)] (ids))))
         (testing "sort by started_at asc"
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :started_at :sort_direction :asc))))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :started_at :sort-direction :asc))))
         (testing "sort by ended_at asc"
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :ended_at :sort_direction :asc))))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :ended_at :sort-direction :asc))))
         (testing "sort by status (failed < success)"
-          (is (= [(:id run-card) (:id run-db)] (ids :sort_column :status :sort_direction :asc)))
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :status :sort_direction :desc))))
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :status :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :status :sort-direction :desc))))
         (testing "sort by run_type (fingerprint < sync)"
-          (is (= [(:id run-card) (:id run-db)] (ids :sort_column :run_type :sort_direction :asc)))
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :run_type :sort_direction :desc))))
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :run_type :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :run_type :sort-direction :desc))))
         (testing "sort by entity_name across entity types (AAA Card < ZZZ DB)"
-          (is (= [(:id run-card) (:id run-db)] (ids :sort_column :entity_name :sort_direction :asc)))
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :entity_name :sort_direction :desc))))
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :entity_name :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :entity_name :sort-direction :desc))))
         (testing "sort by task_count (run-card=1 < run-db=2)"
-          (is (= [(:id run-card) (:id run-db)] (ids :sort_column :task_count :sort_direction :asc)))
-          (is (= [(:id run-db) (:id run-card)] (ids :sort_column :task_count :sort_direction :desc))))
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :task_count :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :task_count :sort-direction :desc))))
         (testing "invalid sort_column returns 400"
-          (is (=? {:errors {:sort_column some?}}
-                  (mt/user-http-request :crowberto :get 400 "task/runs" :sort_column :bogus))))))))
+          (is (=? {:errors {:sort-column some?}}
+                  (mt/user-http-request :crowberto :get 400 "task/runs" :sort-column :bogus))))))))
 
 (deftest ^:synchronized runs-filter-with-sort-test
   ;; the entity_name/task_count sorts add joins, so filter columns must stay unambiguous. Notably `report_card` and
@@ -945,7 +945,7 @@
         (testing "entity filter composes with the entity_name sort joins"
           (is (= [(:id run-db)]
                  (ids :entity-type "database" :entity-id (:id db)
-                      :sort_column :entity_name :sort_direction :asc))))
+                      :sort-column :entity_name :sort-direction :asc))))
         (testing "status filter composes with the task_count sort join"
           (is (= [(:id run-card)]
-                 (ids :status "failed" :sort_column :task_count :sort_direction :asc))))))))
+                 (ids :status "failed" :sort-column :task_count :sort-direction :asc))))))))

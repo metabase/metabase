@@ -82,8 +82,8 @@
 
 (mr/def ::RunSortParams
   [:map
-   [:sort_column    {:default :started_at} (into [:enum] run-sort-columns)]
-   [:sort_direction {:default :desc}       [:enum :asc :desc]]])
+   [:sort-column    {:default :started_at} (into [:enum] run-sort-columns)]
+   [:sort-direction {:default :desc}       [:enum :asc :desc]]])
 
 (mr/def ::TaskRun
   [:map
@@ -208,7 +208,7 @@
   "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name` LEFT JOINs
   the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped `task_history` subquery.
   Derived-column variants keep the selected shape to `task_run.*` and add a deterministic `[:id :desc]` secondary key."
-  [{col :sort_column dir :sort_direction}]
+  [{col :sort-column dir :sort-direction}]
   (let [secondary [:task_run.id :desc]]
     (case col
       :entity_name

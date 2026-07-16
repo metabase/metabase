@@ -2,7 +2,7 @@ import type { Log } from "metabase-types/api/util";
 
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { SortingOptions } from "./sorting";
+import type { SortDirection, SortingOptions } from "./sorting";
 
 // "unknown" status is only expected for historical tasks (before Task['status'] was introduced)
 export type TaskStatus = "success" | "started" | "failed" | "unknown";
@@ -126,8 +126,9 @@ export type ListTaskRunsRequest = {
   "entity-id"?: number;
   status?: TaskRunStatus;
   "started-at"?: TaskRunStartedAtParam;
-} & PaginationRequest &
-  Partial<SortingOptions<ListTaskRunsSortColumn>>;
+  "sort-column"?: ListTaskRunsSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
 
 export type ListTaskRunsResponse = {
   data: TaskRun[];

@@ -45,8 +45,8 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
-      sort_column,
-      sort_direction,
+      "sort-column": sort_column,
+      "sort-direction": sort_direction,
       "run-type": runType ?? undefined,
       "entity-type": entityType ?? undefined,
       "entity-id": entityId ?? undefined,
