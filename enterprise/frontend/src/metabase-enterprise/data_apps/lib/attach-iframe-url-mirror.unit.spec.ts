@@ -1,3 +1,5 @@
+import { setBasename } from "metabase/utils/basename";
+
 import {
   type UrlMirrorWindow,
   attachIframeUrlMirror,
@@ -32,6 +34,10 @@ function fakeIframeWindow(pathname: string): FakeIframeWindow {
 const asMirrorWindow = (iframe: FakeIframeWindow): UrlMirrorWindow => iframe;
 
 describe("attachIframeUrlMirror", () => {
+  // The basename is module-level global state; keep the root-path default clean
+  // for every test regardless of what a subpath case set.
+  afterEach(() => setBasename(""));
+
   it("patches the iframe history + popstate on attach and restores them on cleanup", () => {
     const iframe = fakeIframeWindow("/embed/apps/sales");
     const origPush = iframe.history.pushState;
@@ -69,6 +75,28 @@ describe("attachIframeUrlMirror", () => {
     // The parent URL is replaced (not pushed) with the mirrored sub-path.
     const lastCall = replaceSpy.mock.calls.at(-1);
     expect(lastCall?.[2]).toContain("/apps/sales/orders");
+
+    replaceSpy.mockRestore();
+  });
+
+  it("preserves the Metabase basename on a subpath install", () => {
+    // Subpath install at `/mb`: the iframe `src` is built subpath-safe, so its
+    // pathname carries the basename (`/mb/embed/apps/:name/…`).
+    setBasename("/mb");
+    const iframe = fakeIframeWindow("/mb/embed/apps/sales");
+    const replaceSpy = jest.spyOn(window.history, "replaceState");
+
+    attachIframeUrlMirror(asMirrorWindow(iframe), "sales");
+
+    // Navigate to a sub-route inside the iframe.
+    iframe.location.pathname = "/mb/embed/apps/sales/orders";
+    iframe.history.pushState({}, "", "/mb/embed/apps/sales/orders");
+
+    // The mirrored parent URL keeps both the `/mb` basename and the `/orders`
+    // app sub-route — it must not collapse to a bare `/apps/sales`.
+    const target = replaceSpy.mock.calls.at(-1)?.[2];
+    expect(target).toContain("/mb/apps/sales/orders");
+    expect(target).not.toBe("/apps/sales");
 
     replaceSpy.mockRestore();
   });
