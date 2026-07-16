@@ -66,7 +66,9 @@
   (executions are not serialized, so a grouped MAX can't pick the latest row). `parameterized = false`
   strictly: a NULL (pre-column legacy row) is unknown, and unknown runs are outside the evidence set - as
   are errored runs, whose rows also stamp `result_rows` 0 (a crashed run means \"broken\", not \"empty\"),
-  and sandboxed runs (the sandbox filters rows per-user, so their 0 rows is not instance-wide evidence)."
+  and sandboxed runs (the sandbox filters rows per-user, so their 0 rows is not instance-wide evidence).
+  `is_sandboxed` is nullable with no default; NULL counts as not sandboxed - the strict `parameterized`
+  check already fences the legacy rows that predate both columns."
   []
   (u/index-by :card_id :started_at
               (t2/query {:select [:card_id :started_at]
@@ -80,7 +82,7 @@
                                     :where  [:and
                                              [:= :c.archived false]
                                              [:= :qe.parameterized false]
-                                             [:not= :qe.is_sandboxed true]
+                                             [:= [:coalesce :qe.is_sandboxed false] false]
                                              [:not= :qe.cache_hit true]
                                              [:= :qe.error nil]]}
                                    :ranked]]
