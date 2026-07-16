@@ -17,49 +17,63 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- import-if-changed!
+  "Snapshot the configured source and import it unless its version matches the
+  last imported version. `task-history-name` labels the task-history row."
+  [task-history-name]
+  (let [branch (settings/remote-sync-branch)
+        source (source/source-from-settings branch)
+        snapshot (source.p/snapshot source)
+        snapshot-version (source.p/version snapshot)
+        last-version (remote-sync.task/last-version)]
+    (if (= last-version snapshot-version)
+      (log/infof "Skipping import: source version %s matches last imported version" snapshot-version)
+      (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
+        (if existing?
+          (log/info "Remote sync already in progress, not importing")
+          (task-history/with-task-history {:task task-history-name
+                                           :task_details {:task-id task-id}}
+            (dh/with-timeout {:interrupt? true
+                              :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
+              (log/info "Importing remote-sync collections")
+              (let [result (impl/import! snapshot task-id)]
+                (impl/handle-task-result! result task-id)
+                (when (= :success (:status result))
+                  ;; events/publish-event! rethrows handler exceptions; don't let an audit-log
+                  ;; failure mark an already-successful import as failed
+                  (try
+                    (impl/publish-sync-event! :event/remote-sync-import task-id
+                                              {:branch branch :auto true} nil)
+                    (catch Exception e
+                      (log/error e "Failed to publish remote-sync audit event"))))))))))))
+
 (defn- auto-import!
   []
   (when (and (settings/remote-sync-enabled)
              (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
-    (let [branch (settings/remote-sync-branch)
-          source (source/source-from-settings branch)
-          snapshot (source.p/snapshot source)
-          snapshot-version (source.p/version snapshot)
-          last-version (remote-sync.task/last-version)]
-      (if (= last-version snapshot-version)
-        (log/infof "Skipping auto-import: source version %s matches last imported version" snapshot-version)
-        (let [{task-id :id existing? :existing?} (impl/create-task-with-lock! "import")]
-          (if existing?
-            (log/info "Remote sync already in progress, not auto-importing")
-            (task-history/with-task-history {:task "remote-sync-auto-import"
-                                             :task_details {:task-id task-id}}
-              (dh/with-timeout {:interrupt? true
-                                :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-                (log/info "Auto-importing remote-sync collections")
-                (let [result (impl/import! snapshot task-id)]
-                  (impl/handle-task-result! result task-id)
-                  (when (= :success (:status result))
-                    ;; events/publish-event! rethrows handler exceptions; don't let an audit-log
-                    ;; failure mark an already-successful import as failed
-                    (try
-                      (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                {:branch branch :auto true} nil)
-                      (catch Exception e
-                        (log/error e "Failed to publish remote-sync audit event")))))))))))))
+    (import-if-changed! "remote-sync-auto-import")))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))
 
 (defenterprise jekyll-boot-import!
   "Jekyll mode: reload content from the configured git branch once at boot, so a
-  fresh/wiped app-db converges to the branch state. Reuses the same
-  settings-gated `auto-import!` the AutoImport task runs — but called directly at
-  boot, since Jekyll cuts the scheduler. No-op when remote-sync is disabled or
-  not configured for read-only auto-import."
+  fresh/wiped app-db converges to the branch state.
+
+  Unlike the periodic AutoImport task, this does NOT require
+  `remote-sync-type=read-only` or `remote-sync-auto-import`: those gates protect
+  a long-lived read-write instance from pulling over unexported local edits, a
+  hazard that cannot exist on a fresh boot with an empty app-db. A Jekyll box
+  runs `read-write` (it must export its authored work back to the branch) and
+  still needs this one import at boot. No-op when url/branch are unset (note
+  `remote-sync-enabled` is derived from the url being set, so checking the url
+  covers it)."
   :feature :none
   []
-  (auto-import!))
+  (when (and (seq (settings/remote-sync-url))
+             (seq (settings/remote-sync-branch)))
+    (import-if-changed! "jekyll-boot-import")))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")
 (def ^:private auto-import-trigger-key "metabase.task.remote-sync.auto-import.trigger")

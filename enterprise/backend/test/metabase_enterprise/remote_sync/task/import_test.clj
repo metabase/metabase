@@ -43,3 +43,39 @@
           (testing "a no-op run (source version unchanged) does not log another entry"
             (#'task.import/auto-import!)
             (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
+
+(deftest jekyll-boot-import-read-write-test
+  (testing "jekyll-boot-import! imports on a read-write box (a Jekyll box must export, so it runs
+            read-write — the read-only/auto-import gates only protect long-lived instances from
+            pulling over unexported local edits, impossible on a fresh boot)"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type :read-write
+                                       remote-sync-auto-import false]
+      (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
+        (let [before (t2/count :model/AuditLog :topic "remote-sync-import")]
+          (testing "auto-import! (the periodic task) still refuses under read-write"
+            (#'task.import/auto-import!)
+            (is (= before (t2/count :model/AuditLog :topic "remote-sync-import"))))
+          (testing "jekyll-boot-import! imports"
+            (task.import/jekyll-boot-import!)
+            (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import"))))
+          (testing "second boot-import is a no-op (version unchanged)"
+            (task.import/jekyll-boot-import!)
+            (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
+
+(deftest jekyll-boot-import-unconfigured-test
+  (testing "jekyll-boot-import! no-ops when url/branch are unset (remote-sync-enabled is derived from the url)"
+    (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (test-helpers/create-mock-source))]
+      (let [before (t2/count :model/AuditLog :topic "remote-sync-import")]
+        (testing "no url"
+          (mt/with-temporary-setting-values [remote-sync-url nil
+                                             remote-sync-branch "main"]
+            (task.import/jekyll-boot-import!)
+            (is (= before (t2/count :model/AuditLog :topic "remote-sync-import")))))
+        (testing "no branch"
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch nil]
+            (task.import/jekyll-boot-import!)
+            (is (= before (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
