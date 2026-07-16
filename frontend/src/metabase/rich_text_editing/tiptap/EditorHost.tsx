@@ -9,6 +9,7 @@ import type {
   Document,
   EntityId,
   RawSeries,
+  StoredResultSort,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -70,7 +71,12 @@ export interface EditorCardHost {
     url: string,
     document?: Document | null,
   ) => DispatchableAction;
-  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useCardData: (props: {
+    id: number;
+    skip?: boolean;
+    storedResultId?: number;
+    storedResultSort?: StoredResultSort;
+  }) => UseCardDataResult;
   useExternalCardDataLoader: (
     cardId: number,
     opts?: { skip?: boolean },

@@ -978,6 +978,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: card_id
+                  type: int
+                  remarks: The referencing Card
+                  constraints:
+                    nullable: true
+              - column:
                   name: exploration_id
                   type: int
                   remarks: The referencing exploration
@@ -1021,6 +1027,31 @@ databaseChangeLog:
             referencedTableName: stored_result
             referencedColumnNames: id
             constraintName: fk_stored_result_use_stored_result_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.srusecardidx
+      author: nvoxland
+      comment: Index on stored_result_use.card_id
+      changes:
+        - createIndex:
+            tableName: stored_result_use
+            indexName: idx_stored_result_use_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v64.srusecardfk
+      author: nvoxland
+      comment: FK stored_result_use.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: stored_result_use
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_stored_result_use_card_id
             onDelete: CASCADE
 
   - changeSet:

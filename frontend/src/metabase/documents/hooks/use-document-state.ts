@@ -36,7 +36,9 @@ export function useDocumentState(documentData?: {
           (embed, index) =>
             !prevEmbeds[index] ||
             embed.id !== prevEmbeds[index].id ||
-            embed.name !== prevEmbeds[index].name,
+            embed.name !== prevEmbeds[index].name ||
+            embed.stored_result_id !== prevEmbeds[index].stored_result_id ||
+            embed.sort !== prevEmbeds[index].sort,
         );
 
       if (hasChanged) {

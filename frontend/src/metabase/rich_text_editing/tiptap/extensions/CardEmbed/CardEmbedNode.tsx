@@ -42,7 +42,7 @@ import { ErrorView } from "metabase/visualizations/components/Visualization/Erro
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, StoredResultSort } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -63,6 +63,16 @@ import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
 
+const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
+  "value_asc",
+  "value_desc",
+  "label_asc",
+  "label_desc",
+];
+
+const isStaticCardSort = (value: unknown): value is StoredResultSort =>
+  typeof value === "string" && STATIC_CARD_SORTS.some((sort) => sort === value);
+
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
     return `{% card id=${attrs.id} name="${attrs.name}" %}`;
@@ -75,6 +85,9 @@ export interface CardEmbedAttributes {
   id?: number;
   name?: string;
   class?: string;
+  stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
+  chart_href?: string | null; // Override URL for the embed's title click
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -102,6 +115,25 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      stored_result_id: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-stored-result-id");
+          if (!raw) {
+            return null;
+          }
+          const parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
+      sort: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-sort"),
+      },
+      chart_href: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-chart-href"),
+      },
       ...createIdAttribute(),
     };
   },
@@ -123,6 +155,12 @@ export const CardEmbed: Node<{
           "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
+          "data-stored-result-id":
+            node.attrs.stored_result_id != null
+              ? String(node.attrs.stored_result_id)
+              : null,
+          "data-sort": node.attrs.sort ?? null,
+          "data-chart-href": node.attrs.chart_href ?? null,
         },
         this.options.HTMLAttributes,
       ),
@@ -153,6 +191,11 @@ export const CardEmbedComponent = memo(
     deleteNode,
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
+    const storedResultId = node.attrs.stored_result_id;
+    const isStatic = storedResultId != null;
+    const staticSort = isStaticCardSort(node.attrs.sort)
+      ? node.attrs.sort
+      : undefined;
     const host = useEditorHost();
     const {
       ref: viewportRef,
@@ -189,7 +232,13 @@ export const CardEmbedComponent = memo(
     const embedIndex = getEmbedIndex(editor, getPos);
 
     const isExternalDocument = externalCardData != null;
-    const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
+    const regularCardData = host.useCardData({
+      id,
+      skip: !shouldLoadData,
+      ...(storedResultId != null
+        ? { storedResultId, storedResultSort: staticSort }
+        : {}),
+    });
     const externalCardDataResult = host.useExternalCardDataLoader(id, {
       skip: !shouldLoadData,
     });
@@ -348,6 +397,11 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
+      const chartHref = node.attrs.chart_href;
+      if (chartHref) {
+        dispatch(host.navigateToCard(chartHref, document));
+        return;
+      }
       if (card && metadata) {
         try {
           const isDraftCard = card.id < 0;
@@ -613,6 +667,7 @@ export const CardEmbedComponent = memo(
                             menuView={menuView}
                             setMenuView={setMenuView}
                             canWrite={canWrite}
+                            isStatic={isStatic}
                             dataset={dataset}
                             question={question}
                             isNativeQuestion={isNativeQuestion}
@@ -643,10 +698,14 @@ export const CardEmbedComponent = memo(
                       metadata={metadata}
                       mode={DocumentMode}
                       onChangeCardAndRun={
-                        isExternalDocument ? undefined : handleChangeCardAndRun
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
-                        isExternalDocument ? undefined : handleUpdateQuestion
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
                         isExternalDocument
@@ -715,6 +774,10 @@ export const CardEmbedComponent = memo(
     return (
       prevProps.node.attrs.id === nextProps.node.attrs.id &&
       prevProps.node.attrs.name === nextProps.node.attrs.name &&
+      prevProps.node.attrs.stored_result_id ===
+        nextProps.node.attrs.stored_result_id &&
+      prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
+      prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
       prevProps.selected === nextProps.selected
     );
   },
