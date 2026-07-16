@@ -1,21 +1,101 @@
-name: AI Benchmark
-
-# Runs the ai-benchmark E2E test suite against a Metabase instance.
+# Dispatcher for the evals harness (metabase/evals). Two triggers, one job: resolve the PR's
+# head, dispatch `eval-run.yml` over there, and consume the `evals/init` label. Everything
+# after the dispatch happens on the evals side — it posts the "running" and verdict comments
+# back to the PR itself (it knows its own run URL, so no correlation key exists here).
 #
-# NOTE: This is a stub. The real workflow — which builds the benchmark Docker
-# image, boots Metabase + Postgres with a preloaded data dump, runs the
-# benchmark suite, and uploads results as artifacts — is being developed on a
-# feature branch. This stub exists on master so that the "Run workflow" button
-# is available in the GitHub Actions UI, which lets us dispatch the real
-# workflow against feature branches during development.
+# `pull_request_target` is safe here by construction: the job never checks out or executes PR
+# code — it is a pure API call — and PR-controlled strings (branch name) are read via the API
+# into shell variables, never interpolated into the script as workflow expressions.
+name: evals-dispatch
+run-name: "dispatch evals · PR #${{ github.event.pull_request.number || inputs.pr }}"
 
 on:
+  # Button: label a PR `evals/init` to evaluate its head with the default arms. The label is
+  # removed as soon as the dispatch lands — re-label to run again.
+  pull_request_target:
+    types: [labeled]
+  # Same thing from the Actions UI, with the arms adjustable.
   workflow_dispatch:
+    inputs:
+      pr:
+        description: "PR number to evaluate"
+        required: true
+      surfaces:
+        description: "Surfaces to run"
+        required: true
+        type: choice
+        options: [all, cli, mcp, metabot]
+        default: metabot
+      sample:
+        description: "Cases per variant (0 = full suite)"
+        required: false
+        default: "2"
+      agent_model:
+        description: "Agent model for the external (CLI/MCP) arms"
+        required: false
+        default: claude-sonnet-4-6
+
+# Label removal and the fork-PR notice ride the issues API.
+permissions:
+  issues: write
 
 jobs:
-  placeholder:
-    name: Placeholder
+  dispatch:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'evals/init'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Stub
-        run: echo "ai-benchmark workflow stub — real implementation pending"
+      - name: Resolve PR head
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          case "$PR" in
+            ''|*[!0-9]*) echo "::error::pr must be a number, got '$PR'"; exit 1 ;;
+          esac
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+          pull="repos/${{ github.repository }}/pulls/$PR"
+          branch=$(gh api "$pull" --jq .head.ref)
+          sha=$(gh api "$pull" --jq .head.sha)
+          head_repo=$(gh api "$pull" --jq .head.repo.full_name)
+          # eval-run resolves the branch in this repo and verifies the sha sits on it; a fork's
+          # branch doesn't exist here, so a fork PR can't be evaluated. Say so on the PR — a
+          # pressed button must never go silent.
+          if [ "$head_repo" != "${{ github.repository }}" ]; then
+            gh api "repos/${{ github.repository }}/issues/$PR/comments" -f body="<!-- evals-report -->
+          Evals can only run on same-repo PRs — this PR's head lives in \`$head_repo\`, so its branch can't be resolved in ${{ github.repository }}."
+            echo "::error::fork PR ($head_repo) — not evaluable"
+            exit 1
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # The sha is pinned at trigger time, so a push racing the dispatch can't move the target;
+      # eval-run's own resolve verifies the sha is on the branch and that product CI built its
+      # uberjar, and fails loudly (on the PR, via its `pr` input) when not.
+      - name: Dispatch eval-run
+        env:
+          GH_TOKEN: ${{ secrets.MB_EVALS_CI_TOKEN }}
+          BRANCH: ${{ steps.head.outputs.branch }}
+          SHA: ${{ steps.head.outputs.sha }}
+          PR: ${{ steps.head.outputs.pr }}
+        run: |
+          gh workflow run eval-run.yml -R metabase/evals \
+            -f branch="$BRANCH" \
+            -f commit="$SHA" \
+            -f pr="$PR" \
+            -f surfaces="${{ inputs.surfaces || 'metabot' }}" \
+            -f sample="${{ inputs.sample || '2' }}" \
+            -f agent_model="${{ inputs.agent_model || 'claude-sonnet-4-6' }}"
+
+      # Button semantics: the label is consumed by the press, never left as state. 404 means a
+      # concurrent event already removed it — same end state, not a failure.
+      - name: Remove label
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X DELETE \
+            "repos/${{ github.repository }}/issues/${{ steps.head.outputs.pr }}/labels/evals%2Finit" \
+            || echo "label already gone"
