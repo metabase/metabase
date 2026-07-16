@@ -12,7 +12,7 @@ const Example = ({ children }: PropsWithChildren) => (
     authConfig={authConfig}
     // Allowlist the custom visualizations to load, by their plugin names,
     // each prefixed with `custom:`.
-    allowedCustomVisualizations={["custom:Calendar", "custom:Thumbs"]}
+    allowedCustomVisualizations={["custom:Calendar Heatmap", "custom:Thumbs"]}
   >
     {children}
   </MetabaseProvider>
