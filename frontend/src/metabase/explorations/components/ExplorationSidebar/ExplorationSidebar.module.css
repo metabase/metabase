@@ -66,8 +66,6 @@
   cursor: pointer;
   color: inherit;
   text-align: left;
-  /* A row at depth N has N pinned ancestor headings above it; keep
-   * scrollIntoView (keyboard navigation) from landing rows beneath them. */
   scroll-margin-top: calc(var(--tree-depth, 0) * var(--tree-row-height));
 }
 

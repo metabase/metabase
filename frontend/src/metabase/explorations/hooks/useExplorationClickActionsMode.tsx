@@ -57,24 +57,24 @@ export function useExplorationClickActionsMode({
       actionsForClick: (clicked: ClickObject) => {
         const actions: ClickAction[] = [];
 
-        const handleExploreFurther = async () => {
-          const exploreFilters = getExploreFurtherFilters(clicked);
-          sendToast({ icon: "bolt", message: t`Exploring further…` });
-          const { error } = await exploreFurther({
-            id: explorationId,
-            page_id: pageId,
-            explore_filters: exploreFilters,
-          });
-          if (error) {
-            sendToast({
-              icon: "warning_triangle_filled",
-              iconColor: "warning",
-              message: t`Couldn't start a new exploration`,
-            });
-          }
-        };
-
         if (canExploreFurther(clicked, blockType, queryType)) {
+          const handleExploreFurther = async () => {
+            const exploreFilters = getExploreFurtherFilters(clicked);
+            sendToast({ icon: "bolt", message: t`Exploring further…` });
+            const { error } = await exploreFurther({
+              id: explorationId,
+              page_id: pageId,
+              explore_filters: exploreFilters,
+            });
+            if (error) {
+              sendToast({
+                icon: "warning_triangle_filled",
+                iconColor: "warning",
+                message: t`Couldn't start a new exploration`,
+              });
+            }
+          };
+
           actions.push({
             name: "explore-further",
             section: "custom",

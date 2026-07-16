@@ -135,7 +135,6 @@ type VisualizationOwnProps = {
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
-  // parent supplied data point highlight
   highlighted?: HighlightedObject | null;
   headerIcon?: IconProps;
   width?: number | null;

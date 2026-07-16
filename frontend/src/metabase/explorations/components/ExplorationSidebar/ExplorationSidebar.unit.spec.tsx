@@ -150,8 +150,6 @@ function setup({
     treeItemFilter,
   } = getSidebarTestContext(exploration, tab);
 
-  // Mirror the page: exclude hidden pages from the tree unless "show hidden"
-  // is on, and keep the initial-thread anchor only on the "All" tab.
   const displayTree = getExplorationSidebarTree(
     exploration,
     showHidden
