@@ -21,10 +21,10 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { IndexRedirect, Link, Route } from "metabase/router";
+import { Link, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -218,7 +218,7 @@ async function setup({
     <>
       <Route path="notAdmin" component={OtherComponent} />
       <Route path="admin/datamodel">
-        <IndexRedirect to="database" />
+        <Route index component={redirect("database")} />
         <Route path="database" component={DataModelV1} />
         <Route path="database/:databaseId" component={DataModelV1} />
         <Route

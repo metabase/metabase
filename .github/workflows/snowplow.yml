@@ -32,7 +32,7 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
       - name: Set up Babashka
         uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
         with:

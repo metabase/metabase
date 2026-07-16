@@ -1,7 +1,7 @@
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { Link } from "./Link";
-import { Route } from "./react-router";
+import { Route } from "./route";
 
 describe("router/Link", () => {
   it("re-exports the to-based Link", () => {

@@ -262,6 +262,22 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(mr/def ::pivot
+  "Pivot intent. `:rows` and `:columns` are sequences of UUIDs that reference `:lib/uuid` values on breakouts of the
+  stage that carries this clause. `:show-row-totals` and `:show-column-totals` default to `true` when absent."
+  [:map
+   {:decode/normalize common/normalize-map}
+   [:rows               [:sequential ::common/uuid]]
+   [:columns            [:sequential ::common/uuid]]
+   [:show-row-totals    {:optional true} :boolean]
+   [:show-column-totals {:optional true} :boolean]])
+
+(mr/def ::pivot-only-on-last-stage
+  [:fn
+   {:error/message ":pivot is only allowed on the last stage of a query"}
+   (fn [{:keys [stages]}]
+     (not-any? :pivot (butlast stages)))])
+
 (defn- normalize-mbql-stage [m]
   (normalize-stage-common m))
 
@@ -302,7 +318,8 @@
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
      [:page               {:optional true} [:ref ::page]]
-     [:limit              {:optional true} nat-int?]]]
+     [:limit              {:optional true} nat-int?]
+     [:pivot              {:optional true} [:ref ::pivot]]]]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
@@ -550,8 +567,10 @@
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]
+   [:ref ::pivot-only-on-last-stage]
    (common/disallowed-keys
     {:expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
+     :pivot        ":pivot is a stage clause and only allowed on the last stage of a query"
      :filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
      :joins        ":joins is not allowed in the top level of a query, only in MBQL stages"

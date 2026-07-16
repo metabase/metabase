@@ -9,7 +9,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -96,7 +96,7 @@ const setupTenantRoute = async (initialRoute: string) => {
       <Route path="tenants" component={createTenantsRouteGuard()}>
         <Route path="groups" component={UpsellTenants} />
         <Route path="people" component={UpsellTenants} />
-        <IndexRoute component={UpsellTenants} />
+        <Route index component={UpsellTenants} />
       </Route>
     </Route>,
     {

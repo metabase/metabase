@@ -24,10 +24,10 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { IndexRedirect, Link, Redirect, Route } from "metabase/router";
+import { Link, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -256,16 +256,18 @@ async function setup({
     <>
       <Route path="notData" component={OtherComponent} />
       <Route path="data-studio/data">
-        <IndexRedirect to="database" />
+        <Route index component={redirect("database")} />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
         <Route
           path="database/:databaseId/schema/:schemaId"
           component={DataModel}
         />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          component={redirect(
+            "database/:databaseId/schema/:schemaId/table/:tableId/details",
+          )}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"

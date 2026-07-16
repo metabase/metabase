@@ -10,11 +10,11 @@ import {
   Box,
   Button,
   Center,
+  Group,
   Icon,
   Stack,
   Text,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 
@@ -109,7 +109,7 @@ interface EmptyStateProps {
   illustration: ReactNode;
   ctaLink?: CTALink;
   contactAdminReason?: ContactReason;
-  upsell?: ReactNode;
+  secondaryAction?: ReactNode;
 }
 
 const AddDataEmptyState = ({
@@ -118,7 +118,7 @@ const AddDataEmptyState = ({
   illustration,
   ctaLink,
   contactAdminReason,
-  upsell,
+  secondaryAction,
 }: EmptyStateProps) => {
   return (
     <Stack gap="lg" align="center" justify="center" pt="2.5rem">
@@ -130,17 +130,19 @@ const AddDataEmptyState = ({
         <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {ctaLink && (
-        <Button
-          variant="filled"
-          w={INNER_WIDTH}
-          component={Link}
-          to={ctaLink.to}
-        >
-          {ctaLink.text}
-        </Button>
+        <Group gap="sm" justify="center">
+          <Button
+            variant="filled"
+            w={secondaryAction ? undefined : INNER_WIDTH}
+            component={Link}
+            to={ctaLink.to}
+          >
+            {ctaLink.text}
+          </Button>
+          {secondaryAction}
+        </Group>
       )}
       {contactAdminReason && <ContactAdminAlert reason={contactAdminReason} />}
-      {upsell}
     </Stack>
   );
 };
@@ -163,35 +165,25 @@ export const DatabasePanelEmptyState = () => {
 export const CSVPanelEmptyState = ({
   ctaLink,
   contactAdminReason,
-  upsell,
+  secondaryAction,
 }:
   | {
       ctaLink: CTALink;
       contactAdminReason?: never;
-      upsell?: ReactNode;
+      secondaryAction?: ReactNode;
     }
   | {
       ctaLink?: never;
       contactAdminReason: ContactReason;
-      upsell?: never;
+      secondaryAction?: never;
     }) => {
-  const text = (
-    <Text component="span" td="underline">{c(
-      "in the sentence 'To work with CSVs, enable file uploads in your database.'",
-    ).t`your database`}</Text>
-  );
-  const ctaSubtitle = c("{0} refers to the string 'your database'")
-    .jt`To work with CSVs, enable file uploads in ${(
-    <Tooltip
-      inline
-      maw={INNER_WIDTH}
-      multiline
-      label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
-      key="database-tooltip"
-    >
-      {text}
-    </Tooltip>
-  )}.`;
+  const storageSubtitle =
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
+    t`To work with CSVs, either enable file uploads in your database, or add Metabase Storage.`;
+
+  const ctaSubtitle = secondaryAction
+    ? storageSubtitle
+    : t`To work with CSVs, enable file uploads in your database.`;
 
   const subtitle = ctaLink
     ? ctaSubtitle
@@ -201,10 +193,10 @@ export const CSVPanelEmptyState = ({
     <AddDataEmptyState
       title={t`Upload CSV files`}
       subtitle={subtitle}
-      illustration={<Box component={IconCSV} c="core-brand" h={66} />}
+      illustration={<Box component={IconCSV} c="core-brand" h={48} />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
-      upsell={upsell}
+      secondaryAction={secondaryAction}
     />
   );
 };
