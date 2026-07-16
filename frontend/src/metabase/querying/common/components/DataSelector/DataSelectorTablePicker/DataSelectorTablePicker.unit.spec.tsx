@@ -87,7 +87,7 @@ describe("DataSelectorTablePicker", () => {
         ],
       }),
       hasFiltering: true,
-      minTablesToShowSearch: 2,
+      minTablesToShowSearch: 0,
     });
 
     await userEvent.type(
