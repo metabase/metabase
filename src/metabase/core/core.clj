@@ -25,7 +25,7 @@
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -248,6 +248,12 @@
   ;; a fresh/wiped app-db converges to the branch. Metadata comes first so
   ;; imported MBQL content can resolve fields. Both no-op when unconfigured.
   (when (jekyll/jekyll?)
+    ;; a Jekyll box is built around remote-sync and transforms, which are premium
+    ;; routes: with a token missing the features the box still boots, but sync
+    ;; no-ops and the API 402s — which reads as an auth bug. Warn loudly instead.
+    (doseq [feature [:remote-sync :transforms-basic]
+            :when (not (premium-features/has-feature? feature))]
+      (log/warnf "Jekyll mode: premium token lacks feature %s — remote-sync/transforms will be unavailable" feature))
     (sync/ingest-parent-metadata!)
     (jekyll-boot-import!))
 
