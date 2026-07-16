@@ -9,9 +9,10 @@ import type {
 } from "metabase/common/collections/types";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
+import { Link } from "metabase/common/components/Link";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Card, Flex, Skeleton, Tooltip } from "metabase/ui";
+import { Box, Card, Flex, Skeleton, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -27,7 +28,6 @@ import {
   Body,
   Description,
   Header,
-  ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
 
@@ -119,71 +119,74 @@ function PinnedItemCard({
     isCollectionItem(item) &&
     (onCopy || onMove || createBookmark || deleteBookmark || collection);
 
+  const card = (
+    <Card p={0} radius="md" shadow="none" withBorder>
+      <Body style={item ? undefined : { cursor: "default" }}>
+        <Header>
+          <EntityIcon {...iconData} size="1.5rem" color="core-brand" />
+          <ActionsContainer h={item ? undefined : "2rem"}>
+            {hasActions && (
+              // This component is used within a `<Link>` component,
+              // so we must prevent events from triggering the activation of the link
+              <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+                <ActionMenu
+                  databases={databases}
+                  bookmarks={bookmarks}
+                  createBookmark={createBookmark}
+                  deleteBookmark={deleteBookmark}
+                  item={item}
+                  collection={collection}
+                  onCopy={onCopy}
+                  onMove={onMove}
+                />
+              </EventSandbox>
+            )}
+          </ActionsContainer>
+        </Header>
+        {item ? (
+          <>
+            <Tooltip
+              label={item.name}
+              position="bottom"
+              disabled={!showTitleTooltip}
+              maw={TOOLTIP_MAX_WIDTH}
+            >
+              <Title
+                onMouseEnter={(e) => maybeEnableTooltip(e, setShowTitleTooltip)}
+              >
+                <Flex align="center" gap="0.5rem">
+                  {item.name}
+                  <PLUGIN_MODERATION.ModerationStatusIcon
+                    status={item.moderated_status}
+                    filled
+                    size={14}
+                  />
+                </Flex>
+              </Title>
+            </Tooltip>
+            <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+              {item.description || DEFAULT_DESCRIPTION[item.model] || ""}
+            </Description>
+          </>
+        ) : (
+          <>
+            <Skeleton natural h="1.5rem" />
+            <Skeleton natural mt="xs" mb="4px" h="1rem" />
+          </>
+        )}
+      </Body>
+    </Card>
+  );
+  const to = item ? (modelToUrl(item) ?? "/") : undefined;
   return (
-    <ItemLink
+    <Box
+      display="block"
+      h="min-content"
       className={className}
-      to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
-      <Card p={0} radius="md" shadow="none" withBorder>
-        <Body style={item ? undefined : { cursor: "default" }}>
-          <Header>
-            <EntityIcon {...iconData} size="1.5rem" color="core-brand" />
-            <ActionsContainer h={item ? undefined : "2rem"}>
-              {hasActions && (
-                // This component is used within a `<Link>` component,
-                // so we must prevent events from triggering the activation of the link
-                <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
-                  <ActionMenu
-                    databases={databases}
-                    bookmarks={bookmarks}
-                    createBookmark={createBookmark}
-                    deleteBookmark={deleteBookmark}
-                    item={item}
-                    collection={collection}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                  />
-                </EventSandbox>
-              )}
-            </ActionsContainer>
-          </Header>
-          {item ? (
-            <>
-              <Tooltip
-                label={item.name}
-                position="bottom"
-                disabled={!showTitleTooltip}
-                maw={TOOLTIP_MAX_WIDTH}
-              >
-                <Title
-                  onMouseEnter={(e) =>
-                    maybeEnableTooltip(e, setShowTitleTooltip)
-                  }
-                >
-                  <Flex align="center" gap="0.5rem">
-                    {item.name}
-                    <PLUGIN_MODERATION.ModerationStatusIcon
-                      status={item.moderated_status}
-                      filled
-                      size={14}
-                    />
-                  </Flex>
-                </Title>
-              </Tooltip>
-              <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
-                {item.description || DEFAULT_DESCRIPTION[item.model] || ""}
-              </Description>
-            </>
-          ) : (
-            <>
-              <Skeleton natural h="1.5rem" />
-              <Skeleton natural mt="xs" mb="4px" h="1rem" />
-            </>
-          )}
-        </Body>
-      </Card>
-    </ItemLink>
+      {to ? <Link to={to}>{card}</Link> : card}
+    </Box>
   );
 }
 

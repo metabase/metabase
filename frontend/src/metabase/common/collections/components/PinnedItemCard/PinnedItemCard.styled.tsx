@@ -1,14 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type { ComponentProps } from "react";
 
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink";
 import { Box, type BoxProps } from "metabase/ui";
-
-export const ItemLink = (props: ComponentProps<typeof MaybeLink>) => (
-  <Box component={MaybeLink} display="block" h="min-content" {...props} />
-);
 
 // Unjustified type cast. FIXME
 export const ActionsContainer = styled(Box)<BoxProps>`

@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
-import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -48,6 +47,20 @@ export const TableRowForCacheableItem = ({
     }
   };
 
+  const cellContent = (
+    <Flex
+      className={StrategyEditorForQuestionsAndDashboardsS.ItemLink}
+      align="center"
+      wrap="nowrap"
+      gap="sm"
+      fw={700}
+      style={{ overflow: "hidden" }}
+    >
+      {iconName ? <FixedSizeIcon name={iconName} /> : <Box h="sm" w="md" />}
+      <Ellipsified>{name}</Ellipsified>
+    </Flex>
+  );
+
   return (
     <tr
       className={
@@ -56,21 +69,7 @@ export const TableRowForCacheableItem = ({
           : undefined
       }
     >
-      <td>
-        <Flex
-          className={StrategyEditorForQuestionsAndDashboardsS.ItemLink}
-          component={MaybeLink}
-          to={url}
-          align="center"
-          wrap="nowrap"
-          gap="sm"
-          fw={700}
-          style={{ overflow: "hidden" }}
-        >
-          {iconName ? <FixedSizeIcon name={iconName} /> : <Box h="sm" w="md" />}
-          <Ellipsified>{name}</Ellipsified>
-        </Flex>
-      </td>
+      <td>{url ? <Link to={url}>{cellContent}</Link> : cellContent}</td>
       <td>
         {collection && (
           <Link
