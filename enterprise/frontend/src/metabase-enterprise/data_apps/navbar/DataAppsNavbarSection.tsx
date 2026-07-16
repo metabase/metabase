@@ -33,6 +33,7 @@ export function DataAppsNavbarSection({
         {dataApps.map((dataApp) => (
           <PaddedSidebarLink
             key={dataApp.id}
+            icon="app"
             onClick={onItemSelect}
             url={Urls.dataApp(dataApp.name)}
           >

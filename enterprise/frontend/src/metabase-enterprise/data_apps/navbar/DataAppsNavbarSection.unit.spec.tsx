@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
@@ -37,12 +37,14 @@ describe("DataAppsNavbarSection", () => {
       await screen.findByRole("heading", { name: "Data apps" }),
     ).toBeInTheDocument();
 
-    expect(await screen.findByRole("link", { name: "Gizmo" })).toHaveAttribute(
-      "href",
-      "/apps/gizmo",
-    );
+    const gizmoLink = await screen.findByRole("link", { name: /Gizmo/ });
+    expect(gizmoLink).toHaveAttribute("href", "/apps/gizmo");
 
-    expect(screen.getByRole("link", { name: "Gadget" })).toHaveAttribute(
+    expect(
+      within(gizmoLink).getByRole("img", { name: "app icon" }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: /Gadget/ })).toHaveAttribute(
       "href",
       "/apps/gadget",
     );
