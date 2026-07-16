@@ -267,6 +267,8 @@
   When we do so we need to be sure any index names do not exceed the postgres limit for names. This function will hash the identifier
   if it exceeds the length, and will get a name like index_${sha1} instead.
 
+  Table names produced here must stay recognizable by [[index-table-name?]].
+
   Note: The index parameters will still be available in index_metadata"
   [identifier]
   (if (<= (count identifier) 63)
@@ -281,13 +283,39 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
+  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred.
+
+  Table names produced here must stay recognizable by [[index-table-name?]]."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
         ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
+
+(def ^:private index-table-name-pattern
+  "Recognizes every table-name shape produced by [[model-table-name]] (optionally with the force-reset
+  suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]),
+  [[hash-identifier-if-exceeds-pg-limit]], and the legacy pre-BOT-337 naming era:
+
+    index_<provider>_<model>_<dims>            e.g. index_ais_text_3_sm_1536
+    index_<provider>_<model>_<dims>_<digits>   force-reset suffix ([[model-table-suffix]])
+    index_<40-hex-sha1>                        names exceeding the 63-byte pg identifier limit
+    index_table_<anything>                     legacy pre-BOT-337 naming (index_table_<provider>_<model>_<dims>)
+
+  The provider/model segments are only lightly sanitized (see [[embedding/abbrev-model-name]]), so no
+  character class is assumed for them; the trailing _<digits> (vector dimensions or force-reset suffix)
+  gives the modern shapes their structure, while the index_table_ prefix — used exclusively by the
+  legacy era — claims anything under it. Deliberately does NOT match the control-plane tables
+  (index_metadata, index_control, index_gate): no trailing _<digits>, not 40-hex, not index_table_."
+  #"\Aindex_(?:.+_\d+|[0-9a-f]{40}|table_.+)\z")
+
+(defn index-table-name?
+  "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?
+  Matching names are orphan-cleanup candidates, i.e. may be dropped if not registered in the metadata
+  table; see [[index-table-name-pattern]] for the shapes."
+  [bare-table-name]
+  (boolean (re-matches index-table-name-pattern bare-table-name)))
 
 (defn default-index
   "Returns the default index spec for a model."
@@ -560,7 +588,7 @@
   (def index (default-index embedding-model))
   (drop-index-table! db index)
   (create-index-table-if-not-exists! db index)
-  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table_%'"]))
+  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index\\_%'"]))
 
 (defn- personal-collection-filter
   "Generate a WHERE condition for personal collection filtering based on the filter type.

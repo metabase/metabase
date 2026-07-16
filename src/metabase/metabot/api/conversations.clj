@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -43,6 +44,7 @@
    [:created_at      ms/TemporalInstant]
    [:summary         [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
+   [:state           {:optional true} [:maybe ::metabot.schema/state]]
    [:chat_messages   [:sequential :map]]])
 
 (def ^:private ConversationIdParams

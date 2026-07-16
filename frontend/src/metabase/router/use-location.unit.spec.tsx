@@ -1,6 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { Route } from "./react-router";
+import { Route } from "./route";
 import { useLocation } from "./use-location";
 
 function LocationProbe() {

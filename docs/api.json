@@ -2301,6 +2301,25 @@
           "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.version-range"
         }
       },
+      "metabase-enterprise.security-center.schema.download-jar-url" : {
+        "description" : "A downloadable JAR for a given fixed version.",
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "version" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.semver"
+          }
+        },
+        "required" : [ "version", "url" ]
+      },
+      "metabase-enterprise.security-center.schema.download-jar-urls" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-url"
+        }
+      },
       "metabase-enterprise.security-center.schema.match-status" : {
         "type" : "string",
         "enum" : [ "unknown", "active", "resolved", "not_affected", "error" ]
@@ -8684,6 +8703,9 @@
             "lib/stage-metadata" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
             },
+            "pivot" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.pivot"
+            },
             "breakout" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.breakouts"
             },
@@ -9884,7 +9906,7 @@
       "metabase.lib.schema.metadata..column.source" : {
         "description" : "`:lib/source` -- where a column came from with respect to the current stage.\n\n  Traditionally, `:lib/source` meant something slightly different -- it denoted what part of the current stage a\n  column came from, and thus included two additional options -- `:source/fields`, for columns used by `:fields`, and\n  `:source/breakouts`, for columns used in `:breakout`. This was not really useful information and made `:lib/source`\n  itself useless for determining if a column was 'inherited' or not (i.e., whether it came from a previous stage,\n  source card, or a join, and should get field name refs instead of field ID refs --\n  see [[metabase.lib.field.util/inherited-column?]]).",
         "type" : "string",
-        "enum" : [ "source/card", "source/native", "source/previous-stage", "source/table-defaults", "source/aggregations", "source/joins", "source/expressions", "source/implicitly-joinable" ]
+        "enum" : [ "source/card", "source/native", "source/previous-stage", "source/table-defaults", "source/aggregations", "source/joins", "source/expressions", "source/implicitly-joinable", "source/pivot-grouping" ]
       },
       "metabase.lib.schema.metadata..column.validate-for-source" : {
         "description" : "Do additional validation for column metadata based on `:lib/source`.",
@@ -9904,6 +9926,8 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source-expressions"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source-implicitly-joinable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source-pivot-grouping"
         }, { } ]
       },
       "metabase.lib.schema.metadata..column.validate-for-source-aggregations" : {
@@ -9922,6 +9946,9 @@
         "allOf" : [ ]
       },
       "metabase.lib.schema.metadata..column.validate-for-source-native" : {
+        "allOf" : [ ]
+      },
+      "metabase.lib.schema.metadata..column.validate-for-source-pivot-grouping" : {
         "allOf" : [ ]
       },
       "metabase.lib.schema.metadata..column.validate-for-source-previous-stage" : {
@@ -11091,6 +11118,32 @@
         "type" : "string",
         "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
+      "metabase.lib.schema.pivot" : {
+        "description" : "Pivot intent. `:rows` and `:columns` are sequences of UUIDs that reference `:lib/uuid` values on breakouts of the\n  stage that carries this clause. `:show-row-totals` and `:show-column-totals` default to `true` when absent.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+            }
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+            }
+          },
+          "show-column-totals" : {
+            "type" : "boolean"
+          },
+          "show-row-totals" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "rows", "columns" ]
+      },
+      "metabase.lib.schema.pivot-only-on-last-stage" : { },
       "metabase.lib.schema.query" : {
         "allOf" : [ {
           "description" : "Valid MBQL 5 query.",
@@ -11138,6 +11191,8 @@
           "required" : [ "stages" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.pivot-only-on-last-stage"
         }, {
           "allOf" : [ ]
         } ]
@@ -11979,60 +12034,59 @@
           }
         } ]
       },
-      "metabase.metabot.schema.message" : {
+      "metabase.metabot.schema.state" : {
         "type" : "object",
         "properties" : {
-          "content" : {
-            "oneOf" : [ {
+          "chart-configs" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "charts" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
+          },
+          "link-registry" : {
+            "type" : "object",
+            "additionalProperties" : {
               "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            }
           },
-          "role" : {
-            "$ref" : "#/components/schemas/metabase.metabot.schema.role"
+          "queries" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_call_id" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+          "todos" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : { }
+            }
           },
-          "tool_calls" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "id", "name", "arguments" ]
-              }
-            }, {
-              "type" : "null"
-            } ]
+          "transforms" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "object",
+              "properties" : { }
+            }
           }
-        },
-        "required" : [ "role" ]
-      },
-      "metabase.metabot.schema.messages" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.metabot.schema.message"
         }
       },
-      "metabase.metabot.schema.role" : {
-        "type" : "string",
-        "enum" : [ "system", "user", "assistant", "tool" ]
+      "metabase.metabot.schema.state-map-key" : {
+        "description" : "A dynamic state-map key, normalized to its canonical string representation.",
+        "anyOf" : [ {
+          "type" : "string"
+        }, {
+          "type" : "string"
+        } ]
       },
       "metabase.metrics.api.BreakoutValuesResponse" : {
         "type" : "object",
@@ -14034,6 +14088,8 @@
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
           }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.pivot-only-on-last-stage"
+          }, {
             "allOf" : [ ]
           } ]
         } ]
@@ -15439,7 +15495,7 @@
       "put" : {
         "operationId" : "put-api-agent-v1-dashboard-id",
         "summary" : "PUT /api/agent/v1/dashboard/{id}",
-        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations\n  are submitted under `dashcards` as a list of\n  `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in\n  order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown\n  for text cards); `update_text`, `remove`, and `move` require `dashcard_id`.",
+        "description" : "Update a dashboard. Patch semantics - only fields you pass are changed.\n\n  Metadata: `name`, `description`, `collection_id`, `archived`. Archiving is a soft delete - there\n  is no delete endpoint. It can be reversed by setting `archived: false`.\n  Dashcard mutations are submitted under `dashcards` as a list of\n  `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in\n  order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown\n  for text cards); `update_text`, `remove`, and `move` require `dashcard_id`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -15706,7 +15762,7 @@
       "put" : {
         "operationId" : "put-api-agent-v1-question-id",
         "summary" : "PUT /api/agent/v1/question/{id}",
-        "description" : "Update a saved question (card). Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.\n  Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query\n  string) to replace the underlying query. Replacing it with a native (raw SQL) query requires\n  native-query permission on the target database.",
+        "description" : "Update a saved question (card). Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.\n  Archiving is a soft delete - there is no delete endpoint. It can be reversed by setting\n  `archived: false`.\n  Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query\n  string) to replace the underlying query. Replacing it with a native (raw SQL) query requires\n  native-query permission on the target database.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -25574,7 +25630,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -25625,7 +25681,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered", "dwh-rent", "etl-connections" ]
           }
         } ],
         "responses" : {
@@ -28715,6 +28771,32 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "id" : {
+                            "type" : "string"
+                          },
+                          "parent_message_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "role" : {
+                            "type" : "string",
+                            "enum" : [ "user", "agent" ]
+                          },
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "parent_message_id", "role", "type" ]
+                      }
+                    },
                     "ip_address" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -28743,16 +28825,9 @@
                       }, {
                         "type" : "null"
                       } ]
-                    },
-                    "chat_messages" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : { }
-                      }
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "chat_messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "summary", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
                 }
               }
             }
@@ -31139,6 +31214,9 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "download_jar_urls" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.download-jar-urls"
+                          },
                           "published_at" : {
                             "type" : "string",
                             "format" : "date-time"
@@ -31215,7 +31293,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions" ]
+                        "required" : [ "advisory_id", "title", "severity", "description", "advisory_url", "remediation", "published_at", "match_status", "last_evaluated_at", "acknowledged_by", "acknowledged_at", "affected_versions", "download_jar_urls" ]
                       }
                     },
                     "last_checked_at" : {
@@ -35153,6 +35231,40 @@
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/eval-trace/{session-id}" : {
+      "get" : {
+        "operationId" : "get-api-eval-trace-session-id",
+        "summary" : "GET /api/eval-trace/{session-id}",
+        "description" : "Return the captured eval trace as JSONL (one span per line) for `session-id`. Superuser-only;\n   served only when `MB_AI_EVAL_CAPTURE` is enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "session-id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 200
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/eval-trace" ]
+      }
+    },
     "/api/field/table-ids" : {
       "post" : {
         "operationId" : "post-api-field-table-ids",
@@ -37501,13 +37613,55 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "parent_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "retry_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "eval_session_id" : {
+                    "oneOf" : [ {
+                      "allOf" : [ {
+                        "type" : "string",
+                        "maxLength" : 200
+                      }, {
+                        "type" : "string",
+                        "pattern" : "\\A[A-Za-z0-9][A-Za-z0-9._-]*\\z"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "context" : {
                     "$ref" : "#/components/schemas/metabase.metabot.context.context"
                   },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  "user_message_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }, {
+                      "type" : "null"
+                    } ]
                   },
                   "debug" : {
                     "oneOf" : [ {
@@ -37516,42 +37670,25 @@
                       "type" : "null"
                     } ]
                   },
-                  "history" : {
+                  "profile_id" : {
+                    "type" : "string"
+                  },
+                  "assistant_message_id" : {
                     "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.metabot.schema.messages"
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     }, {
                       "type" : "null"
                     } ]
                   },
-                  "message" : {
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
                     "type" : "string",
-                    "minLength" : 1
-                  },
-                  "metabot_id" : {
-                    "type" : "string"
-                  },
-                  "profile_id" : {
-                    "type" : "string"
-                  },
-                  "state" : {
-                    "type" : "object",
-                    "properties" : {
-                      "chart-configs" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "charts" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      },
-                      "queries" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      }
-                    }
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                   }
                 },
-                "required" : [ "message", "context", "conversation_id", "history", "state" ]
+                "required" : [ "message", "context", "conversation_id" ]
               }
             }
           }
@@ -37689,6 +37826,13 @@
                     "created_at" : {
                       "type" : "string",
                       "format" : "date-time"
+                    },
+                    "state" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
+                      }, {
+                        "type" : "null"
+                      } ]
                     },
                     "summary" : {
                       "oneOf" : [ {

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
 
-import { Route } from "./react-router";
+import { Route } from "./route";
 import { useSearchParams } from "./use-search-params";
 
 function SearchParamsProbe() {
