@@ -28,29 +28,10 @@
 (def ^:private startup-delay-seconds 30)
 (def ^:private continuation-delay-seconds 60)
 (def ^:private setting-update-delay-seconds 1)
+(def ^:private paused-retry-delay-seconds (* 60 60))
 
 (def ^:private job-key (jobs/key "metabase.task.metabot.conversation-title-backfill.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.metabot.conversation-title-backfill.trigger"))
-
-(def ^:private relevant-setting-keys
-  #{:ai-features-enabled
-    :embedded-metabot-enabled
-    :llm-anthropic-api-base-url
-    :llm-anthropic-api-key
-    :llm-anthropic-api-version
-    :llm-azure-api-base-url
-    :llm-azure-api-key
-    :llm-bedrock-access-key-id
-    :llm-bedrock-region
-    :llm-bedrock-secret-access-key
-    :llm-bedrock-session-token
-    :llm-metabot-provider
-    :llm-openai-api-base-url
-    :llm-openai-api-key
-    :llm-openrouter-api-base-url
-    :llm-openrouter-api-key
-    :llm-proxy-base-url
-    :metabot-enabled})
 
 (defn- readiness
   []
@@ -59,6 +40,10 @@
     (not (metabot.settings/llm-metabot-configured?))     :provider-unconfigured
     (metabot.usage/managed-free-limit-reached?)          :managed-limit-reached
     :else                                                :ready))
+
+;; these pauses only end when a setting changes, and `handle-setting-update!` already reschedules
+;; on that. any other pause has no such signal, so the job must schedule its own next attempt.
+(def ^:private event-driven-pause? #{:metabot-disabled :provider-unconfigured})
 
 (defn- log-pause
   [reason]
@@ -85,7 +70,7 @@
 (defn- title-source
   [conversation-id]
   (metabot.persistence/first-valid-user-message
-   (metabot.persistence/live-messages conversation-id)))
+   (metabot.persistence/opening-messages conversation-id)))
 
 (defn- generate-title!
   [conversation-id {:keys [content profile-id]}]
@@ -108,8 +93,10 @@
       :failed)))
 
 (defn- finish-result
-  [status cursor counts]
-  (assoc counts :status status :cursor cursor))
+  ([status cursor counts]
+   (assoc counts :status status :cursor cursor))
+  ([status cursor counts reason]
+   (assoc counts :status status :cursor cursor :reason reason)))
 
 (defn- run-backfill-page!
   [after-id]
@@ -117,7 +104,7 @@
     (if (not= initial-readiness :ready)
       (do
         (log-pause initial-readiness)
-        (finish-result :paused after-id {:attempted 0 :generated 0 :failed 0 :skipped 0}))
+        (finish-result :paused after-id {:attempted 0 :generated 0 :failed 0 :skipped 0} initial-readiness))
       (let [conversation-ids (titleless-conversation-ids after-id)
             full-page?       (= conversation-page-size (count conversation-ids))]
         (loop [remaining conversation-ids
@@ -137,7 +124,7 @@
                   (if (not= current-readiness :ready)
                     (do
                       (log-pause current-readiness)
-                      (finish-result :paused cursor counts))
+                      (finish-result :paused cursor counts current-readiness))
                     (let [outcome (generate-title! conversation-id source)]
                       (recur (rest remaining)
                              conversation-id
@@ -152,6 +139,13 @@
 
 (declare schedule-run!)
 
+(defn- next-run-delay-seconds
+  [{:keys [status reason]}]
+  (case status
+    :more   continuation-delay-seconds
+    :paused (when-not (event-driven-pause? reason) paused-retry-delay-seconds)
+    nil))
+
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Backfill missing Metabot conversation titles."}
   ConversationTitleBackfill [ctx]
@@ -159,8 +153,8 @@
         after-id (get (qc/from-job-data ctx) "after-id")
         result   (run-backfill-page! after-id)]
     (log/info "Metabot conversation title backfill batch complete" result)
-    (when (= :more (:status result))
-      (schedule-run! (.getScheduler ctx) (:cursor result) continuation-delay-seconds))))
+    (when-let [delay-seconds (next-run-delay-seconds result)]
+      (schedule-run! (.getScheduler ctx) (:cursor result) delay-seconds))))
 
 (defn- build-job
   []
@@ -186,15 +180,22 @@
 (defmethod task/init! ::ConversationTitleBackfill
   [_]
   (let [current-readiness (readiness)]
-    (if (= current-readiness :ready)
+    (cond
+      (= current-readiness :ready)
       (schedule-run! (task/scheduler) nil startup-delay-seconds)
-      (log-pause current-readiness))))
+
+      (event-driven-pause? current-readiness)
+      (log-pause current-readiness)
+
+      :else
+      (do (log-pause current-readiness)
+          (schedule-run! (task/scheduler) nil paused-retry-delay-seconds)))))
 
 (derive :event/setting-update ::setting-update)
 
 (defn- handle-setting-update!
   [event]
-  (when (and (contains? relevant-setting-keys (get-in event [:details :key]))
+  (when (and (metabot.settings/llm-configuration-setting? (get-in event [:details :key]))
              (= :ready (readiness)))
     (schedule-run! (task/scheduler) nil setting-update-delay-seconds)))
 

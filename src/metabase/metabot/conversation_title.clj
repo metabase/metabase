@@ -6,6 +6,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent
@@ -69,10 +70,7 @@
 
 (defn- non-blank-title
   [title]
-  (when (string? title)
-    (let [title (str/trim title)]
-      (when-not (str/blank? title)
-        title))))
+  (u/not-blank (some-> title str/trim)))
 
 (defn- current-title
   [conversation-id]
@@ -111,8 +109,7 @@
                       (str/replace #"^[\"']+|[\"']+$" "")
                       (str/replace #"[.!?]+$" "")
                       str/trim)]
-      (when-not (str/blank? cleaned)
-        (subs cleaned 0 (min title-max-chars (count cleaned)))))))
+      (some-> (u/not-blank cleaned) (u/truncate title-max-chars)))))
 
 (defn- generate!
   "Generate and persist a title for `conversation-id`, returning it only if it was saved."
@@ -228,12 +225,16 @@
       {:status :missing})))
 
 (defn title-status
-  "Return the client-facing status for a conversation title."
-  [conversation-id]
-  (if-let [title (current-title conversation-id)]
-    {:status "ready" :title title}
-    {:status (if (running-job conversation-id) "pending" "missing")
-     :title  nil}))
+  "Return the client-facing status for a conversation title.
+
+  Pass `title` when the conversation row is already in hand to skip re-reading it."
+  ([conversation-id]
+   (title-status conversation-id (metabot.persistence/conversation-title conversation-id)))
+  ([conversation-id title]
+   (if-let [title (non-blank-title title)]
+     {:status "ready" :title title}
+     {:status (if (running-job conversation-id) "pending" "missing")
+      :title  nil})))
 
 (defn- completed-future-title
   [^Future title-future conversation-id]
@@ -250,6 +251,14 @@
       (catch InterruptedException _
         (.interrupt (Thread/currentThread))
         nil))))
+
+(defn job-settled?
+  "True once `title-job` can produce no further title — its title is already known, or its
+   generation finished, failed, or never started."
+  [{:keys [title future]}]
+  (or (some? title)
+      (nil? future)
+      (.isDone ^Future future)))
 
 (defn ready-title-event
   "A `data-conversation-title` SSE event when the title is already available WITHOUT a

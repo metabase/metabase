@@ -11,7 +11,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.conversation-title :as conversation-title]
-   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.request.core :as request]
@@ -93,6 +92,26 @@
    :order-by [[:last_message.created_at :desc] [:last_message.id :desc]]
    :limit    1})
 
+(defn- live-message-count-subquery
+  []
+  {:select [[[:count :*]]]
+   :from   [[:metabot_message :counted_message]]
+   :where  [:and
+            [:= :counted_message.conversation_id :c.id]
+            [:= :counted_message.deleted_at nil]]})
+
+(defn- last-live-message-at-subquery
+  []
+  {:select [[[:max :recent_message.created_at]]]
+   :from   [[:metabot_message :recent_message]]
+   :where  [:and
+            [:= :recent_message.conversation_id :c.id]
+            [:= :recent_message.deleted_at nil]]})
+
+(defn- activity-at-expression
+  []
+  [:greatest :c.created_at [:coalesce (last-live-message-at-subquery) :c.created_at]])
+
 (defn- list-where-clause
   [user-id profile-id]
   (cond-> [:and (participation-clause user-id)]
@@ -109,33 +128,28 @@
   message's `profile_id`."
   [_route-params
    {:keys [profile_id]} :- ListConversationsQueryParams]
-  (let [user-id     (api/check-404 api/*current-user-id*)
-        limit       (or (request/limit) default-limit)
-        offset      (or (request/offset) default-offset)
-        where       (list-where-clause user-id profile_id)
-        activity-at [:greatest :c.created_at [:coalesce [:max :message.created_at] :c.created_at]]
-        total       (:count (t2/query-one {:select [[[:count :*] :count]]
-                                           :from   [[:metabot_conversation :c]]
-                                           :where  where}))
+  (let [user-id (api/check-404 api/*current-user-id*)
+        limit   (or (request/limit) default-limit)
+        offset  (or (request/offset) default-offset)
+        where   (list-where-clause user-id profile_id)
+        total   (:count (t2/query-one {:select [[[:count :*] :count]]
+                                       :from   [[:metabot_conversation :c]]
+                                       :where  where}))
+        ;; Aggregates are per-row correlated subqueries so pagination stays on the outer
+        ;; `metabot_conversation` scan rather than grouping every message the user owns.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
-        rows        (t2/select :model/MetabotConversation
-                               {:select    [:c.id :c.created_at :c.title :c.user_id
-                                            [[:count :message.id] :message_count]
-                                            [[:max :message.created_at] :last_message_at]
-                                            [(last-live-message-profile-id-subquery) :profile_id]
-                                            [activity-at :activity_at]]
-                                :from      [[:metabot_conversation :c]]
-                                :left-join [[:metabot_message :message]
-                                            [:and
-                                             [:= :message.conversation_id :c.id]
-                                             [:= :message.deleted_at nil]]]
-                                :where     where
-                                :group-by  [:c.id]
-                                :order-by  [[:activity_at :desc] [:c.id :asc]]
-                                :limit     limit
-                                :offset    offset})]
+        rows    (t2/select :model/MetabotConversation
+                           {:select   [:c.id :c.created_at :c.title :c.user_id
+                                       [(live-message-count-subquery) :message_count]
+                                       [(last-live-message-at-subquery) :last_message_at]
+                                       [(last-live-message-profile-id-subquery) :profile_id]]
+                            :from     [[:metabot_conversation :c]]
+                            :where    where
+                            :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
+                            :limit    limit
+                            :offset   offset})]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
@@ -145,11 +159,12 @@
      :offset offset}))
 
 (api.macros/defendpoint :get "/:id/title" :- ConversationTitleResponse
-  "Return the title generation status for a conversation."
+  "Return the title generation status for a conversation.
+
+  Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams]
-  (let [conversation (api/check-404 (t2/select-one [:model/MetabotConversation :id :user_id] :id id))]
-    (api/check-403 (metabot-conversation/participant-or-originator? conversation api/*current-user-id*))
-    (conversation-title/title-status id)))
+  (let [conversation (api/read-check :model/MetabotConversation id)]
+    (conversation-title/title-status id (:title conversation))))
 
 (api.macros/defendpoint :get "/:id" :- ConversationDetail
   "Return a single conversation with its flattened chat messages.

@@ -114,6 +114,21 @@
                        conversation-id)
                    lines))))))
 
+(deftest stops-looking-up-the-title-once-the-job-settles-without-one-test
+  (testing "a title job that finishes without a title is looked up once, not once per streamed line"
+    (let [conversation-id (str (random-uuid))
+          title-future    (doto (java.util.concurrent.CompletableFuture.) (.complete nil))
+          lookups         (atom 0)
+          lines           (mapv #(self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta %})
+                                ["a" "b" "c" "d"])]
+      (with-redefs [metabot.persistence/conversation-title (fn [_] (swap! lookups inc) nil)]
+        (is (= lines
+               (into [] (#'api/inject-title-events-xf
+                         {:status :pending :future title-future}
+                         conversation-id)
+                     lines)))
+        (is (= 1 @lookups))))))
+
 (deftest conversation-title-generation-persists-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")

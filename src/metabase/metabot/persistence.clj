@@ -185,6 +185,19 @@
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
+;; a turn is a user row plus its assistant reply; enough to find the opening turns
+;; without dragging every `data` blob in the thread across the wire
+(def ^:private opening-message-limit 10)
+
+(defn opening-messages
+  "A conversation's first few non-deleted messages in reader order."
+  [conversation-id]
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :asc] [:id :asc]]
+              :limit    opening-message-limit}))
+
 (defmacro with-conversation-lock
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
   [conversation-id & body]
@@ -460,16 +473,6 @@
        (filter schema.v2/text-part?)
        (map :text)
        str/join))
-
-(defn first-user-message-content
-  "Return the first non-blank live user message text from `messages`."
-  [messages]
-  (some (fn [{:keys [role] :as message}]
-          (when (= :user role)
-            (let [content (message-text message)]
-              (when-not (str/blank? content)
-                content))))
-        messages))
 
 (defn- user-row->llm-message
   [message]

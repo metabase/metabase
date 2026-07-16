@@ -221,9 +221,15 @@
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id owner-id}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403
-                                     (str "metabot/conversations/" convo-id "/title"))))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :crowberto :get 403
+                                     (str "metabot/conversations/" convo-id "/title"))))))))
+
+(deftest get-conversation-title-status-superuser-can-read-test
+  (testing "GET /api/metabot/conversations/:id/title is accessible to superusers, like the conversation itself"
+    (let [owner-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id :title "A title"}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id owner-id}]
+        (is (= {:status "ready" :title "A title"}
+               (mt/user-http-request :crowberto :get 200
                                      (str "metabot/conversations/" convo-id "/title"))))))))
 
 (deftest check-conversation-access-test

@@ -19,7 +19,6 @@ export type MetabotConversationDetail = {
   created_at: string;
   title: string | null;
   user_id: number | null;
-  profile_id?: string | null;
   state?: MetabotStateContext;
   messages: FetchedChatMessage[];
 };

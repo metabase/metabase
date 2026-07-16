@@ -1,4 +1,4 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
@@ -69,11 +69,20 @@ export const metabot = createSlice({
         convo.title = action.payload.title;
       },
     ),
-    setIsPollingForTitle: convoReducer(
-      (convo, action: ConvoPayloadAction<{ isPollingForTitle: boolean }>) => {
-        convo.isPollingForTitle = action.payload.isPollingForTitle;
-      },
-    ),
+    setIsPollingForTitle: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        isPollingForTitle: boolean;
+      }>,
+    ) => {
+      const { conversationId, isPollingForTitle } = action.payload;
+      state.titlePollingConversationIds = isPollingForTitle
+        ? _.uniq([...state.titlePollingConversationIds, conversationId])
+        : state.titlePollingConversationIds.filter(
+            (id) => id !== conversationId,
+          );
+    },
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
@@ -355,6 +364,7 @@ export const metabot = createSlice({
         convo.state = snapshotState ?? {};
         convo.activeToolCalls = activeToolCalls ?? [];
         convo.conversationId = conversationId ?? uuid();
+        convo.loadId = nanoid();
         convo.title = title;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
         convo.stateBeforeTurn = undefined;

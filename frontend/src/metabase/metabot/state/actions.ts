@@ -46,6 +46,7 @@ import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-me
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
+  getConversationLoadId,
   getDebugMode,
   getDeveloperMessage,
   getIsCurrentConversation,
@@ -110,7 +111,7 @@ const pollConversationTitle = async ({
   agentId,
   conversationId,
 }: PollConversationTitleOptions) => {
-  dispatch(setIsPollingForTitle({ agentId, isPollingForTitle: true }));
+  dispatch(setIsPollingForTitle({ conversationId, isPollingForTitle: true }));
   try {
     const result = await retry(
       async () => {
@@ -121,7 +122,7 @@ const pollConversationTitle = async ({
           ),
         );
 
-        if (result.data?.status === "pending") {
+        if (result.data?.status !== "ready") {
           throw TITLE_PENDING;
         }
 
@@ -146,7 +147,9 @@ const pollConversationTitle = async ({
       metabotApi.util.invalidateTags([listTag("metabot-conversations")]),
     );
   } finally {
-    dispatch(setIsPollingForTitle({ agentId, isPollingForTitle: false }));
+    dispatch(
+      setIsPollingForTitle({ conversationId, isPollingForTitle: false }),
+    );
   }
 };
 
@@ -396,6 +399,7 @@ export const submitInput = createAsyncThunk<
           message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,
+          loadId: getConversationLoadId(getState(), agentId),
           ...agentMetadata,
           user_message_id: userMessageId,
           assistant_message_id: assistantMessageId,
@@ -467,7 +471,7 @@ const findCodeEditBuffer = (
 
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
-  MetabotAgentRequest & { agentId: MetabotAgentId },
+  MetabotAgentRequest & { agentId: MetabotAgentId; loadId: string },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase/metabot/sendAgentRequest",
@@ -475,14 +479,19 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { agentId, ...request } = payload;
+    const { agentId, loadId, ...request } = payload;
 
     // guard against user having switched conversations mid stream
     // at this time, we do not abort the underly request to prevent it getting recorded as aborted
     // allowing the user to safely switch to another conversation and back
     const dispatchToConvo = (action: Parameters<typeof dispatch>[0]) => {
       if (
-        getIsCurrentConversation(getState(), agentId, request.conversation_id)
+        getIsCurrentConversation(
+          getState(),
+          agentId,
+          request.conversation_id,
+          loadId,
+        )
       ) {
         dispatch(action);
       }
@@ -675,7 +684,7 @@ export const sendAgentRequest = createAsyncThunk<
       const shouldPollForTitle =
         !receivedTitle &&
         !hadTitleBeforeTurn &&
-        !getIsPollingForTitle(getState(), agentId) &&
+        !getIsPollingForTitle(getState(), request.conversation_id) &&
         isHistoryEnabledProfile(request.profile_id);
       if (shouldPollForTitle) {
         void pollConversationTitle({
@@ -841,17 +850,6 @@ export const loadConversation = createAsyncThunk(
         }),
       );
       return;
-    }
-
-    // resuming slack conversations within the app is not yet supported
-    if (detail.profile_id === "slack" || detail.profile_id === "slackbot") {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
-          message: t`Unable to load Slack conversation.`,
-        }),
-      );
     }
 
     dispatch(

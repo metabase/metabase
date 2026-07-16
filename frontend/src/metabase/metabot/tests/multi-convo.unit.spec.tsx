@@ -2,7 +2,7 @@ import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 
 import { setupGetMetabotConversationTitleEndpoint } from "__support__/server-mocks";
-import { act, renderHookWithProviders } from "__support__/ui";
+import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -10,6 +10,7 @@ import { useMetabotAgentsManager } from "../hooks";
 import {
   type MetabotAgentId,
   getMessages,
+  getMetabotConversationTitle,
   metabotActions,
   submitInput,
 } from "../state";
@@ -54,6 +55,28 @@ const input: Input = {
     current_time_with_timezone: "",
     capabilities: [],
   },
+};
+
+type TestStore = ReturnType<typeof setup>["store"];
+
+const conversationIdFor = (store: TestStore, agentId: MetabotAgentId) =>
+  checkNotNull(store.getState().metabot.conversations[agentId]).conversationId;
+
+const sendMessage = async (
+  store: TestStore,
+  agentId: MetabotAgentId,
+  message = "test",
+) => {
+  mockAgentEndpoint({
+    events: [
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "response" },
+      { type: "text-end", id: "t1" },
+    ],
+  });
+  await act(async () => {
+    await store.dispatch(submitInput({ ...input, message, agentId }));
+  });
 };
 
 describe("multi-convo support", () => {
@@ -146,22 +169,9 @@ describe("multi-convo support", () => {
       title: null,
     });
     const { store } = setup({ agentIds: ["sql"] });
-    const conversationId = checkNotNull(
-      store.getState().metabot.conversations.sql,
-    ).conversationId;
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "response" },
-        { type: "text-end", id: "t1" },
-      ],
-    });
+    const conversationId = conversationIdFor(store, "sql");
 
-    await act(async () => {
-      await store.dispatch(
-        submitInput({ ...input, message: "fix my sql", agentId: "sql" }),
-      );
-    });
+    await sendMessage(store, "sql", "fix my sql");
 
     expect(getMessages(store.getState(), "sql")).toHaveLength(2);
     expect(fetchMock.callHistory.calls(titlePath(conversationId))).toHaveLength(
@@ -175,33 +185,73 @@ describe("multi-convo support", () => {
       title: null,
     });
     const { store } = setup({ agentIds: ["test_1"] });
-    const conversationId = checkNotNull(
-      store.getState().metabot.conversations.test_1,
-    ).conversationId;
+    const conversationId = conversationIdFor(store, "test_1");
     store.dispatch(
       metabotActions.setIsPollingForTitle({
-        agentId: "test_1",
+        conversationId,
         isPollingForTitle: true,
       }),
     );
 
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "response" },
-        { type: "text-end", id: "t1" },
-      ],
-    });
-
-    await act(async () => {
-      await store.dispatch(
-        submitInput({ ...input, message: "test", agentId: "test_1" }),
-      );
-    });
+    await sendMessage(store, "test_1");
 
     expect(getMessages(store.getState(), "test_1")).toHaveLength(2);
     expect(fetchMock.callHistory.calls(titlePath(conversationId))).toHaveLength(
       0,
+    );
+  });
+
+  it("keeps polling when a node reports the title as missing", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+
+    let callCount = 0;
+    fetchMock.removeRoute("metabot-conversation-title");
+    fetchMock.get(
+      "express:/api/metabot/conversations/:conversationId/title",
+      () => {
+        callCount += 1;
+        return callCount === 1
+          ? { status: "missing", title: null }
+          : { status: "ready", title: "A late title" };
+      },
+      { name: "metabot-conversation-title" },
+    );
+
+    const { store } = setup({ agentIds: ["test_1"] });
+
+    await sendMessage(store, "test_1");
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() =>
+      expect(getMetabotConversationTitle(store.getState(), "test_1")).toBe(
+        "A late title",
+      ),
+    );
+
+    jest.useRealTimers();
+  });
+
+  it("starts a title poll while an unrelated conversation's poll is in flight", async () => {
+    setupGetMetabotConversationTitleEndpoint({
+      status: "ready",
+      title: "A title",
+    });
+    const { store } = setup({ agentIds: ["test_1"] });
+    const conversationId = conversationIdFor(store, "test_1");
+    store.dispatch(
+      metabotActions.setIsPollingForTitle({
+        conversationId: "a-conversation-the-agent-has-left",
+        isPollingForTitle: true,
+      }),
+    );
+
+    await sendMessage(store, "test_1");
+
+    expect(fetchMock.callHistory.calls(titlePath(conversationId))).toHaveLength(
+      1,
     );
   });
 });

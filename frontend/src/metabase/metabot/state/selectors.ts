@@ -103,11 +103,19 @@ export const getMetabotConversationId = createSelector(
   (convo) => convo.conversationId,
 );
 
+export const getConversationLoadId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.loadId,
+);
+
 export const getIsCurrentConversation = (
   state: State,
   agentId: MetabotAgentId,
   conversationId: string,
-) => getMetabotConversationId(state, agentId) === conversationId;
+  loadId: string,
+) =>
+  getMetabotConversationId(state, agentId) === conversationId &&
+  getConversationLoadId(state, agentId) === loadId;
 
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
@@ -124,9 +132,17 @@ export const getMetabotConversationTitle = createSelector(
   (convo) => convo.title,
 );
 
+export const getTitlePollingConversationIds = createSelector(
+  getMetabotState,
+  (state) => state.titlePollingConversationIds,
+);
+
 export const getIsPollingForTitle = createSelector(
-  getMetabotConversation,
-  (convo) => convo.isPollingForTitle,
+  [
+    getTitlePollingConversationIds,
+    (_state: State, conversationId: string) => conversationId,
+  ],
+  (conversationIds, conversationId) => conversationIds.includes(conversationId),
 );
 
 export const getDeveloperMessage = createSelector(

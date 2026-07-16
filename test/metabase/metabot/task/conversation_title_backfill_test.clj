@@ -21,6 +21,9 @@
 (def ^:private run-backfill-page! @#'title-backfill/run-backfill-page!)
 (def ^:private build-trigger @#'title-backfill/build-trigger)
 (def ^:private handle-setting-update! @#'title-backfill/handle-setting-update!)
+(def ^:private next-run-delay-seconds @#'title-backfill/next-run-delay-seconds)
+(def ^:private paused-retry-delay-seconds @#'title-backfill/paused-retry-delay-seconds)
+(def ^:private continuation-delay-seconds @#'title-backfill/continuation-delay-seconds)
 (def ^:private id-prefix "zzzzzzzz-zzzz-zzzz-zzzz")
 
 (defn- conversation-id
@@ -127,7 +130,8 @@
                                 metabot.settings/llm-metabot-configured? (constantly false)
                                 t2/select-fn-vec                         (fn [& _]
                                                                            (throw (ex-info "must not scan" {})))]
-      (is (= {:status :paused :cursor "before" :attempted 0 :generated 0 :failed 0 :skipped 0}
+      (is (= {:status :paused :reason :provider-unconfigured :cursor "before"
+              :attempted 0 :generated 0 :failed 0 :skipped 0}
              (run-backfill-page! "before")))))
   (testing "the managed AI limit also pauses before scanning the database"
     (mt/with-dynamic-fn-redefs [metabot.config/any-metabot-enabled?        (constantly true)
@@ -135,7 +139,8 @@
                                 metabot.usage/managed-free-limit-reached? (constantly true)
                                 t2/select-fn-vec                           (fn [& _]
                                                                              (throw (ex-info "must not scan" {})))]
-      (is (= {:status :paused :cursor "before" :attempted 0 :generated 0 :failed 0 :skipped 0}
+      (is (= {:status :paused :reason :managed-limit-reached :cursor "before"
+              :attempted 0 :generated 0 :failed 0 :skipped 0}
              (run-backfill-page! "before")))))
   (testing "configuration removed during a page stops before advancing past the unprocessed conversation"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
@@ -151,6 +156,7 @@
                                                                                 (swap! calls conj id)
                                                                                 (pending-result "Generated title"))]
           (is (= {:status :paused
+                  :reason :provider-unconfigured
                   :cursor first-id
                   :attempted 1
                   :generated 1
@@ -163,6 +169,38 @@
   (let [cursor  (conversation-id 301)
         trigger ^Trigger (build-trigger cursor 60)]
     (is (= cursor (.getString (.getJobDataMap trigger) "after-id")))))
+
+(deftest backfill-rescheduling-test
+  (testing "a full page continues promptly"
+    (is (= continuation-delay-seconds (next-run-delay-seconds {:status :more}))))
+  (testing "a finished backfill stops"
+    (is (nil? (next-run-delay-seconds {:status :complete}))))
+  (testing "pauses that a setting change ends leave scheduling to the setting update"
+    (is (nil? (next-run-delay-seconds {:status :paused :reason :metabot-disabled})))
+    (is (nil? (next-run-delay-seconds {:status :paused :reason :provider-unconfigured}))))
+  (testing "the managed AI limit ends on its own, so the job schedules its own next attempt"
+    (is (= paused-retry-delay-seconds
+           (next-run-delay-seconds {:status :paused :reason :managed-limit-reached})))))
+
+(deftest backfill-init-scheduling-test
+  (let [scheduled (atom [])]
+    (testing "a managed AI limit at startup still schedules a later attempt"
+      (mt/with-dynamic-fn-redefs [metabot.config/any-metabot-enabled?       (constantly true)
+                                  metabot.settings/llm-metabot-configured?  (constantly true)
+                                  metabot.usage/managed-free-limit-reached? (constantly true)
+                                  task/scheduler                            (constantly ::scheduler)
+                                  task/schedule-task!                       (fn [& args]
+                                                                              (swap! scheduled conj args))]
+        (task/init! ::title-backfill/ConversationTitleBackfill)
+        (is (= 1 (count @scheduled)))))
+    (testing "a disabled Metabot at startup waits for the setting update instead"
+      (reset! scheduled [])
+      (mt/with-dynamic-fn-redefs [metabot.config/any-metabot-enabled? (constantly false)
+                                  task/scheduler                      (constantly ::scheduler)
+                                  task/schedule-task!                 (fn [& args]
+                                                                        (swap! scheduled conj args))]
+        (task/init! ::title-backfill/ConversationTitleBackfill)
+        (is (= [] @scheduled))))))
 
 (deftest provider-setting-update-scheduling-test
   (let [scheduled  (atom [])
@@ -181,10 +219,19 @@
           (handle-setting-update! {:details {:key setting-key}}))
         (is (= 5 (count @scheduled)))
         (is (apply = (map (fn [[_scheduler _job ^Trigger trigger]] (.getKey trigger)) @scheduled))))
+      (testing "turning Metabot or AI features on schedules a sweep"
+        (reset! scheduled [])
+        (doseq [setting-key [:metabot-enabled?
+                             :embedded-metabot-enabled?
+                             :ai-features-enabled?
+                             :llm-metabot-provider]]
+          (handle-setting-update! {:details {:key setting-key}}))
+        (is (= 4 (count @scheduled))))
       (testing "irrelevant updates do not schedule a sweep"
+        (reset! scheduled [])
         (handle-setting-update! {:details {:key :site-name}})
-        (is (= 5 (count @scheduled))))
+        (is (= [] @scheduled)))
       (testing "relevant updates wait until provider configuration is complete"
         (reset! configured false)
         (handle-setting-update! {:details {:key :llm-azure-api-key}})
-        (is (= 5 (count @scheduled)))))))
+        (is (= [] @scheduled))))))

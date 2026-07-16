@@ -168,19 +168,23 @@
 (defn- inject-title-events-xf
   "Emit a `data-conversation-title` SSE event inline the moment the title becomes
    available mid-stream. If it isn't ready by the time the stream ends, nothing
-   is emitted and the client polls the title endpoint on its own."
+   is emitted and the client polls the title endpoint on its own.
+
+   Stops watching once the job settles: re-examining a job that settled without a title
+   costs a DB read on every remaining line of the stream."
   [title-job conversation-id]
-  (let [title-emitted? (volatile! false)]
+  (let [watching? (volatile! (boolean title-job))]
     (mapcat
      (fn [line]
-       (if (or (not title-job)
-               @title-emitted?
-               (= self.core/done-sse-line line))
+       (if (or (not @watching?)
+               (= self.core/done-sse-line line)
+               (not (conversation-title/job-settled? title-job)))
          [line]
-         (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
-           (do (vreset! title-emitted? true)
-               [line (self.core/format-sse-event event)])
-           [line]))))))
+         (do
+           (vreset! watching? false)
+           (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
+             [line (self.core/format-sse-event event)]
+             [line])))))))
 
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
@@ -334,7 +338,7 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           state     (metabot.persistence/conversation-state live)
-          first-msg (or (metabot.persistence/first-user-message-content live)
+          first-msg (or (:content (metabot.persistence/first-valid-user-message live))
                         (:content message))
           title-job (conversation-title/ensure-title! conversation_id profile-id first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})

@@ -132,18 +132,17 @@ describe("query builder code edits from omnibot", () => {
       getState: () => State;
     };
 
-    const conversationId =
-      typedStore.getState().metabot.conversations.omnibot?.conversationId;
-
-    expect(conversationId).toBeDefined();
+    const convo = checkNotNull(
+      typedStore.getState().metabot.conversations.omnibot,
+    );
 
     await act(async () => {
       await typedStore.dispatch(
         sendAgentRequest({
           agentId: "omnibot",
           message: "Please rewrite this query",
-          // Unjustified type cast. FIXME
-          conversation_id: conversationId as string,
+          conversation_id: convo.conversationId,
+          loadId: convo.loadId,
           context: {
             user_is_viewing: [
               {

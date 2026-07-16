@@ -260,7 +260,11 @@ describe("metabot reducer", () => {
       const state = createDraft(getMetabotInitialState());
       const action = {
         meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "some-id" },
+          arg: {
+            agentId: "test_1" as const,
+            conversation_id: "some-id",
+            loadId: "load-1",
+          },
         },
       };
 
@@ -274,22 +278,54 @@ describe("metabot reducer", () => {
       );
       const action = {
         meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "different-id" },
+          arg: {
+            agentId: "test_1" as const,
+            conversation_id: "different-id",
+            loadId: "load-1",
+          },
         },
       };
 
       expect(getRequestConversation(state, action)).toBeUndefined();
     });
 
-    it("should return conversation if agentId and request conversation_id match", () => {
+    it("should return undefined if the conversation was reloaded since the request started", () => {
+      const state = createDraft(getMetabotInitialState());
+      state.conversations.test_1 = createDraft(
+        createConversation("test_1", {
+          conversationId: "matching-id",
+          loadId: "load-2",
+        }),
+      );
+      const action = {
+        meta: {
+          arg: {
+            agentId: "test_1" as const,
+            conversation_id: "matching-id",
+            loadId: "load-1",
+          },
+        },
+      };
+
+      expect(getRequestConversation(state, action)).toBeUndefined();
+    });
+
+    it("should return conversation if agentId, request conversation_id and loadId match", () => {
       const state = createDraft(getMetabotInitialState());
       const convo = createDraft(
-        createConversation("test_1", { conversationId: "matching-id" }),
+        createConversation("test_1", {
+          conversationId: "matching-id",
+          loadId: "load-1",
+        }),
       );
       state.conversations.test_1 = convo;
       const action = {
         meta: {
-          arg: { agentId: "test_1" as const, conversation_id: "matching-id" },
+          arg: {
+            agentId: "test_1" as const,
+            conversation_id: "matching-id",
+            loadId: "load-1",
+          },
         },
       };
 
