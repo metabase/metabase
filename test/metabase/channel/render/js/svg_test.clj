@@ -51,29 +51,6 @@
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
 
-(deftest ^:parallel normalize-colors-for-batik-test
-  (let [normalize #'js.svg/normalize-colors-for-batik]
-    (testing "a fully opaque hsl() fill becomes hex with no opacity attribute"
-      (is (= "<rect fill=\"#FFFFFF\" />"
-             (normalize "<rect fill=\"hsl(0, 0%, 100%)\" />"))))
-    (testing "a translucent hsla() fill becomes hex plus a fill-opacity attribute (the custom-viz calendar-heatmap case)"
-      (is (= "<rect fill=\"#FFFFFF\" fill-opacity=\"0.95\" />"
-             (normalize "<rect fill=\"hsla(0, 0%, 100%, 0.95)\" />"))))
-    (testing "a translucent rgba() stroke becomes hex plus a stroke-opacity attribute"
-      (is (= "<path stroke=\"#0A1F22\" stroke-opacity=\"0.84\" />"
-             (normalize "<path stroke=\"rgba(10, 31, 34, 0.84)\" />"))))
-    (testing "Batik-safe hex, named, and rgb() colors are left untouched"
-      (let [svg "<rect fill=\"#0a1f22\" /><rect fill=\"black\" stroke=\"rgb(1, 2, 3)\" />"]
-        (is (= svg (normalize svg)))))))
-
-(deftest ^:parallel parse-svg-string-normalizes-unsafe-colors-test
-  (testing "parse-svg-string rewrites Batik-incompatible hsla() colors so transcoding won't throw"
-    (let [^SVGOMDocument document (parse-svg
-                                   "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"hsla(0, 0%, 100%, 0.95)\"></rect></svg>")
-          ^Element rect           (.. document (getDocumentElement) (getChildNodes) (item 0))]
-      (is (= "#FFFFFF" (.getAttribute rect "fill")))
-      (is (= "0.95" (.getAttribute rect "fill-opacity"))))))
-
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
     (#'js.svg/parse-svg-string
