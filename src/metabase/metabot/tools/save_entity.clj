@@ -86,10 +86,10 @@
                  :visualization_settings {}
                  :collection_id          collection-id}
                 {:id api/*current-user-id*})]
-      {:card          card
-       :location      {:type "collection" :id collection-id}
-       :location-name (collection-name collection-id)
-       :link          (str "metabase://question/" (:id card))})))
+      {:card             card
+       :destination      {:type "collection" :id collection-id}
+       :destination-name (collection-name collection-id)
+       :link             (str "metabase://question/" (:id card))})))
 
 (defn- save-to-dashboard!
   [{:keys [name description dataset_query display destination]}]
@@ -106,10 +106,10 @@
                  :visualization_settings {}
                  :dashboard_id           dashboard-id}
                 {:id api/*current-user-id*})]
-      {:card          card
-       :location      {:type "dashboard" :id dashboard-id}
-       :location-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
-       :link          (str "metabase://dashboard/" dashboard-id)})))
+      {:card             card
+       :destination      {:type "dashboard" :id dashboard-id}
+       :destination-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+       :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (mu/defn ^{:tool-name "save_entity"
            :scope     scope/agent-question-create}
@@ -138,34 +138,34 @@
                 :dataset_query  dataset_query
                 :display        display
                 :destination    destination}
-          {:keys [card location location-name link]}
+          {:keys [card link destination-name] saved-destination :destination}
           (case (:target_type destination)
             "collection" (save-to-collection! args)
             "dashboard"  (save-to-dashboard! args))
-          ;; Provenance: which conversation + generated chart this card came from,
-          ;; so a reloaded conversation can mark the inline chart as saved. Raw
-          ;; table update — a provenance stamp should not run the Card model's
-          ;; heavy before-update pipeline.
-          _ (when shared/*conversation-id*
+          ;; Record which conversation + generated chart this card came from, so a
+          ;; reloaded conversation can mark the inline chart as saved. Raw table
+          ;; update — the origin stamp should not run the Card model's heavy
+          ;; before-update pipeline.
+          _ (when-let [conversation-id (shared/current-conversation-id)]
               (t2/update! (t2/table-name :model/Card) (:id card)
-                          {:metabot_conversation_id shared/*conversation-id*
+                          {:metabot_conversation_id conversation-id
                            :metabot_chart_id        chart_id}))
           instruction-text (te/lines
-                            (str "Saved \"" question-name "\" to " location-name ".")
+                            (str "Saved \"" question-name "\" to " destination-name ".")
                             ""
                             (str "Tell the user it was saved and share this link: "
                                  (te/link question-name link)))]
       {:output            (str "<result>\nSaved as card " (:id card)
-                               " in " location-name ".\n</result>\n"
+                               " in " destination-name ".\n</result>\n"
                                "<instructions>\n" instruction-text "\n</instructions>")
        :structured-output {:result-type   :saved-entity
                            :card-id       (:id card)
                            :collection-id (:collection_id card)
-                           :location      location}
+                           :destination   saved-destination}
        :data-parts        [(streaming/entity-saved-part
-                            {:entity_id chart_id
-                             :card_id   (:id card)
-                             :location  location})]})
+                            {:chart_id    chart_id
+                             :card_id     (:id card)
+                             :destination saved-destination})]})
     (catch Exception e
       (log/error e "Error saving entity")
       (if (:agent-error? (ex-data e))

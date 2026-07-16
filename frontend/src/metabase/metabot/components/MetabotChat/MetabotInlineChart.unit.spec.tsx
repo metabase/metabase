@@ -83,7 +83,7 @@ function setup(
     <MetabotInlineChart
       value={{ ...value, ...valueOverrides }}
       readonly={readonly}
-      agentId="omnibot"
+      conversationId="convo-1"
     />,
   );
 }
@@ -191,7 +191,7 @@ describe("MetabotInlineChart", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("saves the chart's card with provenance through the metabot endpoint", async () => {
+    it("saves the chart's card through the metabot endpoint", async () => {
       setupSaveModalEndpoints();
       fetchMock.post(
         "express:/api/metabot/conversations/:id/saved-entity",
@@ -200,7 +200,7 @@ describe("MetabotInlineChart", () => {
           name: "save-entity",
           matchPartialBody: true,
           body: {
-            entity_id: "card-1",
+            chart_id: "card-1",
             card: {
               display: "bar",
               name: "Orders by month",
@@ -257,7 +257,7 @@ describe("MetabotInlineChart", () => {
             <MetabotInlineChart
               value={value}
               readonly={false}
-              agentId="omnibot"
+              conversationId="convo-1"
             />
           )}
         />,
@@ -281,7 +281,7 @@ describe("MetabotInlineChart", () => {
       });
     });
 
-    it("flips back to unsaved when the saved card's provenance link is severed", async () => {
+    it("flips back to unsaved when the saved card's origin link is severed", async () => {
       setupCardEndpoints(createMockCard({ id: 99, metabot_chart_id: null }));
       const { store } = setup();
 

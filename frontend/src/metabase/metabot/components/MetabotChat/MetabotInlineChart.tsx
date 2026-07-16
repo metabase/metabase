@@ -17,12 +17,7 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { useSetting } from "metabase/common/hooks";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import {
-  type MetabotAgentId,
-  getMetabotConversation,
-  getSavedChartCardId,
-  markChartSaved,
-} from "metabase/metabot/state";
+import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { push } from "metabase/router";
@@ -55,18 +50,18 @@ import S from "./MetabotInlineChart.module.css";
  * result; the title bar links out to the full question.
  */
 export function MetabotInlineChart({
-  value: { id: entityId, title, description, display, query },
+  value: { id: chartId, title, description, display, query },
   readonly = false,
-  agentId,
+  conversationId,
 }: {
   value: GeneratedCard;
   readonly?: boolean;
-  agentId: MetabotAgentId;
+  conversationId: string;
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();
   const recordedCardId = useSelector((state) =>
-    getSavedChartCardId(state, entityId),
+    getSavedChartCardId(state, chartId),
   );
   const siteUrl = useSetting("site-url");
 
@@ -77,7 +72,7 @@ export function MetabotInlineChart({
   );
   const isLinkSevered =
     isResourceNotFoundError(savedCardError) ||
-    (savedCard != null && savedCard.metabot_chart_id !== entityId);
+    (savedCard != null && savedCard.metabot_chart_id !== chartId);
   const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
   const question = useMemo(() => {
@@ -154,8 +149,8 @@ export function MetabotInlineChart({
           </ActionIcon>
         </Tooltip>
         <SaveChartAction
-          agentId={agentId}
-          entityId={entityId}
+          conversationId={conversationId}
+          chartId={chartId}
           savedCardId={savedCardId}
           question={question}
           readonly={readonly}
@@ -181,14 +176,14 @@ export function MetabotInlineChart({
 }
 
 function SaveChartAction({
-  agentId,
-  entityId,
+  conversationId,
+  chartId,
   savedCardId,
   question,
   readonly,
 }: {
-  agentId: MetabotAgentId;
-  entityId: string;
+  conversationId: string;
+  chartId: string;
   savedCardId: number | undefined;
   question: Question;
   readonly: boolean;
@@ -196,9 +191,6 @@ function SaveChartAction({
   const dispatch = useDispatch();
   const [saveMetabotEntity] = useSaveMetabotEntityMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const conversationId = useSelector(
-    (state) => getMetabotConversation(state, agentId).conversationId,
-  );
 
   const handleCreate = async (
     newQuestion: Question,
@@ -206,14 +198,14 @@ function SaveChartAction({
   ) => {
     const created = await saveMetabotEntity({
       conversation_id: conversationId,
-      entity_id: entityId,
+      chart_id: chartId,
       card: {
         ...newQuestion.card(),
         dashboard_tab_id: options?.dashboardTabId,
       },
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ entityId, cardId: created.id }));
+    dispatch(markChartSaved({ entityId: chartId, cardId: created.id }));
     dispatch(
       addUndo({
         icon: "check_filled",

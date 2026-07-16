@@ -72,14 +72,14 @@ export type GeneratedCard = {
 
 export type GeneratedEntity = GeneratedCard;
 
-export type SavedEntityLocation =
+export type SavedEntityDestination =
   | { type: "collection"; id: number | null }
   | { type: "dashboard"; id: number };
 
 export type EntitySavedValue = {
-  entity_id: string;
+  chart_id: string;
   card_id: number;
-  location: SavedEntityLocation;
+  destination: SavedEntityDestination;
 };
 
 export type KnownDataPart =

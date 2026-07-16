@@ -481,7 +481,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
                   markChartSaved({
-                    entityId: part.data.entity_id,
+                    entityId: part.data.chart_id,
                     cardId: part.data.card_id,
                   }),
                 );

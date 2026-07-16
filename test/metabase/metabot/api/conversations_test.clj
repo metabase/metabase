@@ -355,14 +355,14 @@
           (t2/delete! :model/MetabotConversation :id convo-id))))))
 
 (deftest record-saved-entity-test
-  (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with provenance stamped"
+  (testing "POST /api/metabot/conversations/:id/saved-entity creates the card with its origin stamped"
     (let [user-id (mt/user->id :crowberto)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
                        :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
           (let [created (mt/user-http-request :crowberto :post 200
                                               (str "metabot/conversations/" convo-id "/saved-entity")
-                                              {:entity_id "chart-1"
+                                              {:chart_id "chart-1"
                                                :card      {:name          "Venues by price"
                                                            :dataset_query (venues-query)
                                                            :display       "bar"}})]
@@ -380,7 +380,7 @@
 
 (deftest record-saved-entity-permissions-test
   (let [user-id (mt/user->id :crowberto)
-        body    {:entity_id "chart-1"
+        body    {:chart_id "chart-1"
                  :card      {:name          "x"
                              :dataset_query (venues-query)
                              :display       "bar"}}]

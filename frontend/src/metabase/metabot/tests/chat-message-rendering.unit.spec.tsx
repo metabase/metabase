@@ -33,7 +33,7 @@ const setup = (message: MetabotAgentChatMessage) =>
     <AgentMessage
       debug={false}
       readonly={false}
-      agentId="omnibot"
+      conversationId="convo-1"
       hideActions
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
@@ -57,7 +57,7 @@ describe("AgentMessage", () => {
         ]}
         isDoingScience
         debug={false}
-        agentId="omnibot"
+        conversationId="convo-1"
       />,
     );
 
@@ -85,6 +85,7 @@ describe("AgentMessage", () => {
           messages={conversation}
           isDoingScience={false}
           debug={false}
+          conversationId="convo-1"
         />,
       );
 
@@ -100,6 +101,7 @@ describe("AgentMessage", () => {
           isDoingScience={false}
           debug={false}
           readonly
+          conversationId="convo-1"
         />,
       );
 
@@ -127,9 +129,9 @@ describe("AgentMessage", () => {
         part: {
           type: "data-entity_saved",
           data: {
-            entity_id: "chart-1",
+            chart_id: "chart-1",
             card_id: 99,
-            location: { type: "collection", id: 5 },
+            destination: { type: "collection", id: 5 },
           },
         },
       });
@@ -150,9 +152,9 @@ describe("AgentMessage", () => {
         part: {
           type: "data-entity_saved",
           data: {
-            entity_id: "chart-1",
+            chart_id: "chart-1",
             card_id: 99,
-            location: { type: "collection", id: 5 },
+            destination: { type: "collection", id: 5 },
           },
         },
       });
@@ -222,7 +224,7 @@ describe("AgentMessage", () => {
         <AgentMessage
           debug
           readonly={false}
-          agentId="omnibot"
+          conversationId="convo-1"
           hideActions
           setFeedbackMessage={() => {}}
           submittedFeedback={undefined}
@@ -274,7 +276,7 @@ describe("UserMessage chart mentions", () => {
         ]}
         isDoingScience={false}
         debug={false}
-        agentId="omnibot"
+        conversationId="convo-1"
       />,
       {
         storeInitialState: createMockState({
