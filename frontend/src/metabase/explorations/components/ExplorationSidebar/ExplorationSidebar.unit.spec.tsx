@@ -52,14 +52,14 @@ function getSidebarTestContext(
   };
 }
 
-type TestSelectedEntityId = { type: "page"; id: string } | null;
+type TestSelectedPageId = string | null;
 
 interface SetupOpts {
   queries: ExplorationQuery[];
   blocks?: ExplorationBlockNode[];
   thread?: Partial<ExplorationThread>;
   selectedQueryId?: number | null;
-  selectedEntityId?: TestSelectedEntityId;
+  selectedPageId?: TestSelectedPageId;
   prompt?: string | null;
   canWrite?: boolean;
   showHidden?: boolean;
@@ -70,12 +70,12 @@ function setup({
   blocks,
   thread,
   selectedQueryId = null,
-  selectedEntityId,
+  selectedPageId,
   prompt = null,
   canWrite = true,
   showHidden = false,
 }: SetupOpts) {
-  const setSelectedEntityId = jest.fn();
+  const setSelectedPageId = jest.fn();
   const onToggleShowHidden = jest.fn();
 
   fetchMock.get("express:/api/exploration/query/:id", {
@@ -101,27 +101,21 @@ function setup({
   const findPageForQuery = (queryId: number) =>
     allPages.find((page) => page.query_ids.includes(queryId));
 
-  let resolvedEntityId: TestSelectedEntityId;
-  if (selectedEntityId !== undefined) {
-    resolvedEntityId = selectedEntityId;
+  let resolvedPageId: TestSelectedPageId;
+  if (selectedPageId !== undefined) {
+    resolvedPageId = selectedPageId;
   } else if (selectedQueryId != null) {
     const owningPage = findPageForQuery(selectedQueryId);
-    resolvedEntityId = owningPage
-      ? { type: "page" as const, id: String(owningPage.id) }
-      : null;
+    resolvedPageId = owningPage ? String(owningPage.id) : null;
   } else if (queries.length > 0) {
     const firstPage = findPageForQuery(queries[0].id);
-    resolvedEntityId = firstPage
-      ? { type: "page" as const, id: String(firstPage.id) }
-      : null;
+    resolvedPageId = firstPage ? String(firstPage.id) : null;
   } else {
-    resolvedEntityId = null;
+    resolvedPageId = null;
   }
 
-  const getSelectedEntityIdUrl = (
-    entityId: NonNullable<TestSelectedEntityId>,
-  ) =>
-    `${Urls.exploration(exploration.id)}/${entityId.type}/${encodeURIComponent(String(entityId.id))}`;
+  const getSelectedPageUrl = (pageId: string) =>
+    `${Urls.exploration(exploration.id)}/page/${encodeURIComponent(pageId)}`;
 
   const explorationPath = Urls.exploration(exploration.id);
   const {
@@ -146,9 +140,9 @@ function setup({
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
       tree={displayTree}
-      selectedEntityId={resolvedEntityId}
-      setSelectedEntityId={setSelectedEntityId}
-      getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+      selectedPageId={resolvedPageId}
+      setSelectedPageId={setSelectedPageId}
+      getSelectedPageUrl={getSelectedPageUrl}
       isOpen
       showHidden={showHidden}
       onToggleShowHidden={onToggleShowHidden}
@@ -160,9 +154,9 @@ function setup({
     { withRouter: true, initialRoute: explorationPath },
   );
   return {
-    setSelectedEntityId,
+    setSelectedPageId,
     onToggleShowHidden,
-    getSelectedEntityIdUrl,
+    getSelectedPageUrl,
     exploration,
   };
 }
@@ -232,13 +226,13 @@ describe("ExplorationSidebar", () => {
     });
 
     it("calls onToggleShowHidden when clicked without changing selection", async () => {
-      const { onToggleShowHidden, setSelectedEntityId } = setup({
+      const { onToggleShowHidden, setSelectedPageId } = setup({
         queries: [doneQuery],
       });
       await userEvent.click(toggle());
       expect(onToggleShowHidden).toHaveBeenCalledTimes(1);
       // toggling the filter must not navigate/select anything
-      expect(setSelectedEntityId).not.toHaveBeenCalled();
+      expect(setSelectedPageId).not.toHaveBeenCalled();
     });
   });
 
@@ -456,9 +450,9 @@ describe("ExplorationSidebar", () => {
         selectedSidebarTab={selectedSidebarTab}
         getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
-        selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
-        setSelectedEntityId={jest.fn()}
-        getSelectedEntityIdUrl={() => path}
+        selectedPageId={String(REVENUE_PAGE_ID)}
+        setSelectedPageId={jest.fn()}
+        getSelectedPageUrl={() => path}
         isOpen
         showHidden={false}
         onToggleShowHidden={jest.fn()}
@@ -545,9 +539,9 @@ describe("ExplorationSidebar", () => {
           selectedSidebarTab={selectedSidebarTab}
           getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
-          selectedEntityId={{ type: "page", id: selectedId }}
-          setSelectedEntityId={jest.fn()}
-          getSelectedEntityIdUrl={() => path}
+          selectedPageId={selectedId}
+          setSelectedPageId={jest.fn()}
+          getSelectedPageUrl={() => path}
           isOpen
           showHidden={false}
           onToggleShowHidden={jest.fn()}
@@ -710,7 +704,7 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 2, name: "Leaf B", status: "done" }),
         ],
         blocks: headingBlocks,
-        selectedEntityId: { type: "page", id: "2" },
+        selectedPageId: "2",
       });
 
       expect(headingRow()).toHaveAttribute("aria-busy", "true");
@@ -728,7 +722,7 @@ describe("ExplorationSidebar", () => {
           }),
         ],
         blocks: headingBlocks,
-        selectedEntityId: { type: "page", id: "1" },
+        selectedPageId: "1",
       });
 
       // The heading never surfaces an error icon, and a settled child isn't busy.
@@ -742,7 +736,7 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 2, name: "Leaf B", status: "done" }),
         ],
         blocks: headingBlocks,
-        selectedEntityId: { type: "page", id: "1" },
+        selectedPageId: "1",
       });
 
       const row = headingRow();
@@ -770,16 +764,13 @@ describe("ExplorationSidebar", () => {
   });
 
   it("links each row to the selected entity URL", () => {
-    const { getSelectedEntityIdUrl } = setup({
+    const { getSelectedPageUrl } = setup({
       queries: [pendingQuery, doneQuery],
     });
 
     expect(getRow("Revenue by region")).toHaveAttribute(
       "href",
-      getSelectedEntityIdUrl({
-        type: "page",
-        id: String(doneQuery.id),
-      }),
+      getSelectedPageUrl(String(doneQuery.id)),
     );
   });
 
@@ -985,7 +976,7 @@ describe("ExplorationSidebar", () => {
       setup({
         queries: [...planQueries, ...regionQueries],
         blocks,
-        selectedEntityId: { type: "page", id: planLeafAllId },
+        selectedPageId: planLeafAllId,
       });
 
       const planHeading = screen.getByRole("group", {
@@ -1047,7 +1038,7 @@ describe("ExplorationSidebar", () => {
         ],
         // Anchor selection on the page so the thread + metric
         // headings start auto-expanded.
-        selectedEntityId: { type: "page", id: String(SOLO_PAGE_ID) },
+        selectedPageId: String(SOLO_PAGE_ID),
       });
 
       const heading = screen.getByRole("group", { name: /Solo metric/ });
@@ -1122,7 +1113,7 @@ describe("ExplorationSidebar", () => {
         ],
         // Select the first page so the heading auto-expands and all
         // three pages are in the DOM.
-        selectedEntityId: { type: "page", id: String(RUNNING_PAGE_ID) },
+        selectedPageId: String(RUNNING_PAGE_ID),
       });
 
       // Page rows are labelled by the BE-provided page name; each row's status
@@ -1148,7 +1139,7 @@ describe("ExplorationSidebar", () => {
         blocks,
         // Selecting a region page should bubble up the auto-expand to
         // the `Revenue by region` heading.
-        selectedEntityId: { type: "page", id: regionLeafAllId },
+        selectedPageId: regionLeafAllId,
       });
 
       const planHeading = screen.getByRole("group", {
@@ -1195,7 +1186,7 @@ describe("ExplorationSidebar", () => {
         setup({
           queries: pageQueries,
           blocks: pageBlocks,
-          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
+          selectedPageId: String(PAGE_LEAF_ID),
         });
 
         // One page row labelled by the page name.
@@ -1212,15 +1203,15 @@ describe("ExplorationSidebar", () => {
       });
 
       it("links the page row to the selected page URL", () => {
-        const { getSelectedEntityIdUrl } = setup({
+        const { getSelectedPageUrl } = setup({
           queries: pageQueries,
           blocks: pageBlocks,
-          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
+          selectedPageId: String(PAGE_LEAF_ID),
         });
 
         expect(getRow("Revenue across regions")).toHaveAttribute(
           "href",
-          getSelectedEntityIdUrl({ type: "page", id: String(PAGE_LEAF_ID) }),
+          getSelectedPageUrl(String(PAGE_LEAF_ID)),
         );
       });
 
@@ -1228,7 +1219,7 @@ describe("ExplorationSidebar", () => {
         setup({
           queries: pageQueries,
           blocks: pageBlocks,
-          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
+          selectedPageId: String(PAGE_LEAF_ID),
         });
 
         expect(getRow("Revenue across regions")).toHaveAttribute(
@@ -1265,7 +1256,7 @@ describe("ExplorationSidebar", () => {
               ],
             }),
           ],
-          selectedEntityId: { type: "page", id: String(MIXED_PAGE_ID) },
+          selectedPageId: String(MIXED_PAGE_ID),
         });
 
         // The error wins — the row's icon is the warning.
@@ -1277,18 +1268,15 @@ describe("ExplorationSidebar", () => {
 
     describe("arrow-key navigation", () => {
       it("Right moves selection from one page to the next within the same heading and keeps that heading expanded", () => {
-        const { setSelectedEntityId } = setup({
+        const { setSelectedPageId } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
-          selectedEntityId: { type: "page", id: planLeafAllId },
+          selectedPageId: planLeafAllId,
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "page",
-          id: planLeafUsId,
-        });
+        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
         // Region heading stayed closed; we never left the plan heading.
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -1297,26 +1285,23 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Right past the last page in a heading selects the first page of the next heading and collapses the source heading", () => {
-        const { setSelectedEntityId } = setup({
+        const { setSelectedPageId } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           // Selection sits on the LAST page of the plan heading.
-          selectedEntityId: { type: "page", id: planLeafUsId },
+          selectedPageId: planLeafUsId,
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "page",
-          id: regionLeafAllId,
-        });
+        expect(setSelectedPageId).toHaveBeenLastCalledWith(regionLeafAllId);
 
         // The keyboard handler imperatively collapses the source
         // heading via `treeController.collapse`. Auto-expanding the
         // target heading happens via `getInitialExpandedIds` on the
         // next render — that's a parent-side effect we don't model
-        // here (the `setSelectedEntityId` is a mock so the controlled
-        // `selectedEntityId` prop never updates).
+        // here (the `setSelectedPageId` is a mock so the controlled
+        // `selectedPageId` prop never updates).
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
         });
@@ -1324,18 +1309,15 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Left past the first page in a heading selects the last page of the previous heading and collapses the source heading", () => {
-        const { setSelectedEntityId } = setup({
+        const { setSelectedPageId } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
-          selectedEntityId: { type: "page", id: regionLeafAllId },
+          selectedPageId: regionLeafAllId,
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "page",
-          id: planLeafUsId,
-        });
+        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
 
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -1350,7 +1332,7 @@ describe("ExplorationSidebar", () => {
         ];
         const PAGE_BLOCK_ID = 60;
         const PAGE_LEAF_ID = 600;
-        const { setSelectedEntityId } = setup({
+        const { setSelectedPageId } = setup({
           queries: [...planQueries, ...pageQueriesNav],
           blocks: [
             blocks[0], // plan block + its two single-query pages
@@ -1370,15 +1352,14 @@ describe("ExplorationSidebar", () => {
           ],
           // Selection on the last plan page — Right should bridge to
           // the next heading's first (and only) page.
-          selectedEntityId: { type: "page", id: planLeafUsId },
+          selectedPageId: planLeafUsId,
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "page",
-          id: String(PAGE_LEAF_ID),
-        });
+        expect(setSelectedPageId).toHaveBeenLastCalledWith(
+          String(PAGE_LEAF_ID),
+        );
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
         });

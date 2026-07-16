@@ -20,8 +20,6 @@ import {
   getExplorationQueryGroupStatus,
 } from "metabase-types/api";
 
-import type { SelectedEntityId } from "../../pages/ExplorationPage";
-
 export interface ExplorationTreeHeading {
   type: "heading";
   explorationId?: ExplorationId;
@@ -56,9 +54,7 @@ export function isHiddenTreeItem(
   return isExplorationTreePage(node) && node.data?.hidden === true;
 }
 
-export type ExplorationTreeItem = ExplorationTreePage;
-
-export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
+export type ExplorationTreeNode = ExplorationTreePage | ExplorationTreeHeading;
 
 type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
 
@@ -291,7 +287,7 @@ export function getExplorationThreadName(
 
 export function flattenTree(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
-): ITreeNodeItem<ExplorationTreeItem>[] {
+): ITreeNodeItem<ExplorationTreePage>[] {
   const result: ITreeNodeItem<ExplorationTreeNode>[] = [];
   for (const node of nodes) {
     result.push(node);
@@ -300,20 +296,20 @@ export function flattenTree(
     }
   }
   return result.filter(
-    (node): node is ITreeNodeItem<ExplorationTreeItem> =>
+    (node): node is ITreeNodeItem<ExplorationTreePage> =>
       node.data?.type === "page",
   );
 }
 
-export function pickInitialSidebarEntity(
+export function pickInitialSidebarPage(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
-): SelectedEntityId | null {
+): ExplorationPageNodeId | null {
   for (const node of nodes) {
     if (node.data?.type === "page") {
-      return { type: "page", id: node.data.page_id };
+      return node.data.page_id;
     }
     if (node.children?.length) {
-      const result = pickInitialSidebarEntity(node.children);
+      const result = pickInitialSidebarPage(node.children);
       if (result != null) {
         return result;
       }

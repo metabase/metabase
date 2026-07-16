@@ -44,13 +44,13 @@ import {
 import type {
   Exploration,
   ExplorationId,
+  ExplorationPageNodeId,
   ExplorationQueryStatus,
   ExplorationThreadId,
   IconName,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
 import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
@@ -59,8 +59,8 @@ import S from "./ExplorationSidebar.module.css";
 import {
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeHeading,
-  type ExplorationTreeItem,
   type ExplorationTreeNode,
+  type ExplorationTreePage,
   flattenTree,
   getExplorationSidebarTree,
 } from "./utils";
@@ -71,9 +71,9 @@ interface ExplorationSidebarProps {
   selectedSidebarTab: ExplorationSidebarTab;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
-  selectedEntityId: SelectedEntityId | null;
-  setSelectedEntityId: (entityId: SelectedEntityId) => void;
-  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  selectedPageId: ExplorationPageNodeId | null;
+  setSelectedPageId: (pageId: ExplorationPageNodeId) => void;
+  getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
   isOpen: boolean;
   showHidden: boolean;
   onToggleShowHidden: () => void;
@@ -85,9 +85,9 @@ export function ExplorationSidebar({
   selectedSidebarTab,
   getSelectedSidebarTabUrl,
   tree,
-  selectedEntityId,
-  setSelectedEntityId,
-  getSelectedEntityIdUrl,
+  selectedPageId,
+  setSelectedPageId,
+  getSelectedPageUrl,
   isOpen,
   showHidden,
   onToggleShowHidden,
@@ -95,7 +95,7 @@ export function ExplorationSidebar({
   const dispatch = useDispatch();
   const treeController = useTree({
     data: tree,
-    selectedId: selectedEntityId?.id,
+    selectedId: selectedPageId ?? undefined,
     freezeAutoExpandOnManualToggle: true,
   });
   const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
@@ -129,7 +129,7 @@ export function ExplorationSidebar({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (selectedEntityId == null) {
+      if (selectedPageId == null) {
         return;
       }
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
@@ -139,16 +139,12 @@ export function ExplorationSidebar({
         return;
       }
       const direction = event.key === "ArrowRight" ? 1 : -1;
-      const nextItem = getAdjacentById(
-        flatItems,
-        selectedEntityId.id,
-        direction,
-      );
-      if (nextItem != null && nextItem.id !== selectedEntityId.id) {
+      const nextItem = getAdjacentById(flatItems, selectedPageId, direction);
+      if (nextItem != null && nextItem.id !== selectedPageId) {
         if (nextItem.data?.type !== "page") {
           return;
         }
-        setSelectedEntityId({ type: "page", id: nextItem.data.page_id });
+        setSelectedPageId(nextItem.data.page_id);
         trackExplorationVisualizationChanged(exploration.id, "keyboard");
         event.preventDefault();
         shouldScrollSelectionRef.current = true;
@@ -168,9 +164,7 @@ export function ExplorationSidebar({
         }
       }
       // if we moved into a different folder, collapse the previous folder
-      const currentItem = flatItems.find(
-        (item) => item.id === selectedEntityId.id,
-      );
+      const currentItem = flatItems.find((item) => item.id === selectedPageId);
       if (
         currentItem?.data?.parent_id &&
         currentItem.data.parent_id !== nextItem?.data?.parent_id
@@ -183,8 +177,8 @@ export function ExplorationSidebar({
   }, [
     flatItems,
     tree,
-    selectedEntityId,
-    setSelectedEntityId,
+    selectedPageId,
+    setSelectedPageId,
     setExpandedIds,
     handlePrefetch,
     collapse,
@@ -199,15 +193,10 @@ export function ExplorationSidebar({
         canWrite={exploration.can_write}
         handlePrefetch={handlePrefetch}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
-        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        getSelectedPageUrl={getSelectedPageUrl}
       />
     ),
-    [
-      exploration.id,
-      exploration.can_write,
-      handlePrefetch,
-      getSelectedEntityIdUrl,
-    ],
+    [exploration.id, exploration.can_write, handlePrefetch, getSelectedPageUrl],
   );
 
   const tabTreeItemFilter =
@@ -318,7 +307,7 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   canWrite: boolean;
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
-  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
 }
 
 function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
@@ -556,7 +545,7 @@ function ExplorationThreadMenu({
 }
 
 interface ExplorationTreeItemProps extends ExplorationTreeNodeProps {
-  item: ITreeNodeItem<ExplorationTreeItem>;
+  item: ITreeNodeItem<ExplorationTreePage>;
 }
 
 function isExplorationTreeItemProps(
@@ -572,7 +561,7 @@ function ExplorationTreeItem({
   explorationId,
   handlePrefetch,
   shouldScrollSelectionRef,
-  getSelectedEntityIdUrl,
+  getSelectedPageUrl,
 }: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLAnchorElement>(null);
 
@@ -595,10 +584,7 @@ function ExplorationTreeItem({
     return null;
   }
 
-  const entityId: SelectedEntityId = {
-    type: "page",
-    id: item.data.page_id,
-  };
+  const pageId = item.data.page_id;
 
   const iconProps: IconProps = {
     color: isSelected ? "brand" : "icon-secondary",
@@ -612,7 +598,7 @@ function ExplorationTreeItem({
   return (
     <ForwardRefLink
       ref={itemRef}
-      to={getSelectedEntityIdUrl(entityId)}
+      to={getSelectedPageUrl(pageId)}
       role="treeitem"
       aria-selected={isSelected}
       aria-busy={isLoading}

@@ -17,7 +17,7 @@ import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
-  pickInitialSidebarEntity,
+  pickInitialSidebarPage,
 } from "./utils";
 
 const allTreeFilter = getExplorationSidebarTabsInfo().all.treeItemFilter;
@@ -369,7 +369,7 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
   });
 });
 
-describe("pickInitialSidebarEntity", () => {
+describe("pickInitialSidebarPage", () => {
   const METRIC_A_BLOCK_ID = 10;
 
   it("picks a fully settled page over a page still waiting on a sibling query", () => {
@@ -416,10 +416,7 @@ describe("pickInitialSidebarEntity", () => {
       ],
     });
 
-    expect(pickInitialSidebarEntity(tree)).toEqual({
-      type: "page",
-      id: "3",
-    });
+    expect(pickInitialSidebarPage(tree)).toBe("3");
   });
 });
 

@@ -34,7 +34,7 @@ import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
-  pickInitialSidebarEntity,
+  pickInitialSidebarPage,
 } from "../components/ExplorationSidebar/utils";
 import {
   ExplorationChartAreaSkeleton,
@@ -58,8 +58,7 @@ interface ExplorationPageQuery {
 interface ExplorationPageProps {
   params: {
     id: string;
-    entityType?: "page";
-    entityId?: string;
+    pageId?: string;
   };
   location: Location<ExplorationPageQuery>;
 }
@@ -82,13 +81,6 @@ function hasUnsettledQueries(exploration: Exploration | undefined): boolean {
   );
 }
 
-interface SelectedPageId {
-  type: "page";
-  id: ExplorationPageNodeId;
-}
-
-export type SelectedEntityId = SelectedPageId;
-
 export function ExplorationPage({ params, location }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
@@ -109,18 +101,18 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     [location.pathname, location.search],
   );
 
-  const getSelectedEntityIdUrl = useCallback(
-    (entityId: SelectedEntityId) => {
-      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
+  const getSelectedPageUrl = useCallback(
+    (pageId: ExplorationPageNodeId) => {
+      return `${Urls.exploration(parseInt(params.id, 10))}/page/${encodeURIComponent(pageId)}${location.search}`;
     },
     [params.id, location.search],
   );
 
-  const setSelectedEntityId = useCallback(
-    (entityId: SelectedEntityId) => {
-      dispatch(push(getSelectedEntityIdUrl(entityId)));
+  const setSelectedPageId = useCallback(
+    (pageId: ExplorationPageNodeId) => {
+      dispatch(push(getSelectedPageUrl(pageId)));
     },
-    [dispatch, getSelectedEntityIdUrl],
+    [dispatch, getSelectedPageUrl],
   );
 
   // Poll the exploration while any query is still in a non-terminal state.
@@ -187,7 +179,7 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     return getExplorationSidebarTree(exploration, treeItemFilter);
   }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo, showHidden]);
 
-  // Selection comes from the URL. When the URL has no entity yet
+  // Selection comes from the URL. When the URL has no page yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
   // the first query so the sidebar highlight, the scroll anchor, and
   // the right-pane chart all agree on the very first paint — without
@@ -198,29 +190,29 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   // Selection model:
   //
   //   - The URL is the "pinned by the user" indicator. Only user
-  //     clicks call `setSelectedEntityId`, which pushes the entity
-  //     into the URL. Once the URL carries an entity, that's
+  //     clicks call `setSelectedPageId`, which pushes the page
+  //     into the URL. Once the URL carries a page, that's
   //     authoritative — no more auto-tracking.
   //
   //   - Until then, every render (including ones triggered by polling
   //     bringing in fresh interestingness scores) re-derives the
   //     selection from the current top of the sidebar via
-  //     `pickInitialSidebarEntity`. This is what makes the right pane
+  //     `pickInitialSidebarPage`. This is what makes the right pane
   //     and the sidebar follow the "first, most interesting chart"
   //     as new data lands.
   //
   // We deliberately do NOT push the auto-derived selection into the
   // URL: doing so would freeze the selection at the first auto-pick
   // and prevent it from following subsequent data updates.
-  const selectedEntityId: SelectedEntityId | null = useMemo(() => {
-    if (params.entityType && params.entityId) {
+  const selectedPageId: ExplorationPageNodeId | null = useMemo(() => {
+    if (params.pageId) {
       // Page ids are opaque strings (the page's numeric PK stringified, the
       // same value comments anchor to) — we URL-encode them on push and
       // decode them here.
-      return { type: "page", id: decodeURIComponent(params.entityId) };
+      return decodeURIComponent(params.pageId);
     }
-    return pickInitialSidebarEntity(tree);
-  }, [params.entityType, params.entityId, tree]);
+    return pickInitialSidebarPage(tree);
+  }, [params.pageId, tree]);
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -253,10 +245,10 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
   }, [exploration]);
 
   const selectedPage = useMemo(() => {
-    return selectedEntityId?.type === "page"
-      ? pageIdToPageAndQueries.get(selectedEntityId.id)
+    return selectedPageId != null
+      ? pageIdToPageAndQueries.get(selectedPageId)
       : undefined;
-  }, [selectedEntityId, pageIdToPageAndQueries]);
+  }, [selectedPageId, pageIdToPageAndQueries]);
 
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
@@ -347,9 +339,9 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
             selectedSidebarTab={selectedSidebarTab}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
-            selectedEntityId={selectedEntityId}
-            setSelectedEntityId={setSelectedEntityId}
-            getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+            selectedPageId={selectedPageId}
+            setSelectedPageId={setSelectedPageId}
+            getSelectedPageUrl={getSelectedPageUrl}
             isOpen={isSidebarOpen}
             showHidden={showHidden}
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
