@@ -4,6 +4,7 @@
   `checkers/*`, the shared entity-type mapping + denormalization helper in `common`."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.checkers.imbalanced :as imbalanced]
    [metabase-enterprise.content-diagnostics.checkers.slow :as slow]
    [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -25,7 +26,9 @@
   lets post-scan invalidation know its supersession scope even when a scan emits **zero** rows - i.e. an
   all-clean scan still resolves the previous scan's findings."
   [{:finding-types #{:stale} :run stale/checker}
-   {:finding-types #{:slow}  :run slow/checker}])
+   {:finding-types #{:slow}  :run slow/checker}
+   ;; one checker, three finding types sharing one count pass - an all-clean scan supersedes all three
+   {:finding-types #{:empty :sparse :crowded} :run imbalanced/checker}])
 
 (defn covered-finding-types
   "The set of finding-types the registered checkers own - the supersession scope for post-scan invalidation."
