@@ -258,6 +258,7 @@ export interface ExplorationQuery {
   segment_id: SegmentId | null;
   segment_name: string | null;
   params?: ExplorationQueryParams | null;
+  row_count?: number | null;
 }
 
 /**
@@ -303,21 +304,10 @@ export function getExplorationQueryGroupStatus(
   if (queries.some((q) => q.status === "canceled")) {
     return "canceled";
   }
-  return "done";
-}
-
-export function getExplorationQueryGroupInterestingness(
-  queries: ExplorationQuery[],
-): number | null {
-  let max: number | null = null;
-  for (const q of queries) {
-    const score =
-      q.contextual_interestingness_score ?? q.interestingness_score ?? null;
-    if (score != null && (max == null || score > max)) {
-      max = score;
-    }
+  if (queries.every((q) => q.row_count === 0)) {
+    return "error";
   }
-  return max;
+  return "done";
 }
 
 export interface ExplorationThread {

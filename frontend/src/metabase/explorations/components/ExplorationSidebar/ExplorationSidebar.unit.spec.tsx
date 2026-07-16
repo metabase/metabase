@@ -141,7 +141,7 @@ function setup({
     showHidden
       ? treeItemFilter
       : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
-    undefined,
+    sortOrder,
     { keepEmptyInitialThread: tab === "all" },
   );
 
@@ -1341,6 +1341,70 @@ describe("ExplorationSidebar", () => {
       const heading = screen.getByRole("group", { name: /Status metric/ });
       expect(heading).toHaveAttribute("aria-busy", "true");
       expect(within(heading).queryByLabelText("Ready")).not.toBeInTheDocument();
+    });
+
+    it("sorts zero-row pages to the bottom and shows them as errors", () => {
+      const done = createQuery({
+        id: 1,
+        name: "Done",
+        status: "done",
+      });
+      const running = createQuery({
+        id: 2,
+        name: "Running",
+        status: "pending",
+      });
+      const empty = createQuery({
+        id: 3,
+        name: "Empty",
+        status: "done",
+        row_count: 0,
+      });
+
+      const SORT_BLOCK_ID = 50;
+      setup({
+        queries: [empty, running, done],
+        blocks: [
+          createBlock({
+            id: SORT_BLOCK_ID,
+            name: "Sort metric",
+            position: 0,
+            pages: [
+              createPage({
+                id: 3,
+                name: "Empty",
+                position: 0,
+                query_ids: [empty.id],
+              }),
+              createPage({
+                id: 2,
+                name: "Running",
+                position: 1,
+                query_ids: [running.id],
+              }),
+              createPage({
+                id: 1,
+                name: "Done",
+                position: 2,
+                query_ids: [done.id],
+              }),
+            ],
+          }),
+        ],
+        selectedEntityId: { type: "page", id: "1" },
+      });
+
+      const rows = screen.getAllByRole("treeitem");
+      const rowIndex = (name: string) =>
+        rows.findIndex((row) =>
+          within(row).queryByText(name, { exact: false }),
+        );
+
+      expect(rowIndex("Done")).toBeLessThan(rowIndex("Running"));
+      expect(rowIndex("Running")).toBeLessThan(rowIndex("Empty"));
+      expect(
+        within(getRow("Empty")).getByLabelText("Failed to generate"),
+      ).toBeInTheDocument();
     });
 
     it("auto-expands the heading that owns the selected page and leaves the other heading collapsed", () => {
