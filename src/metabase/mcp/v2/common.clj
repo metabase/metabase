@@ -93,13 +93,21 @@
 ;;; ------------------------------------------------ List envelope -------------------------------------------------
 
 (defn truncation-line
-  "The steering sentence appended to a truncated list response: names the narrowing parameter
-   and the next offset. Returns nil when the page isn't truncated (or `total` is unknown)."
+  "The steering sentence appended to a truncated list response: names the narrowing `param` when
+   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
+   (or `total` is unknown)."
+  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
+  ;; reads a truncated page as the whole set.
   [{:keys [param offset limit total]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (format "Returned %d of %d — narrow with `%s`, or continue with `offset: %d`."
-              (min limit (- total offset)) total (name param) (+ offset limit)))))
+      (let [returned (min limit (- total offset))
+            next     (+ offset limit)]
+        (if param
+          (format "Returned %d of %d — narrow with `%s`, or continue with `offset: %d`."
+                  returned total (name param) next)
+          (format "Returned %d of %d — continue with `offset: %d`."
+                  returned total next))))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
@@ -111,11 +119,12 @@
 
 (defn list-content
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
-   block, with the truncation steering line appended when the page is truncated. Text-only —
-   list data never rides `structuredContent` by reflex."
-  [data total {:keys [param] :as opts}]
+   block, with the truncation steering line appended when the page is truncated. `data` is
+   already the page; `opts` carries `:offset`/`:limit` and an optional `:param` naming what
+   narrows this list. Text-only — list data never rides `structuredContent` by reflex."
+  [data total opts]
   (let [envelope (list-envelope data total)
-        line     (when param (truncation-line (assoc opts :total total)))]
+        line     (truncation-line (assoc opts :total total))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
 

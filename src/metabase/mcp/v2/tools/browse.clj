@@ -118,20 +118,12 @@
 
 (defn- paged-list-content
   "Slice `rows` (the full filtered set) per `limit`/`offset` and build the envelope content,
-   with a truncation line naming `param` when one narrows this action (and a bare
-   continuation offset otherwise). `project-fn` runs on the page only."
+   naming `param` when one narrows this action. `project-fn` runs on the page only."
   [args rows param project-fn]
   (let [{:keys [limit offset]} (page-args args)
-        total    (count rows)
-        page     (into [] (comp (drop offset) (take limit)) rows)
-        envelope (common/list-envelope (project-fn page) total)
-        line     (when (< (+ offset (count page)) total)
-                   (if param
-                     (common/truncation-line {:param param :offset offset :limit limit :total total})
-                     (format "Returned %d of %d — continue with `offset: %d`."
-                             (count page) total (+ offset limit))))]
-    (common/success-content (cond-> (json/encode envelope)
-                              line (str "\n" line)))))
+        page (into [] (comp (drop offset) (take limit)) rows)]
+    (common/list-content (project-fn page) (count rows)
+                         {:param param :offset offset :limit limit})))
 
 (defn- project-rows
   [type args rows]
