@@ -1053,7 +1053,6 @@ function createHighAmountSegment() {
       (amountFieldId) =>
         H.createSegment({
           name: "High amount",
-          table_id: sourceTableId,
           definition: {
             type: "query",
             database: WRITABLE_DB_ID,
@@ -1073,7 +1072,6 @@ function createSourceTotalAmountMeasure() {
       (amountFieldId) =>
         H.createMeasure({
           name: "Total amount",
-          table_id: sourceTableId,
           definition: {
             "source-table": sourceTableId,
             aggregation: [["sum", ["field", amountFieldId, null]]],
