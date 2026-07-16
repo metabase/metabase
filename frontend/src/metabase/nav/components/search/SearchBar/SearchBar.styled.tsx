@@ -40,6 +40,7 @@ export const SearchInputContainer = styled.div<{
     }
     return css`
       background-color: var(--mb-color-background_page-primary);
+
       &:hover {
         background-color: var(--mb-color-background_page-secondary);
       }
