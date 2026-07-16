@@ -105,7 +105,7 @@ export const getSettingsRoutes = (
       <Route
         path={
           Urls.DATA_APP_URL_SEGMENT
-        } /* do not allow users with "Settings access" permissions to access custom viz pages */
+        } /* do not allow users with "Settings access" permissions to access data apps pages */
         element={<IsAdmin />}
       >
         <Route index component={DataAppsManagePage} />
