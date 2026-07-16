@@ -47,6 +47,9 @@ const documentsSlice = createSlice({
   name: "documents",
   initialState,
   reducers: {
+    updateSelectedEmbedIndex: (state, action: PayloadAction<number>) => {
+      state.selectedEmbedIndex = action.payload;
+    },
     openVizSettingsSidebar: (
       state,
       action: PayloadAction<{ embedIndex: number }>,
@@ -138,6 +141,7 @@ const documentsSlice = createSlice({
 });
 
 export const {
+  updateSelectedEmbedIndex,
   openVizSettingsSidebar,
   updateVizSettings,
   updateVisualizationType,

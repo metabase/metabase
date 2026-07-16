@@ -29,10 +29,10 @@ jest.mock("react-use", () => ({
 const document = createMockDocument({ id: 1 });
 
 function setup({
-  pathname = "/document/1/comments/block-abc",
-  search = "",
+  pathname = "/exploration/1/comments/block-abc",
+  search = "?timeline=5",
   childTargetId = "block-abc",
-  initialRoute = "/document/1/comments/block-abc",
+  initialRoute = "/exploration/1/comments/block-abc?timeline=5",
 }: {
   pathname?: string;
   search?: string;
@@ -83,11 +83,7 @@ describe("CommentsSidesheet", () => {
   });
 
   it("closes to the parent path and preserves search params", async () => {
-    const { history } = setup({
-      pathname: "/document/1/comments/block-abc",
-      search: "?foo=bar",
-      initialRoute: "/document/1/comments/block-abc?foo=bar",
-    });
+    const { history } = setup();
 
     const sidebar = screen.getByTestId("comments-sidebar");
     await userEvent.click(
@@ -96,8 +92,8 @@ describe("CommentsSidesheet", () => {
 
     expect(mockCloseCommentSidebar).toHaveBeenCalled();
     expect(history.getCurrentLocation()).toMatchObject({
-      pathname: "/document/1",
-      search: "?foo=bar",
+      pathname: "/exploration/1",
+      search: "?timeline=5",
     });
   });
 });

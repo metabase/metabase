@@ -39,6 +39,15 @@ export const trackExplorationRestarted = (explorationId: ExplorationId) => {
   });
 };
 
+export const trackExplorationAISummaryOpened = (
+  explorationId: ExplorationId,
+) => {
+  trackSimpleEvent({
+    event: "exploration_ai_summary_opened",
+    target_id: explorationId,
+  });
+};
+
 export const trackExplorationVisualizationChanged = (
   explorationId: ExplorationId,
   triggered_from: "keyboard" | "click",

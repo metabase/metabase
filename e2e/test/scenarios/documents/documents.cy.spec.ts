@@ -237,7 +237,10 @@ describe("documents", () => {
     cy.location("pathname").should("eq", "/document/1");
     cy.title().should("eq", "Test Document · Metabase");
 
-    H.expectUnstructuredSnowplowEvent({ event: "document_created" });
+    H.expectUnstructuredSnowplowEvent({
+      event: "document_created",
+      triggered_from: "standalone",
+    });
     cy.wrap(getDocumentStub).should("not.have.been.called");
 
     cy.findByLabelText("More options").click();
@@ -1252,6 +1255,7 @@ describe("documents", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "document_saved",
             target_id: id,
+            triggered_from: "standalone",
           });
           H.expectUnstructuredSnowplowEvent({
             event: "document_add_smart_link",

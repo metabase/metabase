@@ -2152,6 +2152,8 @@
         documents (when config/ee-available?
                     (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                               [:and [:= :collection_id id]
+                                                                               ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
+                                                                               [:= :exploration_thread_id nil]
                                                                                (when skip-archived [:not :archived])]})]
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and

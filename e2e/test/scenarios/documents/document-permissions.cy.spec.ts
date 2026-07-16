@@ -44,7 +44,10 @@ describe("document permissions", () => {
     cy.location("pathname").should("match", /^\/document\/\d+/);
     cy.title().should("eq", "User Document · Metabase");
 
-    H.expectUnstructuredSnowplowEvent({ event: "document_created" });
+    H.expectUnstructuredSnowplowEvent({
+      event: "document_created",
+      triggered_from: "standalone",
+    });
 
     H.appBar()
       .findByRole("link", { name: /Personal Collection/ })

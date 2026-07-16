@@ -81,3 +81,17 @@
                :timeline_interestingness))
    :id
    {:default []}))
+
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :documents]
+  [_model k threads]
+  (mi/instances-with-hydrated-data
+   threads k
+   #(group-by :exploration_thread_id
+              (t2/select [:model/Document
+                          :id :name :exploration_thread_id :creator_id :content_type
+                          :created_at :updated_at :archived]
+                         :exploration_thread_id [:in (map :id threads)]
+                         :archived false
+                         {:order-by [[:created_at :asc] [:id :asc]]}))
+   :id
+   {:default []}))
