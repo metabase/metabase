@@ -104,9 +104,13 @@
   [entity computed-pairs]
   (let [seed-pairs (filterv lib-metric/main-group? computed-pairs)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)]
+        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)
+        dimensions (lib-metric/extract-persisted-dimensions dimensions)
+        default-dimension (lib-metric/pick-default-dimension dimensions)
+        dimensions (cond-> dimensions
+                     default-dimension (lib-metric/set-default-dimension (:id default-dimension)))]
     (save-dimensions! entity
-                      (lib-metric/extract-persisted-dimensions dimensions)
+                      dimensions
                       dimension-mappings)))
 
 (defn- refresh-metric-dimensions!

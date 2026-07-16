@@ -5,6 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -184,6 +185,17 @@
    joined/FK-reachable table. Used to decide the default seed set."
   [pair]
   (= "main" (perf/get-in pair [:dimension :group :type])))
+
+(defn pick-default-dimension
+  "Pick the preferred default from an ordered collection of dimensions."
+  [dimensions]
+  (let [dimensions (vec dimensions)]
+    (or (u/seek types.isa/date-or-datetime? dimensions)
+        (u/seek #(or (types.isa/country? %) (types.isa/state? %)) dimensions)
+        (u/seek #(or (= :list (:has-field-values %))
+                     (types.isa/category? %))
+                dimensions)
+        (first dimensions))))
 
 (defn addable-pairs
   "Computed dimension pairs whose target is not already mapped by one of `persisted-mappings` — i.e. the columns

@@ -633,6 +633,11 @@
    (to-array (lib-metric.projection/projectable-dimensions-for-source
               definition (->source-instance source-instance)))))
 
+(defn ^:export pickDefaultDimension
+  "Pick the preferred default from an ordered array of dimensions."
+  [dimensions]
+  (lib-metric.dimension/pick-default-dimension (array-seq dimensions)))
+
 (defn ^:export defaultBreakoutDimensions
   "Get dimensions corresponding to the source metric's default breakout columns."
   [definition]

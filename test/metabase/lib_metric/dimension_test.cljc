@@ -24,6 +24,23 @@
    {:dimension {:id nil :name name}
     :mapping   {:type :table :table-id table-id :target target}}))
 
+(deftest ^:parallel pick-default-dimension-test
+  (let [fallback {:id "fallback" :effective-type :type/Integer}
+        category {:id "category" :semantic-type :type/Category}
+        low-cardinality {:id "low-cardinality" :effective-type :type/Text :has-field-values :list}
+        state {:id "state" :effective-type :type/Text :semantic-type :type/State}
+        time {:id "time" :effective-type :type/DateTime}]
+    (testing "prefers time, then geo, then category or low-cardinality, then the first dimension (UXW-4788)"
+      (is (= time (lib-metric.dimension/pick-default-dimension
+                   [fallback category low-cardinality state time])))
+      (is (= state (lib-metric.dimension/pick-default-dimension
+                    [fallback category low-cardinality state])))
+      (is (= category (lib-metric.dimension/pick-default-dimension
+                       [fallback category low-cardinality])))
+      (is (= low-cardinality (lib-metric.dimension/pick-default-dimension
+                              [fallback low-cardinality])))
+      (is (= fallback (lib-metric.dimension/pick-default-dimension [fallback]))))))
+
 ;;; -------------------------------------------------- Target Comparison --------------------------------------------------
 
 (deftest ^:parallel targets-equal?-same-field-id-test

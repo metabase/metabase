@@ -71,6 +71,7 @@
      get-persisted-dimensions
      main-group?
      mappings-changed?
+     pick-default-dimension
      reconcile-dimensions-and-mappings
      reconcile-existing-dimensions
      remove-dimensions
@@ -114,6 +115,7 @@
      (def dimensions-for-table "See [[lib-metric.dimension/dimensions-for-table]]." lib-metric.dimension/dimensions-for-table)
      (def get-persisted-dimensions "See [[lib-metric.dimension/get-persisted-dimensions]]." lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
+     (def pick-default-dimension "See [[lib-metric.dimension/pick-default-dimension]]." lib-metric.dimension/pick-default-dimension)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
      (def field-ref->key "See [[lib-metric.dimension/field-ref->key]]." lib-metric.dimension/field-ref->key)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)
