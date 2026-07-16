@@ -122,7 +122,7 @@
           (is (some? warn))
           (is (nil? (:e warn)) "no throwable attached — nothing to print a stack trace from")
           (is (re-find #"No OpenAI API key is set" (:message warn))))))
-    (testing "unexpected errors keep the throwable (stack trace preserved)"
+    (testing "unexpected errors also warn message-only (full detail available at debug)"
       (mt/with-dynamic-fn-redefs [native-generator/call-llm
                                   (fn [_] (throw (ex-info "provider exploded" {:api-error true})))]
         (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.example-question-generator :warn]]
@@ -131,7 +131,8 @@
                      (msgs))
               warn (first msgs)]
           (is (some? warn))
-          (is (some? (:e warn))))))))
+          (is (nil? (:e warn)))
+          (is (re-find #"provider exploded" (:message warn))))))))
 
 (deftest generate-example-questions-routes-through-openrouter-test
   (testing "generate-example-questions routes LLM calls through openrouter when provider is openrouter/*"
