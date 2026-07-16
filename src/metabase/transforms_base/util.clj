@@ -395,8 +395,13 @@
                   query             (-> (lib/aggregate (lib/append-stage filtered-query) (lib/max column))
                                         (lib/aggregate (lib/count)))
                   query-result      (qp/process-query query)
-                  [mv cv]           (first (get-in query-result [:data :rows]))]
-              [mv (some-> cv long)])]
+                  [mv cv]           (first (get-in query-result [:data :rows]))
+                  cv                (some-> cv long)]
+              ;; Some databases (e.g. ClickHouse) return the column type's default value (0, epoch, ...)
+              ;; instead of NULL for `max()` over an empty relation when the column is non-nullable. Only
+              ;; trust the max when the count from the same scan says there were rows, otherwise the
+              ;; watermark would silently regress and the next run would reprocess already-seen rows.
+              [(when-not (and cv (zero? cv)) mv) cv])]
         (cond-> {:column                     column
                  :checkpoint-filter-field-id checkpoint-filter-field-id
                  :lo                         (when lo {:value lo})
