@@ -136,6 +136,30 @@ describe("getDocsUrl", () => {
       "https://www.metabase.com/docs/v0.41/foo/bar.html#baz",
     );
   });
+
+  it("handles docs site search with utm params", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "token-features": createMockTokenFeatures({ hosting: false }),
+      }),
+    });
+
+    const url = new URL(
+      getDocsUrl(state, {
+        searchQuery: "kitten meow",
+        utm: {
+          utm_medium: "command-palette",
+          utm_campaign: "docs-search",
+        },
+      }),
+    );
+    expect(url.pathname).toBe("/search");
+    expect(url.searchParams.get("query")).toBe("kitten meow");
+    expect(url.searchParams.get("utm_source")).toBe("product");
+    expect(url.searchParams.get("utm_medium")).toBe("command-palette");
+    expect(url.searchParams.get("utm_campaign")).toBe("docs-search");
+    expect(url.searchParams.get("source_plan")).toBe("oss");
+  });
 });
 
 describe("getStoreUrlFromState", () => {
