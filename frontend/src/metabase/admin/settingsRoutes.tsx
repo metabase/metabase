@@ -90,7 +90,7 @@ export const getSettingsRoutes = (
       <Route
         path="custom-visualizations"
         /* do not allow users with "Settings access" permissions to access custom viz pages */
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
         <Route index component={CustomVisualizationsManagePage} />
         <Route path="new" component={CustomVisualizationsFormPage} />

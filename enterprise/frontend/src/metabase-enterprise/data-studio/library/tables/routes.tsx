@@ -24,7 +24,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/fields" component={TableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" component={TableFieldsPage} />
       <Route path=":tableId/segments" component={TableSegmentsPage} />
-      <Route path=":tableId/segments/new" component={IsAdmin}>
+      <Route path=":tableId/segments/new" element={<IsAdmin />}>
         <Route index component={PublishedTableNewSegmentPage} />
       </Route>
       <Route
@@ -44,7 +44,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
         </Route>
       )}
       <Route path=":tableId/measures" component={TableMeasuresPage} />
-      <Route path=":tableId/measures/new" component={IsAdmin}>
+      <Route path=":tableId/measures/new" element={<IsAdmin />}>
         <Route index component={PublishedTableNewMeasurePage} />
       </Route>
       <Route
