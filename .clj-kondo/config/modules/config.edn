@@ -1276,6 +1276,7 @@
            metabot
            models
            oauth-server
+           parameters
            premium-features
            request
            server
@@ -1283,8 +1284,14 @@
            settings
            system
            task
-           util}
-   :model-imports #{:model/Collection :model/NativeQuerySnippet}}
+           util
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/NativeQuerySnippet
+                    :model/Table}}
 
   measures
   {:team "Graphy"
@@ -2680,7 +2687,9 @@
            api
            app-db
            audit-app
+           classloader
            collections
+           config
            driver
            lib
            lib-be
@@ -2692,7 +2701,8 @@
            remote-sync
            search
            util
-           warehouses}
+           warehouses
+           enterprise/advanced-permissions}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldValues
