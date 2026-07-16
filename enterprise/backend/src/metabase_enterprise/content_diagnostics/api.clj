@@ -312,9 +312,11 @@
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
       [:last_scan_at [:maybe some?]]]
-  "List **imbalanced** findings - the latest valid `empty`/`sparse`/`crowded` finding per entity (one
-  umbrella endpoint; at most one of the three per entity per scan), permission-filtered for the current
-  user. Each item is a flat identity + a top-level `content_count` + a nested `details` (collection,
+  "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the
+  `empty`/`sparse`/`crowded` umbrella, permission-filtered for the current user. A scan emits at most
+  one of the three per entity and a completed scan supersedes the others, so entities normally surface
+  once; a scan that failed mid-write can briefly leave two types active for one entity.
+  Each item is a flat identity + a top-level `content_count` + a nested `details` (collection,
   `description`, `owner`, `creator`, `threshold`, `unit`, and - card/transform `empty` only - `as_of`).
   For a `collection` finding the breadcrumb is the **parent** collection (null at root), `creator` is
   always null (collections have none - under the `created-by` sort they land in the null group, and a
