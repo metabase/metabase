@@ -290,9 +290,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "Incremental Twice Product"
@@ -440,10 +438,7 @@
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data")
                           (is (= 1 distinct-timestamps) "Should still have 1 distinct timestamp"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
-                               (not= driver/*driver* :clickhouse)
-                               ;; this *should* work see #68965 for context, will plan follow-up task
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc) ; insert/delete test products only works for jdbc drivers at the moment
                       (testing "Add new data and run incrementally"
                         (with-insert-test-products!
                           [{:name "After Switch Product"
@@ -689,9 +684,7 @@
                         (transforms.execute/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data"))))
-                    (when (and (isa? driver/hierarchy driver/*driver* :sql-jdbc)
-                               (not= driver/*driver* :clickhouse)
-                               (not= driver/*driver* :snowflake))
+                    (when (isa? driver/hierarchy driver/*driver* :sql-jdbc)
                       (testing "After inserting new data, incremental run appends only new rows"
                         (with-insert-test-products!
                           [{:name "New Table Tag Product"
@@ -706,8 +699,7 @@
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
 
 (defn- incremental-index-test-drivers
-  "Index-supporting drivers that also run incremental transforms (effectively postgres today; the incremental suite
-  excludes redshift/clickhouse/sqlserver)."
+  "Index-supporting drivers that also run incremental transforms"
   []
   (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
