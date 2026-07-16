@@ -75,7 +75,10 @@
 
 (deftest ^:parallel registered-scopes-test
   (testing "every registered tool's scope flows through registered-scopes into the OAuth surface"
-    (is (set/subset? #{"agent:search"} (set (registry/registered-scopes))))))
+    (is (set/subset? #{"agent:search"} (set (registry/registered-scopes)))))
+  (testing "GHY-4137: :extra-scopes — scopes a handler gates a mode on, rather than the tool's
+            own :scope — must reach the OAuth surface too, or no token can ever carry them"
+    (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-scopes))))))
 
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"

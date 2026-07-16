@@ -324,10 +324,11 @@
 
 (registry/deftool search-tool
   "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type, collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you can read; queries narrow snippets by name substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace: \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it unknowable."
-  {:name        "search"
-   :scope       metabot.scope/agent-search
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        search-args-schema}
+  {:name         "search"
+   :scope        metabot.scope/agent-search
+   :extra-scopes #{metabot.scope/agent-snippets-read}
+   :annotations  {:readOnlyHint true :idempotentHint true}
+   :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args}
    {:keys [token-scopes]}]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))

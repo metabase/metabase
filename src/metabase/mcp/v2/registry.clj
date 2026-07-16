@@ -75,10 +75,12 @@
    `arguments`, and a `context` map of `:session-id`, `:token-scopes`, `:client-info`,
    `:request-context`) and registers the tool. Optional keys: `:update-scope` (the scope
    [[metabase.mcp.v2.common/dispatch-write]] re-checks on `method: \"update\"`; also advertised
-   to OAuth via [[registered-scopes]]), `:feature` (a premium-features keyword; the tool is
-   hidden when the instance lacks it), `:annotations` (merged over the always-present MCP
-   annotation defaults). Handlers return MCP content (see
-   [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
+   to OAuth via [[registered-scopes]]), `:extra-scopes` (scopes the handler gates individual
+   modes on — not required to call the tool, but advertised via [[registered-scopes]] so a
+   token can carry them), `:feature` (a premium-features keyword; the tool is hidden when the
+   instance lacks it), `:annotations` (merged over the always-present MCP annotation defaults).
+   Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a
+   teaching error."
   [handler-sym description opts argv & body]
   `(do
      (defn ~handler-sym ~description ~argv ~@body)
@@ -87,14 +89,16 @@
      (register-tool! (assoc ~opts :description ~description :handler (var ~handler-sym)))))
 
 (defn registered-scopes
-  "The distinct scope strings the v2 surface relies on: every registered tool's `:scope` and
-   `:update-scope`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow
-   into the DCR default grant and RFC 9728 `scopes_supported` as their tools land. A net-new
-   leaf must also be declared with `defscope` (and, for in-app metabot users, covered by a
-   `perm-type->scopes` bucket) in [[metabase.metabot.scope]] alongside the tool that carries it."
+  "The distinct scope strings the v2 surface relies on: every registered tool's `:scope`,
+   `:update-scope` and `:extra-scopes`. Folded into [[metabase.mcp.core/all-scopes]] so net-new
+   leaf scopes flow into the DCR default grant and RFC 9728 `scopes_supported` as their tools
+   land. A net-new leaf must also be declared with `defscope` (and, for in-app metabot users,
+   covered by a `perm-type->scopes` bucket) in [[metabase.metabot.scope]] alongside the tool
+   that carries it."
   []
   (into #{}
-        (comp (mapcat (juxt :scope :update-scope))
+        (comp (mapcat (fn [tool]
+                        (into [(:scope tool) (:update-scope tool)] (:extra-scopes tool))))
               (filter some?))
         (vals @tools*)))
 
