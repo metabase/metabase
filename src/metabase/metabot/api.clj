@@ -166,12 +166,7 @@
            (reduced acc)))))))
 
 (defn- inject-title-events-xf
-  "Emit a `data-conversation-title` SSE event inline the moment the title becomes
-   available mid-stream. If it isn't ready by the time the stream ends, nothing
-   is emitted and the client polls the title endpoint on its own.
-
-   Stops watching once the job settles: re-examining a job that settled without a title
-   costs a DB read on every remaining line of the stream."
+  "Inject the title once its job settles, then stop watching to avoid repeated DB reads."
   [title-job conversation-id]
   (let [watching? (volatile! (boolean title-job))]
     (mapcat

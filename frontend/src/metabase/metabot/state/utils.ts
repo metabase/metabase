@@ -6,7 +6,6 @@ export const createMessageId = () => {
   return `msg_${nanoid()}`;
 };
 
-// A `turn_in_progress` message means the latest turn is still streaming.
 export const hasInProgressMessage = (messages: MetabotChatMessage[]): boolean =>
   messages.some((message) => message.type === "turn_in_progress");
 

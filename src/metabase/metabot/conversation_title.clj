@@ -29,14 +29,11 @@
 
 (def ^:private executor-queue-capacity 100)
 
-(def ^:private idle-timeout-ms
-  30000)
+(def ^:private idle-timeout-ms 30000)
 
-(def ^:private title-timeout-ms
-  30000)
+(def ^:private title-timeout-ms 30000)
 
-(def ^:private title-max-chars
-  80)
+(def ^:private title-max-chars 80)
 
 (def ^:private title-json-schema
   {:type       "object"
@@ -253,17 +250,14 @@
         nil))))
 
 (defn job-settled?
-  "True once `title-job` can produce no further title — its title is already known, or its
-   generation finished, failed, or never started."
+  "Whether `title-job` can produce no further title."
   [{:keys [title future]}]
   (or (some? title)
       (nil? future)
       (.isDone ^Future future)))
 
 (defn ready-title-event
-  "A `data-conversation-title` SSE event when the title is already available WITHOUT a
-   DB read while pending — i.e. the job is `:ready` or its future has completed.
-   Returns nil while the title is still being generated."
+  "Return a title event once available, without reading the DB while pending."
   [title-job conversation-id]
   (when-let [title (or (:title title-job)
                        (completed-future-title (:future title-job) conversation-id))]

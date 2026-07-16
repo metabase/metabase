@@ -256,7 +256,7 @@ export function setup(
         assocIn(
           state,
           ["conversations", agentId, "title"],
-          conversationTitle || undefined, // setting a default avoids constant title polling
+          conversationTitle || undefined,
         ),
       visibleState,
     );

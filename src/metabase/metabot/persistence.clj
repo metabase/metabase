@@ -185,8 +185,6 @@
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
-;; a turn is a user row plus its assistant reply; enough to find the opening turns
-;; without dragging every `data` blob in the thread across the wire
 (def ^:private opening-message-limit 10)
 
 (defn opening-messages

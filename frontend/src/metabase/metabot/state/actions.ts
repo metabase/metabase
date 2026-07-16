@@ -46,7 +46,6 @@ import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-me
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
-  getConversationLoadId,
   getDebugMode,
   getDeveloperMessage,
   getIsCurrentConversation,
@@ -113,7 +112,7 @@ const pollConversationTitle = async ({
 }: PollConversationTitleOptions) => {
   dispatch(setIsPollingForTitle({ conversationId, isPollingForTitle: true }));
   try {
-    const result = await retry(
+    const title = await retry(
       async () => {
         const result = await dispatch(
           metabotApi.endpoints.getMetabotConversationTitle.initiate(
@@ -126,7 +125,7 @@ const pollConversationTitle = async ({
           throw TITLE_PENDING;
         }
 
-        return result;
+        return result.data.title;
       },
       {
         maxRetries: TITLE_POLL_MAX_ATTEMPTS - 1,
@@ -135,13 +134,13 @@ const pollConversationTitle = async ({
       },
     ).catch(() => null);
 
-    if (result?.data?.status !== "ready") {
+    if (!title) {
       return;
     }
 
     const convo = getMetabotConversation(getState(), agentId);
     if (convo.conversationId === conversationId) {
-      dispatch(setConversationTitle({ agentId, title: result.data.title }));
+      dispatch(setConversationTitle({ agentId, title }));
     }
     dispatch(
       metabotApi.util.invalidateTags([listTag("metabot-conversations")]),
@@ -399,7 +398,7 @@ export const submitInput = createAsyncThunk<
           message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,
-          loadId: getConversationLoadId(getState(), agentId),
+          loadId: getMetabotConversation(getState(), agentId).loadId,
           ...agentMetadata,
           user_message_id: userMessageId,
           assistant_message_id: assistantMessageId,
@@ -481,9 +480,7 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, loadId, ...request } = payload;
 
-    // guard against user having switched conversations mid stream
-    // at this time, we do not abort the underly request to prevent it getting recorded as aborted
-    // allowing the user to safely switch to another conversation and back
+    // Keep the stream alive for persistence, but ignore it after switching conversations.
     const dispatchToConvo = (action: Parameters<typeof dispatch>[0]) => {
       if (
         getIsCurrentConversation(

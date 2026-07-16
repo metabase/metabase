@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -35,13 +35,21 @@ const GREETING_TITLE =
 
 const detailPath = (id: string) => `path:/api/metabot/conversations/${id}`;
 
+const mockConversationDetail = (response: RouteResponse, delay?: number) => {
+  fetchMock.removeRoute("test-conversation-detail");
+  fetchMock.get(detailPath(CONVERSATION_ID), response, {
+    delay,
+    name: "test-conversation-detail",
+  });
+};
+
 const createAskState = ({
-  conversationId,
+  conversationId = OTHER_CONVERSATION_ID,
   message,
 }: {
-  conversationId: string;
+  conversationId?: string;
   message?: string;
-}) => {
+} = {}) => {
   const state = getMetabotInitialState();
   const ask = state.conversations.ask;
   if (!ask) {
@@ -126,9 +134,7 @@ describe("MetabotConversationPage", () => {
   });
 
   it("shows a loader (not the greeting) while resuming, then the messages", async () => {
-    fetchMock.removeRoute("test-conversation-detail");
-    fetchMock.get(
-      detailPath(CONVERSATION_ID),
+    mockConversationDetail(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
         messages: [
@@ -140,13 +146,11 @@ describe("MetabotConversationPage", () => {
           },
         ],
       }),
-      { delay: 150, name: "test-conversation-detail" },
+      150,
     );
 
     const { store } = setup({
-      metabotInitialState: createAskState({
-        conversationId: OTHER_CONVERSATION_ID,
-      }),
+      metabotInitialState: createAskState(),
     });
 
     expect(
@@ -189,15 +193,10 @@ describe("MetabotConversationPage", () => {
   });
 
   it("shows an error when the conversation cannot be loaded", async () => {
-    fetchMock.removeRoute("test-conversation-detail");
-    fetchMock.get(detailPath(CONVERSATION_ID), 404, {
-      name: "test-conversation-detail",
-    });
+    mockConversationDetail(404);
 
     const { history } = setup({
-      metabotInitialState: createAskState({
-        conversationId: OTHER_CONVERSATION_ID,
-      }),
+      metabotInitialState: createAskState(),
     });
 
     expect(
@@ -211,22 +210,16 @@ describe("MetabotConversationPage", () => {
   });
 
   it("disables the input and shows the loading state when resuming a mid-response conversation", async () => {
-    fetchMock.removeRoute("test-conversation-detail");
-    fetchMock.get(detailPath(CONVERSATION_ID), inProgressDetail(), {
-      name: "test-conversation-detail",
-    });
+    mockConversationDetail(inProgressDetail());
 
     setup({
-      metabotInitialState: createAskState({
-        conversationId: OTHER_CONVERSATION_ID,
-      }),
+      metabotInitialState: createAskState(),
     });
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(
       await screen.findByTestId("metabot-response-loader"),
     ).toBeInTheDocument();
-    // the responding state turns the send button into a stop button
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),
@@ -237,20 +230,13 @@ describe("MetabotConversationPage", () => {
     jest.useFakeTimers({ advanceTimers: true });
 
     let callCount = 0;
-    fetchMock.removeRoute("test-conversation-detail");
-    fetchMock.get(
-      detailPath(CONVERSATION_ID),
-      () => {
-        callCount += 1;
-        return callCount === 1 ? inProgressDetail() : finishedDetail();
-      },
-      { name: "test-conversation-detail" },
-    );
+    mockConversationDetail(() => {
+      callCount += 1;
+      return callCount === 1 ? inProgressDetail() : finishedDetail();
+    });
 
     setup({
-      metabotInitialState: createAskState({
-        conversationId: OTHER_CONVERSATION_ID,
-      }),
+      metabotInitialState: createAskState(),
     });
 
     expect(

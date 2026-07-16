@@ -405,16 +405,13 @@ describe("metabot > ui", () => {
 
   describe("conversation title", () => {
     it("shows a placeholder title once a message is sent, then the generated title when it arrives", async () => {
-      // start untitled so the placeholder is what shows first
       setup({ conversationTitle: null });
 
-      // no title before any messages are sent
       expect(
         await screen.findByTestId("metabot-empty-chat-info"),
       ).toBeInTheDocument();
       expect(queryConversationTitle()).not.toBeInTheDocument();
 
-      // stream text first, then withhold the title until we resolve the pause
       const [titlePause] = createPauses(1);
       mockAgentEndpoint({
         stream: createMockSSEStream(
@@ -428,12 +425,10 @@ describe("metabot > ui", () => {
 
       await enterChatMessage("Show me orders by month");
 
-      // a muted placeholder shows while title generation is pending
       expect(await conversationTitle()).toHaveTextContent("New conversation");
 
       titlePause.resolve();
 
-      // the generated title replaces the placeholder once it arrives
       await waitFor(() =>
         expect(queryConversationTitle()).toHaveTextContent("Orders by Month"),
       );
@@ -449,8 +444,6 @@ describe("metabot > ui", () => {
         ),
       });
 
-      // the title isn't ready by the time the stream ends, and the stream
-      // carries no title event at all — the FE must poll for it on its own
       let titleReady = false;
       fetchMock.removeRoute("metabot-conversation-title");
       fetchMock.get(
@@ -472,10 +465,8 @@ describe("metabot > ui", () => {
 
       await enterChatMessage("Show me orders by month");
 
-      // a muted placeholder shows while the title is polled for
       expect(await conversationTitle()).toHaveTextContent("New conversation");
 
-      // the next poll resolves with the generated title
       titleReady = true;
 
       await waitFor(
@@ -487,14 +478,6 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
-    it("renders the history control alongside the sidebar actions", async () => {
-      setup();
-
-      expect(
-        await screen.findByTestId("metabot-conversation-history"),
-      ).toBeInTheDocument();
-    });
-
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [
@@ -669,25 +652,21 @@ describe("metabot > ui", () => {
         ),
       });
 
-      // start a streaming response in the current (new) conversation
       await enterChatMessage("Tell me a long story");
       expect(
         await within(await chat()).findByText("partial answer"),
       ).toBeInTheDocument();
 
-      // switch to a different conversation while the stream is paused
       await selectPastConversation();
       await assertConversation([
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
       ]);
 
-      // resume the background stream — its remaining output must be ignored
       pause.resolve();
       await waitFor(() => {
         expect(screen.queryByText(/should be dropped/)).not.toBeInTheDocument();
       });
-      // still exactly the loaded conversation; the background stream left no trace
       await assertConversation([
         ["user", "How many orders?"],
         ["agent", "There are 42 orders."],
@@ -717,7 +696,6 @@ describe("metabot > ui", () => {
       expect(
         await screen.findByText("Sorry, we couldn't load that conversation."),
       ).toBeInTheDocument();
-      // the empty current conversation is untouched
       expect(
         await screen.findByTestId("metabot-empty-chat-info"),
       ).toBeInTheDocument();

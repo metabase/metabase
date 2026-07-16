@@ -191,9 +191,7 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotSettingsQuery,
-  useGetMetabotConversationTitleQuery,
   useGetMetabotConversationQuery,
-  useLazyGetMetabotConversationQuery,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,

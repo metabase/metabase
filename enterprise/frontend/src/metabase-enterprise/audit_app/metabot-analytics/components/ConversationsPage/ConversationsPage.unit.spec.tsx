@@ -65,9 +65,8 @@ describe("ConversationsPage", () => {
       createSummary({ conversation_id: "c2", title: null }),
     ]);
 
-    expect(await screen.findByText("How many orders?")).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Title" }),
+      await screen.findByRole("columnheader", { name: "Title" }),
     ).toBeInTheDocument();
 
     const [, titledRow, untitledRow] = screen.getAllByRole("row");

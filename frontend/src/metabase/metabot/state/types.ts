@@ -147,7 +147,6 @@ export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
-  // not per-agent: a poll outlives the agent's interest in the conversation that started it
   titlePollingConversationIds: string[];
   debugMode: boolean;
 }

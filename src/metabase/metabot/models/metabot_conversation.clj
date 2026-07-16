@@ -20,20 +20,15 @@
                 :conversation_id conversation-id
                 :user_id         user-id)))
 
-(defn participant-or-originator?
-  "True if `user-id` originated `conversation` or sent a message in it."
-  [{conversation-id :id originator-id :user_id} user-id]
-  (when (and conversation-id user-id)
-    (or (= originator-id user-id)
-        (participant? conversation-id user-id))))
-
 (defmethod mi/can-read? :model/MetabotConversation
   ;; Access: superuser, or originator (first-writer, set on insert and never
   ;; overwritten), or participant. Originator covers the rare case of a row
   ;; existing without the originator's first message yet persisted.
-  ([instance]
+  ([{conversation-id :id originator-id :user_id}]
    (or api/*is-superuser?*
-       (participant-or-originator? instance api/*current-user-id*)))
+       (when (and conversation-id api/*current-user-id*)
+         (or (= originator-id api/*current-user-id*)
+             (participant? conversation-id api/*current-user-id*)))))
   ([_model pk]
    (when-let [instance (t2/select-one [:model/MetabotConversation :id :user_id] :id pk)]
      (mi/can-read? instance))))

@@ -87,7 +87,6 @@ export const METABOT_PROFILE_OVERRIDES = {
 export const isHistoryEnabledProfile = (profile: string | undefined) =>
   profile === undefined || profile === "nlq";
 
-// mirrors metabase.metabot.config/resolve-dynamic-profile-id
 export const resolveMetabotProfileId = (
   profile: MetabotProfileId | undefined,
 ): MetabotProfileId =>
