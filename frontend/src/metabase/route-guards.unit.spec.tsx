@@ -12,6 +12,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { setBasename } from "metabase/utils/basename";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
@@ -19,6 +20,8 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
   isBackendOnlyPath,
+  toBrowserUrl,
+  toRouterPathname,
 } from "./route-guards";
 
 describe("route-guards", () => {
@@ -188,6 +191,68 @@ describe("route-guards", () => {
 
     it("should not match partial prefixes", () => {
       expect(isBackendOnlyPath("/oauthx/foo")).toBe(false);
+    });
+  });
+
+  describe("redirect targets when Metabase is hosted under a subpath (GIT-10551)", () => {
+    const ORIGIN = window.location.origin;
+
+    afterEach(() => {
+      setBasename("");
+    });
+
+    describe("toBrowserUrl", () => {
+      it("resolves against the origin at a root deployment", () => {
+        expect(toBrowserUrl("/oauth/authorize?client_id=abc").href).toBe(
+          `${ORIGIN}/oauth/authorize?client_id=abc`,
+        );
+      });
+
+      it("prefixes the subpath on a basename-relative path", () => {
+        setBasename("/metabase");
+        expect(toBrowserUrl("/oauth/authorize?client_id=abc").href).toBe(
+          `${ORIGIN}/metabase/oauth/authorize?client_id=abc`,
+        );
+      });
+
+      it("normalizes a path without a leading slash", () => {
+        setBasename("/metabase");
+        expect(toBrowserUrl("auth/sso/google").href).toBe(
+          `${ORIGIN}/metabase/auth/sso/google`,
+        );
+      });
+
+      it("handles a nested subpath basename", () => {
+        setBasename("/bi/metabase");
+        expect(toBrowserUrl("/oauth/authorize?client_id=abc").href).toBe(
+          `${ORIGIN}/bi/metabase/oauth/authorize?client_id=abc`,
+        );
+      });
+    });
+
+    describe("toRouterPathname", () => {
+      it("leaves paths untouched at a root deployment", () => {
+        expect(toRouterPathname("/oauth/authorize")).toBe("/oauth/authorize");
+      });
+
+      it("strips the basename so backend-only prefix checks still match", () => {
+        setBasename("/metabase");
+        expect(toRouterPathname("/metabase/oauth/authorize")).toBe(
+          "/oauth/authorize",
+        );
+      });
+
+      it("leaves a basename-relative path alone so the router does not double the subpath", () => {
+        setBasename("/metabase");
+        expect(toRouterPathname("/dashboard/1")).toBe("/dashboard/1");
+      });
+
+      it("does not strip a lookalike path prefix that is not the basename", () => {
+        setBasename("/metabase");
+        expect(toRouterPathname("/metabase-docs/foo")).toBe(
+          "/metabase-docs/foo",
+        );
+      });
     });
   });
 });
