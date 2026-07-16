@@ -44,3 +44,19 @@
       (testing "once scored, the field is no longer selected"
         (is (= {:fields-scored 0 :fields-failed 0}
                (#'sync.interestingness/score-missing-leftovers! database)))))))
+
+(deftest score-missing-leftovers-does-not-retry-failed-fields-test
+  (testing "a field whose scoring attempt failed is not re-attempted by later leftovers passes in this process"
+    (mt/with-temp [:model/Database database {}
+                   :model/Table    table    {:db_id (:id database)}
+                   :model/Field    _field   {:table_id (:id table)}]
+      (let [calls (atom 0)]
+        (with-redefs [interestingness/dimension-interestingness (fn [_field]
+                                                                  (swap! calls inc)
+                                                                  (throw (ex-info "boom" {})))]
+          (is (= {:fields-scored 0 :fields-failed 1}
+                 (#'sync.interestingness/score-missing-leftovers! database)))
+          (is (= 1 @calls))
+          (is (= {:fields-scored 0 :fields-failed 0}
+                 (#'sync.interestingness/score-missing-leftovers! database)))
+          (is (= 1 @calls) "the failed field should be skipped, not re-scored on every sync"))))))

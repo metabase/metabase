@@ -181,7 +181,12 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
+   ;; `agent:timelines:*` is granted under both nlq and other-tools: the
+   ;; NLQ-gated :explorations profile offers the read-only timeline tools (and
+   ;; its prompt instructs their use), so NLQ-only users must not have them
+   ;; silently scope-filtered away.
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"
+                                        "agent:question:*" "agent:timelines:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:timelines:*" "agent:collection:*"}})
 

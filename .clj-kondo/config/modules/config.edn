@@ -1902,6 +1902,7 @@
                     :model/Dashboard
                     :model/Database
                     :model/StoredResult
+                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions

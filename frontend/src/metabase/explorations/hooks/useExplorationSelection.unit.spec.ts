@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { refreshCurrentUser } from "metabase/redux/user";
 import type {
   DimensionId,
   ExplorationMetric,
@@ -12,6 +13,7 @@ import {
   createMockMetric,
   createMockMetricDimension,
   createMockTimeline,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
@@ -663,6 +665,53 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.timelines).toBe(timelinesAfterAdd);
+    });
+  });
+
+  describe("collection default", () => {
+    function renderSelectionWithoutUser() {
+      setupTimelinesEndpoints([]);
+      return renderHookWithProviders(() => useExplorationSelection(), {
+        storeInitialState: { currentUser: null },
+      });
+    }
+
+    it("applies the personal-collection default when the user resolves after the first render", () => {
+      const { result, store } = renderSelectionWithoutUser();
+
+      expect(result.current.collection.id).toBeUndefined();
+
+      act(() => {
+        store.dispatch(
+          refreshCurrentUser.fulfilled(
+            createMockUser({ personal_collection_id: 42 }),
+            "requestId",
+          ),
+        );
+      });
+
+      expect(result.current.collection.id).toBe(42);
+    });
+
+    it("does not clobber an explicit collection selection with the default", () => {
+      const { result, store } = renderSelectionWithoutUser();
+
+      act(() => {
+        result.current.setCollection({ id: 7, name: "Our analytics" });
+      });
+      act(() => {
+        store.dispatch(
+          refreshCurrentUser.fulfilled(
+            createMockUser({ personal_collection_id: 42 }),
+            "requestId",
+          ),
+        );
+      });
+
+      expect(result.current.collection).toEqual({
+        id: 7,
+        name: "Our analytics",
+      });
     });
   });
 });

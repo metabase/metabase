@@ -7,16 +7,20 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.impersonation.util-test :as impersonation.tu]
+   [metabase-enterprise.sandbox.models.params.field-values :as sandbox.field-values]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-access-token :as data-access-token]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.request.core :as request]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -33,7 +37,7 @@
    :attributes {"price" "1"}})
 
 (defn- fake-result-bytes []
-  (cache.impl/do-with-serialization
+  (qp/do-with-serialization
    (fn [in result-fn]
      (in {:data {:cols [{:name "count"}] :rows [[1]]} :row_count 1 :status :completed})
      (result-fn))))
@@ -233,3 +237,110 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         (let [body (mt/user-http-request :rasta :get 409 (format "exploration/query/%d" (:id q)))]
           (is (= "pending" (:status body))))))))
+
+(deftest sandbox-token-fails-closed-when-attributes-missing-test
+  (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,
+            the token must NOT collapse to nil (the compatibility gate reads nil as 'unrestricted')"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (with-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
+        (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+          (testing "the sandbox dimension is present, scoped to the user (fail closed)"
+            (is (= {:sandbox {(mt/id :venues) [::sandbox.field-values/indeterminate-sandbox
+                                               (mt/user->id :rasta)]}}
+                   token)))
+          (testing "an indeterminate viewer cannot see an unrestricted creator's snapshot"
+            (is (false? (perms/data-access-compatible? {} token))))
+          (testing "an indeterminate viewer cannot see a genuinely-sandboxed creator's snapshot"
+            (is (false? (perms/data-access-compatible?
+                         {:sandbox {(mt/id :venues) [1 "2026-01-01" {"price" "1"}]}}
+                         token))))
+          (testing "another user's indeterminate token does not match this one"
+            (is (false? (perms/data-access-compatible?
+                         {:sandbox {(mt/id :venues) [::sandbox.field-values/indeterminate-sandbox
+                                                     (mt/user->id :lucky)]}}
+                         token)))))))))
+
+(deftest impersonation-token-for-db-producer-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (impersonation.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "db_role"}]
+                                            :attributes     {"db_role" "readonly"}}
+      (testing "an impersonated user's token carries the resolved database role"
+        (is (= {:role "readonly"} (data-access-token/impersonation-token-for-db (mt/id))))
+        (is (= {:impersonation {(mt/id) {:role "readonly"}}}
+               (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}}))))
+      (testing "a superuser is not impersonated: no token"
+        (request/with-current-user (mt/user->id :crowberto)
+          (is (nil? (data-access-token/impersonation-token-for-db (mt/id)))))))))
+
+(deftest impersonation-gate-end-to-end-test
+  (testing "the impersonation lens gates cached exploration results per resolved role"
+    (mt/with-premium-features #{:advanced-permissions}
+      (impersonation.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "db_role"}]
+                                              :attributes     {"db_role" "readonly"}}
+        ;; rasta is bound as current user with role=readonly; capture the lens the snapshot is stored under
+        (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+          (with-done-exploration!
+            {:creator-id (mt/user->id :lucky) :data-access-token token}
+            (fn [{:keys [query]}]
+              (testing "a viewer resolving to the same role streams the cached result (EDN round-trip included)"
+                (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query))))
+              (testing "a viewer resolving to a different role is blocked"
+                (sandbox.tu/with-user-attributes! :rasta {"db_role" "readwrite"}
+                  (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
+              (testing "an unimpersonated superuser streams the cached result"
+                (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query)))))))))))
+
+(deftest routing-token-for-db-producer-test
+  (mt/with-temp [:model/Database {dest-id :id} {:name "sr-dest-a" :router_database_id (mt/id)}
+                 :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "db_name"}]
+    (testing "a routed non-admin's token carries the resolved destination database id"
+      (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
+        (mt/with-test-user :rasta
+          (is (= {:destination-db-id dest-id} (data-access-token/routing-token-for-db (mt/id))))
+          (is (= {:routing {(mt/id) {:destination-db-id dest-id}}}
+                 (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}}))))))
+    (testing "the __METABASE_ROUTER__ sentinel resolves to the router itself: no token"
+      (sandbox.tu/with-user-attributes! :rasta {"db_name" "__METABASE_ROUTER__"}
+        (mt/with-test-user :rasta
+          (is (nil? (data-access-token/routing-token-for-db (mt/id)))))))
+    (testing "a superuser with no routing attribute resolves to the router itself: no token"
+      (mt/with-test-user :crowberto
+        (is (nil? (data-access-token/routing-token-for-db (mt/id))))))
+    (testing "a routed non-admin missing the required attribute throws (callers treat a throw as deny)"
+      (mt/with-test-user :rasta
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Required user attribute is missing"
+                              (data-access-token/routing-token-for-db (mt/id))))))))
+
+(deftest routing-gate-end-to-end-test
+  (testing "the routing lens gates cached exploration results per destination database"
+    (mt/with-temp [:model/Database {dest-a-id :id} {:name "sr-dest-a" :router_database_id (mt/id)}
+                   :model/Database _ {:name "sr-dest-b" :router_database_id (mt/id)}
+                   :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "db_name"}]
+      ;; capture the lens of a creator routed to destination A
+      (let [token (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
+                    (request/with-current-user (mt/user->id :rasta)
+                      (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})))]
+        (testing "the captured creator lens carries the routing dimension"
+          (is (= {:routing {(mt/id) {:destination-db-id dest-a-id}}} token)))
+        (with-done-exploration!
+          {:creator-id (mt/user->id :lucky) :data-access-token token}
+          (fn [{:keys [query]}]
+            (testing "a viewer routed to the same destination streams the cached result (EDN round-trip included)"
+              (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
+                (mt/user-http-request :rasta :get 202 (format "exploration/query/%d" (:id query)))))
+            (testing "a viewer routed to a different destination is blocked"
+              (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-b"}
+                (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
+            (testing "a superuser (router cohort, absent routing dimension) streams the cached result"
+              (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
+
+(deftest impersonation-and-routing-token-edn-round-trip-test
+  (testing "keyword-keyed impersonation/routing tokens survive the stored_result.data_access_token EDN round-trip"
+    (let [token {:impersonation {(mt/id) {:role "readonly"}}
+                 :routing       {(mt/id) {:destination-db-id 42}}}]
+      (mt/with-temp [:model/StoredResult sr {:result_data       (fake-result-bytes)
+                                             :creator_id        (mt/user->id :lucky)
+                                             :database_id       (mt/id)
+                                             :dataset_query     (venues-count-query)
+                                             :data_access_token token}]
+        (is (= token (t2/select-one-fn :data_access_token :model/StoredResult :id (:id sr))))))))

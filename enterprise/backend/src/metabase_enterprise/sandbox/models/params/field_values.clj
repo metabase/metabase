@@ -91,10 +91,16 @@
   cache, so superusers and users with full access via another group correctly get no token (and
   thus see any creator's snapshot), and two genuinely-sandboxed users \"share a sandbox\" iff
   they'd see the same rows. The card's `:updated_at` is stringified so the token is EDN-safe for
-  storage on `stored_result.data_access_token`."
+  storage on `stored_result.data_access_token`.
+
+  When the enforcement guard says the user IS sandboxed but the attribute lookup finds nothing
+  (the guard and the lookup consult different subsystems), we must not return nil — the
+  compatibility gate reads nil as \"unrestricted\", which would fail open. Instead we return a
+  user-scoped indeterminate token that matches no other user's token — fail closed."
   :feature :none
   [table-id]
   (let [field {:table_id table-id}]
     (when (field-is-sandboxed? field)
-      (when-let [[card-id updated-at attributes] (field->sandbox-attributes-for-current-user field)]
-        [card-id (str updated-at) attributes]))))
+      (if-let [[card-id updated-at attributes] (field->sandbox-attributes-for-current-user field)]
+        [card-id (str updated-at) attributes]
+        [::indeterminate-sandbox api/*current-user-id*]))))
