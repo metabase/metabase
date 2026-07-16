@@ -29,8 +29,9 @@ describe("setup (EE build, `embedding` feature but no `hosting` to simulate pro 
     expectSectionToHaveLabel("What should we call you?", "1");
     expectSectionToHaveLabel("What will you use Metabase for?", "2");
     expectSectionToHaveLabel("Add your data", "3");
+    expectSectionToHaveLabel("Connect to an AI provider", "4");
     // no "Activate your commercial license" as this has token-features
-    expectSectionToHaveLabel("Usage data preferences", "4");
+    expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
   });

@@ -19,6 +19,7 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
+import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import MetabaseSettings from "metabase/utils/settings";
@@ -26,6 +27,8 @@ import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
 import {
   trackAddDataLaterClicked,
+  trackAiProviderConnected,
+  trackAiSetupLaterClicked,
   trackDatabaseSelected,
   trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
@@ -117,6 +120,8 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
     dispatch(initializeSettings());
+    //  the AI config step needs to know the created user is an admin
+    dispatch(refreshCurrentUser());
   },
 );
 
@@ -194,6 +199,24 @@ export const submitUserInvite = createAsyncThunk(
       });
       return rejectWithValue(error);
     }
+  },
+);
+
+export const SUBMIT_AI_CONFIG = "metabase/setup/SUBMIT_AI_CONFIG";
+export const submitAiConfig = createAsyncThunk(
+  SUBMIT_AI_CONFIG,
+  (provider: string | undefined, { dispatch }) => {
+    trackAiProviderConnected(provider);
+    dispatch(goToNextStep());
+  },
+);
+
+export const SKIP_AI_CONFIG = "metabase/setup/SKIP_AI_CONFIG";
+export const skipAiConfig = createAsyncThunk(
+  SKIP_AI_CONFIG,
+  (_: void, { dispatch }) => {
+    trackAiSetupLaterClicked();
+    dispatch(goToNextStep());
   },
 );
 

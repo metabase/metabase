@@ -31,10 +31,14 @@ import {
 
 export function AIProviderConfigurationForm({
   isModal = false,
+  defaultProvider,
   onClose,
+  onSkip,
 }: {
   isModal?: boolean;
-  onClose?: VoidFunction;
+  defaultProvider?: MetabotProvider;
+  onClose?: (connectedProvider?: MetabotProvider) => void;
+  onSkip?: VoidFunction;
 }) {
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
@@ -58,7 +62,7 @@ export function AIProviderConfigurationForm({
   const connectedProvider = isConfigured ? config?.provider : undefined;
   const connectedModel = isConfigured ? config?.model : undefined;
   const [provider, setProvider] = useState<MetabotProvider | undefined>(
-    isModal ? undefined : connectedProvider,
+    isModal ? defaultProvider : connectedProvider,
   );
 
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
@@ -253,7 +257,7 @@ export function AIProviderConfigurationForm({
 
         {match(provider)
           .with("metabase", () => (
-            <MetabaseAIProviderSetup onConnect={onClose} />
+            <MetabaseAIProviderSetup onConnect={() => onClose?.("metabase")} />
           ))
           .with("azure", () => (
             <AzureProviderFields
@@ -283,14 +287,21 @@ export function AIProviderConfigurationForm({
 
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-        <Flex justify="end">
+        <Flex
+          justify={onSkip && !isCurrentConfigured ? "space-between" : "end"}
+        >
+          {onSkip && !isCurrentConfigured && (
+            <Button variant="subtle" disabled={isMutating} onClick={onSkip}>
+              {t`I'll set this up later`}
+            </Button>
+          )}
           {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
                 variant="filled"
                 loading={isMutating}
                 disabled={isMutating}
-                onClick={onClose}
+                onClick={() => onClose?.(provider)}
               >
                 {t`Done`}
               </Button>

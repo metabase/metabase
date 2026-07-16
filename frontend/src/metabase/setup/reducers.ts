@@ -44,6 +44,7 @@ const initialState: SetupState = {
   step: getInitialStep(),
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  hasVisitedAiConfigStep: false,
   user: getUserFromQueryParams(),
   isEmbeddingUseCase,
 };
@@ -58,6 +59,9 @@ export const reducer = createReducer(initialState, (builder) => {
   );
   builder.addCase(selectStep, (state, { payload: step }) => {
     state.step = step;
+    if (step === "ai_config") {
+      state.hasVisitedAiConfigStep = true;
+    }
   });
   builder.addCase(updateLocale.pending, (state) => {
     state.isLocaleLoaded = false;
