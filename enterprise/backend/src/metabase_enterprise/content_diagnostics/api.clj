@@ -191,6 +191,23 @@
      (when min-content-count [:>= :content_count min-content-count])
      (when max-content-count [:<= :content_count max-content-count]))))
 
+(defn- findings-response
+  "The shared list-endpoint pipeline: select the sorted, paginated page for `where`, hydrate it
+  (`hydrate-opts` per `api.common/hydrate-findings`), and wrap it in the
+  `{:data :total :limit :offset :last_scan_at}` envelope every finding list returns."
+  [where sort-column->field sort-column sort-direction hydrate-opts]
+  (let [page (t2/select :model/ContentDiagnosticsFinding
+                        (cond-> {:where    where
+                                 :order-by [[(sort-column->field sort-column) sort-direction]
+                                            [:id sort-direction]]}
+                          (request/limit)  (assoc :limit (request/limit))
+                          (request/offset) (assoc :offset (request/offset))))]
+    {:data         (api.common/hydrate-findings page hydrate-opts)
+     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
+     :limit        (request/limit)
+     :offset       (request/offset)
+     :last_scan_at (api.common/last-scan-at)}))
+
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
 (api.macros/defendpoint :post "/scan"
@@ -235,22 +252,13 @@
                                           [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                   :entity-types                 entity-types
-                                   :threshold-days               threshold-days
-                                   :query                        query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(stale-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols [:last_active_at]})
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                            :entity-types                     entity-types
+                                            :threshold-days                   threshold-days
+                                            :query                            query})
+                       stale-sort-column->field sort-column sort-direction
+                       {:top-level-cols [:last_active_at]})))
 
 (api.macros/defendpoint :get "/slow"
   :- [:map
@@ -286,24 +294,15 @@
                                            [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                  :entity-types                 entity-types
-                                  :min-duration-ms              min-duration-ms
-                                  :query                        query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(slow-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols                   [:duration_ms]
-                                                      :hydrate-culprits?                true
-                                                      :excluded-personal-collection-ids excluded-personal-ids})
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                           :entity-types                     entity-types
+                                           :min-duration-ms                  min-duration-ms
+                                           :query                            query})
+                       slow-sort-column->field sort-column sort-direction
+                       {:top-level-cols                   [:duration_ms]
+                        :hydrate-culprits?                true
+                        :excluded-personal-collection-ids excluded-personal-ids})))
 
 (api.macros/defendpoint :get "/imbalanced"
   :- [:map
@@ -350,24 +349,15 @@
        [:min-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
        [:max-content-count {:optional true} ms/IntGreaterThanOrEqualToZero]
        [:query             {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
-        where (imbalanced-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                        :entity-types                     entity-types
-                                        :finding-types                    finding-types
-                                        :min-content-count                min-content-count
-                                        :max-content-count                max-content-count
-                                        :query                            query})
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[(imbalanced-sort-column->field sort-column) sort-direction]
-                                             [:id sort-direction]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols [:content_count]})
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (api.common/last-scan-at)}))
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
+    (findings-response (imbalanced-where-clause {:excluded-personal-collection-ids excluded-personal-ids
+                                                 :entity-types                     entity-types
+                                                 :finding-types                    finding-types
+                                                 :min-content-count                min-content-count
+                                                 :max-content-count                max-content-count
+                                                 :query                            query})
+                       imbalanced-sort-column->field sort-column sort-direction
+                       {:top-level-cols [:content_count]})))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
