@@ -85,15 +85,6 @@
   :export?    false
   :doc        false)
 
-(defsetting semantic-search-enabled
-  (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
-  :visibility :internal
-  :export?    false
-  :encryption :no
-  :default    true
-  :type       :boolean
-  :doc        false)
-
 (defsetting openai-max-tokens-per-batch
   (deferred-tru "The maximum number of tokens sent in a single embedding API call.")
   :type :integer

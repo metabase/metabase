@@ -22,9 +22,9 @@ type DataSelectorDatabaseSchemaPicker = {
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  selectedDatabase: Database;
-  selectedSchema: Schema;
-  onBack: () => void;
+  selectedDatabase?: Database;
+  selectedSchema?: Schema;
+  onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
   onChangeSchema: (schema?: Schema) => void;
 };
@@ -76,7 +76,7 @@ export const DataSelectorDatabaseSchemaPicker = ({
     const isNavigationSection = hasBackButton && sectionIndex === 0;
 
     if (isNavigationSection) {
-      onBack();
+      onBack?.();
       return false;
     }
 

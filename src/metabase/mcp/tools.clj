@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
@@ -539,36 +540,41 @@
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {:supports-mcp-ui? true}))
   ([token-scopes session-id tool-name arguments options]
-   (let [start   (System/nanoTime)
-         record! (fn [status error-code error-message]
-                   (mcp.usage/record-mcp-tool-call!
-                    {:tool-name     tool-name
-                     :user-id       api/*current-user-id*
-                     :session-id    session-id
-                     :status        status
-                     :duration-ms   (quot (- (System/nanoTime) start) 1000000)
-                     :error-code    error-code
-                     :error-message error-message
-                     ;; Identity + PII are denormalized onto the row (the view no longer joins the
-                     ;; session): client from the call's `_meta`, tenant from the current user,
-                     ;; IP/UA from the request. The recorder falls back to the session row's stored
-                     ;; client when `_meta` carries none, and gates the PII columns.
-                     :client-info   (:client-info options)
-                     :tenant-id     (some-> api/*current-user* deref :tenant_id)
-                     :user-agent    (get-in options [:request-context :user-agent])
-                     :ip-address    (get-in options [:request-context :ip-address])}))]
-     (try
-       (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
-             error? (boolean (:isError result))]
-         (record! (if error? "error" "success")
-                  (when error? (or (::error-code result) error-code-internal))
-                  (when error? (some-> result :content first :text)))
-         ;; `::error-code` is an internal classification marker — never expose it to the client.
-         (dissoc result ::error-code))
-       (catch Throwable e
-         ;; A handler that throws instead of returning error content (notably a UI tool
-         ;; `:response-fn`, whose path isn't wrapped in `dispatch-tool-call`) would otherwise
-         ;; skip instrumentation and under-report errors. Record the failure, then rethrow so the
-         ;; transport layer still surfaces it to the client.
-         (record! "error" error-code-internal (ex-message e))
-         (throw e))))))
+   ;; Eval span (inert unless capturing) nesting under the MCP request span; records the tool
+   ;; name + args, and the resulting content as output.
+   (ait/with-tool-call {:ai/tool-name tool-name :ai/tool-args arguments}
+     (let [start   (System/nanoTime)
+           record! (fn [status error-code error-message]
+                     (mcp.usage/record-mcp-tool-call!
+                      {:tool-name     tool-name
+                       :user-id       api/*current-user-id*
+                       :session-id    session-id
+                       :status        status
+                       :duration-ms   (quot (- (System/nanoTime) start) 1000000)
+                       :error-code    error-code
+                       :error-message error-message
+                       ;; Identity + PII are denormalized onto the row (the view no longer joins the
+                       ;; session): client from the call's `_meta`, tenant from the current user,
+                       ;; IP/UA from the request. The recorder falls back to the session row's stored
+                       ;; client when `_meta` carries none, and gates the PII columns.
+                       :client-info   (:client-info options)
+                       :tenant-id     (some-> api/*current-user* deref :tenant_id)
+                       :user-agent    (get-in options [:request-context :user-agent])
+                       :ip-address    (get-in options [:request-context :ip-address])}))]
+       (try
+         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
+               error? (boolean (:isError result))]
+           (record! (if error? "error" "success")
+                    (when error? (or (::error-code result) error-code-internal))
+                    (when error? (some-> result :content first :text)))
+           ;; `::error-code` is an internal classification marker — never expose it to the client.
+           (let [result (dissoc result ::error-code)]
+             (ait/record! {:ai/tool-output result})
+             result))
+         (catch Throwable e
+           ;; A handler that throws instead of returning error content (notably a UI tool
+           ;; `:response-fn`, whose path isn't wrapped in `dispatch-tool-call`) would otherwise
+           ;; skip instrumentation and under-report errors. Record the failure, then rethrow so the
+           ;; transport layer still surfaces it to the client.
+           (record! "error" error-code-internal (ex-message e))
+           (throw e)))))))

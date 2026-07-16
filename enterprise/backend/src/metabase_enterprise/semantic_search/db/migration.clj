@@ -106,7 +106,7 @@
       0))
 
 (defn maybe-migrate-dynamic-schema!
-  "Migration for dynamic tables (index_table_xyzs) if appropriate."
+  "Migration for dynamic tables (the index_<provider>_<model>_<dims> index tables) if appropriate."
   [tx {:keys [index-metadata] :as opts}]
   (let [db-version (lowest-dynamic-db-version index-metadata tx)]
     (cond

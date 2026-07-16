@@ -57,8 +57,8 @@
                              (not (semantic.u/index-exists? pgvector hnsw-index)))
                     (semantic.core/build-hnsw-index-async!)))
                 (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
-              ;; Engines can activate at runtime (license applied, kill switch re-enabled,
-              ;; additional-search-engines set on another node); initializing from the next tick heals
+              ;; Engines can activate at runtime (license applied, additional-search-engines set on
+              ;; another node); initializing from the next tick heals
               ;; every such path within seconds. Initialize all active engines, not just semantic:
               ;; activation may also have activated dependencies with no index.
               (do
