@@ -1,7 +1,8 @@
 import {
-  type QueryParam,
   type UrlStateConfig,
-  getFirstParamValue,
+  parsePage,
+  parseSortColumn,
+  parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
 import type { SortDirection } from "metabase-types/api";
 
@@ -31,8 +32,15 @@ export type UrlState = FilterUrlState & PageUrlState;
 const pageUrlStateConfig: UrlStateConfig<PageUrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
-    sort_column: parseSortColumn(query.sort_column),
-    sort_direction: parseSortDirection(query.sort_direction),
+    sort_column: parseSortColumn(
+      query.sort_column,
+      CONVERSATION_SORT_COLUMNS,
+      DEFAULT_SORT_COLUMN,
+    ),
+    sort_direction: parseSortDirection(
+      query.sort_direction,
+      DEFAULT_SORT_DIRECTION,
+    ),
   }),
   serialize: ({ page, sort_column, sort_direction }) => ({
     page: page === 0 ? undefined : String(page),
@@ -46,23 +54,3 @@ export const urlStateConfig: UrlStateConfig<UrlState> = mergeUrlStateConfig(
   filterUrlStateConfig,
   pageUrlStateConfig,
 );
-
-function parsePage(param: QueryParam): number {
-  const value = getFirstParamValue(param);
-  const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
-
-function parseSortColumn(param: QueryParam): ConversationSortColumn {
-  const value = getFirstParamValue(param);
-  return value && isSortColumn(value) ? value : DEFAULT_SORT_COLUMN;
-}
-
-function isSortColumn(value: string): value is ConversationSortColumn {
-  return CONVERSATION_SORT_COLUMNS.some((col) => col === value);
-}
-
-function parseSortDirection(param: QueryParam): SortDirection {
-  const value = getFirstParamValue(param);
-  return value === "asc" ? "asc" : DEFAULT_SORT_DIRECTION;
-}

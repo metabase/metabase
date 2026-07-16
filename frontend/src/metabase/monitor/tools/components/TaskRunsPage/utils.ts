@@ -2,8 +2,10 @@ import {
   type QueryParam,
   type UrlStateConfig,
   getFirstParamValue,
+  parsePage,
+  parseSortColumn,
+  parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
-import { isSortColumn } from "metabase/utils/sorting";
 import type {
   ListTaskRunsSortColumn,
   SortDirection,
@@ -53,8 +55,15 @@ type UrlState = {
 export const urlStateConfig: UrlStateConfig<UrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
-    sort_column: parseSortColumn(query.sort_column),
-    sort_direction: parseSortDirection(query.sort_direction),
+    sort_column: parseSortColumn(
+      query.sort_column,
+      TASK_RUN_SORT_COLUMNS,
+      DEFAULT_SORT_COLUMN,
+    ),
+    sort_direction: parseSortDirection(
+      query.sort_direction,
+      DEFAULT_SORT_DIRECTION,
+    ),
     "run-type": parseTaskRunRunType(query["run-type"]),
     "entity-type": parseTaskRunEntityType(query["entity-type"]),
     "entity-id": parseTaskRunEntityId(query["entity-id"]),
@@ -84,24 +93,6 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     "started-at": startedAt === null ? undefined : startedAt,
     "include-today": includeToday ? "true" : undefined,
   }),
-};
-
-function parseSortColumn(param: QueryParam): UrlState["sort_column"] {
-  const value = getFirstParamValue(param);
-  return value && isSortColumn(value, TASK_RUN_SORT_COLUMNS)
-    ? value
-    : DEFAULT_SORT_COLUMN;
-}
-
-function parseSortDirection(param: QueryParam): UrlState["sort_direction"] {
-  const value = getFirstParamValue(param);
-  return value === "asc" ? "asc" : DEFAULT_SORT_DIRECTION;
-}
-
-const parsePage = (param: QueryParam): UrlState["page"] => {
-  const value = getFirstParamValue(param);
-  const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
 const parseTaskRunRunType = (param: QueryParam): UrlState["run-type"] => {

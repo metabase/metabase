@@ -17,10 +17,9 @@ type UseSortingStateChangeProps<TColumn extends string> = {
 };
 
 /**
- * Bridges TanStack Table sorting state and API-style `SortingOptions` for
- * manually-sorted tables: converts the current options to a `SortingState`
- * and turns TanStack sorting updates back into `SortingOptions`, falling back
- * to `defaultSorting` when TanStack cycles to the unsorted state.
+ * Adapter between TanStack Table sorting state and API's `SortingOptions` for
+ * manually-sorted tables.
+ * Falls back to `defaultSorting` when TanStack cycles to the unsorted state.
  */
 export function useSortingStateChange<TColumn extends string>({
   sortingOptions,
@@ -37,12 +36,12 @@ export function useSortingStateChange<TColumn extends string>({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingOptionsChange(
-        toSortingOptions(
-          getNextOptionalSorting(newSortingState, columns) ??
-            toSorting(defaultSorting),
-        ),
-      );
+
+      const nextOptionalSorting =
+        getNextOptionalSorting(newSortingState, columns) ??
+        toSorting(defaultSorting);
+
+      onSortingOptionsChange(toSortingOptions(nextOptionalSorting));
     },
     [sortingState, columns, defaultSorting, onSortingOptionsChange],
   );
