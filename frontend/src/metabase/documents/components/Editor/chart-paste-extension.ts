@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import {
@@ -39,6 +40,11 @@ export function materializePastedChart(
   return wrapCardEmbed({ type: "cardEmbed", attrs: { id: draftId } });
 }
 
+function isPastingIntoCodeNode(view: EditorView) {
+  const pasteTarget = view.state.selection.$head.parent;
+  return Boolean(pasteTarget.type.spec.code);
+}
+
 export function createChartPasteExtension(dispatch: DispatchDraftCard) {
   return Extension.create({
     name: "chartPaste",
@@ -50,10 +56,7 @@ export function createChartPasteExtension(dispatch: DispatchDraftCard) {
         new Plugin({
           props: {
             handlePaste: (view, event) => {
-              const isInCodeSpecBlock = Boolean(
-                view.state.selection.$head.parent.type.spec.code,
-              );
-              if (!editor.isEditable || isInCodeSpecBlock) {
+              if (!editor.isEditable || isPastingIntoCodeNode(view)) {
                 return false;
               }
               const node = materializePastedChart(
