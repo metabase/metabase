@@ -66,12 +66,50 @@ prepare-cypress and CLJS steps from the workflow entirely.
 
 ## Results
 
-Two specs fully ported and green, stable across `--repeat-each=2`:
+Ten specs ported (61 tests). The first two established the harness:
 
 - `navbar.spec.ts` (13 tests incl. 3 EE) — port of the navigation navbar spec
 - `dashboard-filters-number-source.spec.ts` (4 tests) — port of the
   dashboard-filter spec, exercising the intercept/wait-alias pattern and the
   dashboard-editing helper suite
+
+### Batch 2: eight diverse specs, port-cost data
+
+Chosen to hit the hard Cypress→Playwright areas. Six ported by parallel
+agents, two inline; each needed at most ONE human-loop fix before going
+green:
+
+| Spec | Cy lines | Tests | Stress area | Fixes needed |
+|---|---|---|---|---|
+| internal-analytics | 30 | 1 | cy.window / intercept body | 0 — green first run |
+| scalar | 58 | 1 | echarts / color asserts | 0 — green first run |
+| trendline | 100 | 3 | echarts trend lines | 0 — green first run |
+| native-suggestions | 108 | 7 | CodeMirror autocomplete | 0 — green first run |
+| dashboard-viz-options | 121 | 4 | dnd-kit drag, viz settings | 1 (drag → target-based) |
+| permissions-baseline | 60 | 6 | sandboxed/none users | 1 (first-match semantics) |
+| public-question | 281 | 7 | public links, signed-out ctx | 0 port bugs (2 upstream, see below) |
+| downloads | 562 | 15 | real file downloads + xlsx | 1 (pivot export endpoint) |
+
+Key findings:
+
+- **~1,300 Cypress lines ported in one session** with 4 agents in parallel;
+  every needed fix was surfaced directly by strict mode or a timeout on the
+  first run — nothing silently wrong was found later.
+- **Port-fidelity check**: 2 public-question tests fail — and the Cypress
+  original fails the exact same 2 against the same backend (upstream
+  dimension-template-tag parameters regression). Marked `test.fixme` with
+  comments. Identical failure profiles are strong evidence of faithful ports.
+- **Playwright made three specs *stronger***: downloads actually downloads
+  and parses files (Cypress stubbed the responses away); CodeMirror typing
+  needs no cypress-real-events equivalent; dnd-kit drags use real mouse input
+  instead of synthetic-event choreography.
+- **Consolidation debt**: parallel agents couldn't touch shared files, so a
+  few helpers are duplicated across support modules (icon, adhocQuestionHash,
+  signInWithCachedSession, createNativeQuestion). Fold into shared modules
+  before the next batch.
+- The local `--hot` dev-stack stall (below) now shows up as ~3 flaky
+  editor-navigation tests per full-suite run; all pass in isolation. CI
+  (uberjar + static assets) is the arbiter for real stability.
 
 ### Cypress vs Playwright timing (same backend, warm 2nd run, video/trace off)
 
