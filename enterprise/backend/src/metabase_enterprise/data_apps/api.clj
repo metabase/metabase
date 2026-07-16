@@ -101,9 +101,12 @@
     (select-keys app [:name :display_name])))
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
-  "List the data apps provided by the connected repository."
-  []
-  (->> (data-app/select-non-blob {:order-by [[:display_name :asc]]})
+  "List the data apps provided by the connected repository. Pass `available=true`
+   to return only enabled apps without sync errors."
+  [_route-params
+   {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
+  (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
+                                   available (assoc :enabled true :sync_error nil)))
        (map api/read-check)
        (mapv data-app-response)))
 

@@ -14,7 +14,7 @@ export function DataAppsNavbarSection({
 }: {
   onItemSelect: () => void;
 }) {
-  const { data: dataApps = [] } = useListDataAppsQuery();
+  const { data: dataApps = [] } = useListDataAppsQuery({ available: true });
 
   if (dataApps.length === 0) {
     return null;

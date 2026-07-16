@@ -82,6 +82,17 @@
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
 
+(deftest list-available-apps-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp]
+      (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
+      (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
+                  :enabled false)
+      (t2/insert! :model/DataApp :name "failed" :display_name "Failed" :bundle_path "data_apps/failed/index.js"
+                  :sync_error "Could not read bundle")
+      (is (=? [{:name "ready" :display_name "Ready"}]
+              (mt/user-http-request :crowberto :get 200 "apps?available=true"))))))
+
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp]
