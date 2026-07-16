@@ -164,6 +164,36 @@ describe("scenarios > explorations > new research > manual flow", () => {
     });
   });
 
+  it("returns to the entry screen on browser back from the plan step and keeps the draft (UXW-4832)", () => {
+    H.visitNewExploration();
+    H.startManualExploration();
+
+    cy.location("pathname").should("eq", "/question/research/plan");
+
+    H.addMetricsAndDimensions({
+      metrics: ["Count of orders"],
+    });
+    cy.findByTestId("research-content")
+      .findByText("Count of orders")
+      .should("be.visible");
+
+    cy.go("back");
+
+    // back steps within the research flow instead of leaving it
+    cy.location("pathname").should("eq", "/question/research");
+    cy.findByRole("main")
+      .findByText(/What do you want to research\?/i)
+      .should("be.visible");
+
+    cy.go("forward");
+
+    // the draft survives the round trip
+    cy.location("pathname").should("eq", "/question/research/plan");
+    cy.findByTestId("research-content")
+      .findByText("Count of orders")
+      .should("be.visible");
+  });
+
   it("filters Exploration data pickers by typing into their search inputs", () => {
     // Both timelines need an event so the picker surfaces them — the
     // empty-state case is still exercised by the "no match" search at

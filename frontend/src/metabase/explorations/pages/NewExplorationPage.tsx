@@ -1,24 +1,9 @@
-import type { Location } from "history";
-import { useEffect } from "react";
-
-import { useMetabotAgent } from "metabase/metabot/hooks";
-
-import { EXPLORATIONS_AGENT_ID } from "../components/NewExplorationChat/NewExplorationChat";
 import { NewExplorationEntry } from "../components/NewExplorationEntry";
-import { useExplorationSelection } from "../hooks";
 
-export function NewExplorationPage(props: { location?: Location }) {
-  return <NewExplorationPageInner key={props.location?.key} />;
-}
+import { useNewExplorationDraft } from "./NewExplorationDraftProvider";
 
-function NewExplorationPageInner() {
-  const selection = useExplorationSelection();
-
-  const { resetConversation } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
-
-  useEffect(() => {
-    resetConversation();
-  }, [resetConversation]);
+export function NewExplorationPage() {
+  const selection = useNewExplorationDraft();
 
   return <NewExplorationEntry selection={selection} />;
 }

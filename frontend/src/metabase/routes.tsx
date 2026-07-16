@@ -37,6 +37,7 @@ import { CommentsSidesheet } from "metabase/documents/components/CommentsSideshe
 import { DocumentPageOuter } from "metabase/documents/routes";
 import {
   ExplorationPage,
+  NewExplorationDraftProvider,
   NewExplorationPage,
   NewExplorationPlanPage,
 } from "metabase/explorations";
@@ -234,8 +235,10 @@ export const getRoutes = (store: AppStore) => {
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
             <Route path="research">
-              <Route index component={NewExplorationPage} />
-              <Route path="plan" component={NewExplorationPlanPage} />
+              <Route component={NewExplorationDraftProvider}>
+                <Route index component={NewExplorationPage} />
+                <Route path="plan" component={NewExplorationPlanPage} />
+              </Route>
               <Route path=":id" component={ExplorationPage} />
               <Route
                 path=":id/:entityType/:entityId"
