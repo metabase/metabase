@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
@@ -8,6 +9,8 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,
@@ -17,6 +20,8 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+type DataSelectorProps = ComponentProps<typeof DataSelector>;
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
@@ -80,18 +85,46 @@ describe("DataSelector", () => {
     }),
   });
 
-  const SAMPLE_DATABASE = metadata.database(SAMPLE_DB_ID);
-  const ANOTHER_DATABASE = metadata.database(EMPTY_DB_ID);
-  const MULTI_SCHEMA_DATABASE = metadata.database(MULTI_SCHEMA_DB_ID);
-  const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
-    OTHER_MULTI_SCHEMA_DB_ID,
+  const SAMPLE_DATABASE = checkNotNull(metadata.database(SAMPLE_DB_ID));
+  const ANOTHER_DATABASE = checkNotNull(metadata.database(EMPTY_DB_ID));
+  const MULTI_SCHEMA_DATABASE = checkNotNull(
+    metadata.database(MULTI_SCHEMA_DB_ID),
   );
-  const SAVED_QUESTIONS_DATABASE = createMockSavedQuestionsDatabase();
+  const OTHER_MULTI_SCHEMA_DATABASE = checkNotNull(
+    metadata.database(OTHER_MULTI_SCHEMA_DB_ID),
+  );
+  const SAVED_QUESTIONS_DATABASE = checkNotNull(
+    createMockMetadata({
+      databases: [createMockSavedQuestionsDatabase()],
+    }).database(SAVED_QUESTIONS_VIRTUAL_DB_ID),
+  );
+
+  const defaultProps: DataSelectorProps = {
+    steps: ["DATABASE"],
+    metadata: emptyMetadata,
+    databases: [],
+    availableModels: [],
+    hasLoadedDatabasesWithTablesSaved: false,
+    hasLoadedDatabasesWithSaved: false,
+    hasLoadedDatabasesWithTables: false,
+    hasDataAccess: false,
+    hasNestedQueriesEnabled: false,
+    selectedQuestion: null,
+    loading: false,
+    loaded: false,
+    allLoading: false,
+    fetchDatabases: jest.fn(),
+    fetchFields: jest.fn(),
+    fetchQuestion: jest.fn(),
+    fetchSchemas: jest.fn(),
+    fetchSchemaTables: jest.fn(),
+  };
 
   it("should allow selecting db, schema, and table", async () => {
     const setTable = jest.fn();
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -141,7 +174,8 @@ describe("DataSelector", () => {
     const fetchSchemas = jest.fn();
     const fetchSchemaTables = jest.fn();
 
-    const props = {
+    const props: DataSelectorProps = {
+      ...defaultProps,
       steps: ["DATABASE", "SCHEMA", "TABLE"],
       combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
@@ -156,7 +190,7 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = (nextMetadata) => {
+    const rerenderWith = (nextMetadata: typeof metadata) => {
       rerender(
         <DataSelector
           {...props}
@@ -208,6 +242,7 @@ describe("DataSelector", () => {
   it("should skip db and schema steps if there's only one option", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -234,7 +269,8 @@ describe("DataSelector", () => {
       databases: [createMockDatabase({ id: SAMPLE_DB_ID, tables: [] })],
     });
 
-    const props = {
+    const props: DataSelectorProps = {
+      ...defaultProps,
       steps: ["SCHEMA", "TABLE"],
       selectedDatabaseId: SAMPLE_DB_ID,
       triggerElement: <div />,
@@ -247,7 +283,7 @@ describe("DataSelector", () => {
     const { rerender } = render(
       <DataSelector
         {...props}
-        databases={[metadataWithoutTables.database(SAMPLE_DB_ID)]}
+        databases={[checkNotNull(metadataWithoutTables.database(SAMPLE_DB_ID))]}
         metadata={metadataWithoutTables}
       />,
     );
@@ -261,7 +297,7 @@ describe("DataSelector", () => {
     rerender(
       <DataSelector
         {...props}
-        databases={[metadata.database(SAMPLE_DB_ID)]}
+        databases={[checkNotNull(metadata.database(SAMPLE_DB_ID))]}
         metadata={metadata}
       />,
     );
@@ -273,6 +309,7 @@ describe("DataSelector", () => {
     const fetchDatabases = jest.fn();
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE"]}
         triggerElement={<div>button</div>}
         metadata={emptyMetadata}
@@ -289,6 +326,7 @@ describe("DataSelector", () => {
   it("should click into a single-schema db after expanding a multi-schema db", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -308,6 +346,7 @@ describe("DataSelector", () => {
   it("should expand multi-schema after clicking into single-schema", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -337,6 +376,7 @@ describe("DataSelector", () => {
     // which caused a bug that the previous test didn't catch.
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -368,6 +408,7 @@ describe("DataSelector", () => {
   it("should collapse expanded list of db's schemas", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
@@ -399,6 +440,7 @@ describe("DataSelector", () => {
   it("should auto-advance past db and schema in field picker", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
         databases={[SAMPLE_DATABASE]}
@@ -415,6 +457,7 @@ describe("DataSelector", () => {
   it("should select schema in field picker", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
         databases={[MULTI_SCHEMA_DATABASE]}
@@ -431,6 +474,7 @@ describe("DataSelector", () => {
   it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE"]}
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
@@ -448,6 +492,7 @@ describe("DataSelector", () => {
   it("should move between selected multi-schema dbs", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
         combineDatabaseSchemaSteps
@@ -469,6 +514,7 @@ describe("DataSelector", () => {
   it("should skip schema when going to previous step", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
         combineDatabaseSchemaSteps
@@ -496,6 +542,7 @@ describe("DataSelector", () => {
   it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
+        {...defaultProps}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[]}
         triggerElement={<div />}
@@ -513,13 +560,13 @@ describe("DataSelector", () => {
   it("should show 'Saved Questions' option when there are saved questions", async () => {
     renderWithProviders(
       <DataSelector
+        {...defaultProps}
         availableModels={[]}
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
         hasNestedQueriesEnabled
         loaded
-        search={[{}]}
         triggerElement={<div />}
         isOpen
       />,
@@ -532,13 +579,13 @@ describe("DataSelector", () => {
   it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
     renderWithProviders(
       <DataSelector
+        {...defaultProps}
         availableModels={[]}
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE]}
         hasNestedQueriesEnabled
         loaded
-        search={[{}]}
         triggerElement={<div />}
         isOpen
       />,
