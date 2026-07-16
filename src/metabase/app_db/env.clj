@@ -154,14 +154,16 @@
     (log/info
      (u/format-color
       :cyan
-      (str "\n"
-           "     _      _          _ _                        _\n"
-           "    (_) ___| | ___   _| | |  _ __ ___   ___   __| | ___\n"
-           "    | |/ _ \\ |/ / | | | | | | '_ ` _ \\ / _ \\ / _` |/ _ \\\n"
-           "    | |  __/   <| |_| | | | | | | | | | (_) | (_| |  __/\n"
-           "   _/ |\\___|_|\\_\\\\__,_|_|_| |_| |_| |_|\\___/ \\__,_|\\___|\n"
-           "  |__/\n"
-           "  ur usin jekyll mode now — this app-db is disposable; git is the source of truth\n")))
+      (str "\n\n"
+           "      _ _____ _  ____   ___     _       __  __  ___  ____  _____\n"
+           "     | | ____| |/ /\\ \\ / / |   | |     |  \\/  |/ _ \\|  _ \\| ____|\n"
+           "  _  | |  _| | ' /  \\ V /| |   | |     | |\\/| | | | | | | |  _|\n"
+           " | |_| | |___| . \\   | | | |___| |___  | |  | | |_| | |_| | |___\n"
+           "  \\___/|_____|_|\\_\\  |_| |_____|_____| |_|  |_|\\___/|____/|_____|\n"
+           "\n"
+           "  Disposable instance — state lives in git, not in this application database.\n"
+           "  Scheduler, warehouse sync, sample content, and notifications are disabled.\n"
+           "  Wipe the app-db at any time; the instance reconverges to its branch on boot.\n")))
     (log/warn
      (u/format-color
       :red
