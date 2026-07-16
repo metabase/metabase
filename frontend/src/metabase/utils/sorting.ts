@@ -1,11 +1,25 @@
 import type { SortingState } from "@tanstack/react-table";
 
-import type { SortDirection } from "metabase-types/api";
+import type { SortDirection, SortingOptions } from "metabase-types/api";
 
 export type Sorting<TColumn extends string> = {
   column: TColumn;
   direction: SortDirection;
 };
+
+export function toSorting<TColumn extends string>({
+  sort_column,
+  sort_direction,
+}: SortingOptions<TColumn>): Sorting<TColumn> {
+  return { column: sort_column, direction: sort_direction };
+}
+
+export function toSortingOptions<TColumn extends string>({
+  column,
+  direction,
+}: Sorting<TColumn>): SortingOptions<TColumn> {
+  return { sort_column: column, sort_direction: direction };
+}
 
 export function getSortingState<TColumn extends string>(
   sorting: Sorting<TColumn> | undefined,

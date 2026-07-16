@@ -1,8 +1,9 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { useSortingStateChange } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -17,11 +18,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import {
-  type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
-} from "metabase/utils/sorting";
 import type {
   ListTaskRunsSortColumn,
   SortingOptions,
@@ -34,22 +30,6 @@ import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 import { DEFAULT_SORTING, TASK_RUN_SORT_COLUMNS } from "./utils";
 
 const COLUMN_WIDTHS = [0.2, 0.2, 0.17, 0.17, 0.13, 0.13];
-
-const toSorting = ({
-  sort_column,
-  sort_direction,
-}: SortingOptions<ListTaskRunsSortColumn>): Sorting<ListTaskRunsSortColumn> => ({
-  column: sort_column,
-  direction: sort_direction,
-});
-
-const toSortingOptions = ({
-  column,
-  direction,
-}: Sorting<ListTaskRunsSortColumn>): SortingOptions<ListTaskRunsSortColumn> => ({
-  sort_column: column,
-  sort_direction: direction,
-});
 
 type TaskRunsTableProps = {
   isLoading: boolean;
@@ -69,30 +49,18 @@ export const TaskRunsTable = ({
   const dispatch = useDispatch();
 
   const columns = useMemo(() => getColumns(), []);
-  const sortingState = useMemo(
-    () => getSortingState(toSorting(sortingOptions)),
-    [sortingOptions],
-  );
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions,
+    columns: TASK_RUN_SORT_COLUMNS,
+    defaultSorting: DEFAULT_SORTING,
+    onSortingOptionsChange,
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<TaskRun>) => {
       dispatch(push(Urls.monitorTaskRunDetails(row.original.id)));
     },
     [dispatch],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingOptionsChange(
-        toSortingOptions(
-          getNextOptionalSorting(newSortingState, TASK_RUN_SORT_COLUMNS) ??
-            toSorting(DEFAULT_SORTING),
-        ),
-      );
-    },
-    [sortingState, onSortingOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<TaskRun>({
@@ -102,7 +70,7 @@ export const TaskRunsTable = ({
     manualSorting: true,
     getNodeId: (taskRun) => String(taskRun.id),
     onRowActivate: handleRowActivate,
-    onSortingChange: handleSortingChange,
+    onSortingChange,
   });
 
   return (

@@ -1,9 +1,10 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { useSortingStateChange } from "metabase/common/hooks";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
@@ -19,11 +20,6 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import {
-  type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
-} from "metabase/utils/sorting";
 import type {
   Database,
   ListTasksSortColumn,
@@ -34,22 +30,6 @@ import type {
 import { DEFAULT_SORTING, TASK_SORT_COLUMNS } from "./utils";
 
 const COLUMN_WIDTHS = [0.25, 0.15, 0.12, 0.16, 0.16, 0.1, 0.06];
-
-const toSorting = ({
-  sort_column,
-  sort_direction,
-}: SortingOptions<ListTasksSortColumn>): Sorting<ListTasksSortColumn> => ({
-  column: sort_column,
-  direction: sort_direction,
-});
-
-const toSortingOptions = ({
-  column,
-  direction,
-}: Sorting<ListTasksSortColumn>): SortingOptions<ListTasksSortColumn> => ({
-  sort_column: column,
-  sort_direction: direction,
-});
 
 interface Props {
   databases: Database[];
@@ -76,30 +56,18 @@ export const TasksTable = ({
   );
 
   const columns = useMemo(() => getColumns(databaseByID), [databaseByID]);
-  const sortingState = useMemo(
-    () => getSortingState(toSorting(sortingOptions)),
-    [sortingOptions],
-  );
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions,
+    columns: TASK_SORT_COLUMNS,
+    defaultSorting: DEFAULT_SORTING,
+    onSortingOptionsChange,
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<Task>) => {
       dispatch(push(Urls.monitorTaskDetails(row.original.id)));
     },
     [dispatch],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingOptionsChange(
-        toSortingOptions(
-          getNextOptionalSorting(newSortingState, TASK_SORT_COLUMNS) ??
-            toSorting(DEFAULT_SORTING),
-        ),
-      );
-    },
-    [sortingState, onSortingOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<Task>({
@@ -109,7 +77,7 @@ export const TasksTable = ({
     manualSorting: true,
     getNodeId: (task) => String(task.id),
     onRowActivate: handleRowActivate,
-    onSortingChange: handleSortingChange,
+    onSortingChange,
   });
 
   return (
