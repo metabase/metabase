@@ -7,21 +7,17 @@
   protocol, materializes the returned plan items into
   `ExplorationQuery` rows via the variant builders, persists the full
   transcript to `exploration_thread.query_plan_transcript`, and on a fatal
-  failure terminally stamps the thread and replaces the AI Summary
-  placeholder with a 'Planning failed' doc.
+  failure terminally stamps the thread.
 
   Add a new planner by writing `metabase.explorations.query-plan.<name>`,
   defining a record that implements `QueryPlanner`, exposing a singleton
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [clojure.set :as set]
-   [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.variants :as qp.variants]
-   [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -217,32 +213,10 @@
 ;; Failure path
 ;; ---------------------------------------------------------------------------
 
-(defn- write-planning-failed-doc!
-  "Replace the AI Summary placeholder with an error doc describing the
-  planning failure. Best-effort: any secondary failure here is logged but
-  never thrown."
-  [thread-id creator-id final-errors]
-  (try
-    (when-let [doc (t2/select-one :model/Document
-                                  :exploration_thread_id thread-id
-                                  :name                  "AI Summary"
-                                  :archived              false)]
-      (when creator-id
-        (request/with-current-user creator-id
-          (t2/update! :model/Document (:id doc)
-                      {:document     (ai-summary/error-doc
-                                      {:phase        :query-plan
-                                       :thread-id    thread-id
-                                       :final-errors final-errors
-                                       :detail       "Query planning failed. No queries were materialized; the exploration is empty."})
-                       :content_type prose-mirror/prose-mirror-content-type}))))
-    (catch Throwable e
-      (log/warnf e "Failed to write Planning-failed doc for thread %d" thread-id))))
-
 (defn- mark-thread-terminally-failed!
-  "Stamp `analysis_started_at` and `completed_at` so the thread doesn't
-  deadlock the AI Summary completion machinery (which waits for queries
-  to finish — but there are no queries)."
+  "Stamp `analysis_started_at` and `completed_at` so the thread's completion
+  machinery (which waits for queries to finish — but there are no queries)
+  doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
     (t2/update! :model/ExplorationThread thread-id
@@ -317,7 +291,7 @@
 (defn- run-planner!
   "Invoke the picked planner, persist rows / mark terminal as appropriate, and
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
-  [{:keys [thread-id metric-by-key creator-id] :as ctx} picked planner-id pre]
+  [{:keys [thread-id metric-by-key] :as ctx} picked planner-id pre]
   (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
         transcript-body {:outcome      outcome
                          :rationale    rationale
@@ -343,7 +317,6 @@
       (do (log/warnf "Query plan for thread %d (%s): planner failed; terminally marking thread"
                      thread-id (name planner-id))
           (record-outcome! thread-id pre :failed :transcript transcript-body)
-          (write-planning-failed-doc! thread-id creator-id final-errors)
           (mark-thread-terminally-failed! thread-id)
           :failed))))
 
@@ -353,8 +326,7 @@
   Returns one of:
     `:ok`                — plan succeeded, rows inserted, transcript written
     `:skip-empty`        — thread has no metrics or no dimensions
-    `:failed`            — planner reported failure; thread terminally
-                           stamped, placeholder doc replaced with error
+    `:failed`            — planner reported failure; thread terminally stamped
     `nil`                — uncaught throwable (logged, transcript best-effort)"
   [thread-id]
   (try
@@ -372,9 +344,6 @@
       (record-outcome! thread-id (preamble thread-id :unknown) :error
                        :error (.getMessage e))
       (try
-        (write-planning-failed-doc! thread-id
-                                    (creator-id-for-thread thread-id)
-                                    [(or (.getMessage e) (.toString e))])
         (mark-thread-terminally-failed! thread-id)
         (catch Throwable e2
           (log/warnf e2 "Secondary failure after generate-query-plan! threw for thread %d" thread-id)))

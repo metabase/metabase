@@ -1,7 +1,6 @@
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { RowValue } from "./dataset";
-import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -261,16 +260,6 @@ export interface ExplorationQuery {
   params?: ExplorationQueryParams | null;
 }
 
-export interface ExplorationDocument {
-  id: DocumentId;
-  exploration_thread_id: ExplorationThreadId;
-  name: string;
-  creator_id: UserId;
-  content_type: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
 /**
  * The id used by selection, routing, and comment anchoring for a navigable
  * page. Block and page `id`s arrive from the backend as numbers, but the
@@ -348,8 +337,6 @@ export interface ExplorationThread {
   dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
-  documents?: ExplorationDocument[];
-  ai_summary_document_id?: DocumentId | null;
   blocks?: ExplorationBlockNode[] | null;
 }
 

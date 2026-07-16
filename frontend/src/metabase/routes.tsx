@@ -232,14 +232,7 @@ export const getRoutes = (store: AppStore) => {
             <Route path="research">
               <Route index component={NewExplorationPage} />
               <Route path=":id" component={ExplorationPage} />
-              <Route
-                path=":id/:entityType/:entityId"
-                component={ExplorationPage}
-              >
-                {modalRoute("comments/:childTargetId", CommentsSidesheet, {
-                  noWrap: true,
-                })}
-              </Route>
+              <Route path=":id/page/:pageId" component={ExplorationPage} />
             </Route>
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />

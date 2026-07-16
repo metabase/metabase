@@ -15,7 +15,6 @@ export interface CardEmbedMenuContext {
   isNativeQuestion: boolean | undefined;
   commentsPath: string;
   hasUnsavedChanges: boolean;
-  isStatic: boolean;
 }
 
 export interface CardEmbedMenuActions {
@@ -48,7 +47,6 @@ export const CardEmbedMenuDropdown = ({
   isNativeQuestion,
   commentsPath,
   hasUnsavedChanges,
-  isStatic,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
@@ -77,7 +75,7 @@ export const CardEmbedMenuDropdown = ({
 
   return (
     <>
-      {!isWithinIframe() && (canWrite || isStatic) && (
+      {!isWithinIframe() && canWrite && (
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
           component={ForwardRefLink}
@@ -87,9 +85,7 @@ export const CardEmbedMenuDropdown = ({
               e.preventDefault();
             }
           }}
-          disabled={
-            !commentsPath || hasUnsavedChanges || (!canWrite && !isStatic)
-          }
+          disabled={!commentsPath || hasUnsavedChanges || !canWrite}
         >
           {t`Comment`}
         </Menu.Item>
@@ -108,27 +104,23 @@ export const CardEmbedMenuDropdown = ({
       >
         {t`Edit Visualization`}
       </Menu.Item>
-      {!isStatic && (
-        <Menu.Item
-          onClick={() => setIsModifyModalOpen(true)}
-          leftSection={
-            <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
-          }
-          disabled={!canWrite}
-        >
-          {t`Edit Query`}
-        </Menu.Item>
-      )}
-      {!isStatic && (
-        <Menu.Item
-          onClick={handleReplaceQuestion}
-          leftSection={<Icon name="refresh" size={14} />}
-          disabled={!canWrite}
-        >
-          {t`Replace`}
-        </Menu.Item>
-      )}
-      {!isStatic && canDownloadResults(dataset) && (
+      <Menu.Item
+        onClick={() => setIsModifyModalOpen(true)}
+        leftSection={
+          <Icon name={isNativeQuestion ? "sql" : "notebook"} size={14} />
+        }
+        disabled={!canWrite}
+      >
+        {t`Edit Query`}
+      </Menu.Item>
+      <Menu.Item
+        onClick={handleReplaceQuestion}
+        leftSection={<Icon name="refresh" size={14} />}
+        disabled={!canWrite}
+      >
+        {t`Replace`}
+      </Menu.Item>
+      {canDownloadResults(dataset) && (
         <Menu.Item
           leftSection={<Icon name="download" aria-hidden />}
           aria-label={isDownloadingData ? t`Downloading…` : t`Download results`}

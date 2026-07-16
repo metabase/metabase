@@ -28,7 +28,7 @@ import {
 } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
-import { getSelectedCardEmbed, getSelectedEmbedIndex } from "../selectors";
+import { getSelectedEmbedIndex } from "../selectors";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
 import S from "./EmbedQuestionSettingsSidebar.module.css";
@@ -44,7 +44,6 @@ export const EmbedQuestionSettingsSidebar = ({
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const selectedCardEmbed = useSelector(getSelectedCardEmbed);
 
   const {
     card,
@@ -54,11 +53,7 @@ export const EmbedQuestionSettingsSidebar = ({
     question,
     draftCard,
     regularDataset,
-  } = useCardData({
-    id: cardId,
-    storedResultId: selectedCardEmbed?.stored_result_id ?? undefined,
-    storedResultSort: selectedCardEmbed?.sort ?? undefined,
-  });
+  } = useCardData({ id: cardId });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
     useVisualizationOptions(dataset, card?.display);

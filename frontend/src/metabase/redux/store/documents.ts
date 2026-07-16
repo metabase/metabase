@@ -1,10 +1,8 @@
-import type { Card, Document, StoredResultSort } from "metabase-types/api";
+import type { Card, Document } from "metabase-types/api";
 
 export interface CardEmbedRef {
   id: number;
   name?: string;
-  stored_result_id?: number | null;
-  sort?: StoredResultSort | null;
 }
 
 export interface MentionCacheItem {

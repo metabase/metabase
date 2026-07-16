@@ -46,10 +46,6 @@ jest.mock("../components/ExplorationSidebar", () => ({
   ExplorationTitle: () => <div data-testid="exploration-title" />,
 }));
 
-jest.mock("../components/ExplorationDocument", () => ({
-  ExplorationDocument: () => null,
-}));
-
 function makeThread(
   id: number,
   name: string | null,
