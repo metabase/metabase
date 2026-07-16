@@ -145,9 +145,15 @@
 
 ;;; ------------------------------------------------ list_* actions ------------------------------------------------
 
+(def ^:private database-select-columns
+  "Columns `list_databases` selects for the `:database` projection."
+  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every
+  ;; row — nothing projected reads them, and `mi/can-read?` needs only `:id`.
+  (into [:model/Database] database-detailed-keys))
+
 (defn- list-databases
   [args]
-  (let [dbs (->> (t2/select :model/Database :is_audit false {:order-by [[:%lower.name :asc]]})
+  (let [dbs (->> (t2/select database-select-columns :is_audit false {:order-by [[:%lower.name :asc]]})
                  (filterv mi/can-read?))]
     (paged-list-content args dbs nil #(project-rows :database args %))))
 
@@ -197,10 +203,18 @@
                    (vec tables))]
     (paged-list-content args filtered :search #(project-rows :table args %))))
 
+(def ^:private question-select-columns
+  "Columns `list_models` selects for the `:question` projection."
+  ;; Naming the columns keeps `t2/select` from running the `dataset_query` and `result_metadata`
+  ;; transforms on every model — the expensive part of listing a database with thousands of cards.
+  ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
+  ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
+  (into [:model/Card :card_schema] projections/question-detailed-keys))
+
 (defn- list-models
   [{:keys [database_id] :as args}]
   (check-database! database_id)
-  (let [models (->> (t2/select :model/Card
+  (let [models (->> (t2/select question-select-columns
                                :type :model
                                :database_id database_id
                                :archived false

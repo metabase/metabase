@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.tools.browse :as browse]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -274,6 +276,47 @@
               (is (= 1 (:returned envelope)))
               (is (= ["t3"] (map :name (:data envelope))))
               (is (nil? line)))))))))
+
+(deftest list-models-test
+  (testing "GHY-4138: list_models returns the database's models and nothing else"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t-id :id} {:db_id db-id :schema "public" :name "orders"}
+                   :model/Card     _ {:name "Orders Model" :type :model
+                                      :database_id db-id :table_id t-id}
+                   :model/Card     _ {:name "Plain Question" :type :question
+                                      :database_id db-id :table_id t-id}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :crowberto
+          (let [[envelope] (call! {:action "list_models" :database_id db-id})]
+            (is (= ["Orders Model"] (map :name (:data envelope)))
+                "plain questions are excluded — only :type :model")
+            (is (= 1 (:total envelope))))
+          (testing "every key the detailed projection advertises survives the narrowed column
+                    select — a projection key with no matching column would come back missing"
+            (let [[envelope] (call! {:action "list_models" :database_id db-id
+                                     :response_format "detailed"})]
+              (is (= (set projections/question-detailed-keys)
+                     (set (keys (first (:data envelope)))))))))))))
+
+(deftest list-models-permission-filtered-test
+  (testing "GHY-4138: list_models filters models by their parent collection's read perms, which
+            is why :collection_id has to survive the narrowed column select"
+    (mt/with-temp [:model/Database   {db-id :id}  {}
+                   :model/Table      {t-id :id}   {:db_id db-id :schema "public" :name "orders"}
+                   :model/Collection {open-id :id}   {}
+                   :model/Collection {closed-id :id} {}
+                   :model/Card       _ {:name "Open Model" :type :model :database_id db-id
+                                        :table_id t-id :collection_id open-id}
+                   :model/Card       _ {:name "Closed Model" :type :model :database_id db-id
+                                        :table_id t-id :collection_id closed-id}]
+      (mt/with-full-data-perms-for-all-users!
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (perms/revoke-collection-permissions! (perms-group/all-users) closed-id)
+        (mt/with-test-user :rasta
+          (let [[envelope] (call! {:action "list_models" :database_id db-id})]
+            (is (= ["Open Model"] (map :name (:data envelope))))
+            (is (= 1 (:total envelope))
+                "total counts the permission-filtered set, not every model on the database")))))))
 
 (deftest get-fields-missing-table-omitted-test
   (testing "GHY-4138: an id that is absent or unreadable lands in :omitted with the collapsed
