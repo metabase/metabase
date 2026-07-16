@@ -115,11 +115,10 @@ const baseConfig = {
   ],
   setupFilesAfterEnv: [
     "<rootDir>/frontend/test/jest-setup-env.js",
+    // Fake timers + instant userEvent for directories enrolled in
+    // fake-timers-allowlist.js (a ratchet: enroll as directories go green).
     "<rootDir>/frontend/test/fast-user-event.ts",
   ],
-  // Fake the clock in every test: no real-time waits (debounces, waitFor
-  // polling), and time-dependent behavior must be advanced explicitly.
-  fakeTimers: { enableGlobally: true },
   globals: {
     ga: {},
   },
