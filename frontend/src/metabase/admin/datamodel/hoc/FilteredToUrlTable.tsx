@@ -95,7 +95,9 @@ function TableSelector({ tableId, setTableId }: TableSelectorProps) {
       <div className={CS.p2} style={{ width: 200 }}>
         <DatabaseSchemaAndTableDataSelector
           selectedTableId={tableId}
-          setSourceTableFn={setTableId}
+          setSourceTableFn={(newTableId) =>
+            setTableId(typeof newTableId === "number" ? newTableId : null)
+          }
           triggerElement={
             <span
               className={cx(

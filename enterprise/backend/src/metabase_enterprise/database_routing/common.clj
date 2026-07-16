@@ -1,7 +1,6 @@
 (ns metabase-enterprise.database-routing.common
   (:require
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -85,14 +84,19 @@
 ;; only use router databases. In these cases we don't want database routing, we just want to ensure we're not hitting
 ;; a Destination Database
 ;;
-;; The former looks like:
-;; - I am looking at a Router Database,
-;; - `router-db-or-id->destination-db-id` returns a *different* database ID, and
-;; - `*database-routing-on*` is `:on` or `:unset`
+;; `*database-routing-on*` records our intent: `:on` inside a routed query (destinations are expected), `:off` when we
+;; explicitly want the router (e.g. sync), `:unset` otherwise. Concretely:
 ;;
-;; The latter looks like:
-;; - I am looking at a destination Database,
-;; - `*database-routing-on*` is `:off` or `:unset`
+;; (a) looks like:
+;; - I am looking at a Router Database,
+;; - the current user's attribute would route me to a *different* destination, and
+;; - `*database-routing-on*` is `:on` or `:unset`.
+;; A correctness concern, owned by the routing middleware (which makes the routing decision); not enforced here.
+;;
+;; (b) looks like:
+;; - I am looking at a destination Database, and
+;; - `*database-routing-on*` is not `:on` (i.e. `:off` or `:unset`).
+;; A tenancy boundary, enforced by `check-allowed-access!` below.
 
 (defenterprise with-database-routing-on-fn
   "Enterprise version. Calls the function with Database Routing allowed."
@@ -108,34 +112,25 @@
   (binding [*database-routing-on* :off]
     (f)))
 
-(defn- is-disallowed-router-db-access?
-  [db-or-id]
-  (and (some-> (router-db-or-id->destination-db-id db-or-id)
-               (not= db-or-id))
-       (not= *database-routing-on* :off)))
-
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
   (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
        (not= *database-routing-on* :on)))
 
+(defn assert-not-direct-destination-access!
+  "Throws a 403 when `db-or-id` is a destination database queried directly, outside a routing-on
+  context. A destination is reachable only through its router; a direct query bypasses the router's
+  attribute check, and with it tenant isolation."
+  [db-or-id]
+  (when (is-disallowed-destination-db-access? (u/the-id db-or-id))
+    (throw (ex-info (tru "You cannot query a destination database directly.")
+                    {:status-code 403}))))
+
 (defenterprise check-allowed-access!
-  "This is intended as a safety harness. In dev/testing, if any access to a router or destination database is detected
-  outside those circumstances where we've explicitly declared it okay, throw an exception.
-
-  In production, skip this (fairly expensive) check.
-
-  The idea here is that at all times we should be aware of whether:
-
-  - we're explicitly accessing a router database (e.g. sync) and DO NOT want to reroute to a destination database, or
-
-  - we're explicitly using the Database Routing feature (e.g. a query) and DO NOT want to access the router
-  database (unless that was the user's intent, i.e. the user's attribute was `__METABASE_ROUTER__`) "
+  "Throws a 403 if `db-or-id-or-spec` is a destination database accessed while database routing is
+  not `:on`, i.e. a direct hit that bypasses its router. Legitimate access to a destination goes
+  through its router, which turns routing `:on`."
   :feature :database-routing
   [db-or-id-or-spec]
-  (when-let [db-id (and (not config/is-prod?)
-                        (u/id db-or-id-or-spec))]
-    (when (is-disallowed-router-db-access? db-id)
-      (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
-    (when (is-disallowed-destination-db-access? db-id)
-      (throw (ex-info "Forbidden access to Destination Database without `with-database-routing-on`" {})))))
+  (when-let [db-id (u/id db-or-id-or-spec)]
+    (assert-not-direct-destination-access! db-id)))

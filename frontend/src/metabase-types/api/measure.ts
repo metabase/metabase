@@ -59,7 +59,6 @@ export interface Measure {
 
 export interface CreateMeasureRequest {
   name: string;
-  table_id: TableId;
   definition: DatasetQuery;
   description?: string;
 }

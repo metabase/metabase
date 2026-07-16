@@ -166,7 +166,8 @@
                               (try
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item")
+                                  (log/warnf "Example question generation failed for one item: %s" (ex-message e))
+                                  (log/debug e "Example question geenration failure detail")
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

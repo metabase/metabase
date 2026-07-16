@@ -123,17 +123,7 @@ export const DocumentHeader = ({
   );
 
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap="1rem"
-      mt="xl"
-      pt="xl"
-      pb="1rem"
-      maw={900}
-      mx="auto"
-      w="100%"
-    >
+    <Flex className={S.documentHeader}>
       <Flex direction="column" className={S.titleContainer}>
         <TextInput
           aria-label={t`Document Title`}
