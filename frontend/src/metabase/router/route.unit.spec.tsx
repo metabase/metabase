@@ -122,6 +122,25 @@ describe("router/useRoute", () => {
   });
 });
 
+describe("router/Route element={null}", () => {
+  it("renders nothing for an explicit null, matching v7 (not v3's render-children)", async () => {
+    renderWithProviders(
+      <Route path="/" element={<ParentPage />}>
+        <Route path="empty" element={null}>
+          <Route index element={<LeafPage />} />
+        </Route>
+      </Route>,
+      { withRouter: true, initialRoute: "/empty" },
+    );
+
+    // The `empty` route matches, so the parent chrome renders. But `element={null}`
+    // renders nothing and provides no <Outlet/>, so its own index child stays
+    // hidden. With v3's render-children default the child would show instead.
+    expect(await screen.findByText("parent chrome")).toBeInTheDocument();
+    expect(screen.queryByText("leaf content")).not.toBeInTheDocument();
+  });
+});
+
 describe("router/Route element memoization", () => {
   it("reuses a shared element component across sibling routes instead of remounting it", async () => {
     let mounts = 0;
