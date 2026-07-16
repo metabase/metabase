@@ -137,9 +137,12 @@
               (log/info "Created stub database; skipping sync.")
 
               ;; Jekyll mode never syncs the warehouse — metadata is supplied
-              ;; externally (serdes import / parent instance).
+              ;; externally (serdes import / parent instance). Mark initial sync
+              ;; complete: nothing will ever run, and "incomplete" renders as a
+              ;; perpetual "Syncing…" in the admin UI.
               (jekyll/jekyll?)
-              (log/info "Jekyll mode; skipping sync.")
+              (do (t2/update! :model/Database (:id db) {:initial_sync_status "complete"})
+                  (log/info "Jekyll mode; skipping sync."))
 
               (advanced-config.settings/config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
