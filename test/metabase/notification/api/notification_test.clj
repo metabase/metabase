@@ -291,6 +291,38 @@
                                               (fn [[handler]]
                                                 [(assoc handler :template resource-template)])))))))))
 
+(deftest api-validates-template-shape-test
+  (let [bad-template "not-a-template"]
+    (testing "POST /api/notification rejects a non-map template"
+      (mt/with-model-cleanup [:model/Notification :model/ChannelTemplate]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (mt/user-http-request :rasta :post 400 "notification"
+                                {:payload_type "notification/card"
+                                 :payload      {:card_id card-id}
+                                 :handlers     [{:channel_type "channel/email"
+                                                 :template     bad-template
+                                                 :recipients   [{:type    "notification-recipient/user"
+                                                                 :user_id (mt/user->id :rasta)}]}]}))))
+    (testing "POST /api/notification/send rejects a non-map template"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (mt/user-http-request :rasta :post 400 "notification/send"
+                              {:payload_type "notification/card"
+                               :payload      {:card_id        card-id
+                                              :send_condition "has_result"}
+                               :handlers     [{:channel_type "channel/email"
+                                               :template     bad-template
+                                               :recipients   [{:type    "notification-recipient/user"
+                                                               :user_id (mt/user->id :rasta)}]}]})))
+    (testing "PUT /api/notification/:id rejects a non-map template"
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type "channel/email"
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}]}]}]
+        (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
+                              (update notification :handlers
+                                      (fn [[handler]]
+                                        [(assoc handler :template bad-template)])))))))
+
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]
   (assert (= 1 (count subscriptions)))
