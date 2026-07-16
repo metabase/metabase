@@ -506,6 +506,58 @@ union all select 'Medium length category', 30 as count`;
   });
 });
 
+describe("issue 68337", () => {
+  const longTooltipValue = "a".repeat(1000);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should wrap long values without expanding the tooltip beyond the viewport (metabase#68337)", () => {
+    H.visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as x, 10 as metric_value, '${longTooltipValue}' as details
+union all select 2, 20, 'short value'`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["METRIC_VALUE"],
+        "graph.tooltip_columns": [JSON.stringify(["name", "DETAILS"])],
+      },
+    });
+
+    H.cartesianChartCircle()
+      .should("have.length", 2)
+      .first()
+      .trigger("mousemove");
+
+    cy.window().then((appWindow) => {
+      H.echartsTooltip().then(($tooltip) => {
+        const tooltipBounds = $tooltip[0].getBoundingClientRect();
+
+        expect(tooltipBounds.left).to.be.at.least(0);
+        expect(tooltipBounds.right).to.be.at.most(appWindow.innerWidth);
+      });
+    });
+
+    H.echartsTooltip()
+      .findByText(longTooltipValue)
+      .should(($value) => {
+        const value = $value[0];
+        const fontSize = Number.parseFloat(getComputedStyle(value).fontSize);
+
+        expect(value.scrollWidth).to.be.at.most(value.clientWidth);
+        expect(value.clientHeight).to.be.greaterThan(fontSize * 2);
+      });
+  });
+});
+
 describe("issue 55853", () => {
   const questionDetails = {
     name: "55853",

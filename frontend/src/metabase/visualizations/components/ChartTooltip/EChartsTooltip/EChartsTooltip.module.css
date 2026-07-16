@@ -88,6 +88,13 @@
   width: 1px;
 }
 
+.MainValueCell {
+  width: auto;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .SecondaryValueCell {
   font-weight: 600;
   color: var(--mb-color-tooltip-text-secondary);
