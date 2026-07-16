@@ -1,10 +1,14 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,3 +53,137 @@
           (testing "concise omits the detailed-only columns"
             (is (nil? (:entity_id row)))
             (is (nil? (:created_at row)))))))))
+
+(defn- measure-definition
+  "A measure definition needs a real lib query against a synced table."
+  [aggregation-clause]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate aggregation-clause))))
+
+(deftest get-content-per-type-happy-path-test
+  (testing "GHY-4140: each content type resolves by numeric id and returns a typed row"
+    (mt/with-test-user :crowberto
+      (testing "model"
+        (mt/with-temp [:model/Card {id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+          (let [row (content-one {:items [{:type "model" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= {:type "model" :id id} (select-keys row [:type :id]))))))
+      (testing "metric"
+        (mt/with-temp [:model/Card {id :id} {:type          :metric
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (let [row (content-one {:items [{:type "metric" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "metric" (:type row))))))
+      (testing "measure"
+        (mt/with-temp [:model/Measure {id :id} {:name       "M1"
+                                                :table_id   (mt/id :venues)
+                                                :creator_id (mt/user->id :rasta)
+                                                :definition (measure-definition (lib/count))}]
+          (let [row (content-one {:items [{:type "measure" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "M1" (:name row))))))
+      (testing "segment"
+        (mt/with-temp [:model/Segment {id :id} {:name "S1" :table_id (mt/id :venues) :definition {}}]
+          (let [row (content-one {:items [{:type "segment" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "S1" (:name row))))))
+      (testing "collection"
+        (mt/with-temp [:model/Collection {id :id} {:name "C1"}]
+          (let [row (content-one {:items [{:type "collection" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "C1" (:name row))))))
+      (testing "snippet"
+        (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name       "snip"
+                                                           :content    "wow"
+                                                           :creator_id (mt/user->id :lucky)}]
+          (let [row (content-one {:items [{:type "snippet" :id id}]})]
+            (is (nil? (:error row)))
+            (is (= "wow" (:content row))))))
+      (testing "document returns flattened body text"
+        (mt/with-temp [:model/Document {id :id}
+                       {:document     {:type    "doc"
+                                       :content [{:type    "paragraph"
+                                                  :content [{:type "text" :text "hello"}]}]}
+                        :content_type "application/json+vnd.prose-mirror"}]
+          (let [row (content-one {:items [{:type "document" :id id}]})]
+            (is (nil? (:error row)))
+            (is (re-find #"hello" (:markdown row)))))))))
+
+(deftest get-content-dashboard-skeleton-test
+  (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category" :slug "category"
+                                                                     :id   "_CAT_"   :type "category"}]}
+                   :model/Card          {card-id :id} {:name "Embedded"}
+                   :model/DashboardTab  {tab-id :id}  {:dashboard_id dash-id :name "Tab 1" :position 0}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id       dash-id
+                                                       :card_id            card-id
+                                                       :dashboard_tab_id   tab-id
+                                                       :row                0
+                                                       :col                0
+                                                       :parameter_mappings [{:parameter_id "_CAT_"
+                                                                             :card_id      card-id
+                                                                             :target       [:dimension
+                                                                                            [:field (mt/id :venues :name) nil]]}]}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "dashboard" :id dash-id}]})]
+          (is (nil? (:error row)))
+          (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
+          (testing "each parameter names the dashcards it is wired to"
+            (is (= [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]
+                   (:parameters row))))
+          (testing "one summary row per dashcard, with the card reference resolved"
+            (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
+                     :dashboard_tab_id tab-id :row 0 :col 0}]
+                   (mapv #(select-keys % [:id :kind :card :dashboard_tab_id :row :col])
+                         (:dashcards row))))))))))
+
+(deftest get-content-alert-test
+  (testing "GHY-4140: alert reads carry condition, schedule, and handlers"
+    (notification.tu/with-card-notification
+      [notification {:card              {:dataset_query (mt/mbql-query venues)}
+                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :subscriptions     [{:type            :notification-subscription/cron
+                                          :cron_schedule   "0 0 0 * * ?"
+                                          :ui_display_type :cron/builder}]
+                     :handlers          [{:channel_type :channel/email
+                                          :recipients   [{:type    :notification-recipient/user
+                                                          :user_id (mt/user->id :crowberto)}]}]}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "alert" :id (:id notification)}]})]
+          (is (nil? (:error row)))
+          (is (= "0 0 0 * * ?" (-> row :subscriptions first :cron_schedule)))
+          (is (= "channel/email" (-> row :handlers first :channel_type))))))))
+
+(deftest get-content-subscription-pulse-test
+  (testing "GHY-4140: a live Pulse row reads as a subscription, with its channels and cards"
+    (mt/with-temp [:model/Card         {card-id :id}  {:name "Sub Card"}
+                   :model/Dashboard    {dash-id :id}  {}
+                   :model/Pulse        {pulse-id :id} {:name "Weekly" :dashboard_id dash-id}
+                   :model/PulseCard    _              {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id}    {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _     {:pulse_channel_id pc-id
+                                                       :user_id          (mt/user->id :rasta)}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "subscription" :id pulse-id}]})]
+          (is (nil? (:error row)))
+          (is (= "Weekly" (:name row)))
+          (is (= dash-id (:dashboard_id row)))
+          (is (= [(mt/user->id :rasta)]
+                 (keep :id (-> row :channels first :recipients)))))))))
+
+(deftest get-content-transform-test
+  (testing "GHY-4140: a transform read carries source type and target"
+    (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                              :source {:type  :query
+                                                       :query {:database (mt/id)
+                                                               :type     "query"
+                                                               :query    {:source-table (mt/id :venues)}}}
+                                              :target {:type   :table
+                                                       :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                       :name   "t1_out"}}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "transform" :id id}]})]
+          (is (nil? (:error row)))
+          (is (= "t1" (:name row)))
+          (is (= "t1_out" (-> row :target :name))))))))
