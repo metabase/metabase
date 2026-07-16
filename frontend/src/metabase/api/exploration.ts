@@ -9,10 +9,12 @@ import type {
   ExplorationId,
   ExplorationQueryId,
   ExplorationThreadId,
+  ExploreFurtherRequest,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
   GetMyExplorationsRequest,
   GetMyExplorationsResponse,
+  RestartExplorationRequest,
   UpdateExplorationRequest,
   VisualizationDisplay,
   VisualizationSettings,
@@ -76,14 +78,26 @@ export const explorationApi = Api.injectEndpoints({
           listTag("exploration"),
         ]),
     }),
-    restartExploration: builder.mutation<Exploration, ExplorationId>({
-      query: (id) => ({
+    exploreFurther: builder.mutation<Exploration, ExploreFurtherRequest>({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/exploration/${id}/restart`,
+        url: `/api/exploration/${id}/explore-further`,
+        body,
       }),
-      invalidatesTags: (exploration, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("exploration", id)]),
+    }),
+    restartExploration: builder.mutation<
+      Exploration,
+      RestartExplorationRequest
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/restart`,
+      }),
+      invalidatesTags: (exploration, error, { explorationId }) =>
         invalidateTags(error, [
-          idTag("exploration", id),
+          idTag("exploration", explorationId),
           // The thread's AI Summary doc was reset to its placeholder server-side; invalidate it
           // so an open editor refetches instead of showing the previous run's summary.
           ...(exploration?.threads ?? []).flatMap((thread) =>
@@ -238,6 +252,7 @@ export const {
   useGetExplorationQuery,
   useGetMyExplorationsQuery,
   useCreateExplorationMutation,
+  useExploreFurtherMutation,
   useUpdateExplorationMutation,
   useRestartExplorationMutation,
   useDeleteExplorationMutation,

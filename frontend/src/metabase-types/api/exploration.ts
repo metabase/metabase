@@ -1,10 +1,11 @@
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { RowValue } from "./dataset";
 import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, DimensionReference } from "./query";
 import type { SegmentId } from "./segment";
 import type { Timeline, TimelineEvent, TimelineId } from "./timeline";
 import type { UserId } from "./user";
@@ -98,6 +99,7 @@ export type RemoveFromResearchPlanResponse = {
 
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
+export type ExplorationPageId = number;
 export type ExplorationQueryId = number;
 
 export interface ExplorationMetricSelection {
@@ -125,6 +127,18 @@ export interface CreateExplorationRequest {
   }[];
 }
 
+export type ExplorationExploreFilter = {
+  field_ref: DimensionReference;
+  value: RowValue;
+};
+
+export interface ExploreFurtherRequest {
+  id: ExplorationId;
+  // The clicked chart's page: its block (metric + dimensions) is copied into the new thread.
+  page_id: ExplorationPageId;
+  explore_filters: ExplorationExploreFilter[];
+}
+
 export interface UpdateExplorationRequest {
   id: ExplorationId;
   name?: string | null;
@@ -132,6 +146,11 @@ export interface UpdateExplorationRequest {
   archived?: boolean;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
+}
+
+export interface RestartExplorationRequest {
+  explorationId: ExplorationId;
+  threadId: ExplorationThreadId;
 }
 
 export interface CancelExplorationThreadRequest {
@@ -261,7 +280,7 @@ export interface ExplorationDocument {
 export type ExplorationPageNodeId = string;
 
 export interface ExplorationPageNode {
-  id: number;
+  id: ExplorationPageId;
   name: string | null;
   long_name: string | null;
   position: number;
@@ -270,9 +289,11 @@ export interface ExplorationPageNode {
   hidden?: boolean;
 }
 
+export type ExplorationBlockNodeType = "metric" | "dimension";
+
 export interface ExplorationBlockNode {
   id: number;
-  type: "metric" | "dimension";
+  type: ExplorationBlockNodeType;
   name: string | null;
   position: number;
   pages: ExplorationPageNode[];
@@ -316,6 +337,7 @@ export interface ExplorationThread {
   name: string | null;
   prompt: string | null;
   position: number;
+  source_page_id: ExplorationPageId | null;
   started_at: string | null;
   completed_at: string | null;
   canceled_at: string | null;

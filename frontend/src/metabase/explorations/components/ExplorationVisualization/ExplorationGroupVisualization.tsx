@@ -1,6 +1,7 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
@@ -22,27 +23,38 @@ import { is403Error } from "metabase/utils/errors";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type {
+  ClickActionsMode,
+  HighlightedObject,
+} from "metabase/visualizations/types";
 import type {
   Comment,
+  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
+  IconName,
   SingleSeries,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
+import { useExplorationClickActionsMode } from "../../hooks/useExplorationClickActionsMode";
+import type { CommentDrafts } from "../../types";
+
+import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { type LegendItem, buildSeriesGroup } from "./utils";
+import { type LegendItem, buildSeriesGroup, getCommentLabel } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
+  blockType: ExplorationBlockNodeType;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -50,6 +62,8 @@ interface ExplorationGroupVisualizationProps {
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
   wasCommentsSidebarOpen: boolean;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
@@ -133,6 +147,7 @@ function ExplorationGroupVisualizationChart({
   explorationId,
   page,
   queries,
+  blockType,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -141,8 +156,20 @@ function ExplorationGroupVisualizationChart({
   setCommentDrafts,
   isCommentsSidebarOpen,
   wasCommentsSidebarOpen,
+  onPreviousPage,
+  onNextPage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
+
+  const clickActionsMode = useExplorationClickActionsMode({
+    explorationId,
+    pageId: page.id,
+    blockType,
+    queryType: queries[0].query_type,
+    commentDrafts,
+    setCommentDrafts,
+  });
+
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
 
   useEffect(() => {
@@ -186,34 +213,83 @@ function ExplorationGroupVisualizationChart({
     return seriesGroup?.isTimeseries && availableTimelines.length > 0;
   }, [seriesGroup, availableTimelines]);
 
-  const CommentTimelineBadge = useCallback(
+  const computedSettings = useMemo(
+    () =>
+      seriesGroup
+        ? getComputedSettingsForSeries(seriesGroup.series)
+        : undefined,
+    [seriesGroup],
+  );
+
+  const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
+    null,
+  );
+
+  const renderCommentExtra = useCallback(
     (comment: Comment) => {
-      const timelineId = comment.context?.timeline_id;
-      if (typeof timelineId !== "number") {
+      const context = comment.context;
+
+      // comment context is an untyped JSON blob; `highlighted` is written by
+      // us as a HighlightedObject when the comment captures a chart point
+      const commentHighlight = context?.highlighted as
+        | HighlightedObject
+        | undefined;
+      const commentLabel = getCommentLabel(
+        commentHighlight,
+        seriesGroup,
+        computedSettings,
+      );
+
+      const timelineId =
+        typeof context?.timeline_id === "number"
+          ? context.timeline_id
+          : undefined;
+      const timeline =
+        timelineId != null
+          ? availableTimelines.find((t) => t.id === timelineId)
+          : undefined;
+
+      if (!commentLabel && !timeline) {
         return null;
       }
-      const timeline = availableTimelines.find((t) => t.id === timelineId);
-      if (!timeline) {
-        return null;
-      }
+
       return (
-        <UnstyledButton
-          bd="0.5px solid border"
-          bdrs="lg"
-          py="xs"
-          px="sm"
-          c="text-secondary"
-          mt="0.375rem"
-          className={S.commentTimelineBadge}
-          onClick={() => {
-            onSelectTimelineId(timelineId);
-          }}
-        >
-          {timeline.name}
-        </UnstyledButton>
+        <Group gap="xs" mt="0.375rem" wrap="wrap">
+          {commentLabel && (
+            <CommentBadge
+              label={commentLabel}
+              iconName="filter"
+              buttonProps={{
+                onMouseEnter: () => {
+                  if (commentHighlight) {
+                    setHighlighted(commentHighlight);
+                  }
+                },
+                onMouseLeave: () => setHighlighted(null),
+              }}
+            />
+          )}
+          {timeline && (
+            <CommentBadge
+              label={timeline.name}
+              iconName="clock"
+              buttonProps={{
+                onClick: () => {
+                  onSelectTimelineId(timelineId ?? null);
+                },
+              }}
+            />
+          )}
+        </Group>
       );
     },
-    [availableTimelines, onSelectTimelineId],
+    [
+      availableTimelines,
+      computedSettings,
+      onSelectTimelineId,
+      setHighlighted,
+      seriesGroup,
+    ],
   );
 
   if (!seriesGroup) {
@@ -265,19 +341,24 @@ function ExplorationGroupVisualizationChart({
             <ExplorationCartesianChart
               key={series[0].card.id}
               series={series}
-              stackCount={stackCount}
+              mode={clickActionsMode}
+              highlighted={highlighted}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
               key={series[0].card.id}
               series={series}
               stackCount={stackCount}
+              mode={clickActionsMode}
+              highlighted={highlighted}
             />
           ) : (
             <ExplorationMap
               key={series[0].card.id}
               series={series}
               legendItems={legendItems}
+              mode={clickActionsMode}
+              highlighted={highlighted}
             />
           )}
         </Box>
@@ -290,6 +371,8 @@ function ExplorationGroupVisualizationChart({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
+          onPreviousPage={onPreviousPage}
+          onNextPage={onNextPage}
         />
       </Stack>
       {isCommentsSidebarOpen && (
@@ -308,7 +391,7 @@ function ExplorationGroupVisualizationChart({
             context={{
               timeline_id: selectedTimelineId,
             }}
-            renderExtra={CommentTimelineBadge}
+            renderExtra={renderCommentExtra}
           />
         </Box>
       )}
@@ -318,23 +401,47 @@ function ExplorationGroupVisualizationChart({
 
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
-  stackCount?: number;
+  mode: ClickActionsMode;
+  highlighted?: HighlightedObject | null;
 }
 
-function ExplorationCartesianChart({ series }: ExplorationCartesianChartProps) {
-  return <ExplorationVisualization rawSeries={series} className={S.chart} />;
+function ExplorationCartesianChart({
+  series,
+  mode,
+  highlighted,
+}: ExplorationCartesianChartProps) {
+  return (
+    <ExplorationVisualization
+      rawSeries={series}
+      className={S.chart}
+      mode={mode}
+      highlighted={highlighted}
+    />
+  );
 }
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
   stackCount?: number;
+  mode: ClickActionsMode;
+  highlighted?: HighlightedObject | null;
 }
 
-function ExplorationHeatMap({ series, stackCount }: ExplorationHeatMapProps) {
+function ExplorationHeatMap({
+  series,
+  stackCount,
+  mode,
+  highlighted,
+}: ExplorationHeatMapProps) {
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
     <Box h={tableHeight}>
-      <ExplorationVisualization rawSeries={series} className={S.chart} />
+      <ExplorationVisualization
+        rawSeries={series}
+        className={S.chart}
+        mode={mode}
+        highlighted={highlighted}
+      />
     </Box>
   );
 }
@@ -342,9 +449,16 @@ function ExplorationHeatMap({ series, stackCount }: ExplorationHeatMapProps) {
 interface ExplorationMapProps {
   series: SingleSeries[];
   legendItems: LegendItem[];
+  mode: ClickActionsMode;
+  highlighted?: HighlightedObject | null;
 }
 
-function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
+function ExplorationMap({
+  series,
+  legendItems,
+  mode,
+  highlighted,
+}: ExplorationMapProps) {
   return (
     <Stack gap="md">
       {legendItems.length > 1 && (
@@ -383,7 +497,12 @@ function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
       )}
       {series.map((s) => (
         <Box key={s.card.id} flex={1} mih="10rem">
-          <ExplorationVisualization rawSeries={[s]} className={S.chart} />
+          <ExplorationVisualization
+            rawSeries={[s]}
+            className={S.chart}
+            mode={mode}
+            highlighted={highlighted}
+          />
         </Box>
       ))}
     </Stack>
@@ -393,11 +512,15 @@ function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
 interface ExplorationVisualizationProps {
   rawSeries: SingleSeries[];
   className?: string;
+  mode?: ClickActionsMode;
+  highlighted?: HighlightedObject | null;
 }
 
 export function ExplorationVisualization({
   rawSeries,
   className,
+  mode,
+  highlighted,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -408,6 +531,9 @@ export function ExplorationVisualization({
         rawSeries={rawSeries}
         className={className}
         onUpdateWarnings={setWarnings}
+        mode={mode}
+        onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
+        highlighted={highlighted}
       />
     </Box>
   );
@@ -436,5 +562,30 @@ function Message({ groupName, message, iconProps }: MessageProps) {
         <Text fw="bold">{message}</Text>
       </Stack>
     </Stack>
+  );
+}
+
+interface CommentBadgeProps {
+  label: string;
+  iconName: IconName;
+  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
+}
+
+function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
+  return (
+    <UnstyledButton
+      bd="0.5px solid border"
+      bdrs="lg"
+      py="xs"
+      px="sm"
+      c="text-primary"
+      className={S.commentBadge}
+      {...buttonProps}
+    >
+      <Group gap={4} wrap="nowrap">
+        <Icon name={iconName} size={12} aria-hidden />
+        {label}
+      </Group>
+    </UnstyledButton>
   );
 }

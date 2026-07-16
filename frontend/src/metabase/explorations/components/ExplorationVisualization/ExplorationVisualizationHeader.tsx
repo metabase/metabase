@@ -5,7 +5,7 @@ import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolv
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
 import { push, useRouter } from "metabase/router";
-import { Group, Indicator, Text } from "metabase/ui";
+import { Ellipsified, Group, Indicator } from "metabase/ui";
 import type { ExplorationId, ExplorationPageNodeId } from "metabase-types/api";
 
 interface ExplorationVisualizationHeaderProps {
@@ -56,11 +56,17 @@ export function ExplorationVisualizationHeader({
     />
   ) : null;
   return (
-    <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
-      <Text fw="bold" size="lg">
+    <Group
+      h="2rem"
+      justify="space-between"
+      wrap="nowrap"
+      miw={0}
+      style={{ flexShrink: 0 }}
+    >
+      <Ellipsified fw="bold" fz="lg" flex={1} miw={0}>
         {name}
-      </Text>
-      <Group align="center" gap="sm">
+      </Ellipsified>
+      <Group align="center" gap="sm" style={{ flexShrink: 0 }}>
         {unresolvedCommentsCount > 0 || allCommentsCount > 0 ? (
           <Indicator
             label={

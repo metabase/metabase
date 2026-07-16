@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
 import { useSelector } from "metabase/redux";
@@ -157,7 +158,11 @@ export function DiscussionComment({
           readonly={!isEditing}
           onEscape={editingHandler.close}
         />
-        {renderExtra?.(comment)}
+        {renderExtra && (
+          <ErrorBoundary errorComponent={() => null}>
+            <CommentExtra renderExtra={renderExtra} comment={comment} />
+          </ErrorBoundary>
+        )}
 
         {comment.reactions.length > 0 && (
           <DiscussionReactions
@@ -169,4 +174,16 @@ export function DiscussionComment({
       </Box>
     </Timeline.Item>
   );
+}
+
+// A component (rather than calling renderExtra inline) so a throwing renderer
+// is caught by the surrounding ErrorBoundary instead of crashing the comment.
+function CommentExtra({
+  renderExtra,
+  comment,
+}: {
+  renderExtra: CommentExtraRenderer;
+  comment: Comment;
+}) {
+  return <>{renderExtra(comment)}</>;
 }

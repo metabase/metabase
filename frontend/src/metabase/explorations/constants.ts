@@ -19,3 +19,6 @@ export const EXPLORATION_NAME_MAX_LENGTH = 254;
 export function getDefaultExplorationName() {
   return t`New research - ${dayjs().local().format("MMMM D, YYYY")}`;
 }
+
+// keep in sync with backend other-bucket-label
+export const OTHER_BUCKET_LABEL = "(Other)";
