@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -6,6 +5,7 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
@@ -13,38 +13,52 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";
+import type {
+  CardType,
+  Collection,
+  CollectionContentModel,
+  CollectionId,
+  DatabaseId,
+} from "metabase-types/api";
 
 import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 
-const propTypes = {
-  type: PropTypes.string,
-  onSelect: PropTypes.func.isRequired,
-  onBack: PropTypes.func.isRequired,
-  databaseId: PropTypes.string,
-  tableId: PropTypes.string,
-  collectionId: PropTypes.number,
-};
+interface SavedEntityPickerProps {
+  type: CardType;
+  onSelect: (tableOrModelId: string) => void;
+  onBack: () => void;
+  databaseId?: DatabaseId | null;
+  tableId?: string;
+  collectionId?: CollectionId;
+}
 
-const getOurAnalyticsCollection = (collectionEntity) => {
-  return {
-    ...collectionEntity,
-    schemaName: "Everything else",
-    icon: "folder",
-  };
-};
+const getOurAnalyticsCollection = (
+  collectionEntity: Collection,
+): CollectionTreeItem => ({
+  ...collectionEntity,
+  // "Our analytics" is shown here as a flat clickable target; its real children
+  // are already listed by buildCollectionTree below, so we explicitly empty
+  // them to avoid duplicating the tree.
+  children: [],
+  schemaName: "Everything else",
+  icon: "folder",
+});
 
+// A sentinel root node that buildCollectionTree special-cases by id; it isn't a
+// real Collection, so we assert the type here rather than fabricate every field.
 const ALL_PERSONAL_COLLECTIONS_ROOT = {
   ...PERSONAL_COLLECTIONS,
-};
+} as Collection;
 
-export function SavedEntityPicker(props) {
+export function SavedEntityPicker(props: SavedEntityPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery({
     "exclude-archived": true,
   });
@@ -61,6 +75,11 @@ export function SavedEntityPicker(props) {
   );
 }
 
+interface SavedEntityPickerInnerProps extends SavedEntityPickerProps {
+  collections: Collection[];
+  rootCollection: Collection;
+}
+
 function SavedEntityPickerInner({
   type,
   onBack,
@@ -70,17 +89,17 @@ function SavedEntityPickerInner({
   collectionId,
   collections,
   rootCollection,
-}) {
+}: SavedEntityPickerInnerProps) {
   const currentUser = useSelector(getUser);
 
-  const collectionTree = useMemo(() => {
-    const modelFilter = (model) => CARD_INFO[type].model === model;
+  const collectionTree = useMemo<CollectionTreeItem[]>(() => {
+    const modelFilter = (model: CollectionContentModel) =>
+      CARD_INFO[type].model === model;
 
-    const preparedCollections = [];
-    const userPersonalCollections = currentUserPersonalCollections(
-      collections,
-      currentUser.id,
-    );
+    const preparedCollections: Collection[] = [];
+    const userPersonalCollections = currentUser
+      ? currentUserPersonalCollections(collections, currentUser.id)
+      : [];
     const nonPersonalOrArchivedCollections = collections.filter(
       nonPersonalOrArchivedCollection,
     );
@@ -88,7 +107,7 @@ function SavedEntityPickerInner({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...nonPersonalOrArchivedCollections);
 
-    if (currentUser.is_superuser) {
+    if (currentUser?.is_superuser) {
       const otherPersonalCollections = collections.filter(
         (collection) =>
           isRootPersonalCollection(collection) &&
@@ -115,15 +134,27 @@ function SavedEntityPickerInner({
     [],
   );
 
-  const [selectedCollection, setSelectedCollection] =
-    useState(initialCollection);
+  const [selectedCollection, setSelectedCollection] = useState<
+    Collection | undefined
+  >(initialCollection);
 
-  const handleSelect = useCallback((collection) => {
-    if (collection.id === PERSONAL_COLLECTIONS.id) {
-      return;
-    }
-    setSelectedCollection(collection);
-  }, []);
+  const handleSelect = useCallback(
+    (node: ITreeNodeItem) => {
+      if (node.id === PERSONAL_COLLECTIONS.id) {
+        return;
+      }
+      const collection = findCollectionById(
+        collectionTree,
+        // Tree erases node ids to string | number, but these nodes are always
+        // collection tree items keyed by CollectionId.
+        node.id as CollectionId,
+      );
+      if (collection) {
+        setSelectedCollection(collection);
+      }
+    },
+    [collectionTree],
+  );
 
   return (
     <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
@@ -154,10 +185,3 @@ function SavedEntityPickerInner({
     </Box>
   );
 }
-
-SavedEntityPicker.propTypes = propTypes;
-SavedEntityPickerInner.propTypes = {
-  ...propTypes,
-  collections: PropTypes.array.isRequired,
-  rootCollection: PropTypes.object.isRequired,
-};
