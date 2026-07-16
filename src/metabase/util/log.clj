@@ -208,6 +208,17 @@
         :clj  (tools-logf *ns*       level x args))))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
+(defmacro enabled?
+  "Returns true if logging at `level` is enabled for the current namespace.
+  `level` should be a keyword (e.g. `:debug`).
+
+  This macro captures the calling namespace at compile time, so it correctly
+  resolves to the namespace where it is used rather than `metabase.util.log`."
+  [level]
+  `(clojure.tools.logging.impl/enabled?
+    (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* '~(symbol (ns-name *ns*)))
+    ~level))
+
 (defmacro trace
   "Log one or more args at the `:trace` level."
   {:arglists '([& args] [e & args])}
