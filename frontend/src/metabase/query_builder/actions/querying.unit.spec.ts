@@ -30,12 +30,8 @@ jest.mock("./url", () => ({
 
 const mockApiRunQuestionQuery = jest.mocked(apiRunQuestionQuery);
 
-// Pins the document-title reset on query failure (metabase#49270). While a
-// query runs, loadStartUIControls sets the document title to a loading message
-// and arms a timeout that escalates it to "Still Here...". When the query
-// errors, queryErrored must clear that timeout and reset the document title to
-// "" so the tab no longer claims loading is in progress. The bug was that the
-// error path left the loading title (and its timeout) in place.
+// A query in flight sets a loading document title and arms a timeout that changes it to "Still Here...".
+// These constants seed that in-flight state.
 const LOADING_TITLE = "Doing science...";
 const FAKE_TIMEOUT_ID = 1234 as unknown as string;
 
@@ -92,12 +88,13 @@ function setupRunOrCancel({ isRunning }: SetupOpts) {
     questions: [card],
   });
 
-  const abort = jest.fn();
+  const controller = new AbortController();
+  const abort = jest.spyOn(controller, "abort");
   const state = createMockState({
     entities,
     qb: createMockQueryBuilderState({
       card,
-      cancelQueryController: isRunning ? ({ abort } as AbortController) : null,
+      cancelQueryController: isRunning ? controller : null,
       uiControls: createMockQueryBuilderUIControlsState({ isRunning }),
     }),
   });
@@ -140,17 +137,11 @@ describe("runOrCancelQuestionOrSelectedQuery (metabase#59356)", () => {
   });
 });
 
-// Pins the loading document title (metabase#40051). When a query starts,
-// loadStartUIControls resolves the white-labeled loading message *factory* and
-// must call it, storing the resulting string ("Doing science...") as the
-// document title. The bug put the factory function itself into the title, so
-// the tab showed stringified JS code instead of the loading message.
 describe("loadStartUIControls (metabase#40051)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    // Keep the query "in flight" so we can observe the loading title without
-    // the completion path clearing it.
+    // Deliberately doesn't resolve to keep the query in flight so the loading title isn't cleared
     mockApiRunQuestionQuery.mockImplementation(() => new Promise(() => {}));
   });
 
@@ -159,7 +150,8 @@ describe("loadStartUIControls (metabase#40051)", () => {
     jest.useRealTimers();
   });
 
-  it("sets the document title to the loading message string, not the factory", () => {
+  // the document title comes from a factory function, but in metabase#40051 the factory function wasn't called
+  it("sets the document title to the loading message string", () => {
     const store = getMainStore();
 
     store.dispatch(runQuestionQuery({ shouldUpdateUrl: false }));

@@ -896,8 +896,8 @@ describe("QB Actions > updateQuestion", () => {
         run: false,
       });
 
-      // Without loaded results (no raw series) the pivot column split must not
-      // be recomputed - doing so previously threw and broke the notebook editor.
+      // Without loaded results the pivot column split must not be recomputed
+      // doing so previously threw and broke the notebook editor.
       expect(result).not.toBeNull();
       expect(
         result.card.visualization_settings["pivot_table.column_split"],
