@@ -497,7 +497,6 @@ describe("TaskListPage", () => {
     ).toBeInTheDocument();
     expect(history?.getCurrentLocation().search).toEqual("");
 
-    // clicking the active sorted column toggles its direction
     await userEvent.click(startedAtHeader);
     await waitFor(() => {
       expect(
