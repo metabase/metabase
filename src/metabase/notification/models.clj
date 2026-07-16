@@ -564,6 +564,8 @@
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [{:keys [recipients template] :as handler} handlers+recipients]
         ;; assert can either template_id exists, then template but be nil, and vice versa
+        (when (and template (not (map? template)))
+          (throw (ex-info "Channel template must be a map" {:status-code 400})))
         (let [template-id (if template
                             (t2/insert-returning-pk! :model/ChannelTemplate template)
                             (:template_id handler))
