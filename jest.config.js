@@ -42,11 +42,6 @@ const baseConfig = {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
     "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
-    // Emotion inserts real CSS rules into jsdom's CSSOM on every styled
-    // component mount; jsdom parses them but computes no layout, so it is
-    // pure overhead. Tests never read emotion-inserted styles (jsdom can't
-    // compute them anyway), so style insertion is a no-op in tests.
-    "^@emotion/sheet$": "<rootDir>/frontend/test/__mocks__/emotionSheetMock.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":

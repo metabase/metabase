@@ -8,6 +8,25 @@ import {
   WritableStream,
 } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
+
+// @emotion/sheet is a transitive dependency (of @emotion/cache), which bun's
+// isolated linker doesn't hoist; resolve it through its consumer.
+const { StyleSheet } = require(
+  require.resolve("@emotion/sheet", {
+    paths: [require.resolve("@emotion/cache")],
+  }),
+);
+
+// Emotion runs its style sheets in non-speedy mode outside production:
+// every rule is appended as a text node, and jsdom reparses the whole sheet
+// each time (quadratic). Speedy mode uses insertRule, which jsdom handles
+// incrementally, and the rules still land in the CSSOM so visibility
+// assertions (toBeVisible) keep working.
+Object.defineProperty(StyleSheet.prototype, "isSpeedy", {
+  configurable: true,
+  get: () => true,
+  set: () => {},
+});
 import "raf/polyfill";
 import "jest-canvas-mock";
 import "metabase/utils/dayjs";
