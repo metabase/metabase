@@ -8,7 +8,7 @@ import type {
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
