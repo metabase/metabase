@@ -1,0 +1,34 @@
+## Adds data_app.allowed_hosts — a JSON array of origins the app's sandboxed
+## bundle may fetch/XHR (NULL/empty means none).
+##
+## Split into its own file rather than appended to 20260528_data_app.yaml so the
+## table-creation migration stays self-contained. The changeset is guarded with
+## `onFail: MARK_RAN` on `not columnExists`, so an instance that already added
+## this column under the earlier branch state fails the precondition and is
+## marked as ran (no re-run); fresh installs apply it normally.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-05-28T00:00:03
+      author: timofei
+      comment: >-
+        Add data_app.allowed_hosts. A JSON array of origins the app's sandboxed
+        bundle may fetch/XHR; NULL/empty means none. Guarded so pre-existing
+        tables pick it up while fresh installs that already created it skip it.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: data_app
+                columnName: allowed_hosts
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: allowed_hosts
+                  type: ${text.type}
+                  remarks: JSON array of origins the sandboxed bundle may fetch/XHR. NULL when none configured.
+                  constraints:
+                    nullable: true
+      rollback: []

@@ -2,7 +2,7 @@
 ##
 ## Data apps come from the repository connected via the remote-sync feature. The
 ## repo root has a `data_apps/` directory; each subdirectory is one app and
-## contains a `data_app.yaml` (name/path/allowed_hosts) plus its built bundle. Each app dir
+## contains a `data_app.yaml` (name/path) plus its built bundle. Each app dir
 ## is materialized as one row in this table on sync. The `bundle` / `bundle_hash`
 ## columns cache the last successfully synced bytes (nullable until first sync).
 
@@ -41,12 +41,6 @@ databaseChangeLog:
                   remarks: Human-readable name from the manifest, shown in the admin UI
                   constraints:
                     nullable: false
-              - column:
-                  name: allowed_hosts
-                  type: ${text.type}
-                  remarks: JSON array of origins the sandboxed bundle may fetch/XHR. NULL when none configured.
-                  constraints:
-                    nullable: true
               - column:
                   name: bundle_path
                   type: varchar(1024)
@@ -145,31 +139,4 @@ databaseChangeLog:
       # No-op rollback: created in the same deployment as the table, whose own
       # rollback drops it. Reverting the column first would only run right before
       # that DROP (and could fail once the table is gone). See the bundle changeset.
-      rollback: []
-
-  - changeSet:
-      id: v64.2026-05-28T00:00:03
-      author: timofei
-      comment: >-
-        Add data_app.allowed_hosts. A JSON array of origins the app's sandboxed
-        bundle may fetch/XHR; NULL/empty means none. Guarded so pre-existing
-        tables pick it up while fresh installs that already created it skip it.
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: data_app
-                columnName: allowed_hosts
-      changes:
-        - addColumn:
-            tableName: data_app
-            columns:
-              - column:
-                  name: allowed_hosts
-                  type: ${text.type}
-                  remarks: JSON array of origins the sandboxed bundle may fetch/XHR. NULL when none configured.
-                  constraints:
-                    nullable: true
-      # No-op rollback: created in the same deployment as the table, whose own
-      # rollback drops it (see the enabled/bundle changesets).
       rollback: []
