@@ -75,7 +75,12 @@ export const Route: RouteConfigElement = Object.assign(
       // route config so the bridge component can render it off the injected
       // `route` prop, letting sibling routes that share a component reconcile
       // instead of remounting. Goes away at the engine swap.
-      if (route?.element != null) {
+      //
+      // The guard is `!== undefined`, not `!= null`, to match v7: an explicit
+      // `element={null}` renders nothing (bridged to a component that renders
+      // null), while an omitted `element` falls through to v3's render-children
+      // default, which is v7's implicit `<Outlet/>`.
+      if (route != null && route.element !== undefined) {
         route.component = routeElementToComponent(route.element);
       }
 
