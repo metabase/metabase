@@ -194,9 +194,10 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
-    // Entry point for the static-viz bundle (server-side chart rendering in
-    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    // Entry points for the static-viz bundles (server-side chart rendering in
+    // GraalJS) - like app.js, they compose OSS + EE code for build artifacts.
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index-custom.tsx",
   ].map((path) =>
     createElement({
       type: "app",

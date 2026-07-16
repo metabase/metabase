@@ -169,6 +169,7 @@
   org.eclipse.jgit/org.eclipse.jgit        {:mvn/version "7.3.0.202506031305-r"}; Java implementation of Git version control system
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.1.3" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/js-isolate-community  {:mvn/version "25.1.3" :extension "pom"} ; JS polyglot isolate for the SandboxPolicy/UNTRUSTED custom-viz plugin sandbox
   org.graalvm.polyglot/polyglot             {:mvn/version "25.1.3"}             ; GraalVM platform, required by JS engine
   org.graalvm.polyglot/python               {:mvn/version "25.1.3"
                                              :extension "pom"}

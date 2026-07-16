@@ -70,6 +70,15 @@ const getDefaultPluginCustomViz = () => ({
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,
 
+  // Static viz rendering (GraalJS context)
+  customVizRegistry: new Map<string, Record<string, ComponentType<any>>>(),
+  registerCustomVizPlugin: (
+    _factory: (
+      props: Record<string, unknown>,
+    ) => Record<string, ComponentType<any>>,
+    _identifier: string,
+  ) => {},
+
   /**
    *  Always false in OSS as there is no plugin to produce a mount handle.
    */
