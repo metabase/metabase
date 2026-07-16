@@ -70,6 +70,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import {
+  getHighlightedTableCellKey,
+  getHighlightedTableCells,
+} from "../../visualizations/Table/get-highlighted-table-cells";
+
 import S from "./TableInteractive.module.css";
 import { TableInteractiveContextProvider } from "./TableInteractiveContext";
 import {
@@ -80,6 +85,15 @@ import { MiniBarCell } from "./cells/MiniBarCell";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
+
+const getHighlightCellClassName = (
+  isHighlightingActive: boolean,
+  isHighlighted: boolean,
+) =>
+  cx({
+    [S.highlightedCell]: isHighlightingActive && isHighlighted,
+    [S.dimmedCell]: isHighlightingActive && !isHighlighted,
+  });
 
 const shouldWrap = (
   settings: VisualizationSettings,
@@ -178,6 +192,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     zoomedRowIndex,
     onZoomRow,
     tableFooterExtraButtons,
+    highlighted,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -190,6 +205,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const tc = useTranslateContent();
 
   const { rows, cols } = data;
+
+  const highlightedCellKeys = useMemo(() => {
+    const highlightedCells = getHighlightedTableCells(
+      series,
+      data,
+      highlighted,
+      isPivoted,
+    );
+
+    return new Set(highlightedCells.map(getHighlightedTableCellKey));
+  }, [series, data, highlighted, isPivoted]);
+
+  const isHighlightingActive = highlightedCellKeys.size > 0;
 
   const getColumnSortDirection = useMemo(() => {
     if (!isClientSideSortingEnabled) {
@@ -519,17 +547,27 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
-        getCellClassName: (value) =>
-          cx("test-TableInteractive-cellWrapper", {
-            [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
-            [S.bodyCellWithImage]: isImage,
-            "test-Table-ID": value != null && isID(col),
-            "test-Table-FK": value != null && isFK(col),
-            "test-TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-            "test-TableInteractive-cellWrapper--lastColumn":
-              columnIndex === cols.length - 1,
-            "test-TableInteractive-emptyCell": value == null,
-          }),
+        getCellClassName: (value, rowIndex) =>
+          cx(
+            "test-TableInteractive-cellWrapper",
+            {
+              [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+              [S.bodyCellWithImage]: isImage,
+              "test-Table-ID": value != null && isID(col),
+              "test-Table-FK": value != null && isFK(col),
+              "test-TableInteractive-cellWrapper--firstColumn":
+                columnIndex === 0,
+              "test-TableInteractive-cellWrapper--lastColumn":
+                columnIndex === cols.length - 1,
+              "test-TableInteractive-emptyCell": value == null,
+            },
+            getHighlightCellClassName(
+              isHighlightingActive,
+              highlightedCellKeys.has(
+                getHighlightedTableCellKey({ rowIndex, columnIndex }),
+              ),
+            ),
+          ),
         header: () => {
           return (
             <HeaderCellWithColumnInfo
@@ -567,6 +605,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           const value = getValue();
           const backgroundColor = getBackgroundColor(value, row?.index);
           const columnExtent = getColumnExtent(cols, rows, columnIndex);
+          const isHighlighted = highlightedCellKeys.has(
+            getHighlightedTableCellKey({ rowIndex: row.index, columnIndex }),
+          );
 
           return (
             <MiniBarCell
@@ -578,6 +619,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               formatter={formatter.rich}
               extent={columnExtent}
               columnSettings={columnSettings}
+              className={getHighlightCellClassName(
+                isHighlightingActive,
+                isHighlighted,
+              )}
             />
           );
         };
@@ -601,6 +646,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     tableTheme,
     isDashboard,
     tc,
+    highlightedCellKeys,
+    isHighlightingActive,
   ]);
 
   const handleColumnResize = useCallback(

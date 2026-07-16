@@ -3,11 +3,16 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
@@ -15,7 +20,12 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { canBrush, getEventDimensions } from "./events";
+import {
+  canBrush,
+  getEventDimensions,
+  getSeriesClickData,
+  normalizeDimensionValue,
+} from "./events";
 
 const CARD_ID = 107;
 
@@ -256,6 +266,158 @@ describe("getEventDimensions", () => {
 
     expect(dimensions).toEqual([
       { column: categoryColumn, value: "Doohickey" },
+    ]);
+  });
+});
+
+describe("getSeriesClickData", () => {
+  const categoryColumn = createMockColumn({
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+  });
+
+  const sumColumn = createMockColumn({
+    name: "sum",
+    display_name: "Sum",
+    source: "aggregation",
+  });
+
+  const dataKey = getDatasetKey(sumColumn, CARD_ID);
+
+  it("supplies cardId, metric column, dimensions, and normalized dates", () => {
+    const createdAtColumn = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+    });
+    const createdAtKey = getDatasetKey(createdAtColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00Z",
+      [createdAtKey]: "2027-10-01T00:00:00Z",
+      [sumKey]: 42,
+    };
+
+    const seriesModel = createMockSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      columnIndex: 1,
+      cardId: CARD_ID,
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [createdAtKey]: createdAtColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+      },
+      cardsColumns: [
+        {
+          dimension: { column: createdAtColumn, index: 0 },
+          metrics: [{ column: sumColumn, index: 1 }],
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData).toMatchObject({
+      cardId: CARD_ID,
+      column: sumColumn,
+      value: 42,
+      dimensions: [
+        {
+          column: createdAtColumn,
+          value: normalizeDimensionValue(
+            createdAtColumn,
+            "2027-10-01T00:00:00Z",
+          ),
+        },
+      ],
+    });
+  });
+
+  it("includes breakout dimensions alongside the x-axis dimension", () => {
+    const sourceColumn = createMockColumn({
+      name: "SOURCE",
+      source: "breakout",
+    });
+    const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "Gadget",
+      [sourceKey]: "Affiliate",
+      [sumKey]: 12,
+    };
+
+    const seriesModel = createMockBreakoutSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Affiliate",
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [sourceKey]: sourceColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: categoryColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: categoryColumn },
+      },
+      cardsColumns: [
+        {
+          dimension: { column: categoryColumn, index: 0 },
+          breakout: { column: sourceColumn, index: 1 },
+          metric: { column: sumColumn, index: 2 },
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData?.dimensions).toEqual([
+      { column: categoryColumn, value: "Gadget" },
+      { column: sourceColumn, value: "Affiliate" },
     ]);
   });
 });

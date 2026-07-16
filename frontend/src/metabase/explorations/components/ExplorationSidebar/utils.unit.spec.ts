@@ -121,6 +121,46 @@ describe("getExplorationSidebarTree sorting", () => {
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
   });
 
+  it("orders pages and headings alphabetically by name when sortOrder is 'alphabetical'", () => {
+    // Banana scores higher than Apple, but alphabetical sort must win.
+    const banana = createQuery({
+      id: 1,
+      name: "Banana",
+      status: "done",
+      interestingness_score: 0.9,
+    });
+    const apple = createQuery({
+      id: 2,
+      name: "Apple",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+
+    const exploration = createExploration({
+      queries: [banana, apple],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({ id: 1, name: "Banana", query_ids: [banana.id] }),
+            createPage({ id: 2, name: "Apple", query_ids: [apple.id] }),
+          ],
+        }),
+      ],
+    });
+
+    const tree = getExplorationSidebarTree(
+      exploration,
+      allTreeFilter,
+      "alphabetical",
+    );
+
+    // Apple (id 2, lower score) sorts before Banana (id 1) by name.
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
+  });
+
   it("prefers settled pages over running pages even when one sibling query already scored highly", () => {
     const doneSegment = createQuery({
       id: 1,
@@ -597,7 +637,7 @@ describe("getExplorationSidebarTabsInfo", () => {
       expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
     });
 
-    it("returns an empty tree when nothing is starred", () => {
+    it("shows no pages when nothing is starred", () => {
       const exploration = createExploration({
         queries: [unstarredQuery],
         blocks: [
@@ -618,7 +658,10 @@ describe("getExplorationSidebarTabsInfo", () => {
         ],
       });
 
-      expect(getFilteredSidebarTree(exploration, "stars")).toEqual([]);
+      // The initial thread heading is always retained, but it carries no pages.
+      expect(
+        getAllPageIds(getFilteredSidebarTree(exploration, "stars")),
+      ).toEqual([]);
     });
   });
 
@@ -641,9 +684,12 @@ describe("getExplorationSidebarTabsInfo", () => {
       expect(getAllPageIds(tree)).toEqual([String(DISCUSSED_PAGE_ID)]);
     });
 
-    it("returns an empty tree when there are no page comments", () => {
+    it("shows no pages when there are no page comments", () => {
+      // The initial thread heading is always retained, but it carries no pages.
       expect(
-        getFilteredSidebarTree(mixedPagesExploration, "discussions"),
+        getAllPageIds(
+          getFilteredSidebarTree(mixedPagesExploration, "discussions"),
+        ),
       ).toEqual([]);
     });
   });
@@ -745,7 +791,11 @@ describe("hidden pages", () => {
         }),
       ],
     });
-    expect(getExplorationSidebarTree(onlyHidden, dropHidden)).toEqual([]);
+    // The block heading is pruned; the initial thread heading is retained but
+    // carries no block headings.
+    expect(
+      getMetricHeadings(getExplorationSidebarTree(onlyHidden, dropHidden)),
+    ).toEqual([]);
   });
 });
 
@@ -873,5 +923,143 @@ describe("group hideability + pageIds", () => {
     // the thread heading mixes a hidden and a visible page → not all hidden
     // Unjustified type cast. FIXME
     expect((tree[0]?.data as { allHidden?: boolean }).allHidden).toBe(false);
+  });
+});
+
+describe("getExplorationSidebarTree sub-exploration nesting", () => {
+  // Threads created via explore-further carry the page they were drilled
+  // from (source_page_id); the tree nests them under the thread owning that
+  // page — except drills off the initial investigation, which stay top-level.
+  const initialThread = () =>
+    createThread({
+      id: 1,
+      position: 0,
+      queries: [createQuery({ id: 1, name: "Revenue", status: "done" })],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({ id: 100, name: "State", position: 0, query_ids: [1] }),
+          ],
+        }),
+      ],
+    });
+
+  // A follow-up drill copies a single metric ("Revenue"); its thread name is
+  // just the drill path ("State = TX").
+  const followUpThread = () =>
+    createThread({
+      id: 2,
+      name: "State = TX",
+      position: 1,
+      source_page_id: 100,
+      queries: [createQuery({ id: 2, name: "Revenue", status: "done" })],
+      blocks: [
+        createBlock({
+          id: 20,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({ id: 200, name: "User", position: 0, query_ids: [2] }),
+          ],
+        }),
+      ],
+    });
+
+  it("keeps a drill off the initial thread top-level and prefixes its heading with the metric", () => {
+    const exploration = createExploration({
+      threads: [initialThread(), followUpThread()],
+    });
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+
+    const followUpNode = tree.find((node) => node.id === 2);
+    expect(followUpNode?.name).toBe("Revenue → State = TX");
+    // The redundant "Revenue" metric-group row is folded away; its page is
+    // surfaced directly under the branch.
+    expect((followUpNode?.children ?? []).map((child) => child.name)).toEqual([
+      "User",
+    ]);
+    expect(followUpNode?.data).toMatchObject({
+      headingKind: "sub-exploration",
+      hideable: true,
+      pageIds: [200],
+      allHidden: false,
+    });
+  });
+
+  it("nests a drill-of-drill under its parent thread without repeating the metric", () => {
+    // Sub-exploration drilled from the follow-up's page (200) — it should nest
+    // under thread 2 and not repeat the "Revenue" metric in its heading.
+    const nestedThread = createThread({
+      id: 3,
+      name: "City = Austin",
+      position: 2,
+      source_page_id: 200,
+      queries: [createQuery({ id: 3, name: "Revenue", status: "done" })],
+      blocks: [
+        createBlock({
+          id: 30,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({ id: 300, name: "Plan", position: 0, query_ids: [3] }),
+          ],
+        }),
+      ],
+    });
+    const exploration = createExploration({
+      threads: [initialThread(), followUpThread(), nestedThread],
+    });
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+
+    // The nested drill is not a top-level node...
+    expect(tree.map((node) => node.id)).toEqual([1, 2]);
+    const followUpNode = tree.find((node) => node.id === 2);
+    expect(followUpNode?.name).toBe("Revenue → State = TX");
+
+    // ...it hangs off its parent thread, after the parent's own charts.
+    const nestedNode = followUpNode?.children?.find((node) => node.id === 3);
+    // Bare drill path, no repeated "Revenue →" prefix.
+    expect(nestedNode?.name).toBe("City = Austin");
+    // The redundant metric-group row is still folded away.
+    expect((nestedNode?.children ?? []).map((child) => child.name)).toEqual([
+      "Plan",
+    ]);
+  });
+
+  it("keeps a thread with an unresolvable source page top-level", () => {
+    // Threads drilled before lineage was persisted have no source_page_id (or
+    // one pointing at a page that no longer exists) — they stay top-level.
+    const orphanThread = createThread({
+      id: 4,
+      name: "Old drill",
+      position: 1,
+      source_page_id: 99999,
+      queries: [createQuery({ id: 4, name: "Revenue", status: "done" })],
+      blocks: [
+        createBlock({
+          id: 40,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({ id: 400, name: "Plan", position: 0, query_ids: [4] }),
+          ],
+        }),
+      ],
+    });
+    const exploration = createExploration({
+      threads: [initialThread(), orphanThread],
+    });
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+
+    expect(tree.map((node) => node.id)).toEqual([1, 4]);
+    // No parent to derive a metric prefix from — and no folding trigger, so
+    // the bare thread name and its metric group stay as-is.
+    expect(tree[1]?.name).toBe("Old drill");
   });
 });

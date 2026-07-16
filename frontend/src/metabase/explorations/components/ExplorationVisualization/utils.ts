@@ -1,11 +1,21 @@
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
-import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import {
+  OTHER_BUCKET_LABEL,
+  TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD,
+} from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isCartesianChart } from "metabase/visualizations";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
+import { formatValue } from "metabase/visualizations/lib/formatting";
+import type {
+  ClickObject,
+  ComputedVisualizationSettings,
+  HighlightedObject,
+} from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -18,7 +28,10 @@ import type {
   CardDisplayType,
   Dataset,
   DatasetColumn,
+  ExplorationBlockNodeType,
+  ExplorationExploreFilter,
   ExplorationQuery,
+  ExplorationQueryType,
   RowValue,
   RowValues,
   SeriesSettings,
@@ -483,4 +496,81 @@ export function getMostInterestingTimelineId(
     }
   }
   return best?.id ?? null;
+}
+
+export function getExploreFurtherFilters(
+  clicked: ClickObject,
+): ExplorationExploreFilter[] {
+  return (clicked.dimensions ?? []).flatMap(({ column, value }) =>
+    column.field_ref != null ? [{ field_ref: column.field_ref, value }] : [],
+  );
+}
+
+export function canExploreFurther(
+  clicked: ClickObject,
+  blockType: ExplorationBlockNodeType,
+  queryType: ExplorationQueryType,
+): boolean {
+  const dimensions = clicked.dimensions ?? [];
+  if (dimensions.length === 0) {
+    return false;
+  }
+  // disable for dimension blocks - every query in a dimension block is cut by the same dimension
+  // so filtering on a single dimension value doesn't provide a new view of the data
+  if (blockType === "dimension") {
+    return false;
+  }
+  // OTHER_BUCKET_LABEL is not a real dimension value, so filtering on it won't return anything
+  if (
+    queryType === "top-n-other" &&
+    dimensions.some(({ value }) => value === OTHER_BUCKET_LABEL)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function getCommentLabel(
+  highlighted?: HighlightedObject,
+  seriesGroup?: SeriesGroup,
+  computedSettings?: ComputedVisualizationSettings,
+): string | null | undefined {
+  if (!highlighted || !seriesGroup) {
+    return null;
+  }
+
+  const seriesIndex =
+    seriesGroup.series.length === 1
+      ? 0
+      : seriesGroup.series.findIndex((s) => s.card.id === highlighted.cardId);
+  const series = seriesGroup.series[seriesIndex];
+  if (!series) {
+    return null;
+  }
+
+  const labels: string[] = [];
+
+  for (const dimension of highlighted.dimensions ?? []) {
+    const column = series.data.cols.find(
+      (col) => col.name === dimension.columnName,
+    );
+    if (!column) {
+      continue;
+    }
+    const columnSettings = computedSettings?.column?.(column) ?? { column };
+    labels.push(
+      String(
+        formatValue(dimension.value ?? NULL_DISPLAY_VALUE, columnSettings),
+      ),
+    );
+  }
+
+  if (highlighted.cardId && seriesGroup.series.length > 1) {
+    const segmentName = seriesGroup.legendItems[seriesIndex].name;
+    if (segmentName) {
+      labels.push(segmentName);
+    }
+  }
+
+  return labels.join(", ");
 }

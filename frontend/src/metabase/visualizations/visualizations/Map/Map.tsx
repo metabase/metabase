@@ -70,8 +70,9 @@ function arePropsEqual(prev: VisualizationProps, next: VisualizationProps) {
   const sameSize = prev.width === next.width && prev.height === next.height;
   const sameSeries = isSameSeries(prev.series, next.series);
   const sameIsEditing = prev.isEditing === next.isEditing;
+  const sameHighlighted = prev.highlighted === next.highlighted;
 
-  return sameSize && sameSeries && sameIsEditing;
+  return sameSize && sameSeries && sameIsEditing && sameHighlighted;
 }
 
 const MAP_VIZ_DEFINITION: VisualizationDefinition = {

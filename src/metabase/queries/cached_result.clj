@@ -49,6 +49,13 @@
     (not (viewer-lens-compatible? stored-result))
     :incompatible-context))
 
+(defn viewer-can-view-cached-result?
+  "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
+  blob for `stored-result`. Does not bypass for the creator — callers wanting a creator bypass must
+  check that themselves."
+  [stored-result]
+  (nil? (cached-result-blocked-reason stored-result)))
+
 (defn assert-can-view-cached-result!
   "Throw a 403 if the current user must not see the cached blob for `stored-result`."
   [stored-result]

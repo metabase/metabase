@@ -6,10 +6,12 @@ import type {
   Exploration,
   ExplorationId,
   ExplorationQueryId,
+  ExploreFurtherRequest,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
   GetMyExplorationsRequest,
   GetMyExplorationsResponse,
+  RestartExplorationRequest,
   UpdateExplorationRequest,
 } from "metabase-types/api";
 import { getExplorationPages } from "metabase-types/api/exploration";
@@ -71,13 +73,25 @@ export const explorationApi = Api.injectEndpoints({
           listTag("exploration"),
         ]),
     }),
-    restartExploration: builder.mutation<Exploration, ExplorationId>({
-      query: (id) => ({
+    exploreFurther: builder.mutation<Exploration, ExploreFurtherRequest>({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/exploration/${id}/restart`,
+        url: `/api/exploration/${id}/explore-further`,
+        body,
       }),
-      invalidatesTags: (_, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("exploration", id)]),
+    }),
+    restartExploration: builder.mutation<
+      Exploration,
+      RestartExplorationRequest
+    >({
+      query: ({ threadId }) => ({
+        method: "POST",
+        url: `/api/exploration/thread/${threadId}/restart`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
     }),
     deleteExploration: builder.mutation<void, ExplorationId>({
       query: (id) => ({
@@ -189,6 +203,7 @@ export const {
   useGetExplorationQuery,
   useGetMyExplorationsQuery,
   useCreateExplorationMutation,
+  useExploreFurtherMutation,
   useUpdateExplorationMutation,
   useRestartExplorationMutation,
   useDeleteExplorationMutation,

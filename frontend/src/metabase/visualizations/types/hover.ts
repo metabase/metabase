@@ -1,5 +1,5 @@
 import type { ClickObjectDataRow } from "metabase-lib";
-import type { RowValue } from "metabase-types/api";
+import type { CardId, RowValue } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { ComputedVisualizationSettings } from "./visualization";
@@ -47,4 +47,15 @@ export interface HoveredObject {
   isAlreadyScaled?: boolean;
   pieSliceKeyPath?: string[];
   pieLegendHoverIndex?: number;
+}
+
+export interface HighlightedDimension {
+  value: RowValue;
+  columnName: string;
+}
+
+export interface HighlightedObject {
+  cardId?: CardId;
+  dimensions?: HighlightedDimension[];
+  columnName?: string;
 }
