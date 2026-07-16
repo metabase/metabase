@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -280,6 +281,79 @@ describe("MetricAbout", () => {
       expect(
         fetchMock.callHistory.calls("path:/api/card/42/query"),
       ).toHaveLength(0);
+    });
+
+    it("changes the chart when a curated dimension is selected (UXW-4772)", async () => {
+      const defaultDimensionId = "created-at";
+      const categoryDimensionId = "product-category";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            status: "status/active",
+          }),
+          createMockMetricDimension({
+            id: categoryDimensionId,
+            display_name: "Product Category",
+            effective_type: "type/Text",
+            semantic_type: "type/Category",
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+          {
+            dimension_id: categoryDimensionId,
+            table_id: PRODUCTS_ID,
+            target: [
+              "field",
+              { "source-field": ORDERS.PRODUCT_ID },
+              PRODUCTS.CATEGORY,
+            ],
+          },
+        ],
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: TIME_SERIES,
+      });
+
+      const dimensionSelect = await screen.findByRole("textbox", {
+        name: "Dimension",
+      });
+      expect(dimensionSelect).toHaveValue("Created At");
+
+      await userEvent.click(dimensionSelect);
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Product Category" }),
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(2);
+      });
+      expect(
+        await fetchMock.callHistory.lastCall("metric-dataset")?.request?.json(),
+      ).toEqual({
+        definition: expect.objectContaining({
+          projections: [
+            expect.objectContaining({
+              projection: [
+                ["dimension", expect.any(Object), categoryDimensionId],
+              ],
+            }),
+          ],
+        }),
+      });
     });
   });
 

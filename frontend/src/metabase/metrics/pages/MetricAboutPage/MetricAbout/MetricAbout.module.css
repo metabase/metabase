@@ -15,6 +15,22 @@
   z-index: 1;
 }
 
+.dimensionSelect {
+  position: absolute;
+  bottom: var(--mantine-spacing-xs);
+  left: 50%;
+  z-index: 1;
+  width: 12rem;
+  max-width: 50%;
+  transform: translateX(-50%);
+
+  input {
+    cursor: pointer;
+    font-weight: 700;
+    text-align: center;
+  }
+}
+
 .descriptionSection {
   overflow: auto;
 }
