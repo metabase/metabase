@@ -156,7 +156,14 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
 
   return (
     <AreaLayout
-      logo={<FixedSizeIcon name="gauge" size={28} c="brand" />}
+      logo={
+        <FixedSizeIcon
+          name="pulse"
+          transform="scale(0.9, 1.1)"
+          size={28}
+          c="brand"
+        />
+      }
       testId="monitor-nav"
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
