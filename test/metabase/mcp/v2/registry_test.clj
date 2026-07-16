@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.usage :as mcp.usage]
    ;; Registers the placeholder `ping_v2` tool the assertions below drive.
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.common :as common]
@@ -81,3 +82,113 @@
     (is (re-matches #"[0-9a-f]{8}" (registry/tools-hash nil)))
     (is (= (registry/tools-hash nil) (registry/tools-hash nil)))
     (is (not= (registry/tools-hash nil) (registry/tools-hash #{"agent:metadata:read"})))))
+
+(defn- capture-usage-records
+  "Run `thunk` with `record-mcp-tool-call!` redefed to capture its arg maps into a vector,
+   which is returned. Lets the usage-logging contract be asserted without the EE DB writer."
+  [thunk]
+  (let [records (atom [])]
+    (with-redefs [mcp.usage/record-mcp-tool-call! (fn [m] (swap! records conj m))]
+      (thunk))
+    @records))
+
+;; not ^:parallel: with-redefs on the shared usage var
+(deftest usage-logging-contract-test
+  (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
+    (testing "success → status \"success\", no error"
+      (let [records (capture-usage-records #(registry/call-tool #{"agent:search"} nil "ping_v2" {}))]
+        (is (= 1 (count records)))
+        (let [r (first records)]
+          (is (= "ping_v2" (:tool-name r)))
+          (is (= "success" (:status r)))
+          (is (nil? (:error-code r)))
+          (is (nil? (:error-message r))))))
+    (testing "scope denied → status \"error\", invalid-request code"
+      (let [records (capture-usage-records #(registry/call-tool #{"agent:metadata:read"} nil "ping_v2" {}))]
+        (is (= 1 (count records)))
+        (let [r (first records)]
+          (is (= "ping_v2" (:tool-name r)))
+          (is (= "error" (:status r)))
+          (is (= common/error-code-invalid-request (:error-code r)))
+          (is (= "Insufficient scope to call tool: ping_v2" (:error-message r))))))
+    (testing "unknown tool → status \"error\", method-not-found code"
+      (let [records (capture-usage-records #(registry/call-tool nil nil "does_not_exist" {}))]
+        (is (= 1 (count records)))
+        (let [r (first records)]
+          (is (= "does_not_exist" (:tool-name r)))
+          (is (= "error" (:status r)))
+          (is (= common/error-code-method-not-found (:error-code r)))
+          (is (= "Unknown tool: does_not_exist" (:error-message r))))))
+    (testing "validation failure → status \"error\", invalid-params code"
+      (let [records (capture-usage-records #(registry/call-tool #{"agent:search"} nil "ping_v2" {:message 42}))]
+        (is (= 1 (count records)))
+        (let [r (first records)]
+          (is (= "ping_v2" (:tool-name r)))
+          (is (= "error" (:status r)))
+          (is (= common/error-code-invalid-params (:error-code r)))
+          (is (some? (:error-message r))))))))
+
+;; not ^:parallel: registers/unregisters a throwaway tool in the shared registry atom
+(deftest feature-gated-tool-test
+  (testing "an EE :feature hides the tool from list/call when absent, exposes it when present"
+    (let [tool-name "throwaway_feature_tool"
+          tool      {:name        tool-name
+                     :scope       "agent:search"
+                     :feature     :content-verification
+                     :description "throwaway feature-gated tool"
+                     :args        [:map]
+                     :handler     (fn [_ _] (common/success-content "ok"))}]
+      (try
+        (registry/register-tool! tool)
+        (testing "feature absent → hidden from tools/list and rejected by tools/call as unknown"
+          (mt/with-premium-features #{}
+            (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"}))))
+            (let [result (registry/call-tool #{"agent:search"} nil tool-name {})]
+              (is (:isError result))
+              (is (= (str "Unknown tool: " tool-name) (-> result :content first :text))))))
+        (testing "feature present → visible in tools/list and callable"
+          (mt/with-premium-features #{:content-verification}
+            (is (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"})))
+            (let [result (registry/call-tool #{"agent:search"} nil tool-name {})]
+              (is (not (:isError result))))))
+        (finally
+          (swap! @#'registry/tools* dissoc tool-name)
+          (reset! @#'registry/manifest-cache nil)))
+      (testing "cleanup removed the throwaway tool"
+        (is (not (some #(= tool-name (:name %)) (registry/list-tools #{"agent:search"}))))))))
+
+;; not ^:parallel: exercises register-tool!'s load-time guards
+(deftest registration-validation-test
+  (testing "a blank :name fails loudly"
+    (is (thrown-with-msg? Exception #":name"
+                          (registry/register-tool! {:name        ""
+                                                    :scope       "agent:search"
+                                                    :description "x"
+                                                    :args        [:map]
+                                                    :handler     (fn [_ _] nil)}))))
+  (testing "a missing :description fails loudly"
+    (is (thrown-with-msg? Exception #"without a :description"
+                          (registry/register-tool! {:name        "no_desc"
+                                                    :scope       "agent:search"
+                                                    :args        [:map]
+                                                    :handler     (fn [_ _] nil)}))))
+  (testing "a missing :args schema fails loudly"
+    (is (thrown-with-msg? Exception #":args Malli schema"
+                          (registry/register-tool! {:name        "no_args"
+                                                    :scope       "agent:search"
+                                                    :description "x"
+                                                    :handler     (fn [_ _] nil)}))))
+  (testing "a non-fn :handler fails loudly"
+    (is (thrown-with-msg? Exception #":handler fn"
+                          (registry/register-tool! {:name        "bad_handler"
+                                                    :scope       "agent:search"
+                                                    :description "x"
+                                                    :args        [:map]
+                                                    :handler     "not-a-fn"}))))
+  (testing "an optional non-nullable field fails the strict-tool nullability check"
+    (is (thrown-with-msg? Exception #"optional non-nullable field"
+                          (registry/register-tool! {:name        "bad_schema"
+                                                    :scope       "agent:search"
+                                                    :description "x"
+                                                    :args        [:map [:x {:optional true} :string]]
+                                                    :handler     (fn [_ _] nil)})))))

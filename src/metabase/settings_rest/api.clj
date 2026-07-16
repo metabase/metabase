@@ -1,6 +1,7 @@
 (ns metabase.settings-rest.api
   "/api/setting endpoints"
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
@@ -42,13 +43,19 @@
   (setting/writable-settings))
 
 (def ^:private kebab-cased-keyword
-  "Keyword that can be transformed from \"a_b\" -> :a-b. A name that is already a registered
-   setting is taken verbatim: the kebab conversion splits letter-digit boundaries (\"v2\" ->
-   \"v-2\"), so it would corrupt setting names that contain digits, like `mcp-v2-enabled`."
-  [:keyword {:decode/json #(let [k (keyword %)]
-                             (if (setting/registered? k)
-                               k
-                               (keyword (u/->kebab-case-en %))))}])
+  "Keyword decoded from an incoming setting name. A name that already matches a registered setting
+   is taken verbatim; failing that, a digit-preserving snake->kebab candidate (a plain `_`->`-`
+   swap) is tried before the generic kebab conversion, because `->kebab-case-en` splits letter-digit
+   boundaries (\"v2\" -> \"v-2\") and would otherwise fail to resolve digit-bearing names whether
+   they arrive kebab-cased (`mcp-v2-enabled`) or snake_cased (`mcp_v2_enabled`)."
+  [:keyword {:decode/json (fn [s]
+                            (let [nm        (name (keyword s))
+                                  raw       (keyword nm)
+                                  candidate (keyword (u/lower-case-en (str/replace nm "_" "-")))]
+                              (cond
+                                (setting/registered? raw)       raw
+                                (setting/registered? candidate) candidate
+                                :else                           (keyword (u/->kebab-case-en nm)))))}])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

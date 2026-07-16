@@ -70,14 +70,14 @@
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- enforce-mcp-v2-enabled
-  [handler]
+  [handler-fn]
   (fn [request respond raise]
     (cond
       (not (llm.settings/ai-features-enabled?))
       (raise (ex-info (tru "AI features are not enabled.") {:status-code 403}))
 
       (mcp.settings/mcp-v2-enabled)
-      (handler request respond raise)
+      (handler-fn request respond raise)
 
       :else
       (raise (ex-info (tru "MCP v2 server is not enabled.") {:status-code 403})))))

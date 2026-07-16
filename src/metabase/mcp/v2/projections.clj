@@ -60,10 +60,11 @@
      `(:detailed entry)` applied to it
    - `:catalog` — explicit dot-path vector, only for types whose sample can't capture the
      shape (prefer `:sample`)"
-  [type {:keys [concise detailed sample catalog] :as entry}]
-  {:pre [(keyword? type) (fn? concise) (fn? detailed) (or sample catalog)]}
-  (let [catalog (or catalog (paths-from-sample (detailed sample)))]
-    (swap! registry assoc type (assoc entry :catalog catalog))
+  [type {:keys [concise detailed sample] :as entry
+         explicit-catalog :catalog}]
+  {:pre [(keyword? type) (fn? concise) (fn? detailed) (or sample explicit-catalog)]}
+  (let [resolved-catalog (or explicit-catalog (paths-from-sample (detailed sample)))]
+    (swap! registry assoc type (assoc entry :catalog resolved-catalog))
     type))
 
 (defn project
