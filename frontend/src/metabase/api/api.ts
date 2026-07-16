@@ -60,7 +60,7 @@ type BaseQueryArgs =
   | string
   | (Omit<ApiRequestArgs, "method" | "params" | "url"> & {
       method?: ApiRequestArgs["method"];
-      params?: object | null | void;
+      params?: Record<string, unknown> | null | void;
       url: ApiRequestArgs["url"] | null;
     });
 
@@ -86,8 +86,7 @@ export const baseQuery: BaseQueryFn<BaseQueryArgs, unknown, unknown> = async (
       method: "GET",
       ...requestArgs,
       url,
-      params:
-        requestArgs.params == null ? undefined : { ...requestArgs.params },
+      params: requestArgs.params == null ? undefined : requestArgs.params,
       retry: method === "GET" || method === "POST",
       signal: ctx.signal,
       ...extraOptions,

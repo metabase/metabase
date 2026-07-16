@@ -156,7 +156,7 @@ export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
 
-export interface ListDatabasesRequest {
+export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
   saved?: boolean;
   include_editable_data_model?: boolean;
@@ -166,7 +166,7 @@ export interface ListDatabasesRequest {
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;
-}
+};
 
 export interface ListDatabasesResponse {
   data: Database[];
