@@ -15,10 +15,10 @@ import {
 
 /**
  * Props accepted by the `<Route>` element. Adds react-router v7's `index` and
- * `element` on top of v3's route props: an index route is written
- * `<Route index element={<X/>}/>` instead of the v3 `<IndexRoute>`, and `element`
- * is bridged to a v3 `component` that renders it and exposes the matched child
- * through `<Outlet/>`.
+ * `element` on top of v3's route props. `index` registers the route as its
+ * parent's index route (what v3's `<IndexRoute>` did) and works with either
+ * `component` or `element`. `element` is bridged to a v3 `component` that renders
+ * it and exposes the matched child through `<Outlet/>`.
  */
 export type RouteElementProps = RouteProps & {
   index?: boolean;
