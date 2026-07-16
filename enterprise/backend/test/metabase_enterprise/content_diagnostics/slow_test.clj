@@ -25,9 +25,8 @@
   "Run a scan and index its `:slow` findings by `[entity-type entity-id]`."
   []
   (let [scan-id (:scan_id (scan/scan!))]
-    (into {}
-          (map (juxt (juxt :entity_type :entity_id) identity))
-          (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :slow))))
+    (t2/select-fn->fn (juxt :entity_type :entity_id) identity
+                      :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :slow)))
 
 ;;; --------------------------------------------- checker --------------------------------------------------
 
