@@ -19,6 +19,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.mcp-client :as mcp-client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -429,7 +430,9 @@
                          (seed-charts context))
         memory       (memory/initialize messages seeded context)
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        ;; Capture the user now; the MCP client rebinds it across tool-executor virtual threads.
+        (merge (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+               (mcp-client/mcp-self-tool-defs api/*current-user-id*))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)

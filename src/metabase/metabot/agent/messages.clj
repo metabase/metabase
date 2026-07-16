@@ -10,6 +10,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.skills :as skills]
+   [metabase.metabot.tools.mcp-client :as mcp-client]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -192,10 +193,11 @@
 
   Returns message map with {:role \"system\" :content \"...\"}."
   [context profile tools]
-  (let [content (prompts/build-system-message-content
-                 profile
-                 {:sql_dialect (user-context/extract-sql-dialect context)}
-                 tools
-                 (:capabilities context))]
+  (let [content  (prompts/build-system-message-content
+                  profile
+                  {:sql_dialect (user-context/extract-sql-dialect context)}
+                  tools
+                  (:capabilities context))
+        briefing (mcp-client/tools-briefing tools)]
     {:role    "system"
-     :content content}))
+     :content (cond-> content briefing (str "\n\n" briefing))}))

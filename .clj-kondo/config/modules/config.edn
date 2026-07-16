@@ -1329,6 +1329,7 @@
               lib
               lib-be
               llm
+              mcp
               models
               native-query-snippets
               notification
