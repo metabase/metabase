@@ -104,7 +104,7 @@ For information about the anonymous usage data Metabase collects from embedded c
 ## Embedding limitations
 
 - Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
-- Only the [Modular embedding SDK](./sdk/introduction.md) renders [custom visualizations](../questions/visualizations/custom.md), and only ones you allowlist with the [`allowedCustomVisualizations` prop](./sdk/config.md#custom-visualizations). In other embedding types, any card that uses a custom visualization falls back to the default visualization (a table).
+- Only the [Modular embedding SDK](./sdk/introduction.md) renders [custom visualizations](../questions/visualizations/custom.md), and only ones you allowlist with the [`allowedCustomVisualizations` prop](./sdk/config.md#custom-visualizations). In other embedding types, any card that uses a custom visualization falls back to the default visualization for the query's results.
 
 ## Further reading
 
