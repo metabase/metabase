@@ -90,12 +90,12 @@ export const getRoutes = (
   const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
 
   return (
-    <Route path="/admin" component={CanAccessSettings}>
+    <Route path="/admin" element={<CanAccessSettings />}>
       <Route component={AdminApp}>
         <Route index component={RedirectToAllowedSettings} />
         <Route path="databases" component={createAdminRouteGuard("databases")}>
           <Route index component={DatabaseListApp} />
-          <Route component={IsAdmin}>
+          <Route element={<IsAdmin />}>
             <Route path="create" component={DatabasePage} />
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
@@ -124,10 +124,10 @@ export const getRoutes = (
             />
             <Route component={DataModelV1}>
               <Route path="segments" component={SegmentListApp} />
-              <Route path="segment/create" component={IsAdmin}>
+              <Route path="segment/create" element={<IsAdmin />}>
                 <Route index component={SegmentApp} />
               </Route>
-              <Route path="segment/:id" component={IsAdmin}>
+              <Route path="segment/:id" element={<IsAdmin />}>
                 <Route index component={SegmentApp} />
               </Route>
               <Route
@@ -256,7 +256,7 @@ export const getRoutes = (
           {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
-        <Route path="permissions" component={IsAdmin}>
+        <Route path="permissions" element={<IsAdmin />}>
           {getAdminPermissionsRoutes()}
         </Route>
 
