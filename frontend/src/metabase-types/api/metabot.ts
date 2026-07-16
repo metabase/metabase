@@ -167,6 +167,7 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "chat-completions"
   | "openai"
   | "openrouter";
 
@@ -182,10 +183,15 @@ export interface AzureCredentials {
   "base-url"?: string | null;
 }
 
+export interface ChatCompletionsCredentials {
+  "api-key"?: string | null;
+  "base-url"?: string | null;
+}
+
 /** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
+ * material, Azure and the generic Chat Completions provider send an API key and base URL. */
 export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials {}
+  extends BedrockCredentials, AzureCredentials, ChatCompletionsCredentials {}
 
 export interface MetabotSettingsResponse {
   value: string | null;
