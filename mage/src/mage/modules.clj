@@ -370,6 +370,12 @@
     (str parent-dir
          (ns-prefix->test-path-fragment ns-fragment))))
 
+(def ^:private codeowners-root-file-extensions
+  "Extensions of a module's root namespace file to own explicitly in CODEOWNERS. A bare directory pattern
+  already covers everything inside the dir; this is only for the sibling root file, so it must match every
+  extension `file->module` resolves (clj/cljc/cljs/bb) or those root namespaces go unowned."
+  [".clj" ".cljc" ".cljs" ".bb"])
+
 (defn- module->owned-paths
   "Existing src and test paths `module` contributes, in CODEOWNERS pattern form (repo-relative, no leading
   slash), src first. Each tree contributes its directory plus the root namespace file beside it — e.g.
@@ -383,9 +389,9 @@
     (into []
           (keep identity)
           (concat [(dir? src)]
-                  (map #(file? (str src %)) backend-test-source-file-extensions)
+                  (map #(file? (str src %)) codeowners-root-file-extensions)
                   [(dir? test)]
-                  (map #(file? (str test "_test" %)) backend-test-source-file-extensions)))))
+                  (map #(file? (str test "_test" %)) codeowners-root-file-extensions)))))
 
 (defn- codeowners-stanza-lines
   "Lines for one module's stanza: a `# module (team)` header then one line per owned path.

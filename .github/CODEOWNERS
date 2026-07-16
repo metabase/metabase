@@ -428,6 +428,7 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 # util.config (DevEx, no :assignee in team.json)
 # src/metabase/config
 # test/metabase/config_test.clj
+# test/metabase/config_test.cljs
 
 # content-translation (UX West, no :assignee in team.json)
 # src/metabase/content_translation
