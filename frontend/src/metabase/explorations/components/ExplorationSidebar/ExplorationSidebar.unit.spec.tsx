@@ -260,9 +260,17 @@ describe("ExplorationSidebar", () => {
       expect(filterButton()).toHaveAttribute("aria-pressed", "true");
     });
 
-    it("is active when a non-default sort order is set", () => {
+    it("stays inactive when a non-default sort order is set — sorting is not a filter", async () => {
       setup({ queries: [doneQuery], sortOrder: "alphabetical" });
-      expect(filterButton()).toHaveAttribute("aria-pressed", "true");
+      expect(filterButton()).toHaveAttribute("aria-pressed", "false");
+      // the sort choice is still reflected inside the menu itself
+      await userEvent.click(filterButton());
+      expect(
+        await screen.findByRole("menuitem", { name: /Alphabetical/ }),
+      ).toHaveAttribute("data-checked", "true");
+      expect(
+        screen.getByRole("menuitem", { name: /Interestingness/ }),
+      ).not.toHaveAttribute("data-checked");
     });
 
     it("toggles show-hidden from the menu without changing selection", async () => {

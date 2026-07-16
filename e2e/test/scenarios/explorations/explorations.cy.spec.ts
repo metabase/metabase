@@ -606,6 +606,312 @@ describe("scenarios > explorations > detail page", () => {
   });
 });
 
+/**
+ * Resolve the "Count of orders" metric plus its first two dimensions and
+ * create an exploration with them — yielding one metric-group heading with
+ * exactly two "By <dimension>" pages, the smallest deterministic tree for
+ * sidebar-triage assertions.
+ */
+function createTwoPageExploration(name: string): Cypress.Chainable<{
+  explorationId: number;
+  metricName: string;
+  pageNames: string[];
+}> {
+  return cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+    // Unjustified type cast. FIXME
+    const data = body as GetExplorationDataResponse;
+    const ordersMetric = data.metrics.find(
+      (metric) => metric.name === "Count of orders",
+    );
+    expect(
+      ordersMetric,
+      '"Count of orders" metric is exposed by /api/exploration/dimensions',
+    ).to.exist;
+    const dimsById = new Map(
+      data.dimension_groups.flatMap((group) =>
+        group.dimensions.map((dim) => [dim.id, dim] as const),
+      ),
+    );
+    const pickedDimensions = ordersMetric!.dimension_ids
+      .map((id) => dimsById.get(id))
+      .filter((dim) => dim != null)
+      .slice(0, 2);
+    expect(
+      pickedDimensions.length,
+      "metric exposes at least two dimensions",
+    ).to.eq(2);
+
+    return H.createExplorationViaApi({
+      name,
+      metricCardIds: [ordersMetric!.id],
+      dimensionIds: pickedDimensions.map((dim) => dim!.id),
+    }).then((explorationId) => ({
+      explorationId,
+      metricName: ordersMetric!.name,
+      pageNames: pickedDimensions.map((dim) => `By ${dim!.display_name}`),
+    }));
+  });
+}
+
+describe("scenarios > explorations > sidebar triage", () => {
+  const sidebar = () => cy.findByTestId("exploration-page-sidebar");
+  const filterToggle = () => cy.findByTestId("exploration-show-hidden-toggle");
+  const selectedRows = () =>
+    cy.findAllByRole("treeitem").filter('[aria-selected="true"]');
+  const toggleShowHiddenItems = () => {
+    filterToggle().click();
+    H.menu().findByText("Show hidden items").click();
+    cy.get("body").type("{esc}");
+  };
+  // The "Ready" icons only say every page's queries finished; the page keeps
+  // polling `GET /api/exploration/:id` (rebuilding the sidebar tree on each
+  // response) until the BE also stamps the thread's `completed_at` after its
+  // post-query handling. Interact with the tree only after that final
+  // response, or clicks can land on nodes a re-render just replaced.
+  // Requires a `@getExploration` intercept registered before the visit.
+  const waitForExplorationToSettle = () => {
+    cy.findAllByLabelText("Ready", { timeout: 30000 }).should("have.length", 2);
+    const awaitThreadCompletion = (attempt: number) => {
+      cy.wait("@getExploration", { timeout: 30000 }).then(({ response }) => {
+        // Unjustified type cast. FIXME
+        const threads = (response?.body as Exploration).threads ?? [];
+        if (!threads.every((thread) => thread.completed_at != null)) {
+          expect(
+            attempt,
+            "exploration completes within the poll budget",
+          ).to.be.lessThan(30);
+          awaitThreadCompletion(attempt + 1);
+        }
+      });
+    };
+    awaitThreadCompletion(0);
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableExplorations();
+    seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
+  });
+
+  it("filters pages with the Stars and Discussions tabs and persists the sort preference across reloads", () => {
+    createTwoPageExploration("Sidebar tabs fixture").then(
+      ({ explorationId, pageNames }) => {
+        cy.intercept("GET", `/api/exploration/${explorationId}`).as(
+          "getExploration",
+        );
+        H.visitExploration(explorationId);
+        waitForExplorationToSettle();
+
+        cy.log("Stars tab is empty until something is starred");
+        cy.findByRole("radio", { name: "Stars" }).click({ force: true });
+        cy.location("search").should("include", "tab=stars");
+        H.main().findByText("Nothing's been starred yet.").should("be.visible");
+        cy.findAllByRole("treeitem").should("not.exist");
+
+        cy.log("Discussions tab shows its own empty message");
+        cy.findByRole("radio", { name: "Discussions" }).click({ force: true });
+        H.main().findByText("No discussions yet.").should("be.visible");
+        cy.findAllByRole("treeitem").should("not.exist");
+
+        cy.log("Star the selected page with the s shortcut");
+        cy.findByRole("radio", { name: "All" }).click({ force: true });
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        sidebar().findByText(pageNames[0]).click();
+        selectedRows().should("contain.text", pageNames[0]);
+        cy.intercept("PUT", "/api/exploration/page/*/starred").as("setStarred");
+        cy.get("body").type("s");
+        cy.wait("@setStarred").its("request.body.starred").should("eq", true);
+        H.main()
+          .findByRole("button", { name: "Remove star" })
+          .should("be.visible");
+
+        cy.log("The c shortcut opens the comment editor");
+        cy.get("body").type("c");
+        // The editor's placeholder is CSS-rendered by TipTap (not real text),
+        // so anchor on the editor's Send button instead. The popover is
+        // portaled outside <main>.
+        H.popover().findByRole("button", { name: "Send" }).should("be.visible");
+        H.main().findByRole("button", { name: "Add comment" }).click();
+        cy.findByRole("button", { name: "Send" }).should("not.exist");
+
+        cy.log("Stars tab now shows only the starred page");
+        cy.findByRole("radio", { name: "Stars" }).click({ force: true });
+        cy.findAllByRole("treeitem")
+          .should("have.length", 1)
+          .first()
+          .should("contain.text", pageNames[0]);
+
+        cy.log("Alphabetical sort is remembered per exploration");
+        cy.findByRole("radio", { name: "All" }).click({ force: true });
+        filterToggle().should("have.attr", "aria-pressed", "false").click();
+        H.menu().findByText("Alphabetical").click();
+        H.menu()
+          .findByRole("menuitem", { name: /Alphabetical/ })
+          .should("have.attr", "data-checked", "true");
+        cy.get("body").type("{esc}");
+        cy.log("Sorting is not a filter, so the toggle stays unfilled");
+        filterToggle().should("have.attr", "aria-pressed", "false");
+
+        cy.reload();
+        cy.findAllByRole("treeitem", { timeout: 15000 })
+          .first()
+          .should("be.visible");
+        filterToggle().should("have.attr", "aria-pressed", "false").click();
+        H.menu()
+          .findByRole("menuitem", { name: /Alphabetical/ })
+          .should("have.attr", "data-checked", "true");
+      },
+    );
+  });
+
+  it("hides pages from the toolbar and group menus, reveals them via Show hidden items, and keeps Initial investigation when everything is hidden", () => {
+    createTwoPageExploration("Sidebar hide fixture").then(
+      ({ explorationId, metricName, pageNames }) => {
+        cy.intercept("PUT", "/api/exploration/pages/hidden").as(
+          "setPagesHidden",
+        );
+        cy.intercept("GET", `/api/exploration/${explorationId}`).as(
+          "getExploration",
+        );
+        H.visitExploration(explorationId);
+        waitForExplorationToSettle();
+
+        // The page auto-selects the tree's first page on load, and the tree
+        // orders pages by interestingness — so which of the two
+        // "By <dimension>" pages is selected is data-dependent; derive it
+        // from the DOM instead of assuming.
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        selectedRows().should("have.length", 1);
+        selectedRows()
+          .first()
+          .invoke("text")
+          .then((text) => {
+            const firstPageName = text.trim();
+            const secondPageName = pageNames.find(
+              (name) => name !== firstPageName,
+            )!;
+
+            cy.log("Triage arrows step between pages");
+            cy.findByRole("button", { name: "Previous" }).should("be.disabled");
+            cy.findByRole("button", { name: "Next" }).click();
+            selectedRows().should("contain.text", secondPageName);
+            cy.findByRole("button", { name: "Previous" }).click();
+            selectedRows().should("contain.text", firstPageName);
+
+            cy.log("Hide the selected page with the h shortcut");
+            cy.get("body").type("h");
+            cy.wait("@setPagesHidden").then(({ request }) => {
+              expect(request.body.hidden).to.eq(true);
+              expect(request.body.page_ids).to.have.length(1);
+            });
+            H.undoToastListContainer()
+              .findByText(`"${firstPageName}" hidden`)
+              .should("be.visible");
+
+            cy.log("Auto-advance moves the selection to the remaining page");
+            selectedRows().should("contain.text", secondPageName);
+            cy.findAllByRole("treeitem").should("have.length", 1);
+            sidebar().findByText(firstPageName).should("not.exist");
+
+            cy.log("Show hidden items reveals the page with a Hidden marker");
+            toggleShowHiddenItems();
+            filterToggle().should("have.attr", "aria-pressed", "true");
+            sidebar().findByText(firstPageName).should("be.visible");
+            sidebar().findAllByLabelText("Hidden").should("have.length", 1);
+            toggleShowHiddenItems();
+            cy.findAllByRole("treeitem").should("have.length", 1);
+            sidebar().findByText(firstPageName).should("not.exist");
+          });
+
+        cy.log("Hide the whole group from its actions menu");
+        sidebar()
+          .findByRole("group", { name: metricName })
+          .findByRole("button", { name: "Group actions" })
+          .click({ force: true });
+        H.menu().findByText("Hide").click();
+        cy.wait("@setPagesHidden")
+          .its("request.body.hidden")
+          .should("eq", true);
+        H.undoToastListContainer()
+          .findByText(`${metricName} hidden`)
+          .should("be.visible");
+
+        cy.log(
+          "Initial investigation stays, expanded, with an all-hidden note",
+        );
+        sidebar()
+          .findByText("All items have been hidden.")
+          .should("be.visible");
+        sidebar()
+          .findAllByRole("group")
+          .should("have.length", 1)
+          .first()
+          .should("have.attr", "aria-expanded", "true")
+          .and("have.attr", "aria-label", "Initial investigation");
+        cy.findAllByRole("treeitem").should("not.exist");
+
+        cy.log("Hidden state is persisted server-side across a reload");
+        cy.reload();
+        sidebar()
+          .findByText("All items have been hidden.", { timeout: 15000 })
+          .should("be.visible");
+
+        cy.log("Show hidden items + the group Show action restore the pages");
+        toggleShowHiddenItems();
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        sidebar().findAllByLabelText("Hidden").should("have.length", 2);
+        sidebar()
+          .findByRole("group", { name: metricName })
+          .findByRole("button", { name: "Group actions" })
+          .click({ force: true });
+        H.menu().findByText("Show").click();
+        cy.wait("@setPagesHidden")
+          .its("request.body.hidden")
+          .should("eq", false);
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        sidebar().findAllByLabelText("Hidden").should("not.exist");
+
+        cy.log("Hiding the group with every page visible sends both page ids");
+        toggleShowHiddenItems();
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        sidebar()
+          .findByRole("group", { name: metricName })
+          .findByRole("button", { name: "Group actions" })
+          .click({ force: true });
+        H.menu().findByText("Hide").click();
+        cy.wait("@setPagesHidden").then(({ request }) => {
+          expect(request.body.hidden).to.eq(true);
+          expect(request.body.page_ids).to.have.length(2);
+        });
+        sidebar()
+          .findByText("All items have been hidden.")
+          .should("be.visible");
+
+        cy.log("Undo on the group-hidden toast restores the whole group");
+        H.undoToastListContainer()
+          .findByText(`${metricName} hidden`)
+          .should("be.visible");
+        H.undoToastListContainer()
+          .findByRole("button", { name: "Undo" })
+          .click();
+        cy.wait("@setPagesHidden")
+          .its("request.body.hidden")
+          .should("eq", false);
+        cy.findAllByRole("treeitem").should("have.length", 2);
+        sidebar().findByText("All items have been hidden.").should("not.exist");
+      },
+    );
+  });
+});
+
 describe("scenarios > explorations > chart click-through", () => {
   beforeEach(() => {
     H.restore();

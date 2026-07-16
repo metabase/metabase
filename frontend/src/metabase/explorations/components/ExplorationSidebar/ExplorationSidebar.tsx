@@ -51,10 +51,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { useCopyLink } from "../../hooks/useCopyLink";
-import {
-  DEFAULT_SORT_ORDER,
-  type ExplorationSortOrder,
-} from "../../sidebar-preferences";
+import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
 import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
@@ -340,25 +337,20 @@ function SidebarShowFilterMenu({
   sortOrder: ExplorationSortOrder;
   onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
 }) {
-  const hasActiveFilter = showHidden || sortOrder !== DEFAULT_SORT_ORDER;
-
   return (
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
           className={cx(S.filterButton, {
-            [S.filterButtonActive]: hasActiveFilter,
+            [S.filterButtonActive]: showHidden,
           })}
           radius="xl"
           size="lg"
           aria-label={t`Filter`}
-          aria-pressed={hasActiveFilter}
+          aria-pressed={showHidden}
           data-testid="exploration-show-hidden-toggle"
         >
-          <Icon
-            name="filter"
-            c={hasActiveFilter ? "white" : "text-secondary"}
-          />
+          <Icon name="filter" c={showHidden ? "white" : "text-secondary"} />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
@@ -398,6 +390,7 @@ function ShowFilterItem({
 }) {
   return (
     <Menu.Item
+      data-checked={checked || undefined}
       closeMenuOnClick={false}
       leftSection={<Icon name={checked ? "check" : "empty"} />}
       onClick={onToggle}
