@@ -606,12 +606,16 @@
           (mt/with-temp [:model/Collection {readable :id}   {}
                          :model/Collection {unreadable :id} {}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
-            (let [r-fid   (insert-imbalanced! {:entity-type :collection :entity-id readable
+            (let [prefix  (scope-prefix)
+                  r-fid   (insert-imbalanced! {:entity-type :collection :entity-id readable
+                                               :name (str prefix " Readable")
                                                :finding-type :sparse :content-count 1})
                   u-fid   (insert-imbalanced! {:entity-type :collection :entity-id unreadable
+                                               :name (str prefix " Unreadable")
                                                :finding-type :sparse :content-count 1})
                   ids-for (fn [user] (set (map :id (:data (mt/user-http-request
-                                                           user :get 200 "ee/content-diagnostics/imbalanced")))))]
+                                                           user :get 200 "ee/content-diagnostics/imbalanced"
+                                                           :query prefix)))))]
               (testing "non-admin sees only the readable collection's finding"
                 (let [ids (ids-for :rasta)]
                   (is (contains? ids r-fid))
