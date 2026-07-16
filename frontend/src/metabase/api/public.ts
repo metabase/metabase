@@ -45,8 +45,7 @@ export type ExecutePublicDashcardActionRequest = {
 export type PrefetchPublicDashcardValuesRequest = {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
-  // Already JSON-stringified by the caller and passed through the query string.
-  parameters?: string;
+  parameters: ParametersForActionExecution;
 };
 
 export type PublicCardQueryRequest = {
@@ -127,10 +126,10 @@ export const publicApi = Api.injectEndpoints({
       ParametersForActionExecution,
       PrefetchPublicDashcardValuesRequest
     >({
-      query: ({ dashboardId, dashcardId, ...params }) => ({
-        method: "GET",
-        url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-        params,
+      query: ({ dashboardId, dashcardId, parameters }) => ({
+        method: "POST",
+        url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/execute/values`,
+        body: { parameters },
       }),
       keepUnusedDataFor: 0,
     }),
