@@ -75,22 +75,32 @@
   (when-let [q (some-> query str/trim not-empty u/lower-case-en)]
     [:like [:lower :entity_name] (str "%" q "%")]))
 
+(defn excluded-personal-collection-ids
+  "The live personal-collection id set (roots + descendants) to exclude for this request - nil when
+  `include-personal-collections`, or when none exist. Endpoints resolve this once and thread it to both
+  `findings-where` and `hydrate-findings`, so the set is queried at most once per request."
+  [include-personal-collections]
+  (when-not include-personal-collections
+    (not-empty (personal-collection-ids))))
+
 (defn exclude-personal-collections-clause
-  "WHERE fragment dropping findings whose entity currently lives in a personal collection (root and
-  regular-collection entities are kept). Nil when there is nothing to exclude."
-  []
-  (when-let [pids (seq (personal-collection-ids))]
+  "WHERE fragment dropping findings whose entity currently lives in one of `excluded-personal-ids`
+  (see `excluded-personal-collection-ids`; root and regular-collection entities are kept). Nil when
+  there is nothing to exclude."
+  [excluded-personal-ids]
+  (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses [:in :collection_id pids]))))
+          (entity-collection-clauses [:in :collection_id excluded-personal-ids]))))
 
 (defn findings-where
   "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
-  endpoint shares - personal-collection exclusion (unless `include-personal-collections`), `entity-types`,
-  and `query` name search - plus any finding-type-specific `extra-filters`. Each filter is precomputed so
-  a nil (no-op) is skipped, not conjoined as a null AND-term."
-  [finding-type {:keys [include-personal-collections entity-types query]} & extra-filters]
-  (let [personal-filter    (when-not include-personal-collections (exclude-personal-collections-clause))
+  endpoint shares - personal-collection exclusion (when `:excluded-personal-collection-ids` is provided;
+  see `excluded-personal-collection-ids`), `entity-types`, and `query` name search - plus any
+  finding-type-specific `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not
+  conjoined as a null AND-term."
+  [finding-type {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
+  (let [personal-filter    (exclude-personal-collections-clause excluded-personal-collection-ids)
         entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
                              [:in :entity_type (mapv name types)])
         name-search-filter (name-search-clause query)]
@@ -139,17 +149,23 @@
   a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects. `card_type` is the
   `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched.
 
-  Culprit cards can live outside their container's collection, so caller visibility (the same gate as
-  `visible-findings-clause`) is re-applied here - an unreadable culprit drops out of `slow_entities`
-  exactly like a deleted one."
-  [card-ids]
+  Culprit cards can live outside their container's collection, so the per-caller read-time filters are
+  re-applied here: caller visibility (the same gate as `visible-findings-clause`) always, and the
+  personal-collection exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops
+  out of `slow_entities` exactly like a deleted one."
+  [card-ids excluded-personal-ids]
   (when (seq card-ids)
     ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)})
                       [:model/Card :id :name :type :card_schema]
                       {:where [:and
                                [:in :id (set card-ids)]
-                               (collection/visible-collection-filter-clause :collection_id)]})))
+                               (collection/visible-collection-filter-clause :collection_id)
+                               ;; root-collection culprits (nil collection_id) must survive the NOT-IN.
+                               (when excluded-personal-ids
+                                 [:or
+                                  [:= :collection_id nil]
+                                  [:not [:in :collection_id excluded-personal-ids]]])]})))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
@@ -168,8 +184,10 @@
   Options let each endpoint add its per-finding-type extras without changing the shared base:
   `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
   stale, `:duration_ms` for slow); `:hydrate-culprits?` - replace `details.slow_entity_ids` with hydrated
-  `details.slow_entities` objects (slow roll-ups)."
-  [findings & [{:keys [top-level-cols hydrate-culprits?]
+  `details.slow_entities` objects (slow roll-ups); `:excluded-personal-collection-ids` - the request's
+  resolved exclusion set (see `excluded-personal-collection-ids`), threaded to the culprit hydration so
+  its personal-collection exclusion matches the findings filter without re-querying."
+  [findings & [{:keys [top-level-cols hydrate-culprits? excluded-personal-collection-ids]
                 :or   {top-level-cols []}}]]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
@@ -178,7 +196,8 @@
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)
         culprits    (when hydrate-culprits?
-                      (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)))]
+                      (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
+                                             excluded-personal-collection-ids))]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name details] :as row}]
             (let [entity  (get-in ctx-by-type [entity_type entity_id])

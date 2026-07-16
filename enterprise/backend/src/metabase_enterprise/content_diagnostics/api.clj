@@ -171,7 +171,8 @@
                                           [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
-  (let [where (stale-where-clause {:include-personal-collections include-personal-collections
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
+        where (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
                                    :entity-types                 entity-types
                                    :threshold-days               threshold-days
                                    :query                        query})
@@ -201,7 +202,8 @@
   valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
-  collection are excluded. `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
+  collection are excluded and personal-collection culprit cards are omitted from `slow_entities`.
+  `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
   all). `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
   filter on their representative duration). `query` case-insensitively substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duration-ms`, default
@@ -220,7 +222,8 @@
                                            [:sequential (ms/enum-decode-keyword api.common/covered-entity-types)]]]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
-  (let [where (slow-where-clause {:include-personal-collections include-personal-collections
+  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)
+        where (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
                                   :entity-types                 entity-types
                                   :min-duration-ms              min-duration-ms
                                   :query                        query})
@@ -230,7 +233,9 @@
                                              [:id sort-direction]]}
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
-    {:data         (api.common/hydrate-findings page {:top-level-cols [:duration_ms] :hydrate-culprits? true})
+    {:data         (api.common/hydrate-findings page {:top-level-cols                   [:duration_ms]
+                                                      :hydrate-culprits?                true
+                                                      :excluded-personal-collection-ids excluded-personal-ids})
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
      :offset       (request/offset)

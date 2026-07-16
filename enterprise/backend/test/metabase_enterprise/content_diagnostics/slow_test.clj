@@ -517,6 +517,36 @@
                     (is (contains? (fetched-ids resp) pers-fid))
                     (is (= 2 (:total resp)))))))))))))
 
+(deftest slow-api-personal-culprits-follow-param-test
+  (testing "GET /slow culprit hydration honors include-personal-collections like the findings filter"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+            (mt/with-temp [:model/Collection {reg-id :id}    {}
+                           :model/Dashboard  {dash-id :id}   {:collection_id reg-id}
+                           :model/Card       {reg-card :id}  {:collection_id reg-id}
+                           :model/Card       {pers-card :id} {:collection_id pers-id}]
+              (perms/grant-collection-read-permissions! (perms/all-users-group) reg-id)
+              (let [prefix      (scope-prefix)
+                    fid         (first (t2/insert-returning-pks!
+                                        :model/ContentDiagnosticsFinding
+                                        {:scan_id "pc" :entity_type :dashboard :entity_id dash-id
+                                         :entity_name (str prefix "-dash")
+                                         :finding_type :slow :duration_ms 20000
+                                         :details {:slow_entity_ids [reg-card pers-card]}}))
+                    culprit-ids (fn [& kvs]
+                                  (let [finding (some #(when (= fid (:id %)) %)
+                                                      (:data (apply mt/user-http-request
+                                                                    :rasta :get 200
+                                                                    "ee/content-diagnostics/slow"
+                                                                    :query prefix kvs)))]
+                                    (into #{} (map :id) (get-in finding [:details :slow_entities]))))]
+                (testing "default → the caller's own (readable) personal-collection culprit is hidden too"
+                  (is (= #{reg-card} (culprit-ids))))
+                (testing "include-personal-collections=true → both culprits hydrate"
+                  (is (= #{reg-card pers-card} (culprit-ids :include-personal-collections true))))))))))))
+
 (deftest slow-api-query-search-test
   (testing "GET /slow ?query= case-insensitively substring-matches the denormalized entity name"
     (mt/with-premium-features #{:content-diagnostics}
@@ -580,15 +610,18 @@
                          :model/Card {open-card :id}   {:collection_id readable}
                          :model/Card {secret-card :id} {:collection_id unreadable}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
-            (let [fid         (first (t2/insert-returning-pks!
+            (let [prefix      (scope-prefix)
+                  fid         (first (t2/insert-returning-pks!
                                       :model/ContentDiagnosticsFinding
                                       {:scan_id "perm" :entity_type :dashboard :entity_id dash-id
+                                       :entity_name (str prefix "-dash")
                                        :finding_type :slow :duration_ms 20000
                                        :details {:slow_entity_ids [open-card secret-card]}}))
                   culprit-ids (fn [user]
                                 (let [finding (some #(when (= fid (:id %)) %)
                                                     (:data (mt/user-http-request
-                                                            user :get 200 "ee/content-diagnostics/slow")))]
+                                                            user :get 200 "ee/content-diagnostics/slow"
+                                                            :query prefix)))]
                                   (into #{} (map :id) (get-in finding [:details :slow_entities]))))]
               (testing "superuser sees both culprits"
                 (is (= #{open-card secret-card} (culprit-ids :crowberto))))
