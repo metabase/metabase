@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
+import { schemaNameRequiresQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
@@ -102,22 +103,15 @@ export const setupSchemaEndpoints = (db: Database) => {
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach((schema) => {
-    // mirrors listDatabaseSchemaTables: schema names with slashes, backslashes, or percent signs are
-    // passed as a query parameter, other names in the URL path (#77353)
-    if (/[/\\%]/.test(schema)) {
-      fetchMock.get({
-        url: `path:/api/database/${db.id}/schema/`,
-        query: { schema },
-        response: schemas[schema],
-        name: `database-${db.id}-schema-${schema}`,
-      });
-    } else {
-      fetchMock.get(
-        `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
-        schemas[schema],
-        { name: `database-${db.id}-schema-${schema}` },
-      );
-    }
+    const useQueryParam = schemaNameRequiresQueryParam(schema);
+    fetchMock.get({
+      url: useQueryParam
+        ? `path:/api/database/${db.id}/schema/`
+        : `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
+      ...(useQueryParam && { query: { schema } }),
+      response: schemas[schema],
+      name: `database-${db.id}-schema-${schema}`,
+    });
   });
 };
 

@@ -1559,6 +1559,10 @@
 (api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`.
 
+  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
+  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`
+  instead (#77353).
+
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"

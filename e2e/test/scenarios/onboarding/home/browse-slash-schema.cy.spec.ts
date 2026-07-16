@@ -8,8 +8,6 @@ const TABLE_NAME = "slash_schema_orders";
 const TABLE_DISPLAY_NAME = "Slash Schema Orders";
 const ANCHOR_TABLE_NAME = "plain_schema_anchor";
 
-const SCHEMA_URL = `/browse/databases/${WRITABLE_DB_ID}/schema/${encodeURIComponent(SLASH_SCHEMA)}`;
-
 const CLEANUP_SQL = `
   DROP SCHEMA IF EXISTS "${SLASH_SCHEMA}" CASCADE;
   DROP TABLE IF EXISTS public.${ANCHOR_TABLE_NAME};
@@ -25,9 +23,6 @@ const SETUP_SQL = `
   INSERT INTO "${SLASH_SCHEMA}".${TABLE_NAME} (total) VALUES (10), (20);
   CREATE TABLE public.${ANCHOR_TABLE_NAME} (id SERIAL PRIMARY KEY);
 `;
-
-const assertTableVisible = () =>
-  cy.findByRole("heading", { name: TABLE_DISPLAY_NAME }).should("be.visible");
 
 describe(
   "issue 77353 (schema names containing a slash)",
@@ -51,8 +46,15 @@ describe(
       cy.log("browse to the schema from the database page");
       cy.visit(`/browse/databases/${WRITABLE_DB_ID}`);
       cy.findByRole("heading", { name: SLASH_SCHEMA }).click();
-      cy.location("pathname").should("eq", SCHEMA_URL);
-      assertTableVisible();
+      // known limitation: this URL works for in-app navigation only — a hard page load of it is
+      // rejected at the HTTP layer because of the percent-encoded slash in the path (#77353)
+      cy.location("pathname").should(
+        "eq",
+        `/browse/databases/${WRITABLE_DB_ID}/schema/${encodeURIComponent(SLASH_SCHEMA)}`,
+      );
+      cy.findByRole("heading", { name: TABLE_DISPLAY_NAME }).should(
+        "be.visible",
+      );
 
       cy.log("pick a table from the slashed schema in the data picker");
       H.newButton("Question").click();

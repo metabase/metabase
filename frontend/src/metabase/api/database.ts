@@ -45,6 +45,11 @@ import {
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
+// schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
+// percent-encoded in a URL path, so they must be passed as a query parameter instead (#77353)
+export const schemaNameRequiresQueryParam = (schema: SchemaName) =>
+  /[/\\%]/.test(schema);
+
 const toNormalizedSchemas = (dbId: DatabaseId, schemaNames: SchemaName[]) =>
   schemaNames.map((schemaName) => ({
     id: generateSchemaId(dbId, schemaName),
@@ -169,19 +174,13 @@ export const databaseApi = Api.injectEndpoints({
       ListDatabaseSchemaTablesRequest
     >({
       query: ({ id, schema, ...params }) => {
-        // schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer
-        // when percent-encoded in the URL path, so they are passed as a query parameter instead (#77353)
-        if (/[/\\%]/.test(schema)) {
-          return {
-            method: "GET",
-            url: `/api/database/${id}/schema/`,
-            params: { ...params, schema },
-          };
-        }
+        const useQueryParam = schemaNameRequiresQueryParam(schema);
         return {
           method: "GET",
-          url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
-          params,
+          url: useQueryParam
+            ? `/api/database/${id}/schema/`
+            : `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
+          params: useQueryParam ? { ...params, schema } : params,
         };
       },
       providesTags: (tables = []) => [
@@ -197,6 +196,8 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListVirtualDatabaseTablesRequest
     >({
+      // a virtual database "schema" is a collection name, so names matching schemaNameRequiresQueryParam
+      // hit the same HTTP-layer rejection (#77353); the virtual-db endpoints have no query-param fallback yet
       query: ({ id, schema, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,

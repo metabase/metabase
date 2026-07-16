@@ -2197,27 +2197,28 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    _ {:db_id db-id :schema nil :name "t1"}
                    :model/Table    _ {:db_id db-id :schema "" :name "t2"}
-                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
-                   :model/Table    _ {:db_id db-id :schema "public/transactions" :name "t4"}]
-      (testing "the schema can be passed as a query parameter"
-        (is (= ["t3"]
-               (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id) :schema "public")))))
-      (testing "which, unlike the route param, supports schema names containing slashes (#77353)"
-        (is (= ["t4"]
-               (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)
-                                                :schema "public/transactions")))))
-      (testing "and other characters rejected in URL paths at the HTTP layer, like backslashes and percent signs"
-        (doseq [schema-name ["back\\slash" "per%cent"]]
-          (mt/with-temp [:model/Table _ {:db_id db-id :schema schema-name :name (str "table in " schema-name)}]
-            (is (= [(str "table in " schema-name)]
-                   (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)
-                                                    :schema schema-name)))))))
-      (testing "an empty schema query param behaves like no schema param: `nil` and empty schemas"
-        (is (= ["t1" "t2"]
-               (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id) :schema "")))))
-      (testing "should return a 404 for a schema that doesn't exist"
-        (is (= "Not found."
-               (mt/user-http-request :lucky :get 404 (format "database/%d/schema/" db-id) :schema "no such schema")))))))
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}]
+      (let [url (format "database/%d/schema/" db-id)]
+        (testing "the schema can be passed as a query parameter"
+          (is (= ["t3"]
+                 (map :name (mt/user-http-request :lucky :get 200 url :schema "public")))))
+        (testing "which, unlike the route param, supports schema names containing characters rejected in URL
+                 paths at the HTTP layer: slashes (#77353), backslashes, and percent signs"
+          (doseq [schema-name ["public/transactions" "back\\slash" "per%cent"]]
+            (mt/with-temp [:model/Table _ {:db_id db-id :schema schema-name :name (str "table in " schema-name)}]
+              (is (= [(str "table in " schema-name)]
+                     (map :name (mt/user-http-request :lucky :get 200 url :schema schema-name)))))))
+        (testing "an empty schema query param behaves like no schema param: `nil` and empty schemas"
+          (is (= ["t1" "t2"]
+                 (map :name (mt/user-http-request :lucky :get 200 url :schema "")))))
+        (testing "should return a 404 for a schema that doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :lucky :get 404 url :schema "no such schema"))))
+        (testing "the route-param form of such names is rejected at the HTTP layer, which is why the query
+                 param exists; if this assertion fails, the query-param workaround may be obsolete (#77353)"
+          (is (= 400 (:status (mt/user-real-request-full-response
+                               :lucky :get 400
+                               (str url "public%2Ftransactions"))))))))))
 
 (deftest ^:parallel get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
