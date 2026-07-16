@@ -13,7 +13,13 @@
    kill switch and native-query permission. It also mints a handle on every call (including
    `validate_only`, which replaces v1's `construct_native_query`), so saving or visualizing SQL
    needs no separate construct step. Never a cursor: arbitrary SQL can't be rewritten with a
-   server-side keyset predicate, so truncation steers to narrowing the SQL or `export`."
+   server-side keyset predicate, so truncation steers to narrowing the SQL or `export`.
+
+   `run_saved_question`: a stored card by numeric id or entity_id, with parameters resolved
+   server-side against the card's own parameter list — the stored target and type always
+   apply, and a client-supplied target is ignored, so a caller can set a filter's value but
+   never repoint it at another field. No handle and no cursor: the extract path for a saved
+   card is `export`, not paging."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -28,10 +34,12 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.tools.construct :as metabot.construct]
    [metabase.models.interface :as mi]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -366,3 +374,146 @@ Query dialect (portable MBQL 5, JSON): discover exact database/schema/table/colu
     (if (true? validate_only)
       (validate-sql-response session-id serialized)
       (execute-sql-response session-id serialized (or row_limit default-row-limit)))))
+
+;;; --------------------------------------------- run_saved_question -----------------------------------------------
+
+(defn- card-parameter-label
+  [{:keys [id slug]}]
+  (if slug
+    (format "%s (slug %s)" (pr-str id) (pr-str slug))
+    (pr-str id)))
+
+(defn- throw-unknown-parameter
+  [card-params requested]
+  (common/throw-teaching-error
+   (if (seq card-params)
+     (format "Unknown parameter %s — pass one of this card's parameter ids or slugs: %s."
+             (pr-str requested)
+             (str/join ", " (map card-parameter-label card-params)))
+     (format "Unknown parameter %s — this card has no parameters." (pr-str requested)))))
+
+(defn- check-parameter-value!
+  "Reject a value whose JSON type can't satisfy the parameter's stored type, as a teaching
+   error naming the expectation rather than an opaque QP substitution failure. Multi-value
+   parameters arrive as arrays; each element is checked."
+  [{param-type :type :keys [id slug]} value]
+  (let [family   (or (namespace param-type) (name param-type))
+        expected (case family
+                   "number"                 "a number"
+                   "boolean"                "a boolean"
+                   ("date" "temporal-unit") "a string"
+                   "a string, number, or boolean")]
+    (doseq [v (if (sequential? value) value [value])]
+      (let [ok? (case family
+                  "number"                 (or (number? v)
+                                               (and (string? v) (re-matches #"-?\d+(\.\d+)?([eE][+-]?\d+)?" v)))
+                  "boolean"                (or (boolean? v) (contains? #{"true" "false"} v))
+                  ("date" "temporal-unit") (string? v)
+                  (or (string? v) (number? v) (boolean? v)))]
+        (when-not ok?
+          (common/throw-teaching-error
+           (format "Invalid value %s for parameter %s of type %s — expected %s."
+                   (pr-str v) (pr-str (or slug id)) (u/qualified-name param-type) expected)))))))
+
+(defn- resolve-card-parameters
+  "Resolve each caller-supplied `{id|slug, value}` against the card's own parameter list (its
+   declared parameters merged with the query's template-tag parameters). Only the stored
+   `:target` and `:type` are forwarded — a client-supplied target or type never reaches the
+   QP, so a caller can set a filter's value but never repoint it at another field.
+   [[qp.card/*allow-arbitrary-mbql-parameters*]] stays false downstream, which restricts this
+   path to template-tag-backed parameters (the same 0.41 control the REST card-query endpoint
+   enforces); a parameter targeting a query dimension directly gets a teaching error here
+   instead of the QP's template-tag mismatch."
+  [card parameters]
+  (let [card-params (qp.card/combined-parameters-and-template-tags card)]
+    (mapv (fn [{:keys [id slug value]}]
+            (let [requested (or id slug)
+                  _         (when (nil? requested)
+                              (common/throw-teaching-error
+                               "Each parameter needs an `id` — the parameter's id or slug — and a `value`."))
+                  stored    (or (m/find-first #(= (:id %) requested) card-params)
+                                (m/find-first #(= (:slug %) requested) card-params)
+                                (throw-unknown-parameter card-params requested))]
+              (when-not (match/match-one (:target stored) [:template-tag _tag] true)
+                (common/throw-teaching-error
+                 (format "Parameter %s is not backed by a template tag in the card's query and cannot be set on this path."
+                         (pr-str requested))))
+              (check-parameter-value! stored value)
+              {:id     (:id stored)
+               :type   (:type stored)
+               :target (:target stored)
+               :value  value}))
+          parameters)))
+
+(defn- run-card!
+  "Run the saved card through [[qp.card/process-query-for-card]] — the same domain entry the
+   REST card-query endpoint uses, so the read check, parameter validation (with
+   [[qp.card/*allow-arbitrary-mbql-parameters*]] left false), sandboxing, and impersonation
+   all apply — with `row-limit` injected as the userland constraints. Returns the QP result;
+   surfaces a failed run as a teaching error."
+  [card parameters row-limit]
+  (let [result (qp.card/process-query-for-card
+                card :api
+                :parameters  parameters
+                :context     :question
+                :constraints {:max-results           row-limit
+                              :max-results-bare-rows row-limit}
+                :middleware  {:process-viz-settings? false}
+                :make-run    (fn [qp _export-format]
+                               (fn [query info]
+                                 (qp (update query :info merge info) nil))))]
+    (when-not (= (:status result) :completed)
+      (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
+    result))
+
+(defn- saved-question-steering-line
+  [returned]
+  (format "returned %d rows — narrow with `parameters`, or `export` for the full set" returned))
+
+(def ^:private run-saved-question-args-schema
+  [:map {:closed true}
+   [:id [:or
+         [:int {:min 1 :description "Numeric card id."}]
+         [:string {:min 1 :description "A 21-character entity_id."}]]]
+   [:parameters {:optional true}
+    [:maybe [:sequential
+             [:map
+              [:id {:optional true}
+               [:maybe [:string {:min 1 :description "The parameter's id (or slug) from the card's parameter list."}]]]
+              [:slug {:optional true}
+               [:maybe [:string {:min 1 :description "The parameter's slug — equivalent to passing it as id."}]]]
+              [:value {:description "The parameter value; an array for multi-value parameters. The parameter's stored target and type always apply."}
+               :any]]]]]
+   [:row_limit {:optional true}
+    [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
+
+(registry/deftool run-saved-question
+  "Run a saved question (card) by numeric id or entity_id and return its rows inline. Parameters are resolved server-side against the card's own parameter list: pass each as {id, value} where id is the parameter's id or slug — the stored target and type always apply and any client-supplied target or type is ignored, so you can set a filter's value but never repoint it at another field. Only parameters backed by the card's template tags ({{variable}} and field-filter tags) can be set; value types are checked per parameter. Discover a card's parameters with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: when a result is truncated, narrow with parameters or use export for the full set."
+  {:name        "run_saved_question"
+   :scope       metabot.scope/agent-query-execute
+   :annotations {:readOnlyHint true}
+   :args        run-saved-question-args-schema}
+  [{:keys [id parameters row_limit]} _context]
+  (let [row-limit   (or row_limit default-row-limit)
+        card        (common/resolve-and-read :model/Card id
+                                             (fn [card-id]
+                                               (api/read-check :model/Card card-id)))
+        mbql-params (when (seq parameters)
+                      (resolve-card-parameters card parameters))
+        result      (run-card! card mbql-params row-limit)
+        cols        (get-in result [:data :cols])
+        ;; The constraints injected by [[run-card!]] don't bind every display type — a
+        ;; `:display :pivot` card routes through `qp.pivot/run-pivot-query`, which replaces
+        ;; `:max-results` with its own pivot ceiling — so the cap is enforced on the result
+        ;; rows here, where it holds regardless of which QP path ran.
+        all-rows    (get-in result [:data :rows])
+        rows        (into [] (take row-limit) all-rows)
+        returned    (count rows)
+        truncated?  (and (pos? returned) (>= (count all-rows) row-limit))
+        counts      {:returned returned :truncated truncated?}
+        payload     (assoc counts
+                           :cols (response-cols cols)
+                           :rows rows)]
+    (common/success-content
+     (cond-> (json/encode payload)
+       truncated? (str "\n" (saved-question-steering-line returned))))))
