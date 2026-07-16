@@ -48,6 +48,18 @@
   (let [thread-id (runner/fail-pair! query-id timeline-id)]
     (runner/maybe-complete-thread! thread-id)))
 
+(defn- record-failure!
+  "Write one message's terminal-failure state via `fail!`, logging (never rethrowing) if that write
+  itself fails. Recording a message's failure must never throw past its batch-mates: a racing
+  duplicate insert or a transient db blip inside `fail!` would otherwise strand every message behind
+  it without the terminal state its thread's completion gate is waiting on."
+  [fail! message error]
+  (try
+    (fail! message error)
+    (catch Throwable e
+      (log/error e "Recording a failed exploration message failed; its thread may hang until retried"
+                 {:message message}))))
+
 (defn- deliver-batch!
   "Runs `handle!` on each message of a batch, isolating the messages from one another."
   [messages handle! fail!]
@@ -56,7 +68,7 @@
       (u/auto-retry 1 (handle! message))
       (catch Throwable e
         (log/error e "Exploration message failed every attempt; recording it as failed" {:message message})
-        (fail! message e)))))
+        (record-failure! fail! message e)))))
 
 ;;; ------------------------------------------- Queues -------------------------------------------
 
@@ -81,14 +93,14 @@
    :max-batch-messages 100
    :max-concurrent-batches #(explorations.settings/explorations-worker-count)
    :on-error (fn [{:keys [messages error]}]
-               (run! #(fail-query-message! % error) messages))})
+               (run! #(record-failure! fail-query-message! % error) messages))})
 
 (mq/def-queue! :queue/exploration-timeline-score
   {:transactional :require
    :max-batch-messages 100
    :max-concurrent-batches #(explorations.settings/explorations-worker-count)
    :on-error (fn [{:keys [messages error]}]
-               (run! #(fail-pair-message! % error) messages)
+               (run! #(record-failure! fail-pair-message! % error) messages)
                (log/warn error "Timeline scoring gave up after exhausting retries; pair recorded unscored"))})
 
 ;;; ------------------------------------------ Publishing ------------------------------------------

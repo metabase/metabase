@@ -443,6 +443,55 @@
           (is (some? (:scored_at sentinel))
               "scored_at is set, so the completion gate no longer waits on this pair"))))))
 
+(deftest score-pair-skips-a-canceled-thread-test
+  (testing "A timeline-score message delivered for a thread the user canceled is a no-op: no LLM
+            scoring call and no interestingness row. A canceled thread is terminal and nobody is
+            waiting on its scores, so spending an LLM call on one would be pure waste — the same
+            guard run-query! and plan-thread! already apply"
+    (mt/with-temp [:model/User u {:email "ti-runner-canceled@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            called (atom 0)]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        (let [now (OffsetDateTime/now)]
+          (t2/update! :model/ExplorationThread (:id thread) {:canceled_at now :completed_at now}))
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] (swap! called inc) 0.5)]
+          (is (nil? (runner/score-pair! (:id q) (:id tl)))
+              "score-pair! must return nil for a canceled thread"))
+        (is (zero? @called) "the scorer (and its LLM call) must not run for a canceled thread")
+        (is (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                             :exploration_query_id (:id q) :timeline_id (:id tl)))
+            "and no interestingness row was reserved")))))
+
+(deftest score-pair-rethrows-a-transient-reservation-failure-test
+  (testing "The reservation insert's catch must not treat every failure as a lost unique-constraint
+            race. A transient DB error — after which no row actually exists — is rethrown so the
+            message is retried, rather than swallowed as a race loss that leaves the pair unscored
+            forever"
+    (mt/with-temp [:model/User u {:email "ti-runner-transient@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: we want the reservation insert to blow up
+        ;; the way a transient DB error would, with no row left behind.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [t2/insert-returning-instances! (fn [& _] (throw (ex-info "transient db blip" {})))]
+          (is (thrown-with-msg? Throwable #"transient db blip"
+                                (runner/score-pair! (:id q) (:id tl)))
+              "a transient reservation failure is rethrown, not swallowed as a race loss"))
+        (is (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                             :exploration_query_id (:id q) :timeline_id (:id tl)))
+            "no reservation row exists — the failure was genuine, not a lost race")))))
+
 ;; ---------------------------- Cancellation guards ----------------------------
 
 (def ^:private claim-analysis-if-ready! #'runner/claim-analysis-if-ready!)
@@ -473,8 +522,10 @@
             "no result was written")))))
 
 (deftest run-query-is-idempotent-under-redelivery-test
-  (testing "at-least-once: re-delivering a query that already ran is a no-op — it does not run twice
-            or write a second exploration_query_result (which is 1:1 with the query)"
+  (testing "at-least-once: re-delivering a query that already ran does not run it twice or write a
+            second exploration_query_result (which is 1:1 with the query). It still returns the
+            thread id, though — a prior delivery may have persisted the query but then failed to
+            publish its timeline pairs, and the redelivery is what re-runs that follow-up"
     (mt/with-temp [:model/User u {:email "redeliver@example.com"}
                    :model/Card card {:type :metric
                                      :creator_id (:id u)
@@ -483,8 +534,10 @@
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
         (is (= (:id thread) (runner/run-query! (:id row))) "first delivery runs it")
-        (is (nil? (runner/run-query! (:id row))) "redelivery is a no-op")
-        (is (nil? (runner/run-query! (:id row))))
+        (is (= (:id thread) (runner/run-query! (:id row)))
+            "a redelivery of an already-done query returns its thread id, so the caller re-runs the
+             timeline-pair publish that may have failed after the query was persisted")
+        (is (= (:id thread) (runner/run-query! (:id row))))
         (is (= "done" (:status (t2/select-one :model/ExplorationQuery :id (:id row)))))
         (is (= 1 (t2/count :model/ExplorationQueryResult :exploration_query_id (:id row)))
             "exactly one result row, despite three deliveries")))))
@@ -604,6 +657,24 @@
           (is (true? (runner/plan-thread! (:id thread)))
               "the redelivered message re-plans it"))
         (is (= 1 @called))))))
+
+(deftest plan-thread-skips-a-completed-thread-that-produced-no-queries-test
+  (testing "at-least-once: a plan that produced no queries still completes its thread (the analysis
+            claim fires on a thread with no pending queries). A redelivered plan message for such a
+            thread must not re-run the planner and resurrect a completed exploration — the query-row
+            check can't catch the zero-query case, so analysis_started_at is the gate that does"
+    (mt/with-temp [:model/User u {:email "plan-zero-query@example.com"}]
+      (let [thread (temp-thread! (:id u))
+            called (atom 0)]
+        ;; the thread planned, produced no queries, and its analysis was already claimed/completed
+        (t2/update! :model/ExplorationThread (:id thread)
+                    {:started_at          (OffsetDateTime/now)
+                     :analysis_started_at (OffsetDateTime/now)})
+        (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
+                                    (fn [_] (swap! called inc) :ok)]
+          (is (false? (runner/plan-thread! (:id thread)))))
+        (is (zero? @called)
+            "the planner must not re-run for a thread whose analysis already completed")))))
 
 (deftest fail-plan-records-the-terminal-planning-failure-test
   (testing "when the queue gives up on planning, fail-plan! writes the same terminal state the

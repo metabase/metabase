@@ -234,6 +234,21 @@
                "and the query that really did fail is terminally errored, on its own")
            (is (zero? (t2/count :model/ExplorationQueryResult :exploration_query_id poison)))))))))
 
+(deftest failing-terminal-write-does-not-strand-its-batch-mates-test
+  (testing "if recording one message's terminal-failure state itself throws — a racing duplicate
+            insert, a transient db blip — the remaining messages of the batch still get their
+            terminal state written. deliver-batch! must isolate the fail! calls the way it isolates
+            the handle! calls, or one un-recordable failure would strand every message behind it"
+    (let [failed  (atom [])
+          handle! (fn [_] (throw (ex-info "always fails" {})))
+          fail!   (fn [msg _e]
+                    (if (= msg {:id 1})
+                      (throw (ex-info "recording THIS one blows up" {}))
+                      (swap! failed conj msg)))]
+      (#'explorations.queues/deliver-batch! [{:id 1} {:id 2} {:id 3}] handle! fail!)
+      (is (= [{:id 2} {:id 3}] @failed)
+          "every message whose terminal write succeeded is recorded, despite the first one throwing"))))
+
 (deftest a-message-that-fails-once-is-retried-inside-its-delivery-test
   (testing "a transient failure is retried within the same delivery — a batch carries the rest of a
             user's queries, so a blip on one message must not cost the whole batch a redelivery"

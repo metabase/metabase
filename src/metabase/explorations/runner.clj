@@ -452,16 +452,23 @@
         (throw e)))))
 
 (defn run-query!
-  "Execute the pending `ExplorationQuery` `query-id` and flip it to `done`. Returns the row's
-  thread id when it ran, or nil when there was nothing to do."
+  "Execute the pending `ExplorationQuery` `query-id`, flip it to `done`, and return its thread id.
+
+  Also returns the thread id — without re-running anything — for a query that is *already* `done`:
+  the delivery that ran it may have persisted the result but then failed to publish its timeline
+  pairs, and the redelivery is what re-runs that follow-up (which is idempotent). Skipping it there
+  would strand the pairs unpublished forever. Returns nil when there is nothing to publish: the
+  query is still pending (or on a canceled thread), terminally `error`, or gone."
   [query-id]
-  (when-let [row (runnable-query query-id)]
+  (if-let [row (runnable-query query-id)]
     (let [row      (finalize-row! row)
           started  (OffsetDateTime/now)
           computed (compute-query-result row)]
       (when (persist-query-result! row started computed)
         (record-query-outcome! "done"))
-      (:exploration_thread_id row))))
+      (:exploration_thread_id row))
+    (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
+                      :id query-id :status "done")))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -507,10 +514,17 @@
   "Score the `(query-id, timeline-id)` pair and return the query's thread id, or nil if there was
   nothing to do.
 
-  Idempotent for use in MQ"
+  Idempotent for use in MQ. Skips a canceled thread — like [[run-query!]] and [[plan-thread!]], a
+  terminal thread nobody is waiting on must not cost an LLM scoring call."
   [query-id timeline-id]
-  (when-let [eq (t2/select-one [:model/ExplorationQuery :id :exploration_thread_id :status]
-                               :id query-id :status "done")]
+  (when-let [eq (t2/select-one :model/ExplorationQuery
+                               {:select [:eq.id :eq.exploration_thread_id :eq.status]
+                                :from   [[:exploration_query :eq]]
+                                :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
+                                :where  [:and
+                                         [:= :eq.id query-id]
+                                         [:= :eq.status "done"]
+                                         [:= :et.canceled_at nil]]})]
     (let [existing (t2/select-one [:model/ExplorationQueryTimelineInterestingness :id :scored_at]
                                   :exploration_query_id query-id :timeline_id timeline-id)
           row-id   (cond
@@ -522,10 +536,16 @@
                                                           {:exploration_query_id query-id
                                                            :timeline_id          timeline-id})))
                                              (catch Throwable e
-                                               ;; unique-constraint loser: a concurrent delivery has it
-                                               (log/tracef e "Lost race reserving timeline pair (q=%s, t=%s)"
-                                                           query-id timeline-id)
-                                               nil)))]
+                                               ;; Only a genuine unique-constraint race leaves a row behind — treat
+                                               ;; that as a benign loss and let the winner score it. A transient
+                                               ;; failure leaves no row: rethrow so the message is retried, rather
+                                               ;; than swallowing it and leaving the pair unscored forever.
+                                               (if (t2/exists? :model/ExplorationQueryTimelineInterestingness
+                                                               :exploration_query_id query-id :timeline_id timeline-id)
+                                                 (do (log/tracef e "Lost race reserving timeline pair (q=%s, t=%s)"
+                                                                 query-id timeline-id)
+                                                     nil)
+                                                 (throw e)))))]
       (when row-id
         (score-pair-row! row-id query-id timeline-id (exploration-creator-id eq)))
       (:exploration_thread_id eq))))
@@ -561,7 +581,7 @@
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at] :id thread-id)
+  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] :id thread-id)
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.
@@ -572,6 +592,15 @@
                    ;; spend an LLM call on work nobody is waiting for.
                    (:canceled_at thread)
                    (do (log/infof "Exploration thread %d was canceled; skipping planning" thread-id)
+                       false)
+
+                   ;; A plan that produced no queries completes its thread without inserting any
+                   ;; ExplorationQuery rows, so the row-existence check below can't tell it apart from
+                   ;; a never-planned thread. `analysis_started_at` — claimed once, synchronously,
+                   ;; when the thread has no pending work — catches that case, so a redelivered plan
+                   ;; message can't re-run the planner and resurrect a completed exploration.
+                   (:analysis_started_at thread)
+                   (do (log/infof "Exploration thread %d already completed its analysis; skipping planning" thread-id)
                        false)
 
                    (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
