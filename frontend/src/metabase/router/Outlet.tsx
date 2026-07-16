@@ -1,6 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
 import { createContext, useContext } from "react";
 
+import type { Route } from "./route";
+
 const OutletContext = createContext<ReactNode>(null);
 
 /**
@@ -15,18 +17,64 @@ export function Outlet(): JSX.Element {
   return <>{child}</>;
 }
 
+type RouteWithElement = Route & { element?: ReactNode };
+
+type RouteElementComponent = ComponentType<{
+  children?: ReactNode;
+  route?: RouteWithElement;
+}>;
+
+// The generated route `component` is keyed by the element's component *type*, not
+// by element identity, and it renders the element off the v3-injected `route`.
+// Two sibling routes that render the same component (`element={<X/>}` at
+// `foo/:a` and `foo/:a/:b`) therefore share one `component`, so React reconciles
+// `X` across a navigation between them instead of remounting it — matching v3's
+// `component={X}` behaviour and preserving `X`'s state. It also keeps the
+// component stable across v3's config rebuilds, so a `redirect()` element does
+// not remount and re-fire its navigation in a loop.
+const componentByType = new WeakMap<object, RouteElementComponent>();
+
 /**
- * Turns a v7-style route `element` into a react-router v3 route `component`. The
- * child route that v3 injects as `props.children` is exposed through context, so
- * the element can render it with `<Outlet/>`.
+ * Turns a v7-style `element` into a react-router v3 route `component`. The child
+ * route that v3 injects as `props.children` is exposed through context, letting
+ * the element render it with `<Outlet/>`. This is how `<Route element={<X/>}>`
+ * runs on v3.
  */
-export function routeElement(
+export function routeElementToComponent(
   element: ReactNode,
-): ComponentType<{ children?: ReactNode }> {
-  return function RouteElement({ children }) {
+): RouteElementComponent {
+  const type = elementType(element);
+  if (type != null) {
+    let cached = componentByType.get(type);
+    if (!cached) {
+      cached = makeRouteElementComponent();
+      componentByType.set(type, cached);
+    }
+    return cached;
+  }
+  return makeRouteElementComponent();
+}
+
+// The component type of an element, usable as a WeakMap key (a component function
+// or a `React.memo`/`forwardRef` object). Host tags (strings) and fragments
+// (symbols) aren't keyable, so those fall back to a fresh, unmemoized component.
+function elementType(element: ReactNode): object | null {
+  if (element != null && typeof element === "object" && "type" in element) {
+    // Narrowed to an object with a `type` key just above; read it as `unknown`
+    // to classify the element's component type without assuming a React shape.
+    const type = (element as { type: unknown }).type;
+    if (typeof type === "function" || (typeof type === "object" && type)) {
+      return type;
+    }
+  }
+  return null;
+}
+
+function makeRouteElementComponent(): RouteElementComponent {
+  return function RouteElement({ children, route }) {
     return (
       <OutletContext.Provider value={children}>
-        {element}
+        {route?.element}
       </OutletContext.Provider>
     );
   };
@@ -40,5 +88,11 @@ export function routeElement(
 export function withOutlet(
   Component: ComponentType,
 ): ComponentType<{ children?: ReactNode }> {
-  return routeElement(<Component />);
+  return function RoutedComponent({ children }) {
+    return (
+      <OutletContext.Provider value={children}>
+        <Component />
+      </OutletContext.Provider>
+    );
+  };
 }
