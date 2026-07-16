@@ -3,12 +3,24 @@ import { render, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import type Database from "metabase-lib/v1/metadata/Database";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
-import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
+import type { Database as ApiDatabase } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
 
-const setup = (opts) => {
+const defaultProps = {
+  hasBackButton: false,
+  hasFiltering: false,
+  hasInitialFocus: false,
+  hasNextStep: false,
+  isLoading: false,
+  onChangeDatabase: jest.fn(),
+  onChangeSchema: jest.fn(),
+};
+
+const setup = (opts: { database: ApiDatabase }) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [opts.database] }),
   });
@@ -18,12 +30,10 @@ const setup = (opts) => {
 
   renderWithProviders(
     <DataSelectorDatabaseSchemaPicker
+      {...defaultProps}
       selectedDatabase={database}
       selectedSchema={schemas[0]}
       databases={[database]}
-      schemas={schemas}
-      onChangeSchema={jest.fn()}
-      onChangeDatabase={jest.fn()}
     />,
     { storeInitialState: state },
   );
@@ -31,7 +41,9 @@ const setup = (opts) => {
 
 describe("DataSelectorDatabaseSchemaPicker", () => {
   it("displays loading message when it has no databases", () => {
-    render(<DataSelectorDatabaseSchemaPicker databases={[]} />);
+    render(
+      <DataSelectorDatabaseSchemaPicker {...defaultProps} databases={[]} />,
+    );
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
@@ -41,6 +53,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
+      // The picker only reads database id/name and getSchemas, so a partial
+      // mock is enough here.
       const databases = [
         {
           id: 1,
@@ -50,13 +64,18 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
             { name: "another schema name" },
           ],
         },
-      ];
+      ] as unknown as Database[];
 
-      render(<DataSelectorDatabaseSchemaPicker databases={databases} />);
+      render(
+        <DataSelectorDatabaseSchemaPicker
+          {...defaultProps}
+          databases={databases}
+        />,
+      );
 
       expect(screen.getByText(databaseName)).toBeInTheDocument();
       expect(
-        screen.getByText(getSchemaDisplayName(schemaName)),
+        screen.getByText(checkNotNull(getSchemaDisplayName(schemaName))),
       ).toBeInTheDocument();
     });
 
@@ -64,6 +83,8 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
+      // The picker only reads database id/name, is_saved_questions and
+      // getSchemas, so a partial mock is enough here.
       const databases = [
         {
           id: 1,
@@ -74,9 +95,14 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
             { name: "another schema name" },
           ],
         },
-      ];
+      ] as unknown as Database[];
 
-      render(<DataSelectorDatabaseSchemaPicker databases={databases} />);
+      render(
+        <DataSelectorDatabaseSchemaPicker
+          {...defaultProps}
+          databases={databases}
+        />,
+      );
 
       expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
       expect(screen.queryByText(schemaName)).not.toBeInTheDocument();
@@ -87,9 +113,9 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
   it("doesn't display a loading spinner next to a schema when the database has initial_sync_status='incomplete'", () => {
     const database = createMockDatabase({
       initial_sync_status: "incomplete",
-      schemas: [
-        createMockSchema({ id: 1, name: "Schema 1" }),
-        createMockSchema({ id: 2, name: "Schema 2" }),
+      tables: [
+        createMockTable({ id: 1, schema: "Schema 1" }),
+        createMockTable({ id: 2, schema: "Schema 2" }),
       ],
     });
     setup({ database });

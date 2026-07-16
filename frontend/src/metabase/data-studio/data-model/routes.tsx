@@ -29,7 +29,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/new"
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
         <Route index component={DataModelNewSegmentPage} />
       </Route>
@@ -51,7 +51,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
       )}
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
         <Route index component={DataModelNewMeasurePage} />
       </Route>
