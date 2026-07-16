@@ -5,6 +5,9 @@ import ReactDOMServer from "react-dom/server";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
+// Deep import (not the metabase/plugins barrel) so the static-viz bundle
+// doesn't pull in every plugin module.
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -28,6 +31,7 @@ import {
 } from "metabase/visualizer/utils/split-series";
 import type {
   Card,
+  CustomVizPluginId,
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
@@ -117,11 +121,12 @@ function getVisualizerRawSeries(
   ];
 }
 
-function RenderChart(
-  rawSeries: RawSeries,
-  dashcardSettings: RenderChartDashcardSettings,
-  options: RenderChartOptions,
-) {
+/**
+ * Initialize the static viz context: set settings and apply enterprise overrides.
+ * Called by RenderChart on every render; the backend also calls it directly
+ * before registerCustomVizPlugin so that the EE registry is active.
+ */
+export function initializeContext(options: RenderChartOptions) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set(
     // Unjustified type cast. FIXME
@@ -134,6 +139,23 @@ function RenderChart(
   }
 
   MetabaseSettings.set("custom-formatting", options.customFormatting);
+  MetabaseSettings.set("site-locale", options.locale ?? "en");
+}
+
+export function registerCustomVizPlugin(
+  factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
+  identifier: string,
+  pluginId: CustomVizPluginId,
+) {
+  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, pluginId);
+}
+
+function RenderChart(
+  rawSeries: RawSeries,
+  dashcardSettings: RenderChartDashcardSettings,
+  options: RenderChartOptions,
+) {
+  initializeContext(options);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,

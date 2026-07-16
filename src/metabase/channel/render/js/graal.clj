@@ -18,11 +18,14 @@
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
    (io.aleph.dirigiste Pool)
+   (java.util.concurrent TimeoutException)
    (org.graalvm.polyglot Context Engine HostAccess Source Value)))
 
 (set! *warn-on-reflection* true)
@@ -170,6 +173,30 @@
       (try (f context)
            (finally (.release static-viz-context-pool pool-key context))))))
 
+;;; ------------------------------------------- untrusted contexts ----------------------------------------
+
+(def ^:private custom-viz-render-timeout-ms
+  "Wall-clock deadline for a render involving custom viz plugin code. A plugin bundle with a runaway loop
+  would otherwise block the rendering thread indefinitely."
+  30000)
+
+(defn- do-with-untrusted-context
+  "Build a throwaway context (on the shared engine — contexts are isolated realms), call `f` with it under
+  a wall-clock deadline, and always close the context afterwards so untrusted plugin JS never reaches the
+  pooled contexts. On overrun, forcibly close the context and throw."
+  [f]
+  (let [context (generate-context!)]
+    (try
+      (u/with-timeout custom-viz-render-timeout-ms (f context))
+      (catch TimeoutException e
+        (throw (ex-info "Custom visualization render timed out"
+                        {:timeout-ms custom-viz-render-timeout-ms} e)))
+      (finally
+        (try
+          (destroy-context! context)
+          (catch Throwable t
+            (log/warn t "Error closing custom-viz static-viz context")))))))
+
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
 (mu/defn- call-js :- :string
@@ -181,6 +208,18 @@
    (fn [^Context context]
      (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
 
+(defn- chart-with-custom-viz*
+  "Render `input` on a throwaway context after evaluating and registering the custom-viz plugin
+  `bundles` (untrusted third-party JS) into it."
+  [input bundles]
+  (do-with-untrusted-context
+   (fn [^Context context]
+     (execute-fn-name context "MetabaseStaticViz.initializeContextJSON" (json/encode (:options input)))
+     (doseq [{:keys [identifier plugin-id source]} bundles]
+       (load-js-string context source (str "custom-viz-" identifier ".js"))
+       (execute-fn-name context "MetabaseStaticViz.registerCustomVizPlugin" identifier plugin-id))
+     (.asString ^Value (execute-fn-name context "MetabaseStaticViz.renderChartJSON" (json/encode input))))))
+
 (defn renderer
   "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS
   in-process on the pooled GraalVM context. Each method JSON-encodes its `input` map for the bundle and
@@ -189,5 +228,7 @@
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
       (json/decode+kw (call-js "renderChartJSON" [(json/encode input)])))
+    (chart-with-custom-viz [_ input custom-viz-bundles]
+      (json/decode+kw (chart-with-custom-viz* input custom-viz-bundles)))
     (cell-background-colors [_ input]
       (json/decode (call-js "getCellBackgroundColorsJSON" [(json/encode input)])))))
