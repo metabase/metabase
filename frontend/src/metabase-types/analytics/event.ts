@@ -47,6 +47,17 @@ export type CustomVizEvent =
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
 
+export type AiProviderConnectedEvent = ValidateEvent<{
+  event: "ai_provider_connected";
+  triggered_from: "setup";
+  event_detail: string | null;
+}>;
+
+export type AiSetupLaterClickedEvent = ValidateEvent<{
+  event: "ai_setup_later_clicked";
+  triggered_from: "setup";
+}>;
+
 export type UserInvitedEvent = ValidateEvent<{
   event: "user_invited";
   triggered_from: "admin" | "setup" | "dashboard" | "question";

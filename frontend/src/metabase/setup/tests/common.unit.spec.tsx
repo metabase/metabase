@@ -13,6 +13,7 @@ import {
   getSection,
   selectUsageReason,
   setup,
+  skipAiConfigStep,
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
@@ -24,7 +25,8 @@ describe("setup (OSS)", () => {
     expectSectionToHaveLabel("What should we call you?", "1");
     expectSectionToHaveLabel("What will you use Metabase for?", "2");
     expectSectionToHaveLabel("Add your data", "3");
-    expectSectionToHaveLabel("Usage data preferences", "4");
+    expectSectionToHaveLabel("Connect to an AI provider", "4");
+    expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
   });
@@ -42,6 +44,9 @@ describe("setup (OSS)", () => {
 
     await userEvent.click(screen.getByText("Continue with sample data"));
     expectSectionsToHaveLabelsInOrder({ from: 3 });
+
+    await skipAiConfigStep();
+    expectSectionsToHaveLabelsInOrder({ from: 4 });
   });
 
   describe("Usage question", () => {
@@ -65,7 +70,8 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Usage data preferences", "4");
+        expectSectionToHaveLabel("Connect to an AI provider", "4");
+        expectSectionToHaveLabel("Usage data preferences", "5");
       });
     });
 
@@ -76,6 +82,9 @@ describe("setup (OSS)", () => {
         await clickNextStep();
 
         expect(screen.queryByText("Add your data")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Connect to an AI provider"),
+        ).not.toBeInTheDocument();
 
         expect(getSection("Usage data preferences")).toHaveAttribute(
           "aria-current",
@@ -100,7 +109,8 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Usage data preferences", "4");
+        expectSectionToHaveLabel("Connect to an AI provider", "4");
+        expectSectionToHaveLabel("Usage data preferences", "5");
       });
     });
 
@@ -118,8 +128,35 @@ describe("setup (OSS)", () => {
         );
 
         expectSectionToHaveLabel("Add your data", "3");
-        expectSectionToHaveLabel("Usage data preferences", "4");
+        expectSectionToHaveLabel("Connect to an AI provider", "4");
+        expectSectionToHaveLabel("Usage data preferences", "5");
       });
+    });
+  });
+
+  describe("AI config step", () => {
+    it("should not show the step when an AI provider is already configured", async () => {
+      await setup({ settings: { "llm-metabot-configured?": true } });
+      await skipWelcomeScreen();
+
+      expect(
+        screen.queryByText("Connect to an AI provider"),
+      ).not.toBeInTheDocument();
+
+      expectSectionToHaveLabel("Add your data", "3");
+      expectSectionToHaveLabel("Usage data preferences", "4");
+    });
+
+    it("should not show the step when AI features are disabled", async () => {
+      await setup({ settings: { "ai-features-enabled?": false } });
+      await skipWelcomeScreen();
+
+      expect(
+        screen.queryByText("Connect to an AI provider"),
+      ).not.toBeInTheDocument();
+
+      expectSectionToHaveLabel("Add your data", "3");
+      expectSectionToHaveLabel("Usage data preferences", "4");
     });
   });
 
@@ -150,6 +187,8 @@ describe("setup (OSS)", () => {
       await clickNextStep();
 
       await userEvent.click(screen.getByText("Continue with sample data"));
+
+      await skipAiConfigStep();
 
       await userEvent.click(screen.getByText("Finish"));
 
@@ -208,6 +247,7 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(screen.getByText("Continue with sample data"));
+      await skipAiConfigStep();
       await userEvent.click(screen.getByText("Finish"));
 
       await userEvent.click(
@@ -235,6 +275,8 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
       await userEvent.click(screen.getByText("Continue with sample data"));
+
+      await skipAiConfigStep();
 
       await userEvent.click(screen.getByText("Finish"));
 

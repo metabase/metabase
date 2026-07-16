@@ -107,6 +107,8 @@ describe("scenarios > setup", () => {
           // test database setup help card is hidden on the next step
           cy.findByText("Need help connecting?").should("not.be.visible");
 
+          skipAiConfigStep();
+
           skipLicenseStepOnEE();
 
           // ================
@@ -167,6 +169,8 @@ describe("scenarios > setup", () => {
       // Database
       cy.findByText("Add your data");
       cy.findByText("Continue with sample data").click();
+
+      skipAiConfigStep();
 
       skipLicenseStepOnEE();
 
@@ -417,6 +421,8 @@ describe("scenarios > setup", () => {
 
     cy.findByRole("status").should("contain", `Connected to ${dbName}`);
 
+    skipAiConfigStep();
+
     skipLicenseStepOnEE();
 
     // usage data
@@ -555,6 +561,8 @@ describe("scenarios > setup (EE)", () => {
 
       cy.findByText("Continue with sample data").click();
 
+      skipAiConfigStep();
+
       cy.findByText("Activate your commercial license").should("exist");
 
       // Use cy.env() for sensitive token values (async API)
@@ -636,11 +644,24 @@ describe("scenarios > setup", () => {
         event: "add_data_later_clicked",
       });
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "step_seen",
+        step_number: 4,
+        step: "ai_config",
+      });
+
+      cy.button("I'll set this up later").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "ai_setup_later_clicked",
+        triggered_from: "setup",
+      });
+
       // This step is only visile on EE builds
       if (IS_ENTERPRISE) {
         H.expectUnstructuredSnowplowEvent({
           event: "step_seen",
-          step_number: 4,
+          step_number: 5,
           step: "license_token",
         });
 
@@ -653,7 +674,7 @@ describe("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 5 : 4,
+        step_number: IS_ENTERPRISE ? 6 : 5,
         step: "data_usage",
       });
 
@@ -661,7 +682,7 @@ describe("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 6 : 5,
+        step_number: IS_ENTERPRISE ? 7 : 6,
         step: "completed",
       });
 
@@ -745,6 +766,11 @@ const skipLicenseStepOnEE = () => {
     cy.findByText("Activate your commercial license").should("exist");
     cy.button("I'll activate later").click();
   }
+};
+
+const skipAiConfigStep = () => {
+  cy.findByText("Connect to an AI provider").should("exist");
+  cy.button("I'll set this up later").click();
 };
 
 const typeToken = (token: string) => {
