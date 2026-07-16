@@ -13,8 +13,8 @@
     (doseq [[etype model] common/entity-type->model]
       (is (= etype (common/model->entity-type model)))
       (is (= model (common/entity-type->model etype)))))
-  (testing "it covers exactly the four content-diagnostics entity types"
-    (is (= #{:card :dashboard :document :transform} (set (keys common/entity-type->model))))))
+  (testing "it covers exactly the five content-diagnostics entity types"
+    (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
 
 (deftest attach-entity-attrs-stamps-denormalized-columns-test
   (testing "each finding is stamped with its entity's name/created_at/creator across multiple entity types"
@@ -41,6 +41,17 @@
             (is (= "Ops" (:entity-name f)))
             (is (= (mt/user->id :crowberto) (:entity-creator-id f)))
             (is (= "Crowberto Corv" (:entity-creator-name f)))))))))
+
+(deftest attach-entity-attrs-collection-has-no-creator-test
+  (testing "a collection finding gets name/created_at but NULL creator columns - collections have no
+            creator_id, and a personal collection's owner is not a creator proxy"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Team Reports"}]
+      (let [[out] (common/attach-entity-attrs
+                   [{:entity-type :collection :entity-id coll-id :finding-type :empty}])]
+        (is (= "Team Reports" (:entity-name out)))
+        (is (some? (:entity-created-at out)))
+        (is (nil? (:entity-creator-id out)))
+        (is (nil? (:entity-creator-name out)))))))
 
 (deftest attach-entity-attrs-lets-checker-set-values-win-test
   (testing "a value the checker already set (e.g. stale's scan-time entity-name) is not overwritten"

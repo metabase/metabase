@@ -17,8 +17,9 @@
 (set! *warn-on-reflection* true)
 
 (def covered-entity-types
-  "Entity types the Content Diagnostics finding types cover - every covered type can emit today (see
-  `common/entity-type->model`). Shared by every per-finding-type endpoint's `entity-types` param."
+  "Entity types the stale/slow finding types can emit - deliberately a hardcoded set, NOT derived from
+  `common/entity-type->model` (which also covers `:collection`, an imbalanced-only subject). Shared by
+  the stale/slow endpoints' `entity-types` param; endpoints spanning other subjects pin their own enum."
   #{:card :dashboard :document :transform})
 
 (defn valid-clause
@@ -40,22 +41,24 @@
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
 (defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current `collection_id` satisfies `coll-pred`.
-  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
-  contribute nothing. Callers combine the seq with `:or`/`:and`."
-  [coll-pred]
+  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
+  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
+  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
+  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
+  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  [coll-pred-fn]
   (for [[etype model] common/entity-type->model]
     [:and
      [:= :entity_type (name etype)]
      [:in :entity_id {:select [:id]
                       :from   [(t2/table-name model)]
-                      :where  coll-pred}]]))
+                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
 
 (defn visible-findings-clause
-  "Keep only findings whose entity is in a collection the current user can read - always applied.
-  Fail-closed: an entity-type with no collection model is dropped."
+  "Keep only findings whose entity is in a collection the current user can read (a collection subject must
+  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
   []
-  (into [:or] (entity-collection-clauses (collection/visible-collection-filter-clause :collection_id))))
+  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -85,13 +88,14 @@
 
 (defn exclude-personal-collections-clause
   "WHERE fragment dropping findings whose entity currently lives in one of `excluded-personal-ids`
-  (see `excluded-personal-collection-ids`; root and regular-collection entities are kept). Nil when
-  there is nothing to exclude."
+  (see `excluded-personal-collection-ids`) - or, for a collection subject, *is* one (the set already
+  includes descendants). Root and regular-collection entities are kept. Nil when there is nothing to
+  exclude."
   [excluded-personal-ids]
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses [:in :collection_id excluded-personal-ids]))))
+          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
@@ -115,21 +119,43 @@
 ;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
 ;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.
 
+(defn- collection-context
+  "The `entity-context` arm for `:collection` subjects, which have no `collection_id`/`creator_id`
+  columns: `collection_id` (the breadcrumb anchor) is the **parent** parsed from `location` - consistent
+  \"where it lives\" semantics; the subject itself is already the finding's identity - and `owner` is the
+  owning user when the collection is personal (api-design: collection carries `owner` only when personal,
+  `creator` always null). Nil at root / for regular collections respectively."
+  [ids]
+  (let [rows   (t2/select [:model/Collection :id :description :location :personal_owner_id]
+                          :id [:in (set ids)])
+        owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
+                 (t2/select-pk->fn identity [:model/User :id :common_name :email] :id [:in owner-ids]))]
+    (m/index-by :id
+                (for [{:keys [location personal_owner_id] :as row} rows]
+                  (assoc row
+                         :collection_id (collection/location-path->parent-id location)
+                         ;; same {:id :common_name :email} shape the transform :owner hydrate returns,
+                         ;; so normalized-owner serves both
+                         :owner (get owners personal_owner_id))))))
+
 (defn- entity-context
   "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
-  fields: `description`, `collection_id`, `view_count` (all but transform), and (transform only) the owner.
-  `document` has no description."
+  fields: `description`, `collection_id`, `view_count` (card/dashboard/document), and the owner
+  (transform + personal collection). `document` has no description; `collection` derives its breadcrumb
+  anchor from `location` and carries no view_count (see [[collection-context]])."
   [entity-type ids]
   (when-let [model (common/entity-type->model entity-type)]
-    (let [cols (cond-> [:id :collection_id]
-                 (not= entity-type :document)  (conj :description)
-                 ;; card/dashboard/document have a native view_count column; transform has none.
-                 (not= entity-type :transform) (conj :view_count)
-                 (= entity-type :transform)    (conj :owner_user_id :owner_email))
-          rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
-                 ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
-                 (= entity-type :transform) (t2/hydrate :owner))]
-      (m/index-by :id rows))))
+    (if (= entity-type :collection)
+      (collection-context ids)
+      (let [cols (cond-> [:id :collection_id]
+                   (not= entity-type :document)  (conj :description)
+                   ;; card/dashboard/document have a native view_count column; transform has none.
+                   (not= entity-type :transform) (conj :view_count)
+                   (= entity-type :transform)    (conj :owner_user_id :owner_email))
+            rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
+                   ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
+                   (= entity-type :transform) (t2/hydrate :owner))]
+        (m/index-by :id rows)))))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -173,8 +199,9 @@
                                   [:not [:in :collection_id excluded-personal-ids]]])]})))
 
 (defn- normalized-owner
-  "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
-  email-only owner, `{email,type:external}`. Nil for entity types with no owner (card/dashboard/document)."
+  "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
+  `{id,name,email,type:user}` or, for an external email-only transform owner, `{email,type:external}`.
+  Nil for entity types with no owner (card/dashboard/document, non-personal collections)."
   [{:keys [owner]}]
   (when owner
     (let [{:keys [id common_name email]} owner]
@@ -211,7 +238,7 @@
                   base    (merge details
                                  {:collection  (get breadcrumbs (:collection_id entity))
                                   :description (:description entity)
-                                  ;; only transforms have owner columns; null for the rest.
+                                  ;; only transforms + personal collections have an owner; null for the rest.
                                   :owner       (normalized-owner entity)
                                   ;; creator denormalized (id + common_name) - no live :creator hydrate.
                                   :creator     (when entity_creator_id

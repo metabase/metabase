@@ -8,6 +8,7 @@
    [metabase-enterprise.content-diagnostics.checkers.stale :as stale]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.collections.models.collection :as collection]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -45,14 +46,20 @@
 (defn- scope-collection-id-lookup
   "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities - **one** query per
   entity-type (over just the flagged entities, F ≪ N). Entity types whose model has no `collection_id`
-  contribute nothing; an entity at the root maps to nil."
+  contribute nothing; an entity at the root maps to nil. A `:collection` subject has no `collection_id`
+  column - \"where it lived when flagged\" is its **parent**, parsed from `location` (nil at root)."
   [findings]
   (into {}
         (for [[entity-type findings-for-type] (group-by :entity-type findings)
               :let       [model (common/entity-type->model entity-type)]
               :when      model
-              :let       [id->coll (t2/select-pk->fn :collection_id [model :id :collection_id]
-                                                     :id [:in (set (map :entity-id findings-for-type))])]
+              :let       [ids      (set (map :entity-id findings-for-type))
+                          id->coll (if (= entity-type :collection)
+                                     (t2/select-pk->fn (comp collection/location-path->parent-id :location)
+                                                       [:model/Collection :id :location]
+                                                       :id [:in ids])
+                                     (t2/select-pk->fn :collection_id [model :id :collection_id]
+                                                       :id [:in ids]))]
               {:keys [entity-id]} findings-for-type]
           [[entity-type entity-id] (get id->coll entity-id)])))
 
