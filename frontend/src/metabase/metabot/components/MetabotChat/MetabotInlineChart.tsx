@@ -9,13 +9,13 @@ import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { useSetting } from "metabase/common/hooks";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Anchor,
@@ -52,7 +52,7 @@ export function MetabotInlineChart({
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();
-  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const siteUrl = useSetting("site-url");
 
   const question = useMemo(() => {
     const base = new Question({
