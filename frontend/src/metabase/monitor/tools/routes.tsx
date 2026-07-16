@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 
 import { TaskDetailsPage } from "./components/TaskDetailsPage";
 import { TaskListPage } from "./components/TaskListPage";
@@ -7,7 +7,7 @@ import { TaskRunsPage } from "./components/TaskRunsPage";
 
 export const getTasksRoutes = () => (
   <>
-    <IndexRedirect to="list" />
+    <Route index component={redirect("list")} />
     <Route path="list" component={TaskListPage} />
     <Route path="list/:taskId" component={TaskDetailsPage} />
     <Route path="runs" component={TaskRunsPage} />
