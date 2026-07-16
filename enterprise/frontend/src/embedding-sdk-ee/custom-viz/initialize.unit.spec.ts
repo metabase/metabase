@@ -9,9 +9,9 @@ describe("getSdkSandboxMode", () => {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
   });
 
-  it('returns "hosted" when running as EAJS (simple embedding)', () => {
+  it('returns "hosted-signed" when running as EAJS (simple embedding)', () => {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
-    expect(getSdkSandboxMode()).toBe("hosted");
+    expect(getSdkSandboxMode()).toBe("hosted-signed");
   });
 
   it('returns "blank" for the react-sdk npm package (not EAJS)', () => {

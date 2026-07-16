@@ -34,12 +34,11 @@ import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount
 
 /**
  * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
- * uses the hosted donor document (served with a per-document eval CSP). The
- * react-sdk npm package runs on the customer's own page and inherits its
- * CSP, so "blank" (about:blank) works there.
+ * needs the signed donor iframe. The react-sdk npm package runs on the
+ * customer's own page and inherits its CSP, so "blank" (about:blank) works.
  */
 export function getSdkSandboxMode(): SandboxMode {
-  return isEmbeddingEajs() ? "hosted" : "blank";
+  return isEmbeddingEajs() ? "hosted-signed" : "blank";
 }
 
 /**

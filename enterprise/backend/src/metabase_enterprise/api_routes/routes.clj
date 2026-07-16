@@ -17,7 +17,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
-   [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
+   [metabase-enterprise.custom-viz-plugin.api.sandbox-eajs]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
@@ -109,12 +109,11 @@
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   ;; The sandbox donor GET is unauthed (an iframe src cannot carry session auth), so it lives in its
-   ;; own namespace, tried before the rest of the session-authed custom-viz routes. Both stay behind
-   ;; the :custom-viz premium gate.
+   ;; The donor GET (unauthed, token-signature is the auth) is tried first, then the rest of the
+   ;; session-authed custom-viz routes. Both stay behind the :custom-viz premium gate.
    "/custom-viz-plugin"            (premium-handler
                                     (handlers/routes
-                                     metabase-enterprise.custom-viz-plugin.api.sandbox-host/routes
+                                     metabase-enterprise.custom-viz-plugin.api.sandbox-eajs/routes
                                      metabase-enterprise.custom-viz-plugin.api/routes)
                                     :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes

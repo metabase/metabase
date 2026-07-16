@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [metabase-enterprise.custom-viz-plugin.api.sandbox-eajs :as sandbox-eajs]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
@@ -260,6 +261,50 @@
           (plugin->response (dissoc result :bundle))))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
+
+(def ^:private sandbox-host-html
+  "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
+   so plugin code can be `eval`'d under a relaxed, per-iframe CSP."
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
+(def ^:private sandbox-host-csp
+  "CSP applied ONLY to the sandbox iframe document.
+   - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
+   - `frame-ancestors 'self'` - so Metabase can embed this document."
+  (str "default-src 'none'; "
+       "script-src 'unsafe-eval'; "
+       "frame-ancestors 'self';"))
+
+(api.macros/defendpoint :get "/sandbox-host" :- :any
+  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
+   sandbox. The response carries a per-document `Content-Security-Policy` that permits
+   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
+   nonce-based CSP."
+  []
+  {:status  200
+   :headers {"Content-Type"                 "text/html; charset=utf-8"
+             "Content-Security-Policy"      sandbox-host-csp
+             "X-Frame-Options"              "SAMEORIGIN"
+             "X-Content-Type-Options"       "nosniff"
+             "Cross-Origin-Resource-Policy" "same-origin"
+             "Referrer-Policy"              "no-referrer"
+             "Cache-Control"                "public, max-age=60"}
+   :body    sandbox-host-html})
+
+(api.macros/defendpoint :post "/sandbox-host-eajs/sign" :- [:map [:url ms/NonBlankString]]
+  "Mint a short-lived signed URL for the EAJS custom-viz sandbox donor iframe. The posted `origin` must be a
+   well-formed http(s) origin; it is baked into the token and scopes the donor's `frame-ancestors`. The
+   returned relative `url` carries an HMAC token (no session), so the unauthed `GET /sandbox-host-eajs` donor
+   can be loaded as an iframe `src` from the customer page without cookies. A missing or malformed origin is
+   a 400."
+  [_route-params
+   _query-params
+   {:keys [origin]} :- [:map [:origin ms/NonBlankString]]]
+  (api/check-404 (custom-viz.settings/enable-custom-viz?))
+  (let [url (sandbox-eajs/mint-signed-url origin)]
+    (when-not url
+      (throw (ex-info "Origin is not a valid http(s) origin." {:status-code 400})))
+    {:url url}))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.

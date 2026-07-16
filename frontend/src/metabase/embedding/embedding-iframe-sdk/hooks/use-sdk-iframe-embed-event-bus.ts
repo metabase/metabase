@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { captureEmbedderOriginFromEvent } from "metabase/embedding-sdk/embedder-origin";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
@@ -25,6 +26,28 @@ export const sendMessage = (message: SdkIframeEmbedTagMessage) => {
   window.parent.postMessage(message, "*");
 };
 
+/**
+ * `_embedReferrer` is self-reported by the host page's JS (it ends up in the
+ * X-Metabase-Embed-Referrer header), so cross-check it against the
+ * browser-attested sender origin and drop it on mismatch.
+ */
+export function stripUntrustedEmbedReferrer<
+  T extends { _embedReferrer?: string },
+>(settings: T, event: MessageEvent): T {
+  const referrer = settings._embedReferrer;
+  if (!referrer) {
+    return settings;
+  }
+  try {
+    if (new URL(referrer).origin === event.origin) {
+      return settings;
+    }
+  } catch {
+    // malformed referrer: fall through and strip it
+  }
+  return { ...settings, _embedReferrer: undefined };
+}
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
   store,
@@ -46,8 +69,10 @@ export function useSdkIframeEmbedEventBus({
 
       match(event.data)
         .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
-          setEmbedSettings(data);
-          onSettingsChanged?.(data);
+          captureEmbedderOriginFromEvent(event);
+          const settings = stripUntrustedEmbedReferrer(data, event);
+          setEmbedSettings(settings);
+          onSettingsChanged?.(settings);
         })
         .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
           setUsageAnalytics({

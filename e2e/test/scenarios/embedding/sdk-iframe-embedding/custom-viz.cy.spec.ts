@@ -36,10 +36,14 @@ describe(
 
     it("renders the custom visualization when allowedCustomVisualizations includes the display", () => {
       cy.log(
-        "EAJS has no eval-permissive page CSP, so the plugin sandbox loads the hosted donor document",
+        "EAJS has no eval-permissive page CSP, so the plugin sandbox goes through the signed donor endpoint pair",
       );
-      cy.intercept("GET", "**/api/ee/custom-viz-plugin/sandbox-host*").as(
-        "getSandboxHost",
+      cy.intercept(
+        "POST",
+        "**/api/ee/custom-viz-plugin/sandbox-host-eajs/sign",
+      ).as("mintSandboxHostEajs");
+      cy.intercept("GET", "**/api/ee/custom-viz-plugin/sandbox-host-eajs*").as(
+        "getSandboxHostEajs",
       );
 
       cy.get<CardId>("@questionId").then((questionId) => {
@@ -57,8 +61,11 @@ describe(
 
         cy.wait("@getCardQuery");
 
-        cy.log("The sandbox loads the donor document as its iframe src");
-        cy.wait("@getSandboxHost").its("response.statusCode").should("eq", 200);
+        cy.log("The sandbox mints a signed URL, then loads the donor with it");
+        cy.wait("@mintSandboxHostEajs");
+        cy.wait("@getSandboxHostEajs")
+          .its("request.url")
+          .should("include", "/sandbox-host-eajs?token=");
 
         frame.within(() => {
           cy.findByText("Custom viz rendered successfully").should(

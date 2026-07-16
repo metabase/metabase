@@ -1,6 +1,51 @@
-import { isMetabaseInstance } from "./use-sdk-iframe-embed-event-bus";
+import {
+  isMetabaseInstance,
+  stripUntrustedEmbedReferrer,
+} from "./use-sdk-iframe-embed-event-bus";
 
 describe("use-sdk-iframe-embed-event-bus", () => {
+  describe("stripUntrustedEmbedReferrer", () => {
+    const settings = (referrer?: string) => ({
+      instanceUrl: "https://metabase.example",
+      _embedReferrer: referrer,
+    });
+
+    const eventFrom = (origin: string) =>
+      new MessageEvent("message", { origin });
+
+    it("keeps the referrer when its origin matches the sender origin", () => {
+      const result = stripUntrustedEmbedReferrer(
+        settings("https://customer.example/dashboards/1?q=2"),
+        eventFrom("https://customer.example"),
+      );
+      expect(result._embedReferrer).toBe(
+        "https://customer.example/dashboards/1?q=2",
+      );
+    });
+
+    it("strips the referrer when its origin does not match the sender origin", () => {
+      const result = stripUntrustedEmbedReferrer(
+        settings("https://spoofed.example/page"),
+        eventFrom("https://customer.example"),
+      );
+      expect(result._embedReferrer).toBeUndefined();
+    });
+
+    it("strips a malformed referrer", () => {
+      const result = stripUntrustedEmbedReferrer(
+        settings("not a url"),
+        eventFrom("https://customer.example"),
+      );
+      expect(result._embedReferrer).toBeUndefined();
+    });
+
+    it("passes settings through when no referrer is set", () => {
+      const input = settings(undefined);
+      expect(
+        stripUntrustedEmbedReferrer(input, eventFrom("https://a.example")),
+      ).toBe(input);
+    });
+  });
   describe("isMetabaseInstance", () => {
     it("returns true for same host with different protocols", () => {
       expect(
