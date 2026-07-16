@@ -231,10 +231,13 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
-        (let [versions-table  liquibase/databasechangelog-versions-table
+        (let [db              (.getDatabase liquibase)
+              versions-table  liquibase/databasechangelog-versions-table
               changelog-table (liquibase/changelog-table-name liquibase)
+              latest          (liquibase/latest-available-major-version liquibase)
+              tag             (fn [s] (assoc config/mb-version-info :tag s))
               version-rows    (fn [] (jdbc/query {:connection conn}
-                                                 [(format "SELECT deployment_id, metabase_version FROM %s ORDER BY metabase_version" versions-table)]))]
+                                                 [(format "SELECT deployment_id, metabase_version FROM %s ORDER BY id" versions-table)]))]
           ;; fully migrate WITHOUT the recording listener, then attribute the changesets to a *previous* process so the
           ;; last real deployment_id differs from this JVM's (phantom) Liquibase deployment_id
           (liquibase/with-scope-locked liquibase (.update liquibase ""))
@@ -242,27 +245,33 @@
           (liquibase/ensure-databasechangelog-versions-table! conn)
           (is (empty? (version-rows)) "no version recorded yet")
           (testing "in dev (synthetic version) a no-op boot records nothing -- it is not a new deployment"
-            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+            (with-redefs [config/mb-version-info (tag "vLOCAL_DEV")]
               (liquibase/migrate-up-if-needed! liquibase (mdb/data-source)))
             (is (empty? (version-rows)) "the synthetic counter must not advance when nothing is deployed"))
-          (testing "with a real version, a no-op boot marks the last real deployment with that version"
-            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.55.0")]
-              (liquibase/migrate-up-if-needed! liquibase (mdb/data-source))
-              (let [rows (version-rows)]
-                (is (= 1 (count rows)) "a version row is recorded even though no changesets ran")
-                (is (= "priorrun" (-> rows first :deployment_id))
-                    "the last real deployment is recorded, not this process's phantom deployment id")
-                (is (= "x.55.0" (-> rows first :metabase_version))))
-              (testing "running again with the same version does not add a duplicate row"
-                (liquibase/migrate-up-if-needed! liquibase (mdb/data-source))
-                (is (= 1 (count (version-rows)))))))
-          (testing "a new real version on the same deployment adds another row (many versions per deployment_id)"
-            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.56.0")]
+          (testing "a real-version no-op boot on a deployment with no recorded version backfills the ran-version first"
+            ;; the boot's stamp must never be a deployment's first row, or it would be mistaken for the version that
+            ;; ran the deployment
+            (with-redefs [config/mb-version-info (tag (format "v0.%d.1" latest))]
               (liquibase/migrate-up-if-needed! liquibase (mdb/data-source)))
-            (let [rows (version-rows)]
-              (is (= 2 (count rows)))
-              (is (every? #(= "priorrun" (:deployment_id %)) rows)
-                  "both versions are tied to the same deployment_id"))))))))
+            (is (= [["priorrun" (format "x.%d.0.0" latest)]
+                    ["priorrun" (format "x.%d.1" latest)]]
+                   (map (juxt :deployment_id :metabase_version) (version-rows)))
+                "the backfilled ran-version row comes first, then the boot's history stamp -- both on the last real deployment, not this process's phantom deployment id"))
+          (testing "re-running with the same version does not add a duplicate row"
+            (with-redefs [config/mb-version-info (tag (format "v0.%d.1" latest))]
+              (liquibase/migrate-up-if-needed! liquibase (mdb/data-source)))
+            (is (= 2 (count (version-rows)))))
+          (testing "a NEWER major's no-op boot is recorded as history (that major shipped no migrations for this DB)"
+            (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (inc latest)))]
+              (liquibase/migrate-up-if-needed! liquibase (mdb/data-source)))
+            (is (= (format "x.%d.0" (inc latest)) (:metabase_version (last (version-rows))))))
+          (testing "...but the stamp does not move the schema's version: the ran-version still wins for downgrade/rollback"
+            (is (= latest (liquibase/current-schema-major conn db)))
+            (is (= (format "x.%d.0.0" latest) (liquibase/last-deployment-version conn db))))
+          (testing "an OLDER major's no-op boot records nothing (an unsupported downgrade is not history worth a row)"
+            (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (- latest 5)))]
+              (liquibase/migrate-up-if-needed! liquibase (mdb/data-source)))
+            (is (= 3 (count (version-rows))))))))))
 
 (deftest backfill-databasechangelog-versions-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -516,6 +525,102 @@
                 (is (= #{"d43"} (set (map :deployment_id
                                           (jdbc/query {:connection conn} [(format "SELECT deployment_id FROM %s" versions-table)]))))
                     "the rolled-back deployments' version rows were also removed")))))))))
+
+(deftest rollback-from-older-binary-guard-test
+  (testing "a binary older than the schema refuses to roll back: its changelog cannot reverse the newer changesets,
+            so proceeding would delete their bookkeeping and leave the schema silently corrupted"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [ct  (liquibase/changelog-table-name liquibase)
+                vt  liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            (liquibase/with-scope-locked liquibase (.update liquibase ""))
+            ;; this binary's own history: one deployment, recorded as v0.64
+            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'd64'" ct)])
+            (insert-version-row! conn vt "d64" "x.64.0" (ago 20))
+            ;; a NEWER v65 binary ran a changeset that is NOT in this binary's changelog file
+            (insert-changelog-row! conn ct "future65cs" "d65" 999999)
+            (insert-version-row! conn vt "d65" "x.65.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")]
+              (testing "default `migrate down` throws instead of silently deleting the newer deployment's history"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"Cannot downgrade a database at version 65 from Metabase version 64"
+                                      (liquibase/rollback-major-version! conn liquibase false))))
+              (testing "an explicit target throws too"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"Cannot downgrade a database at version 65"
+                                      (liquibase/rollback-major-version! conn liquibase false "64"))))
+              (is (seq (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'future65cs'" ct)]))
+                  "nothing was deleted")
+              (testing "force still allows it (the operator explicitly accepts the risk)"
+                (liquibase/rollback-major-version! conn liquibase true "64")
+                (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'future65cs'" ct)])))))))))))
+
+(deftest point-release-rollback-target-test
+  (testing "rollback targets exact-match real (2-component) point-release versions; only a bare major means 'highest of that major'"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db      (.getDatabase liquibase)
+                ct      (liquibase/changelog-table-name liquibase)
+                vt      liquibase/databasechangelog-versions-table
+                now     (java.time.Instant/now)
+                ago     (fn [m] (.minus now (java.time.Duration/ofMinutes m)))
+                has-cs? (fn [id] (boolean (seq (jdbc/query {:connection conn}
+                                                           [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; a 56.0 install and two point-release upgrades, each shipping one changeset; versions recorded exactly
+            ;; as real tags record them (2-component `x.56.1`, not the 3-component synthetic style)
+            (insert-changelog-row! conn ct "cs560" "d560" 1)
+            (insert-changelog-row! conn ct "cs561" "d561" 2)
+            (insert-changelog-row! conn ct "cs562" "d562" 3)
+            (insert-version-row! conn vt "d560" "x.56.0" (ago 30))
+            (insert-version-row! conn vt "d561" "x.56.1" (ago 20))
+            (insert-version-row! conn vt "d562" "x.56.2" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.56.2")]
+              (testing "a 2-component target matches the recorded 2-component version exactly"
+                (is (true? (liquibase/valid-rollback-target? conn db "56.1")))
+                (liquibase/rollback-major-version! conn liquibase false "56.1")
+                (is (not (has-cs? "cs562")) "the 56.2 changeset was rolled back")
+                (is (has-cs? "cs561") "the 56.1 changeset (the target) is retained"))
+              (testing "trailing zeros are insignificant: 56.0.0 targets the recorded x.56.0"
+                (liquibase/rollback-major-version! conn liquibase false "56.0.0")
+                (is (not (has-cs? "cs561")))
+                (is (has-cs? "cs560")))
+              (testing "a never-recorded point release is rejected, not silently resolved to another version"
+                (is (false? (liquibase/valid-rollback-target? conn db "56.9")))
+                (is (thrown-with-msg? IllegalArgumentException #"not a valid rollback target"
+                                      (liquibase/rollback-major-version! conn liquibase false "56.9")))))))))))
+
+(deftest shadowed-version-rollback-target-test
+  (testing "a version shadowed by a later same-major no-op stamp on the same deployment remains a valid rollback target"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db  (.getDatabase liquibase)
+                ct  (liquibase/changelog-table-name liquibase)
+                vt  liquibase/databasechangelog-versions-table
+                now (java.time.Instant/now)
+                ago (fn [m] (.minus now (java.time.Duration/ofMinutes m)))]
+            (liquibase/ensure-databasechangelog-versions-table! conn)
+            ;; d56 ran under x.56.0 and was later stamped x.56.2 by no-op patch boots; d57 is the current major
+            (insert-changelog-row! conn ct "cs56" "d56" 1)
+            (insert-changelog-row! conn ct "cs57" "d57" 2)
+            (insert-version-row! conn vt "d56" "x.56.0" (ago 30))
+            (insert-version-row! conn vt "d56" "x.56.2" (ago 20))
+            (insert-version-row! conn vt "d57" "x.57.0" (ago 10))
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.57.0")]
+              (is (true? (liquibase/valid-rollback-target? conn db "56.0"))
+                  "the ran-version is targetable even though a later stamp shadows it")
+              (is (true? (liquibase/valid-rollback-target? conn db "56.2")))
+              (liquibase/rollback-major-version! conn liquibase false "56.0")
+              (is (empty? (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'cs57'" ct)]))
+                  "the current-major deployment was rolled back")
+              (is (seq (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = 'cs56'" ct)]))
+                  "the target deployment is retained"))))))))
 
 (deftest decide-liquibase-file-version-less-ids-test
   (testing "decide-liquibase-file treats version-less (year-directory) ids as modern, not as a pre-4.2 install"
