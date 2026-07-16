@@ -13,7 +13,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.2026-07-13T00:00:00
+      id: v64.2026-07-13T00:00:02
       author: johnswanson
       runOnChange: true
       comment: Update v_ai_usage_log to v4 - add explorations usage sources to source_name CASE
