@@ -122,6 +122,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.value]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
@@ -224,6 +225,7 @@
          lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me
+         metabase.lib.value/keep-me
          metabase.lib.util.unique-name-generator/keep-me
          metabase.lib.walk.util/keep-me)
 
@@ -1654,6 +1656,8 @@
   missing-table-error
   syntax-error
   validation-exception-error]
+ [metabase.lib.value
+  value]
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids

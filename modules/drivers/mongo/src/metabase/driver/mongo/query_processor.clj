@@ -24,13 +24,14 @@
                                             $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -39,7 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [get-in some mapv empty?]])
+   [metabase.util.performance :as perf :refer [empty? get-in mapv some]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1387,7 +1388,10 @@ function(bin) {
                                :then (->rvalue query stage-number expr)}))
              :default  (->rvalue query stage-number (:default opts))}})
 
-(defn- aggregation->rvalue [query stage-number ag]
+(mu/defn- aggregation->rvalue
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   ag           :- ::lib.schema.mbql-clause/clause]
   (match/match-one ag
     [:count _opts]
     {$sum 1}
@@ -1411,7 +1415,7 @@ function(bin) {
                   :else 0}}}
 
     [:count-where _opts pred]
-    (&recur [:sum-where [:value 1] pred])
+    (&recur (lib/sum-where (lib/value {:effective-type :type/Integer} 1) pred))
 
     _
     (throw
@@ -1789,60 +1793,65 @@ function(bin) {
   [metadata-providerable field-id]
   (vec (col->name-components metadata-providerable (driver-api/field metadata-providerable field-id))))
 
-(defn- field-clauses->id->path
-  "Build a map of `field-id-or-name -> path-vector` for all `:field` clauses in `fields`. Integer IDs are
+(mu/defn- field-clauses->id->path :- [:map-of
+                                      [:or ::lib.schema.id/field :string]
+                                      [:sequential :string]]
+  "Build a map of `field-id-or-name -> path-vector` for all `:field` clauses in `clauses`. Integer IDs are
   resolved via the metadata provider; for string refs (e.g. from a wrapper stage), the path is derived from
   the opts `:source-alias` populated by `add-alias-info` (and path-prepended by [[HACK-update-aliases]] for
   nested fields), falling back to `id-or-name` when no source-alias is present. The path-joined string is
   split on the Mongo path delimiter."
-  [metadata-providerable fields]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
   (into {}
-        (keep (fn [[agg-type id-or-name opts]]
-                (when (= agg-type :field)
+        (keep (fn [[tag opts id-or-name]]
+                (when (= tag :field)
                   (cond
-                    (integer? id-or-name)
+                    (pos-int? id-or-name)
                     [id-or-name (field-id->path metadata-providerable id-or-name)]
 
                     (string? id-or-name)
                     [id-or-name (raw-path->components
                                  (get opts driver-api/qp.add.source-alias id-or-name))]))))
-        fields))
+        clauses))
 
-(defn- remove-parent-fields
-  "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
-  of MongoDB 4.4, including both will result in an error (see:
+(mu/defn- remove-parent-fields :- [:sequential ::lib.schema.mbql-clause/clause]
+  "Removes any and all entries in `clauses` that are parents of another `:field` in `clauses` This is necessary because
+  as of MongoDB 4.4, including both will result in an error (see:
   `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
 
   Removing parents is useful when sorting, because leaf fields sort."
-  [metadata-providerable fields]
-  (let [id->path     (field-clauses->id->path metadata-providerable fields)
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
+  (let [id->path     (field-clauses->id->path metadata-providerable clauses)
         parent-paths (into #{}
                            (keep (fn [path]
                                    (when (> (count path) 1)
                                      (vec (butlast path)))))
                            (vals id->path))]
-    (remove (fn [[agg-type id-or-name & _]]
-              (and (= agg-type :field)
+    (remove (fn [[tag _opts id-or-name]]
+              (and (= tag :field)
                    (contains? parent-paths (id->path id-or-name))))
-            fields)))
+            clauses)))
 
-(defn- remove-child-fields
-  "Removes any and all entries in `fields` that are children of another field in `fields`. This is necessary because as
-  of MongoDB 4.4, including both will result in an error (see:
+(mu/defn- remove-child-fields :- [:sequential ::lib.schema.mbql-clause/clause]
+  "Removes any and all entries in `clauses` that are children of another `:field` in `clauses`. This is necessary
+  because as of MongoDB 4.4, including both will result in an error (see:
   `https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields`).
 
   Removing children is useful when projecting, because the return value of a mongo query is json, and so a parent
   includes all of its children."
-  [metadata-providerable fields]
-  (let [id->path  (field-clauses->id->path metadata-providerable fields)
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   clauses               :- [:sequential ::lib.schema.mbql-clause/clause]]
+  (let [id->path  (field-clauses->id->path metadata-providerable clauses)
         all-paths (set (vals id->path))]
-    (remove (fn [[agg-type id-or-name]]
-              (when (= agg-type :field)
+    (remove (fn [[tag _opts id-or-name :as _clause]]
+              (when (= tag :field)
                 (let [path (id->path id-or-name)]
                   (and path
                        (> (count path) 1)
                        (contains? all-paths (vec (butlast path)))))))
-            fields)))
+            clauses)))
 
 (mu/defn- handle-order-by :- ::compiled-pipeline
   [query        :- ::lib.schema/query
@@ -1854,22 +1863,25 @@ function(bin) {
         breakout-fields         (set breakouts)
         sort-fields             (for [field (remove-parent-fields query (map last order-bys))
                                       ;; We only care about expressions and bucketing not added as breakout
-                                      :when (and (not (contains? breakout-fields field))
-                                                 (let [dispatch-value
-                                                       (driver-api/dispatch-by-clause-name-or-class field)]
+                                      :when (and (not (some #(lib.equality/= % field)
+                                                            breakout-fields))
+                                                 (let [dispatch-value (driver-api/dispatch-by-clause-name-or-class field)]
                                                    (or (= :expression dispatch-value)
                                                        (and (= :field dispatch-value)
-                                                            (let [[_ _ {:keys [temporal-unit]}] field]
+                                                            (let [[_tag {:keys [temporal-unit], :as _opts} _id-or-name] field]
                                                               (and (some? temporal-unit)
                                                                    (not= temporal-unit :default)))))))]
                                   [(->lvalue query stage-number field) (->rvalue query stage-number field)])
         ;; We have already compiled breakout fields into the document.
-        breakout-field-mappings (into {} (map (juxt identity field-alias)) breakouts)
+        breakout-field-mappings (into {}
+                                      (map (juxt identity (partial field-alias query stage-number)))
+                                      breakouts)
         ;; We have already sorted ascending by the breakout fields so we don't have to repeat the
         ;; same sort.
         explicit-order-by
         (when (and (seq order-bys)
-                   (not= order-bys (map (fn [field] [:asc field]) breakouts)))
+                   (not (lib.equality/= order-bys
+                                        (map #(lib/order-by-clause % :asc) breakouts))))
           (binding [*field-mappings* (merge *field-mappings* breakout-field-mappings)]
             (order-by->$sort query stage-number)))
 
@@ -1892,7 +1904,8 @@ function(bin) {
                        (concat explicit-order-by cumulative-order-by))})]
     (cond-> pipeline-ctx
       (seq sort-fields) (update :query conj
-                                ;; We $addFields before sorting, otherwise expressions will not be available for the sort
+                                ;; We $addFields before sorting, otherwise expressions will not be available for the
+                                ;; sort
                                 {$addFields (into (ordered-map/ordered-map) sort-fields)})
       combined-order-by (update :query #(conj % combined-order-by)))))
 

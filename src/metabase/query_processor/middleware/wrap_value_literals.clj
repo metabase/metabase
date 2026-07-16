@@ -23,10 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- value :- :mbql.clause/value
-  [info :- :map v]
-  [:value (assoc info :lib/uuid (str (random-uuid))) v])
-
 (defn- type-info-from-col [col]
   (when col
     (merge
@@ -60,11 +56,11 @@
 
 (defmethod add-type-info nil
   [_ info & _]
-  (value info nil))
+  (lib/value info nil))
 
 (defmethod add-type-info Object
   [this info & _]
-  (value info this))
+  (lib/value info this))
 
 (derive LocalDate      ::->absolute-datetime)
 (derive LocalDateTime  ::->absolute-datetime)
