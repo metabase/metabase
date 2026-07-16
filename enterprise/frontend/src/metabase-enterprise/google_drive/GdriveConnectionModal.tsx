@@ -121,8 +121,6 @@ function GoogleSheetsConnectModal({
     })
       .unwrap()
       .then(() => {
-        // saveGsheetsFolderLink invalidates session-properties, which
-        // refetches settings.
         onClose(true);
       })
       .catch((response) => {

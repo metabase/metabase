@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Local input state for a setting-backed control: hydrates once from the
- * setting after it has loaded (`isLoading` goes false), unless the user has
- * already started editing — a hydration must never clobber their input.
+ * Holds local input for a setting input
  *
- * Report user edits through the returned `setInputValueFromUser` (not a raw
- * setState) so the hook knows hydration is no longer allowed.
- *
- * Assumes the value is authoritative once `isLoading` is false — true here
- * because AppComponent's app-wide settings query has resolved before any admin
- * form mounts, so a `!isLoading` value is the fetched value, not stale bootstrap.
+ * Hydrates the local input from the setting value once it has loaded,
+ * unless the user has already started editing the input.
+ * This prevents the user from losing their input if the setting value changes while they are editing.
  */
 export function useHydratedInput<T>({
   value,
@@ -19,7 +14,6 @@ export function useHydratedInput<T>({
 }: {
   value: T;
   isLoading: boolean;
-  /** Runs alongside the (single) hydration with the hydrated value. */
   onHydrate?: (value: T) => void;
 }) {
   const [inputValue, setInputValue] = useState<T>(value);
