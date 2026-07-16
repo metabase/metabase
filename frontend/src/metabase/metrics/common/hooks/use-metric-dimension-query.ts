@@ -5,8 +5,6 @@ import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import { projectDimension } from "../utils/project-dimension";
-
 export function useMetricDimensionQuery(
   definition: MetricDefinition | null,
   dimensionId: string | null,
@@ -21,7 +19,7 @@ export function useMetricDimensionQuery(
       return null;
     }
 
-    const projected = projectDimension(
+    const projected = LibMetric.projectDimension(
       definition,
       descriptor.dimensionMetadata,
     );

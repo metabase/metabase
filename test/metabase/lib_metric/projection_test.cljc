@@ -206,6 +206,42 @@
       (is (= uuid-1 (nth (first dim-refs) 2)))
       (is (= uuid-1 (nth (second dim-refs) 2))))))
 
+(deftest ^:parallel project-dimension-applies-default-options-test
+  (testing "Temporal dimensions use the default temporal bucket"
+    (let [result     (lib-metric.projection/project-dimension definition-with-provider dimension-1)
+          projection (get-in result [:projections 0 :projection 0])]
+      (is (= :month (:temporal-unit (second projection))))))
+  (testing "Time dimensions use an hourly default temporal bucket"
+    (let [dimension  (assoc dimension-1 :effective-type :type/Time)
+          result     (lib-metric.projection/project-dimension definition-with-provider dimension)
+          projection (get-in result [:projections 0 :projection 0])]
+      (is (= :hour (:temporal-unit (second projection))))))
+  (testing "Field-backed numeric dimensions use the default binning strategy"
+    (let [dimension  (assoc dimension-3 :sources [{:type :field :field-id 3}])
+          result     (lib-metric.projection/project-dimension definition-with-provider dimension)
+          projection (get-in result [:projections 0 :projection 0])]
+      (is (= {:strategy :default} (:binning (second projection))))))
+  (testing "Categorical dimensions are projected without bucketing"
+    (let [result     (lib-metric.projection/project-dimension definition-with-provider dimension-2)
+          projection (get-in result [:projections 0 :projection 0])]
+      (is (= #{} (set (keys (dissoc (second projection) :lib/uuid))))))))
+
+(deftest ^:parallel dimension-breakout-test
+  (testing "The mapped field and its join information are preserved"
+    (let [dimension (assoc dimension-1
+                           :dimension-mapping {:type         :table
+                                               :dimension-id uuid-1
+                                               :target       [:field {:lib/uuid    "cccccccc-cccc-cccc-cccc-cccccccccccc"
+                                                                      :source-field 10}
+                                                              20]})
+          breakout  (lib-metric.projection/dimension-breakout definition-with-provider dimension)]
+      (is (= :field (first breakout)))
+      (is (= 20 (nth breakout 2)))
+      (is (= 10 (:source-field (second breakout))))
+      (is (= :month (:temporal-unit (second breakout))))))
+  (testing "A dimension without a mapping has no breakout"
+    (is (nil? (lib-metric.projection/dimension-breakout definition-with-provider dimension-1)))))
+
 ;;; -------------------------------------------------- projection-dimension --------------------------------------------------
 
 (deftest ^:parallel projection-dimension-requires-valid-provider-test

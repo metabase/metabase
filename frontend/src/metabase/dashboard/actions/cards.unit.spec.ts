@@ -255,7 +255,7 @@ describe("dashboard/actions/cards", () => {
       });
     });
 
-    it("should run a new card query", async () => {
+    it("should run a new card query with dashboard context (UXW-4769)", async () => {
       await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
@@ -267,6 +267,16 @@ describe("dashboard/actions/cards", () => {
         `path:/api/card/${ORDERS_LINE_CHART_CARD.id}/query`,
       );
       expect(queryCalls).toHaveLength(1);
+
+      const requestBody = queryCalls[0].options.body;
+      expect(typeof requestBody).toBe("string");
+
+      if (typeof requestBody !== "string") {
+        return;
+      }
+
+      const parsedBody: unknown = JSON.parse(requestBody);
+      expect(parsedBody).toMatchObject({ dashboard_id: DASHBOARD.id });
     });
 
     it("should not auto-wire parameters", async () => {
