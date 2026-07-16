@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.task.import-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.task.import :as task.import]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -64,6 +65,51 @@
           (testing "second boot-import is a no-op (version unchanged)"
             (task.import/jekyll-boot-import!)
             (is (= (inc before) (t2/count :model/AuditLog :topic "remote-sync-import")))))))))
+
+(deftest jekyll-sync-conventions-test
+  (testing "jekyll sync conventions: every top-level regular collection is remote-synced and
+            transforms sync defaults on (jekyll-boot-import! runs this after the import)"
+    (mt/with-temporary-setting-values [remote-sync-transforms nil]
+      (mt/with-temp [:model/Collection top {:name "Top", :location "/"}
+                     :model/Collection _archived {:name "Archived", :location "/", :archived true}]
+        (let [unsynced-before (t2/select-pks-set :model/Collection :is_remote_synced false)]
+          (try
+            (#'task.import/jekyll-sync-conventions!)
+            (testing "existing top-level collection marked synced"
+              (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id top)))))
+            (testing "archived collection untouched"
+              (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :name "Archived"))))
+            (testing "personal collections untouched"
+              (is (not-any? :is_remote_synced
+                            (t2/select :model/Collection :personal_owner_id [:not= nil]))))
+            (testing "transforms sync enabled when unset"
+              (is (true? (settings/remote-sync-transforms))))
+            (finally
+              (t2/update! :model/Collection :id [:in unsynced-before] :is_remote_synced true
+                          {:is_remote_synced false}))))))))
+
+(deftest jekyll-sync-conventions-explicit-transforms-false-test
+  (testing "an explicitly configured remote-sync-transforms=false survives the convention"
+    (mt/with-temporary-setting-values [remote-sync-transforms false]
+      (#'task.import/jekyll-sync-conventions!)
+      (is (false? (settings/remote-sync-transforms))))))
+
+(deftest jekyll-sync-conventions-default-collection-test
+  (testing "when no top-level regular collection exists, a synced 'Synced' collection is created"
+    (mt/with-temporary-setting-values [remote-sync-transforms nil]
+      (let [top-level-ids (t2/select-pks-set :model/Collection
+                                             :location "/" :archived false :type nil
+                                             :namespace nil :personal_owner_id nil)]
+        (try
+          (when (seq top-level-ids)
+            (t2/update! :model/Collection :id [:in top-level-ids] {:archived true}))
+          (#'task.import/jekyll-sync-conventions!)
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection
+                                       :name "Synced" :location "/")))
+          (finally
+            (t2/delete! :model/Collection :name "Synced" :location "/" :is_remote_synced true)
+            (when (seq top-level-ids)
+              (t2/update! :model/Collection :id [:in top-level-ids] {:archived false}))))))))
 
 (deftest jekyll-boot-import-unconfigured-test
   (testing "jekyll-boot-import! no-ops when url/branch are unset (remote-sync-enabled is derived from the url)"

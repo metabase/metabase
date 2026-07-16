@@ -11,9 +11,11 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,6 +59,30 @@
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))
 
+(defn- jekyll-sync-conventions!
+  "Convention over config: on a Jekyll box everything syncs, because anything
+  unsynced silently dies with the disposable app-db.
+
+  - every top-level regular collection (non-archived, default namespace,
+    non-personal) is marked `is_remote_synced`;
+  - if no such collection exists, create a synced `Synced` collection so the box
+    always has a push target;
+  - `remote-sync-transforms` defaults to true when not explicitly configured."
+  []
+  (when-not (t2/exists? :model/Collection
+                        :location "/" :archived false :namespace nil
+                        :personal_owner_id nil :type nil)
+    (t2/insert! :model/Collection {:name "Synced", :location "/"}))
+  (t2/update! :model/Collection
+              {:location "/", :archived false, :namespace nil, :personal_owner_id nil
+               :type nil, :is_remote_synced false}
+              {:is_remote_synced true})
+  ;; raw env + db check: every getter layer applies the `false` default, which
+  ;; would make an explicit config.yml `false` indistinguishable from unset
+  (when (and (nil? (setting/env-var-value :remote-sync-transforms))
+             (nil? (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms")))
+    (settings/remote-sync-transforms! true)))
+
 (defenterprise jekyll-boot-import!
   "Jekyll mode: reload content from the configured git branch once at boot, so a
   fresh/wiped app-db converges to the branch state.
@@ -73,7 +99,8 @@
   []
   (when (and (seq (settings/remote-sync-url))
              (seq (settings/remote-sync-branch)))
-    (import-if-changed! "jekyll-boot-import")))
+    (import-if-changed! "jekyll-boot-import")
+    (jekyll-sync-conventions!)))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")
 (def ^:private auto-import-trigger-key "metabase.task.remote-sync.auto-import.trigger")
