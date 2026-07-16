@@ -30,8 +30,10 @@ export function attachIframeUrlMirror(
   iframeWindow: UrlMirrorWindow,
   parentName: string,
 ): () => void {
-  const iframePrefix = `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`;
-  const parentPrefix = Urls.dataApp(parentName);
+  const iframePrefix = Urls.getSubpathSafeUrl(
+    `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`,
+  );
+  const parentPrefix = Urls.getSubpathSafeUrl(Urls.dataApp(parentName));
 
   const mirror = () => {
     const iframePath = iframeWindow.location.pathname;
