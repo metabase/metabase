@@ -103,6 +103,19 @@
                                          :parameters {:type "object"}}}]}
               body)))))
 
+(deftest ^:parallel request-body-max-tokens-uses-max-completion-tokens-test
+  (testing "the token limit is sent as :max_completion_tokens (OpenAI deprecated :max_tokens); :max_tokens is not sent"
+    (let [body (cc/chat-completions-request-body
+                {:model      "my-model"
+                 :input      [{:role :user :content "hi"}]
+                 :max-tokens 256})]
+      (is (= 256 (:max_completion_tokens body)))
+      (is (not (contains? body :max_tokens)))))
+  (testing "no token-limit key is sent when :max-tokens is absent"
+    (let [body (cc/chat-completions-request-body {:model "my-model" :input [{:role :user :content "hi"}]})]
+      (is (not (contains? body :max_completion_tokens)))
+      (is (not (contains? body :max_tokens))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests (synthetic chunks — no live API)
 ;;; ──────────────────────────────────────────────────────────────────

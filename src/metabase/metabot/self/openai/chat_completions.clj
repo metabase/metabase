@@ -332,7 +332,7 @@
                                         tool_choice tool_choice
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens))))
+      max-tokens  (assoc :max_completion_tokens max-tokens))))
 
 (mu/defn chat-completions-raw
   "Perform a streaming request to the Chat Completions API.
