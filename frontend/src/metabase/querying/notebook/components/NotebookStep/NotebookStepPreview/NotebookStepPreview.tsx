@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
@@ -7,16 +6,21 @@ import { getErrorMessage } from "metabase/api/utils";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type { Dataset, RawSeries } from "metabase-types/api";
+
+import type { NotebookStep } from "../../../types";
 
 import S from "./NotebookStepPreview.module.css";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
-const getPreviewQuestion = (step) => {
-  const { previewQuery, stageIndex } = step;
+const getPreviewQuestion = (step: NotebookStep) => {
+  const { stageIndex } = step;
+  const previewQuery = checkNotNull(step.previewQuery);
   const limit = Lib.currentLimit(previewQuery, stageIndex);
   const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
   const queryWithLimit = hasSuitableLimit
@@ -28,7 +32,15 @@ const getPreviewQuestion = (step) => {
     .setSettings({ "table.pivot": false });
 };
 
-export const NotebookStepPreview = ({ step, onClose }) => {
+type NotebookStepPreviewProps = {
+  step: NotebookStep;
+  onClose: () => void;
+};
+
+export const NotebookStepPreview = ({
+  step,
+  onClose,
+}: NotebookStepPreviewProps) => {
   const previewQuestion = useMemo(() => getPreviewQuestion(step), [step]);
   const [activeQuestion, setActiveQuestion] = useState(previewQuestion);
 
@@ -87,7 +99,17 @@ export const NotebookStepPreview = ({ step, onClose }) => {
   );
 };
 
-export const VisualizationPreview = ({ rawSeries, result, error }) => {
+type VisualizationPreviewProps = {
+  rawSeries: RawSeries | null;
+  result: Dataset | null;
+  error: unknown;
+};
+
+export const VisualizationPreview = ({
+  rawSeries,
+  result,
+  error,
+}: VisualizationPreviewProps) => {
   const errorPayload = error || result?.error;
   const err = errorPayload
     ? getErrorMessage(errorPayload, t`Could not fetch preview`)
@@ -95,7 +117,7 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
 
   return (
     <Visualization
-      rawSeries={rawSeries}
+      rawSeries={rawSeries ?? undefined}
       error={err}
       queryBuilderMode="notebook"
       className={cx(
@@ -115,7 +137,7 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
   );
 };
 
-function getPreviewHeightForResult(result) {
+function getPreviewHeightForResult(result: Dataset | null) {
   const rowCount = result ? result.data.rows.length : 1;
   return rowCount * 36 + 36 + 2;
 }
