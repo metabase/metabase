@@ -68,18 +68,14 @@ function setup({
   mockMyExplorationsQuery({ isSuccess, data: myExplorations });
 
   const selection = makeMockSelection({});
-  const setMode = jest.fn();
 
-  renderWithProviders(
-    <NewExplorationEntry selection={selection} setMode={setMode} />,
-    {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "dismissed-research-mode-banner": dismissedBanner,
-        }),
+  renderWithProviders(<NewExplorationEntry selection={selection} />, {
+    storeInitialState: createMockState({
+      settings: mockSettings({
+        "dismissed-research-mode-banner": dismissedBanner,
       }),
-    },
-  );
+    }),
+  });
 }
 
 describe("NewExplorationEntry", () => {

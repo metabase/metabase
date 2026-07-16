@@ -61,6 +61,10 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
 
   const dispatch = useDispatch();
 
+  const goToPlanPage = useCallback(() => {
+    dispatch(push(Urls.newExplorationPlan()));
+  }, [dispatch]);
+
   const handleSubmit = useCallback(() => {
     trackExplorationAgentMessageSent();
     submitInput(prompt, {
@@ -68,8 +72,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
       profile: "explorations",
     });
 
-    dispatch(push(Urls.newExplorationPlan()));
-  }, [prompt, submitInput, dispatch]);
+    goToPlanPage();
+  }, [prompt, submitInput, goToPlanPage]);
 
   return (
     <Stack h="100%" bg="background-primary" align="center" p="2rem">
@@ -128,7 +132,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
                 c="text-secondary"
                 bd="none"
                 className={S.buttonHoverSecondary}
-                onClick={() => dispatch(push(Urls.newExplorationPlan()))}
+                onClick={goToPlanPage}
               >
                 {t`Manual setup`}
               </Button>
