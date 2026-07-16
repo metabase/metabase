@@ -31,9 +31,8 @@ describe("QB Actions > revertToRevision", () => {
   });
 
   it("re-runs the question query after reverting to a revision (metabase#45926)", async () => {
-    // reverting only swaps out the card definition; without an explicit query
-    // re-run the visualization keeps showing stale results until a manual
-    // refresh. Guard that the thunk re-runs the query itself.
+    // Reverting swaps the card definition but not the shown results
+    //  so the thunk must re-run the query itself or the visualization stays stale.
     jest
       .spyOn(runRtkEndpointModule, "runRtkEndpoint")
       .mockResolvedValue({ id: 1 });
@@ -123,8 +122,8 @@ describe("QB Actions > apiUpdateQuestion (rerun-on-save, metabase#30165)", () =>
     );
     expect(question).toBeDefined();
 
-    // lastRunCard is null, so the current question is dirty relative to the
-    // (absent) last run — apiUpdateQuestion sees isResultDirty === true.
+    // No lastRunCard is set, so the question reads as dirty (isResultDirty) — the
+    // precondition for the rerun-on-save behaviour under test.
     const qb = createMockQueryBuilderState({ card });
     const getState = () => ({ ...createMockState(), entities, qb });
 
@@ -161,9 +160,8 @@ describe("QB Actions > apiCreateQuestion", () => {
   });
 
   it("loads metadata for the newly created model so it can be filtered (metabase#28971)", async () => {
-    // A freshly created model has no field metadata in the store yet, so the UI
-    // can't build a filter against it. The thunk must load metadata for the
-    // created card before returning; otherwise filtering a new model is broken.
+    // A newly created model has no field metadata in the store yet
+    // so the thunk must load it before returning or the model can't be filtered.
     const inputCard = createSavedStructuredCard({ type: "model" });
     const createdCard = createSavedStructuredCard({ id: 999, type: "model" });
 
@@ -190,8 +188,8 @@ describe("QB Actions > apiCreateQuestion", () => {
       >);
     jest.spyOn(analytics, "trackNewQuestionSaved").mockImplementation(() => {});
 
-    // The first (and only) thunk dispatched is createQuestionCard, which resolves
-    // to the freshly persisted card; other dispatches receive plain actions.
+    // createQuestionCard is the only thunk dispatched.
+    // Resolve it to the persisted card and pass plain actions through unchanged.
     const dispatch = jest.fn((action) =>
       typeof action === "function" ? Promise.resolve(createdCard) : action,
     );

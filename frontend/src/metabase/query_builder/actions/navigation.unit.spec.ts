@@ -4,23 +4,21 @@
 // router migration re-plumbs this read seam, so this locks the current matrix.
 import type { Location } from "history";
 
-import * as queryBuilderReduxModule from "metabase/redux/query-builder";
-import type { GetState } from "metabase/redux/store";
-import * as routingModule from "metabase/selectors/routing";
-import type { Card } from "metabase-types/api";
-
-import * as selectorsModule from "../selectors";
-import * as typedUtilsModule from "../typed-utils";
+import { getMainStore } from "__support__/entities-store";
+import type { DatasetEditorTab } from "metabase/redux/store";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+} from "metabase/redux/store/mocks";
+import { createSavedStructuredCard } from "metabase-types/api/mocks/presets";
 
 import * as coreModule from "./core/core";
 import * as initializeQBModule from "./core/initializeQB";
 import { locationChanged, popState } from "./navigation";
-import * as queryingModule from "./querying";
-import * as stateModule from "./state";
 import * as uiModule from "./ui";
 
 const loc = (over: Partial<Location> = {}): Location =>
-  // Unjustified type cast. FIXME
+  // a minimal Location carrying only the fields locationChanged reads
   ({
     pathname: "/question/1",
     search: "",
@@ -41,8 +39,11 @@ describe("locationChanged", () => {
     dispatch = jest.fn();
     initSpy = jest
       .spyOn(initializeQBModule, "initializeQB")
-      // Unjustified type cast. FIXME
-      .mockReturnValue({ type: "MOCK_INIT" } as any);
+      // initializeQB returns a thunk; this test only needs a sentinel action,
+      // so cast the plain action object to the creator's return type.
+      .mockReturnValue({ type: "MOCK_INIT" } as unknown as ReturnType<
+        typeof initializeQBModule.initializeQB
+      >);
   });
 
   afterEach(() => {
@@ -155,210 +156,84 @@ describe("locationChanged", () => {
   });
 });
 
-// Witness for metabase#55162: back/forward navigation into a QB history entry
-// must NOT re-push a URL. popState runs the card from location.state with
-// setCardAndRun; if that call passes shouldUpdateUrl:true, running the card
-// pushes a fresh history entry, corrupting the back/forward stack. The fix hard
-// -codes shouldUpdateUrl:false regardless of card type; the bug computed it from
-// `card.type === "model"`, so model cards leaked a true value.
-// Action creators dispatched by popState are mocked with sentinel actions
-// (dispatch only records them); each call casts this to the mocked creator's
-// return type.
-const sentinelAction = (type: string): unknown => ({ type });
-
-describe("popState — shouldUpdateUrl", () => {
-  let dispatch: jest.Mock;
-  let setCardAndRunSpy: jest.SpyInstance;
-
-  const runPopStateWithCard = async (card: Partial<Card>) => {
-    const location = {
-      pathname: "/model/1",
-      search: "",
-      hash: "",
-      action: "POP",
-      state: { card },
-    } as unknown as Location;
-
-    await popState(location)(dispatch, (() => ({})) as unknown as GetState);
-  };
-
-  beforeEach(() => {
-    dispatch = jest.fn((action) => action);
-
-    setCardAndRunSpy = jest
-      .spyOn(coreModule, "setCardAndRun")
-      .mockReturnValue(
-        sentinelAction("MOCK_SET_CARD_AND_RUN") as ReturnType<
-          typeof coreModule.setCardAndRun
-        >,
-      );
-
-    // Neutralize every other action/selector popState touches so the test
-    // isolates the setCardAndRun options at the mutation site.
-    jest
-      .spyOn(queryingModule, "cancelQuery")
-      .mockReturnValue(
-        sentinelAction("MOCK_CANCEL") as ReturnType<
-          typeof queryingModule.cancelQuery
-        >,
-      );
-    jest.spyOn(selectorsModule, "getZoomedObjectId").mockReturnValue(null);
-    // current card differs from the one in history, so popState runs it
-    jest
-      .spyOn(selectorsModule, "getCard")
-      .mockReturnValue({ id: -1 } as ReturnType<
-        typeof selectorsModule.getCard
-      >);
-    jest.spyOn(selectorsModule, "getQueryBuilderMode").mockReturnValue("view");
-    jest.spyOn(selectorsModule, "getDatasetEditorTab").mockReturnValue("query");
-    jest
-      .spyOn(routingModule, "getLocation")
-      .mockReturnValue({} as ReturnType<typeof routingModule.getLocation>);
-    jest
-      .spyOn(typedUtilsModule, "getQueryBuilderModeFromLocation")
-      .mockReturnValue({
-        queryBuilderMode: "view",
-        datasetEditorTab: "query",
-      });
-    jest
-      .spyOn(stateModule, "setCurrentState")
-      .mockReturnValue(
-        sentinelAction("MOCK_SET_CURRENT_STATE") as ReturnType<
-          typeof stateModule.setCurrentState
-        >,
-      );
-    jest
-      .spyOn(uiModule, "setQueryBuilderMode")
-      .mockReturnValue(
-        sentinelAction("MOCK_SET_QB_MODE") as ReturnType<
-          typeof uiModule.setQueryBuilderMode
-        >,
-      );
-    jest
-      .spyOn(queryBuilderReduxModule, "resetUIControls")
-      .mockReturnValue(
-        sentinelAction("MOCK_RESET_UI") as ReturnType<
-          typeof queryBuilderReduxModule.resetUIControls
-        >,
-      );
-  });
-
+// metabase#55162: back/forward navigation into a QB history entry shouldn't re-push a URL.
+describe("popState - shouldUpdateUrl (metabase#55162)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("runs a model card without updating the url (shouldUpdateUrl:false)", async () => {
-    await runPopStateWithCard({
-      type: "model",
-      dataset_query: { database: 1 },
+  it("runs the restored history card without pushing a new url", async () => {
+    // The card in history (a model) differs from the one in the store
+    // so popState restores and runs it.
+    const currentCard = createSavedStructuredCard({ id: 1 });
+    const historyCard = createSavedStructuredCard({ id: 2, type: "model" });
+
+    const store = getMainStore({
+      qb: createMockQueryBuilderState({ card: currentCard }),
     });
 
-    expect(setCardAndRunSpy).toHaveBeenCalledWith(expect.anything(), {
-      shouldUpdateUrl: false,
-    });
-  });
+    // Stub only the two action-creators that fire real queries/URL effects
+    const setCardAndRunSpy = jest
+      .spyOn(coreModule, "setCardAndRun")
+      .mockReturnValue(async () => undefined);
+    jest
+      .spyOn(uiModule, "setQueryBuilderMode")
+      .mockReturnValue(async () => undefined);
 
-  it("runs a question card without updating the url (shouldUpdateUrl:false)", async () => {
-    await runPopStateWithCard({
-      type: "question",
-      dataset_query: { database: 1 },
-    });
+    // a POP Location whose state carries the history card popState restores
+    const location = {
+      pathname: "/model/2",
+      search: "",
+      hash: "",
+      action: "POP",
+      state: { card: historyCard },
+    } as unknown as Location;
 
-    expect(setCardAndRunSpy).toHaveBeenCalledWith(expect.anything(), {
+    await store.dispatch(popState(location));
+
+    expect(setCardAndRunSpy).toHaveBeenCalledWith(historyCard, {
       shouldUpdateUrl: false,
     });
   });
 });
 
-// Witness for metabase#55486 / metabase#56775: browser back/forward inside a
-// model's editor must restore the dataset editor tab (Query ↔ Columns), not just
-// the query-builder mode. popState reads datasetEditorTab from the location and,
-// when the current tab differs, dispatches setQueryBuilderMode carrying that tab
-// (with shouldUpdateUrl:false). The bug only compared queryBuilderMode, so a
-// back/forward step that changed only the tab — mode stayed "dataset" — never
-// re-dispatched, leaving the wrong editor tab showing.
-describe("popState — datasetEditorTab restoration", () => {
-  let dispatch: jest.Mock;
-  let setQueryBuilderModeSpy: jest.SpyInstance;
-
-  const runPopState = ({
-    currentTab,
-    locationMode,
-    locationTab,
-  }: {
-    currentTab: string;
-    locationMode: string;
-    locationTab: string;
-  }) => {
-    jest
-      .spyOn(selectorsModule, "getDatasetEditorTab")
-      .mockReturnValue(
-        currentTab as ReturnType<typeof selectorsModule.getDatasetEditorTab>,
-      );
-    jest
-      .spyOn(typedUtilsModule, "getQueryBuilderModeFromLocation")
-      .mockReturnValue({
-        queryBuilderMode: locationMode,
-        datasetEditorTab: locationTab,
-      } as ReturnType<typeof typedUtilsModule.getQueryBuilderModeFromLocation>);
-
-    // No location.state.card, so the setCardAndRun branch is skipped and the
-    // test isolates the queryBuilderMode/datasetEditorTab restoration branch.
-    const location = {
-      pathname: "/model/1/metadata",
-      search: "",
-      hash: "",
-      action: "POP",
-      state: null,
-    } as unknown as Location;
-
-    return popState(location)(dispatch, (() => ({})) as unknown as GetState);
-  };
-
-  beforeEach(() => {
-    dispatch = jest.fn((action) => action);
-
-    setQueryBuilderModeSpy = jest
-      .spyOn(uiModule, "setQueryBuilderMode")
-      .mockReturnValue(
-        sentinelAction("MOCK_SET_QB_MODE") as ReturnType<
-          typeof uiModule.setQueryBuilderMode
-        >,
-      );
-
-    // Neutralize everything else popState touches; mode-from-state is "dataset"
-    // so only the editor tab varies between state and location.
-    jest
-      .spyOn(queryingModule, "cancelQuery")
-      .mockReturnValue(
-        sentinelAction("MOCK_CANCEL") as ReturnType<
-          typeof queryingModule.cancelQuery
-        >,
-      );
-    jest.spyOn(selectorsModule, "getZoomedObjectId").mockReturnValue(null);
-    jest
-      .spyOn(selectorsModule, "getCard")
-      .mockReturnValue({ id: -1 } as ReturnType<
-        typeof selectorsModule.getCard
-      >);
-    jest
-      .spyOn(selectorsModule, "getQueryBuilderMode")
-      .mockReturnValue("dataset");
-    jest
-      .spyOn(routingModule, "getLocation")
-      .mockReturnValue({} as ReturnType<typeof routingModule.getLocation>);
-  });
-
+// metabase#55486 / #56775
+// A model editor has a Query tab and a Columns tab, and each tab has its own URL.
+// Browser back/forward changes the URL so the editor should switch to whichever tab that URL points to.
+describe("popState — datasetEditorTab restoration (metabase#55486)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("restores the dataset editor tab from the location when only the tab changed", async () => {
-    await runPopState({
-      currentTab: "query",
-      locationMode: "dataset",
-      locationTab: "metadata",
+  const setup = (currentTab: DatasetEditorTab) => {
+    const store = getMainStore({
+      qb: createMockQueryBuilderState({
+        uiControls: createMockQueryBuilderUIControlsState({
+          queryBuilderMode: "dataset",
+          datasetEditorTab: currentTab,
+        }),
+      }),
     });
+    const setQueryBuilderModeSpy = jest
+      .spyOn(uiModule, "setQueryBuilderMode")
+      .mockReturnValue(async () => undefined);
+    return { store, setQueryBuilderModeSpy };
+  };
+
+  const popToTab = (tab: string): Location =>
+    // a POP Location whose last path segment selects the editor tab
+    ({
+      pathname: `/model/1/${tab}`,
+      search: "",
+      hash: "",
+      action: "POP",
+      state: null,
+    }) as unknown as Location;
+
+  it("restores the dataset editor tab from the location when only the tab changed", async () => {
+    const { store, setQueryBuilderModeSpy } = setup("query");
+
+    await store.dispatch(popState(popToTab("metadata")));
 
     expect(setQueryBuilderModeSpy).toHaveBeenCalledWith(
       "dataset",
@@ -370,11 +245,9 @@ describe("popState — datasetEditorTab restoration", () => {
   });
 
   it("does not switch modes when both the mode and tab already match the location", async () => {
-    await runPopState({
-      currentTab: "metadata",
-      locationMode: "dataset",
-      locationTab: "metadata",
-    });
+    const { store, setQueryBuilderModeSpy } = setup("metadata");
+
+    await store.dispatch(popState(popToTab("metadata")));
 
     expect(setQueryBuilderModeSpy).not.toHaveBeenCalled();
   });

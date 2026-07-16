@@ -186,8 +186,6 @@ describe("dashboard reducers", () => {
     });
 
     it("should not overwrite the editing dashboard with a newer version of the same dashboard (metabase#53132)", () => {
-      jest.spyOn(console, "warn").mockImplementation(() => undefined);
-
       const originalDashboard = createMockDashboard({
         id: 1,
         name: "Original",
@@ -207,8 +205,6 @@ describe("dashboard reducers", () => {
         payload: dirtyDashboardSameId,
       });
 
-      // The duplicate dispatch for the same dashboard id must be ignored so the
-      // save flow's diff logic keeps seeing the pristine editing snapshot.
       expect(result.editingDashboard).toBe(originalDashboard);
     });
 

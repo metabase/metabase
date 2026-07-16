@@ -1,5 +1,4 @@
 import { waitFor } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -26,17 +25,9 @@ let activeStore: ReturnType<typeof getStore> | undefined;
 
 const CHILD_COLLECTION_ID = 10;
 const CHILD_CARD_ID = 20;
+const BOOKMARK_COLLECTION_ID = 30;
 
-/**
- * The data source picker lists the items in a collection via
- * `listCollectionItems`. Regression metabase#32252: after archiving a
- * collection or a question, reopening the picker must show fresh sources.
- * That refresh is guaranteed by RTK-Query cache-tag wiring: the items list
- * `providesTags` the per-model `LIST` tags, and the archive mutations
- * `invalidatesTags` those same tags. If either side of that wiring breaks,
- * the picker keeps serving stale (archived) items.
- */
-function setup() {
+function setupItems() {
   setupRootCollectionItemsEndpoint({
     rootCollectionItems: [
       createMockCollectionItemFromCollection({
@@ -78,73 +69,6 @@ async function countItemsRequests() {
   ).length;
 }
 
-describe("collectionApi cache invalidation (metabase#32252)", () => {
-  afterEach(() => {
-    activeStore?.dispatch(Api.util.resetApiState());
-    activeStore = undefined;
-    fetchMock.removeRoutes().clearHistory();
-  });
-
-  it("refetches the collection items list after archiving a collection", async () => {
-    const { store } = setup();
-
-    // Keep an active subscription, as the open picker would.
-    store.dispatch(
-      collectionApi.endpoints.listCollectionItems.initiate({ id: "root" }),
-    );
-    await waitFor(async () => {
-      expect(await countItemsRequests()).toBe(1);
-    });
-
-    await store.dispatch(
-      collectionApi.endpoints.updateCollection.initiate({
-        id: CHILD_COLLECTION_ID,
-        archived: true,
-      }),
-    );
-
-    // Archiving invalidates the collection LIST tag the items query provides,
-    // so the still-subscribed items query refetches.
-    await waitFor(async () => {
-      expect(await countItemsRequests()).toBe(2);
-    });
-  });
-
-  it("refetches the collection items list after archiving a question", async () => {
-    const { store } = setup();
-
-    store.dispatch(
-      collectionApi.endpoints.listCollectionItems.initiate({ id: "root" }),
-    );
-    await waitFor(async () => {
-      expect(await countItemsRequests()).toBe(1);
-    });
-
-    await store.dispatch(
-      cardApi.endpoints.updateCard.initiate({
-        id: CHILD_CARD_ID,
-        archived: true,
-      }),
-    );
-
-    // Archiving a card invalidates the card LIST tag the items query provides.
-    await waitFor(async () => {
-      expect(await countItemsRequests()).toBe(2);
-    });
-  });
-});
-
-const BOOKMARK_COLLECTION_ID = 10;
-
-/**
- * Regression metabase#44499: archiving (or restoring) a collection that
- * contains bookmarked items must refresh the bookmarks sidebar, because those
- * items may become (un)reachable. The refresh is guaranteed by RTK-Query
- * cache-tag wiring: `listBookmarks` provides the bookmark `LIST` tag, and the
- * collection archive/restore mutation invalidates that same tag whenever the
- * payload carries an `archived` field. If that wiring breaks, the sidebar
- * keeps serving stale bookmarks.
- */
 function setupBookmarks() {
   setupBookmarksEndpoints([
     createMockBookmark({
@@ -176,33 +100,85 @@ async function countBookmarkRequests() {
   return gets.filter((request) => request.url.includes("/api/bookmark")).length;
 }
 
-describe("collectionApi bookmark cache invalidation (metabase#44499)", () => {
+describe("archive cache invalidation", () => {
   afterEach(() => {
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
-    fetchMock.removeRoutes().clearHistory();
   });
 
-  it("refetches the bookmarks list after archiving a collection", async () => {
-    const { store } = setupBookmarks();
+  // Archiving a collection or question must invalidate the per-model LIST tags
+  // that `listCollectionItems` provides, so a subscribed items query refetches
+  // and the data source picker never keeps offering an archived source.
+  describe("collection items list (metabase#32252)", () => {
+    it("refetches after archiving a collection", async () => {
+      const { store } = setupItems();
 
-    // Keep an active subscription, as the open sidebar would.
-    store.dispatch(bookmarkApi.endpoints.listBookmarks.initiate());
-    await waitFor(async () => {
-      expect(await countBookmarkRequests()).toBe(1);
+      // Keep an active subscription, as the open picker would.
+      store.dispatch(
+        collectionApi.endpoints.listCollectionItems.initiate({ id: "root" }),
+      );
+      await waitFor(async () => {
+        expect(await countItemsRequests()).toBe(1);
+      });
+
+      await store.dispatch(
+        collectionApi.endpoints.updateCollection.initiate({
+          id: CHILD_COLLECTION_ID,
+          archived: true,
+        }),
+      );
+
+      await waitFor(async () => {
+        expect(await countItemsRequests()).toBe(2);
+      });
     });
 
-    await store.dispatch(
-      collectionApi.endpoints.updateCollection.initiate({
-        id: BOOKMARK_COLLECTION_ID,
-        archived: true,
-      }),
-    );
+    it("refetches after archiving a question", async () => {
+      const { store } = setupItems();
 
-    // Archiving a collection invalidates the bookmark LIST tag the bookmarks
-    // query provides, so the still-subscribed bookmarks query refetches.
-    await waitFor(async () => {
-      expect(await countBookmarkRequests()).toBe(2);
+      store.dispatch(
+        collectionApi.endpoints.listCollectionItems.initiate({ id: "root" }),
+      );
+      await waitFor(async () => {
+        expect(await countItemsRequests()).toBe(1);
+      });
+
+      await store.dispatch(
+        cardApi.endpoints.updateCard.initiate({
+          id: CHILD_CARD_ID,
+          archived: true,
+        }),
+      );
+
+      await waitFor(async () => {
+        expect(await countItemsRequests()).toBe(2);
+      });
+    });
+  });
+
+  // Archiving a collection can make bookmarked items unreachable, so the
+  // `updateCollection` mutation must invalidate the bookmark LIST tag that
+  // `listBookmarks` provides, letting a subscribed bookmarks query refetch.
+  describe("bookmarks list (metabase#44499)", () => {
+    it("refetches after archiving a collection", async () => {
+      const { store } = setupBookmarks();
+
+      // Keep an active subscription, as the open sidebar would.
+      store.dispatch(bookmarkApi.endpoints.listBookmarks.initiate());
+      await waitFor(async () => {
+        expect(await countBookmarkRequests()).toBe(1);
+      });
+
+      await store.dispatch(
+        collectionApi.endpoints.updateCollection.initiate({
+          id: BOOKMARK_COLLECTION_ID,
+          archived: true,
+        }),
+      );
+
+      await waitFor(async () => {
+        expect(await countBookmarkRequests()).toBe(2);
+      });
     });
   });
 });
