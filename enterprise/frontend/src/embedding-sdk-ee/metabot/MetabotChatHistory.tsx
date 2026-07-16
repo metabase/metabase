@@ -50,7 +50,7 @@ export function MetabotChatHistory() {
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
-          agentId={AGENT_ID}
+          conversationId={metabot.conversationId}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}

@@ -2,6 +2,7 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CreateCardRequest,
   DashboardId,
   DatabaseId,
   DatasetQuery,
@@ -339,6 +340,14 @@ export interface MetabotGenerateContentResponse {
   draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
+}
+
+/* Metabot v3 - Conversations */
+
+export interface SaveMetabotEntityRequest {
+  conversation_id: string;
+  chart_id: string;
+  card: CreateCardRequest;
 }
 
 /* Metabot v3 - Data Part Types */

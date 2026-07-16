@@ -14,12 +14,6 @@
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
-(def ^:dynamic *conversation-id*
-  "The current conversation's id (a UUID string). Bound during the agent loop so that
-   tools can stamp provenance onto entities they create (e.g. `save_entity` records
-   which conversation a card was saved from). Nil outside a conversation-backed run."
-  nil)
-
 (def ^:dynamic *profile-id*
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."
@@ -30,6 +24,13 @@
   []
   (when *memory-atom*
     @*memory-atom*))
+
+(defn current-conversation-id
+  "The current conversation's id (a UUID string) from agent memory, or nil outside a
+  conversation-backed run. Tools use it to record which conversation an entity they
+  create came from (e.g. `save_entity` stamps it onto the saved card)."
+  []
+  (:conversation-id (current-memory)))
 
 (defn current-queries-state
   "Returns the current queries state map from agent memory."

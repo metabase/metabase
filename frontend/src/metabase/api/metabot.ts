@@ -1,6 +1,5 @@
 import type {
   Card,
-  CreateCardRequest,
   DeleteSuggestedMetabotPromptRequest,
   MetabotFeedback,
   MetabotGenerateContentRequest,
@@ -12,6 +11,7 @@ import type {
   MetabotSlackSettings,
   MetabotSourceFeedback,
   RegenerateSuggestedMetabotPromptsResponse,
+  SaveMetabotEntityRequest,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -123,14 +123,7 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
-    saveMetabotEntity: builder.mutation<
-      Card,
-      {
-        conversation_id: string;
-        entity_id: string;
-        card: CreateCardRequest;
-      }
-    >({
+    saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
       query: ({ conversation_id, ...body }) => ({
         method: "POST",
         url: `/api/metabot/conversations/${conversation_id}/saved-entity`,

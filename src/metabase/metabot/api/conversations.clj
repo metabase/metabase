@@ -70,8 +70,8 @@
 
 (def ^:private SaveEntityBody
   [:map
-   [:entity_id ms/NonBlankString]
-   [:card      SaveEntityCard]])
+   [:chart_id ms/NonBlankString]
+   [:card     SaveEntityCard]])
 
 (def ^:private SaveEntityResponse
   [:map
@@ -161,15 +161,15 @@
 
 (api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the
-  card's provenance columns in the same request — used by the inline chart's
+  card's origin columns in the same request — used by the inline chart's
   manual Save button, which runs outside any agent turn. Creating and stamping
   together (rather than stamping after a separate `POST /api/card`) means the
-  card and its provenance cannot desync when the follow-up request is lost.
+  card and its origin cannot desync when the follow-up request is lost.
 
   Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams
    _query-params
-   {:keys [entity_id card]} :- SaveEntityBody]
+   {:keys [chart_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
   ;; Mirror the POST /api/card pre-checks: `create-card!` itself does not check
   ;; permissions on the query's data or the target container.
@@ -184,14 +184,14 @@
                      (update :display keyword)
                      (update :visualization_settings #(or % {})))
                  {:id api/*current-user-id*})]
-    ;; Raw table update: a provenance stamp should not run the Card model's heavy
+    ;; Raw table update: the origin stamp should not run the Card model's heavy
     ;; before-update pipeline (query normalization, metadata population).
     (t2/update! (t2/table-name :model/Card) (:id created)
                 {:metabot_conversation_id id
-                 :metabot_chart_id        entity_id})
+                 :metabot_chart_id        chart_id})
     (assoc created
            :metabot_conversation_id id
-           :metabot_chart_id        entity_id)))
+           :metabot_chart_id        chart_id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

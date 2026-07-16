@@ -1761,8 +1761,8 @@
               (is (contains? (stale-ids) public-id)))
             (tu/with-temporary-setting-values [enable-public-sharing true]
               (is (not (contains? (stale-ids) public-id))))))))))
-(deftest editing-clears-metabot-provenance-test
-  (testing "editing a card's content severs its Metabot provenance link"
+(deftest editing-clears-metabot-origin-test
+  (testing "editing a card's content severs its link back to the Metabot chart it came from"
     (doseq [[change-desc changes] {"query"        {:dataset_query (mt/mbql-query checkins)}
                                    "display"      {:display :line}
                                    "viz settings" {:visualization_settings {"graph.goal_value" 10}}}]
@@ -1775,7 +1775,7 @@
           (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
                  (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                                 :id card-id)))))))
-  (testing "renaming or moving a card keeps the provenance link"
+  (testing "renaming or moving a card keeps the link"
     (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
                    :model/Collection {coll-id :id} {}
                    :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)

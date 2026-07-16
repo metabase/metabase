@@ -730,7 +730,7 @@
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found.
 
-  `:saved_entities` lists the cards saved out of this conversation (provenance
+  `:saved_entities` lists the cards saved out of this conversation (origin
   columns on `report_card`), keyed by the generated chart id so a reloaded
   conversation can mark its inline charts as saved."
   [conversation-id]

@@ -39,7 +39,7 @@
                                 :scope     "agent:sql:create"})
         tools-map   {"test_tool" tool-var}
         memory-atom (atom {})
-        wrapped     (tools/wrap-tools-with-state tools-map memory-atom {:profile-id :sql})
+        wrapped     (tools/wrap-tools-with-state tools-map memory-atom nil :sql)
         wrapped-fn  (get-in wrapped ["test_tool" :fn])]
     (testing "tool executes when scope is satisfied"
       (binding [scope/*current-user-scope* api-scope/unrestricted]
@@ -68,7 +68,7 @@
                                 :schema    [:=> [:cat :map] :map]})
         tools-map   {"legacy_tool" tool-var}
         memory-atom (atom {})
-        wrapped     (tools/wrap-tools-with-state tools-map memory-atom {:profile-id :sql})
+        wrapped     (tools/wrap-tools-with-state tools-map memory-atom nil :sql)
         wrapped-fn  (get-in wrapped ["legacy_tool" :fn])]
     (testing "tool without :scope always executes regardless of current scope"
       (binding [scope/*current-user-scope* #{}]

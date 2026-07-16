@@ -43,20 +43,20 @@
             (is (= "Venues by price" (:name card)))
             (is (= :bar (:display card)))
             (is (= (:id coll) (:collection_id card))))
-          (testing "emits an entity_saved data part pointing at the chart and location"
+          (testing "emits an entity_saved data part pointing at the chart and destination"
             (is (= "entity_saved" (:data-type part)))
-            (is (= "c-1" (get-in part [:data :entity_id])))
+            (is (= "c-1" (get-in part [:data :chart_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= {:type "collection" :id (:id coll)}
-                   (get-in part [:data :location])))))))))
+                   (get-in part [:data :destination])))))))))
 
-(deftest save-stamps-card-provenance-test
+(deftest save-stamps-card-origin-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection coll {}
                      :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
-        (let [result (binding [shared/*memory-atom*     (chart-memory)
-                               shared/*conversation-id* convo-id]
+        (let [memory (doto (chart-memory) (swap! assoc :conversation-id convo-id))
+              result (binding [shared/*memory-atom* memory]
                        (save-entity/save-entity-tool
                         {:chart_id    "c-1"
                          :name        "Venues by price"
@@ -72,7 +72,7 @@
 (deftest save-without-conversation-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card]
-      (testing "saving outside a conversation-backed run leaves provenance columns nil"
+      (testing "saving outside a conversation-backed run leaves the origin columns nil"
         (let [result  (save! {:target_type "collection" :collection_id nil})
               card-id (get-in result [:structured-output :card-id])]
           (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
@@ -86,7 +86,7 @@
             card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
         (testing "an explicit null collection_id saves to the root collection"
           (is (nil? (:collection_id card)))
-          (is (nil? (get-in result [:data-parts 0 :data :location :id]))))))))
+          (is (nil? (get-in result [:data-parts 0 :data :destination :id]))))))))
 
 (deftest save-to-personal-collection-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -107,9 +107,9 @@
           (testing "creates a dashboard question and places it on the dashboard"
             (is (= (:id dash) (:dashboard_id card)))
             (is (t2/exists? :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))))
-          (testing "the location points at the dashboard"
+          (testing "the destination points at the dashboard"
             (is (= {:type "dashboard" :id (:id dash)}
-                   (get-in result [:data-parts 0 :data :location])))))))))
+                   (get-in result [:data-parts 0 :data :destination])))))))))
 
 (deftest unknown-chart-test
   (mt/with-current-user (mt/user->id :crowberto)

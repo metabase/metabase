@@ -13,10 +13,7 @@ import {
 import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import type {
-  MetabotAgentDataPartMessage,
-  MetabotAgentId,
-} from "metabase/metabot/state";
+import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
 import {
   ActionIcon,
   Anchor,
@@ -24,6 +21,7 @@ import {
   Box,
   Flex,
   Icon,
+  Skeleton,
   Stack,
   Text,
 } from "metabase/ui";
@@ -43,14 +41,14 @@ type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
-  agentId: MetabotAgentId;
+  conversationId: string;
 };
 
 export const AgentDataPartMessage = ({
   message,
   readonly,
   debug,
-  agentId,
+  conversationId,
 }: AgentDataPartMessageProps) =>
   match(message)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
@@ -98,7 +96,7 @@ export const AgentDataPartMessage = ({
           <MetabotInlineChart
             value={part.data}
             readonly={readonly}
-            agentId={agentId}
+            conversationId={conversationId}
           />
         </Stack>
       ),
@@ -121,34 +119,37 @@ export const AgentDataPartMessage = ({
     });
 
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
-  const { location } = value;
+  const { destination } = value;
 
-  const { data: card } = useGetCardQuery({
+  const { data: card, isLoading: isCardLoading } = useGetCardQuery({
     id: value.card_id,
     ignore_error: true,
   });
-  const { data: collection, error: collectionError } = useGetCollectionQuery(
-    location.type === "collection"
-      ? { id: location.id ?? "root", ignore_error: true }
-      : skipToken,
-  );
-  const { data: dashboard, error: dashboardError } = useGetDashboardQuery(
-    location.type === "dashboard"
-      ? { id: location.id, ignore_error: true }
-      : skipToken,
-  );
+  const { data: collection, isLoading: isCollectionLoading } =
+    useGetCollectionQuery(
+      destination.type === "collection"
+        ? { id: destination.id ?? "root", ignore_error: true }
+        : skipToken,
+    );
+  const { data: dashboard, isLoading: isDashboardLoading } =
+    useGetDashboardQuery(
+      destination.type === "dashboard"
+        ? { id: destination.id, ignore_error: true }
+        : skipToken,
+    );
   const container =
-    location.type === "dashboard"
+    destination.type === "dashboard"
       ? dashboard && { name: dashboard.name, url: Urls.dashboard(dashboard) }
       : collection && {
           name: collection.name,
           url: Urls.collection(collection),
         };
-  const containerError =
-    location.type === "dashboard" ? dashboardError : collectionError;
-  const isContainerPending = container == null && containerError == null;
 
-  if (card == null || isContainerPending) {
+  if (isCardLoading || isCollectionLoading || isDashboardLoading) {
+    return <Skeleton h="1rem" w="18rem" data-testid="entity-saved-loading" />;
+  }
+
+  if (card == null) {
     return null;
   }
 

@@ -12,7 +12,6 @@ import { useMetabotName } from "metabase/metabot/hooks";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentDataPartMessage,
-  MetabotAgentId,
   MetabotAgentTextChatMessage,
   MetabotAgentTurnError,
   MetabotAgentTurnErroredMessage,
@@ -177,7 +176,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
   debug: boolean;
   readonly: boolean;
-  agentId: MetabotAgentId;
+  conversationId: string;
   onRetry?: (messageId: string) => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -191,7 +190,7 @@ export const AgentMessage = ({
   className,
   debug,
   readonly,
-  agentId,
+  conversationId,
   getCopyText,
   onRetry,
   setFeedbackMessage,
@@ -223,7 +222,7 @@ export const AgentMessage = ({
             message={m}
             debug={debug}
             readonly={readonly}
-            agentId={agentId}
+            conversationId={conversationId}
           />
         ))
         .with({ type: "tool_call" }, (m) => (
@@ -441,7 +440,7 @@ export const Messages = ({
   isDoingScience,
   debug,
   readonly = false,
-  agentId,
+  conversationId,
   onInternalLinkClick,
   getExtraActions,
 }: {
@@ -450,7 +449,7 @@ export const Messages = ({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
-  agentId: MetabotAgentId;
+  conversationId: string;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {
@@ -518,7 +517,7 @@ export const Messages = ({
             message={message}
             debug={debug}
             readonly={readonly}
-            agentId={agentId}
+            conversationId={conversationId}
             onRetry={isLastUserMessage ? onRetryMessage : undefined}
             getCopyText={() => getAgentReplyCopyText(message.id)}
             setFeedbackMessage={(data) =>
