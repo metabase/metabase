@@ -18,7 +18,10 @@ import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
-import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
+import {
+  type CartesianHoveredObject,
+  useChartEvents,
+} from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
@@ -139,16 +142,23 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const hovered = useMemo(() => {
+  const hovered: CartesianHoveredObject | null = useMemo(() => {
     if (props.hovered) {
       return props.hovered;
     }
     if (props.highlighted) {
-      return getHoveredFromHighlighted(
+      const hovered = getHoveredFromHighlighted(
         props.highlighted,
         rawSeries,
         chartModel,
       );
+      if (!hovered) {
+        return null;
+      }
+      return {
+        ...hovered,
+        isFromHighlighted: true,
+      };
     }
     return null;
   }, [props.hovered, props.highlighted, rawSeries, chartModel]);
