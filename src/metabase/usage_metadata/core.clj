@@ -7,6 +7,19 @@
 
 (set! *warn-on-reflection* true)
 
+(mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
+  "Deterministically mine creation-ready Measure candidates from verified, official-collection,
+  or popular questions and models. Existing Measures are excluded by exact definition."
+  [opts :- ::usage-metadata.schema/candidate-opts]
+  (insights/candidate-measures opts))
+
+(mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
+  "Deterministically mine creation-ready atomic and recurring small conjunctive Segment candidates
+  from verified, official-collection, or popular questions and models. Existing Segments are
+  excluded by exact definition."
+  [opts :- ::usage-metadata.schema/candidate-opts]
+  (insights/candidate-segments opts))
+
 (mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates
   for promotion to first-class Segments."

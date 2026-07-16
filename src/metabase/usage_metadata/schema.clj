@@ -21,6 +21,13 @@
    [:limit        {:optional true, :description "Maximum number of results to return."}
     [:maybe pos-int?]]])
 
+(mr/def ::candidate-opts
+  [:map {:closed true}
+   [:min-view-count {:optional true, :description "Minimum lifetime Card view_count that qualifies an otherwise uncurated source item."}
+    [:maybe nat-int?]]
+   [:limit          {:optional true, :description "Maximum number of candidates to return."}
+    [:maybe pos-int?]]])
+
 (mr/def ::source
   [:map
    [:type         ::source-type]
@@ -37,9 +44,47 @@
    [:name         [:maybe :string]]
    [:display-name [:maybe :string]]])
 
+(mr/def ::candidate-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]])
+
+(mr/def ::candidate-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]])
+
 (mr/def ::mbql-clause
   [:fn {:error/message "expected an MBQL clause"}
    (fn [x] (and (vector? x) (keyword? (first x))))])
+
+(mr/def ::candidate-measure
+  [:map {:closed true}
+   [:source      ::source]
+   [:definition  :map]
+   [:aggregation [:map {:closed true}
+                  [:type  [:enum :count :sum :avg :min :max :distinct]]
+                  [:field [:maybe ::field]]]]
+   [:evidence    ::candidate-evidence]])
+
+(mr/def ::candidate-segment
+  [:map {:closed true}
+   [:source     ::source]
+   [:definition :map]
+   [:predicate  ::mbql-clause]
+   [:fields     [:sequential {:min 1} ::field]]
+   [:composite? :boolean]
+   [:atom-count pos-int?]
+   [:evidence   ::candidate-evidence]])
 
 (mr/def ::implicit-segment
   [:map {:closed true}
