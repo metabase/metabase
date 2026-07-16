@@ -114,6 +114,23 @@
             (is (:isError result))
             (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))))
 
+(deftest method-dispatch-fallthrough-test
+  (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true]
+    (let [[session-id _] (initialize!)]
+      (testing "methods the v2 surface can't serve fall through to JSON-RPC method-not-found"
+        (doseq [method ["resources/list" "prompts/list"]]
+          (testing method
+            (let [response (mcp-v2-request (jsonrpc-request method)
+                                           {"mcp-session-id" session-id})]
+              (is (= -32601 (get-in response [:body :error :code])))
+              (is (str/includes? (get-in response [:body :error :message]) "Method not found"))))))
+      (testing "ping is handled and returns an empty success result, not a fallthrough error"
+        (let [response (mcp-v2-request (jsonrpc-request "ping")
+                                       {"mcp-session-id" session-id})]
+          (is (= 200 (:status response)))
+          (is (nil? (get-in response [:body :error])))
+          (is (= {} (get-in response [:body :result]))))))))
+
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [mcp.settings/mcp-v2-enabled true
                                      site-url "http://localhost:3000"]

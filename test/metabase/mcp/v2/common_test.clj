@@ -6,9 +6,13 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel list-envelope-test
   (is (= {:data [{:id 1} {:id 2}] :returned 2 :total 214}
@@ -64,6 +68,34 @@
                        (catch Exception e (ex-message e)))]
       (is (= denied missing))
       (is (str/includes? denied "not found")))))
+
+(deftest ^:parallel entity-id?-test
+  (testing "a genuine 21-char entity_id is recognized"
+    (is (true? (common/entity-id? (u/generate-nano-id)))))
+  (testing "numeric ids and short strings are not entity_ids"
+    (is (false? (common/entity-id? 7)))
+    (is (false? (common/entity-id? "abc")))))
+
+(deftest resolve-id-or-404-resolves-entity-id-test
+  (testing "a valid entity_id translates to the object's numeric id"
+    (mt/with-temp [:model/Collection {coll-id :id eid :entity_id} {}]
+      (is (= coll-id (common/resolve-id-or-404 :model/Collection eid))))))
+
+(deftest resolve-and-read-happy-path-test
+  (mt/with-temp [:model/Collection coll {}]
+    (let [eid (:entity_id coll)]
+      (testing "returns the object when the read check yields it"
+        (is (= coll (common/resolve-and-read :model/Collection eid (fn [_] coll)))))
+      (testing "a nil read check collapses to the not-found error"
+        (is (thrown-with-msg? Exception #"not found"
+                              (common/resolve-and-read :model/Collection eid (fn [_] nil))))))))
+
+(deftest resolve-id-or-404-entity-id-404-collapse-test
+  (testing "a well-formed entity_id that resolves to no row throws the collapsed not-found error"
+    (let [eid (u/generate-nano-id)]
+      (is (common/entity-id? eid))
+      (is (thrown-with-msg? Exception #"not found"
+                            (common/resolve-id-or-404 :model/Collection eid))))))
 
 (deftest ^:parallel resolve-collection-id-test
   (is (nil? (common/resolve-collection-id nil)))

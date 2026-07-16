@@ -208,7 +208,12 @@
             fallback would split it into `test-api-v-2-setting` and fail to resolve)"
     (mt/user-http-request :crowberto :put 204 "setting/test-api-v2-setting" {:value "NICE!"})
     (is (= "NICE!" (test-api-v2-setting)))
-    (is (= "NICE!" (fetch-setting :test-api-v2-setting 200)))))
+    (is (= "NICE!" (fetch-setting :test-api-v2-setting 200))))
+  (testing "the snake_case form of a digit-bearing name also resolves (a plain `_`->`-` candidate is
+            tried before the letter-digit-splitting kebab conversion, which would yield
+            `test-api-v-2-setting`)"
+    (mt/user-http-request :crowberto :put 204 "setting/test_api_v2_setting" {:value "ALSO NICE!"})
+    (is (= "ALSO NICE!" (test-api-v2-setting)))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
