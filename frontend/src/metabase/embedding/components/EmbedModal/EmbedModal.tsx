@@ -1,18 +1,19 @@
 import { t } from "ttag";
 
-import { Modal } from "metabase/common/components/Modal";
+import { ModalHeader } from "metabase/common/components/ModalContent";
 import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,
   EmbedResourceParameter,
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
+import { Modal } from "metabase/ui";
 import type { EmbeddingParameters } from "metabase-types/api";
 
-import { EmbedModalHeader } from "./EmbedModal.styled";
+import S from "./EmbedModal.module.css";
 
 interface EmbedModalProps {
-  isOpen?: boolean;
+  opened: boolean;
   resource: EmbedResource;
   resourceType: GuestEmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
@@ -24,7 +25,7 @@ interface EmbedModalProps {
 }
 
 export const EmbedModal = ({
-  isOpen,
+  opened,
   resource,
   resourceType,
   resourceParameters,
@@ -34,16 +35,20 @@ export const EmbedModal = ({
   onClose,
 }: EmbedModalProps) => (
   <Modal
-    isOpen={isOpen}
+    opened={opened}
     onClose={onClose}
-    fit
-    formModal={false}
-    // needed to allow selecting with the mouse on the code samples
-    enableMouseEvents
+    size="auto"
+    withCloseButton={false}
+    padding={0}
   >
-    <EmbedModalHeader onClose={onClose} onBack={onBack}>
+    <ModalHeader
+      py="lg"
+      className={S.embedModalHeader}
+      onClose={onClose}
+      onBack={onBack}
+    >
       {t`Static embedding`}
-    </EmbedModalHeader>
+    </ModalHeader>
 
     <StaticEmbedSetupPane
       resource={resource}

@@ -1,5 +1,3 @@
-import { IndexRoute, Route } from "react-router";
-
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
 import { createTenantsRouteGuard } from "metabase/admin/utils";
@@ -11,6 +9,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -48,6 +47,7 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
     settings: createMockSettingsState({
       "active-users-count": setupOpts.activeUsersCount,
       "embedding-homepage":
+        // Unjustified type cast. FIXME
         setupOpts.embeddingHomepage as EmbeddingHomepageStatus,
       "setup-embedding-autoenabled": setupOpts.setupEmbeddingAutoenabled,
       "use-tenants": setupOpts.useTenants,
@@ -96,7 +96,7 @@ const setupTenantRoute = async (initialRoute: string) => {
       <Route path="tenants" component={createTenantsRouteGuard()}>
         <Route path="groups" component={UpsellTenants} />
         <Route path="people" component={UpsellTenants} />
-        <IndexRoute component={UpsellTenants} />
+        <Route index component={UpsellTenants} />
       </Route>
     </Route>,
     {
@@ -199,5 +199,6 @@ async function assertNavLink(linkText: string, linkHref: string) {
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute("href", linkHref);
 
+  // Unjustified type cast. FIXME
   return link as HTMLElement;
 }

@@ -41,7 +41,7 @@ export function getRowSelectColumn({
           data-testid="row-select-all-checkbox"
           styles={{
             input: {
-              borderColor: "var(--mb-color-border)",
+              borderColor: "var(--mb-color-border-neutral)",
             },
           }}
         />
@@ -64,7 +64,7 @@ export function getRowSelectColumn({
             data-testid="row-select-checkbox"
             styles={{
               input: {
-                borderColor: "var(--mb-color-border)",
+                borderColor: "var(--mb-color-border-neutral)",
               },
             }}
           />

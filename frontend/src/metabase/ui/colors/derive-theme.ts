@@ -39,6 +39,7 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
+  // Unjustified type cast. FIXME
   const colors = {
     ...baseTheme.colors,
     ...mapChartColorsToAccents(baseTheme.chartColors),

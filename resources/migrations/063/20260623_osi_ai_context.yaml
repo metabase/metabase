@@ -1,0 +1,133 @@
+## osi_ai_context: one row per library entity holding OSI ai_context metadata
+## ({instructions, synonyms[], examples[]}). Replaces curated_search_entries.
+## The table is authoritative; an enterprise pgvector index (library_entity_index, many embedded
+## docs per entity) is reconciled against it plus live library membership and backs the
+## retrieve_library_entities Metabot tool.
+##
+## Identity is the logical (entity_type, entity_local_id) pair — that compound key is the primary key,
+## so there is one row per entity and no surrogate id or serialization NanoID. Card flavors
+## (question/metric/model) are stored under the canonical "card" entity_type (normalized on write), so a
+## card keeps its one row across a type relabel.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/063_update_migrations.yaml
+
+  - changeSet:
+      id: v63.2026-06-23T00:00:01
+      author: christruter
+      comment: Create osi_ai_context table
+      changes:
+        - createTable:
+            tableName: osi_ai_context
+            remarks: OSI ai_context metadata for library entities, one row per entity
+            columns:
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Type of entity this ai_context describes (table, card, measure, segment)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_local_id
+                  type: bigint
+                  remarks: Local appdb id of the entity this ai_context describes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ai_context
+                  type: ${text.type}
+                  remarks: OSI ai_context JSON blob ({instructions, synonyms[], examples[]})
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the ai_context was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the ai_context was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: osi_ai_context
+
+  - changeSet:
+      id: v63.2026-06-23T00:00:02
+      author: christruter
+      comment: Make (entity_type, entity_local_id) the primary key of osi_ai_context
+      changes:
+        - addPrimaryKey:
+            tableName: osi_ai_context
+            columnNames: entity_type, entity_local_id
+            constraintName: pk_osi_ai_context
+      rollback:
+        - dropPrimaryKey:
+            tableName: osi_ai_context
+            constraintName: pk_osi_ai_context
+
+  - changeSet:
+      id: v63.2026-06-23T00:00:03
+      author: christruter
+      comment: Drop the superseded curated_search_entries table
+      changes:
+        - dropTable:
+            tableName: curated_search_entries
+      ## Faithful rollback recreates the old table so cross-version down-migrations don't error.
+      ## (Data is not restored — the feature was unreleased, so there is none to preserve.)
+      rollback:
+        - createTable:
+            tableName: curated_search_entries
+            remarks: Curated search prompts mapped to the entities that answer them
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: search_prompt
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: usage_instructions
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false

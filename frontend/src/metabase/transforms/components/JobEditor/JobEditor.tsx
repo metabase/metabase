@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
@@ -26,6 +26,7 @@ type JobEditorProps = {
   job: TransformJobInfo;
   menu?: ReactNode;
   actions?: ReactNode;
+  tabs?: ReactNode;
   readOnly?: boolean;
   isCheckingPermissions?: boolean;
   onNameChange: (name: string) => void;
@@ -40,6 +41,7 @@ export function JobEditor({
   job,
   menu,
   actions,
+  tabs,
   readOnly,
   isCheckingPermissions,
   onNameChange,
@@ -61,11 +63,11 @@ export function JobEditor({
             />
             {isMeterLocked && (
               <LockedTransformsHoverCard>
-                <TransformBadge bg="background-warning-secondary">{t`Disabled`}</TransformBadge>
+                <TransformBadge bg="background_surface-warning-strong">{t`Disabled`}</TransformBadge>
               </LockedTransformsHoverCard>
             )}
             {!isMeterLocked && !job.active && (
-              <TransformBadge bg="background-warning-secondary">
+              <TransformBadge bg="background_surface-warning-strong">
                 {t`Disabled`}
               </TransformBadge>
             )}
@@ -82,6 +84,7 @@ export function JobEditor({
         }
         menu={menu}
         actions={actions}
+        tabs={tabs}
         data-testid="jobs-header"
       />
       <Stack gap="3.5rem">

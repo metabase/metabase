@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
   Card,
@@ -153,16 +152,17 @@ export const cardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedCardParameterValueRequest
       >({
-        query: ({ card_id, parameter_id, ...params }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedCardParameterValueUrl(
-            card_id,
-            parameter_id,
-          ),
-          params,
+          url: "/api/card/:cardId/params/:paramId/remapping",
+          // In an embed the override rewrites `:cardId` → `:entityIdentifier` and
+          // drops the real `cardId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       createCard: builder.mutation<Card, CreateCardRequest>({
         query: (body) => ({
@@ -171,6 +171,7 @@ export const cardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
         query: ({ file, collection_id }) => {
@@ -221,6 +222,7 @@ export const cardApi = Api.injectEndpoints({
 
           return invalidateTags(error, tags);
         },
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({

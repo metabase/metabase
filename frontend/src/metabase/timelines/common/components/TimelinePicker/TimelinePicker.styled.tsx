@@ -42,7 +42,7 @@ export const CardIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 1rem;
 `;
 
@@ -68,8 +68,8 @@ const selectedStyles = css`
   }
 
   ${CardIconContainer} {
-    border-color: var(--mb-color-background-primary);
-    background-color: var(--mb-color-background-primary);
+    border-color: var(--mb-color-background_page-primary);
+    background-color: var(--mb-color-background_page-primary);
   }
 `;
 

@@ -227,7 +227,7 @@ describe("scenarios > alert", () => {
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserAlertError);
         });
 
@@ -240,7 +240,7 @@ describe("scenarios > alert", () => {
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserSubscriptionError);
         });
       });

@@ -1,0 +1,28 @@
+/* Fixed column widths so a long mapping name can't widen the first column
+   and push the other columns around. */
+.mappingsTable {
+  table-layout: fixed;
+}
+
+.mappingsTable th:first-child,
+.mappingsTable td:first-child {
+  width: 50%;
+  overflow-wrap: anywhere;
+}
+
+.mappingsTable th:nth-child(2),
+.mappingsTable td:nth-child(2) {
+  width: 40%;
+}
+
+.mappingsTable th:nth-child(3),
+.mappingsTable td:nth-child(3) {
+  width: 10%;
+}
+
+/* Only the top corners are rounded to match the card; bdrs prop can't express
+   a partial radius. */
+.header {
+  border-top-left-radius: var(--mantine-radius-md);
+  border-top-right-radius: var(--mantine-radius-md);
+}

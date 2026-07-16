@@ -4,8 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   ;; loaded for its :event/semantic-search-hnsw-enabled handler, which the setter test exercises
+   [metabase-enterprise.semantic-search.events]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
@@ -16,7 +19,8 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [next.jdbc :as jdbc])
   (:import
    (org.postgresql.util PGobject)))
 
@@ -48,8 +52,17 @@
     (let [sql (vector-search-sql :hnsw)]
       (is (not (str/includes? sql "MATERIALIZED")))
       (is (re-find #"ORDER BY embedding <=>" sql))
-      ;; the filter is applied in the outer query, after the candidate set is chosen
-      (is (str/includes? sql "\"archived\" = FALSE"))))
+      ;; the filter is applied in the outer query, after the candidate set is chosen, so it appears *after*
+      ;; the inner ORDER BY embedding <=> ... LIMIT in the generated SQL
+      (is (str/includes? sql "\"archived\" = FALSE"))
+      (is (not (re-find #"(?s)\"archived\" = FALSE.*ORDER BY embedding <=>" sql)))))
+  (testing ":hnsw-iterative-* filters inline with the ordered/limited index scan (iterative scan)"
+    (doseq [strategy [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+      (let [sql (vector-search-sql strategy)]
+        (is (not (str/includes? sql "MATERIALIZED")))
+        ;; the filter lives *inside* the ordered+limited candidate scan (before the ORDER BY embedding <=>),
+        ;; so the HNSW index sees it and the iterative scan can extend until the limit is met
+        (is (re-find #"(?s)\"archived\" = FALSE.*ORDER BY embedding <=>" sql)))))
   (testing "no explicit strategy falls back to the configured default setting"
     (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
            (vector-search-sql nil)))))
@@ -77,26 +90,197 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
                           (semantic.settings/semantic-search-vector-strategy! :nonsense))))
   (testing "valid strategies round-trip"
-    (doseq [strategy [:hnsw :brute-force]]
+    (doseq [strategy [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict]]
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
-        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
+  (testing "the setter kicks off the background build job on the transition into any HNSW-index-backed strategy"
+    ;; This asserts *when* the build is triggered (the transition gating), not what the build does -- the
+    ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. The setter publishes
+    ;; :event/semantic-search-hnsw-enabled, whose handler (semantic-search.events) calls the async build; we
+    ;; spy on that build so the trigger is verified deterministically without spawning a real future.
+    (mt/with-premium-features #{:semantic-search}
+      (let [triggers (atom 0)]
+        (mt/with-dynamic-fn-redefs [semantic.core/build-hnsw-index-async! (fn [] (swap! triggers inc))]
+          (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy :brute-force]
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "transitioning :brute-force -> :hnsw kicks off a build")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "setting :hnsw again when already :hnsw does not re-trigger")
+            ;; switching between index-backed strategies reuses the existing index, so no rebuild
+            (semantic.settings/semantic-search-vector-strategy! :hnsw-iterative-strict)
+            (is (= 1 @triggers) "switching :hnsw -> :hnsw-iterative-strict does not re-trigger")
+            (semantic.settings/semantic-search-vector-strategy! :brute-force)
+            (is (= 1 @triggers) "switching away to :brute-force does not trigger")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw-iterative-relaxed)
+            (is (= 2 @triggers) "transitioning :brute-force -> :hnsw-iterative-relaxed kicks off a build")))))))
+
+(deftest vector-session-settings-test
+  (testing ":hnsw and :brute-force need no session GUCs"
+    (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :hnsw})))
+    (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :brute-force}))))
+  (testing ":hnsw-iterative-* emits iterative_scan/ef_search/max_scan_tuples SET LOCALs; the strategy sets the order"
+    (is (= ["SET LOCAL hnsw.iterative_scan = strict_order"
+            "SET LOCAL hnsw.ef_search = 100"
+            "SET LOCAL hnsw.max_scan_tuples = 50000"]
+           (map first (#'semantic.index/vector-session-settings
+                       {:vector-search-strategy        :hnsw-iterative-strict
+                        :vector-search-ef-search       100
+                        :vector-search-max-scan-tuples 50000}))))
+    (is (= "SET LOCAL hnsw.iterative_scan = relaxed_order"
+           (first (first (#'semantic.index/vector-session-settings
+                          {:vector-search-strategy :hnsw-iterative-relaxed}))))))
+  (testing "force-index? appends enable_seqscan = off for any strategy"
+    (is (= ["SET LOCAL enable_seqscan = off"]
+           (map first (#'semantic.index/vector-session-settings
+                       {:vector-search-strategy :hnsw :vector-search-force-index? true}))))))
+
+(deftest ^:synchronized semantic-search-instrumentation-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (semantic.tu/upsert-index! (semantic.tu/mock-documents))
+      (testing "vector-search-explain? runs EXPLAIN ANALYZE and emits the vector-scan instrumentation metrics"
+        (let [analytics-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                       (swap! analytics-calls conj [metric args]))]
+            (mt/with-test-user :crowberto
+              (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                          {:search-string "dog training" :vector-search-explain? true}))
+            (let [by-metric (into {} (map (juxt first (comp vec second))) @analytics-calls)]
+              (testing "all four instrumentation metrics fire with numeric values"
+                (doseq [metric [:metabase-search/semantic-vector-inner-ms
+                                :metabase-search/semantic-vector-tuples-scanned
+                                :metabase-search/semantic-prefilter-pool-size]]
+                  (is (contains? by-metric metric))
+                  ;; args are [labels amount]; the amount must be a non-negative number
+                  (is (number? (second (by-metric metric))) (str metric " amount should be numeric"))
+                  (is (<= 0 (second (by-metric metric))) (str metric " amount should be non-negative"))))
+              (testing "the scan plan node is reported as a label"
+                (is (contains? by-metric :metabase-search/semantic-vector-scan-used-index))
+                (is (string? (get-in (by-metric :metabase-search/semantic-vector-scan-used-index)
+                                     [0 :plan-node]))))))))
+      (testing "with instrumentation off (the default) no instrumentation metrics are emitted"
+        (let [analytics-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                       (swap! analytics-calls conj [metric args]))]
+            (mt/with-test-user :crowberto
+              (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                          {:search-string "dog training"}))
+            (is (not (contains? (set (map first @analytics-calls))
+                                :metabase-search/semantic-vector-inner-ms)))))))))
+
+(deftest ^:parallel index-table-name?-test
+  (testing "recognizes every shape the naming code produces"
+    (are [table-name] (semantic.index/index-table-name? table-name)
+      ;; model-table-name for the current default and mock models
+      (semantic.index/model-table-name {:provider "ai-service" :model-name "text-embedding-3-small" :vector-dimensions 1536})
+      (semantic.index/model-table-name semantic.tu/mock-embedding-model)
+      "index_ollama_mxbai_lg_1024"
+      ;; force-reset suffix, as pgvector-api/fresh-index builds it
+      (str (semantic.index/model-table-name semantic.tu/mock-embedding-model) "_" (semantic.index/model-table-suffix))
+      "index_ollama_mxbai_lg_1024_1234567"
+      ;; hashed shape for names exceeding the pg identifier limit
+      (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
+      (str "index_" (apply str (repeat 40 "a")))
+      ;; legacy pre-BOT-337 era: anything under the index_table_ prefix is reapable
+      "index_table_ollama_mxbai_lg_1024"
+      "index_table_stale"))
+  (testing "rejects the control-plane and other non-index tables"
+    (are [table-name] (not (semantic.index/index-table-name? table-name))
+      "index_metadata"
+      "index_control"
+      "index_gate"
+      "migration"
+      "dlq_1"
+      "repair_1751000000000_1"
+      ;; index_-prefixed but no trailing _<digits> and not the legacy index_table_ prefix
+      "index_tablex"
+      "index_table_"
+      ;; a valid shape as a substring must not match
+      "xindex_ollama_mxbai_lg_1024"
+      "index_ollama_mxbai_lg_1024 junk"
+      ;; wrong-length hex
+      (str "index_" (apply str (repeat 39 "a")))
+      (str "index_" (apply str (repeat 41 "a"))))))
+
+(defn- expected-index-defs
+  "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
+  Maps the name of each index it must create to a pattern its pg_indexes indexdef must match."
+  [index]
+  ;; the pkey and (model, model_id) unique-constraint indexes come from the table schema, not CREATE INDEX
+  ;; statements, so they are deliberately absent here; =? tolerates them as extra keys in the actual
+  {(semantic.index/hnsw-index-name index)         #"CREATE INDEX .* USING hnsw \(embedding vector_cosine_ops\)"
+   (semantic.index/fts-index-name index)          #"CREATE INDEX .* USING gin \(text_search_vector\)"
+   (semantic.index/fts-native-index-name index)   #"CREATE INDEX .* USING gin \(text_search_with_native_query_vector\)"
+   (#'semantic.index/content-index-name index)    #"CREATE INDEX .* USING btree \(content\)"})
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [index-ref (semantic.tu/open-temp-index!)]
-      ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
-      (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
-      (testing "index table is not present before create!"
-        (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      (let [index      @index-ref
+            table-name (:table-name index)]
+        ;; open-temp-index! creates the temp table, so drop it in order to test create!.
+        (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) index)
+        (testing "neither the table nor any of its indexes is present before create!"
+          (is (not (semantic.tu/table-exists-in-db? table-name)))
+          (is (= {} (semantic.tu/table-indexes table-name))))
+        (testing "under the default :brute-force strategy, create! builds the table and FTS indexes but not the HNSW index"
+          (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :brute-force)]
+            (semantic.index/create-index-table-if-not-exists!
+             (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
+          (is (semantic.tu/table-exists-in-db? table-name))
+          (is (=? (dissoc (expected-index-defs index) (semantic.index/hnsw-index-name index))
+                  (semantic.tu/table-indexes table-name)))
+          (is (not (semantic.tu/table-has-index? table-name (semantic.index/hnsw-index-name index)))))
+        (testing "under the :hnsw strategy, force-reset? rebuilds the full contract (incl. HNSW) and wipes data"
+          ;; seed rows first; rows that survive the reset would mean force-reset? was silently ignored
+          (semantic.tu/upsert-index! (semantic.tu/mock-documents))
+          (is (pos? (semantic.tu/index-count index)))
+          (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :hnsw)]
+            (semantic.index/create-index-table-if-not-exists!
+             (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
+          (is (zero? (semantic.tu/index-count index)))
+          (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
+
+(deftest create-index-table!-extension-failure-test
+  (testing "a failed CREATE EXTENSION surfaces the actionable pgvector guidance, not the generic wrapper"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+        ;; the extension is the first statement create! runs, so throwing here exercises the inner catch
+        (mt/with-dynamic-fn-redefs [jdbc/execute!
+                                    (fn [& _] (throw (RuntimeException. "permission denied to create extension")))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (semantic.index/create-index-table-if-not-exists!
+                                (semantic.env/get-pgvector-datasource!) @index-ref)))]
+            (testing "the escaping error keeps the extension-install type and message, not \"Failed to create index table\""
+              (is (= ::semantic.index/extension-install-failed (:type (ex-data e))))
+              (is (re-find #"pgvector extension" (ex-message e))))))))))
+
+(deftest create-hnsw-index-if-not-exists!-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      (testing "HNSW index is absent until built explicitly"
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
-        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref))))
-        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))
-      (testing "index table is present after create!"
-        (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? false})
-        (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))))
+        (semantic.index/create-hnsw-index-if-not-exists! (semantic.env/get-pgvector-datasource!) @index-ref)
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
+      (testing "is idempotent: a second call does no work (reuses the existing index, no rebuild)"
+        (let [before (semantic.tu/index-relfilenode (semantic.index/hnsw-index-name @index-ref))]
+          (is (some? before) "the index exists before the second call")
+          (semantic.index/create-hnsw-index-if-not-exists! (semantic.env/get-pgvector-datasource!) @index-ref)
+          (is (= before (semantic.tu/index-relfilenode (semantic.index/hnsw-index-name @index-ref)))
+              "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
+
+(deftest query-index-hnsw-without-index-throws-test
+  (testing "a query under any HNSW-index-backed strategy fails fast when no HNSW index exists, rather than silently scanning"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
+        (doseq [strategy [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+          (testing strategy
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"no HNSW index exists"
+                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                             @index-ref
+                                             {:search-string "puppy" :vector-search-strategy strategy})))))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -742,3 +926,15 @@
                      (-> (semantic.tu/query-index {:search-string "Antarctic wildlife"})
                          first
                          (select-keys [:id :name :model])))))))))))
+
+(deftest search-filters-models-test
+  (testing "the models predicate distinguishes an empty applicable-model set from an absent one"
+    (let [conds (fn [ctx] (tree-seq coll? seq (#'semantic.index/search-filters ctx)))]
+      (testing "a non-empty set filters to those models"
+        (is (some #{[:in :model #{"card"}]} (conds {:models #{"card"}}))))
+      (testing "an empty (but present) set matches nothing, rather than omitting the predicate (all models)"
+        (is (some #{[:= [:inline 1] [:inline 0]]} (conds {:models #{} :curated? true}))))
+      (testing "an absent :models adds no model predicate"
+        (let [flat (conds {:archived? false})]
+          (is (not-any? #(and (vector? %) (= [:in :model] (subvec % 0 (min 2 (count %))))) flat))
+          (is (not-any? #{[:= [:inline 1] [:inline 0]]} flat)))))))

@@ -1,4 +1,4 @@
-import { getErrorMessage } from "./errors";
+import { getErrorMessage, isEmailAlreadyInUse } from "./errors";
 
 describe("getErrorMessage", () => {
   it("should return a message from a string payload", () => {
@@ -51,5 +51,21 @@ describe("getErrorMessage", () => {
   it("should return a default fallback message if payload is null", () => {
     const result = getErrorMessage(null);
     expect(result).toEqual("Something went wrong");
+  });
+});
+
+describe("isEmailAlreadyInUse", () => {
+  it("flags only a body carrying the email-already-in-use error_code", () => {
+    expect(
+      isEmailAlreadyInUse({
+        status: 400,
+        data: { error_code: "email-already-in-use" },
+      }),
+    ).toBe(true);
+    expect(
+      isEmailAlreadyInUse({ status: 400, data: { error_code: "archived" } }),
+    ).toBe(false);
+    expect(isEmailAlreadyInUse({ status: 400, data: {} })).toBe(false);
+    expect(isEmailAlreadyInUse(undefined)).toBe(false);
   });
 });

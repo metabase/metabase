@@ -1,5 +1,6 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -18,6 +19,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
+   (com.google.api.client.googleapis.json
+    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
@@ -60,9 +63,13 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -93,6 +100,9 @@
          :dataset-filters-type "inclusion"
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
+
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
@@ -146,7 +156,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-    (.printStackTrace (Exception. "This should not happen")))
+    (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -506,15 +516,20 @@
     [(test-dataset-id db-def)])
    ffirst))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map first (execute! sql)))))
+
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  (and
-   (dataset-tracked?! db-def)
-   (database-exists?! db-def)))
+  (and (database-exists?! db-def)
+       (set/subset? (set (map :table-name (:table-definitions db-def)))
+                    (set (get-existing-tables (test-dataset-id db-def))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
+  (setup-tracking-dataset!)
   ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
   (u/ignore-exceptions
     (execute-params!
@@ -525,11 +540,6 @@
      [(tx/hash-dataset db-def)
       (test-dataset-id db-def)
       (tx/tracking-access-note)])))
-
-(defn- get-existing-tables [dataset-id]
-  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
-                    (project-id) dataset-id)]
-    (set (map :table_name (execute! sql)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
@@ -544,7 +554,14 @@
     (let [existing-tables (get-existing-tables dataset-id)]
       (doseq [tabledef table-definitions
               :when (not (existing-tables (:table-name tabledef)))]
-        (load-tabledef! dataset-id tabledef)))
+        (try
+          (load-tabledef! dataset-id tabledef)
+          (catch BigQueryException e
+            (when-not (= 409 (.getCode e))
+              (throw e)))
+          (catch GoogleJsonResponseException e
+            (when-not (= 409 (.getCode (.getDetails e)))
+              (throw e))))))
     (doseq [native-ddl (:native-ddl options)]
       (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
     (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))

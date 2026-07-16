@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCreateWorkspaceEndpoint } from "__support__/server-mocks";
+import {
+  setupCreateWorkspaceEndpoint,
+  setupListWorkspacesEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Workspace } from "metabase-types/api";
 import {
@@ -25,6 +28,7 @@ function setup({
   const onClose = jest.fn();
 
   setupCreateWorkspaceEndpoint(createdWorkspace);
+  setupListWorkspacesEndpoint([createdWorkspace]);
 
   renderWithProviders(
     <NewWorkspaceModal

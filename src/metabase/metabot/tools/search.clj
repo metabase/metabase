@@ -11,6 +11,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -27,10 +28,14 @@
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
+        ;; Curation signals beyond verified, so the LLM can see *why* content is curated. `:curated` is
+        ;; the precomputed rollup (present on the appdb/semantic engines); `:data_layer` is table-only.
+        ;; assoc-some keeps them off results that don't carry them (e.g. the in-place fallback).
+        official? (= "official" (:authority_level collection-info))
         common-fields {:id          (:id result)
                        :type        (metabot.search-models/search-model->entity-type model)
                        :name        (:name result)
@@ -41,27 +46,40 @@
       "database"
       common-fields
 
+      "collection"
+      ;; A collection has no database/base-table; surface its own curation level and parent location.
+      (-> common-fields
+          (merge {:official official?})
+          (m/assoc-some :location (:location result)))
+
       "table"
-      (merge common-fields
-             {:name            (:table_name result)
-              :display_name    (:name result)
-              :database_id     (:database_id result)
-              :database_schema (:table_schema result)})
+      (-> common-fields
+          (merge {:name            (:table_name result)
+                  :display_name    (:name result)
+                  :database_id     (:database_id result)
+                  :database_schema (:table_schema result)
+                  :official        official?
+                  :data_authority  data_authority})
+          (m/assoc-some :curated curated :data_layer data_layer))
 
       "dashboard"
-      (merge common-fields
-             {:verified    verified?
-              :collection  collection-info})
+      (-> common-fields
+          (merge {:verified   verified?
+                  :official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated))
 
       "transform"
       (merge common-fields
              {:database_id (:database_id result)})
 
       ;; Questions, metrics, and datasets
-      (merge common-fields
-             {:database_id (:database_id result)
-              :verified    verified?
-              :collection  collection-info}))))
+      (-> common-fields
+          (merge {:database_id (:database_id result)
+                  :verified    verified?
+                  :official    official?
+                  :collection  collection-info})
+          (m/assoc-some :curated curated)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -268,7 +286,7 @@
                                                   search-native-query
                                                   (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
-                                                  (assoc :verified true)
+                                                  (assoc :curated true)
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine
@@ -289,7 +307,7 @@
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
-                          (u/seek (comp not semantic?) (search.engine/supported-engines)))
+                          (search.engine/fallback-engine semantic-engine))
         fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion
@@ -305,6 +323,127 @@
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         remove-unreadable-transforms)))
+
+(defn- table-refs->results
+  [ids]
+  (when (seq ids)
+    ;; only surface tables the current user can read — a curated entry may point at one they can't access
+    (for [t (filter mi/can-read?
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
+      {:id              (:id t)
+       :type            "table"
+       :name            (:name t)
+       :display_name    (:display_name t)
+       :database_id     (:db_id t)
+       :database_schema (:schema t)
+       :description     (:description t)})))
+
+(defn- card-refs->results
+  "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
+  Emits one record per distinct card id, carrying the card's *current* type — so the same card registered
+  under two (possibly stale) type strings collapses to a single record rather than duplicating."
+  [refs]
+  (let [ids       (distinct (map :id refs))
+        ;; only surface cards the current user can read (collection perms) — see table-refs->results
+        id->card  (when (seq ids)
+                    (into {} (map (juxt :id identity))
+                          (filter mi/can-read?
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
+                                              :card_schema :type]
+                                             :id [:in ids]))))
+        coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
+        id->coll  (when (seq coll-ids)
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+        ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
+        verified  (when (seq ids)
+                    (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                      :moderated_item_id [:in ids] :moderated_item_type "card"
+                                      :most_recent true :status "verified"))]
+    (for [id ids
+          :let [c (id->card id)]
+          :when c]
+      (let [coll (get id->coll (:collection_id c))]
+        {:id          id
+         ;; the Card's *current* type, not the caller's ref type — a stale index hit kept across a
+         ;; metric<->model relabel must not describe the entity with its old shape. Card's :type is a
+         ;; keyword; emit the agent-facing string so downstream string checks and entity-class still match.
+         :type        (some-> (:type c) name)
+         :name        (:name c)
+         :description (:description c)
+         :database_id (:database_id c)
+         :verified    (contains? verified id)
+         :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
+
+(defn- measure-segment-refs->results
+  "Build search-result records for measure/segment refs (`{:id .. :type \"measure\"|\"segment\"}`),
+  carrying parent-table context (database + base table). Only surfaces those whose parent Table the
+  current user can read (perms delegate to the table)."
+  [refs]
+  (when (seq refs)
+    (let [by-type (group-by :type refs)
+          fetch   (fn [model ids]
+                    (when-let [ids (not-empty (distinct ids))]
+                      (filter mi/can-read?
+                              (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))))
+          rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
+          tbl-ids (not-empty (distinct (keep :table_id rows)))
+          id->tbl (when tbl-ids
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
+      (for [{:keys [id type name description table_id entity_id]} rows
+            :let [t (get id->tbl table_id)]]
+        (cond-> {:id id :type type :name name :description description}
+          ;; the measure/segment's NanoID — used in a [measure|segment, {}, <id>] clause the way a metric
+          ;; uses its portable_entity_id (carded types get theirs in enrich-with-portable-entity-ids).
+          entity_id (assoc :portable_entity_id entity_id)
+          t         (assoc :database_id       (:db_id t)
+                           :base_table_id      (:id t)
+                           :base_table_name    (:name t)
+                           :base_table_schema  (:schema t)))))))
+
+(defn- enrich-with-measure-segment-base-tables
+  "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once
+  `:database_name` is set (by [[enrich-with-database-engines]]), giving the agent the table to query a
+  measure/segment against — the same affordance metrics get from [[enrich-with-metric-base-tables]]."
+  [results]
+  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
+          (if (and (#{"measure" "segment"} type) database_name base_table_name)
+            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
+            r))
+        results))
+
+(defn ref-model->entity-type
+  "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
+  `\"question\"` everywhere the agent sees them (`read_resource` URIs, search results)."
+  [model]
+  (if (= model "card") "question" model))
+
+(defn entity-refs->search-results
+  "Hydrate semantic-layer entity refs into the enriched search-result shape that
+  [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
+
+  `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
+  `\"metric\"`, `\"question\"`, `\"measure\"`, or `\"segment\"` (the names the agent uses with
+  `read_resource`); `\"card\"` is accepted and normalized to `\"question\"`.
+  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric/measure/
+  segment base tables, etc. — everything the LLM needs to build a query without an extra round-trip.
+  Refs whose entity no longer exists are dropped."
+  [refs]
+  (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
+        table-ids (distinct (map :id (get by-model "table")))
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})
+        ms-refs   (for [m ["measure" "segment"], r (get by-model m)] {:id (:id r) :type m})]
+    (->> (concat (table-refs->results table-ids)
+                 (card-refs->results (distinct card-refs))
+                 (measure-segment-refs->results (distinct ms-refs)))
+         enrich-with-collection-descriptions
+         enrich-with-database-engines
+         enrich-with-portable-entity-ids
+         enrich-with-metric-base-tables
+         enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 
 (defn- format-search-output

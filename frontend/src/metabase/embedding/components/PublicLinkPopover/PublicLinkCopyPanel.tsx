@@ -43,7 +43,7 @@ export const PublicLinkCopyPanel = ({
               key={extension}
               tt="uppercase"
               c={
-                extension === selectedExtension ? "core-brand" : "text-tertiary"
+                extension === selectedExtension ? "core-brand" : "text-disabled"
               }
               fw={700}
               onClick={() =>
@@ -70,7 +70,7 @@ export const PublicLinkCopyPanel = ({
               component="button"
               style={{ whiteSpace: "nowrap" }}
               fz="sm"
-              c="error"
+              c="feedback-negative"
               fw={700}
               onClick={onRemoveLink}
             >

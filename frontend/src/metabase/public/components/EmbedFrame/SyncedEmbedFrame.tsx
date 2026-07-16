@@ -1,7 +1,6 @@
-import type { WithRouterProps } from "react-router";
-import { withRouter } from "react-router";
-
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import type { WithRouterProps } from "metabase/router";
+import { withRouter } from "metabase/router";
 
 import type { EmbedFrameProps } from "./EmbedFrame";
 import { EmbedFrame } from "./EmbedFrame";

@@ -5,7 +5,7 @@ import {
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";

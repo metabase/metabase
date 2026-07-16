@@ -559,7 +559,7 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/dependencies "FieldValues" [fv]
+(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
   (let [db-path (first (serdes/path fv))]
     [[db-path]]))
 

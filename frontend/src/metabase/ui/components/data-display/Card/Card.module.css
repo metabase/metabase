@@ -1,8 +1,8 @@
 .section {
-  border-top-color: var(--mb-color-border);
-  border-bottom-color: var(--mb-color-border);
+  border-top-color: var(--mb-color-border-neutral);
+  border-bottom-color: var(--mb-color-border-neutral);
 
   &[data-first-section] {
-    border-bottom-color: var(--mb-color-border);
+    border-bottom-color: var(--mb-color-border-neutral);
   }
 }

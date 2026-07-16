@@ -10,6 +10,7 @@ import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { SelectedTabId } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
@@ -19,6 +20,7 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardSubscription,
+  DashboardTab,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -62,14 +64,17 @@ const defaultParameters = [
 function createDashboardState(
   dashboard: Dashboard,
   dashcards: DashboardCard[],
+  selectedTabId: SelectedTabId = null,
 ) {
   return createMockDashboardState({
     dashboardId: dashboard.id,
+    selectedTabId,
     dashcards: dashcards.reduce(
       (acc, card) => {
         acc[card.id] = card;
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<number, DashboardCard>,
     ),
     dashboards: {
@@ -89,6 +94,8 @@ type SetupOpts = {
   isAdmin?: boolean;
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
+  tabs?: DashboardTab[];
+  selectedTabId?: SelectedTabId;
   isEmbeddingSdk?: boolean;
   setSharing?: (sharing: boolean) => void;
   pulses?: (Partial<DashboardSubscription> & { id: number })[];
@@ -107,6 +114,8 @@ export function setup({
   isAdmin = false,
   dashcards = defaultDashcards,
   parameters = defaultParameters,
+  tabs,
+  selectedTabId = null,
   isEmbeddingSdk = false,
   setSharing,
   pulses = [],
@@ -116,6 +125,7 @@ export function setup({
   const dashboard = createMockDashboard({
     dashcards,
     parameters,
+    tabs,
   });
 
   const channelData: {
@@ -159,6 +169,7 @@ export function setup({
     };
   }
 
+  // Unjustified type cast. FIXME
   (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
   setupNotificationChannelsEndpoints(channelData.channels);
@@ -177,7 +188,9 @@ export function setup({
 
   // Mock POST that updates the GET response
   fetchMock.post("path:/api/pulse", ({ options }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(options.body as string);
+    // Unjustified type cast. FIXME
     const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
     pulses.push(newPulse);
     return newPulse;
@@ -206,7 +219,7 @@ export function setup({
           last_name: currentUser?.lastName,
           is_superuser: isAdmin,
         }),
-        dashboard: createDashboardState(dashboard, dashcards),
+        dashboard: createDashboardState(dashboard, dashcards, selectedTabId),
       }),
     },
   );

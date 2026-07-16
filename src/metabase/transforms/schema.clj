@@ -35,9 +35,22 @@
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
 
+(mr/def ::merge-key-column
+  "One column of a merge unique key. Carries a resolved `:field-id` when the target column is known,
+  degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
+  [:map
+   [:name {:optional true} ms/NonBlankString]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::merge-config
+  [:map
+   [:type [:= "merge"]]
+   [:unique-key [:sequential ::merge-key-column]]])
+
 (mr/def ::target-incremental-strategy
   [:multi {:dispatch :type}
-   ["append" ::append-config]])
+   ["append" ::append-config]
+   ["merge"  ::merge-config]])
 
 (mr/def ::table-target
   [:map

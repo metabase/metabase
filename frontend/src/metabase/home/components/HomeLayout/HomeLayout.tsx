@@ -45,7 +45,7 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
         xl: "10rem 15rem 4rem",
       }}
       mih="100%"
-      bg="background-secondary"
+      bg="background_page-secondary"
     >
       {landingPageIllustration &&
         (landingPageIllustration.isDefault ? (

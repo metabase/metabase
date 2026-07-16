@@ -46,6 +46,7 @@ describe("getPieChartModel", () => {
     },
   ];
 
+  // Unjustified type cast. FIXME
   const settings = {
     "pie.metric": "count",
     column_settings: {},
@@ -147,6 +148,7 @@ describe("getPieChartModel", () => {
     measureText: () => 10,
     measureTextHeight: () => 10,
     fontFamily: "Arial",
+    // Unjustified type cast. FIXME
     theme: {
       pie: {
         borderColor: "#000000",

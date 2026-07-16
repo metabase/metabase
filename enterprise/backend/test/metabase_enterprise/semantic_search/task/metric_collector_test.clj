@@ -4,12 +4,14 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -71,7 +73,12 @@
             index-metadata (semantic.tu/unique-index-metadata)
             model semantic.tu/mock-embedding-model]
         (mt/with-dynamic-fn-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
-                                    semantic.env/get-configured-embedding-model (fn [] model)]
+                                    semantic.env/get-configured-embedding-model (fn [] model)
+                                    ;; supported? requires a configured embedder for engine selection
+                                    semantic.embedding/get-configured-model (fn [] model)
+                                    ;; collect-metrics! only runs when semantic is the active engine; pin it so a
+                                    ;; sibling test leaking the search-engine setting can't make this read 0
+                                    semantic.u/semantic-search-active? (fn [] true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
                            (@#'semantic.task.collector/collect-metrics!)

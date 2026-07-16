@@ -4,13 +4,17 @@ import * as Yup from "yup";
 
 import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { Form, FormProvider, FormSelect } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+} from "metabase/forms";
 import { Button, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
@@ -127,9 +131,13 @@ export const ImpersonationModalView = ({
               <ImpersonationWarning database={database} />
 
               <FormFooter hasTopBorder>
-                <FormErrorMessage inline />
+                <FormErrorMessage />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-                <FormSubmitButton title={t`Save`} disabled={!isValid} primary />
+                <FormSubmitButton
+                  label={t`Save`}
+                  disabled={!isValid}
+                  variant="filled"
+                />
               </FormFooter>
             </Form>
           )}

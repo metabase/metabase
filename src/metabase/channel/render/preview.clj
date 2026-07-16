@@ -15,6 +15,7 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.util :as u]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
@@ -31,7 +32,7 @@
 (def ^:private csv-row-limit 10)
 
 (defn- csv-to-html-table [csv-string]
-  (let [rows (csv/read-csv csv-string)]
+  (let [rows (csv/read-csv (u/strip-bom csv-string))]
     [:table {:style table-style}
      (for [row (take (inc csv-row-limit) rows)] ;; inc row-limit to include the header and the expected # of rows
        [:tr {:style table-style}

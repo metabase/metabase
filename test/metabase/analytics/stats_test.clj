@@ -549,6 +549,7 @@
     :data-complexity-score
     :development-mode
     :library
+    :library-retrieval
     :embedding
     :embedding-sdk
     :embedding-simple

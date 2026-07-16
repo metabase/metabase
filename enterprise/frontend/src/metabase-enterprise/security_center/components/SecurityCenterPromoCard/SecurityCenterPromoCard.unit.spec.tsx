@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { securityCenterApi, subscriptionApi } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,

@@ -10,6 +10,7 @@
    [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -76,6 +77,10 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
+          (when (and (:channel_id handler) (nil? (:channel handler)))
+            (throw (ex-info (tru "The channel this notification is set to send to no longer exists or is inactive.")
+                            {:channel-id   (:channel_id handler)
+                             :channel-type (:channel_type handler)})))
           (retry/with-retry (assoc retry-config
                                    :retry-on Exception
                                    :abort-if (fn [_ ex]
@@ -450,18 +455,20 @@
    - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
    - Returns nil for other notification types or if entity_id would be nil.
    Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
-  [{:keys [payload_type payload payload_id]}]
+  [{:keys [id payload_type payload payload_id]}]
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
                                                             (t2/select-one-fn :card_id :model/NotificationCard :id)))]
-                              {:run_type    :alert
-                               :entity_type :card
-                               :entity_id   card-id})
+                              {:run_type        :alert
+                               :entity_type     :card
+                               :entity_id       card-id
+                               :notification_id id})
     :notification/dashboard (when-let [dashboard-id (:dashboard_id payload)]
-                              {:run_type    :subscription
-                               :entity_type :dashboard
-                               :entity_id   dashboard-id})
+                              {:run_type        :subscription
+                               :entity_type     :dashboard
+                               :entity_id       dashboard-id
+                               :notification_id id})
     nil))
 
 (mu/defn send-notification!

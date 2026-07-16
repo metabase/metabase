@@ -8,7 +8,8 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -48,6 +49,27 @@
             (testing "delete"
               (is (=? {:id ws-id :deleted true}
                       (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id))))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
+
+(deftest delete-workspace-pending-databases-test
+  (testing "DELETE refuses a workspace with a pending database unless ignore_pending=true"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Pending" :database_ids [db-id]})
+                wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioning})
+            (testing "refused by default with a 409 listing the pending databases"
+              (is (=? {:pending_databases [{:database_id db-id :status "provisioning"}]}
+                      (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id))))
+              (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))
+            (testing "ignore-pending=true deletes anyway"
+              (is (=? {:id ws-id :deleted true}
+                      (mt/user-http-request :crowberto :delete 200
+                                            (str "ee/workspace-manager/" ws-id "?ignore-pending=true"))))
               (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
 (deftest create-workspace-with-database-ids-test
@@ -101,6 +123,37 @@
                                     :with-databases true
                                     :with-tables    true
                                     :with-fields    true))))))
+
+(deftest rename-workspace-test
+  (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
+      (is (=? {:id ws-id :name "After"}
+              (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/" ws-id) {:name "After"})))
+      (is (= "After" (t2/select-one-fn :name :model/Workspace :id ws-id)))
+      (testing "404 for a missing id"
+        (mt/user-http-request :crowberto :put 404 "ee/workspace-manager/13371337" {:name "X"})))))
+
+(deftest download-config-endpoint-test
+  (testing "GET /:id/config"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Workspace {ws-id :id} {:name "Cfg WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (testing "returns application/x-yaml with an attachment Content-Disposition"
+        (is (=? {:status  200
+                 :headers {"Content-Type"        "application/x-yaml"
+                           "Content-Disposition" "attachment; filename=\"config.yml\""}}
+                (mt/user-http-request-full-response
+                 :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
+      (testing "409 when a database is not :provisioned"
+        (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
+        (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
+      (testing "404 for a missing workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))

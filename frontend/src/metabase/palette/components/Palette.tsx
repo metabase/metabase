@@ -1,10 +1,10 @@
 import type { Query } from "history";
 import { KBarPortal, VisualState, useKBar } from "kbar";
 import { useEffect, useRef } from "react";
-import { type PlainRoute, withRouter } from "react-router";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useSelector } from "metabase/redux";
+import { type PlainRoute, withRouter } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -85,7 +85,7 @@ export const PaletteContainer = withRouter(
         w="640px"
         p="0"
         data-testid="command-palette"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
       >
         <Stack gap={rem(4)} pb="lg">
           <Box pos="relative">

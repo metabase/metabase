@@ -16,7 +16,7 @@ export function SidebarHeader() {
       align="center"
       className={S.sidebarHeader}
     >
-      <Text fz="sm" c="text-tertiary">
+      <Text fz="sm" c="text-disabled">
         {t`AI isn't perfect. Double-check results.`}
       </Text>
 
@@ -25,7 +25,7 @@ export function SidebarHeader() {
           onClick={() => metabot.resetConversation()}
           data-testid="metabot-new-conversation"
         >
-          <Icon name="edit_document_outlined" size="1rem" c="text-tertiary" />
+          <Icon name="edit_document_outlined" size="1rem" c="text-disabled" />
         </UnstyledButton>
       </Tooltip>
     </Flex>

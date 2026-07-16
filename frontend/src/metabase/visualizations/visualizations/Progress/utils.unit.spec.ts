@@ -21,6 +21,7 @@ describe("Visualizations > Progress > utils", () => {
 
   valueTestCases.forEach(([input, output]) => {
     it(`should return ${output} for ${JSON.stringify(input)}`, () => {
+      // Unjustified type cast. FIXME
       expect(getValue(input as any)).toEqual(output);
     });
   });

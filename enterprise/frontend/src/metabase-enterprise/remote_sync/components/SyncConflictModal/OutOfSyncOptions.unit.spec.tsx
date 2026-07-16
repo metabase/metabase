@@ -50,7 +50,7 @@ describe("OutOfSyncOptions", () => {
   });
 
   describe("switch-branch variant", () => {
-    it("shows correct options", () => {
+    it("offers push, new-branch, and discard", () => {
       setup({ variant: "switch-branch" });
       expect(screen.getAllByRole("radio")).toHaveLength(3);
       expect(

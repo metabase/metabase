@@ -175,7 +175,8 @@
   ;; Default both curation columns here so model inserts are consistent across app DBs; a migration
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
-                  :field_order    (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
+                  :field_order    (or (:field_order table)
+                                      (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -582,7 +583,7 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id transform_id]}]
+(defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
   (cond-> [[{:model "Database" :id db_id}]]
     collection_id (conj [{:model "Collection" :id collection_id}])
     transform_id  (conj [{:model "Transform" :id transform_id}])))
@@ -691,7 +692,8 @@
                   :collection-type     :collection.type
                   :collection-location :collection.location
                   :root-collection-type {:fn collection/root-collection-type}
-                  :data-layer          :data_layer}
+                  :data-layer          :data_layer
+                  :data-authority      :data_authority}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}

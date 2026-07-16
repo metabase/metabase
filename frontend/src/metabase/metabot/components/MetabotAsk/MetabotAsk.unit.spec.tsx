@@ -40,7 +40,7 @@ describe("MetabotAsk", () => {
 
   it("replaces the greeting with the conversation after sending a message", async () => {
     setup({ ui: <MetabotAsk /> });
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
 

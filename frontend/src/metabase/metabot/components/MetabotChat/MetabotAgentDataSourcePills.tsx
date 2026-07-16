@@ -13,12 +13,12 @@ import {
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
-} from "metabase/common/utils/source-location";
-import { getMetabotId } from "metabase/metabot/state";
+} from "metabase/metabot/utils/source-location";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -138,7 +138,7 @@ const SourceItem = ({
       w="100%"
       mih="3.25rem"
       p="0.5rem"
-      bg="background-secondary"
+      bg="background_page-secondary"
     >
       <ForwardRefLink
         aria-label={label}
@@ -236,7 +236,7 @@ const SourceItemSkeleton = ({ hasFeedback }: { hasFeedback?: boolean }) => {
       w="100%"
       mih="3.25rem"
       p="0.5rem"
-      bg="background-secondary"
+      bg="background_page-secondary"
       aria-hidden
       data-testid="metabot-source-item-skeleton"
     >
@@ -427,11 +427,11 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
       direction="column"
       miw={0}
       w="100%"
-      bg="background-secondary"
+      bg="background_page-secondary"
       style={{
         borderRadius: "0.5rem",
         overflow: "hidden",
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
       }}
     >
       <UnstyledButton
@@ -445,7 +445,7 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
         w="100%"
         mih="1.75rem"
         px="0.5rem"
-        bg="background-primary"
+        bg="background_page-primary"
         onClick={() => setIsExpanded((isExpanded) => !isExpanded)}
       >
         <Flex align="center" justify="space-between" w="100%">

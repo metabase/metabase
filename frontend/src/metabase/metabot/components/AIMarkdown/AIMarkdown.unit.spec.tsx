@@ -61,6 +61,16 @@ describe("AIMarkdown", () => {
     expect(screen.getByRole("cell", { name: "$42" })).toBeInTheDocument();
   });
 
+  it("should not render images", async () => {
+    setup({
+      children: `start ![remote](https://example.com/cat.png) ![data](data:image/png;base64,iVBORw0KGgo=) end`,
+    });
+
+    expect(await screen.findByText(/start/)).toBeInTheDocument();
+    expect(screen.getByText(/end/)).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("should copy fenced code blocks", async () => {
     setup({
       children: `

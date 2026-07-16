@@ -84,7 +84,7 @@ export const DatabaseMultiSelect = ({
           className={isDisabled ? S.optionIconDisabled : S.optionIcon}
         />
 
-        <Text size="md" c={isDisabled ? "text-tertiary" : undefined}>
+        <Text size="md" c={isDisabled ? "text-disabled" : undefined}>
           {option.label}
         </Text>
 

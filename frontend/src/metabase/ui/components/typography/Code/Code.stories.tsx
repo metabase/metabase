@@ -14,6 +14,7 @@ function Demo() {
 }`;
 const BlockTemplate = (args: CodeProps) => <Code {...args}>{CODE_BLOCK}</Code>;
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Text/Code",
   component: Code,

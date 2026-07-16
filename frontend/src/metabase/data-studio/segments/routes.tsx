@@ -1,6 +1,5 @@
-import { IndexRoute, Route } from "react-router";
-
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 
 import { NewSegmentPage } from "./pages/NewSegmentPage";
 import { SegmentDependenciesPage } from "./pages/SegmentDependenciesPage";
@@ -18,7 +17,7 @@ export function getDataStudioSegmentRoutes() {
           path=":segmentId/dependencies"
           component={SegmentDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
     </Route>

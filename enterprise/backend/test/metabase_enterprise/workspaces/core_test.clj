@@ -122,8 +122,72 @@
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
-        (ws/delete-workspace! (:id ws))
+        (is (= {:deleted true} (ws/delete-workspace! (:id ws))))
         (is (nil? (ws/get-workspace (:id ws))))))))
+
+(deftest delete-workspace-with-pending-status-test
+  (testing "GHY-3954: a workspace with a database still :provisioning/:deprovisioning"
+    (doseq [pending-status [:provisioning :deprovisioning]]
+      (testing (str "status " pending-status)
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws     (ws/create-workspace! {:name       (str "Pending " (name pending-status))
+                                              :creator_id (mt/user->id :crowberto)})
+                _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                         (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
+            ;; force the row into the pending state. :provisioning rows that crashed
+            ;; never stored their iso details, so clear them too.
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                        (cond-> {:status pending-status}
+                          (= pending-status :provisioning)
+                          (assoc :output_namespace "" :database_details {})))
+            (testing "is refused by default, listing the pending databases"
+              (is (thrown-with-msg?
+                   ExceptionInfo #"still provisioning or deprovisioning"
+                   (ws/delete-workspace! (:id ws))))
+              (is (=? {:status-code       409
+                       :pending_databases [{:database_id (mt/id) :status pending-status}]}
+                      (try (ws/delete-workspace! (:id ws))
+                           (catch ExceptionInfo e (ex-data e)))))
+              (is (some? (ws/get-workspace (:id ws)))
+                  "the workspace is left intact when the delete is refused"))
+            (testing "is deleted when ignore-pending? is true; the warehouse is left untouched"
+              ;; destroy! must NOT be called for a pending row — fail loudly if it is.
+              (let [exploding (reify provisioning/Provisioner
+                                (init!    [_ _ _ _]   nil)
+                                (grant!   [_ _ _ _ _] nil)
+                                (destroy! [_ _ _ _]   (throw (ex-info "destroy! must not run for a pending row" {}))))]
+                (with-redefs [provisioning/dispatching-provisioner exploding]
+                  (is (= {:deleted true} (ws/delete-workspace! (:id ws) true)))))
+              (is (nil? (ws/get-workspace (:id ws))))
+              (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
+
+(deftest delete-workspace-warehouse-unreachable-test
+  (testing "GHY-3954: delete still succeeds when warehouse teardown fails; the result"
+    (testing "names the orphaned schema/user and why they were left behind"
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
+              _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                       (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+              wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+              boom   (reify provisioning/Provisioner
+                       (init!    [_ _ _ _]   nil)
+                       (grant!   [_ _ _ _ _] nil)
+                       (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))
+              result (with-redefs [provisioning/dispatching-provisioner boom]
+                       (ws/delete-workspace! (:id ws)))]
+          (is (true? (:deleted result)))
+          (is (nil? (ws/get-workspace (:id ws)))
+              "the workspace is deleted even though warehouse cleanup failed")
+          (is (=? [{:status                :failure
+                    :workspace_database_id wsd-id
+                    :database_id           (mt/id)
+                    :schema                "mb_iso_stub"
+                    :user                  "stub_user"
+                    :reason                "Connection refused"}]
+                  (:orphaned_resources result)))
+          (is (re-find #"was deleted, but warehouse cleanup failed" (:message result)))
+          (is (re-find #"Connection refused" (:message result))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

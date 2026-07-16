@@ -1,8 +1,8 @@
 import { fireEvent, render } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { Route, Router, createMemoryHistory } from "react-router";
 
 import { screen } from "__support__/ui";
+import { Route, Router, createMemoryHistory } from "metabase/router";
 
 import { LegendLabel } from "./LegendLabel";
 

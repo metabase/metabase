@@ -15,10 +15,10 @@ import type {
   Section,
 } from "metabase/common/components/AccordionList/types";
 import { searchFilter } from "metabase/common/components/AccordionList/utils";
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
-import { MenuItemComponent } from "metabase/documents/components/Editor/shared/MenuComponents";
-import { SuggestionPaper } from "metabase/documents/components/Editor/shared/SuggestionPaper";
 import { useMetabotName } from "metabase/metabot/hooks";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
+import { MenuItemComponent } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
+import { SuggestionPaper } from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
 import { Box, Group, Loader, Text } from "metabase/ui";
 import type { Database, SearchResult } from "metabase-types/api";
 

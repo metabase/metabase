@@ -4,12 +4,15 @@ import * as Yup from "yup";
 
 import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormModelPicker";
 import type { CreateQueryActionParams } from "metabase/actions/types";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
@@ -50,31 +53,39 @@ function CreateActionForm({
 
   return (
     <FormProvider
+      // Unjustified type cast. FIXME
       initialValues={initialValues as FormValues}
       validationSchema={ACTION_SCHEMA}
       onSubmit={onCreate}
     >
       {({ isValid }) => (
         <Form disabled={!isValid} data-testid="create-action-form">
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={t`My new fantastic action`}
-            autoFocus
+            data-autofocus
+            mb="md"
           />
-          <FormTextArea
+          <FormTextarea
             name="description"
-            title={t`Description`}
+            label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
+            minRows={5}
+            mb="md"
             nullable
           />
           <FormModelPicker name="model_id" title={t`Model it's saved in`} />
           <FormFooter>
-            <FormErrorMessage inline />
+            <FormErrorMessage />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!isValid} primary />
+            <FormSubmitButton
+              label={t`Create`}
+              disabled={!isValid}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}

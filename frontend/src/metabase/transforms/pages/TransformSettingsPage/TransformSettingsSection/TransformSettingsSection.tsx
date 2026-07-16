@@ -8,8 +8,8 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { UserInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";

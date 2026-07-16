@@ -9,9 +9,15 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { StaticChoropleth } from "./StaticChoropleth";
+import { getStaticChoroplethSettings } from "./utils";
 
+// Unjustified type cast. FIXME
 const renderingContext = {
   getColor: (name: string) =>
     name === "text-secondary" ? "#888888" : "#000000",
@@ -59,6 +65,7 @@ const geoJson: FeatureCollection = {
   ],
 };
 
+// Unjustified type cast. FIXME
 const rawSeries = [
   {
     card: { display: "map" },
@@ -133,6 +140,78 @@ describe("StaticChoropleth", () => {
     expect(svg).toMatch(/25|100/);
     // Legend labels use the rendering context color as-is (already Batik-safe hex), not re-converted.
     expect(svg).toContain('fill="#888888"');
+  });
+
+  it("formats legend labels with the metric column's settings via getStaticChoroplethSettings", () => {
+    // getStaticChoroplethSettings rebuilds the `settings.column` accessor that the static-viz bundle
+    // can't (map isn't registered there); without it the currency formatting never reaches the legend.
+    const currencyRawSeries: RawSeries = [
+      createMockSingleSeries(
+        {
+          display: "map",
+          visualization_settings: {
+            "map.region": "us_states",
+            "map.dimension": "state",
+            "map.metric": "revenue",
+          },
+        },
+        {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "state",
+                base_type: "type/Text",
+                semantic_type: "type/State",
+              }),
+              createMockColumn({
+                name: "revenue",
+                base_type: "type/Float",
+                semantic_type: "type/Income",
+                settings: { number_style: "currency", currency: "USD" },
+              }),
+            ],
+            rows: [
+              ["CA", 12400],
+              ["New York", 1400],
+            ],
+          },
+        },
+      ),
+    ];
+
+    const svg = ReactDOMServer.renderToStaticMarkup(
+      <StaticChoropleth
+        rawSeries={currencyRawSeries}
+        settings={getStaticChoroplethSettings(currencyRawSeries)}
+        geoJson={geoJson}
+        geoJsonDetails={{ region_key: "STATE", region_name: "NAME" }}
+        renderingContext={renderingContext}
+      />,
+    );
+
+    // Currency symbol from the column settings reaches the legend, and the raw value is abbreviated away.
+    expect(svg).toContain("$");
+    expect(svg).not.toContain("12400");
+  });
+
+  it("renders the legend to the side when legendPosition is 'side'", () => {
+    // The side layout widens the viewBox leftward (negative x origin) to seat the vertical legend
+    // column beside the map; the default bottom strip starts at the map's own origin.
+    const sideSvg = ReactDOMServer.renderToStaticMarkup(
+      <StaticChoropleth
+        rawSeries={rawSeries}
+        settings={settings}
+        geoJson={geoJson}
+        geoJsonDetails={{ region_key: "STATE", region_name: "NAME" }}
+        renderingContext={renderingContext}
+        legendPosition="side"
+      />,
+    );
+
+    expect(sideSvg.startsWith("<svg")).toBe(true);
+    expect(sideSvg).toContain("<text");
+    expect(sideSvg).toMatch(/viewBox="-[\d.]+ /);
+    expect(toSvgString()).not.toMatch(/viewBox="-/);
   });
 
   it("renders a custom (non-us_states) region via Mercator + fitWidth", () => {

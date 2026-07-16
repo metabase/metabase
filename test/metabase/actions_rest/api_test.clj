@@ -683,6 +683,23 @@
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                 {:parameters {:name "Darth Vader"}})))))))))
 
+(deftest implicit-update-timestamp-round-trip-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-tables #{"users"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
+                          {action-id :action-id} {:type :implicit :kind "row/update"}]
+          (testing "a prefetched temporal value round-trips unchanged through an update execution (#32840)"
+            (let [fetch!      #(mt/user-http-request :crowberto :get 200 (format "action/%d/execute" action-id)
+                                                     :parameters (json/encode {:id 1}))
+                  {:keys [last_login] :as fetched} (fetch!)
+                  local-value (.format ^java.time.OffsetDateTime last_login
+                                       (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))]
+              (is (some? last_login))
+              (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" action-id)
+                                    {:parameters (assoc fetched :last_login local-value)})
+              (is (= last_login (:last_login (fetch!)))))))))))
+
 (deftest fetch-implicit-action-default-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled

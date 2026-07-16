@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
+   [metabase.models.interface :as mi]
+   [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -59,14 +62,13 @@
   (is (=? {:lib/type :mbql/query
            :stages   [{:lib/type :mbql.stage/native
                        :template-tags
-                       {"device_category"
-                        {:widget-type  :category
+                       [{:widget-type  :category
                          :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
                          :name         "device_category"
                          :display-name "Device category"
                          :type         :dimension
                          :dimension    [:field {} 298221]
-                         :default      nil}}
+                         :default      nil}]
                        :native   "<<NATIVE QUERY>>"}]
            :database 26}
           (mu/disable-enforcement
@@ -82,3 +84,31 @@
                                               "widget-type"  "category/="
                                               "default"      nil}}
                           "query" "<<NATIVE QUERY>>"}})))))
+
+(deftest transform-query-out-vm-error-propagates-test
+  (testing "a VM Error thrown during dataset_query deserialization propagates instead of yielding an empty query"
+    (mt/with-dynamic-fn-redefs [mi/json-out-without-keywordization (fn [_] (throw (Error. "boom")))]
+      (is (thrown? Error
+                   ((:out lib-be/transform-query) "{}")))))
+  (testing "an Exception thrown during dataset_query deserialization yields an empty query"
+    (mt/with-dynamic-fn-redefs [mi/json-out-without-keywordization (fn [_] (throw (RuntimeException. "boom")))]
+      (is (= {}
+             ((:out lib-be/transform-query) "{}")))))
+  (testing "an AssertionError thrown during dataset_query deserialization is contained, yielding an empty query"
+    (mt/with-dynamic-fn-redefs [mi/json-out-without-keywordization (fn [_] (throw (AssertionError. "boom")))]
+      (is (= {}
+             ((:out lib-be/transform-query) "{}"))))))
+
+(deftest normalize-query-vm-error-propagates-test
+  (testing "a VM Error thrown during query normalization propagates instead of yielding an empty query"
+    (mt/with-dynamic-fn-redefs [lib-be.bootstrap/resolve-database (fn [& _] (throw (Error. "boom")))]
+      (is (thrown? Error
+                   (lib-be/normalize-query {:database 1
+                                            :type     :query
+                                            :query    {:source-table 2}})))))
+  (testing "an Exception thrown during query normalization yields an empty query"
+    (mt/with-dynamic-fn-redefs [lib-be.bootstrap/resolve-database (fn [& _] (throw (RuntimeException. "boom")))]
+      (is (= {}
+             (lib-be/normalize-query {:database 1
+                                      :type     :query
+                                      :query    {:source-table 2}}))))))

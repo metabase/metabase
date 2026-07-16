@@ -135,9 +135,8 @@ remoteSyncListenerMiddleware.startListening({
         const isSuccessful = task.status === "successful";
 
         if (isSuccessful) {
-          setTimeout(() => {
-            dispatch(modalDismissed());
-          }, 500);
+          // Leave the modal open showing the success confirmation; the user dismisses it explicitly
+          // (the sync can take a while, so we want to acknowledge completion rather than silently close).
 
           // Both import and a merged export change local content, so refresh everything. A plain push
           // doesn't change local data, but the extra refetch is harmless and keeps this simple.

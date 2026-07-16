@@ -16,8 +16,6 @@ import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButto
 import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
-import S from "./TenantsListingApp.module.css";
-
 export const TenantsListingApp = ({
   children,
 }: {
@@ -45,6 +43,7 @@ export const TenantsListingApp = ({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       setStatus(tab as ActiveStatus);
     }
   };
@@ -70,8 +69,13 @@ export const TenantsListingApp = ({
       </Group>
 
       {isAdmin && hasDeactivatedTenants && (
-        <Tabs value={status} onChange={handleTabChange} pl="md">
-          <Tabs.List className={S.tabs}>
+        <Tabs
+          value={status}
+          onChange={handleTabChange}
+          pl="md"
+          listBorder={false}
+        >
+          <Tabs.List>
             <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
 
             <Tabs.Tab

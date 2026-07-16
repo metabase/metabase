@@ -20,12 +20,14 @@ const getErrorMetadata = <
 }): TMetadata | null => {
   switch (error.type) {
     case "required":
+      // Unjustified type cast. FIXME
       return {
         errorCode: "missing_required_property",
         data: error.params?.path ?? "",
         parameterIndex,
       } as TMetadata;
     case "noUnknown":
+      // Unjustified type cast. FIXME
       return {
         errorCode: "unrecognized_keys",
         data: error.params?.unknown ?? "",
@@ -58,6 +60,7 @@ export const validateFunctionSchema = <
 
         return { success: true };
       } catch (_error: unknown) {
+        // Unjustified type cast. FIXME
         const error = _error as Yup.ValidationError;
         const errorMetadata =
           getErrorMetadata<FunctionParametersSchemaValidationErrorMetadata>({
@@ -88,6 +91,7 @@ export const validateFunctionSchema = <
 
       return { success: true };
     } catch (_error: unknown) {
+      // Unjustified type cast. FIXME
       const error = _error as Yup.ValidationError;
       const errorMetadata = getErrorMetadata<SchemaValidationErrorMetadata>({
         error,

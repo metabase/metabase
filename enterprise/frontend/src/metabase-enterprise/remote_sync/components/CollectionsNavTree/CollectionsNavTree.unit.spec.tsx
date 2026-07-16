@@ -1,9 +1,9 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -41,6 +41,7 @@ const setupEndpoints = ({
 const setup = ({
   collections = [createMockCollectionTreeItem()],
   collectionsList = [createMockCollectionTreeItem()],
+  // Unjustified type cast. FIXME
   dirtyCollectionIds = [] as number[],
 }: {
   collections?: Collection[];
@@ -60,6 +61,7 @@ const setup = ({
       path="/"
       component={() => (
         <CollectionsNavTree
+          // Unjustified type cast. FIXME
           collections={collections as any}
           selectedId={undefined}
           onSelect={jest.fn()}

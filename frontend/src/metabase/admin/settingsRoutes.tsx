@@ -1,10 +1,4 @@
 import type { Store } from "@reduxjs/toolkit";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Route,
-  type RouteComponent,
-} from "react-router";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -13,6 +7,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
@@ -55,7 +50,7 @@ export const getSettingsRoutes = (
         </AdminSettingsLayout>
       )}
     >
-      <IndexRedirect to="general" />
+      <Route index component={redirect("general")} />
       <Route path="general" component={GeneralSettingsPage} />
       <Route path="updates" component={UpdatesSettingsPage} />
       <Route path="email" component={EmailSettingsPage} />
@@ -93,9 +88,9 @@ export const getSettingsRoutes = (
       <Route
         path="custom-visualizations"
         /* do not allow users with "Settings access" permissions to access custom viz pages */
-        component={IsAdmin}
+        element={<IsAdmin />}
       >
-        <IndexRoute component={CustomVisualizationsManagePage} />
+        <Route index component={CustomVisualizationsManagePage} />
         <Route path="new" component={CustomVisualizationsFormPage} />
         <Route path="edit/:id" component={CustomVisualizationsFormPage} />
         {devModeEnabled && (

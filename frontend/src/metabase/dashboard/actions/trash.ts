@@ -4,7 +4,7 @@ import _ from "underscore";
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { getTrashUndoMessage } from "metabase/archive/utils";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";

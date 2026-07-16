@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 export const ChartSettingsWidgetListDivider = styled.div`
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-border-neutral);
   height: 1px;
   display: block;
   margin-bottom: 1.5rem;

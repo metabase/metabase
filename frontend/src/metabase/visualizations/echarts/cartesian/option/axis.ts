@@ -182,7 +182,9 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor(isSplitPanels ? "border-strong" : "border"),
+        color: getColor(
+          isSplitPanels ? "border-neutral-strong" : "border-neutral",
+        ),
       },
     },
   };
@@ -285,9 +287,9 @@ export const buildTimeSeriesDimensionAxis = (
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "time",
     axisLabel: {
-      margin:
-        CHART_STYLE.axisTicksMarginX +
-        (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
+      margin: hasTimelineEvents
+        ? CHART_STYLE.timelineEvents.height
+        : CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
@@ -345,6 +347,12 @@ export const buildCategoricalDimensionAxis = (
 
         return getPaddedAxisLabel(formatter(value));
       },
+      ...(chartLayout.ticksDimensions.xTickWidthCap < Infinity
+        ? {
+            width: chartLayout.ticksDimensions.xTickWidthCap,
+            overflow: "truncate",
+          }
+        : {}),
     },
   };
 };

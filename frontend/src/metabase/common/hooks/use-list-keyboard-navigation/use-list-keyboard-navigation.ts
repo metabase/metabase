@@ -36,6 +36,7 @@ export const useListKeyboardNavigation = <
 
   const handleKeyDown: EventListener = useCallback(
     (event) => {
+      // Unjustified type cast. FIXME
       const { key } = event as KeyboardEvent;
       if (list.length === 0) {
         return;

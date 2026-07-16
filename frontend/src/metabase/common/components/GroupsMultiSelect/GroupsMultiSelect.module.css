@@ -1,0 +1,21 @@
+/* White, outlined pill (same approach as DimensionPill / ReorderableTagsInput).
+   Color, background and weight are set via Pill props. */
+.pill {
+  gap: var(--mantine-spacing-xs);
+  padding: rem(2px) rem(6px) rem(2px) var(--mantine-spacing-sm);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.75rem;
+
+  /* Tighten the label so its row matches the remove button height. */
+  > span {
+    line-height: var(--mantine-line-height-sm);
+  }
+}
+
+/* Drop Mantine's default side margins so `gap` is the only inner spacing.
+   translateY seats the X on the lowercase text: flex centers it on the line
+   box, which sits ~1px above the text's optical center. */
+.remove {
+  margin: 0 !important;
+  transform: translateY(1px);
+}

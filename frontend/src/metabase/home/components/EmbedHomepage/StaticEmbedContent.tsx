@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/router";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 import { trackEmbeddingHomepageExampleDashboardClick } from "./analytics";
@@ -57,5 +57,5 @@ const StaticEmbedImage = styled.img`
   width: 100%;
   margin-bottom: 1rem;
   border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.colors.border};
+  border: 1px solid ${({ theme }) => theme.colors["border-neutral"]};
 `;

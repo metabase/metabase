@@ -6,6 +6,21 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(deftest create-library-endpoint-test
+  (mt/with-premium-features #{:library}
+    (mt/with-discard-model-updates! [:model/Collection]
+      (without-library
+       (testing "non-data-analysts cannot create the library"
+         (mt/user-http-request :rasta :post 403 "ee/library"))
+       (testing "POST /ee/library creates the Library root + Data/Metrics subcollections"
+         (let [response (mt/user-http-request :crowberto :post 200 "ee/library")]
+           (is (= "Library" (:name response)))
+           (is (some? (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)))
+           (is (some? (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)))))
+       (testing "a second call rejects with 400 'Library already exists'"
+         (is (= "Library already exists"
+                (mt/user-http-request :crowberto :post 400 "ee/library"))))))))
+
 (deftest get-library-test
   (mt/with-premium-features #{:library}
     (mt/with-discard-model-updates! [:model/Collection]

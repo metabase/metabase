@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { CollectionRowMenu as BaseCollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu as BaseCollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { Collection } from "metabase-types/api";
 
 type CollectionRowMenuProps = {

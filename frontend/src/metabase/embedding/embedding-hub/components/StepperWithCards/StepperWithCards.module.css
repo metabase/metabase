@@ -12,7 +12,7 @@
   --stepper-outline-thickness: 0.0625rem;
   --stepper-outline-color: color-mix(
     in srgb,
-    var(--mb-color-border),
+    var(--mb-color-border-neutral),
     black 14%
   );
 }
@@ -20,12 +20,12 @@
 .step:not(.stepDone) .stepIcon {
   color: var(--mb-color-text-primary);
   border-color: transparent;
-  background: var(--mb-color-focus);
+  background: var(--mb-color-input-focus);
 }
 
 .step.stepDone .stepIcon {
-  color: var(--mb-color-background-primary);
-  background: var(--mb-color-success-secondary);
+  color: var(--mb-color-background_page-primary);
+  background: var(--mb-color-feedback-positive-selected);
 
   /** Prevent blue border color from affecting the done icon */
   border-color: transparent;
@@ -45,7 +45,7 @@
 }
 
 .stepCard {
-  border: 1px solid var(--mb-color-border) !important;
+  border: 1px solid var(--mb-color-border-neutral) !important;
   cursor: pointer;
   transition:
     background-color 250ms ease,
@@ -63,15 +63,15 @@
 
 .lockedStepCard {
   cursor: not-allowed;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .stepCard:not(.lockedStepCard):hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .stepCard.nextStepCard {
-  border: 1px solid var(--mb-color-metabase-brand) !important;
+  border: 1px solid var(--mb-color-core-metabase_brand) !important;
 }
 
 .infoAlertWrapper {

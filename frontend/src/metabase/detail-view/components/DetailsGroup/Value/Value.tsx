@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { Link } from "metabase/router";
 import { Box, Image, Stack, Text, rem } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
@@ -32,7 +32,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
-    return <Text c="text-tertiary">{t`empty`}</Text>;
+    return <Text c="text-disabled">{t`empty`}</Text>;
   }
 
   if (json) {
@@ -49,7 +49,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   if (isFK(column) && newTableId != null && !isValidLink) {
     return (
       <Text
-        bg="background-secondary"
+        bg="background_page-secondary"
         c="text-primary"
         className={S.fk}
         component={Link}
@@ -67,7 +67,7 @@ export const Value = ({ children, column, field, value }: Props) => {
     return (
       <Stack className={S.value} gap="sm" align="flex-start">
         <Box
-          bg="background-secondary"
+          bg="background_page-secondary"
           className={S.imageFrame}
           mah={FRAME_SIZE}
           maw={FRAME_SIZE}
