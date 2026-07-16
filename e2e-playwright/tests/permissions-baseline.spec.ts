@@ -62,10 +62,11 @@ test.describe("scenarios > permissions", () => {
     );
 
     // Cypress's .should("be.disabled") only checks the first match (jQuery
-    // .prop semantics); a second, hidden run button exists and is enabled.
-    // The test's intent is that the visible run button is disabled.
+    // .prop semantics); a second, hidden-but-enabled run button exists, and
+    // during render transitions a visibility filter can match both. Exactly
+    // mirror the original: first match in DOM order.
     await expect(
-      page.getByLabel("Refresh", { exact: true }).filter({ visible: true }),
+      page.getByLabel("Refresh", { exact: true }).first(),
     ).toBeDisabled();
   });
 
