@@ -48,11 +48,12 @@
 
 (deftest parse-pr-node-keeps-only-approved-authors-test
   (testing "approvers = logins with an APPROVED review; other states ignored"
-    (is (= {:pr 42 :author "alice" :merged-at "2025-07-01T00:00:00Z" :approvers #{"bob"}}
+    (is (= {:pr 42 :author "alice" :merged-at "2025-07-01T00:00:00Z" :n-reviews 3 :approvers #{"bob"}}
            (parse-pr-node {:number 42
                            :author {:login "alice"}
                            :mergedAt "2025-07-01T00:00:00Z"
-                           :reviews {:nodes [{:state "APPROVED" :author {:login "bob"}}
+                           :reviews {:totalCount 3
+                                     :nodes [{:state "APPROVED" :author {:login "bob"}}
                                              {:state "COMMENTED" :author {:login "carol"}}
                                              {:state "CHANGES_REQUESTED" :author {:login "dave"}}]}})))))
 

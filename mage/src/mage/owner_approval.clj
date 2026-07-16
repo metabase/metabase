@@ -142,33 +142,46 @@
        (second (str/split repo #"/")) "\"){"
        (str/join
         (for [n prs]
-          (format "pr%d:pullRequest(number:%d){number author{login} mergedAt reviews(first:100){nodes{state author{login}}}}"
+          (format "pr%d:pullRequest(number:%d){number author{login} mergedAt reviews(first:100){totalCount nodes{state author{login}}}}"
                   n n)))
        "}}"))
 
+(def ^:private reviews-page-size
+  "GraphQL caps a reviews page at 100. A PR with more reviews than this has its tail unread; we surface
+  that per PR rather than paginating, since PRs with 100+ reviews are vanishingly rare here."
+  100)
+
 (defn- parse-pr-node
-  "Reduce a GraphQL pullRequest node to `{:pr :author :merged-at :approvers}` (approvers = set of logins
-  with an APPROVED review). `nil` when the node is null (number wasn't a PR)."
+  "Reduce a GraphQL pullRequest node to `{:pr :author :merged-at :n-reviews :approvers}` (approvers = set of
+  logins with an APPROVED review). `nil` when the node is null (number wasn't a PR)."
   [node]
   (when node
     {:pr        (:number node)
      :author    (get-in node [:author :login])
      :merged-at (:mergedAt node)
+     :n-reviews (get-in node [:reviews :totalCount])
      :approvers (into #{}
                       (keep (fn [r] (when (= "APPROVED" (:state r)) (get-in r [:author :login]))))
                       (get-in node [:reviews :nodes]))}))
 
 (defn- fetch-batch!
-  "Fetch reviews for a batch of PR numbers via one GraphQL call, writing each to the cache."
+  "Fetch reviews for a batch of PR numbers via one GraphQL call, writing each to the cache. Throws on a
+  failed request (non-zero exit, GraphQL errors, or no repository) so a transient failure can't poison the
+  cache with false `:missing` entries; existing cache files are left untouched. Warns per PR whose review
+  count exceeds the page size, since its later approvals may be unread."
   [prs]
   (let [{:keys [exit out]} (shell/sh* {:quiet? true} "gh" "api" "graphql" "-f" (str "query=" (graphql-query prs)))
         body   (json/parse-string (str/join "\n" out) true)
         by-pr  (get-in body [:data :repository])]
-    (when-not (zero? exit)
-      (u/debug "graphql batch exit" exit))
+    (when (or (not (zero? exit)) (:errors body) (nil? by-pr))
+      (throw (ex-info "GraphQL review fetch failed; leaving cache untouched"
+                      {:exit exit, :errors (:errors body), :prs (vec prs)})))
     (doseq [n prs
             :let [node (get by-pr (keyword (str "pr" n)))
                   data (or (parse-pr-node node) {:pr n :missing true})]]
+      (when (< reviews-page-size (or (:n-reviews data) 0))
+        (println (c/yellow (format "warning: PR #%d has %d reviews; only the first %d were read, later approvals may be missed"
+                                   n (:n-reviews data) reviews-page-size))))
       (io/make-parents (review-cache-file n))
       (spit (review-cache-file n) (json/generate-string data)))
     (count prs)))
@@ -532,6 +545,22 @@
                            (if actionable? "<span class=flag>needs an owner</span>" "<span class=none>tooling</span>"))))
        "</table>"))
 
+(defn- month-chart
+  "Stacked-proportion column per month. `cats` are the `[status color]` pairs to stack (bottom-up) and
+  `total-of` yields each month's denominator, so the assessable view normalizes to just its statuses. The
+  month total rides in the column's hover title and a caption under the axis label."
+  [monthly cats total-of]
+  (str "<div class=chart>"
+       (str/join
+        (for [[m stats] monthly
+              :let [total (total-of stats)]]
+          (str "<div class=col title=\"" m " — " total " PRs\"><div class=stack>"
+               (str/join (for [[k color] cats]
+                           (format "<div style=\"height:%.2f%%;background:%s\"></div>"
+                                   (pct (get stats k 0) total) color)))
+               "</div><div class=xlabel>" (subs m 2) "</div><div class=n>" total "</div></div>")))
+       "</div>"))
+
 (defn- render-html [rows ownership ref-desc]
   (let [n-total    (count rows)
         assess     (assessable rows)
@@ -541,13 +570,8 @@
         {:keys [teams no-team summary]} ownership
         {:keys [owned-ns enforced-ns owned-mod enforced-mod
                 no-handle-teams no-handle-ns actionable-no-team-ns]} summary
-        month-cols (for [[m stats] (monthly-stats rows)
-                         :let [total (:total stats)]]
-                     (str "<div class=col><div class=stack>"
-                          (str/join (for [[k color] status-cats]
-                                      (format "<div style=\"height:%.2f%%;background:%s\"></div>"
-                                              (pct (get stats k 0) total) color)))
-                          "</div><div class=xlabel>" (subs m 2) "</div><div class=n>" total "</div></div>"))
+        monthly    (monthly-stats rows)
+        assess-total (fn [stats] (reduce + (map #(get stats (first %) 0) assess-cats)))
         team-rows  (for [[t {:keys [required approved]}] (team-stats assess)]
                      (format "<tr><td>%s</td><td class=num>%s</td><td class=num>%s</td><td class=num>%.0f%%</td><td class=barcell><span style=\"width:%.1f%%\"></span></td></tr>"
                              (h t) required approved (pct approved required) (pct approved required)))]
@@ -560,10 +584,13 @@
  .rail{display:flex;height:26px;border-radius:5px;overflow:hidden;margin:.5rem 0}
  .seg{display:block;height:100%}
  .legend span{margin-right:1rem;font-size:12px} .sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
- .chart{display:flex;align-items:flex-end;gap:3px;height:180px;border-bottom:1px solid #ddd;margin-top:1rem}
- .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+ .chart{display:flex;align-items:flex-end;gap:4px;height:180px;border-bottom:1px solid #ddd;margin-top:1rem;padding-bottom:2px}
+ .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;min-width:0}
  .stack{width:100%;height:100%;display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden}
- .xlabel{font-size:9px;color:#999;margin-top:3px;transform:rotate(-45deg)} .n{font-size:9px;color:#bbb}
+ .xlabel{font-size:10px;color:#888;margin-top:5px;white-space:nowrap} .n{font-size:10px;color:#bbb;font-variant-numeric:tabular-nums}
+ .toggle{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#555;cursor:pointer;user-select:none;margin:.6rem 0 .2rem}
+ .toggle .hint{color:#aaa} .toggle input{cursor:pointer}
+ #graphs[data-mode=all] .g-assessable{display:none} #graphs[data-mode=assessable] .g-all{display:none}
  table{border-collapse:collapse;width:100%;margin-top:1rem} td,th{padding:4px 8px;border-bottom:1px solid #eee;text-align:left}
  h3{font-size:13px;margin-top:1.6rem;color:#555}
  .num{text-align:right;font-variant-numeric:tabular-nums} .barcell{width:160px} .barcell span{display:block;height:10px;background:#30a46c;border-radius:2px}
@@ -575,13 +602,16 @@
 </style>
 <h1>Owner approval audit</h1>
 <p class=meta><b>" n-total "</b> merged PRs &nbsp;·&nbsp; " (subs (:merged_at (first rows)) 0 10) " to " (subs (:merged_at (last rows)) 0 10) " &nbsp;·&nbsp; captured " (subs (str (:captured_at (first rows))) 0 10) "</p>
-<h2>All merged PRs</h2>
-" (rail status-cats all-counts n-total) "
+<label class=toggle><input type=checkbox onchange=\"document.getElementById('graphs').dataset.mode=this.checked?'assessable':'all'\"> Owner approval only <span class=hint>(drop n/a &amp; no-owner; normalize to the " n-assess " assessable PRs)</span></label>
+<div id=graphs data-mode=all>
+<h2>Merged PRs by owner approval</h2>
+<div class=g-all>" (rail status-cats all-counts n-total) "</div>
+<div class=g-assessable>" (rail assess-cats all-counts n-assess) "</div>
 <p class=note><b>no-owner</b> — the PR touches no owned backend module (frontend, docs, config). &nbsp; <b>n/a</b> — the owner team's membership was unknown in team.json at that commit.</p>
-<h2>Owner approval among assessable PRs (" n-assess ")</h2>
-" (rail assess-cats all-counts n-assess) "
 <h2>By month merged</h2>
-<div class=chart>" (str/join month-cols) "</div>
+<div class=g-all>" (month-chart monthly status-cats :total) "</div>
+<div class=g-assessable>" (month-chart monthly assess-cats assess-total) "</div>
+</div>
 <h2>By owner team (when required to approve)</h2>
 <table><tr><th>Team</th><th class=num>Required</th><th class=num>Approved</th><th class=num>Rate</th><th>&nbsp;</th></tr>" (str/join team-rows) "</table>
 <h2>Module ownership &amp; CODEOWNERS enforcement</h2>
@@ -609,6 +639,9 @@ Close by giving the team a team.json assignee, then generating its rules.</p>
   [_cli-args]
   (when-not (.isFile (io/file report-csv))
     (println (c/red (str report-csv " not found — run `./bin/mage owner-approval-audit` first.")))
+    (u/exit 1))
+  (when (empty? (read-csv-rows))
+    (println (c/red (str report-csv " has no PR rows — run the audit over a non-empty range first.")))
     (u/exit 1))
   (let [rows      (read-csv-rows)
         n-total   (count rows)
