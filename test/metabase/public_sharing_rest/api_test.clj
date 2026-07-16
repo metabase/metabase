@@ -1670,9 +1670,9 @@
                                                                  :card_id model-id}]
             (is (partial= {:id 1 :name "African"}
                           (client/client
-                           :get 200
-                           (format "public/dashboard/%s/dashcard/%s/execute" (:public_uuid dash) dashcard-id)
-                           :parameters (json/encode {:id 1}))))))))))
+                           :post 200
+                           (format "public/dashboard/%s/dashcard/%s/execute/values" (:public_uuid dash) dashcard-id)
+                           {:parameters {"id" 1}})))))))))
 
 ;;; --------------------------------- POST /api/public/action/:uuid/execute ----------------------------------
 
