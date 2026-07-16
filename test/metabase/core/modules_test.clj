@@ -424,8 +424,13 @@
           declared  (set (keys config))
           deps      (dev.deps-graph/dependencies (dev.deps-graph/build-prefix->module config))
           full      (dev.deps-graph/full-dependencies deps)
-          ;; mirrors mage.modules/default-modules-which-trigger-drivers
-          upstream  (set/union (get full 'driver) (get full 'transforms))
+          ;; mirrors the trigger set of mage.modules/driver-deps-affected?:
+          ;; default-modules-which-trigger-drivers ∪ modules-triggering-cloud-drivers.
+          ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
+          ;; changed set before computing what is affected, so it suppresses self-triggering.
+          triggers  '[driver transforms query-processor
+                      enterprise/transforms enterprise/transforms-python enterprise/workspaces]
+          upstream  (into (set triggers) (mapcat #(get full %)) triggers)
           overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
       (doseq [m (sort overrides)]
         (testing (format "\n%s" m)

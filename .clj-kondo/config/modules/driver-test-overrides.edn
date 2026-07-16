@@ -29,6 +29,8 @@
    enterprise/scim
    enterprise/serialization
    enterprise/sso
+   enterprise/transforms
+   enterprise/transforms-inspector
    entity-retrieval
    events
    formatter
@@ -48,6 +50,7 @@
    pulse
    remote-sync
    request
+   sample-data
    search
    secrets
    server
