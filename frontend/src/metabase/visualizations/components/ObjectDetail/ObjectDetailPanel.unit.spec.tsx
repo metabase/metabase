@@ -235,7 +235,10 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
 }));
 
 function setupPrefetch() {
-  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {});
+  fetchMock.post(
+    `path:/api/action/${implicitUpdateAction.id}/execute/values`,
+    {},
+  );
 }
 
 function setup(

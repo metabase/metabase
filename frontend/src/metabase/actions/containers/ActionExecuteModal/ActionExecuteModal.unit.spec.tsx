@@ -38,7 +38,7 @@ const implicitUpdateAction = createMockImplicitQueryAction({
 });
 
 function setupPrefetch() {
-  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {
+  fetchMock.post(`path:/api/action/${implicitUpdateAction.id}/execute/values`, {
     parameter_1: "uno",
     parameter_2: "dos",
   });

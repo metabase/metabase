@@ -70,7 +70,7 @@ async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
 }
 
 function setupPrefetch() {
-  fetchMock.get("path:/api/dashboard/123/dashcard/456/execute", {
+  fetchMock.post("path:/api/dashboard/123/dashcard/456/execute/values", {
     parameter_1: "uno",
     parameter_2: "dos",
   });

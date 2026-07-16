@@ -55,8 +55,8 @@ const dashcard = createMockActionDashboardCard();
 const dashboard = createMockDashboard();
 
 function setupPrefetch() {
-  fetchMock.get(
-    `path:/api/dashboard/${dashboard.id}/dashcard/${dashcard.id}/execute`,
+  fetchMock.post(
+    `path:/api/dashboard/${dashboard.id}/dashcard/${dashcard.id}/execute/values`,
     {
       parameter_1: "uno",
       parameter_2: "dos",
