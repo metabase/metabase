@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
@@ -20,6 +21,11 @@ interface RecipientPickerProps {
 const recipientKey = (recipient: RecipientPickerValue) =>
   "id" in recipient ? String(recipient.id) : recipient.email;
 
+const recipientLabel = (recipient: RecipientPickerValue) =>
+  "id" in recipient
+    ? (recipient.common_name ?? recipient.email ?? "")
+    : recipient.email;
+
 export const RecipientPicker = ({
   recipients = [],
   users,
@@ -27,18 +33,23 @@ export const RecipientPicker = ({
   autoFocus = true,
   invalidRecipientText,
 }: RecipientPickerProps) => {
-  const userByKey = new Map(users.map((user) => [recipientKey(user), user]));
-  const recipientByKey = new Map(
-    recipients.map((recipient) => [recipientKey(recipient), recipient]),
+  const userByKey = useMemo(
+    () => new Map(users.map((user) => [recipientKey(user), user])),
+    [users],
+  );
+  const recipientByKey = useMemo(
+    () =>
+      new Map(
+        recipients.map((recipient) => [recipientKey(recipient), recipient]),
+      ),
+    [recipients],
   );
 
+  const getRecipient = (key: string) =>
+    userByKey.get(key) ?? recipientByKey.get(key);
+
   const handleChange = (keys: string[]) => {
-    onRecipientsChange(
-      keys.map(
-        (key) =>
-          userByKey.get(key) ?? recipientByKey.get(key) ?? { email: key },
-      ),
-    );
+    onRecipientsChange(keys.map((key) => getRecipient(key) ?? { email: key }));
   };
 
   const isValid = recipients.every((recipient) => recipientIsValid(recipient));
@@ -53,7 +64,7 @@ export const RecipientPicker = ({
           value={recipients.map(recipientKey)}
           data={users.map((user) => ({
             value: recipientKey(user),
-            label: user.common_name ?? user.email ?? "",
+            label: recipientLabel(user),
           }))}
           onChange={handleChange}
           placeholder={
@@ -80,13 +91,8 @@ export const RecipientPicker = ({
             })
           }
           renderValue={({ value }) => {
-            const recipient = userByKey.get(value) ?? recipientByKey.get(value);
-            if (!recipient) {
-              return value;
-            }
-            return "id" in recipient
-              ? (recipient.common_name ?? recipient.email)
-              : recipient.email;
+            const recipient = getRecipient(value);
+            return recipient ? recipientLabel(recipient) : value;
           }}
           renderOption={({ option }) => {
             const user = userByKey.get(option.value);
