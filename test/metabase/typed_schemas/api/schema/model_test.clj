@@ -25,10 +25,14 @@
                   (is (nil? collection-ids))
                   [{:id 42 :name "Model 42"}
                    {:id 43 :name "Model 43"}])
-                schema.model/model-action-schemas
-                (fn [model]
-                  (when (= (:id model) 42)
-                    [{:kind "action", :key "create", :id 5}]))]
+                schema.model/action-rows
+                (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
+                actions/select-actions
+                (constantly [{:id         5
+                              :model_id   42
+                              :name       "Create"
+                              :type       :query
+                              :parameters []}])]
     (is (= #{"model42"}
            (->> (schema.model/model-schemas #{1})
                 (map :key)
