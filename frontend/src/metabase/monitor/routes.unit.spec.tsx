@@ -45,7 +45,7 @@ jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
 }));
 jest.mock("metabase/monitor/tools/components/ModelCacheRefreshJobs", () => ({
   ModelCachePage: () => (
-    <div data-testid="model-caching-page">{"Model cache log"}</div>
+    <div data-testid="model-caching-page">{"Model caching log"}</div>
   ),
   ModelCacheRefreshJobModal: () => null,
 }));
@@ -309,7 +309,7 @@ describe("monitor routes", () => {
       expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
     });
 
-    it("renders the Model cache log section at /monitor/model-caching", async () => {
+    it("renders the Model caching log section at /monitor/model-caching", async () => {
       setup({ initialRoute: "/monitor/model-caching" });
 
       expect(

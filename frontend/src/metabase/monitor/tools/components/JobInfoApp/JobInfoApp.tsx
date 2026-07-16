@@ -24,7 +24,7 @@ export const JobInfoApp = ({ params }: WithRouterProps<RouteParams>) => {
   return (
     <Flex ref={containerRef} h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} gap="md">
-        <MonitorHeaderTitle mb="sm">{t`Scheduler Info`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle mb="sm">{t`Scheduled jobs`}</MonitorHeaderTitle>
         {error != null ? (
           <Center flex={1}>
             <DelayedLoadingAndErrorWrapper loading={isFetching} error={error} />

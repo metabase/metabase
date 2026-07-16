@@ -26,7 +26,7 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
       <Stack className={S.main} flex={1} gap="md">
         <Stack gap="lg">
           <Flex align="center" gap="xs">
-            <MonitorHeaderTitle>{t`Troubleshooting logs`}</MonitorHeaderTitle>
+            <MonitorHeaderTitle>{t`Background tasks`}</MonitorHeaderTitle>
             <Tooltip
               label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
               events={{ hover: true, focus: true, touch: false }}

@@ -106,7 +106,7 @@ export function ModelCacheRefreshJobs() {
           <TreeTable
             instance={treeTableInstance}
             hierarchical={false}
-            ariaLabel={t`Model cache log`}
+            ariaLabel={t`Model caching log`}
             emptyState={
               <Stack p="xl" align="center">
                 <Text c="text-disabled">{t`No results`}</Text>
@@ -139,7 +139,7 @@ export function ModelCachePage({ children }: { children?: ReactNode }) {
   return (
     <Flex h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} gap="md">
-        <MonitorHeaderTitle mb="sm">{t`Model cache log`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
       </Stack>
       {children /* refresh modal */}
