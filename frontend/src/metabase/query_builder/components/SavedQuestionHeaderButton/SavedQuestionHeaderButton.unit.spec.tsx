@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -18,7 +20,13 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-function setup({ question, tokenFeatures = {}, enterprisePlugins }) {
+interface SetupOpts {
+  question: Question;
+  tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
+}
+
+function setup({ question, tokenFeatures = {}, enterprisePlugins }: SetupOpts) {
   const onSave = jest.fn();
 
   const state = createMockState({
@@ -105,7 +113,7 @@ describe("SavedQuestionHeaderButton", () => {
         tokenFeatures: {
           content_verification: true,
         },
-        enterprisePlugins: ["content-verification", "moderation"],
+        enterprisePlugins: ["content_verification", "moderation"],
       });
       expect(getIcon("verified")).toBeInTheDocument();
     });
@@ -127,7 +135,7 @@ describe("SavedQuestionHeaderButton", () => {
       setup({
         question,
         tokenFeatures: { audit_app: true },
-        enterprisePlugins: ["collections", "audit-app"],
+        enterprisePlugins: ["collections", "audit_app"],
       });
       expect(getIcon("audit")).toBeInTheDocument();
     });

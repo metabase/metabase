@@ -531,6 +531,10 @@
    (prometheus/counter :metabase-notification/template-update
                        {:description "Number of notification templates updated."
                         :labels [:channel-type]})
+   (prometheus/counter :metabase-notification/image-buffer-pooled
+                       {:description "Number of chart rasterization images backed by a pooled buffer."})
+   (prometheus/counter :metabase-notification/image-buffer-unpooled
+                       {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
