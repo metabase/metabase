@@ -74,3 +74,21 @@ every fix made while stabilizing a port gets classified and fed back:**
    Classify every fix per the feedback-loop rule at the top.
 5. Batch green locally (each file + one full-suite run) → commit → push
    (never while a CI run we care about is still going) → watch matrix.
+
+## Gotchas added in wave 5
+
+- **EditableText fields** (question title, description): `fill()` doesn't
+  mark them dirty — click + `pressSequentially` + blur, and anchor on the
+  PUT response. Accessible name may come from placeholder → `getByRole`,
+  not `getByLabel`.
+- **HTML5 dnd**: use `collections.ts dragAndDrop` (dragstart → dragenter →
+  dragover → drop → dragend with real coordinates). Never port the bare
+  Cypress 3-event sequence.
+- **@OSS-tagged specs**: gate with `isOssBackend(mb.api)` skip (see
+  embedding-smoketests / admin-authentication) — the spike backend is EE.
+- **Pinned-card icons appear twice** (item icon + type icon) — `.first()`.
+- **cy.wait after non-triggering clicks**: check what actually fires the
+  request (cy.wait consumes past responses; waitForResponse doesn't).
+  Register at the true trigger.
+- Hash/URL assertions that Cypress retried (`location().should`) must be
+  `expect.poll` in Playwright — one-shot checks catch transient states.

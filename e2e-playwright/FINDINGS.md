@@ -106,3 +106,47 @@ dividend found during porting gets an entry here in the same PR.**
   hover-gating, strict-mode duplicates) and are now codified in PORTING.md.
 - Full suite green in CI serial and 2-worker parallel; two consecutive
   zero-flake CI runs before the parallel experiments began.
+
+## Wave 5 additions (question-saved/new, command-palette, collections, embedding)
+
+13. **Bogus MBQL fixture caught by TypeScript** (`saved.cy.spec.js`): the
+    view-only-tag test's join fixture references `PRODUCTS.PRODUCT_ID` — a
+    field that doesn't exist (undefined → serialized as `null`), plus
+    inconsistent join aliases. Passes in Cypress only because the card is
+    never executed. The TS port refused to compile it, which is how it
+    surfaced. Ported byte-identically with a NOTE.
+
+14. **Latent copy-paste bug** (`collection-pinned-overview.cy.spec.js:240`):
+    the required-parameter test asserts on a *different fixture's* `.name`
+    than the one it created — masked because both constants share the same
+    name string. Port references the correct constant.
+
+15. **A family of dead/vacuous Cypress assertions** found this wave alone:
+    `cy.realPress(["Meta","["])` tests a keybinding that doesn't exist (the
+    following assertion passes because the sidebar was already visible);
+    chained `cy.get()` silently un-scopes (`commandPalette().get(...)`,
+    `tableInteractiveBody().get(...)`); `.then()` used where `.within()` was
+    meant (no scoping at all); `should("be.exist")` (works only because
+    chai's `be` is a passthrough); a `location("pathname")` check that can
+    never catch a slow redirect. All ported as real assertions.
+
+16. **Cypress wait-ordering quirk documented** (`question-new`): upstream
+    `cy.wait("@createDashboard")` sits after a click that does NOT trigger
+    the request — it passes because cy.wait consumes already-received
+    responses. The Playwright port must register the wait at the true
+    trigger; a naive 1:1 port would hang. (Porting rule updated.)
+
+17. **HTML5 drag-and-drop honesty** (`collections.ts dragAndDrop`): the
+    Cypress helper fires dragstart→drop→dragend only; real HTML5 dnd never
+    delivers `drop` without dragenter/dragover on the target, and react-dnd
+    tracks the active target from those. The port fires the real sequence
+    with real coordinates — closer to what browsers actually do.
+
+18. **Embedding rendering is context-sensitive and Cypress hid it**:
+    /embed/* and /public/* pages render differently when framed (borders,
+    hidden action buttons — `use-embed-frame-options.ts`); Cypress tests got
+    the framed context *by accident of its architecture*. The Playwright
+    iframe harness makes that context explicit and controllable. Also found:
+    a dead `database_id` param in the spec's factory call, another
+    never-awaited intercept, and a `site-url` coupling in embed preview
+    iframes that only shows up with more than one backend.
