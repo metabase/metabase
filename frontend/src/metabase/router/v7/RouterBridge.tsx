@@ -19,6 +19,9 @@ import type {
 } from "../react-router";
 import type { Route } from "../route";
 
+import { toV3Location } from "./location";
+import { toNavigateArgs } from "./navigator";
+
 /**
  * Runs as the `element` of every v7 route and republishes v7's location,
  * params, matched-route branch, and an imperative-router shim into the shared
@@ -55,24 +58,8 @@ export function RouterBridge({
   );
 
   const location = useMemo<HistoryLocation>(
-    () => ({
-      pathname: v7Location.pathname,
-      search: v7Location.search,
-      hash: v7Location.hash,
-      // v3 leaves state `undefined` when absent; v7 uses `null`.
-      state: v7Location.state ?? undefined,
-      key: v7Location.key,
-      query: searchToQuery(v7Location.search),
-      action,
-    }),
-    [
-      v7Location.pathname,
-      v7Location.search,
-      v7Location.hash,
-      v7Location.state,
-      v7Location.key,
-      action,
-    ],
+    () => toV3Location(v7Location, action),
+    [v7Location, action],
   );
 
   const router = useMemo<InjectedRouter>(
@@ -102,21 +89,6 @@ export function RouterBridge({
 }
 
 /**
- * Parse a search string into v3's `location.query` object: repeated keys become
- * an array, an empty value stays `""`, matching history@3's default parser that
- * the ~27 `location.query` readers were written against.
- */
-function searchToQuery(search: string): Record<string, string | string[]> {
-  const params = new URLSearchParams(search);
-  const query: Record<string, string | string[]> = {};
-  for (const key of new Set(params.keys())) {
-    const values = params.getAll(key);
-    query[key] = values.length > 1 ? values : values[0];
-  }
-  return query;
-}
-
-/**
  * The v3 `InjectedRouter` (`router.push/replace/go/...`) reimplemented over v7's
  * `navigate`. The facade's `useNavigate` has already resolved relative targets to
  * absolute paths before calling `push`/`replace`, so these pass straight through.
@@ -124,26 +96,15 @@ function searchToQuery(search: string): Record<string, string | string[]> {
  * restored per-route in Phase 3b.
  */
 function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
-  const toPath = (location: LocationDescriptor) =>
-    typeof location === "string"
-      ? location
-      : {
-          pathname: location.pathname,
-          search: location.search,
-          hash: location.hash,
-        };
-  const stateOf = (location: LocationDescriptor) =>
-    typeof location === "string" ? undefined : location.state;
   const href = (location: LocationDescriptor) =>
     typeof location === "string"
       ? location
       : `${location.pathname ?? ""}${location.search ?? ""}${location.hash ?? ""}`;
 
   return {
-    push: (location) =>
-      navigate(toPath(location), { state: stateOf(location) }),
+    push: (location) => navigate(...toNavigateArgs(location)),
     replace: (location) =>
-      navigate(toPath(location), { replace: true, state: stateOf(location) }),
+      navigate(...toNavigateArgs(location, { replace: true })),
     go: (n) => navigate(n),
     goBack: () => navigate(-1),
     goForward: () => navigate(1),
