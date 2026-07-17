@@ -45,7 +45,7 @@ Only the custom visualizations you list will load. Each entry is the visualizati
 Omitting the prop, or passing an empty array, turns off custom visualizations. Cards that use a custom visualization will fall back to the default visualization for the query's results. If you allowlist a name that doesn't match an installed custom visualization, the SDK logs a warning to the console and falls back to the default visualization.
 
 
-For security, the SDK runs each custom visualization's code in an isolated sandbox, so a visualization can't reach your app or make network requests. [Only add visualizations you trust](../../questions/visualizations/custom.md#only-add-plugins-you-trust).
+For security, the SDK runs each custom visualization's code in an isolated sandbox, so a visualization can't reach your app or make network requests. The sandbox doesn't block passive image loads, though. A visualization can still trigger outbound requests through `<img>` tags or CSS `url()`. To limit where custom visualizations can load images from, set a Content Security Policy with an `img-src` allowlist in your app (the core Metabase app does this with [Restrict image domains](../../configuring-metabase/settings.md#restrict-image-domains)). [Only add visualizations you trust](../../questions/visualizations/custom.md#only-add-visualizations-you-trust).
 
 ## Global event handlers
 
