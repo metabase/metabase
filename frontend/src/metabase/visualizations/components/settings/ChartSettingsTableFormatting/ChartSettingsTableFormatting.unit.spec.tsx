@@ -143,82 +143,82 @@ describe("ChartSettingsTableFormatting", () => {
   describe("should show appropriate operators based on column selection", () => {
     beforeEach(async () => {
       setup();
-      await userEvent.click(screen.getByText("Add a rule"));
+      await userEvent.click(await screen.findByText("Add a rule"));
     });
 
+    const expectOperators = async (operators: string[]) => {
+      for (const operator of operators) {
+        expect(
+          await screen.findByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      }
+    };
+
     it("string", async () => {
-      await userEvent.click(screen.getByText("String Column"));
+      await userEvent.click(await screen.findByText("String Column"));
       //Dismiss Popup
       await userEvent.click(
-        screen.getByText("Which columns should be affected?"),
+        await screen.findByText("Which columns should be affected?"),
       );
 
       await userEvent.click(
-        screen.getByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
-      STRING_OPERATORS.forEach((operator) => {
-        expect(
-          screen.getByRole("option", { name: operator }),
-        ).toBeInTheDocument();
-      });
+      await expectOperators(STRING_OPERATORS);
     });
 
     it("number primary key (metabase#17448)(VIZ-379)", async () => {
-      await userEvent.click(screen.getByText("Primary Key Column"));
+      await userEvent.click(await screen.findByText("Primary Key Column"));
       //Dismiss Popup
       await userEvent.click(
-        screen.getByText("Which columns should be affected?"),
+        await screen.findByText("Which columns should be affected?"),
       );
 
       await userEvent.click(
-        screen.getByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
-      STRING_OPERATORS.forEach((operator) => {
-        expect(
-          screen.getByRole("option", { name: operator }),
-        ).toBeInTheDocument();
-      });
+      await expectOperators(STRING_OPERATORS);
     });
 
     it("number foreign key (metabase#17448)(VIZ-379)", async () => {
-      await userEvent.click(screen.getByText("Foreign Key Column"));
+      await userEvent.click(await screen.findByText("Foreign Key Column"));
       //Dismiss Popup
       await userEvent.click(
-        screen.getByText("Which columns should be affected?"),
+        await screen.findByText("Which columns should be affected?"),
       );
 
       await userEvent.click(
-        screen.getByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
-      STRING_OPERATORS.forEach((operator) => {
-        expect(
-          screen.getByRole("option", { name: operator }),
-        ).toBeInTheDocument();
-      });
+      await expectOperators(STRING_OPERATORS);
     });
 
     it("number", async () => {
-      await userEvent.click(screen.getByText("Number Column"));
+      await userEvent.click(await screen.findByText("Number Column"));
       //Dismiss Popup
       await userEvent.click(
-        screen.getByText("Which columns should be affected?"),
+        await screen.findByText("Which columns should be affected?"),
       );
 
       await userEvent.click(
-        screen.getByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
-      NUMBER_OPERATORS.forEach((operator) => {
-        expect(
-          screen.getByRole("option", { name: operator }),
-        ).toBeInTheDocument();
-      });
+      await expectOperators(NUMBER_OPERATORS);
 
       // Quick check for color range option on numeric rules
-      expect(screen.getByText("Formatting style")).toBeInTheDocument();
+      expect(await screen.findByText("Formatting style")).toBeInTheDocument();
       expect(
         screen.getByRole("radio", { name: /single color/i }),
       ).toBeChecked();
@@ -228,21 +228,19 @@ describe("ChartSettingsTableFormatting", () => {
     });
 
     it("boolean", async () => {
-      await userEvent.click(screen.getByText("Boolean Column"));
+      await userEvent.click(await screen.findByText("Boolean Column"));
       //Dismiss Popup
       await userEvent.click(
-        screen.getByText("Which columns should be affected?"),
+        await screen.findByText("Which columns should be affected?"),
       );
 
       await userEvent.click(
-        screen.getByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
-      BOOLEAN_OPERATORS.forEach((operator) => {
-        expect(
-          screen.getByRole("option", { name: operator }),
-        ).toBeInTheDocument();
-      });
+      await expectOperators(BOOLEAN_OPERATORS);
     });
   });
 });

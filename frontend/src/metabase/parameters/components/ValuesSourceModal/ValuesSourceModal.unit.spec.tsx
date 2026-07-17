@@ -21,6 +21,7 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -90,7 +91,9 @@ describe("ValuesSourceModal", () => {
           }),
         });
 
-        expect(await screen.findByRole("textbox")).toHaveValue("A\nB\nC");
+        await waitFor(() =>
+          expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC"),
+        );
       });
 
       it("should not show the connected fields option if parameter is not wired to any fields", async () => {
@@ -142,7 +145,9 @@ describe("ValuesSourceModal", () => {
             values: [["C"], ["D"]],
           }),
         });
-        expect(await screen.findByRole("textbox")).toHaveValue("C\nD");
+        await waitFor(() =>
+          expect(screen.getByRole("textbox")).toHaveValue("C\nD"),
+        );
 
         await userEvent.click(
           screen.getByRole("radio", { name: "Custom list" }),
@@ -694,7 +699,9 @@ describe("ValuesSourceModal", () => {
           }),
         });
 
-        expect(await screen.findByRole("textbox")).toHaveValue("1\n2\n3");
+        await waitFor(() =>
+          expect(screen.getByRole("textbox")).toHaveValue("1\n2\n3"),
+        );
       });
 
       it("should not show the connected fields option if parameter is not wired to any fields", async () => {
@@ -746,7 +753,9 @@ describe("ValuesSourceModal", () => {
             values: [[3], [4]],
           }),
         });
-        expect(await screen.findByRole("textbox")).toHaveValue("3\n4");
+        await waitFor(() =>
+          expect(screen.getByRole("textbox")).toHaveValue("3\n4"),
+        );
 
         await userEvent.click(
           screen.getByRole("radio", { name: "Custom list" }),

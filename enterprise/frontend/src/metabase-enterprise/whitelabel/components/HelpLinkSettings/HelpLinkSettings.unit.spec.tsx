@@ -63,7 +63,7 @@ describe("HelpLinkSettings", () => {
       },
     });
 
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(await screen.findByRole("textbox")).toBeInTheDocument();
     expect(
       await screen.findByDisplayValue("https://example.com/help"),
     ).toBeInTheDocument();

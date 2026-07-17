@@ -81,6 +81,14 @@ const setup = async (options: {
 };
 
 describe("FormDashboardTabSelect", () => {
+  // The component sets its default tab value from inside a `setTimeout(0)`
+  // (an intentional hack in FormDashboardTabSelect) after the dashboard query
+  // resolves; that interplay does not settle under the fast-test fake-timer
+  // regime, so this spec runs on real timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should show the initial value", async () => {
     const { onSubmit } = await setup({
       dashboardId: FOO_DASH.id,
@@ -148,6 +156,14 @@ describe("FormDashboardTabSelect", () => {
     ).toBeInTheDocument();
 
     rerender(BAR_DASH.id);
+
+    // Wait for the new dashboard (no tabs) to load and the component to clear
+    // the tab value; the select is removed once that happens.
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText(/Which tab should this go on/),
+      ).not.toBeInTheDocument(),
+    );
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(

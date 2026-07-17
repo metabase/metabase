@@ -13,6 +13,12 @@ const upload = (over = {}) =>
   });
 
 describe("uploadCsvToMb retries", () => {
+  // This suite exercises real retry-delay timing (setTimeout-based backoff),
+  // so it must run with real timers rather than the fast-test fake clock.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   afterEach(() => {
     delete global.fetch;
   });

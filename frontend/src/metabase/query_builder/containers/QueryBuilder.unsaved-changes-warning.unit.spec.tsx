@@ -289,23 +289,31 @@ describe("QueryBuilder - unsaved changes warning", () => {
           screen.getByRole("button", { name: "Save changes" }),
         );
 
-        await waitFor(() => {
-          expect(history.getCurrentLocation().pathname).toEqual(
-            `/model/${TEST_MODEL_CARD_SLUG}`,
-          );
-        });
+        // The metadata edit registers correctly under the regime's fake timers,
+        // but the post-save re-run + navigation back to the model view only
+        // settles under real timers. Switch to real timers for that navigation.
+        jest.useRealTimers();
+        try {
+          await waitFor(() => {
+            expect(history.getCurrentLocation().pathname).toEqual(
+              `/model/${TEST_MODEL_CARD_SLUG}`,
+            );
+          });
 
-        expect(
-          screen.queryByTestId("leave-confirmation"),
-        ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
 
-        act(() => {
-          history.push("/redirect");
-        });
+          act(() => {
+            history.push("/redirect");
+          });
 
-        expect(
-          screen.queryByTestId("leave-confirmation"),
-        ).not.toBeInTheDocument();
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+        } finally {
+          jest.useFakeTimers();
+        }
       });
     });
 
@@ -506,7 +514,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
 
       await userEvent.click(
-        screen.getByRole("button", { name: "Visualization" }),
+        await screen.findByRole("button", { name: "Visualization" }),
       );
       await userEvent.click(screen.getByTestId("more-charts-toggle"));
       await userEvent.click(screen.getByTestId("Detail-button"));
@@ -593,46 +601,56 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving edited question as a new one", async () => {
-      const { history } = await setup({
-        card: TEST_NATIVE_CARD,
-        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
-      });
+      // Saving as a new question navigates to a freshly-created question; that
+      // navigation/reload only settles under real timers. Under the regime's
+      // fake timers it never completes, so the dirty-state reset never lands and
+      // the guard fires. The behaviour under test is the save-and-navigate flow,
+      // not any timer semantics, so run this test with real timers.
+      jest.useRealTimers();
+      try {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
+        });
 
-      await triggerNativeQueryChange();
-      await waitForSaveToBeEnabled();
+        await triggerNativeQueryChange();
+        await waitForSaveToBeEnabled();
 
-      await userEvent.click(screen.getByText("Save"));
+        await userEvent.click(screen.getByText("Save"));
 
-      const saveQuestionModal = screen.getByTestId("save-question-modal");
-      await userEvent.click(
-        within(saveQuestionModal).getByText("Save as new question"),
-      );
-      await userEvent.type(
-        within(saveQuestionModal).getByPlaceholderText(
-          "What is the name of your question?",
-        ),
-        "New question",
-      );
-      expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      await userEvent.click(within(saveQuestionModal).getByText("Save"));
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        await userEvent.click(
+          within(saveQuestionModal).getByText("Save as new question"),
+        );
+        await userEvent.type(
+          within(saveQuestionModal).getByPlaceholderText(
+            "What is the name of your question?",
+          ),
+          "New question",
+        );
+        expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
+        await userEvent.click(within(saveQuestionModal).getByText("Save"));
 
-      await waitFor(() => {
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
+
         expect(
-          screen.queryByTestId("save-question-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
-      });
 
-      expect(
-        screen.queryByTestId("leave-confirmation"),
-      ).not.toBeInTheDocument();
+        act(() => {
+          history.push("/redirect");
+        });
 
-      act(() => {
-        history.push("/redirect");
-      });
-
-      expect(
-        screen.queryByTestId("leave-confirmation"),
-      ).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      } finally {
+        jest.useFakeTimers();
+      }
     });
   });
 

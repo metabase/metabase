@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
@@ -75,7 +75,9 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     await userEvent.click(toggle);
     await userEvent.click(screen.getByText("Agree and continue"));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);

@@ -279,8 +279,12 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/notification"),
+      ).toHaveLength(1),
+    );
     const calls = fetchMock.callHistory.calls("path:/api/notification");
-    expect(calls.length).toBe(1);
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
@@ -325,8 +329,12 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/notification"),
+      ).toHaveLength(1),
+    );
     const calls = fetchMock.callHistory.calls("path:/api/notification");
-    expect(calls.length).toBe(1);
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
@@ -438,10 +446,14 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for Tuesday at 2pm
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`),
+      ).toHaveLength(1),
+    );
     const calls = fetchMock.callHistory.calls(
       `path:/api/notification/${notificationId}`,
     );
-    expect(calls.length).toBe(1);
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
@@ -525,10 +537,14 @@ describe("CreateOrEditQuestionAlertModal", () => {
       await screen.findByRole("button", { name: /save changes/i }),
     );
 
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`),
+      ).toHaveLength(1),
+    );
     const calls = fetchMock.callHistory.calls(
       `path:/api/notification/${notificationId}`,
     );
-    expect(calls.length).toBe(1);
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;

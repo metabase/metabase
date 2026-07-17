@@ -96,10 +96,12 @@ describe("useGitSyncVisible", () => {
       currentBranch: null,
     });
 
+    // isVisible is false from the initial (unloaded) state too, so wait on the branch value itself to
+    // confirm the settings fetch resolved before asserting — otherwise currentBranch is still undefined.
     await waitFor(() => {
-      expect(result.current.isVisible).toBe(false);
+      expect(result.current.currentBranch).toBe(null);
     });
-    expect(result.current.currentBranch).toBe(null);
+    expect(result.current.isVisible).toBe(false);
   });
 
   it("should return isVisible: false when sync type is read-only", async () => {

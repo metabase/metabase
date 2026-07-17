@@ -6,7 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
@@ -139,9 +139,13 @@ describe("SMTPOverrideConnectionForm", () => {
 
     await userEvent.clear(hostInput);
 
-    expect(
-      await screen.findByRole("button", { name: /save changes/i }),
-    ).toBeDisabled();
+    // Clearing the host makes the form invalid, but validation runs asynchronously, so wait for the
+    // button's disabled state to settle rather than reading it right after the clear.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /save changes/i }),
+      ).toBeDisabled();
+    });
   });
 
   it("should submit all settings changes via api", async () => {

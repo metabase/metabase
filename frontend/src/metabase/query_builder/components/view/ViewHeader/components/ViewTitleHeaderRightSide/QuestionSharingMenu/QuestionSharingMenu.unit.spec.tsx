@@ -5,9 +5,19 @@ import { screen, waitFor } from "__support__/ui";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
+// Under the fast-test regime, userEvent's direct APIs run through
+// `userEvent.setup()`, which attaches its own `navigator.clipboard` stub on the
+// first interaction, replacing the global jest.fn. Spy on whatever
+// `navigator.clipboard` currently exposes (the userEvent stub in the regime,
+// the global mock in stock mode) once an interaction has put the stub in place,
+// and assert on that spy so the exact copied URL is still verified.
+function spyOnClipboardWriteText() {
+  return jest.spyOn(navigator.clipboard, "writeText");
+}
+
 describe("QuestionSharingMenu", () => {
-  beforeEach(() => {
-    jest.mocked(navigator.clipboard.writeText).mockClear();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("should not render anything if the question is a model", async () => {
@@ -165,9 +175,10 @@ describe("QuestionSharingMenu", () => {
           hasPublicLink: true,
         });
         await openMenu();
+        const writeText = spyOnClipboardWriteText();
         await userEvent.click(screen.getByText("Copy link"));
         await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          expect(writeText).toHaveBeenCalledWith(
             "http://localhost:3000/question/1-my-cool-question",
           ),
         );
@@ -183,9 +194,10 @@ describe("QuestionSharingMenu", () => {
           hasPublicLink: true,
         });
         await openMenu();
+        const writeText = spyOnClipboardWriteText();
         await userEvent.click(screen.getByText("Copy public link"));
         await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          expect(writeText).toHaveBeenCalledWith(
             "http://localhost:3000/public/question/1337bad801",
           ),
         );
@@ -203,11 +215,16 @@ describe("QuestionSharingMenu", () => {
         const button = screen.getByTestId("sharing-menu-button");
         expect(button).toHaveAttribute("aria-label", "Copy link");
 
-        await userEvent.click(button);
+        // Interact once so the userEvent clipboard stub is attached before we
+        // spy on it (the click below both attaches the stub and copies).
         await userEvent.hover(button);
+        const writeText = spyOnClipboardWriteText();
+        await userEvent.click(button);
 
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-          "http://localhost:3000/question/1-my-cool-question",
+        await waitFor(() =>
+          expect(writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/question/1-my-cool-question",
+          ),
         );
         expect(
           await screen.findByText("Link copied to clipboard"),

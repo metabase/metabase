@@ -348,7 +348,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      const editActionEl = getIcon("pencil");
+      const editActionEl = await screen.findByLabelText("pencil icon");
       expect(editActionEl).toBeInTheDocument();
 
       await userEvent.click(editActionEl);
@@ -384,7 +384,7 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      await userEvent.click(getIcon("pencil"));
+      await userEvent.click(await screen.findByLabelText("pencil icon"));
 
       // wait for action edit form to be loaded
       const editorModal = await screen.findByTestId("action-editor-modal");

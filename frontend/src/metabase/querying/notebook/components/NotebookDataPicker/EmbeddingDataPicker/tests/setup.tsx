@@ -1,4 +1,6 @@
 import {
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
@@ -43,6 +45,14 @@ export function setup({
     setupSearchEndpoints([]);
   }
   setupDatabasesEndpoints([createDatabase()]);
+  // The model picker (entity_types=["model"]) fetches the collection tree/root
+  // and the root collection's items once opened; mock them so the fake clock
+  // advancing doesn't hit unmocked routes.
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: { id: "root" },
+    collectionItems: [],
+  });
 
   renderWithProviders(
     <EmbeddingDataPicker

@@ -13,7 +13,7 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
         isEnterprise: true,
       });
       await openMenu();
-      expect(screen.getByText("Create an alert")).toBeInTheDocument();
+      expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
 
     describe("alerts permission disabled", () => {

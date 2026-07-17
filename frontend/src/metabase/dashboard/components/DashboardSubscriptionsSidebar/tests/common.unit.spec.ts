@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { DashboardSubscription } from "metabase-types/api";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
@@ -176,7 +176,9 @@ describe("DashboardSubscriptionsSidebar", () => {
         within(modal).getByRole("button", { name: "Delete" }),
       );
 
-      expect(setSharing).toHaveBeenCalledWith(false);
+      await waitFor(() => {
+        expect(setSharing).toHaveBeenCalledWith(false);
+      });
     });
 
     /**
@@ -273,6 +275,9 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send to Slack now"));
 
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/pulse/test")).toBe(true);
+      });
       const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
       const payload = await lastCall?.request?.json();
       expect(payload.channels[0].details.channel).toBe("#general");
@@ -306,6 +311,9 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send email now"));
 
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/pulse/test")).toBe(true);
+      });
       const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
       const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
@@ -337,6 +345,9 @@ describe("DashboardSubscriptionsSidebar", () => {
       );
       await userEvent.click(await screen.findByText("Send email now"));
 
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/pulse/test")).toBe(true);
+      });
       const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
       const payload = await lastCall?.request?.json();
       expect(payload.channels[0].details.include_pdf).toBe(true);

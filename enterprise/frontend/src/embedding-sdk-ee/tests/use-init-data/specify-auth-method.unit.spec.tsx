@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import {
   setupMockJwtEndpoints,
   setupMockSamlEndpoints,
@@ -7,6 +7,13 @@ import {
 import { setup } from "./setup";
 
 describe("useInitData - specifying authentication methods", () => {
+  // The SAML case completes via the mocked popup's `process.nextTick`
+  // postMessage and a `setInterval`/`setTimeout` watchdog — genuine async
+  // timing — so run these with real timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it.each([
     ["jwt", setupMockJwtEndpoints],
     ["saml", setupMockSamlEndpoints],
@@ -16,9 +23,11 @@ describe("useInitData - specifying authentication methods", () => {
       setupMockEndpoints();
       setup({ preferredAuthMethod });
 
-      expect(await screen.findByTestId("test-component")).toHaveAttribute(
-        "data-is-logged-in",
-        "true",
+      await waitFor(() =>
+        expect(screen.getByTestId("test-component")).toHaveAttribute(
+          "data-is-logged-in",
+          "true",
+        ),
       );
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(

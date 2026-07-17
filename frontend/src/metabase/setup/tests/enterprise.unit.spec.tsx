@@ -76,17 +76,17 @@ describe("setup (EE build, but no token)", () => {
       await setupForLicenseStep();
 
       await inputToken("a".repeat(63));
-      expect(await submitBtn()).toBeDisabled();
+      await waitFor(async () => expect(await submitBtn()).toBeDisabled());
 
       await userEvent.type(input(), "a"); //64 characters
-      expect(await submitBtn()).toBeEnabled();
+      await waitFor(async () => expect(await submitBtn()).toBeEnabled());
 
       await userEvent.type(input(), "a"); //65 characters
-      expect(await submitBtn()).toBeDisabled();
+      await waitFor(async () => expect(await submitBtn()).toBeDisabled());
 
       await userEvent.clear(input());
       await userEvent.type(input(), "airgap_");
-      expect(await submitBtn()).toBeEnabled();
+      await waitFor(async () => expect(await submitBtn()).toBeEnabled());
     });
 
     it("should ignore whitespace around the token", async () => {
@@ -95,7 +95,7 @@ describe("setup (EE build, but no token)", () => {
 
       await inputToken(`    ${sampleToken}   `);
       expect(input()).toHaveValue(sampleToken);
-      expect(await submitBtn()).toBeEnabled();
+      await waitFor(async () => expect(await submitBtn()).toBeEnabled());
       const submitCall = await submit();
 
       expect(await submitCall?.request?.json()).toEqual({
@@ -171,11 +171,17 @@ const errMsg = () => screen.findByText(/This token doesn’t seem to be valid/);
 const submitBtn = () => screen.findByRole("button", { name: "Activate" });
 
 const submit = async () => {
-  await userEvent.click(await submitBtn());
+  const btn = await submitBtn();
+  // Formik validation that enables the button is async; wait for it to settle
+  // so the click actually submits rather than hitting a disabled button.
+  await waitFor(() => expect(btn).toBeEnabled());
+  await userEvent.click(btn);
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
   await waitFor(() =>
-    expect(fetchMock.callHistory.done(settingEndpoint)).toBe(true),
+    expect(fetchMock.callHistory.calls(settingEndpoint).length).toBeGreaterThan(
+      0,
+    ),
   );
   return fetchMock.callHistory.lastCall(settingEndpoint);
 };

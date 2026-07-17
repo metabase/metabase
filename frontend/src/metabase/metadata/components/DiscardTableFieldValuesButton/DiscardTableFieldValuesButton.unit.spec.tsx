@@ -41,14 +41,16 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/table/${table.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/discard_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard triggered!");
     });
@@ -66,14 +68,16 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/table/${table.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/discard_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard triggered!");
     });
@@ -84,14 +88,16 @@ describe("DiscardTableFieldValuesButton", () => {
 
     expect(button).toHaveTextContent("Discard triggered!");
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/table/${table.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      ),
-    ).toHaveLength(2);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/discard_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(2);
+    });
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -117,14 +123,16 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/table/${table.id}/discard_values`,
-        {
-          method: "POST",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/discard_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard cached field values");
     });

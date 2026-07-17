@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { setupTrialAvailableEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -61,11 +61,13 @@ describe("UpsellCardContent", () => {
 
       await screen.findByText("Test Title");
 
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
-        ),
-      ).toBe(true);
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            "path:/api/ee/cloud-proxy/mb-plan-trial-up-available",
+          ),
+        ).toBe(true);
+      });
     });
 
     it("should not call trial availability endpoint when isHosted is false", async () => {

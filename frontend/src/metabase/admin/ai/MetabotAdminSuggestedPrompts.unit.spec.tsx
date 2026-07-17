@@ -127,6 +127,9 @@ describe("suggested prompts", () => {
     await setup({ mockInitialPage: false });
     const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
     expect(loadingRow).toBeInTheDocument();
+    // Let the delayed request resolve so the pending fetch doesn't leak into
+    // the afterEach flush (which advances no fake time) or later tests.
+    await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
   });
 
   it("should show empty state", async () => {

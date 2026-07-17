@@ -681,18 +681,21 @@ describe("AIProviderSettingsSection", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
+    const findPutRequest = () =>
+      fetchMock.callHistory
+        .calls("path:/api/metabot/settings")
+        .find(
+          (call) =>
+            call.request?.method === "PUT" || call.options?.method === "PUT",
+        );
+
+    // Wait for the PUT specifically — the endpoint is also hit by a GET, so
+    // waiting merely for the path to be called races the save request.
     await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
+      expect(findPutRequest()).toBeDefined();
     });
 
-    const request = fetchMock.callHistory
-      .calls("path:/api/metabot/settings")
-      .find(
-        (call) =>
-          call.request?.method === "PUT" || call.options?.method === "PUT",
-      );
+    const request = findPutRequest();
 
     expect(request?.options?.body).toBe(
       JSON.stringify({ provider: "anthropic", "api-key": "sk-ant-rotated" }),

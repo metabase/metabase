@@ -45,13 +45,16 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(
-      `path:/api/data-studio/table/rescan-values`,
-      {
-        method: "POST",
-      },
-    );
-    expect(calls).toHaveLength(1);
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
+    await waitFor(() => {
+      calls = fetchMock.callHistory.calls(
+        `path:/api/data-studio/table/rescan-values`,
+        {
+          method: "POST",
+        },
+      );
+      expect(calls).toHaveLength(1);
+    });
     // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -73,13 +76,16 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls = fetchMock.callHistory.calls(
-      `path:/api/data-studio/table/rescan-values`,
-      {
-        method: "POST",
-      },
-    );
-    expect(calls).toHaveLength(1);
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
+    await waitFor(() => {
+      calls = fetchMock.callHistory.calls(
+        `path:/api/data-studio/table/rescan-values`,
+        {
+          method: "POST",
+        },
+      );
+      expect(calls).toHaveLength(1);
+    });
     // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -94,13 +100,15 @@ describe("RescanTableFieldsButton", () => {
 
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
-    calls = fetchMock.callHistory.calls(
-      `path:/api/data-studio/table/rescan-values`,
-      {
-        method: "POST",
-      },
-    );
-    expect(calls).toHaveLength(2);
+    await waitFor(() => {
+      calls = fetchMock.callHistory.calls(
+        `path:/api/data-studio/table/rescan-values`,
+        {
+          method: "POST",
+        },
+      );
+      expect(calls).toHaveLength(2);
+    });
     // Unjustified type cast. FIXME
     expect(JSON.parse(calls[1].options.body as string)).toEqual({
       table_ids: [table.id],
@@ -130,13 +138,16 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    const calls = fetchMock.callHistory.calls(
-      `path:/api/data-studio/table/rescan-values`,
-      {
-        method: "POST",
-      },
-    );
-    expect(calls).toHaveLength(1);
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
+    await waitFor(() => {
+      calls = fetchMock.callHistory.calls(
+        `path:/api/data-studio/table/rescan-values`,
+        {
+          method: "POST",
+        },
+      );
+      expect(calls).toHaveLength(1);
+    });
     // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],

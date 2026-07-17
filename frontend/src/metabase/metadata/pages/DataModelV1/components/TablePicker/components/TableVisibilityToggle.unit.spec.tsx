@@ -47,11 +47,13 @@ describe("TableVisibilityToggle", () => {
       expect(toggle).toBeInTheDocument();
       await userEvent.click(toggle);
 
-      expect(
-        fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
 
       const call = fetchMock.callHistory.calls(
         `path:/api/table/${VISIBLE_TABLE.id}`,
@@ -83,11 +85,13 @@ describe("TableVisibilityToggle", () => {
       expect(toggle).toBeInTheDocument();
       await userEvent.click(toggle);
 
-      expect(
-        fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
 
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");
@@ -124,11 +128,13 @@ describe("TableVisibilityToggle", () => {
       expect(toggle).toBeInTheDocument();
       await userEvent.click(toggle);
 
-      expect(
-        fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
 
       const call = fetchMock.callHistory.calls(
         `path:/api/table/${HIDDEN_TABLE.id}`,
@@ -163,11 +169,13 @@ describe("TableVisibilityToggle", () => {
       expect(toggle).toBeInTheDocument();
       await userEvent.click(toggle);
 
-      expect(
-        fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
 
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");

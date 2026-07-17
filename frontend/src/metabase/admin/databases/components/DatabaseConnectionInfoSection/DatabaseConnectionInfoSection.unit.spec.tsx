@@ -168,11 +168,13 @@ describe("DatabaseConnectionInfoSection", () => {
             screen.getByText(/Dismiss sync spinner manually/i),
           );
 
-          expect(
-            fetchMock.callHistory.calls(
-              `path:/api/database/${database.id}/dismiss_spinner`,
-            ).length,
-          ).toBe(1);
+          await waitFor(() =>
+            expect(
+              fetchMock.callHistory.calls(
+                `path:/api/database/${database.id}/dismiss_spinner`,
+              ).length,
+            ).toBe(1),
+          );
         });
       });
     });

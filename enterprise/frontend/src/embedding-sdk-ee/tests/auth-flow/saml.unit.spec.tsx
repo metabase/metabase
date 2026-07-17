@@ -32,6 +32,13 @@ const setup = ({
 };
 
 describe("Auth Flow - SAML", () => {
+  // The mocked SAML popup completes the flow via a `process.nextTick`
+  // postMessage plus a `setInterval`/`setTimeout` popup-close watchdog. This
+  // ordering is genuine async timing, so run these with real timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should initialize the auth flow only once, not on rerenders", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,

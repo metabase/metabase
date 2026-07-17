@@ -11,8 +11,25 @@ import {
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
 describe("DashboardSharingMenu", () => {
+  // The fast-test regime rewraps userEvent's direct APIs through
+  // userEvent.setup(), which attaches its own clipboard stub to
+  // navigator.clipboard on the first interaction, replacing the global
+  // jest.fn mock. Install a stateful clipboard here (writeText records,
+  // readText plays back) so assertions read the copied value the same way
+  // whether the app wrote to this mock or to userEvent's stub.
+  let clipboardText = "";
   beforeEach(() => {
-    jest.mocked(navigator.clipboard.writeText).mockClear();
+    clipboardText = "";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: jest.fn((text: string) => {
+          clipboardText = text;
+          return Promise.resolve();
+        }),
+        readText: jest.fn(() => Promise.resolve(clipboardText)),
+      },
+    });
   });
 
   it("should have a 'share' tooltip by default", () => {
@@ -160,8 +177,8 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         await userEvent.click(screen.getByText("Copy link"));
-        await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        await waitFor(async () =>
+          expect(await navigator.clipboard.readText()).toBe(
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
@@ -180,8 +197,8 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         await userEvent.click(screen.getByText("Copy link"));
-        await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        await waitFor(async () =>
+          expect(await navigator.clipboard.readText()).toBe(
             "http://localhost:3000/dashboard/1-my-cool-dashboard?tab=2",
           ),
         );
@@ -253,8 +270,8 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         await userEvent.click(screen.getByText("Copy link"));
-        await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        await waitFor(async () =>
+          expect(await navigator.clipboard.readText()).toBe(
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
@@ -271,8 +288,8 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         await userEvent.click(screen.getByText("Copy public link"));
-        await waitFor(() =>
-          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        await waitFor(async () =>
+          expect(await navigator.clipboard.readText()).toBe(
             "http://localhost:3000/public/dashboard/1337bad801",
           ),
         );

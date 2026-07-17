@@ -5,7 +5,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -57,14 +57,21 @@ describe("LegaleseStep", () => {
     const { goToNextStep } = setup();
     await userEvent.click(screen.getByText("Agree and continue"));
 
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          "path:/api/setting/show-static-embed-terms",
+        ),
+      ).toHaveLength(1);
+    });
+
     const settingPutCalls = fetchMock.callHistory.calls(
       "path:/api/setting/show-static-embed-terms",
     );
 
-    expect(settingPutCalls.length).toBe(1);
     expect(await settingPutCalls[0]?.request?.json()).toEqual({
       value: false,
     });
-    expect(goToNextStep).toHaveBeenCalled();
+    await waitFor(() => expect(goToNextStep).toHaveBeenCalled());
   });
 });

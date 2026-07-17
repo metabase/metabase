@@ -16,6 +16,14 @@ import {
 } from "./utils";
 
 describe("metabot > threading", () => {
+  // The TipTap/ProseMirror prompt editor these tests drive processes input
+  // through real timers/microtasks; the fast-test regime's frozen fake timers
+  // prevent messages from ever being submitted. Opt this file back into real
+  // timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should omit parent_message_id for the very first message of a new conversation", async () => {
     setup();
 

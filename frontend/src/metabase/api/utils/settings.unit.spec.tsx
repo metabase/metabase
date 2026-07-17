@@ -184,8 +184,10 @@ describe("useAdminSettings", () => {
 
     await userEvent.click(updateButton);
 
-    const apiCalls = fetchMock.callHistory.calls();
-    const putCall = apiCalls.find((call) => call.request?.method === "PUT");
-    expect(putCall?.request?.url).toMatch(/\/api\/setting/);
+    await waitFor(() => {
+      const apiCalls = fetchMock.callHistory.calls();
+      const putCall = apiCalls.find((call) => call.request?.method === "PUT");
+      expect(putCall?.request?.url).toMatch(/\/api\/setting/);
+    });
   });
 });

@@ -42,11 +42,16 @@ describe("RescanFieldButton", () => {
     expect(button).toHaveTextContent("Re-scan field");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Scan triggered!");
     });
@@ -64,11 +69,16 @@ describe("RescanFieldButton", () => {
     expect(button).toHaveTextContent("Re-scan field");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Scan triggered!");
     });
@@ -79,11 +89,16 @@ describe("RescanFieldButton", () => {
 
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-        method: "POST",
-      }),
-    ).toHaveLength(2);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(2);
+    });
 
     await act(() => {
       jest.advanceTimersByTime(1000);
@@ -109,11 +124,16 @@ describe("RescanFieldButton", () => {
     expect(button).toHaveTextContent("Re-scan field");
 
     await userEvent.click(button);
-    expect(
-      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
     await waitFor(() => {
       expect(button).toHaveTextContent("Re-scan field");
     });

@@ -10,6 +10,14 @@ import Visualization from ".";
 
 registerVisualizations();
 
+// This test renders a real chart (ECharts + ExplicitSize), whose layout relies
+// on genuine timers (setTimeout-on-mount, lodash throttle) and async settling.
+// The fast-test regime's fake timers would stall `delay(0)`, so opt back into
+// real timers — the subject is chart rendering, not timer behaviour.
+beforeEach(() => {
+  jest.useRealTimers();
+});
+
 describe("Themed Visualization", () => {
   it("inherits the chart label color from the theme", async () => {
     const TEST_COLOR = "rgb(44, 55, 66)";

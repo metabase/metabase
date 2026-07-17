@@ -183,6 +183,9 @@ describe("IllustrationWidget", () => {
         name: "login-page-illustration",
         title: "Login page illustration",
       });
+      // Wait for the loaded value before interacting; otherwise selecting
+      // "Lighthouse" registers as a change and fires a PUT.
+      await screen.findByDisplayValue("Lighthouse");
       await userEvent.click(screen.getByRole("textbox"));
       await userEvent.click(screen.getByText("Lighthouse"));
 

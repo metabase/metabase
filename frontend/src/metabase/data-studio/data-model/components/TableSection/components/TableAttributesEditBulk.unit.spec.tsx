@@ -146,7 +146,7 @@ describe("TableAttributesEditBulk", () => {
     });
 
     await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
-    await userEvent.click(screen.getByText(userName));
+    await userEvent.click(await screen.findByText(userName));
     await waitFor(() => {
       expect(screen.getByRole("textbox", { name: "Owner" })).toHaveValue(
         userName,
@@ -173,7 +173,7 @@ describe("TableAttributesEditBulk", () => {
     });
 
     await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
-    await userEvent.click(screen.getByText(userName));
+    await userEvent.click(await screen.findByText(userName));
     await waitFor(() => {
       expect(screen.getByRole("textbox", { name: "Owner" })).toHaveValue(
         userName,

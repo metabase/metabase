@@ -164,9 +164,14 @@ describe("MetabotAgentDataSourcePills", () => {
       ).toHaveLength(1),
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Source is wrong" }),
-    );
+    // The feedback buttons are disabled while the mutation is in flight; wait
+    // for it to settle before changing the source, otherwise the second click
+    // lands on a disabled button and is a no-op.
+    const wrongButton = await screen.findByRole("button", {
+      name: "Source is wrong",
+    });
+    await waitFor(() => expect(wrongButton).toBeEnabled());
+    await userEvent.click(wrongButton);
 
     await waitFor(() =>
       expect(

@@ -55,8 +55,9 @@ describe("MetabotCustomizationPage", () => {
     setup({ metabotIcon: "data:image/png;base64,abc123" });
 
     await screen.findByText("AI agent's icon");
+    // The remove button only appears once the custom icon setting has loaded.
     expect(
-      screen.getByRole("button", { name: /Remove custom icon/ }),
+      await screen.findByRole("button", { name: /Remove custom icon/ }),
     ).toBeInTheDocument();
     expect(screen.getByText("Metabot illustrations")).toBeInTheDocument();
     expect(

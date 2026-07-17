@@ -6,7 +6,7 @@ import {
   setupNativeQuerySnippetEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { DatasetEditor } from "metabase/query_builder/components/DatasetEditor";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
@@ -90,8 +90,12 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
 describe("DatasetEditor", () => {
   it("tries to load a model index for a saved model", async () => {
     await renderDatasetEditor(mockSavedModel);
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("path:/api/model-index")).toHaveLength(
+        1,
+      ),
+    );
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
-    expect(calls).toHaveLength(1);
     expect(
       new URL(calls[0]?.request?.url ?? "").searchParams.get("model_id"),
     ).toBe(`${mockSavedModel.id}`);

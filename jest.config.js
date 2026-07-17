@@ -113,7 +113,12 @@ const baseConfig = {
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
-  setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
+  setupFilesAfterEnv: [
+    "<rootDir>/frontend/test/jest-setup-env.js",
+    // Fake timers + instant userEvent for directories enrolled in
+    // fake-timers-allowlist.js (a ratchet: enroll as directories go green).
+    "<rootDir>/frontend/test/fast-user-event.ts",
+  ],
   globals: {
     ga: {},
   },

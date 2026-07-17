@@ -55,12 +55,24 @@ const setup = (props = {}) => {
 const getEditor = () => screen.getByRole("textbox");
 
 describe("MetabotPromptInput", () => {
+  // The TipTap/ProseMirror editor and its mention popover process input
+  // through real timers/microtasks; the fast-test regime's frozen fake timers
+  // prevent typed characters from reaching the editor state. Opt this file
+  // back into real timers, and use an inter-event delay of 0 (rather than the
+  // regime's `delay: null`) so ProseMirror gets a chance to process each key.
+  let user: ReturnType<typeof userEvent.setup>;
+  beforeEach(() => {
+    jest.useRealTimers();
+    // eslint-disable-next-line testing-library/no-render-in-lifecycle -- userEvent.setup is not a render call; the rule confuses it with this file's render-wrapping `setup` helper.
+    user = userEvent.setup({ delay: 0 });
+  });
+
   it("should not call onSubmit when mention popover is open", async () => {
     const onSubmit = jest.fn();
     setup({ onSubmit });
 
-    await userEvent.type(getEditor(), "@");
-    await userEvent.keyboard("{Enter}");
+    await user.type(getEditor(), "@");
+    await user.keyboard("{Enter}");
 
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -69,8 +81,8 @@ describe("MetabotPromptInput", () => {
     const onStop = jest.fn();
     setup({ onStop });
 
-    await userEvent.type(getEditor(), "@");
-    await userEvent.keyboard("{Escape}");
+    await user.type(getEditor(), "@");
+    await user.keyboard("{Escape}");
 
     expect(onStop).not.toHaveBeenCalled();
   });
@@ -79,8 +91,8 @@ describe("MetabotPromptInput", () => {
     const onStop = jest.fn();
     setup({ onStop });
 
-    await userEvent.type(getEditor(), "hi");
-    await userEvent.keyboard("{Escape}");
+    await user.type(getEditor(), "hi");
+    await user.keyboard("{Escape}");
 
     expect(onStop).toHaveBeenCalledTimes(1);
   });
@@ -89,7 +101,7 @@ describe("MetabotPromptInput", () => {
     const ref = createRef<MetabotPromptInputRef>();
     setup({ ref });
 
-    await userEvent.type(getEditor(), "@");
+    await user.type(getEditor(), "@");
 
     // Unjustified type cast. FIXME
     const editor = ref.current as { view: { state: EditorState } } | null;
@@ -101,11 +113,11 @@ describe("MetabotPromptInput", () => {
   it("should close mention popup if {escape} is pressed", async () => {
     setup();
 
-    await userEvent.type(getEditor(), "@");
+    await user.type(getEditor(), "@");
 
     expect(await screen.findByTestId("mini-picker")).toBeInTheDocument();
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     await waitFor(() => {
       expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
@@ -116,7 +128,7 @@ describe("MetabotPromptInput", () => {
     const suggestionModels: SuggestionModel[] = ["table"];
 
     const typeMentionQueryAndGetSearchDbId = async () => {
-      await userEvent.type(getEditor(), "@ord");
+      await user.type(getEditor(), "@ord");
       await waitFor(() => {
         expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
       });
@@ -130,7 +142,7 @@ describe("MetabotPromptInput", () => {
 
     expect(await typeMentionQueryAndGetSearchDbId()).toBe("1");
 
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
     fetchMock.clearHistory();
 
     rerender(

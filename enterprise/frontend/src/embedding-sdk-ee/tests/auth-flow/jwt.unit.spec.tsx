@@ -152,13 +152,21 @@ describe("Auth Flow - JWT", () => {
       jwtProviderUri: MOCK_JWT_PROVIDER_URI,
     });
 
-    const { getLastAuthProviderApiCall, getFirstSsoDiscoveryCall } = setup({
+    const {
+      getLastAuthProviderApiCall,
+      getFirstSsoDiscoveryCall,
+      getLastUserApiCall,
+    } = setup({
       authConfig,
     });
 
     await waitForRequest(() => getLastAuthProviderApiCall());
 
     expect(getFirstSsoDiscoveryCall()).toHaveLength(0);
+
+    // Let the auth flow settle so its in-flight login requests don't leak into
+    // the next test (the strict afterEach fails on unmocked routes).
+    await waitForRequest(() => getLastUserApiCall());
   });
 
   it("should use `fetchRequestToken` if provided", async () => {

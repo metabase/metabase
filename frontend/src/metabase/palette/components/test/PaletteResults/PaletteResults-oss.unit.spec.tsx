@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
@@ -95,9 +95,7 @@ describe("PaletteResults", () => {
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
-    await waitFor(async () => {
-      expect(await screen.findByText("Results")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Results")).toBeInTheDocument();
 
     expect(
       await screen.findByRole("option", { name: /View and filter/i }),

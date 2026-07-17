@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -25,19 +25,25 @@ describe("useCreateDashboardApi", () => {
   it('should create a new dashboard after "createDashboard" is called', async () => {
     setup();
 
-    await userEvent.click(screen.getByText("Create dashboard"));
+    const button = screen.getByRole("button", { name: "Create dashboard" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
 
-    expect(
-      fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
-    ).toHaveLength(1);
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
+      ).toHaveLength(1),
+    );
   });
 
   it("should return dashboard api call response", async () => {
     const { onDashboardCreateSpy } = setup();
 
-    await userEvent.click(screen.getByText("Create dashboard"));
+    const button = screen.getByRole("button", { name: "Create dashboard" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
 
-    expect(onDashboardCreateSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onDashboardCreateSpy).toHaveBeenCalledTimes(1));
     expect(onDashboardCreateSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         id: TEST_DASHBOARD_ID,
@@ -49,12 +55,19 @@ describe("useCreateDashboardApi", () => {
   it("should create a dashboard in the personal collection when collectionId is 'personal'", async () => {
     setup({ collectionId: "personal" });
 
-    await userEvent.click(screen.getByText("Create dashboard"));
+    const button = screen.getByRole("button", { name: "Create dashboard" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
+      ).toHaveLength(1),
+    );
 
     const calls = fetchMock.callHistory.calls(`path:/api/dashboard`, {
       method: "POST",
     });
-    expect(calls).toHaveLength(1);
 
     const call = calls[0];
 
@@ -86,7 +99,9 @@ const TestComponent = (
 
   return (
     <div>
-      <button onClick={handleCreate}>Create dashboard</button>
+      <button onClick={handleCreate} disabled={!result}>
+        Create dashboard
+      </button>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -61,10 +61,19 @@ describe("CollectionInfoSidebar (OSS)", () => {
       },
     });
 
-    const editableText = screen.getByText("Test Description");
-    await userEvent.click(editableText);
+    // Wait for the sidesheet to finish opening; its focus trap parks focus on
+    // the close button, and until it settles it would steal focus back from the
+    // description textarea we're about to edit.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /close/i })).toHaveFocus(),
+    );
 
-    const input = screen.getByDisplayValue("Test Description");
+    // Switch the editable text into edit mode. A userEvent click can be
+    // swallowed mid-transition, so dispatch the click directly; it bubbles
+    // from the text node to the editable-text container's handler.
+    fireEvent.click(screen.getByText("Test Description"));
+
+    const input = await screen.findByDisplayValue("Test Description");
     await userEvent.clear(input);
 
     const longDescription = "a".repeat(256);

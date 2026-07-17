@@ -28,6 +28,13 @@ import {
   useSnippetCompletion,
 } from "./completers";
 
+// These tests drive RTK Query hooks (snippets, card autocomplete, referenced
+// cards) that resolve their data through a component that renders to null, so
+// there is no DOM signal to wait on. The fast-test regime's fake timers never
+// let those queries settle in this headless harness, so opt this file back into
+// real timers — the completion logic under test is unrelated to timer behaviour.
+jest.useRealTimers();
+
 function completer(
   useCompletion: () => CompletionSource,
   state?: Partial<State>,

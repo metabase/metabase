@@ -52,7 +52,7 @@ describe("UserInput", () => {
       await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
 
       expect(
-        screen.getByRole("option", { name: /Alice Anderson/ }),
+        await screen.findByRole("option", { name: /Alice Anderson/ }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("option", { name: /Bob Builder/ }),
@@ -67,7 +67,7 @@ describe("UserInput", () => {
 
       await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
       await userEvent.click(
-        screen.getByRole("option", { name: /Bob Builder/ }),
+        await screen.findByRole("option", { name: /Bob Builder/ }),
       );
 
       expect(handleUserIdChange).toHaveBeenCalledWith(2);
@@ -103,11 +103,11 @@ describe("UserInput", () => {
       await userEvent.type(input, "Bob");
 
       expect(
+        await screen.findByRole("option", { name: /Bob Builder/ }),
+      ).toBeInTheDocument();
+      expect(
         screen.queryByRole("option", { name: /Alice Anderson/ }),
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("option", { name: /Bob Builder/ }),
-      ).toBeInTheDocument();
       expect(
         screen.queryByRole("option", { name: /Charlie Chen/ }),
       ).not.toBeInTheDocument();

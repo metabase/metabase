@@ -36,6 +36,14 @@ import {
   reloadDashboardCards,
 } from "./data-fetching";
 
+// These specs exercise request-cancellation choreography built on real
+// setTimeout delays (in-flight query mocks resolve after 300–500ms, and the
+// tests sleep between dispatches to interleave them). That timing IS the
+// subject under test, so opt out of the fast-test regime's fake timers.
+beforeEach(() => {
+  jest.useRealTimers();
+});
+
 type SetupOpts = {
   dashboards?: Dashboard[];
   dashboard?: DashboardState;

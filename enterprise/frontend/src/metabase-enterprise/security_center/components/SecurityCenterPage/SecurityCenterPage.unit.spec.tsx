@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { Location } from "history";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
@@ -66,7 +66,7 @@ function setup(
     resetConfig: jest.fn(),
   });
 
-  renderWithProviders(<SecurityCenterPage location={location} />, {
+  return renderWithProviders(<SecurityCenterPage location={location} />, {
     storeInitialState: {
       settings: createMockSettingsState({
         version: createMockVersion({ tag: "v0.59.3" }),
@@ -452,25 +452,38 @@ describe("SecurityCenterPage", () => {
   describe("sync polling", () => {
     it("disables the sync button while syncing", async () => {
       fetchMock.post("path:/api/ee/security-center/sync", 200);
-      setup();
+      const { unmount } = setup();
 
       await userEvent.click(screen.getByTestId("sync-advisories"));
 
-      expect(screen.getByTestId("sync-advisories")).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByTestId("sync-advisories")).toBeDisabled();
+      });
+
+      // The page is left polling; unmount while the mocked hook is still installed so a pending
+      // poll-driven re-render doesn't invoke the real hook (and its unmocked query) after afterEach
+      // restores mocks.
+      unmount();
     });
 
     it("passes isPolling to useSecurityAdvisories after sync is triggered", async () => {
       fetchMock.post("path:/api/ee/security-center/sync", 200);
       const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
-      setup();
+      const { unmount } = setup();
 
       // Before sync, the hook should be called without polling
       expect(spy).toHaveBeenCalledWith(false);
 
       await userEvent.click(screen.getByTestId("sync-advisories"));
 
-      // After sync, the hook should be called with polling enabled
-      expect(spy).toHaveBeenCalledWith(true);
+      // After sync, the hook should be called with polling enabled. isPolling only flips once the sync
+      // mutation resolves, so wait for the re-render rather than asserting synchronously.
+      await waitFor(() => {
+        expect(spy).toHaveBeenCalledWith(true);
+      });
+
+      // Unmount while the mock is still installed (see note above).
+      unmount();
     });
   });
 });

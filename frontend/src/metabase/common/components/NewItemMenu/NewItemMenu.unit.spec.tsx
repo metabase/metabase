@@ -96,6 +96,11 @@ describe("NewItemMenu", () => {
   it("should support keyboard navigation", async () => {
     await setup();
 
+    // Wait for the menu to finish opening before navigating; otherwise the
+    // first ArrowDown races Mantine's initial hovered-item bookkeeping and
+    // lands a row early.
+    await screen.findByRole("menuitem", { name: /AI exploration/ });
+
     await userEvent.keyboard("{ArrowDown}");
 
     expect(

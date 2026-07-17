@@ -187,7 +187,7 @@ describe("CustomGeoJSONWIdget", () => {
     // Save and check body contains data
     expect(saveButton).toBeEnabled();
     await userEvent.click(saveButton);
-    expect(modal).not.toBeInTheDocument();
+    await waitFor(() => expect(modal).not.toBeInTheDocument());
 
     await waitFor(() => {
       const toasts = screen.getAllByLabelText("check_filled icon");

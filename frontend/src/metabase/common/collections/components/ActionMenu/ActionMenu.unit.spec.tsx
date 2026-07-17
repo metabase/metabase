@@ -214,8 +214,12 @@ describe("ActionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
       await userEvent.click(await screen.findByText("Move to trash"));
 
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/collection/1"),
+        ).toHaveLength(1),
+      );
       const calls = fetchMock.callHistory.calls("path:/api/collection/1");
-      expect(calls).toHaveLength(1);
       const [putCall] = calls;
       expect(putCall.options.method).toBe("PUT");
       // Unjustified type cast. FIXME

@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
@@ -23,8 +29,12 @@ function setup({
     query,
   });
 
-  function getRecentQuery(): Lib.Query {
-    expect(updateQuery).toHaveBeenCalledWith(expect.anything());
+  async function getRecentQuery(): Promise<Lib.Query> {
+    // The query update is dispatched by a timer-gated effect after the
+    // interaction; wait for it before reading the recorded call.
+    await waitFor(() =>
+      expect(updateQuery).toHaveBeenCalledWith(expect.anything()),
+    );
     const [recentQuery] = updateQuery.mock.lastCall;
     return recentQuery;
   }
@@ -62,7 +72,7 @@ describe("Notebook Editor > Expression Step", () => {
       "new expression{enter}",
     );
 
-    const recentQuery = getRecentQuery();
+    const recentQuery = await getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
     expect(expressions).toHaveLength(1);
     expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
@@ -98,11 +108,18 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByText("old name"));
 
+    // The editor parses the pre-loaded expression on a debounce and commits
+    // the clause via a state update outside React's act scope; flush that
+    // timer inside act so a valid clause is committed before we submit.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+
     const nameField = screen.getByTestId("expression-name");
     await userEvent.clear(nameField);
     await userEvent.type(nameField, "new name{enter}");
 
-    const recentQuery = getRecentQuery();
+    const recentQuery = await getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
     expect(expressions).toHaveLength(1);
     expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(
@@ -143,7 +160,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(closeIcon);
 
-    expect(Lib.expressions(getRecentQuery(), 0)).toHaveLength(0);
+    expect(Lib.expressions(await getRecentQuery(), 0)).toHaveLength(0);
   });
 
   it("should handle expressions named as existing columns (metabase#39508)", async () => {
@@ -158,7 +175,7 @@ describe("Notebook Editor > Expression Step", () => {
     });
     await userEvent.type(screen.getByTestId("expression-name"), "Total{enter}");
 
-    const recentQuery = getRecentQuery();
+    const recentQuery = await getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
     expect(expressions).toHaveLength(1);
     expect(Lib.displayInfo(recentQuery, 0, expressions[0]).displayName).toBe(

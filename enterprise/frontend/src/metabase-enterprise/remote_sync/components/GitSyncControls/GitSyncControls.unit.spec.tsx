@@ -274,6 +274,14 @@ describe("GitSyncControls", () => {
           "true",
         );
       });
+      // Wait until the has-remote-changes fetch settles so the Pull option is enabled; clicking it while
+      // still loading is a no-op that would silently skip the import.
+      await waitFor(async () => {
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+          "true",
+        );
+      });
       await userEvent.click(await findOption(/Pull changes/));
 
       expect(
@@ -307,6 +315,14 @@ describe("GitSyncControls", () => {
       // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
       await waitFor(async () => {
         expect(await findOption(/Push changes/)).toBeEnabled();
+      });
+      // Wait until the has-remote-changes fetch settles so the Pull option is enabled; clicking it while
+      // still loading is a no-op that would silently skip the preflight.
+      await waitFor(async () => {
+        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+          "data-combobox-disabled",
+          "true",
+        );
       });
       await userEvent.click(await findOption(/Pull changes/));
 

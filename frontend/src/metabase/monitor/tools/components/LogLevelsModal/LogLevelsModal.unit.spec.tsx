@@ -10,6 +10,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -118,12 +119,16 @@ describe("LogLevelsModal", () => {
 
     await userEvent.click(screen.getByText("Reset to defaults"));
 
-    expect(
-      fetchMock.callHistory.calls("path:/api/logger/adjustment", {
-        method: "DELETE",
-      }),
-    ).toHaveLength(1);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/logger/adjustment", {
+          method: "DELETE",
+        }),
+      ).toHaveLength(1),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("allows to save changes", async () => {
@@ -140,11 +145,18 @@ describe("LogLevelsModal", () => {
     await userEvent.click(within(popover).getByText(PRESET_B.display_name));
     await userEvent.click(screen.getByText("Save"));
 
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/logger/adjustment", {
+          method: "POST",
+        }),
+      ).toHaveLength(1),
+    );
+
     const calls = fetchMock.callHistory.calls("path:/api/logger/adjustment", {
       method: "POST",
     });
 
-    expect(calls).toHaveLength(1);
     const call = calls[0];
     const options = call.options;
     const body = await checkNotNull(options).body;
@@ -161,7 +173,9 @@ describe("LogLevelsModal", () => {
         "metabase.driver.h2": "info",
       },
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("should disable save button when there is no duration", async () => {
@@ -171,7 +185,9 @@ describe("LogLevelsModal", () => {
 
     await userEvent.clear(screen.getByPlaceholderText("Duration"));
 
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled(),
+    );
   });
 
   it("should disable save button when json is invalid", async () => {

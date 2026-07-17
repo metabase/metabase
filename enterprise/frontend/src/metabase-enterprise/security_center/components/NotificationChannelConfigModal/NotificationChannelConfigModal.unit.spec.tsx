@@ -340,7 +340,9 @@ describe("NotificationChannelConfigModal — save payload", () => {
 
       await userEvent.click(screen.getByTestId("slack-toggle"));
 
-      const channelInput = screen.getByPlaceholderText(
+      // The picker only renders once the Slack channels query resolves, so wait for it rather than
+      // querying synchronously right after enabling Slack.
+      const channelInput = await screen.findByPlaceholderText(
         "Pick a user or channel...",
       );
       await userEvent.clear(channelInput);

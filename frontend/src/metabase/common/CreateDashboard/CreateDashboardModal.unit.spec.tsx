@@ -165,6 +165,9 @@ describe("CreateDashboardModal", () => {
       setup();
       const name = "my dashboard";
       await findDashModalTitle();
+      // Wait for the collection tree to load; it remounts the form and would
+      // otherwise drop keystrokes typed into the name field mid-render.
+      await screen.findByText("Our analytics");
       await userEvent.type(nameField(), name);
       await userEvent.click(collDropdown());
       // Open New Collection Dialog

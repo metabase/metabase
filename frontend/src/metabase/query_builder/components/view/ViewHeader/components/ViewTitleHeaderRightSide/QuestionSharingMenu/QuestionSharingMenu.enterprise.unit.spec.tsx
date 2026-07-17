@@ -5,9 +5,18 @@ import { createMockCollection } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
+// Under the fast-test regime, userEvent's direct APIs run through
+// `userEvent.setup()`, which attaches its own `navigator.clipboard` stub on the
+// first interaction, replacing the global jest.fn. Spy on whatever
+// `navigator.clipboard` currently exposes once an interaction has put the stub
+// in place, and assert on that spy so the exact copied URL is still verified.
+function spyOnClipboardWriteText() {
+  return jest.spyOn(navigator.clipboard, "writeText");
+}
+
 describe("QuestionSharingMenu > Enterprise", () => {
-  beforeEach(() => {
-    jest.mocked(navigator.clipboard.writeText).mockClear();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe("non-admins", () => {
@@ -36,10 +45,11 @@ describe("QuestionSharingMenu > Enterprise", () => {
       });
 
       await openMenu();
+      const writeText = spyOnClipboardWriteText();
       await userEvent.click(screen.getByText("Copy public link"));
 
       await waitFor(() =>
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        expect(writeText).toHaveBeenCalledWith(
           "http://localhost:3000/public/question/1337bad801",
         ),
       );
@@ -58,10 +68,14 @@ describe("QuestionSharingMenu > Enterprise", () => {
       const sharingButton = screen.getByTestId("sharing-menu-button");
 
       expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+      await userEvent.hover(sharingButton);
+      const writeText = spyOnClipboardWriteText();
       await userEvent.click(sharingButton);
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        "http://localhost:3000/question/1-my-cool-question",
+      await waitFor(() =>
+        expect(writeText).toHaveBeenCalledWith(
+          "http://localhost:3000/question/1-my-cool-question",
+        ),
       );
       expect(
         screen.queryByText("Ask your admin to create a public link"),
@@ -77,10 +91,14 @@ describe("QuestionSharingMenu > Enterprise", () => {
       const sharingButton = screen.getByTestId("sharing-menu-button");
 
       expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+      await userEvent.hover(sharingButton);
+      const writeText = spyOnClipboardWriteText();
       await userEvent.click(sharingButton);
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        "http://localhost:3000/question/1-my-cool-question",
+      await waitFor(() =>
+        expect(writeText).toHaveBeenCalledWith(
+          "http://localhost:3000/question/1-my-cool-question",
+        ),
       );
       expect(
         screen.queryByText("Ask your admin to create a public link"),

@@ -98,8 +98,12 @@ describe("NewCollectionDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      ),
+    );
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
-    expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
     // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
@@ -118,8 +122,12 @@ describe("NewCollectionDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      ),
+    );
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
-    expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
     // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);

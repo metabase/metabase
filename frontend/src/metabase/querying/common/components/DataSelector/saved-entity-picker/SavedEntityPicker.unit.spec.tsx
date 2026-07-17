@@ -4,6 +4,7 @@ import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
@@ -84,20 +85,24 @@ describe("SavedEntityPicker", () => {
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
 
-    expect(
-      screen.getAllByTestId("tree-item-name").map((node) => node.textContent),
-    ).toEqual([
-      "Our analytics",
-      "Your personal collection",
-      "Regular collection",
-    ]);
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId("tree-item-name").map((node) => node.textContent),
+      ).toEqual([
+        "Our analytics",
+        "Your personal collection",
+        "Regular collection",
+      ]),
+    );
   });
 
   it("sorts saved questions case-insensitive (metabase#23693)", async () => {
     await setup();
 
-    expect(
-      screen.getAllByTestId("option-text").map((node) => node.textContent),
-    ).toEqual(["a", "A", "B"]);
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId("option-text").map((node) => node.textContent),
+      ).toEqual(["a", "A", "B"]),
+    );
   });
 });

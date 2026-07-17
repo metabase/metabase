@@ -274,7 +274,7 @@ describe("DataModelV1", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -489,8 +489,12 @@ describe("DataModelV1", () => {
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
 
+      await waitFor(() => {
+        expect(getFieldSemanticTypeFkTargetInput()).toHaveValue(
+          "Products → ID",
+        );
+      });
       const input = getFieldSemanticTypeFkTargetInput();
-      expect(input).toHaveValue("Products → ID");
 
       await userEvent.click(input);
       const popover = within(await screen.findByRole("listbox"));
@@ -685,7 +689,7 @@ describe("DataModelV1", () => {
         );
 
         await waitForLoaderToBeRemoved();
-        expect(screen.getByText("Sample Database")).toBeInTheDocument();
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
 
         history?.goBack();
 

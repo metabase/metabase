@@ -6,7 +6,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
@@ -138,9 +138,11 @@ describe("SelfHostedSMTPConnectionForm", () => {
 
     await userEvent.clear(hostInput);
 
-    expect(
-      await screen.findByRole("button", { name: /save changes/i }),
-    ).toBeDisabled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /save changes/i }),
+      ).toBeDisabled(),
+    );
   });
 
   it("should submit all settings changes via api", async () => {

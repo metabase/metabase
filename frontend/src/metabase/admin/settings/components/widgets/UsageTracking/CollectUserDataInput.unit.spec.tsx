@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
@@ -74,34 +74,48 @@ describe("CollectUserDataInput", () => {
 
   it("should toggle the `analytics-pii-retention-enabled` setting off", async () => {
     setup({ value: true });
-    await userEvent.click(screen.getByRole("switch"));
-    expect(trackSimpleEvent).toHaveBeenCalledWith({
-      event: "analytics_pii_retention_changed",
-      event_detail: "disabled",
-      triggered_from: "admin",
-    });
+    const toggle = await screen.findByRole("switch");
+    // The switch renders before the settings load; wait for the loaded state.
+    await waitFor(() => expect(toggle).toBeChecked());
+    // After the save, the component refetches properties; return the new value.
+    setupPropertiesEndpoints(createMockSettings({ [SETTING_NAME]: false }));
+    await userEvent.click(toggle);
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "analytics_pii_retention_changed",
+        event_detail: "disabled",
+        triggered_from: "admin",
+      }),
+    );
 
     const [{ url, body }] = await findRequests("PUT");
     expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
     expect(body).toEqual({ value: false });
 
-    expect(await screen.findByRole("switch")).not.toBeChecked();
+    await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
   });
 
   it("should toggle the `analytics-pii-retention-enabled` setting on", async () => {
     setup({ value: false });
-    await userEvent.click(screen.getByRole("switch"));
+    // The loaded state is also unchecked, so wait for the settings-endpoint
+    // description text as the "data has arrived" signal before interacting.
+    await screen.findByText(/Enable logging of path, user agent/);
+    const toggle = await screen.findByRole("switch");
+    setupPropertiesEndpoints(createMockSettings({ [SETTING_NAME]: true }));
+    await userEvent.click(toggle);
 
-    const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
-    expect(body).toEqual({ value: true });
+    await waitFor(async () => {
+      const [{ url, body }] = await findRequests("PUT");
+      expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
+      expect(body).toEqual({ value: true });
+    });
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "analytics_pii_retention_changed",
       event_detail: "enabled",
       triggered_from: "admin",
     });
 
-    expect(await screen.findByRole("switch")).toBeChecked();
+    await waitFor(() => expect(screen.getByRole("switch")).toBeChecked());
   });
 
   it("should show environment variable message when `analytics-pii-retention-enabled` is set via env var", async () => {

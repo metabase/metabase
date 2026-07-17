@@ -298,6 +298,10 @@ describe("TablePicker", () => {
 
       await userEvent.click(await screen.findByRole("textbox"));
 
+      await waitFor(() => {
+        expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
+      });
+
       // focus the first item
       await userEvent.keyboard("{Tab}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
@@ -313,6 +317,11 @@ describe("TablePicker", () => {
       // right arrow opens the node
       await userEvent.keyboard("{ArrowRight}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
+
+      // wait for the node's children to load before navigating into them
+      await waitFor(() => {
+        expect(item(QUU)).toBeInTheDocument();
+      });
 
       // arrow down moves focus down
       await userEvent.keyboard("{ArrowDown}");
@@ -373,10 +382,12 @@ describe("TablePicker", () => {
 
       await userEvent.type(searchInput(), "foo");
 
+      await waitFor(() => {
+        expect(item(FOO_RESULT)).toBeInTheDocument();
+      });
       expect(item(DATABASE)).toBeInTheDocument();
       expect(item(SCHEMA)).toBeInTheDocument();
 
-      expect(item(FOO_RESULT)).toBeInTheDocument();
       expect(item(BAR_RESULT)).not.toBeInTheDocument();
 
       await clickItem(FOO_RESULT);
@@ -392,7 +403,7 @@ describe("TablePicker", () => {
 
       await userEvent.type(searchInput(), "foo");
 
-      expect(screen.getByText("No results.")).toBeInTheDocument();
+      expect(await screen.findByText("No results.")).toBeInTheDocument();
     });
 
     it("should be possible to use the keyboard to select items in the search results", async () => {
@@ -402,10 +413,12 @@ describe("TablePicker", () => {
 
       await userEvent.type(searchInput(), "foo");
 
+      await waitFor(() => {
+        expect(item(FOO_RESULT)).toBeInTheDocument();
+      });
       expect(item(DATABASE)).toBeInTheDocument();
       expect(item(SCHEMA)).toBeInTheDocument();
 
-      expect(item(FOO_RESULT)).toBeInTheDocument();
       expect(item(BAR_RESULT)).not.toBeInTheDocument();
 
       await userEvent.type(searchInput(), "{ArrowDown}");

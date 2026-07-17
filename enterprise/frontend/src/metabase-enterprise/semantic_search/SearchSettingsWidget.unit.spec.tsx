@@ -101,7 +101,11 @@ describe("SearchSettingsWidget", () => {
       screen.queryByTestId("upsell-semantic-search"),
     ).not.toBeInTheDocument();
     expect(await toggle()).toBeDisabled();
-    expect(await toggle()).toBeChecked();
+    // The switch reflects the search-engine admin setting, which loads asynchronously — the shell renders
+    // unchecked first, so wait for the loaded value.
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toBeChecked();
+    });
   });
 
   it("should show progress when indexing is in progress", async () => {
@@ -114,23 +118,30 @@ describe("SearchSettingsWidget", () => {
   });
 
   it("should not show progress when once indexing is complete", async () => {
-    await setup("semantic", "pro", { indexed_count: 50, total_est: 100 }, 50);
+    // This test's subject is the status poll picking up completion between fetches. RTK Query's polling
+    // interval isn't driven by the fake-timer clock, so run it on real timers and restore the regime after.
+    jest.useRealTimers();
+    try {
+      await setup("semantic", "pro", { indexed_count: 50, total_est: 100 }, 50);
 
-    expect(
-      await screen.findByText("Initializing search index..."),
-    ).toBeInTheDocument();
-    expect(await progressBar()).toHaveAttribute("aria-valuenow", "50");
+      expect(
+        await screen.findByText("Initializing search index..."),
+      ).toBeInTheDocument();
+      expect(await progressBar()).toHaveAttribute("aria-valuenow", "50");
 
-    fetchMock.modifyRoute("search-sync-status", {
-      response: () => ({
-        indexed_count: 100,
-        total_est: 100,
-      }),
-    });
-    expect(
-      await screen.findByText(/Initialized search index/),
-    ).toBeInTheDocument();
-    expect(await progressBar()).toHaveAttribute("aria-valuenow", "100");
+      fetchMock.removeRoute("search-sync-status");
+      fetchMock.get(
+        "path:/api/ee/semantic-search/status",
+        { indexed_count: 100, total_est: 100 },
+        { name: "search-sync-status" },
+      );
+      expect(
+        await screen.findByText(/Initialized search index/),
+      ).toBeInTheDocument();
+      expect(await progressBar()).toHaveAttribute("aria-valuenow", "100");
+    } finally {
+      jest.useFakeTimers();
+    }
   });
 
   it("should not show progress when indexing was already complete", async () => {

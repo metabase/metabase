@@ -145,11 +145,6 @@ describe("SCIM User Provisioning Settings", () => {
 
   it("should allow copying the scim URL", async () => {
     window.prompt = jest.fn(); // no idea what this does, but jsdom says it's not implemented
-    Object.assign(window.navigator, {
-      clipboard: {
-        writeText: jest.fn().mockImplementation(() => Promise.resolve()),
-      },
-    });
     await setup({
       settings: {
         "scim-enabled": true,
@@ -167,9 +162,16 @@ describe("SCIM User Provisioning Settings", () => {
     await userEvent.click(await screen.findByLabelText("copy icon"));
 
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
-    expect(window.navigator.clipboard.writeText).toHaveBeenCalledWith(
-      "https://example.com/api/ee/scim/v2",
-    );
+    // Under the fast-test regime userEvent replaces navigator.clipboard with
+    // its own stub (no jest mock); read the copied value back from whichever
+    // clipboard is in effect, then assert unconditionally.
+    const getCopiedText = async () => {
+      const { writeText } = window.navigator.clipboard;
+      return jest.isMockFunction(writeText)
+        ? writeText.mock.calls.at(-1)?.[0]
+        : window.navigator.clipboard.readText();
+    };
+    expect(await getCopiedText()).toBe("https://example.com/api/ee/scim/v2");
   });
 
   it("should call the regenerate token endpoint", async () => {

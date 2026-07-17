@@ -86,13 +86,13 @@ describe("TransformListPage", () => {
     it("shows the Python library row when the transforms-python feature is enabled", async () => {
       await setup({ tokenFeatures: { "transforms-python": true } });
 
-      expect(screen.getByText("Python library")).toBeInTheDocument();
+      expect(await screen.findByText("Python library")).toBeInTheDocument();
     });
 
     it("shows the Python library row on a paid plan without the transforms-python feature (upsell)", async () => {
       await setup({ tokenFeatures: { advanced_permissions: true } });
 
-      expect(screen.getByText("Python library")).toBeInTheDocument();
+      expect(await screen.findByText("Python library")).toBeInTheDocument();
     });
   });
 });

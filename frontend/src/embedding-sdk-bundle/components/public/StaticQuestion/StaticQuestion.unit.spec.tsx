@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
@@ -18,6 +20,7 @@ import {
 import {
   mockGetBoundingClientRect,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -151,6 +154,17 @@ const setup = async ({
   );
 
   await waitForLoaderToBeRemoved();
+
+  // The question load fetches query metadata; under fake timers this can
+  // resolve after the test's assertions and leak into the next test's
+  // afterEach as an unmocked route. Wait for it to settle here.
+  await waitFor(() => {
+    expect(
+      fetchMock.callHistory.called(
+        `path:/api/card/${TEST_CARD_ID}/query_metadata`,
+      ),
+    ).toBe(true);
+  });
 };
 
 addQueryPropTests({ Component: StaticQuestionInternal });

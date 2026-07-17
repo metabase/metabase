@@ -1,5 +1,5 @@
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Collection, Table } from "metabase-types/api";
 import {
@@ -61,9 +61,12 @@ describe("TableCollection", () => {
 
     // Must expand the Data root (6) AND the collection itself (8) so the
     // referenced collection is actually revealed — not just the library root.
-    expect(link).toHaveAttribute(
-      "href",
-      "/data-studio/library?expandedId=6&expandedId=8",
+    // The ancestors arrive from the collection fetch, so wait for the full href.
+    await waitFor(() =>
+      expect(link).toHaveAttribute(
+        "href",
+        "/data-studio/library?expandedId=6&expandedId=8",
+      ),
     );
   });
 

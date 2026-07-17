@@ -71,6 +71,12 @@ describe("GrantAccessModal", () => {
         within(undo).getByText(/Access grant created successfully/),
       ).toBeInTheDocument();
     });
+
+    // Let the toast auto-dismiss and its exit transition finish before the test ends, so the shared
+    // UndoListing portal target and transition state are left clean for the next test.
+    await waitFor(() => {
+      expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+    });
   });
 
   it("should handle response error", async () => {

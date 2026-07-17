@@ -12,7 +12,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { delay } from "__support__/utils";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
@@ -77,7 +76,7 @@ const editDatabasePermission = async () => {
   const clickElement = await screen.findByLabelText(/close icon/);
   await userEvent.click(clickElement);
 
-  await delay(0);
+  await screen.findByText("Save changes");
 };
 
 describe("GroupsPermissionsPage", () => {

@@ -99,6 +99,13 @@ async function setupRunQuestionQuery(question: Question) {
   return { result, mockResult };
 }
 
+// This suite exercises real RTK Query request/abort/delay timing directly
+// (no React, no userEvent). Fake timers add no value here and break the
+// genuinely async fetch/abort/`delay` behaviour under test, so opt out.
+beforeEach(() => {
+  jest.useRealTimers();
+});
+
 describe("metabase/querying/run-query > runQuestionQuery", () => {
   describe("saved questions", () => {
     it("should use the card query endpoint", async () => {

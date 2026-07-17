@@ -21,13 +21,11 @@ function setup(colors: Record<string, string>) {
 }
 
 async function expectColorsToExist(colors: Record<string, string>) {
-  await Promise.all(
-    Object.values(colors).map(async (color) => {
-      expect(
-        await screen.findByRole("button", { name: color }),
-      ).toBeInTheDocument();
-    }),
-  );
+  for (const color of Object.values(colors)) {
+    expect(
+      await screen.findByRole("button", { name: color }),
+    ).toBeInTheDocument();
+  }
 }
 
 describe("ColorSettingsWidget", () => {

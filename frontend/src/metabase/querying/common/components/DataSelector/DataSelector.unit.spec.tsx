@@ -33,6 +33,13 @@ const OTHER_MULTI_SCHEMA_TABLE2_ID = 201;
 
 const EMPTY_DB_ID = 4;
 
+// This suite drives progressive database/schema/table loading by manually
+// re-rendering after each `delay(1)` real-timer tick. That `delay` helper is a
+// genuine setTimeout, which never resolves under the fast-test regime's fake
+// timers, so opt this file back into real timers — the behaviour under test is
+// the fetch/step progression, not any debounce or timer semantics.
+jest.useRealTimers();
+
 describe("DataSelector", () => {
   const databases = [
     createSampleDatabase(),
@@ -337,7 +344,10 @@ describe("DataSelector", () => {
     );
 
     await userEvent.click(screen.getByText("Multi-schema Database"));
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
+    expect(await screen.findByText("First Schema")).toBeInTheDocument();
+    // Let the async database-change state machine settle before switching to a
+    // different database, which the instant-userEvent regime otherwise races.
+    await delay(1);
     await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     expect(await screen.findByText("Orders")).toBeInTheDocument();
@@ -388,14 +398,18 @@ describe("DataSelector", () => {
 
     // expand a multi-schema db to make sure it's schemas are loaded
     await userEvent.click(screen.getByText("Multi-schema Database"));
-    expect(screen.getByText("First Schema")).toBeInTheDocument();
+    expect(await screen.findByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
+    // Let the async database-change state machine settle before switching to a
+    // different database, which the instant-userEvent regime otherwise races.
+    await delay(1);
 
     // click into a single schema db, check for a table, and then return to db list
     await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Sample Database"));
+    await delay(1);
 
     // expand multi-schema db
     await userEvent.click(screen.getByText("Multi-schema Database"));

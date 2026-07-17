@@ -75,6 +75,13 @@ const waitForCondition = async (
 };
 
 describe("remote-sync-listener-middleware", () => {
+  // This suite exercises async RTK-Query/middleware resolution by polling with Date.now + setTimeout
+  // (waitForCondition) and real setTimeout sleeps; its subject is that real timing, not React updates,
+  // so opt out of the fast-test fake-timer regime.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   describe("updateRemoteSyncSettings listener", () => {
     it("should show modal when settings save succeeds with task_id", async () => {
       fetchMock.put("path:/api/ee/remote-sync/settings", {
