@@ -1,5 +1,5 @@
 import type { History } from "history";
-import { type PropsWithChildren, createContext } from "react";
+import { type PropsWithChildren, createContext, useMemo } from "react";
 
 import { useHistory } from "metabase/history";
 
@@ -21,10 +21,19 @@ const RouterContextProviderBase = ({
   routes,
   children,
 }: PropsWithChildren<RouterContextType>) => {
+  // Memoize on the injected parts so a re-render that leaves them unchanged does
+  // not hand consumers a fresh object. Under the `element` bridge, navigation
+  // commits twice (the facade context update, then v3's own route re-render), and
+  // an unmemoized value would re-propagate on that second, location-unchanged
+  // render. That extra render breaks pages that derive transient state from
+  // `usePrevious(location.key)` (e.g. the document /new -> /new leave prompt),
+  // which `component`-based v3 routes never saw because v3 re-renders them once.
+  const value = useMemo(
+    () => ({ router, location, params, routes }),
+    [router, location, params, routes],
+  );
   return (
-    <RouterContext.Provider value={{ router, location, params, routes }}>
-      {children}
-    </RouterContext.Provider>
+    <RouterContext.Provider value={value}>{children}</RouterContext.Provider>
   );
 };
 
