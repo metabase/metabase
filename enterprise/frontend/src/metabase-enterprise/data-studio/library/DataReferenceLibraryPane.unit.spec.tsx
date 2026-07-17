@@ -80,6 +80,54 @@ describe("DataReferenceLibraryPane", () => {
     expect(otherDatabases.getAllByRole("listitem")).toHaveLength(2);
   });
 
+  it("shows a 'No tables' message in this database when only other databases have tables", async () => {
+    setup({
+      tables: [
+        libraryTable({ id: 1, name: "Mango", database_id: 2 }),
+        libraryTable({ id: 2, name: "Banana", database_id: 3 }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    // "In this database" is always shown, with a "No tables" message
+    const currentDatabase = within(
+      screen.getByTestId("library-tables-current-database"),
+    );
+    expect(screen.getByText("In this database")).toBeInTheDocument();
+    expect(currentDatabase.getByText("No tables")).toBeInTheDocument();
+    expect(currentDatabase.queryAllByRole("listitem")).toHaveLength(0);
+
+    // "In other databases" is shown because those databases have tables
+    const otherDatabases = within(
+      screen.getByTestId("library-tables-other-databases"),
+    );
+    expect(screen.getByText("In other databases")).toBeInTheDocument();
+    expect(otherDatabases.getByText("Mango")).toBeInTheDocument();
+    expect(otherDatabases.getByText("Banana")).toBeInTheDocument();
+  });
+
+  it("hides 'In other databases' but still shows this database's tables when other databases have none", async () => {
+    setup({
+      tables: [
+        libraryTable({ id: 1, name: "Orders", database_id: TARGET_DB_ID }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByText("In other databases")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("library-tables-other-databases"),
+    ).not.toBeInTheDocument();
+
+    const currentDatabase = within(
+      screen.getByTestId("library-tables-current-database"),
+    );
+    expect(screen.getByText("In this database")).toBeInTheDocument();
+    expect(currentDatabase.getByText("Orders")).toBeInTheDocument();
+    // No empty message when there are tables to show
+    expect(currentDatabase.queryByText("No tables")).not.toBeInTheDocument();
+  });
+
   it("shows the database name only for tables in other databases", async () => {
     setup({
       tables: [

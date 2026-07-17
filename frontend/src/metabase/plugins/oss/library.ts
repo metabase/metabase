@@ -145,7 +145,7 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   }),
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
-  DataReferenceLibraryPane: PluginPlaceholder as ComponentType<
+  DataReferenceLibraryPane: PluginPlaceholder<
     DataReferencePaneProps<DataReferenceLibraryItem>
   >,
   CreateLibraryModal:

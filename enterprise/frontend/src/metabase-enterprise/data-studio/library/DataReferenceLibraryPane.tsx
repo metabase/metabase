@@ -34,13 +34,16 @@ export const DataReferenceLibraryPane = ({
   onItemClick,
   queryDatabaseId,
 }: DataReferenceLibraryPaneProps) => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollection();
+  const {
+    data: libraryCollection,
+    isLoading: isLoadingCollection,
+    error: libraryCollectionError,
+  } = useGetLibraryCollection();
 
   const {
     data: searchResponse,
     isLoading: isLoadingSearch,
-    error,
+    error: searchError,
   } = useSearchQuery(
     libraryCollection
       ? {
@@ -52,6 +55,7 @@ export const DataReferenceLibraryPane = ({
   );
 
   const isLoading = isLoadingCollection || isLoadingSearch;
+  const error = libraryCollectionError || searchError;
 
   const { targetTables, otherTables } = useMemo(() => {
     const tables = (searchResponse?.data ?? []).filter(
@@ -84,11 +88,12 @@ export const DataReferenceLibraryPane = ({
         <SidebarContent.Pane>
           {hasTables ? (
             <NodeListContainer>
-              {targetTables.length > 0 && (
+              {hasTarget && (
                 <LibraryTableList
                   title={t`In this database`}
                   tables={targetTables}
                   onItemClick={onItemClick}
+                  emptyMessage={t`No tables`}
                   data-testid="library-tables-current-database"
                 />
               )}
@@ -98,7 +103,7 @@ export const DataReferenceLibraryPane = ({
                   tables={otherTables}
                   onItemClick={onItemClick}
                   showDatabaseName={hasTarget}
-                  mt={targetTables.length > 0 ? 16 : undefined}
+                  mt={hasTarget ? 16 : undefined}
                   data-testid={
                     hasTarget
                       ? "library-tables-other-databases"
@@ -125,6 +130,7 @@ type LibraryTableListProps = {
   tables: SearchResult[];
   onItemClick: OnItemClick;
   showDatabaseName?: boolean;
+  emptyMessage?: string;
   mt?: number;
   "data-testid"?: string;
 };
@@ -134,49 +140,62 @@ const LibraryTableList = ({
   tables,
   onItemClick,
   showDatabaseName,
+  emptyMessage,
   mt,
   "data-testid": dataTestId,
-}: LibraryTableListProps) => (
-  <li data-testid={dataTestId}>
-    <NodeListTitle mt={mt}>
-      <NodeListTitleText ml={undefined}>{title}</NodeListTitleText>
-    </NodeListTitle>
-    <ul>
-      {tables.map((table) => {
-        const isSyncing = table.initial_sync_status !== "complete";
-        return (
-          <li key={table.id}>
-            <NodeListItemLink
-              disabled={isSyncing}
-              onClick={() => {
-                if (isConcreteTableId(table.id)) {
-                  onItemClick({ type: "table", id: table.id });
-                }
-              }}
-            >
-              <NodeListItemIcon
-                disabled={isSyncing}
-                name="table"
-                style={{ flexShrink: 0 }}
-              />
-              <Ellipsified fw={700} ml="sm">
-                {table.name}
-              </Ellipsified>
-              {showDatabaseName && table.database_name && (
-                <Ellipsified
-                  c="text-secondary"
-                  fw="normal"
-                  fz="sm"
-                  ml="sm"
-                  flex={"1 0 30%"}
+}: LibraryTableListProps) => {
+  if (tables.length === 0 && !emptyMessage) {
+    return null;
+  }
+
+  return (
+    <li data-testid={dataTestId}>
+      <NodeListTitle mt={mt}>
+        <NodeListTitleText ml={undefined}>{title}</NodeListTitleText>
+      </NodeListTitle>
+      {tables.length > 0 ? (
+        <ul>
+          {tables.map((table) => {
+            const isSyncing = table.initial_sync_status !== "complete";
+            return (
+              <li key={table.id}>
+                <NodeListItemLink
+                  disabled={isSyncing}
+                  onClick={() => {
+                    if (isConcreteTableId(table.id)) {
+                      onItemClick({ type: "table", id: table.id });
+                    }
+                  }}
                 >
-                  {table.database_name}
-                </Ellipsified>
-              )}
-            </NodeListItemLink>
-          </li>
-        );
-      })}
-    </ul>
-  </li>
-);
+                  <NodeListItemIcon
+                    disabled={isSyncing}
+                    name="table"
+                    style={{ flexShrink: 0 }}
+                  />
+                  <Ellipsified fw={700} ml="sm">
+                    {table.name}
+                  </Ellipsified>
+                  {showDatabaseName && table.database_name && (
+                    <Ellipsified
+                      c="text-secondary"
+                      fw="normal"
+                      fz="sm"
+                      ml="sm"
+                      flex={"1 0 30%"}
+                    >
+                      {table.database_name}
+                    </Ellipsified>
+                  )}
+                </NodeListItemLink>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <Text c="text-secondary" px="sm" pb="sm">
+          {emptyMessage}
+        </Text>
+      )}
+    </li>
+  );
+};

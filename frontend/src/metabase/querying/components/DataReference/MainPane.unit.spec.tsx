@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupLibraryEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
@@ -15,7 +18,10 @@ import { MainPane } from "./MainPane";
 
 const databases = [createMockDatabase({ id: 1, name: "Sample Database" })];
 
-const setup = ({ hasLibrary = false }: { hasLibrary?: boolean } = {}) => {
+const setup = ({
+  hasLibrary = false,
+  hasLibraryCollection = true,
+}: { hasLibrary?: boolean; hasLibraryCollection?: boolean } = {}) => {
   const onItemClick = jest.fn();
 
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
@@ -28,6 +34,7 @@ const setup = ({ hasLibrary = false }: { hasLibrary?: boolean } = {}) => {
 
   if (hasLibrary) {
     setupEnterpriseOnlyPlugin("library");
+    setupLibraryEndpoints(hasLibraryCollection);
   }
 
   renderWithProviders(
@@ -49,6 +56,13 @@ describe("MainPane", () => {
 
   it("does not render a Library option when the library feature is disabled", async () => {
     setup({ hasLibrary: false });
+
+    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+    expect(screen.queryByText("Library")).not.toBeInTheDocument();
+  });
+
+  it("does not render a Library option when the feature is enabled but no library has been created", async () => {
+    setup({ hasLibrary: true, hasLibraryCollection: false });
 
     expect(await screen.findByText("Sample Database")).toBeInTheDocument();
     expect(screen.queryByText("Library")).not.toBeInTheDocument();
