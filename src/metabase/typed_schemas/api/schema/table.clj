@@ -3,7 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.schema.common :as schema.common]
@@ -169,7 +169,7 @@
 
 (defn- table-details
   [table]
-  (let [response (entity-details/get-table-details
+  (let [response (metabot/get-table-details
                   {:entity-type          :table
                    :entity-id            (:id table)
                    :with-fields?         true

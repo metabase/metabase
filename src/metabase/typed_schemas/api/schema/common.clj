@@ -5,7 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.api.scope :as scope]
    [toucan2.core :as t2]))
@@ -38,7 +38,7 @@
           aggregation-column (m/find-first #(= (:lib/source %) :source/aggregations)
                                            (lib/returned-columns query))]
       (when aggregation-column
-        (metabot.tools.u/->result-column query aggregation-column)))
+        (metabot/->result-column query aggregation-column)))
     ;; Result-column inference is best effort; callers fall back to an unknown column.
     (catch Exception _
       nil)))
