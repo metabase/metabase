@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { t } from "ttag";
 
 import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
-import { Box, Flex, Select, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 import { AboutVisualization } from "./AboutVisualization";
 import { DescriptionSection } from "./DescriptionSection";
+import { DimensionSelect } from "./DimensionSelect";
 import { ExploreMetricButton } from "./ExploreMetricButton";
 import S from "./MetricAbout.module.css";
 import { useMetricAboutQuery } from "./use-metric-about-query";
@@ -24,6 +24,7 @@ export function MetricAbout({ card, urls }: MetricAboutProps) {
   );
   const {
     activeDimensionId,
+    activeDimensionSelectLabel,
     data,
     dimensionOptions,
     isLoading,
@@ -53,16 +54,15 @@ export function MetricAbout({ card, urls }: MetricAboutProps) {
             className={S.visualizationPanel}
           />
         )}
-        {activeDimensionId && dimensionOptions.length > 0 && (
-          <Select
-            aria-label={t`Dimension`}
-            className={S.dimensionSelect}
-            data={dimensionOptions}
-            value={activeDimensionId}
-            onChange={setSelectedDimensionId}
-            allowDeselect={false}
-            variant="unstyled"
-          />
+        {activeDimensionId && activeDimensionSelectLabel && (
+          <Box className={S.dimensionSelectContainer}>
+            <DimensionSelect
+              label={activeDimensionSelectLabel}
+              options={dimensionOptions}
+              value={activeDimensionId}
+              onChange={setSelectedDimensionId}
+            />
+          </Box>
         )}
       </Box>
       <Stack flex="0 0 360px" className={S.descriptionSection} mah={700}>

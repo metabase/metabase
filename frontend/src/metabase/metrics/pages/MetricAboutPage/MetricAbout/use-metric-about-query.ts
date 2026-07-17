@@ -4,6 +4,7 @@ import { useGetMetricQuery } from "metabase/api";
 import { useCardQueryData } from "metabase/common/data-studio/hooks/use-card-query-data";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import { DEFAULT_DISPLAY_TYPE_BY_DIMENSION } from "metabase/common/metrics/utils/dimension-types";
+import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
 import {
   useMetricDefinition,
   useMetricDimensionQuery,
@@ -36,7 +37,13 @@ export function useMetricAboutQuery(
         return [];
       }
 
-      return [{ value: dimension.id, label: descriptor.displayName }];
+      return [
+        {
+          value: dimension.id,
+          label: descriptor.displayName,
+          icon: getDimensionIcon(descriptor.dimensionMetadata),
+        },
+      ];
     }) ?? [];
   const activeDimensionId = selectedDimensionId ?? defaultDimensionId;
 
@@ -57,6 +64,13 @@ export function useMetricAboutQuery(
   });
 
   const data = useDimension ? dimensionData : cardData;
+  const activeDimensionLabel = dimensionOptions.find(
+    (option) => option.value === activeDimensionId,
+  )?.label;
+  const activeDimensionSelectLabel =
+    activeDimensionType === "numeric"
+      ? (data?.data.cols[0]?.display_name ?? activeDimensionLabel)
+      : activeDimensionLabel;
   const isLoading =
     isLoadingMetric ||
     isWaitingForDefinition ||
@@ -71,7 +85,7 @@ export function useMetricAboutQuery(
       ...card,
       display: DEFAULT_DISPLAY_TYPE_BY_DIMENSION[activeDimensionType],
       visualization_settings: {
-        "graph.x_axis.title_text": "",
+        "graph.x_axis.labels_enabled": false,
       },
     };
   }, [card, activeDimensionType]);
@@ -83,6 +97,7 @@ export function useMetricAboutQuery(
 
   return {
     activeDimensionId,
+    activeDimensionSelectLabel,
     data,
     dimensionOptions,
     isLoading,

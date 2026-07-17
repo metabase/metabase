@@ -9,7 +9,7 @@ import {
   setupMetricDatasetEndpoint,
   setupMetricEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -88,6 +88,31 @@ const TIME_SERIES = createMockDataset({
     rows: [
       ["2023-12-01T00:00:00Z", 100],
       ["2024-01-01T00:00:00Z", 150],
+    ],
+  }),
+});
+
+const BINNED_NUMERIC_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createMockColumn({
+        name: "quantity",
+        display_name: "Quantity: 8 bins",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+        binning_info: {
+          binning_strategy: "num-bins",
+          min_value: 0,
+          max_value: 100,
+          num_bins: 8,
+          bin_width: 12.5,
+        },
+      }),
+      createMockNumericColumn({ name: "count" }),
+    ],
+    rows: [
+      [0, 10],
+      [12.5, 20],
     ],
   }),
 });
@@ -328,15 +353,19 @@ describe("MetricAbout", () => {
         metricDataset: TIME_SERIES,
       });
 
-      const dimensionSelect = await screen.findByRole("textbox", {
+      const dimensionSelect = await screen.findByRole("button", {
         name: "Dimension",
       });
-      expect(dimensionSelect).toHaveValue("Created At");
+      expect(dimensionSelect).toHaveTextContent("Created At");
 
       await userEvent.click(dimensionSelect);
-      await userEvent.click(
-        await screen.findByRole("option", { name: "Product Category" }),
+      const categoryOption = await screen.findByRole("option", {
+        name: /Product Category/,
+      });
+      expect(categoryOption).toContainElement(
+        within(categoryOption).getByLabelText("string icon"),
       );
+      await userEvent.click(categoryOption);
 
       await waitFor(() => {
         expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(2);
@@ -354,6 +383,47 @@ describe("MetricAbout", () => {
           ],
         }),
       });
+    });
+
+    it("shows the bin count for the selected numeric dimension", async () => {
+      const dimensionId = "quantity";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: dimensionId,
+            display_name: "Quantity",
+            effective_type: "type/Integer",
+            semantic_type: "type/Quantity",
+            default: true,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: dimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.QUANTITY],
+          },
+        ],
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: BINNED_NUMERIC_DATASET,
+      });
+
+      const dimensionSelect = await screen.findByRole("button", {
+        name: "Dimension",
+      });
+      expect(dimensionSelect).toHaveTextContent("Quantity: 8 bins");
+
+      await userEvent.click(dimensionSelect);
+      const quantityOption = await screen.findByRole("option", {
+        name: /Quantity/,
+      });
+      expect(quantityOption).toHaveTextContent("Quantity");
+      expect(quantityOption).not.toHaveTextContent("8 bins");
     });
   });
 
