@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Schedule, toCronString } from "metabase/common/components/Schedule";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
@@ -48,7 +49,7 @@ interface AddEditEmailSidebarProps {
   onChannelPropertyChange: (property: string, value: unknown) => void;
   onChannelScheduleChange: (
     schedule: ScheduleSettings,
-    changedProp: { name: keyof ScheduleSettings; value: unknown },
+    changedProp: ScheduleChangeProp,
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;

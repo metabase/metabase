@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import { toCronString } from "metabase/common/components/Schedule/cron";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
@@ -42,7 +43,7 @@ interface AddEditSlackSidebarProps {
   onChannelPropertyChange: (property: string, value: unknown) => void;
   onChannelScheduleChange: (
     schedule: ScheduleSettings,
-    changedProp: { name: keyof ScheduleSettings; value: unknown },
+    changedProp: ScheduleChangeProp,
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
