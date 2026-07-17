@@ -1,6 +1,6 @@
 ## Update v_ai_usage_log to v4 — add CASE branches for the new explorations LLM usage
-## sources (contextual_interestingness, timeline_interestingness, exploration), so they
-## display friendly names instead of raw machine identifiers in AI usage analytics.
+## sources (contextual_interestingness, exploration), so they display friendly names
+## instead of raw machine identifiers in AI usage analytics.
 ##
 ## v_metabot_conversations also has a v4 (same explorations CASE branches, plus master's
 ## include-deleted semantics from #77542), but its installing changeset lives in

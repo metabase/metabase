@@ -192,11 +192,6 @@ export interface ExplorationThreadTimeline {
   timeline?: Timeline & { events?: TimelineEvent[] };
 }
 
-export interface ExplorationQueryTimelineInterestingness {
-  timeline_id: TimelineId;
-  interestingness_score: number | null;
-}
-
 export type ExplorationQueryStatus =
   | "pending"
   | "running"
@@ -253,7 +248,6 @@ export interface ExplorationQuery {
   entity_id: string;
   interestingness_score: number | null;
   contextual_interestingness_score?: number | null;
-  timeline_interestingness?: ExplorationQueryTimelineInterestingness[];
   dataset_query: DatasetQuery;
   segment_id: SegmentId | null;
   segment_name: string | null;

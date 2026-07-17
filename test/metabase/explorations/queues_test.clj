@@ -190,15 +190,14 @@
     (testing "the fan-out queues batch, so a thread's work is a trigger or two rather than hundreds,
               and cap concurrent batches — which, batched, bounds explorations in flight per node
               rather than queries within one exploration"
-      (doseq [queue [:queue/exploration-query :queue/exploration-timeline-score]]
+      (doseq [queue [:queue/exploration-query]]
         (is (= 100 (q.registry/max-batch-messages queue))
             (str queue " batches its messages"))
         (is (= 2 (q.registry/max-concurrent-batches queue))
             (str queue " defaults to explorations-worker-count (2)"))))
     (testing "the caps track the setting live, rather than freezing its value at registration"
       (mt/with-temporary-setting-values [explorations-worker-count 5]
-        (is (= 5 (q.registry/max-concurrent-batches :queue/exploration-query)))
-        (is (= 5 (q.registry/max-concurrent-batches :queue/exploration-timeline-score))))
+        (is (= 5 (q.registry/max-concurrent-batches :queue/exploration-query))))
       (mt/with-temporary-setting-values [explorations-worker-count 1]
         (is (= 1 (q.registry/max-concurrent-batches :queue/exploration-query)))))))
 
