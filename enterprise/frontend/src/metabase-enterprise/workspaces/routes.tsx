@@ -13,7 +13,7 @@ export function getDataStudioRoutes() {
 
 export function getWorkspaceDatabaseRoutes(IsAdmin: RouteComponent) {
   return (
-    <Route component={IsAdmin}>
+    <Route element={<IsAdmin />}>
       <Route path=":databaseId/admin" component={AdminConnectionInfoPage} />
     </Route>
   );
