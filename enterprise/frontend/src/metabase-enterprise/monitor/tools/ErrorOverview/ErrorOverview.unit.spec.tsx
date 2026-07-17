@@ -138,9 +138,7 @@ describe("ErrorOverview", () => {
   it("shows an empty state when there are no erroring questions", async () => {
     await setup({ cards: [] });
 
-    expect(
-      await screen.findByText("No erroring questions"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No results")).toBeInTheDocument();
   });
 
   it("shows the error message when the audit query fails", async () => {

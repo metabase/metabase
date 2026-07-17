@@ -148,7 +148,7 @@ export const ErroringQuestionsTable = ({
           headerCheckboxAriaLabel={t`Select all`}
           ariaLabel={t`Erroring questions`}
           isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
-          emptyState={<MonitorEmptyState label={t`No erroring questions`} />}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
           getRowProps={() => ({ "data-testid": "erroring-question" })}
           getRowHref={getRowHref}
           onRowClick={handleRowClick}
