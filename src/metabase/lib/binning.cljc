@@ -169,6 +169,29 @@
    column-binning :- [:maybe ::lib.schema.binning/binning]]
   (binning= (:mbql binning-option) column-binning))
 
+(mu/defn default-bin-width :- [:maybe ::lib.schema.binning/bin-width]
+  "Resolve the bin width the query processor's binning middleware will use for a `{:strategy :default}` binned
+  breakout on `column`, taking into account the query stage's own comparison/`:between` filters on the column (which
+  narrow the binned domain) and falling back to the column fingerprint's global min/max. Returns nil when no bounds
+  can be determined (e.g. a missing or incomplete fingerprint).
+
+  The middleware recomputes default bin widths per query from that query's filters, so two queries that differ only
+  by a filter on the binned column get different bin widths. Use this to pin a stable width across such a family of
+  queries by binning them all with `{:strategy :bin-width, :bin-width (default-bin-width ...)}`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  (let [field-id-or-name->filters (lib.binning.util/filters->field-map
+                                   (:filters (lib.util/query-stage query stage-number)))]
+    (when-let [{:keys [min-value max-value], :as bounds}
+               (lib.binning.util/extract-bounds (or (:id column) (:name column))
+                                                (:fingerprint column)
+                                                field-id-or-name->filters)]
+      (let [[strategy options] (lib.binning.util/resolve-options query :default nil column min-value max-value)
+            options            (merge bounds options)]
+        (:bin-width (or (lib.binning.util/nicer-breakout strategy options)
+                        options))))))
+
 (mu/defn resolve-bin-width :- [:maybe [:map
                                        [:bin-width ::lib.schema.binning/bin-width]
                                        [:min-value number?]

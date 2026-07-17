@@ -35,6 +35,30 @@
     (is (= {:bin-width 12.5, :min-value 15, :max-value 27.5}
            (lib.binning/resolve-bin-width query col-quantity 15)))))
 
+(deftest ^:parallel default-bin-width-test
+  (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/count)))
+        quantity (meta/field-metadata :orders :quantity)]
+    (testing "no filters → width resolved from the fingerprint's global range (0–100 over 8 bins)"
+      (is (= 12.5
+             (lib.binning/default-bin-width query -1 quantity))))
+    (testing "the query's own range filters on the column narrow the binned domain (80–100 over 8 bins)"
+      (is (= 2.5
+             (-> query
+                 (lib/filter (lib/>= quantity 80))
+                 (lib.binning/default-bin-width -1 quantity)))))
+    (testing "filters on other columns leave the width untouched"
+      (is (= 12.5
+             (-> query
+                 (lib/filter (lib/>= (meta/field-metadata :orders :total) 50))
+                 (lib.binning/default-bin-width -1 quantity)))))
+    (testing "missing fingerprint → nil"
+      (is (nil? (lib.binning/default-bin-width query -1 (dissoc quantity :fingerprint)))))
+    (testing "coordinate columns resolve to the fixed bin-width setting"
+      (let [people-query (lib/query meta/metadata-provider (meta/table-metadata :people))]
+        (is (= 10.0
+               (lib.binning/default-bin-width people-query -1 (meta/field-metadata :people :latitude))))))))
+
 (deftest ^:parallel binning-and-bucketing-only-show-up-for-returned-and-breakout-columns
   (testing "Within the stage, binning and bucketing at breakout should be invisible, outside the stage it should be visible"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
