@@ -148,13 +148,14 @@
                           tyype (pr-str card-name) (apply format reason args))
               tyype)]
       (cond
-        (render.util/custom-viz-static-support? display-type)
-        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
-
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
+
+        ;; before the scalar clause below — a one-row, one-column custom viz is still a custom viz
+        (render.util/custom-viz-static-support? display-type)
+        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         map-type
         (chart-type map-type "card is a map renderable as %s" (name map-type))

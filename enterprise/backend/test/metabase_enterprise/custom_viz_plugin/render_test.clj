@@ -88,6 +88,15 @@
           (let [card {:display :custom:has-bundle}]
             (is (= :javascript_visualization
                    (card/detect-pulse-chart-type card nil multi-col-data))))))
+      (testing "custom viz with no result rows renders the standard :empty state, not the JS path"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "empty-rows"
+                                                 :display_name "Empty Rows"
+                                                 :status       :active
+                                                 :enabled      true
+                                                 :bundle_hash  "abc"}]
+          (let [card {:display :custom:empty-rows}]
+            (is (= :empty
+                   (card/detect-pulse-chart-type card nil {:cols [{:name "x"} {:name "y"}] :rows []}))))))
       (testing "dev-only custom viz (dev_bundle_url, no uploaded bundle) resolves to :javascript_visualization"
         (mt/with-temp [:model/CustomVizPlugin _ {:identifier     "dev-only"
                                                  :display_name   "Dev Only"
