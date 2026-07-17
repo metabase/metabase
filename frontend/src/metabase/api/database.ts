@@ -200,8 +200,6 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListVirtualDatabaseTablesRequest
     >({
-      // a virtual database "schema" is a collection name, so names matching shouldSchemaBePassedAsQueryParam
-      // hit the same HTTP-layer rejection (#77353); the virtual-db endpoints have no query-param fallback yet
       query: ({ id, schema, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
