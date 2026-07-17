@@ -17,6 +17,7 @@
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -280,11 +281,10 @@
 
 (defn- candidate-model-index
   []
-  (into {}
-        (map (juxt :id identity))
-        (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                   :archived false
-                   :type :model)))
+  (u/index-by :id
+              (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                         :archived false
+                         :type :model)))
 
 (defn- clauses-of-type
   [clause-type x]
@@ -307,7 +307,10 @@
       (when (and (seq columns)
                  (every? #(and (pos-int? (:id %)) (pos-int? (:table-id %))) columns))
         columns))
-    (catch Throwable e
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
       (log/debug e "Failed to resolve candidate fields")
       nil)))
 
@@ -594,7 +597,10 @@
   (try
     (or (not-empty (lib/display-name definition 0 clause :long))
         fallback)
-    (catch Throwable e
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
       (log/debug e "Failed to generate candidate display name")
       fallback)))
 
@@ -603,7 +609,10 @@
   (try
     (or (lib/describe-top-level-key definition top-level-key)
         fallback)
-    (catch Throwable e
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
       (log/debug e "Failed to generate candidate definition description")
       fallback)))
 
@@ -819,9 +828,9 @@
   "Creation-ready Measure candidates mined from qualifying questions and models.
 
   A source qualifies when it is verified, directly in an official collection, or has at least
-  `:min-view-count` lifetime views. Only primitive aggregations over one physical-table field are
-  considered. Conditional count/distinct/sum Measures are also synthesized from categorical filter
-  subsets and retained when curated or recurring. Every eligible stage is inspected until a
+  `:min-view-count` lifetime views. Bare row counts and primitive aggregations over one physical-table
+  field are considered. Conditional count/distinct/sum Measures are also synthesized from categorical
+  filter subsets and retained when curated or recurring. Every eligible stage is inspected until a
   non-projection stage forms a lineage barrier. Native queries, joined stages, expressions,
   non-transparent model sources, and existing exact Measures are skipped. Each result includes a
   deterministic suggested name and description derived from Lib's query display names."
