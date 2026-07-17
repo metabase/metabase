@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useAsyncFn } from "react-use";
 
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -39,11 +40,6 @@ const useMetabaseQueryImpl = <
   const queryDataset = getEmbeddingSdkBundle()?.queryDataset;
   const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
-  const [data, setData] =
-    useState<UseMetabaseQueryResult<TEntity, TQuery>["data"]>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
@@ -51,41 +47,39 @@ const useMetabaseQueryImpl = <
     queryRef.current = query;
   }, [query, queryKey]);
 
-  const refetch = useCallback(async () => {
-    const currentQuery = queryRef.current;
+  const [{ value: data = null, loading: isLoading, error }, fetchQuery] =
+    useAsyncFn(async (): Promise<
+      UseMetabaseQueryResult<TEntity, TQuery>["data"]
+    > => {
+      const currentQuery = queryRef.current;
 
-    if (currentQuery.enabled === false) {
-      return;
-    }
+      if (currentQuery.enabled === false) {
+        return null;
+      }
 
-    if (!reduxStore) {
-      return;
-    }
+      if (!reduxStore) {
+        return null;
+      }
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
       if (isQueryInput(currentQuery)) {
         if (!queryDataset || !resolveDatasetQuery) {
-          return;
+          return null;
         }
 
         const datasetQuery =
           await resolveDatasetQuery(reduxStore)(currentQuery);
-
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
-        setData(mapDatasetQueryData(result));
-        return;
+        return mapDatasetQueryData(result);
       }
-    } catch (err) {
-      setError(err);
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queryDataset, reduxStore, resolveDatasetQuery]);
+
+      return null;
+    }, [queryDataset, reduxStore, resolveDatasetQuery]);
+
+  // Type signature of refetch requires returning Promise<void>
+  const refetch = useCallback(async () => {
+    await fetchQuery();
+  }, [fetchQuery]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -96,7 +90,7 @@ const useMetabaseQueryImpl = <
   return {
     data,
     isLoading,
-    error,
+    error: isLoading ? null : (error ?? null),
     refetch,
   };
 };
