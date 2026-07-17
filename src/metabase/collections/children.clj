@@ -7,7 +7,7 @@
   snippets, transforms, …), permission-filtered and sorted server-side; paging rides
   [[metabase.request.core/limit]]/[[metabase.request.core/offset]] (bind them with
   [[metabase.request.core/with-limit-and-offset]] outside a REST request). [[select-collections]]
-  and [[shallow-tree]] serve the collection-tree views."
+  and [[shallow-tree-from-collection-id]] serve the collection-tree views."
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
@@ -149,21 +149,6 @@
        (map prep-collection-for-export)
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
-
-(defn shallow-tree
-  "One level of the collection tree: the visible, non-archived child collections of
-  `collection-id` (nil = the root) in `namespaces` (a set of namespace strings, nil standing
-  for the default namespace), each carrying a boolean `:children` expandability flag. Archived
-  collections and the trash never appear. Non-REST entry point for callers composing the tree
-  level by level."
-  [collection-id namespaces]
-  (shallow-tree-from-collection-id
-   (select-collections {:archived                       false
-                        :exclude-other-user-collections false
-                        :namespaces                     namespaces
-                        :shallow                        true
-                        :collection-id                  collection-id
-                        :include-library?               false})))
 
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by the collection-items endpoints.

@@ -697,6 +697,23 @@
                              (cap-marker more name id (count included))
                              (tree-marker more name id)))))))
 
+(defn- tree-child-fetch
+  "A `fetch` for [[expand-tree-node]] backed by a single query: the visible, non-archived
+   collections of `namespaces` grouped by direct-parent id (root-level under `::root`), each an
+   expandable tree node in `select-collections` order. Replaces the former per-node fetch — one
+   permission-filtered query for the whole tree instead of one per expanded node."
+  [namespaces]
+  (let [colls   (collections.children/select-collections
+                 {:archived                       false
+                  :exclude-other-user-collections false
+                  :namespaces                     namespaces
+                  :shallow                        false
+                  :include-library?               false})
+        grouped (group-by #(or (last (collection/location-path->ids (:location %))) ::root) colls)]
+    (fn [id]
+      (mapv (fn [c] {:id (:id c) :name (:name c) :children (contains? grouped (:id c))})
+            (grouped (if (number? id) id ::root))))))
+
 (defn- collection-tree-content
   [args {:keys [root? collection]}]
   (when (collection/is-trash? collection)
@@ -708,10 +725,7 @@
              (:id collection))))
   (let [depth      (or (:depth args) tree-default-depth)
         ns-str     (some-> (:namespace collection) u/qualified-name)
-        namespaces #{ns-str}
-        fetch      (fn [id]
-                     (mapv #(select-keys % [:id :name :children])
-                           (collections.children/shallow-tree (when (int? id) id) namespaces)))
+        fetch      (tree-child-fetch #{ns-str})
         budget     (atom tree-node-budget)
         root-node  {:id       (if root? "root" (:id collection))
                     :name     (if root?
