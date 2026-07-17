@@ -49,18 +49,34 @@ export async function editDashboard(page: Page) {
  * Port of H.saveDashboard — the intercept-alias pattern inverted:
  * cy.intercept(...).as() + click + cy.wait("@alias") becomes
  * "register waitForResponse promises BEFORE the click, await them after".
+ *
+ * `awaitRequest: false` mirrors the upstream option: saving a dashboard with
+ * nothing dirty fires neither the PUT nor a query_metadata GET, so awaiting
+ * either hangs until the action timeout. Upstream's caller still writes
+ * `cy.wait("@saveDashboard-getDashboardMetadata")` after it, but that wait is
+ * satisfied *retroactively* by an earlier response (cy.wait consumes past
+ * responses — here the preceding cy.reload()'s query_metadata), so it is a
+ * no-op. waitForResponse only sees future responses, so the port must skip both
+ * waits and rely on the edit-bar/dashcard settling below instead.
  */
-export async function saveDashboard(page: Page) {
-  const savedDashboard = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PUT" &&
-      /\/api\/dashboard\/\d+/.test(new URL(response.url()).pathname),
-  );
-  const dashboardMetadata = page.waitForResponse((response) =>
-    /\/api\/dashboard\/\d+\/query_metadata/.test(
-      new URL(response.url()).pathname,
-    ),
-  );
+export async function saveDashboard(
+  page: Page,
+  { awaitRequest = true }: { awaitRequest?: boolean } = {},
+) {
+  const savedDashboard = awaitRequest
+    ? page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          /\/api\/dashboard\/\d+/.test(new URL(response.url()).pathname),
+      )
+    : undefined;
+  const dashboardMetadata = awaitRequest
+    ? page.waitForResponse((response) =>
+        /\/api\/dashboard\/\d+\/query_metadata/.test(
+          new URL(response.url()).pathname,
+        ),
+      )
+    : undefined;
 
   await expect(editBar(page)).toBeVisible();
   await editBar(page).getByTestId("save-edit-button").click();

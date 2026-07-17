@@ -78,18 +78,26 @@ backend, which is exactly what PW_PER_WORKER_BACKEND does.
    app looks like it's ignoring settings you just set, because you're looking
    at a different instance's settings.
 
-**Fix applied here (contained):** the JWT describe's beforeEach sets
-`site-url` to `mb.baseUrl`, restoring the invariant upstream gets for free.
+**RESOLVED — and independently corroborated.** I first fixed this inside the
+spec (`updateSetting("site-url", mb.baseUrl)` in the JWT beforeEach) and
+recommended a harness-level fix rather than doing it mid-wave. Meanwhile the
+slot-2 agent hit the *same root cause* from a completely different symptom —
+click-behavior drill-through navigating to :4000 — and fixed it properly in
+`support/worker-backend.ts`: slot backends now boot with
+`MB_SITE_URL=http://localhost:<port>`. Settings resolve env **before** the app
+DB, so it survives `restore()`, which a DB write does not. See RESUME thread 4.
 
-**Recommended follow-up (fixture level, deliberately NOT done in this port —
-it's a shared-file change and wants its own review):** have `mb.restore()` (or
-the per-worker backend bootstrap in support/fixtures.ts) write
-`site-url = mb.baseUrl` after every restore, under PW_PER_WORKER_BACKEND. That
-removes the landmine for all 350+ remaining specs rather than one-by-one, and
-turns a class of future "works on 4000, fails on a slot" mysteries into a
-non-event. A cheap safety net worth adding alongside it: assert
-`site-url === mb.baseUrl` post-restore and fail loudly, so the next occurrence
-names itself.
+So I **removed my spec-local workaround** and verified against a
+freshly-booted slot backend: 3/3 JWT SSO tests pass with no `site-url` code in
+the spec. The port is now faithful to upstream *and* the fix lives in one
+place. Only a comment remains, pointing at the dependency.
+
+Worth recording that two agents reached the same setting from unrelated
+directions (SSO redirect vs. drill-through URL prefixing) — the bug had a broad
+blast radius, and the env-var fix is strictly better than either spec-local
+patch. A cheap safety net still worth adding: assert `site-url === mb.baseUrl`
+after restore and fail loudly, so a future regression names itself instead of
+presenting as a downstream mystery.
 
 ## INFRA DIVIDEND: the whole spike runs at 1280x**720**, not the 1280x800 the
 ## config asks for — `devices["Desktop Chrome"]` silently overrides it
@@ -249,6 +257,52 @@ which preserves both properties the test needs (it scrolls, and it isn't
 instant — this test's whole point is that an instant scroll masks the bug).
 Note for the suite: **any** ported `behavior: "smooth"` scroll is a no-op under
 our config. `scrollIntoViewIfNeeded()` / `mouse.wheel()` are unaffected.
+
+## PORTING GOTCHA (subtle): a list that re-renders under a resolved locator
+## clicks the WRONG ROW — actionability checks do not catch it
+
+`should join a model when the data source is a model` clicked "Products" in the
+data picker and selected **People** instead. Caught only because the network log
+named the table id:
+
+```
+[net]   97798 GET /api/database/1/schemas
+[click] 97833 pre-click Products              ← click begins
+[net]   97845 GET /api/database/1/schema/PUBLIC   ← table column still loading
+[net]   97916 GET /api/table/6/query_metadata     ← table 6 = People. Wrong row.
+[click] 97927 post-click Products
+```
+
+With a settle wait it fetches `/api/table/7` (Products) and passes.
+
+**Why Playwright's auto-waiting doesn't save you here.** The picker column
+renders a partial list, then re-renders with the full one. React
+**reconciliation reuses the existing row nodes** and only swaps their text. So
+the node `getByText("Products")` resolved to is still attached, still in the
+same place, and its box never moves — every actionability check passes — but by
+the time the click dispatches that node's text is "People". Playwright guards
+against elements that *move* or *detach*, not against an element that *becomes
+a different thing*. Cypress's command queue paces the clicks far enough apart
+that the list has settled, so upstream never sees it.
+
+This is a **general hazard for every list/menu/picker port in the suite**, not
+an embedding quirk. Any `getByText(...).click()` on an async-populated list can
+silently select a neighbour. It fails *loudly* only if the wrong row happens to
+break a later assertion — otherwise it's a green test doing the wrong thing.
+
+**Fix:** anchor on the response that populates the column
+(`/api/database/:id/schema/:schema`) before resolving the row, rather than
+sleeping. Registered before the clicks so it covers both shapes: with one
+schema the picker auto-drills and it fires on the database click; with several
+it fires on the schema click. Also **1.9m vs 3.6m** for the group — the anchor
+replaced slack with a real signal.
+
+**Note the near-miss.** The first two symptoms both pointed elsewhere: the
+popover closed *without* selecting (looks like a misdirected click landing on
+the backdrop), and two diagnostic runs disagreed with each other. What settled
+it was the fidelity cross-check — **Cypress passes this test on the same
+backend** (5053ms), which proves the port drifted rather than the app being
+broken. Without that I'd plausibly have written it up as flake and moved on.
 
 ## Helper duplication for the consolidation pass (do NOT edit search.ts now)
 

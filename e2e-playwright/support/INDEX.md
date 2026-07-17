@@ -74,7 +74,7 @@
 - `aside` — The click-behavior sidebar. Cypress used bare cy.get("aside"); the only
 - `dashboardParametersPopover` — Port of H.dashboardParametersPopover ({ testId: "parameter-value-dropdown" }). */
 - `caseSensitive` — Case-sensitive substring matcher (Cypress cy.contains semantics). */
-- `filterWidgetWithLabel` — The filter widget whose label is exactly `label` — replaces the Cypress
+- `filterWidgetWithLabel` — Port of the Cypress `findAllByTestId("parameter-widget").contains(label)
 - `expectFilterWidgets` — Port of the repeated `cy.findAllByTestId("parameter-widget")
 - `expectLocation` — Port of the retried `cy.location().should(...)` pathname/search checks —
 - `clickLineChartPoint` — constructs: post-ECharts there is no voronoi layer and no `circle.dot`, so
@@ -271,7 +271,7 @@
 - `getDashboardCard`
 - `filterWidget`
 - `editDashboard`
-- `saveDashboard` — Port of H.saveDashboard — the intercept-alias pattern inverted:
+- `saveDashboard` — cy.intercept(...).as() + click + cy.wait("@alias") becomes
 - `waitForDashcardsToLoad`
 - `setFilter`
 - `selectDashboardFilter`

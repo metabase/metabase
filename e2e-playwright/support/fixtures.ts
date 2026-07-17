@@ -114,21 +114,6 @@ class MetabaseHarness {
         details: { db: this.sampleDbUrl },
       });
     }
-    if (new URL(this.baseUrl).origin !== new URL(BASE_URL).origin) {
-      // Same shape of problem as the sample-db re-point above: snapshots bake
-      // `site-url` to the port the snapshot was created on (:4000). Any app
-      // navigation that builds an ABSOLUTE url from site-url (dashboard/question
-      // click-behavior destinations, for one) then jumps a per-worker backend to
-      // :4000 — a different Metabase, or nothing at all. It looks like a product
-      // bug because the pathname is right and only the origin is wrong, and it
-      // reproduces identically under Cypress, so a Cypress cross-check does NOT
-      // clear it. Re-point site-url at the backend this worker actually targets.
-      const adminApi = new MetabaseApi(
-        this.api.requestContext,
-        () => LOGIN_CACHE.admin?.sessionId,
-      );
-      await adminApi.put("/api/setting/site-url", { value: this.baseUrl });
-    }
   }
 
   private async setSessionCookies(sessionId: string, deviceId: string) {

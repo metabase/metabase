@@ -111,6 +111,11 @@ const isTableMetadata = (response: Response) =>
     new URL(response.url()).pathname,
   );
 
+/** The request that fills the data picker's table column. */
+const isSchemaTables = (response: Response) =>
+  response.request().method() === "GET" &&
+  /^\/api\/database\/[^/]+\/schema\/.*$/.test(new URL(response.url()).pathname);
+
 const isGetCard = (response: Response) =>
   response.request().method() === "GET" &&
   /^\/api\/card\/\d+$/.test(new URL(response.url()).pathname);
@@ -387,10 +392,11 @@ test.describe("scenarios > embedding > full app", () => {
         frame.getByRole("button", { name: /Edited/ }),
       ).toBeVisible();
 
-      // Two .Icon-refresh exist (header run button + run-button-overlay).
-      // cy.icon(...).should("be.visible") asserts via jQuery .is(), which is
-      // "any match", so first-match is the faithful equivalent.
-      await expect(icon(frame, "refresh").first()).toBeVisible();
+      // Two .Icon-refresh exist (header run button + run-button-overlay), and
+      // cy.icon(...).should("be.visible") is an any-match (port rule 3).
+      await expect(
+        icon(frame, "refresh").filter({ visible: true }).first(),
+      ).toBeVisible();
       await expect(frame.getByTestId("notebook-button")).toBeVisible();
       await expect(
         frame.getByTestId("qb-header").getByRole("button", {
@@ -443,7 +449,9 @@ test.describe("scenarios > embedding > full app", () => {
       });
 
       // See the header test above — .Icon-refresh matches twice.
-      await expect(icon(frame, "refresh").first()).toBeVisible();
+      await expect(
+        icon(frame, "refresh").filter({ visible: true }).first(),
+      ).toBeVisible();
       await expect(frame.getByTestId("notebook-button")).toHaveCount(0);
       await expect(
         frame.getByRole("button", { name: /Summarize/ }),
@@ -1208,9 +1216,11 @@ test.describe("scenarios > embedding > full app", () => {
 
     let tableMetadataQueue: ResponseQueue;
     let cardQueue: ResponseQueue;
+    let pageRef: Page;
 
     test.beforeEach(async ({ page, mb }) => {
       await mb.signInAsNormalUser();
+      pageRef = page;
       cardQueue = new ResponseQueue(page, isGetCard, "getCard");
       tableMetadataQueue = new ResponseQueue(
         page,
@@ -1253,12 +1263,26 @@ test.describe("scenarios > embedding > full app", () => {
       }: { tableName: string; schemaName?: string; databaseName?: string },
     ) {
       await popover(frame).getByText("Raw Data", { exact: true }).click();
+      // The table column is filled by /api/database/:id/schema/:schema. Until
+      // that resolves the column holds a partial list, and React REUSES the
+      // row nodes when the full list arrives — so a locator resolved too early
+      // ends up pointing at a node whose text has become a *different table*
+      // by the time the click dispatches. Playwright's actionability checks
+      // don't catch it: the node never moves and never detaches, only its text
+      // changes. Observed: clicking "Products" fetched /api/table/6 (People)
+      // instead of /api/table/7. Upstream never sees it — Cypress's command
+      // queue paces the clicks far enough apart.
+      // Registered before the clicks: with a single schema the picker
+      // auto-drills and this fires on the database click; with several it
+      // fires on the schema click.
+      const schemaTables = pageRef.waitForResponse(isSchemaTables);
       if (databaseName) {
         await popover(frame).getByText(databaseName, { exact: true }).click();
       }
       if (schemaName) {
         await popover(frame).getByText(schemaName, { exact: true }).click();
       }
+      await schemaTables;
       await popover(frame).getByText(tableName, { exact: true }).click();
       await tableMetadataQueue.next();
     }
@@ -2529,15 +2553,11 @@ test.describe("scenarios > embedding > full app - jwt sso integration", () => {
     await mb.restore();
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
-    // The FE builds its SSO redirect from the `site-url` SETTING, not from the
-    // current origin (getSSOUrl in metabase-enterprise/auth/utils.ts). The e2e
-    // snapshot was taken on port 4000, so restore() persists
-    // site-url=http://localhost:4000 onto whatever port this worker's backend
-    // actually listens on — sending the embedded app's /auth/sso off to the
-    // shared dev backend, which has none of the JWT config set below. Upstream
-    // never notices because its backend really is on 4000. Restore the
-    // invariant upstream gets for free.
-    await mb.api.updateSetting("site-url", mb.baseUrl);
+    // NB: this flow depends on `site-url` matching the backend's real port —
+    // the FE builds its SSO redirect from the setting, not the current origin
+    // (getSSOUrl in metabase-enterprise/auth/utils.ts). Slot backends boot with
+    // MB_SITE_URL set (support/worker-backend.ts), so there's nothing to do
+    // here; without it these tests send /auth/sso to :4000. See RESUME thread 4.
     // enable interactive embedding
     await mb.api.updateSetting("enable-embedding-interactive", true);
     await mb.api.updateSetting(

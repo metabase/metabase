@@ -450,13 +450,44 @@ lead that survived did so because the agent happened to narrate it out loud.
   query is usually aimed at — and the empty result looks like "the page
   didn't load" rather than "wrong selector". See `expectInputWithValue` in
   support/interactive-embedding.ts.
-- **`cy.icon(name).should("be.visible")` is an ANY-match, not an all-match.**
-  chai-jquery's `visible` delegates to jQuery `.is(":visible")`, which is
-  true if *any* element in the set matches. So a multi-match `cy.icon` +
-  `be.visible` is satisfied by one visible icon → port with `.first()`
-  (rule 3), not by scoping until the set is unique, which can tighten the
-  assertion beyond upstream. (`.Icon-refresh` matches the QB header run
-  button *and* the run-button-overlay.)
+- **`cy.icon(name).should("be.visible")` is an ANY-match** — another instance
+  of rule 3's `.filter({ visible: true }).first()` case. `.Icon-refresh`
+  matches the QB header run button *and* the run-button-overlay.
+- **Playwright does NOT route the follow-up request of a redirect.** Verified
+  with a control: a `page.goto` straight to a mocked origin hits the handler;
+  the same URL reached via a 302 skips every handler (including a
+  `() => true` catch-all) and goes to the real network. Cypress's proxy sits
+  in front of every hop, so `cy.intercept` survives redirect chains and ours
+  doesn't. Breaks any port that mocks a redirect-based external flow (JWT
+  SSO, SAML, OAuth callbacks — anything using `req.redirect()`). Fix:
+  `mockRedirectResponse` (support/interactive-embedding.ts) fulfils a 3xx as a
+  document doing `location.replace(...)`, making the next hop a fresh, routable
+  navigation. **In a port, `route.fulfill({ status: 3xx, headers: { location } })`
+  is almost always a latent bug.** Failure mode is evil: the test that only
+  waits for the *request* still passes (the mock never ran), and the others
+  fail far downstream on a fully-rendered page.
+- **`should("not.be.visible")` on a scrolled-away element ≠ `not.toBeVisible()`.**
+  Cypress treats content clipped by an ancestor's overflow as invisible;
+  Playwright's toBeVisible only checks box + `visibility`, so a scrolled-out
+  element is still "visible" to it. Use **`not.toBeInViewport()`** whenever the
+  mechanism is scrolling/clipping rather than `display:none`.
+- **`cy.scrollTo(…, { duration })` is not `scrollTo({ behavior: "smooth" })`.**
+  Cypress's is jQuery `.animate()` on `scrollTop` (plain JS). Ours sets
+  `contextOptions.reducedMotion: "reduce"`, under which Chromium **skips the
+  programmatic smooth scroll entirely** — `scrollTop` stays 0, nothing errors,
+  and a later assertion takes the blame. Animate `scrollTop` across
+  `requestAnimationFrame`s when the test depends on the scroll not being
+  instant; otherwise assign `scrollTop` directly.
+- **A list that re-renders under a resolved locator clicks the WRONG ROW.**
+  React reconciliation *reuses* row nodes and swaps their text, so a locator
+  resolved against a partially-loaded list points at a node that is still
+  attached, still stable, still in place — and now says something else.
+  Playwright's actionability checks catch elements that move or detach, not
+  ones that *become a different thing*; Cypress's command queue paces clicks
+  past the settle. Observed: clicking "Products" in the data picker selected
+  People (`/api/table/6`, not `/7`). **Anchor on the response that populates
+  the list** before resolving the row (never a sleep) — it's also faster
+  (group: 3.6m → 1.9m). Suspect this for any picker/menu/search-result click.
 - **"The Cypress original fails identically" is only evidence on a QUIESCED
   box.** This cross-check is our main fidelity/product-bug test, and it has now
   produced three false product-bug claims (FINDINGS #2, #22, #24, all
@@ -494,3 +525,64 @@ lead that survived did so because the agent happened to narrate it out loud.
   the API path. Assert `suggestedFilename()`, the *request* URL
   (`page.waitForRequest`), or the parsed file. A
   `toContain("/api/.../query/xlsx")` on `download.url()` can never pass.
+
+## Gotchas added while porting click-behavior (wave 9, slot 1)
+
+- **Snapshot `site-url` vs per-worker backends — read this before blaming the
+  app.** Snapshots bake `site-url: http://localhost:4000`; slot backends run on
+  :4101+. Metabase builds some navigations as ABSOLUTE urls from site-url
+  (dashboard/question click-behavior destinations at least), so a click on a
+  :4101 dashboard lands the browser on **:4000** — a different instance.
+  `restore()` now re-points site-url at the worker's own origin (support/
+  fixtures.ts), next to the sample-db re-point that solves the same class of
+  problem. Symptoms: the pathname looks right and only the origin is wrong, so
+  any assertion comparing pathname/search alone (e.g. an `expectLocation`
+  helper) passes and the failure surfaces later as "the target page didn't
+  render". **It reproduces identically under Cypress**, so the Cypress
+  cross-check does NOT clear it.
+  This is a **named, now-fixed instance of the shared-environmental-cause class**
+  described under "The cross-check alone CANNOT tell you a behaviour is real" —
+  the first one that is a *backend setting* rather than the FE bundle, and it
+  fooled the cross-check on 11 tests at once. Worth knowing concretely, because
+  unlike the bundle cases it is cheap to spot: check the origin, not just the
+  pathname.
+- **Cypress's `create*` API helpers are not thin wrappers.** `H.createDashboard`
+  holds `enable_embedding`, `embedding_type`, `embedding_params`,
+  `auto_apply_filters` and `dashcards` back from `POST /api/dashboard` (which
+  ignores them) and applies them with a follow-up PUT. Spreading `{...details}`
+  into the POST looks fine — nothing errors — and only shows up much later as
+  "Embedding is not enabled for this object". Read the helper's body before
+  porting its signature.
+- **`waitForResponse` resolves on ANY status, including 4xx/5xx.** A wait
+  satisfied by a 400 makes the *next* wait time out, so the error blames the
+  wrong step. When a response wait was the last thing that "worked" before a
+  timeout, check the status of what it matched.
+- **A `cy.wait` that follows a no-op action may be enforcing nothing.** Saving a
+  dashboard with nothing dirty fires neither `PUT /api/dashboard/:id` nor
+  query_metadata. Upstream calls `H.saveDashboard({ awaitRequest: false })` and
+  then waits for query_metadata anyway — that wait is satisfied *retroactively*
+  by an earlier response (cy.wait consumes past ones). Ported literally it
+  hangs. `saveDashboard(page, { awaitRequest: false })` now skips both waits.
+- **Callback-scoped assertions don't enforce.** `H.onNextAnchorClick(cb)`
+  monkey-patches `HTMLAnchorElement.prototype.click` and asserts inside `cb`; if
+  the callback never runs (or its throw is swallowed in app code) the test is
+  green regardless. Port the hook but assert **outside** it — record the value
+  and check it in the test body, so a never-invoked hook fails loudly. Doing so
+  caught two upstream tests asserting an href the app never produces.
+- **Rule 1 is about `findByText`, not `cy.contains`.** `cy.contains(str)` is a
+  case-sensitive substring returning the first DOM hit; porting it as an exact
+  match breaks as soon as a label shares an element with its value (a parameter
+  widget reads "Text filter64", which no exact match hits). Upstream often
+  disambiguates positionally — mirror that with `.first()`.
+- **`findByDisplayValue` must include `textarea`** (and select). EditableText
+  titles — question *and* dashboard — render a `<textarea>`, so an input-only
+  scan finds nothing and burns the whole timeout. `dashboard-cards.ts
+  inputWithValue` is input-only and is wrong for those fields (7 specs import
+  it — consolidation candidate); `filters-repros.ts findByDisplayValue` is
+  correct.
+- **Stale chart-click coordinates**: the spec-local `clickLineChartPoint` clicks
+  a circle's top-left *corner* to dodge d3's `g.voronoi`/`circle.dot` double
+  click. Post-ECharts neither exists, the corner is over bare `<svg>`, and
+  nothing is hittable there — verified by dispatching Cypress's own synthetic
+  sequence at that exact point. Click the point itself. When a Cypress helper's
+  comment names DOM that no longer exists, don't port the workaround.

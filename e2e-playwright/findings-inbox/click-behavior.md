@@ -124,101 +124,82 @@ class of problem (snapshot pins a shared value; per-worker backend needs its own
 **Classification**: NEW GOTCHA (infra), not a product bug. Nothing is wrong with
 the app: site-url genuinely is misconfigured relative to the port in this setup.
 
-### Spike-wide consequences (flagged, NOT claimed)
+### Spike-wide consequences
 
-1. **This is a counterexample to the fidelity rule as written.** "Cypress fails
-   the same tests ⇒ faithful port + real upstream behaviour" is unsound when both
-   harnesses point at the same mis-configured backend. A shared *environmental*
-   cause produces identical failures in both. The rule needs a third branch:
-   same failures ⇒ faithful port, cause still open (environment vs upstream).
-2. **RESUME.md open thread #3** (`dashboard-filters-reproductions-1`: 6 fixmes,
-   "Cypress fails the same 6", "cause is not established", "both harnesses shared
-   one source-mode backend + rspack server, so a common environmental cause isn't
-   excluded") fits this signature exactly, and that spec is about dashboard
-   filters + redirects. **Worth re-running those 6 against this fix before
-   accepting the fixmes.** I have NOT verified this — it is a lead, not a claim.
-   Its proposed decider ("if CI's Cypress leg is green, the delta is
-   environmental") is consistent: CI runs site-url == the real host, so CI would
-   be green while local fails.
+1. **This is a named instance of the shared-environmental-cause class** that
+   PORTING.md's "The cross-check alone CANNOT tell you a behaviour is real"
+   section describes — and the first one that is a **backend setting** rather
+   than the local FE bundle. It fooled the cross-check on 11 tests at once:
+   Cypress failed all 11 identically, which reads as "faithful port + real
+   upstream behaviour" and was wrong. Unlike the bundle cases it is cheap to
+   spot once named — check the **origin**, not just the pathname.
+2. **Corrected**: an earlier draft of this entry suggested this might explain
+   `dashboard-filters-reproductions-1`'s 6 fixmes (RESUME thread #3). **It does
+   not, and I have retracted that.** Thread #3 was closed independently with a
+   same-slot controlled comparison in which only the *artifact* changed (CI
+   uberjar 6/6 pass vs source-mode + hot bundle 6/6 fail). That jar run was
+   itself on a per-worker backend (slot 11 / :4111), where site-url would have
+   been equally stale — so site-url cannot be the variable that flipped it. Two
+   distinct environmental causes with the same signature; do not conflate them.
+3. **Guard for the future**: `expectLocation`-style helpers that compare only
+   `pathname` + `search` cannot see a wrong-origin navigation. That blindness is
+   what let this reach a downstream assertion and masquerade as an app bug.
 
-## Fix 3 — MIGRATION DIVIDEND: two Cypress tests assert an href that is false, and pass
+## The one test left disabled — `test.fixme` on metabase#33379
 
-**Claim (scoped)**: In `click-behavior.cy.spec.js`, the assertions inside
-`H.onNextAnchorClick(...)` do not enforce. Two tests assert an href that does not
-match the href the app actually produces under the same conditions, and both are
-green in Cypress.
+`interactive embedding › allows opening custom URL destination that is not a
+Metabase instance URL using link (metabase#33379)`. **41/42 pass; this is the
+one.** Not claimed as a product bug — it is untestable under the current
+per-worker harness, for two independent reasons, both verified.
 
-**The tests**:
-- `line chart › allows setting URL with parameters as custom destination`
-- `table › should allow setting URL as custom destination and updating dashboard
-  filters for different columns`
+**1. The harness's `MB_SITE_URL` pin defeats the test's own premise.**
+The test's whole point is a site-url that DIFFERS from the instance's real
+origin: it does `updateSetting("site-url", "https://…/subpath")` and then checks
+that a link to the actual instance still behaves correctly. Slot backends now
+boot with `MB_SITE_URL=http://localhost:<port>` (`support/worker-backend.ts`,
+thread #4 — the right fix for the drill-through problem). Settings resolve **env
+before the app DB**, which is exactly why that fix survives `restore()` — and it
+equally means **the test's write is silently ignored**. Measured on the jar:
 
-**Evidence**:
-- Both tests set the dashboard's text filter by typing **"Dell Adams"** into the
-  "Search the list" widget, then click a point/cell and assert
-  `href === URL_WITH_FILLED_PARAMS`.
-- `URL_WITH_FILLED_PARAMS` is built from `FILTER_VALUE = "123"` (spec line ~29).
-  **Neither test ever enters "123"** — 123 is not a name in the People list, so
-  the search widget could not accept it.
-- The port uses a *faithful* hook (same `HTMLAnchorElement.prototype.click`
-  patch as `H.onNextAnchorClick`), differing only in that it records the anchor
-  and asserts in the test body instead of inside the callback. It captures
-  `https://metabase.com/Dell%20Adams/1/2026-10` — in BOTH tests, independently.
-- Cypress asserts `https://metabase.com/123/64/2025-07` for both and **passes**
-  (verified against the same :4101 backend, run `cy1`).
-- `Dell%20Adams/1/2026-10` is the *correct* fill: `{{text_filter_slug}}` → the
-  filter value actually applied, `{{count}}`/`{{created_at}}` → the clicked
-  datum of the Dell-Adams-filtered series.
+```
+site-url BEFORE: http://localhost:4101
+attempting to set: https://localhost:4101/subpath
+site-url AFTER : http://localhost:4101     <- unchanged, PUT reported success
+```
 
-Both cannot be true → the Cypress assertion is not enforced.
+So the mismatch the test needs cannot be constructed. The PUT does not error —
+it just does nothing.
 
-**Mechanism NOT established** — deliberately not claimed. Either the callback is
-never invoked, or the chai failure thrown inside a monkey-patched prototype
-method (called from app code, outside Cypress's command chain) is swallowed
-before it can fail the test. Distinguishing them needs a further experiment I did
-not run.
+**2. The Cypress original is un-cross-checkable on a slot backend.**
+It hard-codes `const metabaseInstanceUrl = "http://localhost:4000"` and
+`site-url = "https://localhost:4000/subpath"`. On a :4101 backend those point at
+a *different Metabase* (the shared dev instance), so running it there tests
+nothing about :4101 — and would drive a browser at :4000, which slot agents must
+not touch. The test is only meaningful when the backend IS :4000. My earlier
+un-grepped Cypress run stalled on precisely this test and never reported.
 
-**Why the port catches it**: asserting *outside* the callback means a
-never-invoked hook fails loudly (poll times out) instead of passing silently.
-This is the generalisable lesson — **a callback-scoped assertion is only as good
-as the guarantee that the callback runs**. Worth auditing other
-`onNextAnchorClick` users upstream.
+**Verified on the jar** (`target/uberjar/metabase.jar`, CI EE build) — the
+failure is not a source-mode artifact. Observed there: the click does a full
+same-tab navigation (no popup) to `<origin>/404`, and the app lands on
+`/auth/login` because `visitEmbeddedPage` signs out. Whether the app *should*
+render its 404 page for a signed-out user is exactly the question the test
+exists to answer — and it is the question this harness cannot currently pose.
+**I did not establish what the correct behaviour is, and make no claim about it.**
 
-**Port decision**: the port asserts the observed-correct href rather than
-replicating an assertion that cannot fail. See `URL_WITH_FILLED_PARAMS_ACTUAL`
-in `support/click-behavior.ts`.
+### Trade-off this exposes — for the harness owner (thread #4)
 
-## Fix 4 — `createDashboard` dropped `enable_embedding` (PORT BUG, new gotcha)
+`MB_SITE_URL` (env) vs a post-`restore()` `PUT /api/setting/site-url` (DB write)
+are not equivalent, and the difference is invisible until a test writes site-url:
 
-**Symptom**: all 5 `interactive embedding` tests failed identically, each burning
-~32s on `waitForEmbedCardQuery`. Cypress passes all 5 → port drift.
+| | env pin (current) | restore-time DB write |
+|---|---|---|
+| survives `restore()` | yes (env beats DB) | yes (re-applied each restore) |
+| cost | none | one PUT per restore |
+| **test can override site-url** | **no — silently ignored** | **yes** |
 
-**Root cause**: `POST /api/dashboard` silently ignores `enable_embedding`,
-`embedding_type`, `embedding_params`, `auto_apply_filters` and `dashcards`.
-Cypress's `H.createDashboard` (`e2e/support/helpers/api/createDashboard.ts`)
-destructures those five out of the POST body and applies them with a follow-up
-`PUT /api/dashboard/:id`. The port spread the whole details object into the POST,
-so embedding was never enabled — `GET /api/embed/dashboard/:token` returned
-**400 "Embedding is not enabled for this object."**
-
-**Why it was invisible**: nothing errors. The dashboard is created, the POST is
-200, and the test proceeds until the embed page renders a bare error string.
-`page.waitForResponse` resolves on **any** status, so the `/api/embed/dashboard/*`
-wait was satisfied *by the 400* — only the downstream card-query wait timed out,
-pointing at the wrong step entirely.
-
-**Fix**: `createDashboard` in `support/click-behavior.ts` now mirrors the Cypress
-POST-then-PUT split.
-
-**Result**: interactive embedding 0/5 → 4/5 passing, and the passing ones dropped
-from ~32s timeouts to ~3s.
-
-**New gotcha for PORTING.md** (two, both generalisable):
-1. **Cypress's `create*` API helpers are not thin wrappers.** Several split a
-   create into POST + PUT because the POST endpoint ignores certain fields. Port
-   the helper's *body*, not its signature — check the helper source before
-   assuming `{...details}` into the POST is equivalent.
-2. **`waitForResponse` resolves on any status, including 4xx/5xx.** Cypress's
-   `cy.wait("@alias")` behaves the same way, but the port's failure then surfaces
-   at the *next* wait, blaming the wrong step. When a response wait is the last
-   thing that "worked" before a timeout, check the status of what it matched.
+I independently hit the same site-url bug and had implemented the DB-write
+variant before finding thread #4; I **removed mine** — the env pin is cheaper
+and thread #4 got there first, and duplicate machinery is worse than none.
+Flagging the trade-off rather than re-litigating it: if any other spec needs to
+*manipulate* site-url, the env pin will defeat it the same silent way, and the
+DB-write variant is the escape hatch. Not acting on this unilaterally.

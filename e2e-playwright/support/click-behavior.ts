@@ -218,14 +218,22 @@ export function caseSensitive(text: string): RegExp {
 }
 
 /**
- * The filter widget whose label is exactly `label` — replaces the Cypress
- * `findAllByTestId("parameter-widget").contains(label).parent()` chain
- * ("Text filter" must not also match "Text filter with default").
+ * Port of the Cypress `findAllByTestId("parameter-widget").contains(label)
+ * .parent()` chain.
+ *
+ * `cy.contains` is a case-sensitive SUBSTRING match that yields the first hit in
+ * DOM order, so upstream distinguishes "Text filter" from "Text filter with
+ * default" positionally (the plain widget renders first), not by exactness. An
+ * earlier exact-text version of this helper matched nothing once a widget had a
+ * value: the label and value share an element, so the widget's text is
+ * "Text filter64", which no exact match can hit. Mirror Cypress instead:
+ * substring + first match.
  */
 export function filterWidgetWithLabel(page: Page, label: string): Locator {
   return page
     .getByTestId("parameter-widget")
-    .filter({ has: page.getByText(label, { exact: true }) });
+    .filter({ hasText: caseSensitive(label) })
+    .first();
 }
 
 /**
@@ -1071,7 +1079,11 @@ async function verifyNotebookJoins(
     await expect(getJoinItems(page, stageIndex, joinIndex).nth(1)).toHaveText(
       rhsTable,
     );
-    await expect(icon(step, joinTypeIcons[type])).toBeVisible();
+    // .first(): a join step renders its type icon twice (the join-type selector
+    // button plus the strategy picker). Cypress's `.icon(...).should("be.visible")`
+    // passes when *any* match is visible (jQuery `:visible` semantics), so first-
+    // match is the faithful equivalent — same as the pinned-card icon gotcha.
+    await expect(icon(step, joinTypeIcons[type]).first()).toBeVisible();
     await expect(step.getByTestId(/^join-condition-\d+$/)).toHaveCount(
       conditions.length,
     );

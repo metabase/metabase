@@ -99,7 +99,11 @@ import {
   saveDashboard,
   sidebar,
 } from "../support/dashboard";
-import { icon, inputWithValue } from "../support/dashboard-cards";
+import { icon } from "../support/dashboard-cards";
+// findByDisplayValue (not dashboard-cards' input-only inputWithValue): the QB
+// header title is an EditableText <textarea>, which an input-only scan misses.
+// Cypress's findByDisplayValue matches input/textarea/select alike.
+import { findByDisplayValue } from "../support/filters-repros";
 import {
   addOrUpdateDashboardCard,
   createNativeQuestionAndDashboard,
@@ -904,7 +908,7 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
         .poll(() => new URL(page.url()).pathname)
         .toContain(`/question/${questionId}`);
       await expect(async () => {
-        await inputWithValue(queryBuilderHeader(page), TARGET_QUESTION.name);
+        await findByDisplayValue(queryBuilderHeader(page), TARGET_QUESTION.name);
       }).toPass();
 
       // Should navigate to question using router (metabase#33379)
@@ -1849,7 +1853,22 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       });
     });
 
-    test("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", async ({
+    // Untestable under the per-worker harness — NOT a product bug (verified on
+    // the CI uberjar, not a source-mode artifact). Two independent blockers:
+    //
+    // 1. This test needs site-url to DIFFER from the instance's real origin.
+    //    Slot backends boot with MB_SITE_URL=http://localhost:<port>
+    //    (worker-backend.ts), and settings resolve env before the app DB — the
+    //    very reason that fix survives restore(). So the updateSetting below is
+    //    silently ignored (measured: PUT succeeds, value unchanged) and the
+    //    mismatch under test cannot be constructed.
+    // 2. The Cypress original hard-codes localhost:4000 as the instance URL, so
+    //    it can't be cross-checked on a slot backend either — there it points at
+    //    a different Metabase.
+    //
+    // Re-enable when run against a backend on :4000, or if the site-url pin
+    // moves from env to a post-restore DB write (see findings-inbox/click-behavior.md).
+    test.fixme("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", async ({
       page,
       mb,
     }) => {
@@ -2734,7 +2753,11 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
     await expect(aside(page)).toContainText("No available targets");
     await aside(page).getByRole("button", { name: "Done" }).click();
 
-    await saveDashboard(page);
+    // Upstream: H.saveDashboard({ awaitRequest: false }) — nothing is dirty at
+    // this point, so neither the PUT nor a query_metadata GET fires. (Upstream's
+    // follow-up cy.wait for query_metadata is satisfied by the earlier reload's
+    // response, since cy.wait consumes past ones; it enforces nothing.)
+    await saveDashboard(page, { awaitRequest: false });
 
     await clickLineChartPoint(page);
 
