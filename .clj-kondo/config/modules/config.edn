@@ -1031,7 +1031,6 @@
            lib
            lib-be
            lib-metric
-           metabot
            metrics
            models
            mq
