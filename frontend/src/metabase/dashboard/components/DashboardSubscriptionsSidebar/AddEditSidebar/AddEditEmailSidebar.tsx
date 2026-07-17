@@ -119,7 +119,7 @@ export const AddEditEmailSidebar = ({
       >
         {isEmbeddingSdk() ? null : (
           <div>
-            <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
+            <div className={CS.mb1}>{t`To:`}</div>
             <RecipientPicker
               autoFocus={false}
               recipients={channel.recipients}
