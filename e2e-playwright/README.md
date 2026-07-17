@@ -87,7 +87,7 @@ green:
 | native-suggestions | 108 | 7 | CodeMirror autocomplete | 0 — green first run |
 | dashboard-viz-options | 121 | 4 | dnd-kit drag, viz settings | 1 (drag → target-based) |
 | permissions-baseline | 60 | 6 | sandboxed/none users | 1 (first-match semantics) |
-| public-question | 281 | 7 | public links, signed-out ctx | 0 port bugs (2 upstream, see below) |
+| public-question | 281 | 7 | public links, signed-out ctx | 0 port bugs (the "2 upstream" were FINDINGS #2 — retracted, not bugs) |
 | downloads | 562 | 15 | real file downloads + xlsx | 1 (pivot export endpoint) |
 
 ### Batch 3: five QB-heavy specs

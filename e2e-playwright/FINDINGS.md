@@ -4,6 +4,23 @@ Every concrete benefit surfaced by porting Cypress e2e specs to Playwright.
 Each entry: what we found, where, and why it matters. **Process rule: any new
 dividend found during porting gets an entry here in the same PR.**
 
+## Scoreboard — read this before quoting numbers
+
+**Product bugs: 2 standing (#1, #3), 3 retracted (#2, #22, #24).** Everything
+that rested on a `parameters: []` / load-path observation is gone: re-checked
+against the CI uberjar with Chrome cross-checks, none of it reproduced. Two of
+the three died to the same mechanism — a code path we didn't know about masked
+the difference we were measuring, and we read the gap as an app bug (#24: the
+question loads dirty so the QB uses `/api/dataset`; #22: our own per-worker H2
+repoint, which Cypress lacks, so its "identical failure" was really lock
+contention between concurrent slot backends).
+
+Do not quote a bug count from an un-cross-checked observation. The honest,
+defensible case for the migration does not rest on bug count anyway — see
+"Infrastructure findings" and "Framework-level simplifications", where the
+evidence is strong: the harness solves isolation problems Cypress structurally
+cannot, and #22's retraction is itself a demonstration of that.
+
 ## Product bugs found by porting
 
 1. **Enter-key double-navigation race in SearchBar** (`search.spec.ts`).
@@ -15,13 +32,48 @@ dividend found during porting gets an entry here in the same PR.**
    Ported with a CDP-level keydown/keyup helper; the underlying race is a
    real FE bug candidate.
 
-2. **Dimension-template-tag cards get empty `parameters`** (upstream
-   regression, found via `public-question.spec.ts`). Cards created with
-   dimension-type template tags come back with `parameters: []`, so
-   `string/=` filters error at query time ("Invalid values provided for
-   operator"). Verified the *Cypress original fails identically* against the
-   same backend — the port reproduced the failure profile exactly
-   (fidelity evidence AND a regression report in one).
+2. ~~**Dimension-template-tag cards get empty `parameters`**~~
+   **RETRACTED 2026-07-18 — not a bug. Do not cite this as a migration
+   dividend.** The original claim was: cards created with dimension-type
+   template tags come back with `parameters: []`, so `string/=` filters error
+   at query time ("Invalid values provided for operator"), and the Cypress
+   original fails identically against the same backend.
+
+   Re-verified against the CI uberjar (run 29569211972's own artifact, slot 11
+   / :4111, jar mode). **Every limb of the claim is false:**
+
+   - **`parameters: []` is normal and designed-for, not a regression.** The
+     Cypress helper `question()` (`e2e/support/helpers/api/createQuestion.ts`)
+     passes `parameters` straight through to `POST /api/card` and never
+     derives it, so a fixture that omits it stores `[]` *by construction* —
+     always has. Both sides then derive from template-tags on purpose:
+     `getParametersFromCard` (`metabase-lib/v1/parameters/utils/template-tags.ts`)
+     falls back to `getTemplateTagParametersFromCard` when `card.parameters`
+     is empty, and the backend mirrors it in
+     `queries/models/card.clj:384 template-tag-parameters`, whose docstring
+     says outright: *"An older style was to not include `:template-tags` onto
+     cards as parameters… Apparently lots of e2e tests are sloppy about this so
+     this is included as a convenience."* `queries/card.clj:24` and
+     `embedding_rest/api/common.clj:442,486` use the same fallback.
+   - **The filters do render and the query does succeed.** With the fixme
+     lifted, the test passes `toHaveURL(/source=Affiliate/)`, renders
+     "Affiliate" and "Previous 30 years" in the filter widget, and resolves
+     `GET /api/public/card/:uuid/query` (202). Only the *download* step is red.
+   - **"Invalid values provided for operator" has a different cause and is not
+     UI-reachable.** It comes from `verify-type-and-arity`
+     (`query_processor/parameters/operators.clj:54`) when a *variadic* operator
+     gets a non-sequential value — i.e. from the fixture's `default: "Affiliate"`
+     (a bare string) on a `string/=` tag, and only on the raw-API path where the
+     **server** applies the default. The FE normalises it to `["Affiliate"]`
+     first; with FE-shaped params the query returns 202 and xlsx/csv return 200.
+   - **The download failure is ours, twice over.** (1) A slot backend's
+     `site-url` stays `http://localhost:4000` (snapshot-pinned), so
+     `/public/question/:uuid.xlsx` 302s to the *dev* backend, which 404s — no
+     download event. (2) The FE downloads via a `blob:` URL, so the port's
+     `expect(download.url()).toContain("/public/question/<uuid>.xlsx")` can
+     never pass. Repointing site-url makes the download fire.
+
+   See `findings-inbox/findings-2-22-reverification.md` for the evidence.
 
 3. **`restore()` can silently kill the search index** (found via joins +
    metrics ports; almost certainly explains a class of *existing Cypress CI
@@ -180,10 +232,44 @@ dividend found during porting gets an entry here in the same PR.**
     "Subtotal" row). The review loop guards the new harness, not just the
     ported specs.
 
-22. **Third confirmed hit of the dimension-template-tag regression**
-    (FINDINGS #2): sql-field-filter's widget test fails identically in
-    Cypress against this backend — the regression's blast radius now spans
-    three specs, mapped for free by the port's fidelity checks.
+22. ~~**Third confirmed hit of the dimension-template-tag regression**~~
+    **RETRACTED 2026-07-18 — does not reproduce. Do not cite this as a
+    migration dividend.** The original claim was that sql-field-filter's widget
+    test fails identically in Cypress against this backend, giving FINDINGS #2
+    a blast radius across three specs.
+
+    Re-verified against the CI uberjar (run 29569211972's artifact, slot 11 /
+    :4111). **The port passes**: `sql-field-filter.spec.ts` is 8/8 with the
+    fixme lifted, and the named test is 3/3 under `--repeat-each=3`. It is
+    re-enabled in this PR.
+
+    **The "Cypress fails identically" evidence was an artifact of running
+    Cypress on a shared box.** The Cypress original (Chrome 150 headless,
+    `MB_JETTY_PORT=4111`, no :4000 contact) does fail 3/8 — but with
+    `POST 500 /api/card/:id/query`, and the 500 is:
+
+    ```
+    Database may be already in use: ".../e2e/tmp/sample-database.db.mv.db".
+    Possible solutions: close all other connection(s); use the server mode
+    ```
+
+    Snapshots pin database 1 to the **shared** `e2e/tmp` H2 file, which only
+    one JVM can hold; this box runs 8+ concurrent slot backends. Our Playwright
+    harness re-points database 1 to a per-worker private copy after *every*
+    restore (`support/fixtures.ts` restore(), the `sampleDbUrl` block) —
+    **Cypress has no such step**, because it never needed one. So the port is
+    insulated from a collision Cypress is fully exposed to.
+
+    Controlled proof — same card, same backend, same session, only the repoint
+    differs: without it `POST /api/card/:id/query` → **500** (lock error); with
+    it → **202, completed, row_count 42**, which is exactly the "Showing 42
+    rows" the test asserts. `parameters: []` is present in *both* arms, so it is
+    causally irrelevant. Two of the three Cypress failures ("field alias") were
+    never part of this claim at all — a tell that the cause was environmental.
+
+    Mechanism note, mirroring #24: a code path we didn't know about (the
+    harness's own sample-DB repoint) masked the real difference, and we read the
+    resulting Cypress-vs-Playwright split as an app bug.
 
 23. More silently-weak Cypress assertions made real: a Save-button check on
     the `disabled` attribute where the button is actually gated by
@@ -214,16 +300,20 @@ dividend found during porting gets an entry here in the same PR.**
     `findings-inbox/native-subquery-ci-failure.md` for the evidence.
 
     **Caveat**: the source-mode side was not re-verified (slots were busy).
-    The repo outside `e2e-playwright/` is identical between the jar's commit
-    and HEAD, so a genuine behavioural split isn't possible — a stale slot
-    backend or stale hot bundle is the likely explanation, but that remains a
-    hypothesis, not a confirmed cause.
+    A stale slot backend or stale hot bundle is the likely explanation, but
+    that remains a hypothesis, not a confirmed cause. (An earlier version of
+    this note argued a behavioural split was *impossible* because the repo
+    outside `e2e-playwright/` is identical between the jar's commit and HEAD.
+    That argument is weaker than stated: CI builds a **merge commit**, so the
+    jar's `version.properties` hash isn't a repo revision we can diff against.)
 
-    **Action owed**: re-check the dimension-tag `parameters: []` regression
-    (#2/#22) the same way, against the jar. Those cards also return
-    `parameters: []`, and #2/#22 rest on the same kind of observation that
-    just failed to survive scrutiny. Until that's done, treat the "load-path
-    reconciliation cluster" framing as unsupported.
+    **Action owed — DONE 2026-07-18**: #2 and #22 were re-checked against the
+    jar the same way and **both are now retracted too** (see above). The
+    "load-path reconciliation cluster" framing is dead: there is no cluster and
+    no product bug. `parameters: []` turned out to be a documented,
+    deliberately-accommodated condition, and the "Cypress fails identically"
+    evidence was H2 sample-DB lock contention between concurrent slot backends.
+    Evidence: `findings-inbox/findings-2-22-reverification.md`.
 
 25. **Another silently-ignored assertion argument**:
     `H.NativeEditor.completions("ANOTHER")` — completions() takes no

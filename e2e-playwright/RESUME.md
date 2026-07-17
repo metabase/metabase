@@ -42,7 +42,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **Mid-investigation of a suspected product bug** — see below. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | Partially verified; was re-running "Entry points" after a fresh backend rendered correctly. |
 | 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
-| 6 | `tests/dashboard-core.spec.ts` (2124) | **Closest to done** — "all chunks green", full-file run pending. Start here. |
+| 6 | `tests/dashboard-core.spec.ts` (2131) | **DONE — verified and landed.** 45 passed / 1 skipped (`@skip` upstream), clean under `--repeat-each=2`. Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ that cross-check ran in Electron — it predates the `--browser chrome` rule; not load-bearing, but re-run before citing). See `findings-inbox/dashboard-core.md`. Not WIP; leave alone. |
 | 7 | `tests/documents-comments.spec.ts` (2009) | Typechecks; never run. |
 | 8 | `tests/interactive-embedding.spec.ts` (2624) | **Spec was mid-write — likely incomplete.** Check it parses before running. |
 | 9 | `tests/documents.spec.ts` (2241) | Written; never run, never typechecked. |
@@ -72,17 +72,41 @@ verified 4/4 × 3 runs in jar mode.
 **The same investigation retracted FINDINGS #24** — neither sub-claim
 reproduces against the CI uberjar, and the previously-fixme'd test now passes
 and is re-enabled. See the retraction note in FINDINGS.md and the evidence in
-`findings-inbox/native-subquery-ci-failure.md`. **Open action**: re-verify
-#2/#22 (the dimension-tag `parameters: []` regression) against the jar the same
-way — they rest on the same kind of observation and also involve cards that
-return `parameters: []`. Until then the "load-path cluster" framing is
-unsupported and shouldn't go in front of colleagues.
+`findings-inbox/native-subquery-ci-failure.md`.
+
+**CLOSED 2026-07-18 — #2 and #22 are also retracted.** The open action above
+was carried out against the same jar (slot 11 / :4111). Neither survives:
+`parameters: []` is a documented, deliberately-accommodated condition (both FE
+and BE derive parameters from template-tags when it's empty — the backend
+docstring literally says e2e tests are sloppy about this), the filters render,
+and the query succeeds. The "Cypress fails identically" evidence turned out to
+be **H2 sample-DB lock contention**: snapshots pin database 1 to the shared
+`e2e/tmp` H2 file, our Playwright harness re-points it to a per-worker copy
+after every restore and Cypress does not, so a Cypress cross-check run on this
+multi-slot box 500s for reasons that have nothing to do with the app. There is
+no product bug and no "load-path cluster". Evidence:
+`findings-inbox/findings-2-22-reverification.md`.
+
+**All three product-bug claims that rested on a `parameters: []` / load-path
+observation (#2, #22, #24) are now retracted.** FINDINGS #1 and #3 are
+untouched by this and remain the product-bug claims. Before adding another
+"the Cypress original fails identically" finding, read the method note in
+PORTING.md — that cross-check is only valid on a quiesced box.
 
 **2. `dashboard-parameters` suspected product bug (unverified).**
 The agent observed `query_metadata` containing field 61 while the parameter's
 value options came back empty, and was about to cross-check against the
 original Cypress spec when it died. Either a real bug or a port artifact —
 the Cypress cross-check is the deciding step, and it was never run.
+
+> **Before running that cross-check, read the new PORTING.md note.** The
+> #2/#22 re-verification showed the Cypress-vs-slot-backend cross-check is
+> invalid on a busy box: Cypress does *not* re-point the shared `e2e/tmp` H2
+> sample DB (our harness does, after every restore), so it 500s whenever a
+> sibling slot backend holds the file lock. Quiesce the box or check
+> `details.db` / `site-url` / `lsof` first, and run with `--browser chrome`.
+> "Value options came back empty" is also the same *shape* of observation that
+> #2 died on — check whether the FE derives the options before calling it a bug.
 
 **3. `dashboard-filters-reproductions-1` — 6 fixmes with no root cause.**
 The port is landed and verified, and the *original Cypress spec* run against
@@ -92,6 +116,13 @@ faithful and something real is behind them. Snapshot staleness is ruled out
 and both harnesses shared one source-mode backend + rspack server, so a common
 environmental cause isn't excluded. **Decider**: if CI's Cypress leg is green on
 this spec, the delta is environmental; if red, it's a pre-existing regression.
+
+> **Named candidate for that "common environmental cause"**: the shared
+> `e2e/tmp` H2 sample-DB lock and the snapshot-pinned `site-url` (see
+> PORTING.md). Here *both* harnesses failed, which fits a shared backend whose
+> sample DB was contended — unlike #22, where only Cypress failed because the
+> Playwright harness re-points and Cypress doesn't. Cheap check before the CI
+> decider: re-run on a quiesced box with nothing else on 41xx/:4000.
 
 Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like
@@ -108,7 +139,7 @@ a wave only when there's headroom to finish it.
 ## Suggested first moves
 
 1. Delete the debris files listed above.
-2. Finish slot 6 (`dashboard-core`) — one full-file run from green chunks.
+2. ~~Finish slot 6 (`dashboard-core`)~~ — **done**; verified green and landed.
 3. Reconcile `PORTED.txt` against reality; regenerate QUEUE.md.
 4. Take the two open threads above (jar-mode repro for native-subquery; Cypress
    cross-check for dashboard-parameters) — both are candidate dividends and

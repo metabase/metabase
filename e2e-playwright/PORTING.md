@@ -129,6 +129,19 @@ lead that survived did so because the agent happened to narrate it out loud.
 - **cy.wait after non-triggering clicks**: check what actually fires the
   request (cy.wait consumes past responses; waitForResponse doesn't).
   Register at the true trigger.
+- **Anchor `saveDashboard()` on the change it saves** (the inverse of the
+  above: the request is never fired *at all*). Adding a dashcard via the
+  questions sidebar is async; Cypress's command queue paces the click and the
+  next command apart, Playwright fires them back-to-back. Save can land before
+  the card-add is applied → dashboard isn't dirty → Save exits edit mode
+  **without the PUT** → `saveDashboard`'s waitForResponse burns 30s. Its own
+  `expect(editBar).toBeVisible()` doesn't help (already visible → returns
+  instantly). Fix: `await expect(getDashboardCards(page)).toHaveCount(n)`
+  between the click and the save. Symptom is misleading — it throws inside the
+  *shared, correct* helper, and sibling tests fail at unrelated assertions
+  (e.g. a native editor that never renders) from the same root cause. Passes in
+  isolation, fails in sequence — do not write it off as flake
+  (dashboard-core: 2 tests, 1.7m → 34.9s once anchored).
 - Hash/URL assertions that Cypress retried (`location().should`) must be
   `expect.poll` in Playwright — one-shot checks catch transient states.
 - **Native parameter widgets duplicate their accessible name** on the wrapper
@@ -141,6 +154,17 @@ lead that survived did so because the agent happened to narrate it out loud.
   orchestrator's own runs. Concurrent playwright invocations both restore()
   and corrupt each other. Kill/finish any background run before starting
   another (the coordinator has now made this mistake twice).
+- **Parallel agents share one scratchpad AND one worktree.** "Session-specific"
+  is not "agent-specific". Two agents both redirecting to the obvious
+  `scratchpad/run1.log` → the second's `>` truncates it while the first still
+  holds an open handle, interleaving both runs into an unreadable file.
+  Signature: the log suddenly shows *a different spec on a different port*, and
+  the `✘` count **goes down** between polls (reads as flakiness — it isn't).
+  Runs themselves are unaffected (separate slots = separate backends), but
+  Playwright's shared `test-results/` gets wiped by a sibling, so traces and
+  `error-context.md` vanish before you read them. Use
+  `scratchpad/run-<spec>-slot<N>.log`, and `--output` when artifacts matter.
+  Also: `git status` will show sibling agents' files — only touch your own.
 - **Porting agents must run verification in the FOREGROUND.** A backgrounded
   run leaves the agent waiting on a notification that never arrives, so it
   ends its turn silently and the slot stalls until the orchestrator resumes
@@ -189,3 +213,60 @@ lead that survived did so because the agent happened to narrate it out loud.
 - **Gate naming**: QA_DB_ENABLED leaks in from cypress.env.json (always true
   on dev machines); PW_QA_DB_ENABLED is deliberate. TODO: unify on
   PW_QA_DB_ENABLED once container specs are consolidated.
+- **`have.attr` on a BOOLEAN attribute asserts presence, not value.** jQuery
+  special-cases `disabled`/`checked`/`selected`/…: the getter returns the
+  lowercased attribute *name* when present, so upstream's
+  `should("have.attr", "disabled", "disabled")` passes against
+  `<a disabled>` whose real DOM value is `""`. Playwright reads
+  `getAttribute` and sees `""` → port as one-arg `toHaveAttribute("disabled")`
+  (presence). Porting the pair literally yields a false failure.
+- **`findByDisplayValue` matches input, textarea AND select.** Metabase's
+  EditableText (question/dashboard titles) renders a **textarea**, so a
+  port that scans only `input` finds nothing on exactly the titles this
+  query is usually aimed at — and the empty result looks like "the page
+  didn't load" rather than "wrong selector". See `expectInputWithValue` in
+  support/interactive-embedding.ts.
+- **`cy.icon(name).should("be.visible")` is an ANY-match, not an all-match.**
+  chai-jquery's `visible` delegates to jQuery `.is(":visible")`, which is
+  true if *any* element in the set matches. So a multi-match `cy.icon` +
+  `be.visible` is satisfied by one visible icon → port with `.first()`
+  (rule 3), not by scoping until the set is unique, which can tighten the
+  assertion beyond upstream. (`.Icon-refresh` matches the QB header run
+  button *and* the run-button-overlay.)
+- **"The Cypress original fails identically" is only evidence on a QUIESCED
+  box.** This cross-check is our main fidelity/product-bug test, and it has now
+  produced three false product-bug claims (FINDINGS #2, #22, #24, all
+  retracted). Two independent mechanisms make Cypress fail against a *slot*
+  backend for reasons that have nothing to do with the app:
+  1. **Shared sample DB.** Snapshots pin database 1 to the repo-shared
+     `e2e/tmp/sample-database.db.mv.db`, and only one JVM can hold that H2
+     file. `fixtures.ts` restore() re-points database 1 to the worker's private
+     copy after **every** restore; **Cypress does not** — it never needed to.
+     So with sibling slot backends (or dev :4000) up, Cypress gets
+     `POST 500 /api/card/:id/query` → `Database may be already in use`. The
+     page renders "We're experiencing server issues"; the *filter widgets
+     render fine*, so it reads as "the query is broken".
+  2. **Shared `site-url`.** Snapshots pin `site-url` to `http://localhost:4000`
+     and nothing re-points it. Anything that round-trips through it — public
+     download links (`/public/question/:uuid.xlsx` 302s to site-url), embed
+     preview iframes — silently reaches for the **dev backend**, which 404s.
+  Before believing a cross-check: check `GET /api/database` `details.db` and
+  `GET /api/setting/site-url` on the backend under test, and `lsof` the shared
+  H2 file. Run Cypress with `--browser chrome` (`cypress.run()` defaults to
+  **Electron**, and this repo has a documented class of Chrome-headless-only
+  bugs) and `MB_JETTY_PORT=<slot port>` (that env var is what sets Cypress's
+  baseUrl — see `e2e/runner/constants/backend-port.js`).
+- **`parameters: []` on an e2e-created card is NORMAL — never report it as a
+  bug.** The Cypress `question()` helper passes `parameters` straight through
+  to `POST /api/card` and never derives it, so any fixture that omits it stores
+  `[]` by construction. Both sides derive from template-tags on purpose:
+  `getParametersFromCard` falls back to `getTemplateTagParametersFromCard`, and
+  the backend mirrors it in `queries/models/card.clj template-tag-parameters`,
+  whose docstring says e2e tests are "sloppy about this so this is included as
+  a convenience". `queries/card.clj` and `embedding_rest/api/common.clj` use
+  the same fallback.
+- **`download.url()` is a `blob:` URL.** The FE fetches the export and hands
+  the browser a blob, so `download.url()` is `blob:http://host/<guid>` — never
+  the API path. Assert `suggestedFilename()`, the *request* URL
+  (`page.waitForRequest`), or the parsed file. A
+  `toContain("/api/.../query/xlsx")` on `download.url()` can never pass.
