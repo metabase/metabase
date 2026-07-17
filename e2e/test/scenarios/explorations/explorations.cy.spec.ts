@@ -466,7 +466,7 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("groups sidebar rows as `<metric> → By <dimension>`, makes the headings collapsible, and marks interesting groups", () => {
+  it("groups sidebar rows under their metric heading, makes the headings collapsible, and marks interesting groups", () => {
     cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
       // Unjustified type cast. FIXME
       const data = body as {
@@ -516,9 +516,7 @@ describe("scenarios > explorations > detail page", () => {
 
         metricHeading().should("be.visible");
         for (const dim of pickedDimensions) {
-          sidebarScope()
-            .findByText(`By ${dim.display_name}`)
-            .should("be.visible");
+          sidebarScope().findByText(dim.display_name).should("be.visible");
         }
 
         cy.log("Collapse the metric heading: both leaves disappear");
@@ -526,18 +524,14 @@ describe("scenarios > explorations > detail page", () => {
         metricHeading().click();
         metricHeading().should("have.attr", "aria-expanded", "false");
         for (const dim of pickedDimensions) {
-          sidebarScope()
-            .findByText(`By ${dim.display_name}`)
-            .should("not.exist");
+          sidebarScope().findByText(dim.display_name).should("not.exist");
         }
 
         cy.log("Re-expand: both leaves return");
         metricHeading().click();
         metricHeading().should("have.attr", "aria-expanded", "true");
         for (const dim of pickedDimensions) {
-          sidebarScope()
-            .findByText(`By ${dim.display_name}`)
-            .should("be.visible");
+          sidebarScope().findByText(dim.display_name).should("be.visible");
         }
       });
     });
@@ -614,7 +608,7 @@ describe("scenarios > explorations > detail page", () => {
 /**
  * Resolve the "Count of orders" metric plus its first two dimensions and
  * create an exploration with them — yielding one metric-group heading with
- * exactly two "By <dimension>" pages, the smallest deterministic tree for
+ * exactly two dimension-named pages, the smallest deterministic tree for
  * sidebar-triage assertions.
  */
 function createTwoPageExploration(name: string): Cypress.Chainable<{
@@ -653,7 +647,7 @@ function createTwoPageExploration(name: string): Cypress.Chainable<{
     }).then((explorationId) => ({
       explorationId,
       metricName: ordersMetric!.name,
-      pageNames: pickedDimensions.map((dim) => `By ${dim!.display_name}`),
+      pageNames: pickedDimensions.map((dim) => dim!.display_name),
     }));
   });
 }
@@ -810,7 +804,7 @@ describe("scenarios > explorations > sidebar triage", () => {
 
         // The page auto-selects the tree's first page on load, and the tree
         // orders pages by interestingness — so which of the two
-        // "By <dimension>" pages is selected is data-dependent; derive it
+        // dimension-named pages is selected is data-dependent; derive it
         // from the DOM instead of assuming.
         cy.findAllByRole("treeitem").should("have.length", 2);
         selectedRows().should("have.length", 1);
@@ -1089,9 +1083,11 @@ describe("scenarios > explorations > chart click-through", () => {
           cy.location("search").should("include", `timeline=${timelineId}`);
 
           cy.get("@newThreadName").then((name) => {
-            cy.findByRole("group", {
-              name: `${ordersMetric!.name} → ${name}`,
-            }).should("have.attr", "aria-expanded", "true");
+            cy.findByRole("group", { name: String(name) }).should(
+              "have.attr",
+              "aria-expanded",
+              "true",
+            );
           });
 
           cy.findByRole("main")
