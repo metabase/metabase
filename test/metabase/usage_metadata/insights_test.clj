@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.insights-test
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.content-verification.core :as moderation]
@@ -29,6 +30,7 @@
 (def ^:private existing-measure-signatures @#'insights/existing-measure-signatures)
 (def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
 (def ^:private segment-signature           @#'insights/segment-signature)
+(def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -390,6 +392,8 @@
                           :name         "SUBTOTAL"
                           :display-name "Subtotal"}}
                  (:aggregation (first candidates))))
+          (is (= "Sum of Subtotal" (:suggested-name (first candidates))))
+          (is (= "Sum of Subtotal on Orders" (:suggested-description (first candidates))))
           (is (= #{:lib/type :database :stages}
                  (set (keys (:definition (first candidates))))))))
       (mt/with-temp [:model/Measure _measure {:name "Existing candidate mining measure"
@@ -432,7 +436,8 @@
                          (insights/candidate-measures {:min-view-count 10 :limit 1000}))
             conditional (filterv #(contains? #{:count-where :distinct-where :sum-where}
                                              (get-in % [:aggregation :type]))
-                                 candidates)]
+                                 candidates)
+            by-type     (into {} (map (juxt #(get-in % [:aggregation :type]) identity)) conditional)]
         (is (= #{:count-where :distinct-where :sum-where}
                (into #{} (map #(get-in % [:aggregation :type])) conditional)))
         (is (every? #(= 1 (get-in % [:aggregation :condition-atom-count])) conditional))
@@ -443,6 +448,14 @@
                       (get-in % [:aggregation :condition])
                       :=)
                     conditional))
+        (is (= "Count where Product ID is 987654"
+               (get-in by-type [:count-where :suggested-name])))
+        (is (= "Distinct values of User ID where Product ID is 987654"
+               (get-in by-type [:distinct-where :suggested-name])))
+        (is (= "Sum of Subtotal where Product ID is 987654"
+               (get-in by-type [:sum-where :suggested-name])))
+        (is (= "Sum of Subtotal where Product ID is 987654 on Orders"
+               (get-in by-type [:sum-where :suggested-description])))
         (is (every? #(= 1 (get-in % [:evidence :verified-source-count])) conditional))))))
 
 (deftest candidate-measures-drop-one-off-popular-conditions-test
@@ -603,7 +616,14 @@
           (is (= 3 (count candidates)))
           (is (= 2 (count (remove :composite? candidates))))
           (is (every? #(= 1 (:atom-count %)) (remove :composite? candidates)))
-          (is (= [2] (mapv :atom-count (filter :composite? candidates))))))
+          (is (= [2] (mapv :atom-count (filter :composite? candidates))))
+          (is (= #{"Product ID is 987654"
+                   "Subtotal is greater than 12345"}
+                 (into #{} (map :suggested-name) (remove :composite? candidates))))
+          (is (= "Product ID is 987654 and Subtotal is greater than 12345"
+                 (:suggested-name (first (filter :composite? candidates)))))
+          (is (= "Filtered by Product ID is 987654 and Subtotal is greater than 12345 on Orders"
+                 (:suggested-description (first (filter :composite? candidates)))))))
       (mt/with-temp [:model/Segment _segment {:name "Existing candidate mining segment"
                                               :creator_id (mt/user->id :crowberto)
                                               :definition query}]
@@ -617,6 +637,26 @@
                 (str "Expected " expected-signature " among existing signatures " existing))
             (is (= 2 (count candidates)))
             (is (every? (complement :composite?) candidates))))))))
+
+(deftest candidate-suggestions-are-bounded-and-fall-back-safely-test
+  (let [candidate {:definition {}
+                   :predicate [:unknown {}]
+                   :source {:name "Orders"}}]
+    (testing "long names are capped at the app-db name limit without shortening the description"
+      (let [long-name (apply str (repeat 300 "x"))]
+        (with-redefs [lib/display-name (fn [& _] long-name)
+                      lib/describe-top-level-key (fn [& _] long-name)]
+          (let [suggested (add-segment-suggestions candidate)]
+            (is (= 254 (count (:suggested-name suggested))))
+            (is (str/ends-with? (:suggested-name suggested) "..."))
+            (is (= (str long-name " on Orders") (:suggested-description suggested)))))))
+    (testing "display-name failures do not abort candidate mining"
+      (with-redefs [lib/display-name (fn [& _] (throw (ex-info "boom" {})))
+                    lib/describe-top-level-key (fn [& _] (throw (ex-info "boom" {})))]
+        (is (= {:suggested-name "Segment"
+                :suggested-description "Filtered by Segment on Orders"}
+               (select-keys (add-segment-suggestions candidate)
+                            [:suggested-name :suggested-description])))))))
 
 (deftest candidate-segments-mine-recurring-filter-subsets-test
   (let [query-a (orders-three-atom-segment-query 111)

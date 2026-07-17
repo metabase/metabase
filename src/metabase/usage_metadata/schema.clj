@@ -4,6 +4,7 @@
   These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
   enforced inside `metabase.usage-metadata.insights` producers."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::source-type [:enum :table :card])
@@ -76,8 +77,10 @@
 
 (mr/def ::candidate-measure
   [:map {:closed true}
-   [:source      ::source]
-   [:definition  :map]
+   [:source                ::source]
+   [:definition            :map]
+   [:suggested-name        ::lib.schema.common/non-blank-string]
+   [:suggested-description ::lib.schema.common/non-blank-string]
    [:aggregation [:map {:closed true}
                   [:type  [:enum :count :sum :avg :min :max :distinct :median :stddev :var :percentile
                            :count-where :distinct-where :sum-where]]
@@ -90,13 +93,15 @@
 
 (mr/def ::candidate-segment
   [:map {:closed true}
-   [:source     ::source]
-   [:definition :map]
-   [:predicate  ::mbql-clause]
-   [:fields     [:sequential {:min 1} ::field]]
-   [:composite? :boolean]
-   [:atom-count pos-int?]
-   [:evidence   ::candidate-evidence]])
+   [:source                ::source]
+   [:definition            :map]
+   [:suggested-name        ::lib.schema.common/non-blank-string]
+   [:suggested-description ::lib.schema.common/non-blank-string]
+   [:predicate             ::mbql-clause]
+   [:fields                [:sequential {:min 1} ::field]]
+   [:composite?            :boolean]
+   [:atom-count            pos-int?]
+   [:evidence              ::candidate-evidence]])
 
 (mr/def ::implicit-segment
   [:map {:closed true}

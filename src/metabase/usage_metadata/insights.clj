@@ -17,10 +17,12 @@
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -584,6 +586,85 @@
    (- (:total-view-count evidence))
    signature])
 
+(def ^:private candidate-name-max-length
+  254)
+
+(defn- safe-display-name
+  [definition clause fallback]
+  (try
+    (or (not-empty (lib/display-name definition 0 clause :long))
+        fallback)
+    (catch Throwable e
+      (log/debug e "Failed to generate candidate display name")
+      fallback)))
+
+(defn- safe-definition-description
+  [definition top-level-key fallback]
+  (try
+    (or (lib/describe-top-level-key definition top-level-key)
+        fallback)
+    (catch Throwable e
+      (log/debug e "Failed to generate candidate definition description")
+      fallback)))
+
+(defn- source-display-name
+  [source]
+  (or (:display-name source) (:name source)))
+
+(defn- description-on-source
+  [description source]
+  (if-let [source-name (source-display-name source)]
+    (tru "{0} on {1}" description source-name)
+    description))
+
+(defn- conditional-base-aggregation
+  [[operator _opts field :as clause]]
+  (case operator
+    :count-where    (lib/count)
+    :distinct-where (lib/distinct field)
+    :sum-where      (lib/sum field)
+    clause))
+
+(defn- measure-suggested-name
+  [definition {:keys [type condition]}]
+  (let [clause (get-in definition [:stages 0 :aggregation 0])]
+    (if (and (contains? conditional-aggregation-operators type) condition)
+      (let [base-name      (safe-display-name definition
+                                              (conditional-base-aggregation clause)
+                                              (tru "Measure"))
+            condition-name (safe-display-name definition condition (tru "matching condition"))]
+        (tru "{0} where {1}" base-name condition-name))
+      (safe-display-name definition clause (tru "Measure")))))
+
+(defn- candidate-naming-definition
+  [{:keys [definition], metadata-provider ::metadata-provider}]
+  (cond-> definition
+    metadata-provider (assoc :lib/metadata metadata-provider)))
+
+(defn- add-measure-suggestions
+  [{:keys [aggregation source] :as candidate}]
+  (let [naming-definition (candidate-naming-definition candidate)
+        suggested-name    (measure-suggested-name naming-definition aggregation)
+        description    (if (contains? conditional-aggregation-operators (:type aggregation))
+                         suggested-name
+                         (safe-definition-description naming-definition :aggregation suggested-name))]
+    (-> candidate
+        (dissoc ::metadata-provider)
+        (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)
+               :suggested-description (description-on-source description source)))))
+
+(defn- add-segment-suggestions
+  [{:keys [predicate source] :as candidate}]
+  (let [naming-definition (candidate-naming-definition candidate)
+        suggested-name    (safe-display-name naming-definition predicate (tru "Segment"))
+        description       (safe-definition-description naming-definition
+                                                       :filters
+                                                       (tru "Filtered by {0}" suggested-name))]
+    (-> candidate
+        (dissoc ::metadata-provider)
+        (assoc :suggested-name (u.str/elide suggested-name candidate-name-max-length)
+               :suggested-description (description-on-source description source)))))
+
 (defn- merge-candidates
   ([raw-candidates source-index existing-signatures limit]
    (merge-candidates raw-candidates source-index existing-signatures limit (constantly true)))
@@ -633,6 +714,7 @@
              {::signature   [table-id (canonical-signature clause)]
               ::table-id    table-id
               ::source-item source-item
+              ::metadata-provider (:lib/metadata query)
               :definition   definition
               :aggregation  info})))
         cards))
@@ -711,6 +793,7 @@
              {::signature   (segment-signature table-id predicates)
               ::table-id    table-id
               ::source-item source-item
+              ::metadata-provider (:lib/metadata query)
               :definition   definition
               :predicate    predicate
               :fields       (mapv field-summary columns)
@@ -740,7 +823,8 @@
   considered. Conditional count/distinct/sum Measures are also synthesized from categorical filter
   subsets and retained when curated or recurring. Every eligible stage is inspected until a
   non-projection stage forms a lineage barrier. Native queries, joined stages, expressions,
-  non-transparent model sources, and existing exact Measures are skipped."
+  non-transparent model sources, and existing exact Measures are skipped. Each result includes a
+  deterministic suggested name and description derived from Lib's query display names."
   ([] (candidate-measures {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
@@ -749,11 +833,12 @@
            models     (candidate-model-index)
            candidates (raw-measure-candidates cards models)
            source-idx (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
-       (merge-candidates candidates
-                         source-idx
-                         (existing-measure-signatures)
-                         limit
-                         eligible-measure-candidate?)))))
+       (mapv add-measure-suggestions
+             (merge-candidates candidates
+                               source-idx
+                               (existing-measure-signatures)
+                               limit
+                               eligible-measure-candidate?))))))
 
 (mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
   "Creation-ready Segment candidates mined from qualifying questions and models.
@@ -764,7 +849,9 @@
   skipped without allowing a saved conjunction to suppress its atomic constituents. Questions and
   models sourced through projection-only MBQL model chains are attributed to the physical source
   table. Multi-stage lineage is followed through projection-only stages, and filters from joined
-  stages are attributed only when every field in the filter belongs to one physical table."
+  stages are attributed only when every field in the filter belongs to one physical table. Each
+  result includes a deterministic suggested name and description derived from Lib's filter display
+  names."
   ([] (candidate-segments {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
@@ -773,11 +860,12 @@
            models      (candidate-model-index)
            candidates  (raw-segment-candidates cards models)
            source-idx  (build-source-index (into #{} (map (comp #(vector :table %) ::table-id)) candidates))]
-       (merge-candidates candidates
-                         source-idx
-                         (existing-segment-signatures)
-                         limit
-                         eligible-segment-candidate?)))))
+       (mapv add-segment-suggestions
+             (merge-candidates candidates
+                               source-idx
+                               (existing-segment-signatures)
+                               limit
+                               eligible-segment-candidate?))))))
 
 (def ^:private cache-ttl-ms
   (* 60 1000))
