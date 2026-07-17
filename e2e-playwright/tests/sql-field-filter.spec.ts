@@ -158,11 +158,7 @@ test.describe("scenarios > filters > sql filters > field filter", () => {
       display: "table",
     };
 
-    // Fails identically in the Cypress original against this branch's
-    // backend: the dimension-template-tag parameters regression (see
-    // FINDINGS.md #2) leaves the saved question with parameters: [], so no
-    // filter widget renders. Remove fixme when master fixes it.
-    test.fixme("should work despite it not showing up in the widget type list", async ({
+    test("should work despite it not showing up in the widget type list", async ({
       page,
       mb,
     }) => {

@@ -259,6 +259,25 @@ export function leaveConfirmationModal(page: Page): Locator {
 }
 
 /**
+ * The dialog content of a Mantine modal identified by `data-testid`.
+ *
+ * Mantine spreads a Modal's extra props (data-testid included) onto its ROOT,
+ * which is `position: static` and whose only children are `position: fixed` —
+ * so the root collapses to a zero-height box (measured: 1280x0, while its
+ * overlay/inner are 1280x720). Cypress's `should("be.visible")` passes on that
+ * root because it treats a zero-box element as visible when it has a visible
+ * child (`elHasVisibleChild`); Playwright's `toBeVisible()` requires a
+ * non-empty box and reports "hidden". Assert on the dialog content instead —
+ * same intent, correct Playwright semantics.
+ *
+ * The root is only rendered while the modal is open, so Cypress's
+ * `should("not.exist")` still ports to `toHaveCount(0)` on the root itself.
+ */
+export function modalContentByTestId(page: Page, testId: string): Locator {
+  return page.getByTestId(testId).getByRole("dialog");
+}
+
+/**
  * Port of H.addToDocument: cy.realType into the focused editor. "\n" presses
  * Enter, like realType.
  */

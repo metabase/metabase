@@ -42,3 +42,40 @@ vestigial upstream; the port reproduced the corner coordinate faithfully but
 without the voronoi layer that used to make the corner clickable.
 
 (continued — fix and its verification appended below as they land)
+
+**Fix applied**: click the point itself (`circle.click()`) instead of its corner.
+
+**Experiment that settled the mechanism** (4 strategies, same page/backend):
+
+| strategy | drill menu opens? |
+|---|---|
+| A: `mouse.click` at circle centre | YES |
+| B: hover centre, then click centre | YES |
+| C: `locator.click()` on the circle | YES |
+| D: Cypress's EXACT synthetic sequence at the top-left corner | **NO** |
+
+D is the important one: reproducing Cypress's own mechanism at Cypress's own
+coordinate opens nothing. So the corner is not hittable in *either* harness —
+Cypress passes **in spite of** the corner trick, not because of it. The
+coordinate systems match (scrollY 0, body at origin), so this is not a
+Cypress-vs-Playwright coordinate difference.
+
+**Result**: line-chart chunk went 4/22 → 10/22 passing. The three
+filter-updating tests (`allows updating single dashboard filter`, `behavior is
+updated after linked dashboard filter has been removed`, `allows updating
+multiple dashboard filters`) all pass — these are precisely the tests the
+upstream comment says break under a double click, so the centre click fires
+ECharts' series `click` exactly once. Canary green.
+
+**Classification**: PORT BUG (new gotcha — see below). Not a product bug; no
+claim made against the app.
+
+**Candidate dividend (test-suite defect, upstream)**: `clickLineChartPoint` in
+`e2e/test/scenarios/dashboard-cards/click-behavior.cy.spec.js` (~line 2765)
+clicks a coordinate where nothing is hittable, and its explanatory comment
+refers to `g.voronoi > path` / `circle.dot`, which the ECharts migration
+removed. The Cypress tests still pass, which means **the click is not what
+makes them pass** — worth a look upstream, because a helper whose click lands
+on nothing is not testing the interaction it claims to. Scope of this claim:
+observed on this spec's line-chart dashcards on a source-mode EE backend;
+I did NOT verify what Cypress's assertions are actually riding on.

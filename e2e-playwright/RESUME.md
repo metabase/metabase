@@ -39,7 +39,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 |---|---|---|
 | 1 | `tests/click-behavior.spec.ts` (2786) | Verification run in progress; result never seen. |
 | 2 | `tests/dashboard-reproductions.spec.ts` (2438) | First chunk running; unverified. |
-| 3 | `tests/dashboard-parameters.spec.ts` (2989) | **Mid-investigation of a suspected product bug** — see below. |
+| 3 | `tests/dashboard-parameters.spec.ts` (2989) | **DONE — verified and landed.** 43/43 on the CI uberjar, clean under `--repeat-each=2` (86/86). Source is `dashboard-filters/parameters.cy.spec.js` (not `dashboard-parameters.cy.spec.js` — no such file). The suspected product bug is **disproven**: see open thread #2. Needed one helper fix (`undo` → newest toast); the spec itself was already correct. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | Partially verified; was re-running "Entry points" after a fresh backend rendered correctly. |
 | 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 6 | `tests/dashboard-core.spec.ts` (2131) | **Full file green (45 passed / 1 skipped `@skip` upstream), one flake open.** Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ Electron, predates the `--browser chrome` rule — re-run before citing). **Open (needs a decision, not a fix):** `--repeat-each=2` (89 passed / 1 failed / 2 skipped) caught `auto-scrolling to a dashcard via a url hash param` (:1318); measured **3 fail / 2 pass over 5 runs on a quiet box**. Cause is app-side: `DashCard` scrolls once in `useMount` and clears the `scrollTo` hash immediately, so any later remount/reflow loses the scroll and nothing re-scrolls. Left unmodified and unskipped on purpose — the port's `toBeInViewport()` is *stronger* than Cypress's `should("be.visible")` (which ignores scroll position), so weakening it makes the test vacuous and a `toPass` retry would mask the very behaviour under test. Not claimed as a product bug (fidelity bar not met). See `findings-inbox/dashboard-core.md`. |
@@ -93,20 +93,30 @@ untouched by this and remain the product-bug claims. Before adding another
 "the Cypress original fails identically" finding, read the method note in
 PORTING.md — that cross-check is only valid on a quiesced box.
 
-**2. `dashboard-parameters` suspected product bug (unverified).**
-The agent observed `query_metadata` containing field 61 while the parameter's
-value options came back empty, and was about to cross-check against the
-original Cypress spec when it died. Either a real bug or a port artifact —
-the Cypress cross-check is the deciding step, and it was never run.
+**2. `dashboard-parameters` suspected product bug — CLOSED. Not a bug.**
+Settled 2026-07-18. Full evidence: `findings-inbox/dashboard-parameters.md`.
 
-> **Before running that cross-check, read the new PORTING.md note.** The
-> #2/#22 re-verification showed the Cypress-vs-slot-backend cross-check is
-> invalid on a busy box: Cypress does *not* re-point the shared `e2e/tmp` H2
-> sample DB (our harness does, after every restore), so it 500s whenever a
-> sibling slot backend holds the file lock. Quiesce the box or check
-> `details.db` / `site-url` / `lsof` first, and run with `--browser chrome`.
-> "Value options came back empty" is also the same *shape* of observation that
-> #2 died on — check whether the FE derives the options before calling it a bug.
+Field 61 = `PRODUCTS.CATEGORY`, which pinned the claim to "should handle
+mismatch between filter types (metabase#9299, metabase#16181)". The observation
+is **real and reproducible** — on a *freshly booted* backend, `query_metadata`
+delivers `fields: [61]` to the browser and the mapper still renders disabled
+(`mappingOptions` empty). It is **not** staleness, and **not** a port artifact:
+the unmodified Cypress original fails at the *same assertion* on the same
+backend, in Chrome.
+
+**But it passes on the CI uberjar**, with byte-equivalent backend payloads
+(`fields: [61]`, same MBQL5 `dataset_query`, same `parameters: []`). The branch
+touches no product code and only 2 unrelated FE commits landed on master since
+the merge-base, so the FE *source* is identical between the two. The differing
+variable is the **local rspack hot FE bundle** — environmental, local-only.
+
+This closes the gap FINDINGS #24's retraction left open ("Not verified: the
+source-mode side"). It also proves the fidelity cross-check does **not**
+establish that a behaviour is real — both harnesses share the FE bundle. See
+the corrected rule in PORTING.md. Dead ends already ruled out (don't re-chase):
+the MBQL5 `dimension[1]` story (Lib converts to legacy refs first), stale CLJS
+(the bundle *has* `ref->legacy-ref`), and `parameters: []` (normal; the jar
+returns it too).
 
 **3. `dashboard-filters-reproductions-1` — 6 fixmes with no root cause.**
 The port is landed and verified, and the *original Cypress spec* run against
@@ -116,6 +126,18 @@ faithful and something real is behind them. Snapshot staleness is ruled out
 and both harnesses shared one source-mode backend + rspack server, so a common
 environmental cause isn't excluded. **Decider**: if CI's Cypress leg is green on
 this spec, the delta is environmental; if red, it's a pre-existing regression.
+
+> **⚠️ Re-read this thread in light of open thread #2 (settled 2026-07-18).**
+> "The port is faithful **and** something real is behind them" does not follow —
+> that inference is exactly what #2 falsified. Both harnesses here shared one
+> source-mode backend *and one rspack hot bundle*, and in #2 that bundle
+> produced a failure in **both** harnesses for a test that passes on the jar.
+> These 6 fixmes rest on the same argument and are now **unsupported**.
+> **Cheaper, stronger decider than waiting on CI**: re-run the 6 against the CI
+> uberjar (`JAR_PATH=…`, ~2 min/spec — recipe in PORTING.md). Do that before any
+> of them is cited as a product finding, and un-fixme whatever passes.
+> Note `21528` ("FK-remapped field values missing from a parameter dropdown") is
+> suspiciously close in shape to #2's own symptom.
 
 > **Named candidate for that "common environmental cause"**: the shared
 > `e2e/tmp` H2 sample-DB lock and the snapshot-pinned `site-url` (see
@@ -141,9 +163,11 @@ a wave only when there's headroom to finish it.
 1. Delete the debris files listed above.
 2. ~~Finish slot 6 (`dashboard-core`)~~ — **done**; verified green and landed.
 3. Reconcile `PORTED.txt` against reality; regenerate QUEUE.md.
-4. Take the two open threads above (jar-mode repro for native-subquery; Cypress
-   cross-check for dashboard-parameters) — both are candidate dividends and
-   both are one concrete step from an answer.
+4. ~~Cypress cross-check for dashboard-parameters~~ — **done**; not a bug
+   (open thread #2, now closed). The live follow-up is thread #3: re-run
+   `dashboard-filters-reproductions-1`'s 6 fixmes against the CI uberjar, since
+   #2 showed their justification doesn't hold. Highest-value open item — it
+   decides whether we have any product-bug dividends left at all.
 5. Then resume the dispatch loop from QUEUE.md as described in PORTING.md.
 
 ## How to verify a spec (the loop every agent runs)

@@ -113,3 +113,97 @@ Escape that must reach a window listener.
 and then sends Escape (or any key handled at window level) can lose that key
 to a tooltip under the parked cursor. Mantine tooltips are everywhere, so
 this is not a documents-specific trap.
+
+---
+
+## 3. Keystroke pacing: Playwright outruns ProseMirror and frimousse
+
+**Status: port defect, new gotcha (added to PORTING.md).**
+
+Three tests failed because repeated `page.keyboard.press` calls have no gap,
+while every `cy.realPress` is its own Cypress command and therefore always
+had command-queue latency between presses. Two editors can't keep up:
+
+- **ProseMirror selection** — "supports basic formatting with keyboard
+  shortcuts" / "with formatting menu" applied bold/italic/strike/code to the
+  wrong words (`expected "bold", received " i"` / `"old "`). Arrow keys
+  arriving back-to-back drop/coalesce selection updates, so the running
+  offset arithmetic drifts.
+- **frimousse (emoji picker)** — see below.
+
+Fix: `realPress`/`pressTimes` in the spec now pace presses at
+`KEY_DELAY_MS` (25ms), the same cadence `realType` already used.
+
+### 3a. The emoji picker needs gates, not just pacing
+
+`supports emojis` was the most stubborn. Two separate async races, both
+masked by Cypress's latency:
+
+1. **Enter takes row 0 of an async-filtered list.**
+   `EmojiSuggestionExtension`'s Enter handler reads the live DOM:
+   `popup.querySelector("[data-active]") ||
+   popup.querySelector('[frimousse-row][aria-rowindex="0"] [data-emoji]')`.
+   frimousse filters asynchronously, so typing `:eggplant` + Enter selected
+   🥺 — a leftover match for an earlier prefix. Asserting 🍆 was *somewhere*
+   in the picker was **not** a sufficient gate (it can be present while row 0
+   still lags). `expectFirstEmojiSuggestion` gates on the exact element the
+   handler reads.
+
+2. **Arrow navigation from a still-filling grid.** `:smile` + ArrowDown +
+   ArrowRight gave 🥲 instead of 😊. Dumping the grid showed why the intent
+   is sound — row 0 is `😼 🥲 😀 …`, row 1 is `🙃 😊 😇 …`, so down-then-right
+   is 😊 — but the extension itself documents that the first arrow may be
+   spent initialising navigation rather than moving ("initiating navigation
+   is restricted by frimousse's internal logic, depending on 'interaction'
+   type"). That state has **no DOM signal**, so a settle gate can't see it.
+   `pressArrowUntilActive` re-nudges until the active cell arrives — the
+   pattern PORTING.md already prescribes for editor autocomplete. Safe to
+   repeat: each press moves at most one cell and we stop on arrival.
+
+Worth noting (**not** claimed as a bug — Cypress passes and I did not check
+it by hand): both are real async races in the app. A user typing
+`:eggplant<Enter>` fast enough could get the wrong emoji. Narrow, low-stakes,
+recorded only so the next person who sees it has the context.
+
+---
+
+## 4. Known gotcha the port missed: mixed-content text nodes
+
+**Status: port defect, gotcha already in PORTING.md** — the brief's
+feedback-loop rule says this one should have been avoided, not rediscovered.
+
+"handles commenting with users without first and last names" asserted
+`getCommentByText(sidebar, "needs to see this")` with exact matching. The
+mention renders as its own span, so the paragraph's full text is
+`"@no-name@metabase.test needs to see this"`. testing-library's `findByText`
+matches an element's *direct text nodes* (so the original's exact string was
+right); Playwright's exact `getByText` compares the element's *whole* text
+and never matches. The spec's own comment even flags the shape of the DOM
+("mention is it's own span").
+
+Fix: `getCommentByText` now takes `string | RegExp`, plus
+`commentTextContaining` for case-sensitive substring matching at that call
+site. The sibling assertion (`@no-name@metabase.test`) stays exact — the
+mention span's own text *is* exactly the handle.
+
+---
+
+## 5. Flake seen once, not reproduced
+
+"allows to create / update / delete comments" failed once at `My Reply 1`
+(the edit-autofocus step) during a 6-test batch, then passed standalone and
+in every subsequent run including `--repeat-each=2`. Left as-is; recorded
+here so a recurrence isn't treated as new.
+
+---
+
+## Environment note for whoever runs Cypress next
+
+The unmodified Cypress spec's `beforeEach` calls `H.resetSnowplow()`, which
+hard-fails without snowplow-micro (`localhost:9090`) — the whole spec dies in
+`before each hook` in ~1s. `docker compose -f snowplow/docker-compose.yml up
+-d` fixes it; it is **left running**. Also: other agents' concurrent Cypress
+runs race this one on the shared `example_custom_viz` tarball fixture that
+`e2e/support/config.js:135` builds in `setupNodeEvents`, which throws and
+produces a confusingly interleaved log naming *another agent's* spec. If a
+Cypress cross-check dies in the config, just retry.

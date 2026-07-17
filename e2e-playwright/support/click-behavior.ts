@@ -247,10 +247,23 @@ export async function expectLocation(
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
 
 /**
- * Port of the spec's clickLineChartPoint: click the page at the circle's
- * top-left corner (not the circle itself) so only the voronoi layer receives
- * the click — clicking the dot element hits both it and the voronoi path,
- * with non-deterministic click counts (see the upstream comment).
+ * Port of the spec's clickLineChartPoint.
+ *
+ * The Cypress original clicks the circle's top-left *corner* via
+ * `cy.get("body").click(left, top)` rather than the circle itself, to avoid
+ * hitting both `g.voronoi > path` and `circle.dot` (a non-deterministic double
+ * click that "cancels out" when updating dashboard filters). Those are d3-era
+ * constructs: post-ECharts there is no voronoi layer and no `circle.dot`, so
+ * the corner now sits over bare `<svg>` and is not hittable at all. Verified by
+ * instrumenting the page — `elementFromPoint` at the corner returns the root
+ * `<svg>`, and dispatching Cypress's exact synthetic sequence there opens
+ * nothing. The corner trick is vestigial upstream; Cypress passes in spite of
+ * it, not because of it (it does not depend on the click landing).
+ *
+ * The faithful equivalent of the user action is clicking the point itself,
+ * which fires ECharts' series `click` once (no voronoi to double-fire). The
+ * filter-updating tests are the canary for that: they are exactly the ones the
+ * upstream comment says break under double clicks, and they pass here.
  */
 export async function clickLineChartPoint(
   page: Page,
@@ -260,12 +273,7 @@ export async function clickLineChartPoint(
     .getByTestId("chart-container")
     .locator(`path[d="${CIRCLE_PATH}"]`)
     .nth(POINT_INDEX);
-  await expect(circle).toBeVisible();
-  const box = await circle.boundingBox();
-  if (!box) {
-    throw new Error("chart point has no bounding box");
-  }
-  await page.mouse.click(box.x, box.y);
+  await circle.click();
 }
 
 export async function assertDrillThroughMenuOpen(page: Page) {

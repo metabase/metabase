@@ -316,11 +316,26 @@ const pageOf = (scope: Scope): Page =>
  * comment). Exact inner-text match (findByText semantics), expressed as a
  * filter so the locator resolves to the comment element itself.
  */
-export function getCommentByText(scope: Scope, text: string): Locator {
-  return scope
-    .getByTestId("discussion-comment")
-    .filter({ has: pageOf(scope).getByText(text, { exact: true }) });
+export function getCommentByText(scope: Scope, text: string | RegExp): Locator {
+  return scope.getByTestId("discussion-comment").filter({
+    has:
+      typeof text === "string"
+        ? pageOf(scope).getByText(text, { exact: true })
+        : pageOf(scope).getByText(text),
+  });
 }
+
+/**
+ * Case-sensitive substring matcher for comment text that shares an element
+ * with inline siblings (PORTING.md's mixed-content gotcha): a mention
+ * renders as its own span, so the paragraph's full text is
+ * "@someone needs to see this" and Playwright's exact getByText — which
+ * compares an element's *whole* text — never matches "needs to see this".
+ * testing-library's findByText matched the direct text node, so the
+ * original's exact string was fine.
+ */
+export const commentTextContaining = (text: string): RegExp =>
+  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
 export function getAllComments(scope: Scope): Locator {
   return scope.getByTestId("discussion-comment");
@@ -332,6 +347,101 @@ export function getMentionDialog(page: Page): Locator {
 
 export function getEmojiPicker(page: Page): Locator {
   return page.getByTestId("emoji-picker");
+}
+
+/**
+ * Gate before pressing Enter to accept the emoji picker's first suggestion.
+ *
+ * EmojiSuggestionExtension's Enter handler reads the live DOM —
+ * `popup.querySelector("[data-active]") ||
+ *  popup.querySelector('[frimousse-row][aria-rowindex="0"] [data-emoji]')` —
+ * and frimousse filters asynchronously, so row 0 lags the typed query.
+ * Asserting the emoji is merely *somewhere* in the picker is not enough: it
+ * can be present while row 0 is still a match for an earlier prefix (typing
+ * ":eggplant" + Enter selected 🥺). Gate on the exact element the handler
+ * reads. The Cypress original's per-key latency let the filter settle.
+ */
+export async function expectFirstEmojiSuggestion(page: Page, emoji: string) {
+  await expect
+    .poll(() =>
+      getEmojiPicker(page)
+        .locator('[frimousse-row][aria-rowindex="0"] [data-emoji]')
+        .first()
+        .getAttribute("data-emoji"),
+    )
+    .toBe(emoji);
+}
+
+/**
+ * Gate after typing an emoji query, before arrow-key navigation.
+ *
+ * frimousse filters and renders asynchronously, and resets the active cell
+ * to the first result once it settles. Arrowing into a still-filling grid
+ * navigates from the wrong origin and lands on the wrong emoji (":smile"
+ * + ArrowDown + ArrowRight gave 🥲 instead of 😊). Asserting the query's
+ * matches are present/absent is not enough — that holds before the active
+ * cell resets.
+ *
+ * Deliberately dataset-independent: "active cell == first result" rather
+ * than hard-coding which emoji that is.
+ */
+export async function expectEmojiPickerSettled(page: Page) {
+  const attr = (locator: Locator) =>
+    locator
+      .first()
+      .getAttribute("data-emoji")
+      .catch(() => null);
+
+  await expect
+    .poll(async () => {
+      const picker = getEmojiPicker(page);
+      const active = await attr(picker.locator("[data-active][data-emoji]"));
+      const firstCell = await attr(
+        picker.locator('[frimousse-row][aria-rowindex="0"] [data-emoji]'),
+      );
+      return active != null && active === firstCell;
+    })
+    .toBe(true);
+}
+
+/** The emoji the picker currently has navigated to, if any. */
+function activeEmoji(page: Page): Promise<string | null> {
+  return getEmojiPicker(page)
+    .locator("[data-active][data-emoji]")
+    .first()
+    .getAttribute("data-emoji")
+    .catch(() => null);
+}
+
+/**
+ * Press an arrow key in the emoji picker until the active cell reaches
+ * `emoji`, then stop.
+ *
+ * EmojiSuggestionExtension documents that the first arrow press can be spent
+ * initialising navigation rather than moving ("the first one only focuses
+ * first available emoji … initiating navigation is restricted by frimousse's
+ * internal logic, depending on 'interaction' type"). Whether that happens is
+ * internal state with no DOM signal, and it is racy under Playwright's
+ * timing — Cypress's per-command latency always landed on the far side of
+ * it. So re-nudge rather than assume, the same pattern PORTING.md prescribes
+ * for editor autocomplete.
+ *
+ * Safe to repeat: each press moves at most one cell, and we stop as soon as
+ * the target is active, so a press that *did* move cannot overshoot.
+ */
+export async function pressArrowUntilActive(
+  page: Page,
+  key: "ArrowDown" | "ArrowRight" | "ArrowLeft" | "ArrowUp",
+  emoji: string,
+) {
+  await expect(async () => {
+    if ((await activeEmoji(page)) === emoji) {
+      return;
+    }
+    await page.keyboard.press(key);
+    await page.waitForTimeout(50);
+    expect(await activeEmoji(page)).toBe(emoji);
+  }).toPass({ timeout: 15_000 });
 }
 
 /** Port of Comments.openAllComments. */
@@ -367,6 +477,48 @@ export async function reactToComment(page: Page, text: string, emoji: string) {
   await expect(comment.getByTestId("comment-action-panel")).toBeVisible();
   await comment.getByRole("button", { name: "Add reaction", exact: true }).click();
   await getEmojiPicker(page).getByText(emoji, { exact: true }).click();
+}
+
+/**
+ * Gate after submitting the first comment of a `?new=true` thread, before
+ * doing anything that leaves the comments route (Escape, the sidebar's X,
+ * a document edit).
+ *
+ * CommentsSidesheet.handleSubmit strips `?new=true` only once the create
+ * mutation resolves, and strips it with `replace({ pathname:
+ * location.pathname })` captured at submit time — so leaving the route
+ * inside that window gets undone by the late replace (findings-inbox entry
+ * 1). The Cypress original never waited: its command-queue latency always
+ * covered the mutation. Waiting on the POST response is not enough — the
+ * dispatch happens a tick later — so gate on the URL, which is the state
+ * the race actually corrupts.
+ *
+ * Self-disarming: with no `new` param the helper returns immediately, and
+ * deleteNewParamFromURLIfNeeded early-returns too, so there is no race.
+ */
+export async function expectNewThreadParamCleared(page: Page) {
+  await expect.poll(() => page.url()).not.toContain("new=true");
+}
+
+/**
+ * Park the real mouse away from the UI and wait for hover tooltips to go,
+ * before a keyboard Escape that has to reach the app's window listener.
+ *
+ * Cypress's `.click()`/`.type()` are synthetic: the OS cursor stays wherever
+ * the last `realHover()` put it (here, the document node — never the
+ * sidebar). Playwright's `.click()` moves the real cursor and leaves it
+ * parked, so freshly-rendered content under it (e.g. a new comment's
+ * "a few seconds ago" timestamp) opens its Mantine tooltip.
+ *
+ * That matters because floating-ui's useDismiss calls `stopPropagation()` on
+ * Escape while a floating element is open (escapeKeyBubbles defaults false),
+ * so the Escape dismisses the tooltip and never reaches
+ * CommentsSidesheet's `useWindowEvent("keydown")` — the sidebar silently
+ * stays open and the next Escape is the one that closes it.
+ */
+export async function parkMouseAwayFromTooltips(page: Page) {
+  await page.mouse.move(0, 0);
+  await expect(page.locator('[role="tooltip"]')).toHaveCount(0);
 }
 
 // === document node comment buttons ===

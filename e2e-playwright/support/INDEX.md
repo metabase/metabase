@@ -76,7 +76,7 @@
 - `filterWidgetWithLabel` — The filter widget whose label is exactly `label` — replaces the Cypress
 - `expectFilterWidgets` — Port of the repeated `cy.findAllByTestId("parameter-widget")
 - `expectLocation` — Port of the retried `cy.location().should(...)` pathname/search checks —
-- `clickLineChartPoint` — Port of the spec's clickLineChartPoint: click the page at the circle's
+- `clickLineChartPoint` — constructs: post-ECharts there is no voronoi layer and no `circle.dot`, so
 - `assertDrillThroughMenuOpen`
 - `addDashboardDestination`
 - `addUrlDestination`
@@ -234,7 +234,7 @@
 - `addHeadingWhileEditing` — Port of H.addHeadingWhileEditing. */
 - `moveDashCardToTab` — Port of H.moveDashCardToTab (hover the card, hover the move icon). */
 - `goToTab` — Port of H.goToTab. */
-- `undo` — Port of H.undo (click Undo inside the toast). */
+- `undo` — Port of H.undo (click Undo inside the toast).
 - `countRequests` — Port of H.spyRequestFinished / cy.spy() interceptors: counts matching
 - `isDashcardQueryRequest` — Matcher for POST /api/dashboard/:id/dashcard/:id/card/:id/query. */
 - `waitForDashboardPut` — Register a wait for the dashboard-save PUT so its payload can be read. */
@@ -248,6 +248,7 @@
 - `openDashboardSettingsSidebar` — Port of H.openDashboardSettingsSidebar. */
 - `closeDashboardSettingsSidebar` — Port of H.closeDashboardSettingsSidebar. */
 - `clickBehaviorSidebar` — Port of H.clickBehaviorSidebar(dashcardIndex): hover the card, click its
+- `countOpaqueElements` — Count the elements a locator matches that are NOT transparent.
 - `updatePermissionsGraph` — Port of cy.updatePermissionsGraph: GET the graph, merge, PUT it back. */
 - `sandboxTable` — Port of cy.sandboxTable: look up the table's schema/db, grant the group
 - `addParameterMappingToFirstDashcard` — The GET dashboard → PUT dashcards[0].parameter_mappings dance that issues
@@ -336,6 +337,7 @@
 - `documentSaveButton`
 - `documentFormattingMenu`
 - `leaveConfirmationModal` — Port of H.leaveConfirmationModal (e2e-ui-elements-helpers.js). */
+- `modalContentByTestId` — Mantine spreads a Modal's extra props (data-testid included) onto its ROOT,
 - `addToDocument` — Port of H.addToDocument: cy.realType into the focused editor. "\n" presses
 - `clearDocumentContent` — Port of H.clearDocumentContent: select-all + backspace in the editor. */
 - `documentMentionDialog`
@@ -388,13 +390,19 @@
 - `getCommentInputs`
 - `getPlaceholder`
 - `getCommentByText` — Port of Comments.getCommentByText: findByText(text).closest(discussion
+- `commentTextContaining` — Case-sensitive substring matcher for comment text that shares an element
 - `getAllComments`
 - `getMentionDialog`
 - `getEmojiPicker`
+- `expectFirstEmojiSuggestion` — Gate before pressing Enter to accept the emoji picker's first suggestion.
+- `expectEmojiPickerSettled` — Gate after typing an emoji query, before arrow-key navigation.
+- `pressArrowUntilActive` — EmojiSuggestionExtension documents that the first arrow press can be spent
 - `openAllComments` — Port of Comments.openAllComments. */
 - `resolveCommentByText` — Port of Comments.resolveCommentByText. */
 - `reopenCommentByText` — Port of Comments.reopenCommentByText. */
 - `reactToComment` — Port of Comments.reactToComment. */
+- `expectNewThreadParamCleared` — CommentsSidesheet.handleSubmit strips `?new=true` only once the create
+- `parkMouseAwayFromTooltips` — Cypress's `.click()`/`.type()` are synthetic: the OS cursor stays wherever
 - `getDocumentNodeButtons` — Port of Comments.getDocumentNodeButtons. */
 - `getDocumentNodeButton` — Port of Comments.getDocumentNodeButton. */
 - `expectNodeButtonVisibility` — Cypress-visibility check for a node comment button: the button is always
@@ -493,7 +501,7 @@
 - `dashboardHeader` — Port of H.dashboardHeader, accepting a FrameLocator scope. */
 - `goToTab` — Port of H.goToTab (e2e-dashboard-helpers.ts). */
 - `assertTableRowsCount` — COPY of native-extras.ts assertTableRowsCount, accepting any scope (the
-- `expectInputWithValue` — Port of cy.findByDisplayValue(value): retried scan of the scope's inputs'
+- `expectInputWithValue` — Port of cy.findByDisplayValue(value): retried scan of the scope's form
 - `exportDashcardCsv` — Port of the dashcard-menu CSV export path: H.exportFromDashcard(".csv")
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph (support/commands/permissions):
 - `addLinkClickBehavior` — Port of the spec-local addLinkClickBehavior. */

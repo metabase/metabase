@@ -91,6 +91,65 @@ non-event. A cheap safety net worth adding alongside it: assert
 `site-url === mb.baseUrl` post-restore and fail loudly, so the next occurrence
 names itself.
 
+## INFRA DIVIDEND: the whole spike runs at 1280x**720**, not the 1280x800 the
+## config asks for — `devices["Desktop Chrome"]` silently overrides it
+
+`playwright.config.ts` deliberately mirrors Cypress's viewport
+(`e2e/support/config.js`: `viewportWidth: 1280, viewportHeight: 800`):
+
+```ts
+use: {
+  ...
+  viewport: { width: 1280, height: 800 },   // global use
+},
+projects: [
+  { name: "chromium", use: { ...devices["Desktop Chrome"] } },   // ← wins
+],
+```
+
+But project-level `use` is merged **over** the global `use`, and
+
+```
+$ node -e "…console.log(devices['Desktop Chrome'].viewport)"
+{"width":1280,"height":720}
+```
+
+so the device descriptor's own viewport silently defeats the line written to
+match Cypress. **Every spec in the spike has been running 80px shorter than its
+Cypress original.** The config reads as if it does the right thing, which is
+why it survived nine waves unnoticed.
+
+Caught by metabase#37437, which asserts the embed's `frame` postMessage reports
+the viewport height for a fit-mode page. Expected 800, got **720** — the
+viewport number reported straight back to the test. Most specs can absorb 80px
+(that's why nobody noticed); this one measures it, so it named the bug.
+
+**Why this matters beyond one spec:** viewport height decides what's scrolled
+out of view, what's virtualized away, which responsive breakpoint renders, and
+whether "is visible" assertions hold. An 80px delta from the reference harness
+is a standing, invisible source of port/Cypress divergence — exactly the kind
+of environmental difference that gets misread as a product bug. It also biases
+the timing/behaviour comparison the spike exists to produce.
+
+**Fix applied here (contained):** file-level
+`test.use({ viewport: { width: 1280, height: 800 } })` in the spec.
+
+**Recommended (deliberately NOT done here — shared file, other slots mid-run):**
+
+```ts
+projects: [
+  {
+    name: "chromium",
+    use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
+  },
+],
+```
+
+Do it at a checkpoint when no runs are in flight, then re-verify the landed
+specs: some may have been *stabilized against 720* and could shift. That
+re-verification is the real cost, and it argues for doing it sooner rather than
+after another 350 specs land on the wrong viewport.
+
 ## Helper duplication for the consolidation pass (do NOT edit search.ts now)
 
 `support/interactive-embedding.ts` `visitFullAppEmbeddingUrl` is a generalized

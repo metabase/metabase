@@ -64,6 +64,7 @@ import {
   getFlexContainerForCard,
   getResizeHandlesForFlexContainer,
   leaveConfirmationModal,
+  modalContentByTestId,
   openDocumentCardMenu,
   removeSummaryGroupingField,
   visitDocument,
@@ -128,6 +129,18 @@ function waitForDocumentGet(page: Page) {
   );
 }
 
+/**
+ * The POST the UI fires when bookmarking. Upstream never waits for it
+ * explicitly — H.expectUnstructuredSnowplowEvent's poll happened to cover it.
+ */
+function waitForBookmarkCreate(page: Page) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      /^\/api\/bookmark\/document\/\d+$/.test(new URL(response.url()).pathname),
+  );
+}
+
 function waitForDocumentCopy(page: Page) {
   return page.waitForResponse(
     (response) =>
@@ -179,7 +192,7 @@ test.describe("documents", () => {
       await page.getByLabel("More options", { exact: true }).click();
       await popover(page).getByText("Duplicate", { exact: true }).click();
 
-      await expect(page.getByTestId("save-confirmation")).toBeVisible();
+      await expect(modalContentByTestId(page, "save-confirmation")).toBeVisible();
 
       await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
@@ -225,7 +238,7 @@ test.describe("documents", () => {
       await page.getByLabel("More options", { exact: true }).click();
       await popover(page).getByText("Duplicate", { exact: true }).click();
 
-      await expect(page.getByTestId("save-confirmation")).toBeVisible();
+      await expect(modalContentByTestId(page, "save-confirmation")).toBeVisible();
       await page
         .getByRole("button", { name: "Save changes", exact: true })
         .click();
@@ -366,7 +379,13 @@ test.describe("documents", () => {
     expect(documentGetRequests).toBe(0);
 
     await page.getByLabel("More options", { exact: true }).click();
+    // Upstream's next step is expectUnstructuredSnowplowEvent, which polls
+    // snowplow-micro until bookmark_added arrives — an accidental wait for the
+    // POST below. Our snowplow stub is a no-op, so without this the DELETE
+    // races ahead of the POST, deletes nothing, and the doc stays bookmarked.
+    const bookmarkCreated = waitForBookmarkCreate(page);
     await popover(page).getByText("Bookmark", { exact: true }).click();
+    await bookmarkCreated;
 
     await expectUnstructuredSnowplowEvent({
       event: "bookmark_added",
@@ -680,8 +699,21 @@ test.describe("documents", () => {
         const menuItems = popover(page).getByRole("menuitem");
         const count = await menuItems.count();
         expect(count).toBeGreaterThan(0);
+
+        // Upstream is `findAllByRole("menuitem").should("be.disabled")`, which
+        // is chai-jQuery's `.is(":disabled")` — true when ANY element in the set
+        // matches. It passes despite "Download results" being enabled, so it
+        // asserts far less than it appears to. Read-only users are *meant* to be
+        // able to download: in CardEmbedMenuDropdown.tsx every editing action is
+        // `disabled={!canWrite}` while Download is `disabled={isDownloadingData}`.
+        // Assert that intent per-item instead.
         for (let i = 0; i < count; i++) {
-          await expect(menuItems.nth(i)).toBeDisabled();
+          const item = menuItems.nth(i);
+          if ((await item.getAttribute("aria-label")) === "Download results") {
+            await expect(item).toBeEnabled();
+          } else {
+            await expect(item).toBeDisabled();
+          }
         }
       });
 

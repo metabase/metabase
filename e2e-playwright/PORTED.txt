@@ -62,3 +62,4 @@ onboarding/embedding-homepage.cy.spec.ts
 onboarding/notifications.cy.spec.js
 dashboard/dashboard.cy.spec.js
 filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js
+dashboard-filters/parameters.cy.spec.js

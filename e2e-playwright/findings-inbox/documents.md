@@ -102,4 +102,49 @@ UI action and a subsequent API call or assertion, replace the dropped poll with 
 **Scope caveat**: this spec's other snowplow assertions are terminal (nothing
 depends on them ordering-wise), so this was the only site needing a wait.
 
+## 4. `should("be.disabled")` on a multi-element set is an ANY assertion, not ALL
+
+**Test-suite defect (weak assertion upstream). NOT a product bug — cross-checked.**
+
+Upstream "read only access" ends with:
+
+```js
+H.popover().findAllByRole("menuitem").should("be.disabled");
+```
+
+That reads as "every menu item is disabled". It isn't. chai-jQuery implements
+`be.disabled` as `$els.is(":disabled")`, and jQuery's `.is()` is true when **any**
+element in the set matches. Measured state of that menu as `readonly` (probe
+against slot 9):
+
+```
+0: "Add supporting text" disabled=true
+1: "Edit Visualization"  disabled=true
+2: "Edit Query"          disabled=true
+3: "Replace"             disabled=true
+4: "Download results"    disabled=false   <- enabled, assertion still passes
+5: "Remove Chart"        disabled=true
+```
+
+The enabled item is **correct product behaviour**, deliberate in
+`frontend/src/metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedMenuDropdown.tsx`:
+every editing action is `disabled={!canWrite}`, while Download is
+`disabled={isDownloadingData}` — read-only users are meant to download results.
+
+**Fidelity cross-check performed** (`MB_JETTY_PORT=4109 CYPRESS_grep="read only
+access" bunx cypress run … --config baseUrl=http://localhost:4109`, port 4000
+never touched): Cypress **passes** this test where my port failed it → *the port
+drifted*. My first port asserted all items disabled; that was my bug, not the
+app's. **No product-bug claim.**
+
+Port now asserts the real intent per item (editing actions disabled, Download
+enabled) — strictly stronger than upstream and correct.
+
+**Flakiness observed while cross-checking**: two consecutive full Cypress runs of
+this spec against the same backend each failed exactly one test in the "Document
+with content" block, but *different* ones ("read only access" in run 1, "should
+not clear undo history on save" in run 2), both passing in the other run. The
+Cypress spec appears order/timing-flaky here. Not investigated further; the
+Playwright port is stable across `--repeat-each=2` (see summary).
+
 <!-- further findings appended below as they are observed -->

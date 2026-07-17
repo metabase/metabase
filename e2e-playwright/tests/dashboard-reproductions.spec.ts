@@ -3,9 +3,10 @@
  *
  * Port notes:
  * - cy.clock()/cy.tick() (issues 12578, 28756) → page.clock.install() +
- *   page.clock.fastForward(). Playwright's installed clock keeps advancing
- *   in real time, so the upstream "cy.tick() to let the header load" hack
- *   is unnecessary.
+ *   page.clock.runFor(). runFor is the cy.tick equivalent: both fire every
+ *   due timer. page.clock.fastForward fires due timers AT MOST ONCE, which
+ *   silently under-drives counter-style intervals (see issue 12578).
+ *   The upstream "cy.tick() to let the header load" hack is unnecessary.
  * - The AbortController spy (issue 12926) becomes a page.evaluate that
  *   wraps AbortController.prototype.abort on the live window — the same
  *   post-load timing as the cy.window()+cy.spy original.
@@ -63,6 +64,7 @@ import {
   assertTabSelected,
   clickBehaviorSidebar,
   closeDashboardSettingsSidebar,
+  countOpaqueElements,
   delayResponses,
   gateResponses,
   isDashcardQueryResponse,
@@ -154,8 +156,12 @@ test.describe("issue 12578", () => {
     // res.setDelay(99999) intercept).
     const gate = await gateResponses(page, DASHCARD_QUERY_PATH);
 
-    await page.clock.fastForward(61 * 1000);
-    await page.clock.fastForward(61 * 1000);
+    // runFor, not fastForward: the refresh is driven by a 1s interval that
+    // increments a counter (useDashboardRefreshPeriod), so it needs all 61
+    // firings to reach the 60s period. fastForward fires due timers at most
+    // once — the Sinon/cy.tick equivalent is runFor.
+    await page.clock.runFor(61 * 1000);
+    await page.clock.runFor(61 * 1000);
 
     // Two refresh ticks, but only one query: the second tick must not
     // re-fetch a card whose query is still loading.
@@ -699,10 +705,14 @@ test.describe("issue 17879", () => {
 
     await sidebar(page).getByRole("button", { name: "Done", exact: true }).click();
 
-    const cardQuery = waitForDashcardQuery(page);
     await saveDashboard(page);
-    await cardQuery;
 
+    // Upstream waits on @getCardQuery here, but that intercept is registered
+    // before visitDashboard: saving changes no parameters and fires no new
+    // dashcard query, so cy.wait only consumes the initial load's response
+    // from the alias backlog and asserts nothing. A faithful waitForResponse
+    // hangs for 30s. Dropped — the circle locator below auto-waits for the
+    // re-rendered chart, which is what the wait was standing in for.
     // cy: cartesianChartCircle().first().click({ force: true })
     await cartesianChartCircles(page).first().click({ force: true });
 
@@ -870,7 +880,7 @@ test.describe("issue 28756", () => {
     await page.clock.install();
 
     await visitDashboard(page, mb.api, dashboardId);
-    await page.clock.fastForward(TOAST_TIMEOUT);
+    await page.clock.runFor(TOAST_TIMEOUT);
 
     await expect(undoToast(page)).toHaveCount(0);
     await expect(page.getByText(TOAST_MESSAGE, { exact: true })).toHaveCount(0);
@@ -981,14 +991,21 @@ test.describe("issue 31274", () => {
 
     await getDashboardCard(page, 1).hover();
 
+    // cy .filter(":visible").should("have.length", 1). Every card renders an
+    // actions panel in edit mode; only the hovered one is faded in, so the
+    // faithful check is opacity-based (see countOpaqueElements).
+    await expect
+      .poll(() =>
+        countOpaqueElements(page.getByTestId("dashboardcard-actions-panel")),
+      )
+      .toBe(1);
+
     // Make sure the click lands, which means the panel is not covered by
     // another element (Playwright's hit-target check enforces this).
-    const visiblePanels = page
-      .getByTestId("dashboardcard-actions-panel")
-      .filter({ visible: true });
-    await expect(visiblePanels).toHaveCount(1);
-
-    const closeIcon = icon(visiblePanels, "close");
+    const closeIcon = icon(
+      getDashboardCard(page, 1).getByTestId("dashboardcard-actions-panel"),
+      "close",
+    );
     const box = await closeIcon.boundingBox();
     if (!box) {
       throw new Error("close icon has no bounding box");

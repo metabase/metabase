@@ -106,3 +106,80 @@ Fixed by dropping the wait; the subsequent chart-circle locator auto-waits for
 the re-rendered chart, which is what the wait was standing in for. This is a
 textbook instance of the documented gotcha — a second one in this spec family
 (`dashboard-filters-reproductions-1` reported the same shape).
+
+---
+
+## 4. INFRA DISCOVERY (high value): per-worker backends inherit `site-url=http://localhost:4000` from the snapshot, breaking every drill-through/click-behavior navigation
+
+**Classification:** harness/infra bug in the per-worker-backend experiment.
+**Not a product bug. Not a port bug.** Fixed in `support/worker-backend.ts`.
+
+### Symptom
+
+All four issue-17879 tests drill through a click-behavior custom destination
+and then assert on the target question's filter. They failed with
+`qb-filters-panel` **not found** — after `expect(page).toHaveURL(/\/question/)`
+had *passed*.
+
+### Root cause (mechanism confirmed in source)
+
+1. `e2e/snapshots/*` were captured against the standard dev backend on
+   **:4000**, so they carry `site-url = http://localhost:4000`. Verified live:
+   `GET :4102/api/setting/site-url` → `http://localhost:4000`.
+   `mb.restore()` reinstates it on every test.
+2. `frontend/src/metabase/visualizations/lib/open-url.ts:105`:
+   `url = ignoreSiteUrl ? url : getWithSiteUrl(url)`.
+3. `frontend/src/metabase/utils/dom.ts:66` — `getWithSiteUrl` prefixes any
+   root-relative URL with site-url: `/question#…` →
+   `http://localhost:4000/question#…`.
+4. `window.location.origin` on a slot backend is `http://localhost:4102`, so
+   `isSameOrigin` is false → no client-side navigation → `clickLink()` does a
+   **full page load of :4000**, a different backend that has none of the
+   test's data → "We're a little lost".
+
+`toHaveURL(/\/question/)` passes because `http://localhost:4000/question#…`
+matches the regex — the test sails past the wrong-origin navigation and only
+dies later, at the filter assertion. A nastier failure than a hard 404.
+
+On the normal setup (backend on :4000) site-url == the page origin, so this is
+invisible. **It only manifests on a backend whose port isn't 4000** — i.e.
+exactly the per-worker-backend mode this spike is evaluating.
+
+### Evidence it is not a product bug
+
+- The **original Cypress spec** fails these 4 identically on the same backend
+  (`MB_JETTY_PORT=4102`), so the port is faithful.
+- The failure is fully explained by an environment value (`site-url`) that is
+  wrong *for this harness*, not by application logic.
+- Cypress's screenshot shows the smoking gun directly: the browser sitting on
+  `http://localhost:4000/question#…` displaying "We're a little lost".
+
+### Fix
+
+`support/worker-backend.ts` now boots each slot backend with
+`MB_SITE_URL=http://localhost:<port>`. Settings resolve env before the app DB,
+so this pins the right origin and **survives `restore()`** (a value written
+into the DB would not).
+
+### Why this matters beyond this spec — please check before the next wave
+
+Any test that drills through / navigates via `openUrl` is affected on every
+slot backend. **This is a strong candidate root cause for RESUME.md's open
+thread 3** — `dashboard-filters-reproductions-1`'s 6 unexplained `test.fixme`s,
+whose common shape is recorded as "a dashcard **title drill-through does not
+carry the dashboard filter's value** into the question". That thread's stated
+decider was "is CI's Cypress leg green?" — CI runs its backend on :4000-ish
+with a matching site-url, which would make CI green and *look* like an
+environmental delta without ever explaining it. This is the explanation, and it
+predicts those fixmes are re-enablable once the backend boots with MB_SITE_URL.
+Worth re-running that spec on a freshly booted slot backend before landing any
+claim that they are product regressions.
+
+### Cross-check caveat worth recording (methodology)
+
+My first Cypress cross-check ran with Cypress's default 4s `defaultCommandTimeout`
+against a machine running three other agents' Playwright suites + JVMs: **20/41
+failed**. Re-running with `defaultCommandTimeout=30000` (matching the port's
+timeouts) made several of those pass (12926-undo, 13736). A Cypress baseline
+taken under load is not a valid comparison for a port that runs with 30s
+timeouts — match the timeouts before concluding "Cypress fails too".

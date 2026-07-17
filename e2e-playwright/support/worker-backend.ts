@@ -187,6 +187,15 @@ export async function startWorkerBackend(
     env: {
       ...process.env,
       MB_JETTY_PORT: String(port),
+      // The e2e snapshots were captured against the standard :4000 dev
+      // backend, so they carry site-url=http://localhost:4000 — and restore()
+      // reinstates it. The frontend prefixes root-relative navigation targets
+      // with site-url (getWithSiteUrl in utils/dom.ts, via openUrl), so on a
+      // slot backend every click-behavior/drill-through navigation leaves for
+      // :4000 — a different backend that doesn't have the test's data ("We're
+      // a little lost"). Settings read env before the app DB, so this pins the
+      // correct origin and survives restore().
+      MB_SITE_URL: `http://localhost:${port}`,
       MB_DB_FILE: path.join(scratch, "metabase.db"),
       MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR: sampleDbDir,
       // Concurrent boots race on extracting instance_analytics into the

@@ -28,6 +28,7 @@ import { icon } from "../support/dashboard-cards";
 import {
   NORMAL_USER_ID,
   apiForCachedUser,
+  commentTextContaining,
   closeSidebar,
   createComment,
   createDocument,
@@ -65,6 +66,11 @@ import {
   reopenCommentByText,
   resolveCommentByText,
   updateComment,
+  expectEmojiPickerSettled,
+  pressArrowUntilActive,
+  expectFirstEmojiSuggestion,
+  expectNewThreadParamCleared,
+  parkMouseAwayFromTooltips,
   visitDocument,
   visitDocumentComment,
 } from "../support/documents";
@@ -99,13 +105,31 @@ const FIRST_REACTION_EMOJI = "😀";
 const SECOND_REACTION_EMOJI = "😃";
 
 // keyboard shims for cy.realType / cy.realPress
+const KEY_DELAY_MS = 25;
+
 async function realType(page: Page, text: string) {
-  await page.keyboard.type(text, { delay: 25 });
+  await page.keyboard.type(text, { delay: KEY_DELAY_MS });
+}
+
+/**
+ * Port of a single cy.realPress. Each realPress is its own Cypress command,
+ * so the original always had command-queue latency between presses.
+ * Playwright's presses have no such gap, and two editor code paths here
+ * can't keep up when keys arrive back-to-back:
+ *  - ProseMirror drops/coalesces selection updates, so formatting marks land
+ *    on the wrong words;
+ *  - EmojiSuggestionExtension's arrow handling focuses the search input and
+ *    re-dispatches the event, which needs a tick to settle.
+ * Pace presses at the same cadence realType uses.
+ */
+async function realPress(page: Page, key: string) {
+  await page.keyboard.press(key, { delay: KEY_DELAY_MS });
+  await page.waitForTimeout(KEY_DELAY_MS);
 }
 
 async function pressTimes(page: Page, key: string, count: number) {
   for (let index = 0; index < count; index += 1) {
-    await page.keyboard.press(key);
+    await realPress(page, key);
   }
 }
 
@@ -408,6 +432,8 @@ test.describe("document comments", () => {
       await realType(page, "Hello");
       await page.keyboard.press(`${META}+Enter`);
       await expect(getPlaceholder(getNewThreadInput(sidebar))).toBeVisible();
+      // ...before the Escape below can leave the route (findings-inbox 1).
+      await expectNewThreadParamCleared(page);
 
       // highlights related document node
       await expect(wrapper).toHaveAttribute("aria-expanded", "true");
@@ -427,6 +453,9 @@ test.describe("document comments", () => {
       await expect(buttonWithComments).toContainText("1");
 
       // can close the sidebar with a keyboard shortcut
+      // (Cypress's synthetic clicks left the real cursor on the node, so no
+      // tooltip was open to eat the Escape — see parkMouseAwayFromTooltips.)
+      await parkMouseAwayFromTooltips(page);
       await page.keyboard.press("Escape");
       await expect(sidebar).toHaveCount(0);
 
@@ -452,6 +481,8 @@ test.describe("document comments", () => {
     await expect(
       getPlaceholder(getNewThreadInput(getSidebar(page))),
     ).toBeVisible();
+    // ...before closeSidebar leaves the route (findings-inbox 1).
+    await expectNewThreadParamCleared(page);
     await closeSidebar(page);
 
     await documentContent(page).click();
@@ -602,7 +633,12 @@ test.describe("document comments", () => {
     await reply1.hover();
     await reply1.getByLabel("More actions", { exact: true }).click();
     await popover(page).getByText("Edit", { exact: true }).click();
-    // editor should be autofocused when editing
+    // editor should be autofocused when editing — assert that rather than
+    // racing it: the original had command latency here, and typing before
+    // the autofocus lands silently drops the text.
+    const reply1Editor = reply1.getByRole("textbox");
+    await expect(reply1Editor).toHaveAttribute("contenteditable", "true");
+    await expect(reply1Editor).toBeFocused();
     await realType(page, "My ");
     await page.keyboard.press(`${META}+Enter`);
 
@@ -618,10 +654,10 @@ test.describe("document comments", () => {
     await reply2.hover();
     await reply2.getByLabel("More actions", { exact: true }).click();
     await popover(page).getByText("Edit", { exact: true }).click();
-    await expect(reply2.getByRole("textbox")).toHaveAttribute(
-      "contenteditable",
-      "true",
-    );
+    const reply2Editor = reply2.getByRole("textbox");
+    await expect(reply2Editor).toHaveAttribute("contenteditable", "true");
+    // the Esc below is cancelled by the editor, so it must own focus first
+    await expect(reply2Editor).toBeFocused();
 
     await page.keyboard.press("Escape");
     await expect(reply2.getByRole("textbox")).toHaveAttribute(
@@ -631,6 +667,7 @@ test.describe("document comments", () => {
     await expect(sidebar).toBeVisible();
 
     // subsequent Esc should close the modal
+    await parkMouseAwayFromTooltips(page);
     await page.keyboard.press("Escape");
     await expect(sidebar).toHaveCount(0);
   });
@@ -1067,18 +1104,22 @@ test.describe("document comments", () => {
       await expect(picker).not.toContainText("💦");
 
       // can use arrow keys for navigation within the emoji picker
-      await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("ArrowRight");
+      // (row 0 is 😼 🥲 …, row 1 is 🙃 😊 … — down then right lands on 😊)
+      await expectEmojiPickerSettled(page);
+      await pressArrowUntilActive(page, "ArrowDown", "🙃");
+      await pressArrowUntilActive(page, "ArrowRight", "😊");
       await page.keyboard.press("Enter");
 
       await expect(picker).toHaveCount(0);
 
       // can submit first suggestion with Enter
       await realType(page, ":eggplant");
+      await expectFirstEmojiSuggestion(page, "🍆");
       await page.keyboard.press("Enter");
 
       // closes suggestion dialog but not the comments modal on Esc
       await realType(page, ":eg");
+      await expect(picker).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(picker).toHaveCount(0);
       await expect(getSidebar(page)).toBeVisible();
@@ -1408,6 +1449,9 @@ test.describe("document comments", () => {
       await startNewCommentIn1ParagraphDocument(page, mb.api);
       await realType(page, "thread 1");
       await page.keyboard.press(`${META}+Enter`);
+      // ...before starting thread 2: the first submit's late URL replace
+      // otherwise lands mid-typing (findings-inbox 1).
+      await expectNewThreadParamCleared(page);
 
       await getNewThreadInput(getSidebar(page)).click();
       await realType(page, "thread 2");
@@ -1416,6 +1460,7 @@ test.describe("document comments", () => {
       await openAllComments(page);
 
       const comments = getAllComments(page);
+      await expect(comments).toHaveCount(2);
       await expect(comments.nth(0)).toContainText("thread 2");
       await expect(comments.nth(1)).toContainText("thread 1");
     });
@@ -2000,10 +2045,14 @@ test.describe("document comments", () => {
     const sidebar = getSidebar(page);
     // assert that the comment was created
     await expect(getAllComments(sidebar)).toHaveCount(1);
-    // mention is its own span, so we need to search for the pieces individually
+    // mention is its own span, so we need to search for the pieces
+    // individually. The mention span's own text is exactly the handle, but
+    // "needs to see this" shares the paragraph with it — substring match.
     await expect(
       getCommentByText(sidebar, "@no-name@metabase.test"),
     ).toHaveCount(1);
-    await expect(getCommentByText(sidebar, "needs to see this")).toHaveCount(1);
+    await expect(
+      getCommentByText(sidebar, commentTextContaining("needs to see this")),
+    ).toHaveCount(1);
   });
 });

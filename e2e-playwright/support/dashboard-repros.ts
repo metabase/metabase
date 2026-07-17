@@ -63,6 +63,24 @@ export async function clickBehaviorSidebar(
   return page.getByTestId("click-behavior-sidebar");
 }
 
+/**
+ * Count the elements a locator matches that are NOT transparent.
+ *
+ * Cypress's `:visible` treats `opacity: 0` as hidden; Playwright's
+ * `{ visible: true }` ignores opacity entirely (it checks for a non-empty
+ * bounding box and `visibility`). Elements revealed by an opacity transition
+ * — dashcard action panels are rendered for every card in edit mode and faded
+ * in by a `:hover` rule — therefore match `{ visible: true }` on every card.
+ * This is the faithful equivalent of Cypress's `.filter(":visible")` for them.
+ */
+export function countOpaqueElements(locator: Locator): Promise<number> {
+  return locator.evaluateAll(
+    (elements) =>
+      elements.filter((element) => getComputedStyle(element).opacity !== "0")
+        .length,
+  );
+}
+
 // === permissions (ports of the Cypress custom commands) ===
 
 /** Port of cy.updatePermissionsGraph: GET the graph, merge, PUT it back. */

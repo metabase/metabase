@@ -15,9 +15,12 @@ every fix made while stabilizing a port gets classified and fed back:**
 original Cypress spec against the same backend** (`MB_JETTY_PORT=<slot port>`,
 no port-4000 contact) **with `--browser chrome`**, and comparing:
 
-- Same tests fail at the same assertions → the port is faithful and the
-  behaviour is real. This is the strongest evidence we can produce.
-- Different results → your port drifted. It's your bug, not the app's.
+- Same tests fail at the same assertions → **the port is faithful**. That is
+  all this proves. It does **not** show the behaviour is real (see below).
+- Different results → your port drifted. It's your bug, not the app's. But
+  first check the two harnesses really are on the same backend *state* — see
+  the sample-DB re-point gotcha below, which silently pointed Cypress at a
+  different database and made a faithful port look drifted.
 
 This rule exists because we published a product-bug finding that didn't
 survive it. FINDINGS #24 claimed a card-tag rewrite "never fires"; re-checked
@@ -25,6 +28,50 @@ against the CI uberjar, it fires fine — a *different code path* (the question
 loading dirty, so the QB runs `/api/dataset` instead of the card endpoint) had
 masked the request we were watching for. The absence of a request you expected
 is evidence about **your wait**, not about the app. Two claimed bugs, retracted.
+
+### The cross-check alone CANNOT tell you a behaviour is real
+
+Both harnesses run against **one backend and one FE bundle**. A shared
+environmental cause makes both fail identically while the app is fine — so
+"Cypress fails the same way" is *not* evidence about the app.
+
+This is not hypothetical. `dashboard-parameters` "should handle mismatch
+between filter types" failed in **both** harnesses, at the same assertion, on a
+**freshly booted** backend — and **passes on the CI uberjar**, with byte-equivalent
+backend payloads. Identical FE source, opposite behaviour: the local rspack hot
+bundle was the differing variable. Had we stopped at "Cypress agrees", we would
+have shipped a second bogus product-bug claim.
+
+**The decider for real-vs-environmental is a different ARTIFACT, not a second
+harness on the same one.** Run it against the CI uberjar:
+
+**A CI EE uberjar is already installed at `target/uberjar/metabase.jar`**
+(from run 29569211972; `target/uberjar/COMMIT-ID` = `751c2a98`). It is gitignored.
+So usually just:
+
+```bash
+JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar \
+  PW_PER_WORKER_BACKEND=1 PW_SLOT_OFFSET=<slot> … bunx playwright test <spec>
+```
+
+To fetch a newer one (e.g. after master moves):
+
+```bash
+gh api repos/metabase/metabase/actions/runs/<run>/artifacts   # find the -uberjar artifact
+gh api <archive_download_url> > jar.zip && unzip jar.zip      # target/uberjar/metabase.jar
+```
+
+Jar mode boots in ~2 min and serves the jar's **static** FE assets, so it tests
+BE *and* FE free of the local dev build. Kill the slot's backend and `rm -rf
+$TMPDIR/mb-pw-slot-<slot>` first so it doesn't reuse the source-mode one.
+
+Note the jar is CI's **PR merge commit** (check `COMMIT-ID` in the artifact),
+i.e. your branch merged into master-at-that-time — not your HEAD. Diff
+`git log <merge-base>..origin/master -- frontend/ src/metabase/lib/` before
+concluding a difference is environmental rather than an upstream change.
+
+So: **fixme/bug claims need the jar.** The Cypress cross-check establishes
+fidelity; the jar establishes reality. Both, in that order.
 
 `--browser chrome` is not optional. Nothing in the runner or config picks a
 browser, so `cypress.run()` defaults to **Electron** — comparing Electron
@@ -34,11 +81,38 @@ Chrome headless (hit-testing on Mantine tooltips via `realHover`, CDP keyboard
 dispatch), so the engine is a live suspect whenever a cross-check disagrees
 with CI. Chrome 150 is installed locally; CI's Cypress leg runs Chrome too.
 
+### Cypress on a slot backend needs the sample-DB re-point, or it's invalid
+
+Slot backends share **one H2 sample-database file** (`e2e/tmp/sample-database.db.mv.db`)
+with every other JVM on the box (`:4000` included), and H2 embedded lets exactly
+one hold it. The Playwright harness quietly works around this: `mb.restore()`
+re-points database 1 at the slot's private copy (`support/fixtures.ts:104-116`).
+**Cypress's `H.restore()` does not** — it leaves DB 1 on the shared file, and
+every sample-DB query 500s with `Database may be already in use … [90020-214]`
+("There was a problem displaying this chart").
+
+The failure looks like the port drifted — Cypress dies *earlier and differently*
+— when in fact the harnesses were pointed at different databases. Neutralise it
+with a scratch support file that wraps `cy.H.restore` (`cy.H = {...H}` in
+`e2e/support/commands.js`, so the spec's destructured `H` sees the wrapper) to
+re-issue `PUT /api/database/1 {details:{db: <slot private url>}}` after each
+restore — re-authenticate first, restore wipes the session. Slot private URL:
+`file:$TMPDIR/mb-pw-slot-<slot>/sample-database.db;USER=GUEST;PASSWORD=guest`.
+`Cypress.env()` is disabled in this repo (`allowCypressEnv: false`) — pass values
+via `Cypress.expose()` / the config's `expose` map instead.
+
 Corollaries:
 - An empty/odd field in an API response is not a bug until you can name the
-  user-visible breakage or the contract it violates.
+  user-visible breakage or the contract it violates. `card.parameters: []` on a
+  dimension-template-tag card is **normal** — the jar returns it too, and the
+  mapper works. Anything resting on that observation alone needs a new argument.
 - Prefer instrumenting the actual code path over inferring from a missing
   network call.
+- Read the code before believing a shape-mismatch story. "The BE returns MBQL5
+  `["field",{opts},61]` and the FE reads `dimension[1]`" is superficially airtight
+  (`Dimension.ts:25` really does read `[1]`) but **false**: `Lib.templateTags`
+  converts dimensions back to legacy refs first (`lib/js.cljs`, `ref->legacy-ref`).
+  This exact story has now been invented twice and retracted twice.
 - State what you did **not** verify. Scope caveats are part of the finding.
 
 ## Write findings as you notice them

@@ -46,6 +46,7 @@ import {
   goToTab,
   icon,
   mockDashboardCard,
+  mockRedirectResponse,
   modal,
   popover,
   postMessageToEmbed,
@@ -73,6 +74,16 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const QA_DB_SKIP_MESSAGE =
   "@external — requires the QA database containers (set PW_QA_DB_ENABLED)";
+
+// Upstream runs at Cypress's configured viewport (1280x800). playwright.config
+// sets that too, but its chromium project spreads `devices["Desktop Chrome"]`,
+// whose own `viewport: {width: 1280, height: 720}` overrides the global `use`
+// — so the suite actually runs 80px shorter than Cypress. This spec asserts on
+// exact viewport-derived numbers (the `frame` message reports height 800), so
+// it pins the upstream viewport explicitly. See
+// findings-inbox/interactive-embedding.md — the config itself wants fixing, but
+// not from inside one spec's port while other slots are mid-run.
+test.use({ viewport: { width: 1280, height: 800 } });
 
 // === response predicates (the upstream beforeEach intercepts) ===
 
@@ -277,8 +288,10 @@ test.describe("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { top_nav: true, side_nav: false },
       });
+      // Upstream asserts `have.attr("disabled", "disabled")`. jQuery returns
+      // the *name* of a boolean attribute when it's present, so that assertion
+      // only means "the attribute exists" — the real DOM value is "".
       await expect(frame.getByTestId("main-logo-link")).toHaveAttribute(
-        "disabled",
         "disabled",
       );
     });
@@ -374,7 +387,10 @@ test.describe("scenarios > embedding > full app", () => {
         frame.getByRole("button", { name: /Edited/ }),
       ).toBeVisible();
 
-      await expect(icon(frame, "refresh")).toBeVisible();
+      // Two .Icon-refresh exist (header run button + run-button-overlay).
+      // cy.icon(...).should("be.visible") asserts via jQuery .is(), which is
+      // "any match", so first-match is the faithful equivalent.
+      await expect(icon(frame, "refresh").first()).toBeVisible();
       await expect(frame.getByTestId("notebook-button")).toBeVisible();
       await expect(
         frame.getByTestId("qb-header").getByRole("button", {
@@ -426,7 +442,8 @@ test.describe("scenarios > embedding > full app", () => {
         qs: { action_buttons: false },
       });
 
-      await expect(icon(frame, "refresh")).toBeVisible();
+      // See the header test above — .Icon-refresh matches twice.
+      await expect(icon(frame, "refresh").first()).toBeVisible();
       await expect(frame.getByTestId("notebook-button")).toHaveCount(0);
       await expect(
         frame.getByRole("button", { name: /Summarize/ }),
@@ -2484,6 +2501,15 @@ test.describe("scenarios > embedding > full app - jwt sso integration", () => {
     await mb.restore();
     await mb.signInAsAdmin();
     await mb.api.activateToken("pro-self-hosted");
+    // The FE builds its SSO redirect from the `site-url` SETTING, not from the
+    // current origin (getSSOUrl in metabase-enterprise/auth/utils.ts). The e2e
+    // snapshot was taken on port 4000, so restore() persists
+    // site-url=http://localhost:4000 onto whatever port this worker's backend
+    // actually listens on — sending the embedded app's /auth/sso off to the
+    // shared dev backend, which has none of the JWT config set below. Upstream
+    // never notices because its backend really is on 4000. Restore the
+    // invariant upstream gets for free.
+    await mb.api.updateSetting("site-url", mb.baseUrl);
     // enable interactive embedding
     await mb.api.updateSetting("enable-embedding-interactive", true);
     await mb.api.updateSetting(
@@ -2544,12 +2570,10 @@ test.describe("scenarios > embedding > full app - jwt sso integration", () => {
 
     // 2) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
     await page.route(isJwtProviderUrl, (route) =>
-      route.fulfill({
-        status: 302,
-        headers: {
-          location: `${mb.baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`,
-        },
-      }),
+      mockRedirectResponse(
+        route,
+        `${mb.baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`,
+      ),
     );
 
     // 3) visit the dashboard
@@ -2590,12 +2614,10 @@ test.describe("scenarios > embedding > full app - jwt sso integration", () => {
 
     // 3) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
     await page.route(isJwtProviderUrl, (route) =>
-      route.fulfill({
-        status: 302,
-        headers: {
-          location: `${mb.baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`,
-        },
-      }),
+      mockRedirectResponse(
+        route,
+        `${mb.baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`,
+      ),
     );
 
     // 4) visit the dashboard as embedded

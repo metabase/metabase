@@ -32,6 +32,7 @@ import type {
   Locator,
   Page,
   Response,
+  Route,
 } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
@@ -79,6 +80,45 @@ async function applySetCookies(
       };
     }),
   );
+}
+
+/**
+ * Fulfill a route with a redirect that the browser re-requests from scratch.
+ *
+ * **Playwright does not run route handlers for the follow-up request of a
+ * redirect.** Verified directly: with one `page.route` registered for
+ * `http://localhost:8888`, a `page.goto` straight there hits the handler, but
+ * the identical URL arrived at via a 302 skips every handler (including a
+ * `() => true` catch-all) and goes to the real network — surfacing as
+ * `net::ERR_CONNECTION_REFUSED` when nothing is listening.
+ *
+ * Cypress never hits this: its proxy sits in front of every hop, so a mocked
+ * IdP keeps working across redirects. The JWT SSO flow redirects four times
+ * (/dashboard → /auth/sso → IdP → /auth/sso?jwt → /dashboard) and EVERY hop
+ * has to stay intercepted — the app-origin ones to strip X-Frame-Options, the
+ * IdP one because it's a mock and nothing is actually listening on :8888.
+ *
+ * So emulate the redirect client-side: a document whose `location.replace()`
+ * issues a *fresh* navigation, which Playwright does route. `replace` (not
+ * `assign`) leaves history identical to a real redirect.
+ */
+async function fulfillAsClientRedirect(route: Route, location: string) {
+  // < so a "</script>" in the URL can't break out of the script element.
+  const target = JSON.stringify(location).replace(/</g, "\\u003c");
+  await route.fulfill({
+    status: 200,
+    contentType: "text/html",
+    body: `<!doctype html><script>location.replace(${target})</script>`,
+  });
+}
+
+/**
+ * Mock an external redirect (e.g. a JWT/SAML IdP bouncing back to the app).
+ * Use instead of `route.fulfill({ status: 302, headers: { location } })` —
+ * see fulfillAsClientRedirect for why a real 302 breaks the next hop's mock.
+ */
+export function mockRedirectResponse(route: Route, location: string) {
+  return fulfillAsClientRedirect(route, location);
 }
 
 function escapeHtmlAttribute(value: string): string {
@@ -129,6 +169,13 @@ export async function visitFullAppEmbeddingUrl(
           redirect: "manual",
         });
         await applySetCookies(page, response, baseUrl);
+        const location = response.headers.get("location");
+        if (response.status >= 300 && response.status < 400 && location) {
+          return fulfillAsClientRedirect(
+            route,
+            new URL(location, request.url()).href,
+          );
+        }
         const headers: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           if (!DROPPED_RESPONSE_HEADERS.has(key)) {
@@ -212,13 +259,19 @@ export async function expectFrameHeightMessage(
   await expect
     .poll(async () => {
       const messages = (await recordedPostMessages(page)) as FrameMessage[];
-      return messages.some(
-        (message) =>
-          message?.metabase?.type === "frame" &&
-          message.metabase.frame?.mode === "fit" &&
-          typeof message.metabase.frame.height === "number" &&
-          heightPredicate(message.metabase.frame.height),
+      const frames = messages
+        .filter((message) => message?.metabase?.type === "frame")
+        .map((message) => message.metabase?.frame);
+      const matched = frames.some(
+        (frame) =>
+          frame?.mode === "fit" &&
+          typeof frame.height === "number" &&
+          heightPredicate(frame.height),
       );
+      // On a miss, return the frames actually posted rather than `false`:
+      // the poll failure then names the reason (wrong mode? wrong height?
+      // none sent at all?) instead of printing a bare `expected true`.
+      return matched ? true : frames;
     })
     .toBe(true);
 }
@@ -367,17 +420,25 @@ export async function assertTableRowsCount(scope: Scope | Locator, value: number
 }
 
 /**
- * Port of cy.findByDisplayValue(value): retried scan of the scope's inputs'
- * live value properties (the value attribute doesn't track user/React
- * updates, so a CSS [value=...] locator can't be used).
+ * Port of cy.findByDisplayValue(value): retried scan of the scope's form
+ * controls' live value properties (the value attribute doesn't track
+ * user/React updates, so a CSS [value=...] locator can't be used).
+ *
+ * Matches input/textarea/select — the same set testing-library's ByDisplayValue
+ * queries. `input` alone is not enough: Metabase's EditableText (question and
+ * dashboard titles) renders a <textarea>, so an input-only scan silently finds
+ * nothing on exactly the titles this is usually pointed at.
  */
 export async function expectInputWithValue(scope: Scope, value: string) {
   await expect
     .poll(() =>
       scope
-        .locator("input")
-        .evaluateAll((inputs) =>
-          inputs.map((input) => (input as HTMLInputElement).value),
+        .locator("input, textarea, select")
+        .evaluateAll((controls) =>
+          controls.map(
+            (control) =>
+              (control as HTMLInputElement | HTMLTextAreaElement).value,
+          ),
         ),
     )
     .toContain(value);

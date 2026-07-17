@@ -480,9 +480,19 @@ export async function goToTab(page: Page, tabName: string) {
   await page.getByRole("tab", { name: tabName, exact: true }).click();
 }
 
-/** Port of H.undo (click Undo inside the toast). */
+/**
+ * Port of H.undo (click Undo inside the toast).
+ *
+ * `.last()`, not a bare match: H.undo uses `findByTestId` (singular), so it
+ * implicitly requires exactly one toast on screen and wins that race only
+ * because Cypress is slower between commands. Playwright can arrive while a
+ * previous toast is still animating out, and two toasts are a strict-mode
+ * violation. Undos are appended (`redux/undo.ts`: `state.concat(undo)`) and
+ * rendered in order, so the newest toast — the one this action just caused,
+ * i.e. what the original means — is the last one.
+ */
 export async function undo(page: Page) {
-  await undoToast(page).getByText("Undo", { exact: true }).click();
+  await undoToast(page).last().getByText("Undo", { exact: true }).click();
 }
 
 // === request counters (ports of the cy.spy() intercept patterns) ===

@@ -2124,10 +2124,23 @@ test.describe("scenarios > metrics > explorer", () => {
         expect(colorsBefore[label]).toEqual(color);
       }
 
-      // Chart series colors should match legend colors
+      // Chart series colors should match legend colors.
+      //
+      // The Cypress original asserts `.find(path[stroke=hex]).should("be.visible")`
+      // over the whole matched set, and chai-jquery's `visible` resolves to
+      // `$el.is(":visible")` — jQuery `.is()` is true when ANY element matches, so
+      // upstream passes if at least one path of that color is visible. ECharts
+      // renders two paths per series here: the line path and the symbol marker.
+      // The date filter narrows each series to a single point, so the line path is
+      // a lone moveto (`d="M480.31 68.1"`, 0x0) — genuinely not visible — while the
+      // 6x6 marker is. A bare `.first()` would assert on the zero-extent line path,
+      // which is stricter than upstream and fails; scope to the visible matches.
       for (const { color } of entriesAfter) {
         await expect(
-          echartsContainer(page).locator(`path[stroke="${color}"]`).first(),
+          echartsContainer(page)
+            .locator(`path[stroke="${color}"]`)
+            .filter({ visible: true })
+            .first(),
         ).toBeVisible();
       }
 
