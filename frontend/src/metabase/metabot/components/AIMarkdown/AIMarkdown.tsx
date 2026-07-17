@@ -8,27 +8,26 @@ import {
   isValidElement,
   memo,
   useMemo,
+  useRef,
 } from "react";
 import { t } from "ttag";
 
-import {
-  Markdown,
-  type MarkdownProps,
-} from "metabase/common/components/Markdown";
 import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 import S from "./AIMarkdown.module.css";
+import { MarkdownBlock } from "./MarkdownBlock";
+import { StreamingMarkdown } from "./StreamingMarkdown";
 import { InternalLink } from "./components/InternalLink";
 import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
-type AIMarkdownProps = MarkdownProps & {
+type AIMarkdownProps = {
+  children: string;
+  className?: string;
+  isStreaming?: boolean;
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
 };
-
-// SEC-505: block all images; to support them we'll need detection for valid/allowed image sources
-const DISALLOWED_ELEMENTS = ["img"];
 
 const splitMessageLinesAsParagraphs = (message: string) =>
   message.replaceAll(/\r?\n|\r/g, "\n\n");
@@ -134,32 +133,41 @@ export const AIMarkdown = memo(
     className,
     onInternalLinkClick,
     children,
+    isStreaming = false,
     singleNewlinesAreParagraphs = false,
-    ...props
   }: AIMarkdownProps) => {
     const components = useMemo(
       () => getComponents({ onInternalLinkClick }),
       [onInternalLinkClick],
     );
 
-    const normalizedChildren = useMemo(
-      () =>
-        singleNewlinesAreParagraphs
-          ? splitMessageLinesAsParagraphs(children)
-          : children,
-      [children, singleNewlinesAreParagraphs],
-    );
+    const source = singleNewlinesAreParagraphs
+      ? splitMessageLinesAsParagraphs(children)
+      : children;
+
+    const rootClassName = cx(S.aiMarkdown, className);
+
+    // Sticky: reverting to a plain block at stream end would remount and jump scroll.
+    const hasEverStreamed = useRef(false);
+    hasEverStreamed.current ||= isStreaming;
+
+    if (!hasEverStreamed.current) {
+      return (
+        <MarkdownBlock
+          className={rootClassName}
+          components={components}
+          source={source}
+        />
+      );
+    }
 
     return (
-      <Markdown
-        className={cx(S.aiMarkdown, className)}
+      <StreamingMarkdown
+        className={rootClassName}
         components={components}
-        disallowedElements={DISALLOWED_ELEMENTS}
-        unwrapDisallowed
-        {...props}
-      >
-        {normalizedChildren}
-      </Markdown>
+        isStreaming={isStreaming}
+        source={source}
+      />
     );
   },
 );

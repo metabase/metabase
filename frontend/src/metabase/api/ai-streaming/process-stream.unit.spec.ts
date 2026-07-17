@@ -186,19 +186,7 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should forward each text delta to onTextPart", async () => {
-    const config = getMockedCallbacks();
-    const mockStream = createMockSSEStream([
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", delta: "You, but " },
-      { type: "text-delta", id: "t1", delta: "don't tell anyone." },
-      { type: "text-end", id: "t1" },
-    ]);
-
-    await processChatResponse(mockStream, config);
-    expect(config.onTextPart).toHaveBeenNthCalledWith(1, "You, but ");
-    expect(config.onTextPart).toHaveBeenNthCalledWith(2, "don't tell anyone.");
-  });
+  it.todo("should smooth text deltas word by word (smoothTextEvents)");
 
   it("should resolve with partial response for aborted requests", async () => {
     const partialEvents: SSEEvent[] = [

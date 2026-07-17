@@ -4,6 +4,30 @@
   max-width: 100%;
 }
 
+.aiMarkdown > :last-child {
+  margin-bottom: 0;
+}
+
+.streamedWord {
+  animation: streamed-word-fade 140ms ease-out;
+}
+
+@keyframes streamed-word-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streamedWord {
+    animation: none;
+  }
+}
+
 .tableWrapper {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 8px;
@@ -103,10 +127,6 @@
   background: transparent;
   border: none;
   padding: 0;
-}
-
-.aiMarkdown p {
-  margin-bottom: 1rem;
 }
 
 .aiMarkdown h1,

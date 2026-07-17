@@ -8,6 +8,7 @@ import {
   toolOutputAvailableSchema,
   toolOutputErrorSchema,
 } from "./schemas";
+import { smoothTextEvents } from "./smooth-stream";
 import { parseSSEStream } from "./sse-stream";
 import type {
   FinishReason,
@@ -82,7 +83,7 @@ export async function processChatResponse(
   };
 
   try {
-    for await (const event of parseSSEStream(stream)) {
+    for await (const event of smoothTextEvents(parseSSEStream(stream))) {
       match(event)
         .with({ type: "start" }, (e) => config.onStart?.(e))
         .with({ type: "text-delta" }, (e) => config.onTextPart?.(e.delta))
