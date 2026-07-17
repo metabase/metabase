@@ -1,8 +1,10 @@
-import fetchMock from "fetch-mock";
-
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import {
   setupGetTransformJobEndpoint,
+  setupListTransformJobTransformsEndpoint,
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks/transform";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
@@ -30,7 +32,8 @@ const setup = ({
   setupGetTransformJobEndpoint(job);
   setupDatabaseListEndpoint([createMockDatabase()]);
   setupListTransformTagsEndpoint([]);
-  fetchMock.get(`path:/api/transform-job/${job.id}/transforms`, [], {
+  setupUserMetabotPermissionsEndpoint();
+  setupListTransformJobTransformsEndpoint(job.id, [], {
     delay: transformsDelay,
   });
 
