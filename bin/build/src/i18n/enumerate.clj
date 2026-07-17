@@ -27,6 +27,7 @@
                             "/modules/drivers/snowflake/src"
                             "/modules/drivers/sparksql/src"
                             "/modules/drivers/sqlserver/src"
+                            "/modules/drivers/teradata/src"
                             "/modules/drivers/vertica/src"]))
 
 (def overrides

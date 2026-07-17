@@ -80,7 +80,9 @@
       (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
           "bigquery-cloud-sdk should map to [:bigquery]")
       (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
-          "mongo should map to multiple test jobs"))))
+          "mongo should map to multiple test jobs")
+      (is (= [:teradata] (get @#'mage.modules/driver-directory->drivers "teradata"))
+          "teradata should map to [:teradata]"))))
 
 ;;; =============================================================================
 ;;; Priority 1: Global skip
@@ -231,7 +233,7 @@
 
 (deftest cloud-driver-with-label-runs
   (testing "Cloud driver runs with ci:all-cloud-drivers label"
-    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake :teradata]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {:pr-labels #{"ci:all-cloud-drivers"}})
                                                  false ; not affected
@@ -254,7 +256,7 @@
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
                     enterprise/transforms enterprise/transforms-python enterprise/workspaces}
-          driver [:athena :bigquery :databricks :redshift :snowflake]]
+          driver [:athena :bigquery :databricks :redshift :snowflake :teradata]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -268,7 +270,7 @@
 
 (deftest cloud-driver-runs-when-driver-deps-affected
   (testing "Cloud driver runs when driver deps are affected (e.g., deps.edn changed)"
-    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake :teradata]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  true  ; driver-deps-affected
@@ -280,7 +282,7 @@
 
 (deftest cloud-driver-without-changes-skips
   (testing "Cloud driver skips when no relevant changes"
-    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
+    (doseq [driver [:athena :bigquery :databricks :redshift :snowflake :teradata]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
                                                  false ; not affected
@@ -313,7 +315,7 @@
 
 (deftest cloud-drivers-are-correct
   (testing "Cloud drivers set matches expected"
-    (is (= #{:athena :bigquery :databricks :redshift :snowflake}
+    (is (= #{:athena :bigquery :databricks :redshift :snowflake :teradata}
            mage.modules/cloud-drivers))))
 
 ;;; =============================================================================

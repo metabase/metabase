@@ -1140,7 +1140,8 @@
                                           :expressions  {expression-name [:+ $price 2]}
                                           :fields       [$id $price [:expression expression-name]]
                                           :order-by     [[:asc $id]]
-                                          :limit        2}})]
+                                          :limit        2}
+                           :order-by     [[:asc $id]]})]
               (mt/with-native-query-testing-context query
                 (is (= [[1 29.46 31.46] [2 70.08 72.08]]
                        (mt/formatted-rows

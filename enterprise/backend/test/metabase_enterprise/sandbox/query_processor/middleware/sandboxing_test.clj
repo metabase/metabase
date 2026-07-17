@@ -7,6 +7,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [medley.core :as m]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase-enterprise.test :as met]
@@ -81,14 +82,27 @@
   {:query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})
    :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
+;; Some drivers like teradata don't allow `SELECT TOP(N)` and need `SELECT TOP N`
+(sql/register-clause!
+ :select-top-no-parens
+ (fn [_k xs]
+   (let [[top & cols] xs
+         [top-sql & top-params] (sql/format-expr top)
+         [cols-sql & cols-params] (#'sql/format-selects-common (str "SELECT TOP " top-sql) true cols)]
+     (into [cols-sql] (concat top-params cols-params))))
+ :select)
+
 (defn- format-honeysql [honeysql]
-  (let [add-top-1000 (fn [honeysql]
+  (let [add-top-1000 (fn [honeysql select-key]
                        (-> honeysql
                            (dissoc :select)
-                           (assoc :select-top (into [[:inline 1000]] (:select honeysql)))))
+                           (assoc select-key (into [[:inline 1000]] (:select honeysql)))))
         honeysql (cond-> honeysql
                    (= driver/*driver* :sqlserver)
-                   add-top-1000
+                   (add-top-1000 :select-top)
+
+                   (= driver/*driver* :teradata)
+                   (add-top-1000 :select-top-no-parens)
 
                    ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
                    ;; have one.) HACK

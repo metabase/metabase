@@ -1,0 +1,13 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {}
+
+ :aliases
+ {:oss
+  ;; JDBC driver isn't GPL-compatible
+  {}
+
+  :ee
+  {:extra-deps {com.teradata.jdbc/terajdbc {:mvn/version "20.00.00.46"}}}}}

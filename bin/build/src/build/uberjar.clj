@@ -85,7 +85,7 @@
   "Drivers whose JDBC dependencies are not bundled due to licensing restrictions (users must supply the JDBC driver JAR
   themselves). These drivers are included as source on the classpath and compiled lazily at runtime when their JDBC
   driver is present in the plugins directory."
-  #{"oracle" "vertica"})
+  #{"oracle" "teradata" "vertica"})
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))

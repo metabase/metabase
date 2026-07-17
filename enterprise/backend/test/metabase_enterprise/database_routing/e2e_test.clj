@@ -16,6 +16,8 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -404,7 +406,10 @@
                               {:details (merge (:details router)
                                                (router-dataset-details driver/*driver*))})
                   (let [router (t2/select-one :model/Database :id (u/the-id router))
-                        routed (t2/select-one :model/Database :id (u/the-id routed))]
+                        routed (t2/select-one :model/Database :id (u/the-id routed))
+                        mp (mt/metadata-provider)
+                        query (-> (lib/query mp (lib.metadata/table mp (mt/id :t)))
+                                  (lib/order-by (lib.metadata/field mp (mt/id :t :id))))]
                     (sync/sync-database! router {:scan :schema})
                     (sync/sync-database! routed {:scan :schema})
                     (wire-routing {:parent router :children [routed]})
@@ -413,12 +418,12 @@
                       (met/with-user-attributes! :rasta {"db_name" (:name routed)}
                         (mt/with-current-user (mt/user->id :crowberto)
                           (is (= [[1 "original-foo"] [2 "original-bar"]]
-                                 (->> (mt/query t)
+                                 (->> query
                                       (mt/process-query)
                                       (mt/formatted-rows [int str])))))
                         (mt/with-current-user (mt/user->id :rasta)
                           (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                                 (->> (mt/query t)
+                                 (->> query
                                       (mt/process-query)
                                       (mt/formatted-rows [int str]))))))
                       (testing "sync task can see database"

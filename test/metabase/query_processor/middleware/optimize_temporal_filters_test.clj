@@ -670,6 +670,7 @@
                            (lib/expression "datetime_between" (lib/between datetime start-date end-date))
                            (lib/expression "datetime_tz_between" (lib/between datetime-tz start-date end-date))
                            (lib/limit 10)
+                           (lib/order-by datetime-tz :asc)
                            (as-> q (lib/with-fields q [(lib/expression-ref q "date_between")
                                                        (lib/expression-ref q "datetime_between")
                                                        (lib/expression-ref q "datetime_tz_between")])))

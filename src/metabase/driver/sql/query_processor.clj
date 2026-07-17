@@ -2279,6 +2279,35 @@
        (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
+(defn fix-order-bys-in-subqueries
+  "Fix `:order-by` clauses for dialects that reject ORDER BY in derived tables unless paired with a limit.
+
+  For joined source queries, unbounded ordering is not observable, so remove it. For other source queries, add an
+  absolute max-results limit so the ORDER BY remains legal without imposing a practical extra row limit."
+  [inner-query]
+  (letfn [(in-source-query? [path]
+            (= (last path) :source-query))
+          (in-join-source-query? [path]
+            (and (in-source-query? path)
+                 (= (last (butlast path)) :joins)))
+          (has-order-by-without-limit? [m]
+            (and (map? m)
+                 (:order-by m)
+                 (not (:limit m))))
+          (remove-order-by? [path m]
+            (and (has-order-by-without-limit? m)
+                 (in-join-source-query? path)))
+          (add-limit? [path m]
+            (and (has-order-by-without-limit? m)
+                 (not (in-join-source-query? path))
+                 (in-source-query? path)))]
+    (driver-api/replace inner-query
+      (m :guard (remove-order-by? &parents m))
+      (fix-order-bys-in-subqueries (dissoc m :order-by))
+
+      (m :guard (add-limit? &parents m))
+      (fix-order-bys-in-subqueries (assoc m :limit driver-api/absolute-max-results)))))
+
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the

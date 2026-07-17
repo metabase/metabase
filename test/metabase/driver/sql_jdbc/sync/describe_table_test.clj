@@ -179,7 +179,7 @@
   (driver/database-supports? driver :metadata/key-constraints database))
 
 ;; These drivers set the `:pk?` field even though they do no support key-constriants
-(doseq [driver [:mongo :sqlite]]
+(doseq [driver [:mongo :sqlite :teradata]]
   (defmethod driver/database-supports? [driver ::describe-pks]
     [_driver _feature _database]
     true))

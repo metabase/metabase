@@ -285,7 +285,7 @@
 (def cloud-drivers
   "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
   since they need round trip times, so we skip them on PRs unless specifically needed."
-  #{:athena :bigquery :databricks :redshift :snowflake})
+  #{:athena :bigquery :databricks :redshift :snowflake :teradata})
 
 (def ^:private all-drivers
   "All driver test jobs in drivers.yml, in order."
@@ -307,6 +307,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :teradata
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -324,6 +325,7 @@
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
    "sqlserver" [:sqlserver]
+   "teradata" [:teradata]
    ;; starburst tests are currently disabled in drivers.yml
    ;; "starburst" [:starburst]
    "vertica" [:vertica]})

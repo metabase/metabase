@@ -254,6 +254,7 @@
               :sqlite
               :sqlserver
               :starburst
+              :teradata
               :vertica}}
 
   ;;

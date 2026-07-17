@@ -429,6 +429,7 @@
                  :snowflake
                  :sparksql
                  :sqlserver
+                 :teradata
                  :vertica}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
     [_driver _feature _database]
@@ -504,7 +505,7 @@
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst :athena]]
+(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst :athena :teradata]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
@@ -631,8 +632,8 @@
                        :middleware {:format-rows? false})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::no-binary-coercion]
-  [driver _feature _database]
-  (not (driver/database-supports? driver ::yyyymmddhhss-binary-timestamps)))
+  [driver _feature database]
+  (not (driver/database-supports? driver ::yyyymmddhhss-binary-timestamps database)))
 
 (deftest ^:parallel no-binary-drivers-throws-exception
   (mt/test-drivers (mt/normal-drivers-with-feature ::no-binary-coercion)

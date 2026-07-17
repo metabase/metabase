@@ -100,7 +100,8 @@
                                      :fields       [[:field (mt/id :venues :name) nil]
                                                     [:field (mt/id :venues :category_id) nil]]
                                      :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
-                                     :limit        4}})
+                                     :limit        4}
+                      :order-by     [[:asc [:field (mt/id :venues :name) {:base-type :type/Text}]]]})
                    (mt/format-rows-by
                     [str int str])
                    qp.test-util/rows-and-cols))))))

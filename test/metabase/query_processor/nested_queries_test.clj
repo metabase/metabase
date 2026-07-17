@@ -54,6 +54,7 @@
                   {:source-query {:source-table $$venues
                                   :order-by     [[:asc $venues.id]]
                                   :limit        10}
+                   :order-by     [[:asc *venues.id]]
                    :limit        5}))))))))
 
 (defn- sql-driver? []
@@ -396,9 +397,10 @@
                          :name         coun-col-re
                          :display_name coun-col-re
                          :field_ref    [:field coun-col-re {}]}]}
-                      (qp.test-util/rows-and-cols
-                       (mt/format-rows-by [str int]
-                                          (qp/process-query query))))))))))))
+                      (-> (qp.test-util/rows-and-cols
+                           (mt/format-rows-by [str int]
+                                              (qp/process-query query)))
+                          (update :rows (partial sort-by first))))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::filter-by-field-literal-test]
   [_driver _feature _database]
@@ -906,8 +908,8 @@
                (mt/mbql-query venues
                  {:source-query
                   {:source-table $$venues
-                   :filter       [:= $venues.category_id->categories.name "BBQ"]
-                   :order-by     [[:asc $id]]}}))))))))
+                   :filter       [:= $venues.category_id->categories.name "BBQ"]}
+                  :order-by [[:asc $id]]}))))))))
 
 (deftest ^:parallel parse-datetime-strings-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -962,8 +964,9 @@
                  {:source-table $$checkins
                   :aggregation  [[:sum $user_id] [:sum $venue_id]]
                   :breakout     [!month.date]}
-                 :filter [:> *sum/Float 300]
-                 :limit  2})))))))
+                 :filter   [:> *sum/Float 300]
+                 :order-by [[:asc !month.date]]
+                 :limit    2})))))))
 
 (deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
@@ -974,18 +977,20 @@
                      :order-by    [[:asc $id]]
                      :limit       2})]
         (is (= [[30] [20]]
-               (mt/formatted-rows
-                [int int]
-                (mt/run-mbql-query venues
-                  {:source-query (:query query)}))))
+               (sort-by first >
+                        (mt/formatted-rows
+                         [int int]
+                         (mt/run-mbql-query venues
+                           {:source-query (:query query)})))))
         (testing "if source query is from a Card"
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                             [query])
             (is (= [[30] [20]]
-                   (mt/formatted-rows
-                    [int int]
-                    (mt/run-mbql-query nil
-                      {:source-table "card__1"}))))))))))
+                   (sort-by first >
+                            (mt/formatted-rows
+                             [int int]
+                             (mt/run-mbql-query nil
+                               {:source-table "card__1"})))))))))))
 
 (deftest ^:parallel expression-literals-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expression-literals)

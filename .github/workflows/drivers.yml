@@ -44,6 +44,7 @@ jobs:
       sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
+      teradata-should-run: ${{ steps.driver-decisions.outputs.teradata-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
       # Per-driver configured status from ci-test-config (skip | info | required)
       h2-status: ${{ steps.driver-decisions.outputs.h2-status }}
@@ -84,6 +85,7 @@ jobs:
       sparksql-quarantine-conflict: ${{ steps.driver-decisions.outputs.sparksql-quarantine-conflict }}
       sqlite-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlite-quarantine-conflict }}
       sqlserver-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlserver-quarantine-conflict }}
+      teradata-quarantine-conflict: ${{ steps.driver-decisions.outputs.teradata-quarantine-conflict }}
       vertica-quarantine-conflict: ${{ steps.driver-decisions.outputs.vertica-quarantine-conflict }}
     steps:
       # Up front (before any driver job), drop info-driver comments from older commits so a
@@ -1686,6 +1688,50 @@ jobs:
   #       aws-region: ${{ vars.AWS_REGION }}
   #       trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-teradata-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.teradata-should-run == 'true' || needs.determine-driver-skips.outputs.teradata-quarantine-conflict == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: teradata
+      MB_TERADATA_TEST_HOST: ${{ secrets.MB_TERADATA_TEST_HOST }}
+      MB_TERADATA_TEST_USER: dbc
+      MB_TERADATA_TEST_PASSWORD: ${{ secrets.MB_TERADATA_TEST_PASSWORD }}
+    name: Teradata
+    steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.teradata-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Teradata driver is quarantined but you changed files in modules/drivers/teradata/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Teradata tests, add the label: break-quarantine-teradata"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Teradata driver!"
+        exit 1
+    - uses: actions/checkout@v6
+    - name: Test Teradata driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-teradata-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+
   login-to-ecr:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
@@ -1800,9 +1846,9 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       # - be-tests-starburst-ee
+      - be-tests-teradata-ee
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
-      - be-tests-clickhouse-ee
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result

@@ -264,6 +264,9 @@
               :databricks
               (assoc details :log-level 0)
 
+              :teradata
+              (assoc details :additional-options "FLATTEN=ON")
+
               (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
