@@ -103,8 +103,11 @@
       (throw (ex-info (tru "Could not parse {0}/{1}: {2}" dir config-file-name (ex-message e))
                       {:status-code 400})))))
 
-(defn- dir-slug
-  "The app's slug: the name of its directory (`data_apps/sales` -> `sales`)."
+(defn dir-slug
+  "The app's slug: the name of its directory (`data_apps/sales` -> `sales`). Used
+   verbatim, never normalized. Public so discovery can label an app by its
+   directory even when its `data_app.yaml` fails to parse (so a transiently broken
+   config isn't treated as a removal)."
   [^String dir]
   (subs dir (inc (str/last-index-of dir "/"))))
 

@@ -47,28 +47,55 @@
                 (data-app.sync/import-from-snapshot!
                  (snapshot (app-files "a" {:name "A renamed" :path "index.js" :bundle "V2"})))))))))
 
-(deftest sync-across-repos-keeps-overrides-and-adds-test
-  (testing "linking repo A, unlinking, then linking repo B: keep A-only apps, override shared slugs with B, add B-only apps"
+(deftest switching-repos-prunes-old-apps-overrides-shared-adds-new-test
+  (testing "syncing a different repo: drop apps only the old repo had, override shared slugs, add new ones"
     (mt/with-model-cleanup [:model/DataApp]
       ;; Repo A: Foo + Bar
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "foo" {:name "Foo" :path "index.js" :bundle "FOO"})
                         (app-files "bar" {:name "Bar A" :path "index.js" :bundle "BAR-A"}))))
       (is (= #{"foo" "bar"} (t2/select-fn-set :name :model/DataApp)))
-      ;; Unlinking A doesn't sync (nothing prunes). Linking repo B (Bar + Baz)
-      ;; and importing it keeps Foo, overrides Bar by slug, and adds Baz.
-      (data-app.sync/import-from-snapshot!
-       (snapshot (merge (app-files "bar" {:name "Bar B" :path "index.js" :bundle "BAR-B"})
-                        (app-files "baz" {:name "Baz" :path "index.js" :bundle "BAZ"}))))
-      (is (= #{"foo" "bar" "baz"} (t2/select-fn-set :name :model/DataApp))
-          "Foo (from repo A) is kept and Baz (from repo B) is added")
-      (is (= "Foo" (:display_name (t2/select-one :model/DataApp :name "foo")))
-          "Foo is untouched by repo B")
+      ;; Repo B (Bar + Baz): the repo is the source of truth, so Foo (absent from B)
+      ;; is pruned, Bar is overridden by slug, and Baz is added.
+      (is (=? {:synced 2 :removed 1}
+              (data-app.sync/import-from-snapshot!
+               (snapshot (merge (app-files "bar" {:name "Bar B" :path "index.js" :bundle "BAR-B"})
+                                (app-files "baz" {:name "Baz" :path "index.js" :bundle "BAZ"}))))))
+      (is (= #{"bar" "baz"} (t2/select-fn-set :name :model/DataApp))
+          "Foo (only in repo A) is dropped; Baz (from repo B) is added")
       (let [bar (t2/select-one :model/DataApp :name "bar")]
         (is (= "Bar B" (:display_name bar))
-            "Bar is overridden in place by repo B (slug conflict)")
+            "Bar is overridden in place by repo B (shared slug)")
         (is (= "BAR-B" (String. ^bytes (:bundle bar) "UTF-8"))
             "Bar's cached bundle is repo B's")))))
+
+(deftest an-empty-repo-prunes-all-apps-test
+  (testing "syncing a repo with no data_apps/ removes every app (the repo has none)"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "solo" {:name "Solo" :path "index.js" :bundle "S"})))
+      (is (= #{"solo"} (t2/select-fn-set :name :model/DataApp)))
+      (is (=? {:synced 0 :removed 1}
+              (data-app.sync/import-from-snapshot! (snapshot {}))))
+      (is (empty? (t2/select-fn-set :name :model/DataApp))))))
+
+(deftest a-broken-config-keeps-the-existing-app-not-prunes-it-test
+  (testing "a directory that still exists but whose data_app.yaml is now broken keeps the app (as a sync_error), it is not pruned"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "app" {:name "App" :path "index.js" :bundle "GOOD"})))
+      (is (= "GOOD" (String. ^bytes (:bundle (t2/select-one :model/DataApp :name "app")) "UTF-8")))
+      ;; Same directory, but its config no longer parses. The dir is still present,
+      ;; so the app is kept — not treated as a removal — and its cached bundle stays.
+      (let [result (data-app.sync/import-from-snapshot!
+                    (snapshot {"data_apps/app/data_app.yaml" "name: App\n" ; missing required "path"
+                               "data_apps/app/index.js"       "GOOD"}))]
+        (is (=? {:removed 0} result) "the app is not pruned")
+        (is (= 1 (count (:config-errors result)))))
+      (let [app (t2/select-one :model/DataApp :name "app")]
+        (is (some? app) "the app survives a transiently broken config")
+        (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
+            "its last-good cached bundle is retained")))))
 
 (defn- oversized-bundle ^String []
   (.repeat "a" (int (inc data-app.sync/max-bundle-bytes))))

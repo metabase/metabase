@@ -5,8 +5,10 @@
    connected repository (manual \"Pull changes\", auto-import poll, or startup),
    it calls [[sync-from-snapshot!]] with the just-imported snapshot. We discover
    every `data_apps/<dir>/data_app.yaml` and materialize one `data_app` row per app
-   (caching the built bundle). A sync only upserts — it never deletes, so an app
-   whose directory is gone from the repo is kept until an admin removes it.
+   (caching the built bundle). The connected repo is the source of truth: a sync
+   upserts each app it finds and prunes rows whose directory is gone, so removing
+   an app from the repo (or switching repos) drops it on the next sync. Unlinking
+   runs no sync, so apps survive it.
 
    This namespace does no Git access of its own — the snapshot's `read-file` /
    `list-files` come from remote-sync. The cached `bundle` blob is what serving
@@ -57,23 +59,26 @@
   "Given the snapshot's `list-files` and `read-file` fns (where `read-file`
    returns file text or nil), iterate the folders under `data_apps/` and return one
    entry per folder that is an app — it holds a `data_app.yaml`; a folder without
-   one is skipped. Each entry is a parsed app
-   `{:slug :display_name :bundle :allowed_hosts}` (with `:bundle` the repo-root
-   relative bundle path) or `{:config-error <message>}`. Parse/read failures are
-   isolated per app so one bad config can't abort the sync."
+   one is skipped. Each entry carries `:slug` (the directory name) plus either the
+   parsed app `{:display_name :bundle :allowed_hosts}` (with `:bundle` the
+   repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
+   failures are isolated per app so one bad config can't abort the sync — and the
+   `:slug` is present either way, so pruning can tell a directory that still exists
+   (transiently broken config) from one that was removed."
   [list-files read-file]
   (let [files    (set (list-files))
         app-dirs (distinct (keep #(second (re-matches app-dir-regex %)) files))]
     (for [dir  app-dirs
           :let [config-path (files (str dir "/data_app.yaml"))]
           :when config-path]
-      (try
-        (if-let [content (read-file config-path)]
-          (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
-            {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
-          {:config-error (tru "Could not read {0}." config-path)})
-        (catch Throwable e
-          {:config-error (ex-message e)})))))
+      (let [slug (data-app.config/dir-slug dir)]
+        (try
+          (if-let [content (read-file config-path)]
+            (let [{:keys [display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+              {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
+            {:slug slug, :config-error (tru "Could not read {0}." config-path)})
+          (catch Throwable e
+            {:slug slug, :config-error (ex-message e)}))))))
 
 ;;; ----------------------------------------------------- Materialize -----------------------------------------------------
 
@@ -142,15 +147,25 @@
       :list-files (fn [] -> [<path-string> ...])
       :sha        <commit-sha-string>}
 
-   Discovers every `data_apps/<dir>/data_app.yaml` and upserts a row per app in a
-   single transaction. Apps not present in the snapshot are left untouched (a
-   sync never deletes — removal is an explicit admin action). Returns
-   `{:synced <n>, :changed <n>, :sha <sha>, :config-errors [<message> ...]}`,
-   where `:changed` is how many apps this sync actually created/updated
-   (a `last_synced_sha` bump on an unchanged app does not count). A malformed
-   `data_app.yaml` is isolated (collected into `:config-errors`, that app skipped)
-   rather than aborting the others; per-app bundle failures are recorded on the
-   row.
+   Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and
+   prunes rows whose directory is gone from the snapshot — all in a single
+   transaction, so the connected repo is the source of truth for which apps exist.
+   Returns `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>,
+   :config-errors [<message> ...]}`, where `:changed` is how many apps this sync
+   actually created/updated (a `last_synced_sha` bump on an unchanged app does not
+   count) and `:removed` is how many were deleted for no longer being in the repo.
+   A malformed `data_app.yaml` is isolated (collected into `:config-errors`, that
+   app skipped) rather than aborting the others; per-app bundle failures are
+   recorded on the row.
+
+   Pruning is by *directory*, not by successful parse: an app whose directory is
+   still present but whose config is momentarily broken is kept (it stays as a
+   `sync_error` row), so a typo in `data_app.yaml` doesn't drop the app and its
+   cached bundle. Deletion only happens here, on a successful snapshot read, so it
+   never fires on a failed clone/fetch (that throws before we get a snapshot).
+   Switching to a different repo therefore drops the previous repo's apps on the
+   next sync (they're absent from the new snapshot); unlinking runs no sync, so
+   apps survive it — matching how remote-sync treats other entities.
 
    Two apps can't collide on a slug here: a slug *is* an app's directory name (see
    the config namespace), a repo can't hold two `data_apps/<slug>` directories, and
@@ -158,29 +173,35 @@
   [{:keys [read-file list-files sha]}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
-  (let [results  (vec (discover-app-configs list-files read-file))
-        good     (filter :slug results)
-        errors   (vec (keep :config-error results))
+  (let [results      (vec (discover-app-configs list-files read-file))
+        good         (remove :config-error results)
+        errors       (vec (keep :config-error results))
+        ;; every app directory present in the repo (parsed or not) — the set of
+        ;; slugs that should survive this sync
+        present-slugs (into #{} (map :slug) results)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
-        existing (into {} (map (juxt :name identity))
-                       (t2/select [:model/DataApp :name :display_name :allowed_hosts
-                                   :bundle_path :bundle_hash :sync_error]))
-        changed
-        ;; Upsert-only: a sync never deletes. Apps materialized from a previous
-        ;; repo are kept (they survive unlinking, and switching repos), and an
-        ;; app whose directory name matches an existing app's is overridden in
-        ;; place by `upsert-by-name!`. Rows are removed only by an explicit admin
-        ;; action (see the API's DELETE).
+        existing     (into {} (map (juxt :name identity))
+                           (t2/select [:model/DataApp :name :display_name :allowed_hosts
+                                       :bundle_path :bundle_hash :sync_error]))
+        {:keys [changed removed]}
         (t2/with-transaction [_conn]
-          (reduce (fn [n cfg]
-                    (cond-> n
-                      (sync-app! (get existing (:slug cfg))
-                                 (assoc cfg :sha sha :read-file read-file))
-                      inc))
-                  0 good))]
-    (log/infof "[data-app] synced sha=%s apps=%d changed=%d errors=%d"
-               sha (count good) changed (count errors))
-    {:synced (count good), :changed changed, :sha sha, :config-errors errors}))
+          (let [changed (reduce (fn [n cfg]
+                                  (cond-> n
+                                    (sync-app! (get existing (:slug cfg))
+                                               (assoc cfg :sha sha :read-file read-file))
+                                    inc))
+                                0 good)
+                ;; The repo is the source of truth: drop rows whose directory is
+                ;; gone. An empty repo (no `data_apps/`) removes them all. `enabled`
+                ;; is ignored here — a locally disabled app removed from the repo is
+                ;; still removed. (`[:not-in #{}]` is invalid SQL, so delete-all.)
+                removed (if (seq present-slugs)
+                          (t2/delete! :model/DataApp :name [:not-in present-slugs])
+                          (t2/delete! :model/DataApp))]
+            {:changed changed, :removed removed}))]
+    (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
+               sha (count good) changed removed (count errors))
+    {:synced (count good), :changed changed, :removed removed, :sha sha, :config-errors errors}))
 
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from
