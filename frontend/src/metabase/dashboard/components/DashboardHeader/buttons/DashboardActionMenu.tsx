@@ -3,16 +3,17 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
-import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
 import { Link, type LinkProps, withRouter } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+
+import {
+  AutoRefreshMenuItem,
+  AutoRefreshMenuOptions,
+} from "../../RefreshWidget";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;
@@ -41,7 +42,14 @@ const DashboardActionMenuInner = ({
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
-  const dispatch = useDispatch();
+  const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpened(isOpen);
+    if (!isOpen) {
+      setShowAutoRefreshOptions(false);
+    }
+  };
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
@@ -52,15 +60,6 @@ const DashboardActionMenuInner = ({
     dashboard ?? undefined,
     refreshDashboard,
   );
-
-  const isDashboardSubscriptionSidebarOpen = useSelector(
-    getIsDashboardSubscriptionSidebarOpen,
-  );
-
-  const toggleSubscriptionSidebar = () =>
-    dispatch(
-      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
-    );
 
   // solely for the dependency list below, so we don't ever have an undefined
   const pathname = location?.pathname ?? "";
@@ -86,7 +85,7 @@ const DashboardActionMenuInner = ({
     dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
 
   return (
-    <Menu position="bottom-end" opened={opened} onChange={setOpened}>
+    <Menu position="bottom-end" opened={opened} onChange={handleOpenChange}>
       <Menu.Target>
         <div>
           <ToolbarButton
@@ -97,66 +96,71 @@ const DashboardActionMenuInner = ({
         </div>
       </Menu.Target>
       <Menu.Dropdown>
-        {canResetFilters && (
-          <Menu.Item
-            leftSection={<Icon name="revert" />}
-            onClick={onResetFilters}
-          >
-            {t`Reset all filters`}
-          </Menu.Item>
-        )}
-
-        <DashboardSubscriptionMenuItem
-          dashboard={dashboard}
-          onClick={toggleSubscriptionSidebar}
-        />
-
-        <Menu.Item
-          leftSection={<Icon name="expand" />}
-          onClick={(e: MouseEvent) =>
-            onFullscreenChange(!isFullscreen, !e.altKey)
-          }
-        >
-          {t`Enter fullscreen`}
-        </Menu.Item>
-
-        {(canEdit || canConfigureCaching) && (
-          <Menu.Item
-            leftSection={<Icon name="gear" />}
-            onClick={openSettingsSidebar}
-          >
-            {t`Edit settings`}
-          </Menu.Item>
-        )}
-
-        {canEdit && moderationItems}
-
-        {canEdit && (
+        {showAutoRefreshOptions ? (
+          <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
+        ) : (
           <>
-            <Menu.Divider />
+            {canResetFilters && (
+              <Menu.Item
+                leftSection={<Icon name="revert" />}
+                onClick={onResetFilters}
+              >
+                {t`Reset all filters`}
+              </Menu.Item>
+            )}
 
             <Menu.Item
-              leftSection={<Icon name="move" />}
-              component={ForwardRefLink}
-              to={`${location?.pathname}/move`}
-            >{c("A verb, not a noun").t`Move`}</Menu.Item>
-          </>
-        )}
+              leftSection={<Icon name="expand" />}
+              onClick={(e: MouseEvent) =>
+                onFullscreenChange(!isFullscreen, !e.altKey)
+              }
+            >
+              {t`Enter fullscreen`}
+            </Menu.Item>
 
-        <Menu.Item
-          leftSection={<Icon name="clone" />}
-          component={ForwardRefLink}
-          to={`${location?.pathname}/copy`}
-        >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+            <AutoRefreshMenuItem
+              onClick={() => setShowAutoRefreshOptions(true)}
+            />
 
-        {canEdit && (
-          <>
-            <Menu.Divider />
+            {(canEdit || canConfigureCaching) && (
+              <Menu.Item
+                leftSection={<Icon name="gear" />}
+                onClick={openSettingsSidebar}
+              >
+                {t`Edit settings`}
+              </Menu.Item>
+            )}
+
+            {canEdit && moderationItems}
+
+            {canEdit && (
+              <>
+                <Menu.Divider />
+
+                <Menu.Item
+                  leftSection={<Icon name="move" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/move`}
+                >{c("A verb, not a noun").t`Move`}</Menu.Item>
+              </>
+            )}
+
             <Menu.Item
-              leftSection={<Icon name="trash" />}
+              leftSection={<Icon name="clone" />}
               component={ForwardRefLink}
-              to={`${location?.pathname}/archive`}
-            >{t`Move to trash`}</Menu.Item>
+              to={`${location?.pathname}/copy`}
+            >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
+
+            {canEdit && (
+              <>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<Icon name="trash" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/archive`}
+                >{t`Move to trash`}</Menu.Item>
+              </>
+            )}
           </>
         )}
       </Menu.Dropdown>
