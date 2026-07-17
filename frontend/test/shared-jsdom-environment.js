@@ -204,8 +204,7 @@ class SharedJSDOMEnvironment extends JSDOMEnvironment {
     this.__activeIntervals.clear();
 
     // 4. Remove window/document listeners added during the file.
-    for (const { target, type, listener, options } of this
-      .__trackedListeners) {
+    for (const { target, type, listener, options } of this.__trackedListeners) {
       try {
         target.removeEventListener(type, listener, options);
       } catch (_e) {
