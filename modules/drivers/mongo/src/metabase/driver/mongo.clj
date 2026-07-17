@@ -531,8 +531,8 @@
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters-in-stage-method :mongo
-  [driver metadata-providerable stage]
-  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
+  [driver query stage-number]
+  (mongo.params/substitute-native-parameters driver query stage-number))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

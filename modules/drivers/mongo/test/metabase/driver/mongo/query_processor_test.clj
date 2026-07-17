@@ -592,7 +592,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                     ;; Following expression ensures index is an integer.
-                                    index (parse-long (re-find #"\d+$" let-var-name))]
+                                    index (some->> let-var-name (re-find #"\d+$") parse-long)]
                                 ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))

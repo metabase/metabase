@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
@@ -229,7 +228,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        (lib.query/->legacy-MBQL)
+                                        lib/->legacy-MBQL
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :year))
           breakouts  (lib/breakouts query)]
@@ -238,7 +237,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        (lib.query/->legacy-MBQL)
+                                        lib/->legacy-MBQL
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :month))
           breakouts  (lib/breakouts query)]

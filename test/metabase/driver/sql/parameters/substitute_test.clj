@@ -534,10 +534,8 @@
             (merge {:database (meta/id)
                     :type     :native}
                    query)))
-         (lib/update-query-stage 0 (fn [stage]
-                                     (-> stage
-                                         (update :parameters concat parameters)
-                                         (->> (qp.native/expand-stage mp)))))
+         (lib/update-query-stage 0 update :parameters concat parameters)
+         (qp.native/expand-stage 0)
          lib/->legacy-MBQL))))
 
 (defn- expand*

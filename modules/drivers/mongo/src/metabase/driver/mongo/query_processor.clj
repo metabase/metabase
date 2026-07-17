@@ -111,25 +111,30 @@
    [:map-of ::lib.schema.common/non-blank-string :any]])
 
 (mr/def ::stage
-  [:and
-   :map
-   [:fn
-    {:error/message "map with a single key"}
-    #(= (count %) 1)]
-   [:multi
-    {:dispatch (fn [m]
-                 (when (map? m)
-                   (first (keys m))))}
-    ["$project"         ::$project-stage]
-    ["$sort"            ::$sort-stage]
-    ["$group"           ::$group-stage]
-    ["$addFields"       ::$add-fields-stage]
-    ["$lookup"          ::$lookup-stage]
-    ["$unwind"          ::$unwind-stage]
-    ["$match"           ::$match-stage]
-    ["$limit"           ::$limit-stage]
-    ["$skip"            ::$skip-stage]
-    ["$setWindowFields" ::$set-window-fields-stage]]])
+  [:or
+   ;; TODO (Cam 2026-07-17) consider whether we should parsed the BSON documents out into Ordered Maps so we can
+   ;; properly validate them... even tho they implement `java.util.Map` Malli won't validate them as `:map` because
+   ;; they're not `map?`
+   (lib.schema.common/instance-of-class org.bson.Document)
+   [:and
+    :map
+    [:fn
+     {:error/message "map with a single key"}
+     #(= (count %) 1)]
+    [:multi
+     {:dispatch (fn [m]
+                  (when (map? m)
+                    (first (keys m))))}
+     ["$project"         ::$project-stage]
+     ["$sort"            ::$sort-stage]
+     ["$group"           ::$group-stage]
+     ["$addFields"       ::$add-fields-stage]
+     ["$lookup"          ::$lookup-stage]
+     ["$unwind"          ::$unwind-stage]
+     ["$match"           ::$match-stage]
+     ["$limit"           ::$limit-stage]
+     ["$skip"            ::$skip-stage]
+     ["$setWindowFields" ::$set-window-fields-stage]]]])
 
 (mr/def ::pipeline
   [:sequential ::stage])
@@ -145,11 +150,30 @@
   [:sequential ::projection])
 
 (mr/def ::compiled-pipeline
-  "Compiled pipeline query. Note that this is actually a subset of `:metabase.query-processor.compile/compiled`."
+  "Compiled pipeline query. Note that this is actually a subset of `:metabase.query-processor.compile/compiled`.
+
+  This is also the schema for the value of `:native` in a MBQL stage for MongoDB."
   [:map
    {:closed true} ; we should document anything else we add here.
-   [:projections ::projections]
-   [:query       ::pipeline]])
+   [:projections [:maybe ::projections]]
+   [:query       ::pipeline]
+   ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
+   ;;
+   ;;    {:lib/type :mbql.stage/native, :collection "X", :native {...}}
+   ;;
+   ;; or within `:native` e.g.
+   ;;
+   ;;    {:lib/type :mbql.stage/native, :native {:collection "X", ...}}
+   ;;
+   ;; [[metabase.query-processor.middleware.fetch-source-query/fix-mongodb-first-stage]] seems to put it in `:native`
+   ;; itself but the [[metabase.driver/execute-reducible-query]] implementation for
+   ;; MongoDB (in [[metabase.driver.mongo]]) assumes it's in the top level.
+   ;;
+   ;; I'm not clear where the FE sets it either.
+   ;;
+   ;; Let's standardize on one or the other and update the Lib schema to enforce the key being in the right
+   ;; place (normalizing if needed).
+   [:collection {:optional true} :string]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
@@ -263,7 +287,7 @@
   "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name   :- [:maybe :string]
    join-field   :- [:maybe :string]
-   source-alias :- :string]
+   source-alias :- [:maybe :string]]
   (cond->> (or source-alias field-name)
     join-field (str join-field \.)))
 
@@ -944,8 +968,6 @@ function(bin) {
 (mu/defmethod ->rvalue :datetime-add
   [query stage-number [_ _opts inp amount unit] :- :mbql.clause/datetime-add]
   (check-date-operations-supported query)
-  (assert (keyword? unit))
-  (println "unit:" unit) ; NOCOMMIT
   {"$dateAdd" {:startDate (->rvalue query stage-number inp)
                :unit      unit
                :amount    amount}})
@@ -1996,7 +2018,9 @@ function(bin) {
   ([query        :- ::lib.schema/query
     stage-number :- :int
     pipeline-ctx :- ::compiled-pipeline]
-   (reduce (fn [pipeline-ctx f]
+   (reduce (mu/fn :- ::compiled-pipeline
+             [pipeline-ctx :- ::compiled-pipeline
+              f            :- ifn?]
              (f query stage-number pipeline-ctx))
            pipeline-ctx
            [#'handle-joins
@@ -2007,35 +2031,45 @@ function(bin) {
             #'handle-limit
             #'handle-page])))
 
-(defn- query->collection-name
+(mu/defn- query->collection-name :- [:maybe :string]
   "Return `:collection` from a source query, if it exists."
-  [query]
-  (match/match-one query
-    {:collection (collection :guard identity)}
-    ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-    (when (and (some #{:source-query} &parents)
-               (not (some #{:joins} &parents)))
-      collection)))
+  [query :- ::lib.schema/query]
+  (some #(:collection (lib/query-stage query %))
+        (range 0 (lib/stage-count query))))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
                 (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
-(defn parse-query-string
+(mu/defn parse-query-string :- ::pipeline
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
-  [^String s]
-  (try
-    ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in sequence
-    ;; of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1) implements `Map`
-    ;; and (2) converts `BsonValue`s to java types.
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument .toJson org.bson.Document/parse))
-          (org.bson.BsonArray/parse s))
-    (catch Throwable e
-      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-                      {:type  driver-api/qp.error-type.invalid-query
-                       :query s}
-                      e)))))
+  [^String s :- :string]
+  (let [query (try
+                ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in
+                ;; sequence of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1)
+                ;; implements `Map` and (2) converts `BsonValue`s to java types.
+                (mapv (fn [^org.bson.BsonValue v]
+                        (-> v .asDocument .toJson org.bson.Document/parse))
+                      (org.bson.BsonArray/parse s))
+                (catch Throwable e
+                  (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
+                                  {:type  driver-api/qp.error-type.invalid-query
+                                   :query s}
+                                  e))))]
+    query
+    #_(u/prog1 (perf/postwalk
+              (letfn [(bson-map->clj [m]
+                        (into (ordered-map/ordered-map) m))
+                      (bson-map? [x]
+                        (and (instance? java.util.Map x)
+                             (not (map? x))))]
+                (fn [x]
+                  (cond-> x
+                    (bson-map? x) bson-map->clj)))
+              query)
+      (def %query <>)
+      )))
 
 (mu/defn- mbql->native-rec :- ::compiled-pipeline
   "Compile an MBQL 5 query."
@@ -2043,10 +2077,14 @@ function(bin) {
   (transduce
    (map (mu/fn [stage-number :- :int]
           (let [compiled       (if (lib/native-stage? query stage-number)
-                                 (let [raw-native-query (lib/raw-native-query query)]
-                                   {:query       (cond-> raw-native-query
-                                                   (string? raw-native-query) parse-query-string)
-                                    :projections []})
+                                 (let [raw-native-query (lib/raw-native-query query)
+                                       native-query-map (if (map? raw-native-query)
+                                                          raw-native-query
+                                                          {:query       raw-native-query
+                                                           :projections []})]
+                                   (update native-query-map :query (fn [query]
+                                                                     (cond-> query
+                                                                       (string? query) parse-query-string))))
                                  {:query [], :projections []})
                 field-mappings (get-field-mappings query stage-number (:projections compiled))]
             (binding [*field-mappings* field-mappings]
@@ -2100,18 +2138,19 @@ function(bin) {
               update-name
               remove-bad-join-alias
               update-join-alias]))
-          (update-field-ref [[_tag id-or-name {source-alias driver-api/qp.add.source-alias, :as opts}]]
-            (let [opts (update-opts opts)]
-              (if (and (string? id-or-name)
-                       source-alias)
-                [:field source-alias opts]
-                [:field id-or-name opts])))]
+          (update-field-ref [[_tag {source-alias driver-api/qp.add.source-alias, :as _opts} id-or-name, :as field-ref]]
+            (let [field-ref' (lib/update-options field-ref update-opts)]
+              (cond-> field-ref'
+                (and (string? id-or-name)
+                     source-alias)
+                (assoc 2 source-alias))))]
     (match/replace form
       [:field & _]
       (update-field-ref &match)
 
       (:and join
-            {driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
+            {:lib/type               :mbql/join
+             driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
       (&recur (assoc join :alias add-alias)))))
 
 (mu/defn- preprocess :- ::lib.schema/query
@@ -2120,7 +2159,15 @@ function(bin) {
       (driver-api/add-alias-info {:globally-unique-join-aliases? true})
       HACK-update-aliases))
 
-(mu/defn mbql->native :- :metabase.query-processor.compile/compiled
+(mr/def ::compiled
+  [:merge
+   :metabase.query-processor.compile/compiled
+   [:map
+    [:collection  :string]
+    [:projections {:optional true} ::projections]
+    [:mbql?       {:optional true} :boolean]]])
+
+(mu/defn mbql->native :- ::compiled
   "Compile an MBQL query."
   [query :- ::lib.schema/query]
   (let [query (preprocess query)]
@@ -2131,5 +2178,5 @@ function(bin) {
             compiled (mbql->native-rec query)]
         (log-aggregation-pipeline (:query compiled))
         (assoc compiled
-               :collection source-table-name
-               :mbql?      true)))))
+               :collection (or source-table-name (:collection compiled))
+               :mbql?       true)))))

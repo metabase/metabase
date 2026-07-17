@@ -79,19 +79,23 @@
   [driver native-form]
   (sql.u/format-sql-and-fix-params driver native-form))
 
-(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/stage.native
-  [_driver                                  :- :keyword
-   metadata-providerable                    :- ::lib.schema.metadata/metadata-providerable
-   {native-query :native, :as native-stage} :- ::lib.schema/stage.native]
-  (let [params-map            (params.values/stage->params-map metadata-providerable native-stage)
-        referenced-card-ids   (params.values/referenced-card-ids params-map)
-        parsed-query          (lib/parse-parameters native-query)
-        [native-query params] (sql.params.substitute/substitute metadata-providerable parsed-query params-map)]
-    (cond-> (assoc native-stage
-                   :native native-query
-                   :params params)
-      (seq referenced-card-ids)
-      (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))
+(mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/query
+  [_driver      :- :keyword
+   query        :- ::lib.schema/query
+   stage-number :- :int]
+  (lib/update-query-stage
+   query
+   stage-number
+   (fn [{native-query :native, :as native-stage}]
+     (let [params-map            (params.values/stage->params-map query native-stage)
+           referenced-card-ids   (params.values/referenced-card-ids params-map)
+           parsed-query          (lib/parse-parameters native-query)
+           [native-query params] (sql.params.substitute/substitute query parsed-query params-map)]
+       (cond-> (assoc native-stage
+                      :native native-query
+                      :params params)
+         (seq referenced-card-ids)
+         (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.

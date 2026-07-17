@@ -1178,31 +1178,36 @@
 (defmulti substitute-native-parameters-in-stage-method
   "Implementation for [[substitute-native-parameters-in-stage]]; avoid calling this directly and
   call [[substitute-native-parameters-in-stage]] instead. Only use this for `defmethod` method implementations."
-  {:added "0.62.0" :arglists '([driver metadata-providerable native-query-stage])}
+  {:added "0.62.0" :arglists '([driver query stage-number])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(mu/defn substitute-native-parameters-in-stage  :- ::lib.schema/stage.native
-  "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
+(mu/defn substitute-native-parameters-in-stage  :- ::lib.schema/query
+  "For drivers that support `:native-parameters`. Substitute parameters in a normalized native query stage, and return
+  the updated query.
 
-    {:lib/type      :mbql.stage/native
-     :native         \"SELECT count(*) FROM table WHERE id = {{param}}\"
-     :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
-     :parameters    [{:type   :number
-                      :target [:variable [:template-tag \"param\"]]
-                      :value  2}]}
+    {:lib/type :mbql.query/mbql
+     :stages   [{:lib/type      :mbql.stage/native
+                :native         \"SELECT count(*) FROM table WHERE id = {{param}}\"
+                :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
+                :parameters    [{:type   :number
+                                 :target [:variable [:template-tag \"param\"]]
+                                 :value  2}]}]}
     ->
-    {:native \"SELECT count(*) FROM table WHERE id = 2\", ...}
+    {:lib/type :mbql.query/mbql
+     :stages   [{:lib/type :mbql.stage/native
+                 :native   \"SELECT count(*) FROM table WHERE id = 2\"
+                 ...}]}
 
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.query-processor.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations
   of this method. Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.62.0"}
-  [driver                :- :keyword
-   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   native-stage          :- ::lib.schema/stage.native]
-  (substitute-native-parameters-in-stage-method driver metadata-providerable native-stage))
+  [driver       :- :keyword
+   query        :- ::lib.schema/query
+   stage-number :- :int]
+  (substitute-native-parameters-in-stage-method driver query stage-number))
 
 (defmulti default-field-order
   "Return how fields should be sorted by default for this database."
