@@ -299,7 +299,9 @@ Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine
 **Guidelines:**
 
 - Use fixed dimensions (e.g. `width: 540, height: 360`) — no responsive sizing.
-- Return a valid React SVG component.
+- Return preferably an `<svg>` root element. Non-SVG output is treated as raw HTML: emails embed
+  it as-is, while Slack and PDF exports rasterize it with a very limited HTML renderer
+  (no flexbox/grid, limited font support).
 - Avoid external dependencies that rely on browser APIs.
 - Inline images as base64 `data:` URLs or inline `<svg>` (see [Using Images](#using-images) above).
 - Keep rendering pure: data and settings in, JSX out.
