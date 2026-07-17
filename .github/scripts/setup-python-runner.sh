@@ -19,7 +19,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Cloning python-runner repository..."
-git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git python-runner
+git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabase/python-runner-container.git --branch seccomp python-runner
+
 
 if [ "$SKIP_START" = false ]; then
   echo "Starting python-runner..."
