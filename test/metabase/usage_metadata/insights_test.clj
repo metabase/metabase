@@ -16,6 +16,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private mine-itemsets               @#'insights/mine-itemsets)
@@ -31,6 +33,7 @@
 (def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
 (def ^:private segment-signature           @#'insights/segment-signature)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
+(def ^:private merge-candidates            @#'insights/merge-candidates)
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -83,6 +86,43 @@
       (is (every? #(>= (count %) 2) (keys mined)))
       (is (not (contains? mined [:a])))
       (is (not (contains? mined [:b]))))))
+
+(deftest ^:parallel merge-candidates-applies-complete-ranking-before-limit-test
+  (letfn [(source-items [n {:keys [verified? official? total-views]}]
+            (mapv (fn [i]
+                    {:id                   i
+                     :name                 (str "Source " i)
+                     :type                 :question
+                     :verified?            (and verified? (zero? i))
+                     :official-collection? (and official? (zero? i))
+                     :popular?             false
+                     :view-count           (if (zero? i) total-views 0)
+                     :stage-number         0
+                     :joined?              false})
+                  (range n)))
+          (raw-candidates [label signature atom-count evidence]
+            (mapv (fn [source-item]
+                    {:metabase.usage-metadata.insights/signature   signature
+                     :metabase.usage-metadata.insights/table-id    1
+                     :metabase.usage-metadata.insights/source-item source-item
+                     :label                                        label
+                     :atom-count                                   atom-count})
+                  (source-items (:distinct-sources evidence) evidence)))]
+    (let [candidates (mapcat (fn [[label signature atom-count evidence]]
+                               (raw-candidates label signature atom-count evidence))
+                             [[:signature-b ["b"] 2 {:distinct-sources 2 :total-views 50}]
+                              [:views       ["views"] 2 {:distinct-sources 2 :total-views 100}]
+                              [:atoms       ["atoms"] 1 {:distinct-sources 2 :total-views 0}]
+                              [:distinct    ["distinct"] 5 {:distinct-sources 3 :total-views 0}]
+                              [:official    ["official"] 5 {:distinct-sources 1 :official? true :total-views 0}]
+                              [:verified    ["verified"] 5 {:distinct-sources 1 :verified? true :total-views 0}]
+                              [:signature-a ["a"] 2 {:distinct-sources 2 :total-views 50}]])
+          source-index {[:table 1] {:type :table :id 1 :name "Table"}}
+          limited      (merge-candidates candidates source-index #{} 6)]
+      (is (= [:verified :official :distinct :atoms :views :signature-a]
+             (mapv :label limited)))
+      (is (= 6 (count limited)))
+      (is (not-any? #(= :signature-b (:label %)) limited)))))
 
 (deftest existing-segment-predicates-cached-test
   (testing "existing-segment-predicates is TTL-memoized — repeated calls with the same opts hit the DB once"
@@ -656,7 +696,22 @@
         (is (= {:suggested-name "Segment"
                 :suggested-description "Filtered by Segment on Orders"}
                (select-keys (add-segment-suggestions candidate)
-                            [:suggested-name :suggested-description])))))))
+                            [:suggested-name :suggested-description])))))
+    (testing "Errors and thread interruption are not swallowed"
+      (with-redefs [lib/display-name (fn [& _] (throw (AssertionError. "boom")))]
+        (is (thrown? AssertionError (add-segment-suggestions candidate))))
+      (try
+        (with-redefs [lib/display-name (fn [& _] (throw (InterruptedException. "stop")))]
+          (let [rethrown?    (try
+                               (add-segment-suggestions candidate)
+                               false
+                               (catch InterruptedException _
+                                 true))
+                interrupted? (Thread/interrupted)]
+            (is rethrown?)
+            (is interrupted?)))
+        (finally
+          (Thread/interrupted))))))
 
 (deftest candidate-segments-mine-recurring-filter-subsets-test
   (let [query-a (orders-three-atom-segment-query 111)
