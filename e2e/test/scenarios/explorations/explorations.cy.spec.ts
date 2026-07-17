@@ -754,6 +754,22 @@ describe("scenarios > explorations > sidebar triage", () => {
         H.main().findByRole("button", { name: "Add comment" }).click();
         cy.findByRole("button", { name: "Send" }).should("not.exist");
 
+        cy.log("The l shortcut copies a link to the selected page");
+        // Headless Chrome denies real clipboard access here (NotAllowedError),
+        // so stub the write and assert the call instead of reading it back.
+        cy.window().then((win) => {
+          cy.stub(win.navigator.clipboard, "writeText")
+            .as("copyToClipboard")
+            .resolves();
+        });
+        cy.get("body").type("l");
+        H.undoToastListContainer()
+          .findByText("Copied link")
+          .should("be.visible");
+        cy.location("href").then((href) => {
+          cy.get("@copyToClipboard").should("have.been.calledWith", href);
+        });
+
         cy.log("Stars tab now shows only the starred page");
         cy.findByRole("radio", { name: "Stars" }).click({ force: true });
         cy.findAllByRole("treeitem")

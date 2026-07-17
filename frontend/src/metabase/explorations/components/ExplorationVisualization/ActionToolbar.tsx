@@ -182,6 +182,11 @@ export function ActionToolbar({
         setCommentEditorOpen(true);
         event.preventDefault();
       }
+
+      if (event.key === "l") {
+        copyLink(window.location.href);
+        event.preventDefault();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -193,6 +198,7 @@ export function ActionToolbar({
     handleToggleStarred,
     handleToggleHidden,
     setCommentEditorOpen,
+    copyLink,
   ]);
 
   const pageId = String(page.id);

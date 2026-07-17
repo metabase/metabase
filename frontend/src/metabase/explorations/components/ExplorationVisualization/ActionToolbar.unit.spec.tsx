@@ -541,4 +541,35 @@ describe("ActionToolbar", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("copy link", () => {
+    it("copies the current URL with the l shortcut", async () => {
+      jest.mocked(navigator.clipboard.writeText).mockClear();
+
+      setup({ withUndos: true });
+
+      fireEvent.keyDown(document.body, { key: "l" });
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        window.location.href,
+      );
+      expect(await screen.findByText("Copied link")).toBeInTheDocument();
+    });
+
+    it("copies the current URL from the more-actions menu", async () => {
+      jest.mocked(navigator.clipboard.writeText).mockClear();
+
+      setup({ withUndos: true });
+
+      await openMoreActionsMenu();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Copy link/ }),
+      );
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        window.location.href,
+      );
+      expect(await screen.findByText("Copied link")).toBeInTheDocument();
+    });
+  });
 });
