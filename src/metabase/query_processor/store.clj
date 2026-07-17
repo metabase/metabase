@@ -121,13 +121,9 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
+;; TODO (Cam 2026-07-17) Deprecate this in 64
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
-  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP.
-
-  DEPRECATED: You should not need to use the QP Store or [[metabase.query-processor.store/metadata-provider]] any more
-  going forward; use Lib + MBQL 5, where a query serves as a \"metadata providerable\" and can be passed in places
-  where you were previously passing the results of this function call."
-  {:deprecated "0.64.0"}
+  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP."
   []
   (or (miscellaneous-value [::metadata-provider])
       (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
