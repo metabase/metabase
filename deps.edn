@@ -387,6 +387,14 @@
                "-Duser.timezone=US/Pacific"
                "-Dmb.db.type=h2"
                "-Dmb.enable.test.endpoints=true"
+               ;; Use the in-memory queue backend in e2e. The persistent Quartz backend keeps its
+               ;; durable-job state in the app DB's QRTZ_* tables, but e2e restores app-db snapshots
+               ;; between tests (`H.restore`), which drops those tables out from under the running
+               ;; scheduler while the per-process `ensured-jobs` cache still thinks the jobs exist —
+               ;; so post-restore publishes target a non-existent job and never deliver. e2e is a
+               ;; single node, so the in-memory backend (no app-db state, unaffected by restore) is
+               ;; the correct fit.
+               "-Dmb.queue.backend=memory"
                "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
                ;; Ignore connection URI in favor of the MB_DB_FILE
                "-Dmb.db.connection.uri="
