@@ -186,7 +186,25 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it.todo("should smooth text deltas word by word (smoothTextEvents)");
+  it("should smooth text deltas word by word", async () => {
+    const config = getMockedCallbacks();
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+        { type: "text-end", id: "t1" },
+      ]),
+      config,
+    );
+
+    expect(config.onTextPart.mock.calls.map(([delta]) => delta)).toEqual([
+      "You, ",
+      "but ",
+      "don't ",
+      "tell ",
+      "anyone.",
+    ]);
+  });
 
   it("should resolve with partial response for aborted requests", async () => {
     const partialEvents: SSEEvent[] = [

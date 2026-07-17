@@ -8,7 +8,6 @@ import {
   isValidElement,
   memo,
   useMemo,
-  useRef,
 } from "react";
 import { t } from "ttag";
 
@@ -16,7 +15,6 @@ import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 import S from "./AIMarkdown.module.css";
-import { MarkdownBlock } from "./MarkdownBlock";
 import { StreamingMarkdown } from "./StreamingMarkdown";
 import { InternalLink } from "./components/InternalLink";
 import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
@@ -145,29 +143,15 @@ export const AIMarkdown = memo(
       ? splitMessageLinesAsParagraphs(children)
       : children;
 
-    const rootClassName = cx(S.aiMarkdown, className);
-
-    // Sticky: reverting to a plain block at stream end would remount and jump scroll.
-    const hasEverStreamed = useRef(false);
-    hasEverStreamed.current ||= isStreaming;
-
-    if (!hasEverStreamed.current) {
-      return (
-        <MarkdownBlock
-          className={rootClassName}
+    return (
+      <div className={cx(S.aiMarkdownRoot, className)}>
+        <StreamingMarkdown
+          blockClassName={S.aiMarkdown}
           components={components}
+          isStreaming={isStreaming}
           source={source}
         />
-      );
-    }
-
-    return (
-      <StreamingMarkdown
-        className={rootClassName}
-        components={components}
-        isStreaming={isStreaming}
-        source={source}
-      />
+      </div>
     );
   },
 );

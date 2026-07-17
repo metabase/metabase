@@ -1,3 +1,12 @@
+.aiMarkdownRoot {
+  min-width: 0;
+}
+
+/* Blocks are separate elements, so the intra-block paragraph rule can't space them. */
+.aiMarkdownRoot > :not(:last-child) {
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
 .aiMarkdown {
   line-height: 1.5;
   min-width: 0;

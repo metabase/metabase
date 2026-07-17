@@ -15,6 +15,7 @@ import { AIMarkdown } from "./AIMarkdown";
 
 type SetupProps = {
   children: string;
+  className?: string;
   isStreaming?: boolean;
   singleNewlinesAreParagraphs?: boolean;
 };
@@ -56,6 +57,9 @@ const renderedText = (container: HTMLElement) =>
 
 const hasElement = (container: HTMLElement, selector: string) =>
   container.querySelector(selector) !== null;
+
+const countElements = (container: HTMLElement, selector: string) =>
+  container.querySelectorAll(selector).length;
 /* eslint-enable testing-library/no-node-access */
 
 describe("AIMarkdown", () => {
@@ -158,6 +162,19 @@ FROM orders
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(writeText.mock.calls[0][0]).toContain("SELECT *\nFROM orders");
     expect(writeText.mock.calls[0][0]).not.toContain("```");
+  });
+
+  it("should render a single className root even when split into blocks", async () => {
+    const { container } = setup({
+      children: "para one\n\npara two\n\npara three",
+      className: "message-bubble",
+      isStreaming: true,
+    });
+
+    await waitFor(() =>
+      expect(renderedText(container)).toContain("para three"),
+    );
+    expect(countElements(container, ".message-bubble")).toBe(1);
   });
 
   describe("streaming", () => {

@@ -11,7 +11,7 @@ import { useCoalescedSource } from "./useCoalescedSource";
 type StreamingMarkdownProps = {
   source: string;
   isStreaming: boolean;
-  className: string;
+  blockClassName: string;
   components: Record<string, any>;
 };
 
@@ -28,12 +28,12 @@ const repair = (source: string) => {
   }
 };
 
-// Renders a streamed message as memoized top-level blocks: completed blocks
-// stay put while only the trailing (incomplete) one re-renders, fades, and repairs.
+// Renders a message as memoized top-level blocks so completed blocks stay put;
+// while streaming, only the trailing block re-renders, fades in words, and repairs.
 export const StreamingMarkdown = ({
   source,
   isStreaming,
-  className,
+  blockClassName,
   components,
 }: StreamingMarkdownProps) => {
   const coalesced = useCoalescedSource(source, isStreaming);
@@ -64,7 +64,7 @@ export const StreamingMarkdown = ({
         return (
           <MarkdownBlock
             key={index}
-            className={className}
+            className={blockClassName}
             components={components}
             rehypePlugins={getPlugins(index, isLast)}
             source={isStreaming && isLast ? repair(block) : block}
