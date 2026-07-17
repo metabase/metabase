@@ -1,6 +1,8 @@
 (ns metabase.util.ui-logic
   "This namespace has clojure implementations of logic currently found in the UI, but is needed for the
-  backend. Idealling code here would be refactored such that the logic for this isn't needed in two places")
+  backend. Idealling code here would be refactored such that the logic for this isn't needed in two places"
+  (:require
+   [metabase.util.dynamic-goals :as u.dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -169,28 +171,33 @@
 (defn find-goal-value
   "The goal value can come from a progress goal or a graph goal_value depending on it's type.
   For progress charts, the goal can be either a number or a column reference.
-  Matches the frontend behavior: invalid goals fallback to default value (0)."
+  A `{:card_id N, :column \"name\"}` goal resolves against the values under
+  `[:result :data :referenced_cards]` and throws when it can't produce a number.
+  Matches the frontend behavior: invalid self-column goals fallback to default value (0)."
   [result]
-  (case (get-in result [:card :display])
+  (let [resolve-ref #(u.dynamic-goals/resolve-goal-value
+                      %
+                      (get-in result [:result :data :referenced_cards]))]
+    (case (get-in result [:card :display])
 
-    (:area :bar :line)
-    (get-in result [:card :visualization_settings :graph.goal_value])
+      (:area :bar :line)
+      (resolve-ref (get-in result [:card :visualization_settings :graph.goal_value]))
 
-    :progress
-    (let [goal-setting (get-in result [:card :visualization_settings :progress.goal])
-          columns (get-in result [:result :data :cols])
-          rows (get-in result [:result :data :rows])]
-      (cond
-        (number? goal-setting)
-        goal-setting
+      :progress
+      (let [goal-setting (resolve-ref (get-in result [:card :visualization_settings :progress.goal]))
+            columns (get-in result [:result :data :cols])
+            rows (get-in result [:result :data :rows])]
+        (cond
+          (number? goal-setting)
+          goal-setting
 
-        (string? goal-setting)
-        (if-let [column (->> columns (filter #(= goal-setting (:name %))) first)]
-          (if (isa? (:base_type column) :type/Number)
-            (extract-goal-value-from-column goal-setting columns rows)
+          (string? goal-setting)
+          (if-let [column (->> columns (filter #(= goal-setting (:name %))) first)]
+            (if (isa? (:base_type column) :type/Number)
+              (extract-goal-value-from-column goal-setting columns rows)
+              0)
             0)
-          0)
 
-        :else 0))
+          :else 0))
 
-    nil))
+      nil)))

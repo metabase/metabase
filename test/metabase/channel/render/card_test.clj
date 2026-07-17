@@ -1,12 +1,14 @@
 (ns metabase.channel.render.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.render.card-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -552,3 +554,62 @@
           (is (some? (channel.render/render-pulse-card-for-display
                       (channel.render/defaulted-timezone card) card result
                       {:channel.render/include-title? true}))))))))
+
+(def ^:private goal-ref
+  {:card_id 42 :column "target"})
+
+(def ^:private goal-referenced-cards
+  {"42" {:status "completed"
+         :data   {:cols [{:name "target"}]
+                  :rows [[80]]}}})
+
+(deftest ^:parallel render-resolves-dynamic-goal-line-test
+  (testing "a graph.goal_value card ref is substituted before the settings reach the JS renderer"
+    (let [captured (atom nil)
+          card     {:id                     1
+                    :name                   "bar with dynamic goal"
+                    :display                :bar
+                    :visualization_settings {:graph.dimensions ["x"]
+                                             :graph.metrics    ["y"]
+                                             :graph.show_goal  true
+                                             :graph.goal_value goal-ref}}
+          data     {:cols             [{:name "x" :base_type :type/Text}
+                                       {:name "y" :base_type :type/Integer :source :aggregation}]
+                    :rows             [["a" 1] ["b" 2]]
+                    :referenced_cards goal-referenced-cards}]
+      (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                    (reset! captured viz-settings)
+                                                    {:type :svg :content "<svg></svg>"})]
+        (channel.render/render-pulse-card-for-display nil card {:data data}))
+      (is (= 80 (:graph.goal_value @captured))))))
+
+(deftest render-resolves-dynamic-gauge-segments-test
+  (testing "gauge segment card refs are substituted before the card reaches the JS renderer"
+    (let [captured (atom nil)
+          card     {:id                     1
+                    :name                   "gauge with dynamic segment"
+                    :display                :gauge
+                    :visualization_settings {:gauge.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
+          data     {:cols             [{:name "count" :base_type :type/Integer}]
+                    :rows             [[42]]
+                    :referenced_cards goal-referenced-cards}]
+      (with-redefs [js.svg/gauge (fn [card _data]
+                                   (reset! captured (:visualization_settings card))
+                                   (byte-array 0))]
+        (channel.render/render-pulse-card-for-display nil card {:data data}))
+      (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
+
+(deftest ^:parallel render-failed-dynamic-goal-test
+  (testing "a failed referenced query fails that card's render into the standard error box"
+    (let [card     {:id                     1
+                    :name                   "bar with broken goal"
+                    :display                :bar
+                    :visualization_settings {:graph.goal_value goal-ref}}
+          data     {:cols             [{:name "x" :base_type :type/Text}
+                                       {:name "y" :base_type :type/Integer :source :aggregation}]
+                    :rows             [["a" 1]]
+                    :referenced_cards {"42" {:status "failed" :error "boom"}}}
+          rendered (channel.render/render-pulse-card-for-display nil card {:data data})]
+      ;; render-pulse-card-for-display returns the content hiccup directly
+      (is (str/includes? (hiccup/html rendered)
+                         "An error occurred while displaying this card.")))))

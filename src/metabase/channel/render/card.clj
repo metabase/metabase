@@ -10,6 +10,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
+   [metabase.util.dynamic-goals :as u.dynamic-goals]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -212,10 +213,19 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
-                         (when (is-attached? card)
-                           :attached)
-                         :unknown)]
+    ;; resolve dynamic goals up front so every render path below sees plain numbers in the settings;
+    ;; an unresolvable goal throws into the catch below and renders as the standard error box
+    (let [resolve-goals (fn [m]
+                          (cond-> m
+                            (:visualization_settings m)
+                            (update :visualization_settings
+                                    u.dynamic-goals/resolve-dynamic-goals (:referenced_cards data))))
+          card          (resolve-goals card)
+          dashcard      (some-> dashcard resolve-goals)
+          chart-type    (or (detect-pulse-chart-type card dashcard data)
+                            (when (is-attached? card)
+                              :attached)
+                            :unknown)]
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e

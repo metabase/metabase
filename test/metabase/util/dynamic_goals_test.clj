@@ -40,3 +40,68 @@
              (u.dynamic-goals/update-goal-values viz (fn [goal] [:resolved goal])))))
     (testing "identity fn returns settings unchanged"
       (is (= viz (u.dynamic-goals/update-goal-values viz identity))))))
+
+(def ^:private referenced-cards
+  {"1" {:status "completed"
+        :data   {:cols [{:name "count"} {:name "total"}]
+                 :rows [[3 100]]}}
+   "2" {:status "failed"
+        :error  "boom"}})
+
+(defn- unresolved-reason [goal refs]
+  (try
+    (u.dynamic-goals/resolve-goal-value goal refs)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:reason (ex-data e)))))
+
+(deftest ^:parallel resolve-goal-value-passthrough-test
+  (are [goal] (= goal (u.dynamic-goals/resolve-goal-value goal referenced-cards))
+    5
+    2.5
+    "self-column"
+    nil))
+
+(deftest ^:parallel resolve-goal-value-test
+  (testing "card ref resolves to the referenced column's first-row value"
+    (is (= 100 (u.dynamic-goals/resolve-goal-value {:card_id 1 :column "total"} referenced-cards)))
+    (is (= 3 (u.dynamic-goals/resolve-goal-value {:card_id 1 :column "count"} referenced-cards))))
+  (testing "keyword statuses are accepted too"
+    (is (= 100 (u.dynamic-goals/resolve-goal-value
+                {:card_id 1 :column "total"}
+                (update-in referenced-cards ["1" :status] keyword))))))
+
+(deftest ^:parallel resolve-goal-value-unresolved-test
+  (testing ":query-failed"
+    (are [refs] (= :query-failed (unresolved-reason {:card_id 1 :column "total"} refs))
+      nil
+      (dissoc referenced-cards "1")
+      {"1" (get referenced-cards "2")}))
+  (testing ":column-not-found"
+    (is (= :column-not-found (unresolved-reason {:card_id 1 :column "nope"} referenced-cards))))
+  (testing ":not-a-number"
+    (are [value] (= :not-a-number
+                    (unresolved-reason {:card_id 1 :column "total"}
+                                       (assoc-in referenced-cards ["1" :data :rows] [[3 value]])))
+      nil
+      "a string"
+      ##Inf))
+  (testing ":not-a-number when the referenced result has no rows"
+    (is (= :not-a-number (unresolved-reason {:card_id 1 :column "total"}
+                                            (assoc-in referenced-cards ["1" :data :rows] []))))))
+
+(deftest ^:parallel resolve-dynamic-goals-test
+  (testing "substitutes referenced values across all goal-bearing settings"
+    (is (= {:graph.goal_value 100
+            :progress.goal    3
+            :gauge.segments   [{:min 0 :max 100 :color "#fff"}]
+            :scalar.segments  [{:min 3 :max "self-col"}]}
+           (u.dynamic-goals/resolve-dynamic-goals
+            {:graph.goal_value {:card_id 1 :column "total"}
+             :progress.goal    {:card_id 1 :column "count"}
+             :gauge.segments   [{:min 0 :max {:card_id 1 :column "total"} :color "#fff"}]
+             :scalar.segments  [{:min {:card_id 1 :column "count"} :max "self-col"}]}
+            referenced-cards))))
+  (testing "no-op when settings hold no refs"
+    (let [viz {:graph.goal_value 5 :gauge.segments [{:min 0 :max 10}]}]
+      (is (= viz (u.dynamic-goals/resolve-dynamic-goals viz nil))))))
