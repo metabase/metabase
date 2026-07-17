@@ -83,7 +83,11 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const upperNav = (
     <>
       {hasContentManagement && (
-        <AreaTabGroup label={t`Content management`} showLabel={isNavbarOpened}>
+        <AreaTabGroup
+          label={t`Content management`}
+          showLabel={isNavbarOpened}
+          mb="md"
+        >
           {canAccessDiagnostics && (
             <AreaTab
               label={t`Dependency diagnostics`}
@@ -97,7 +101,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
           {canAccessTools && (
             <AreaTab
               label={t`Erroring questions`}
-              icon="warning_round_filled"
+              icon="warning_round"
               to={Urls.monitorErroringQuestions()}
               isSelected={activeSection === "erroring-questions"}
               showLabel={isNavbarOpened}
@@ -140,7 +144,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
           />
           <AreaTab
             label={t`Model caching log`}
-            icon="database"
+            icon="bolt"
             to={Urls.monitorModelCaching()}
             isSelected={activeSection === "model-caching"}
             showLabel={isNavbarOpened}

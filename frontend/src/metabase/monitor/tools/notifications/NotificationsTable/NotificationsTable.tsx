@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
@@ -248,9 +249,7 @@ export const NotificationsTable = ({
         ariaLabel={t`Notifications`}
         onRowClick={handleRowActivate}
         getRowProps={getRowProps}
-        emptyState={
-          <Flex c="text-disabled" justify="center">{t`No results`}</Flex>
-        }
+        emptyState={<MonitorEmptyState label={t`No alerts`} />}
       />
     </Card>
   );

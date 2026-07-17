@@ -274,7 +274,7 @@ describe("NotificationsAdminPage", () => {
     it("shows an empty state when there are no notifications", async () => {
       setup({ notifications: [] });
       await waitForLoaderToBeRemoved();
-      expect(await screen.findByText("No results")).toBeInTheDocument();
+      expect(await screen.findByText("No alerts")).toBeInTheDocument();
     });
   });
 
