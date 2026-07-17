@@ -10,8 +10,10 @@
  *   waitForSearchResponse is registered before each action whose response was
  *   actually awaited, and the keyboard test's `@search.all` count assertion is
  *   ported as a page-level request listener.
- * - Cypress types into the search bar keystroke-by-keystroke with a debounce
- *   collapsing the requests; fill() gives the same single-request behavior.
+ * - The typeahead dropdown only reacts to real keystrokes, so dropdown
+ *   tests type with click() + pressSequentially(); the debounce collapses
+ *   the keystrokes into a single search request, as in Cypress. Tests that
+ *   submit with Enter can use fill().
  * - "issue 16785" is tagged @skip upstream and stays skipped here.
  */
 import type { FrameLocator, Page } from "@playwright/test";
@@ -31,6 +33,7 @@ import {
   getSearchBar,
   isScrollableHorizontally,
   isSearchRequest,
+  realPressEnter,
   visitFullAppEmbeddingUrl,
   waitForSearchResponse,
 } from "../support/search";
@@ -59,7 +62,8 @@ test.describe("scenarios > search", () => {
     test("should work for admin (metabase#20018)", async ({ page }) => {
       const embed = await visitEmbeddingWithSearch(page, "/");
       const searchBar = getSearchBar(embed);
-      await searchBar.fill("orders count");
+      await searchBar.click();
+      await searchBar.pressSequentially("orders count");
       await searchBar.blur();
 
       await expectSearchResultContent(embed, {
@@ -73,7 +77,9 @@ test.describe("scenarios > search", () => {
       });
 
       const dropdownSearch = waitForSearchResponse(page);
-      await searchBar.fill("product");
+      await searchBar.click();
+      await searchBar.fill("");
+      await searchBar.pressSequentially("product");
       await searchBar.blur();
       await dropdownSearch;
 
@@ -150,7 +156,8 @@ test.describe("scenarios > search", () => {
       });
       const embed = await visitEmbeddingWithSearch(page, "/");
       const search = waitForSearchResponse(page);
-      await getSearchBar(embed).fill("ord");
+      await getSearchBar(embed).click();
+      await getSearchBar(embed).pressSequentially("ord");
       await search;
 
       await expect(
@@ -164,7 +171,7 @@ test.describe("scenarios > search", () => {
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
+      await realPressEnter(page);
 
       await embedFrame(page).waitForURL(
         (url) => url.pathname === `/question/${ORDERS_QUESTION_ID}-orders`,
@@ -194,7 +201,8 @@ test.describe("scenarios > search", () => {
       });
       await mb.signInAsNormalUser();
       const embed = await visitEmbeddingWithSearch(page, "/");
-      await getSearchBar(embed).fill("Test");
+      await getSearchBar(embed).click();
+      await getSearchBar(embed).pressSequentially("Test");
 
       const description = embed.getByTestId("result-description");
 
@@ -219,7 +227,8 @@ test.describe("scenarios > search", () => {
       });
       await mb.signInAsNormalUser();
       const embed = await visitEmbeddingWithSearch(page, "/");
-      await getSearchBar(embed).fill("Test");
+      await getSearchBar(embed).click();
+      await getSearchBar(embed).pressSequentially("Test");
 
       const parentContainer = embed.getByTestId(
         "search-results-floating-container",
@@ -246,7 +255,8 @@ test.describe("scenarios > search", () => {
       );
 
       // Type as soon as possible, before the dashboard has finished loading
-      await getSearchBar(embed).fill("ord");
+      await getSearchBar(embed).click();
+      await getSearchBar(embed).pressSequentially("ord");
 
       // Once the dashboard is visible, the search results should not be dismissed
       await expect(
@@ -282,7 +292,8 @@ test.describe("scenarios > search", () => {
       const embed = await visitEmbeddingWithSearch(page, "/");
 
       // Type as soon as possible, before the dashboard has finished loading
-      await getSearchBar(embed).fill("ord");
+      await getSearchBar(embed).click();
+      await getSearchBar(embed).pressSequentially("ord");
 
       // Once the dashboard is visible, the search results should not be dismissed
       await expect(
@@ -401,7 +412,8 @@ test.describe("issue 28788", () => {
       qs: { top_nav: true, search: true },
     });
     const search = waitForSearchResponse(page);
-    await getSearchBar(embed).fill(questionDetails.name);
+    await getSearchBar(embed).click();
+    await getSearchBar(embed).pressSequentially(questionDetails.name);
     await search;
     // Port of cy.icon("hourglass")
     await expect(embed.locator(".Icon-hourglass")).toHaveCount(0);

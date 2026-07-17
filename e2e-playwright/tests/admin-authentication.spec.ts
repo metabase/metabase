@@ -297,14 +297,13 @@ function scimToggle(page: Page): Locator {
 }
 
 /**
- * The Mantine Switch input is visually hidden, so click the visible
- * "Enabled"/"Disabled" label text (associated with the input via `for`)
- * instead of the input itself.
+ * The Mantine Switch renders an invisible checkbox input stretched over the
+ * control; it intercepts pointer events, so clicking the label text fails
+ * Playwright's actionability check. Click the switch input itself — it's the
+ * actual hit-target.
  */
 async function toggleScim(page: Page) {
-  await scimSetting(page)
-    .getByText(/^(Enabled|Disabled)$/)
-    .click();
+  await scimSetting(page).getByRole("switch").click({ force: true });
 }
 
 function scimEndpointInput(scope: Page | Locator): Locator {

@@ -31,6 +31,19 @@ export function getSearchBar(scope: Page | FrameLocator): Locator {
  * FrameLocator; network waits/routes stay on the page, and the session cookie
  * is same-site so it flows into the iframe.
  */
+const HARNESS_PATH = "/__pw-embed-harness__";
+
+/** Response headers that must not be forwarded when fulfilling a proxied
+ * document: the two frame-blockers, plus encoding headers that no longer
+ * match the (already decompressed) body. */
+const DROPPED_RESPONSE_HEADERS = new Set([
+  "x-frame-options",
+  "content-security-policy",
+  "content-encoding",
+  "content-length",
+  "transfer-encoding",
+]);
+
 export async function visitFullAppEmbeddingUrl(
   page: Page,
   {
@@ -38,28 +51,57 @@ export async function visitFullAppEmbeddingUrl(
     qs,
   }: { url: string; qs: Record<string, string | number | boolean> },
 ): Promise<FrameLocator> {
+  // Chromium's Private Network Access rules block the framed app's requests
+  // to local addresses because the fulfilled document has no IP address
+  // space; granting the permission to the app origin lifts that.
+  await page
+    .context()
+    .grantPermissions(["local-network-access"], { origin: BASE_URL });
+
   // The backend sends X-Frame-Options: DENY and frame-ancestors 'none';
-  // Cypress's proxy strips those headers, so do the same for the iframe's
-  // document requests (bypassCSP covers the rest of the CSP).
+  // Cypress's proxy strips those headers, so strip them from document
+  // requests here. Native fetch instead of route.fetch(): the latter chokes
+  // on the backend's set-cookie headers when the runner is bun.
   await page.route(
-    (routeUrl) => routeUrl.href.startsWith(BASE_URL),
+    (routeUrl) =>
+      routeUrl.href.startsWith(BASE_URL) &&
+      routeUrl.pathname !== HARNESS_PATH,
     async (route) => {
       if (route.request().resourceType() !== "document") {
         return route.fallback();
       }
-      const response = await route.fetch();
-      const headers = { ...response.headers() };
-      delete headers["x-frame-options"];
-      delete headers["content-security-policy"];
-      await route.fulfill({ response, headers });
+      const request = route.request();
+      const response = await fetch(request.url(), {
+        headers: await request.allHeaders(),
+        redirect: "manual",
+      });
+      const headers: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        if (!DROPPED_RESPONSE_HEADERS.has(key)) {
+          headers[key] = value;
+        }
+      });
+      await route.fulfill({
+        status: response.status,
+        headers,
+        body: Buffer.from(await response.arrayBuffer()),
+      });
     },
   );
+
   const params = new URLSearchParams(
     Object.entries(qs).map(([key, value]) => [key, String(value)]),
   );
-  await page.setContent(
-    `<iframe id="embed" name="embed" src="${BASE_URL}${url}?${params.toString()}" style="width:100%;height:100vh;border:0"></iframe>`,
+  // The harness page must live on the app origin: a setContent page is not a
+  // secure context, so Chromium blocks the iframe's local-network requests.
+  const harnessUrl = `${BASE_URL}${HARNESS_PATH}`;
+  await page.route(harnessUrl, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: `<!doctype html><html><body style="margin:0"><iframe id="embed" name="embed" src="${BASE_URL}${url}?${params.toString()}" style="width:100%;height:100vh;border:0"></iframe></body></html>`,
+    }),
   );
+  await page.goto(harnessUrl);
   return page.frameLocator("#embed");
 }
 
@@ -80,6 +122,39 @@ export function isSearchRequest(url: string, method: string): boolean {
     parsed.pathname === "/api/search" &&
     parsed.searchParams.has("q")
   );
+}
+
+/**
+ * Port of cy.realPress("Enter") for selecting a highlighted search result.
+ * page.keyboard.press("Enter") generates keydown AND keypress with
+ * key="Enter" in one atomic dispatch, so the SearchBar's onKeyPress Enter
+ * fallback (goToSearchApp) races the keydown list-navigation handler and a
+ * transient /search navigation fires an extra search request.
+ * cypress-real-events sends rawKeyDown and the char event as separate CDP
+ * commands with delays, so the fallback loses that race upstream. Dispatch
+ * only keydown/keyup (no char → no keypress) to make the list-navigation
+ * path deterministic.
+ */
+export async function realPressEnter(page: Page) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const keyProps = {
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    };
+    await session.send("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      ...keyProps,
+    });
+    await session.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      ...keyProps,
+    });
+  } finally {
+    await session.detach();
+  }
 }
 
 export function waitForSearchResponse(page: Page): Promise<Response> {
