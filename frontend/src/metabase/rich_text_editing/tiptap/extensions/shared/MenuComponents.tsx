@@ -63,14 +63,14 @@ export const MenuItemComponent = ({
           {item.label}
         </Text>
         {item.description && (
-          <Text size="sm" c="text-tertiary" lh="md">
+          <Text size="sm" c="text-disabled" lh="md">
             {item.description}
           </Text>
         )}
       </Stack>
 
       {item.hasSubmenu && (
-        <Icon name="chevronright" size=".75rem" c="text-tertiary" />
+        <Icon name="chevronright" size=".75rem" c="text-disabled" />
       )}
     </Group>
   </UnstyledButton>
@@ -127,7 +127,7 @@ export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => {
         <MetabotIcon size={16} c="inherit" />
         <Stack gap={2}>
           <Text size="md" lh="lg" c="inherit">{t`Ask ${metabotName}`}</Text>
-          <Text size="sm" c="text-tertiary" lh="md">
+          <Text size="sm" c="text-disabled" lh="md">
             {t`It wants to help!`}
           </Text>
         </Stack>

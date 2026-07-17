@@ -6,7 +6,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { User, UserListResult } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -30,7 +30,7 @@ export const setup = ({
   userData: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }) => {
-  setupUserEndpoints(createMockUser(userData) as unknown as UserListResult);
+  setupUserEndpoints(createMockUser(userData));
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),

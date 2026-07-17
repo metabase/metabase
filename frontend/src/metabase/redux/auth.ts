@@ -1,17 +1,20 @@
 import {
   type ThunkDispatch,
-  type UnknownAction,
   createAction,
   createReducer,
 } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
 import { loadLocalization } from "metabase/api/localization";
-import { sessionApi } from "metabase/api/session";
+import {
+  type MfaChallengeResponse,
+  isMfaChallenge,
+  sessionApi,
+} from "metabase/api/session";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
@@ -55,9 +58,24 @@ export const refreshSession = createAsyncThunk(
   },
 );
 
+export const COMPLETE_LOGIN = "metabase/auth/COMPLETE_LOGIN";
+export const completeLogin = createAsyncThunk(
+  COMPLETE_LOGIN,
+  async (_, { dispatch }) => {
+    await dispatch(refreshSession()).unwrap();
+    if (!isSmallScreen()) {
+      dispatch(openNavbar());
+    }
+  },
+);
+
 interface LoginPayload {
   data: LoginData;
   redirectUrl?: string;
+}
+
+export interface LoginResult {
+  mfaChallenge?: MfaChallengeResponse;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -65,13 +83,18 @@ export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await dispatch(
+      const result = await dispatch(
         sessionApi.endpoints.createSession.initiate(data),
       ).unwrap();
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
+
+      if (isMfaChallenge(result)) {
+        const challenge: LoginResult = { mfaChallenge: result };
+        return challenge;
       }
+
+      await dispatch(completeLogin()).unwrap();
+      const success: LoginResult = {};
+      return success;
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -98,10 +121,7 @@ export const loginGoogle = createAsyncThunk(
           remember,
         }),
       ).unwrap();
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
-      }
+      await dispatch(completeLogin()).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -134,9 +154,7 @@ export const logout = createAsyncThunk(
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        // We use old react-router-redux which references old redux, which does not require
-        // action type to be a string - unlike RTK v2+
-        dispatch(push(Urls.login()) as unknown as UnknownAction);
+        dispatch(push(Urls.login()));
         reload(); // clears redux state and browser caches
       }
     } catch (error) {
@@ -169,13 +187,14 @@ export const resetPassword = createAsyncThunk(
   RESET_PASSWORD,
   async (
     { token, password }: ResetPasswordPayload,
-    { dispatch, rejectWithValue },
+    { dispatch, getState, rejectWithValue },
   ) => {
     try {
       await dispatch(
         sessionApi.endpoints.resetPassword.initiate({ token, password }),
       ).unwrap();
       await dispatch(refreshSession()).unwrap();
+      return { sessionCreated: getUser(getState()) != null };
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -219,6 +238,16 @@ export const reducer = createReducer(initialState, (builder) => {
     state.loginPending = true;
   });
   builder.addCase(loginGoogle.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+
+  builder.addCase(completeLogin.pending, (state) => {
+    state.loginPending = true;
+  });
+  builder.addCase(completeLogin.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+  builder.addCase(completeLogin.rejected, (state) => {
     state.loginPending = false;
   });
   builder.addCase(pauseRedirect.toString(), (state) => {

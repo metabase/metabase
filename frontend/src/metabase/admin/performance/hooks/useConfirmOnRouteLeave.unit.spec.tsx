@@ -1,7 +1,7 @@
 import type { History } from "history";
-import { Route } from "react-router";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";

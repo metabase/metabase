@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import {
@@ -42,12 +41,12 @@ import { formatValue } from "metabase/visualizations/lib/formatting";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
-  ColumnSettings,
   ComputedVisualizationSettings,
   Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   NumericScale,
@@ -280,6 +279,7 @@ const getYAxisSplit = (
         seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, string | undefined>,
   );
 
@@ -389,7 +389,7 @@ export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
-  formattingOptions?: OptionsType,
+  formattingOptions?: ColumnSettings,
 ): AxisFormatter => {
   const isNormalized = stackType === "normalized";
 
@@ -500,7 +500,7 @@ function getYAxisExtent(
 interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
-  formattingOptions?: OptionsType;
+  formattingOptions?: ColumnSettings;
   gridSize?: VisualizationGridSize;
   showLabel?: boolean;
 }
@@ -821,6 +821,7 @@ function getNumericXAxisModel(
 export const isNumeric = (
   scale: ComputedVisualizationSettings["graph.x_axis.scale"],
 ): scale is NumericScale => {
+  // Unjustified type cast. FIXME
   return numericScale.includes(scale as NumericScale);
 };
 
@@ -1009,7 +1010,9 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
+  // Unjustified type cast. FIXME
   const customMin = min != null ? (toEChartsAxisValue(min) as number) : null;
+  // Unjustified type cast. FIXME
   const customMax = max != null ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };

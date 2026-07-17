@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { dashboardApi } from "metabase/api";
@@ -19,6 +18,7 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { WithRouterProps } from "metabase/router";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -145,7 +145,7 @@ const AutomaticDashboardAppInner = () => {
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         variant="filled"
-                        color="success"
+                        color="feedback-positive"
                         // The dashboard isn't always loaded when the header first
                         // renders. Without this guard, "Save this" is clickable while
                         // `dashboard` is undefined, which fires a false `x-ray_saved`

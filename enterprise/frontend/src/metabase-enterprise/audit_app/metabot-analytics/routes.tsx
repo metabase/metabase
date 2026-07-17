@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { ConversationDetailPage } from "./components/ConversationDetailPage";
 import { ConversationStatsPage } from "./components/ConversationStatsPage";
@@ -8,7 +8,7 @@ import { MetabotAnalyticsUpsellPage } from "./components/MetabotAnalyticsUpsellP
 export function getAiAnalyticsRoutes() {
   return (
     <Route key="usage-auditing" path="usage-auditing">
-      <IndexRoute component={ConversationStatsPage} />
+      <Route index component={ConversationStatsPage} />
       <Route path="conversations" component={ConversationsPage} />
       <Route path="conversations/:convoId" component={ConversationDetailPage} />
     </Route>

@@ -4,13 +4,13 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import {
   ActionIcon,
   Box,
   Flex,
   Group,
   Icon,
+  Loader,
   Stack,
   Tabs,
   Text,
@@ -83,6 +83,7 @@ function ExecutionResultTabs({
           value={tab}
           onChange={(value) => {
             if (value) {
+              // Unjustified type cast. FIXME
               onTabChange(value as ResultsTab);
             }
           }}
@@ -103,8 +104,8 @@ function getRunQueryShortcut() {
 
 function LoadingState() {
   return (
-    <Flex p="md" className={S.loading}>
-      <LoadingSpinner />
+    <Flex p="md" align="center" justify="center" className={S.loading}>
+      <Loader size="lg" color="core-brand" />
     </Flex>
   );
 }
@@ -131,7 +132,7 @@ function EmptyState() {
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
+    <Stack gap="sm" h="100%" p="md" c="feedback-negative" className={S.error}>
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
         {t`Error`}
@@ -157,7 +158,12 @@ function ResultsFooter({
   if (executionResult.error) {
     return (
       <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
-        <Icon size="1rem" style={{ flexShrink: 0 }} name="warning" c="error" />
+        <Icon
+          size="1rem"
+          style={{ flexShrink: 0 }}
+          name="warning"
+          c="feedback-negative"
+        />
         <Text
           c="text-primary"
           ml="xs"
@@ -177,11 +183,11 @@ function ResultsFooter({
         size="1rem"
         style={{ flexShrink: 0 }}
         name="check_filled"
-        c="success"
+        c="feedback-positive"
       />
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text
-        c="text-tertiary"
+        c="text-disabled"
         ml="xs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
@@ -197,7 +203,7 @@ function DismissButton({ onDismiss }: { onDismiss: () => void }) {
       size="1.5rem"
       radius="xl"
       variant="subtle"
-      c="text-tertiary"
+      c="text-disabled"
       onClick={onDismiss}
       aria-label={t`Dismiss`}
     >
@@ -223,7 +229,7 @@ function ExecutionOutputLogs({
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
         <Text
-          c="text-tertiary"
+          c="text-disabled"
           fz="sm"
           fs="italic"
         >{t`No logs to display`}</Text>

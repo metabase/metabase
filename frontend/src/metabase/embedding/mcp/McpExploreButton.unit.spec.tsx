@@ -80,6 +80,7 @@ function setup() {
       withEditorButton={false}
       withChartTypeSelector={false}
     >
+      {/* Unjustified type cast. FIXME */}
       <McpExploreButton app={app as any} instanceUrl={instanceUrl} />
     </SdkQuestion>,
     {

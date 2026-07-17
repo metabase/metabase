@@ -5,6 +5,7 @@
 export function filterEmptySettings<T extends Record<string, any>>(
   settings: T,
 ): T {
+  // Unjustified type cast. FIXME
   return Object.fromEntries(
     Object.entries(settings).filter(([, value]) => {
       if (Array.isArray(value)) {

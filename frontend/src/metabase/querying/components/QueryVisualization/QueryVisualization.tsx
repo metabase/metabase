@@ -5,12 +5,11 @@ import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
@@ -130,13 +129,13 @@ export function VisualizationRunningState({
   return (
     <Flex
       className={cx(className, QueryBuilderS.Overlay)}
-      c="brand"
+      c="core-brand"
       direction="column"
       justify="center"
       align="center"
     >
-      <LoadingSpinner />
-      <Title c="brand" order={3} mt="lg">
+      <Loader size="lg" />
+      <Title c="core-brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>

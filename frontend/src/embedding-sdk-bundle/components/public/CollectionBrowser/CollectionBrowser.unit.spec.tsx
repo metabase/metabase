@@ -26,6 +26,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
 const BOBBY_TEST_COLLECTION = createMockCollection({

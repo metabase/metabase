@@ -83,7 +83,7 @@ describe("MetricTabs", () => {
 
   function getTabLabels() {
     return Array.from(
-      document.querySelectorAll(".mb-mantine-Button-label"),
+      document.querySelectorAll(".mb-mantine-Tabs-tabLabel"),
     ).map((element) => element.textContent);
   }
 

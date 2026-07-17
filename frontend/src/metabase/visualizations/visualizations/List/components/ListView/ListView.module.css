@@ -88,7 +88,7 @@
 }
 
 .listEntityIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 
   &:hover {
     color: var(--mb-color-core-brand);
@@ -101,7 +101,7 @@
   background: var(--mb-color-background_surface-brand-subtle);
   justify-content: center;
   align-items: center;
-  border: 1px dashed var(--mb-color-saturated-blue);
+  border: 1px dashed var(--mb-color-core-blue-saturated);
   border-radius: 50%;
   overflow: hidden;
   padding: 0.5rem;

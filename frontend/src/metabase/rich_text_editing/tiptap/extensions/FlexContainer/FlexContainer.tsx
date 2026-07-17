@@ -231,6 +231,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
         <NodeViewContent
           className={styles.flexContent}
           style={
+            // Unjustified type cast. FIXME
             {
               "--mb-card-container-col-widths": columnWidths
                 .map(

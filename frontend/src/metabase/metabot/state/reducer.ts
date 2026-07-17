@@ -6,12 +6,11 @@ import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
-  MetabotHistory,
   MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
+import type { MetabotProfileId } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -20,8 +19,10 @@ import {
   appendAgentTurnErrored,
   convoReducer,
   createConversation,
+  findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
+  pushNewToolCall,
   resetReactionState,
 } from "./reducer-utils";
 import type {
@@ -73,8 +74,8 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
       ) => {
         const { id, message, agentId, ...rest } = action.payload;
+        // Unjustified type cast. FIXME
         convo.messages.push({ id, role: "user", ...rest, message } as any);
-        convo.history.push({ id, role: "user", content: message });
       },
     ),
     addAgentMessage: convoReducer(
@@ -86,6 +87,7 @@ export const metabot = createSlice({
       ) => {
         convo.activeToolCalls = [];
         const externalId = convo.pendingMessageExternalId;
+        // Unjustified type cast. FIXME
         convo.messages.push({
           id: createMessageId(),
           role: "agent",
@@ -122,9 +124,24 @@ export const metabot = createSlice({
         convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
       },
     ),
-    setPendingMessageExternalId: convoReducer(
-      (convo, action: ConvoPayloadAction<{ externalId: string }>) => {
-        convo.pendingMessageExternalId = action.payload.externalId;
+    setMessageExternalIds: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          agentMessageId?: string;
+          userMessageId?: string;
+        }>,
+      ) => {
+        const { agentMessageId, userMessageId } = action.payload;
+        if (agentMessageId) {
+          convo.pendingMessageExternalId = agentMessageId;
+        }
+        const lastUserMessage = convo.messages.findLast(
+          (m) => m.role === "user",
+        );
+        if (userMessageId && lastUserMessage) {
+          lastUserMessage.externalId = userMessageId;
+        }
       },
     ),
     toolCallStart: convoReducer(
@@ -137,47 +154,63 @@ export const metabot = createSlice({
         }>,
       ) => {
         const { toolCallId, toolName, args } = action.payload;
-        convo.messages.push({
-          id: toolCallId,
-          role: "agent",
-          type: "tool_call",
-          name: toolName,
-          args,
-          status: "started",
-        });
-        convo.activeToolCalls.push({
-          id: toolCallId,
-          name: toolName,
-          message: TOOL_CALL_MESSAGES[toolName],
-          status: "started",
-        });
+        // idempotent: both tool-input-start and tool-input-available are
+        // able to signal the start of a tool call
+        if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
+          return;
+        }
+        pushNewToolCall(convo, { toolCallId, toolName, args });
+      },
+    ),
+    toolCallArgs: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          toolName: string;
+          args: string;
+        }>,
+      ) => {
+        const { toolCallId, toolName, args } = action.payload;
+        const existingMsg = findLastToolCallMessage(convo, toolCallId);
+        if (existingMsg) {
+          // if toolCallStart was called (tool-input-start event is optional)
+          // update the existing tool call record to include the args received
+          existingMsg.args = args;
+        } else {
+          pushNewToolCall(convo, { toolCallId, toolName, args });
+        }
       },
     ),
     toolCallEnd: convoReducer(
       (
         convo,
-        action: ConvoPayloadAction<{ toolCallId: string; result?: any }>,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          result?: string;
+          isError?: boolean;
+        }>,
       ) => {
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
 
         // Update the message in messages array with result for debug history
-        const message = convo.messages.findLast(
-          (msg) =>
-            msg.type === "tool_call" && msg.id === action.payload.toolCallId,
+        const message = findLastToolCallMessage(
+          convo,
+          action.payload.toolCallId,
         );
-        if (message?.type === "tool_call") {
+        if (message) {
           message.status = "ended";
           message.result = action.payload.result;
+          if (action.payload.isError) {
+            message.is_error = true;
+          }
         }
       },
     ),
-    // NOTE: this reducer fn should be made smarter if/when we want to have
-    // metabot's `state` object be able to remove / forget values. currently
-    // we do not rewind the state to the point in time of the original prompt
-    // so if / when this becomes expected, we'll need to do some extra work here
-    // NOTE: this doesn't work in non-streaming contexts right now
+    // only the last turn is rewindable (retry), so a single pre-turn snapshot
+    // is enough to roll `state` back; the server reconstructs it independently
     rewindStateToMessageId: convoReducer(
       (convo, action: ConvoPayloadAction<{ messageId: string }>) => {
         convo.isProcessing = false;
@@ -188,9 +221,8 @@ export const metabot = createSlice({
           convo.messages = convo.messages.slice(0, messageIndex);
         }
 
-        const historyIndex = convo.history.findLastIndex((h) => id === h.id);
-        if (historyIndex > -1) {
-          convo.history = convo.history.slice(0, historyIndex);
+        if (convo.stateBeforeTurn) {
+          convo.state = convo.stateBeforeTurn;
         }
       },
     ),
@@ -291,7 +323,6 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<{
         messages: MetabotChatMessage[];
-        history: MetabotHistory;
         state: any;
         suggestedTransforms: MetabotSuggestedTransform[];
         activeToolCalls: MetabotToolCall[];
@@ -305,7 +336,6 @@ export const metabot = createSlice({
 
       const {
         messages,
-        history,
         state: snapshotState,
         suggestedTransforms,
         activeToolCalls,
@@ -313,12 +343,12 @@ export const metabot = createSlice({
       } = action.payload;
 
       convo.messages = castDraft(messages ?? []);
-      convo.history = history ?? [];
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
       convo.conversationId = conversationId ?? uuid();
       convo.isProcessing = false;
 
+      // Unjustified type cast. FIXME
       state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
     },
   },
@@ -330,13 +360,16 @@ export const metabot = createSlice({
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
+          convo.stateBeforeTurn = convo.state;
+          convo.pendingMessageExternalId = action.meta.arg.assistant_message_id;
         }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {
-          convo.state = { ...(action.payload?.state ?? {}) };
-          convo.history = action.payload?.history?.slice() ?? [];
+          if (action.payload?.state) {
+            convo.state = { ...action.payload.state };
+          }
           convo.activeToolCalls = [];
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
@@ -348,20 +381,20 @@ export const metabot = createSlice({
         if (convo) {
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {
-            convo.state = { ...(action.payload?.state ?? {}) };
-            convo.history = action.payload?.history?.slice() ?? [];
+            if (action.payload?.state) {
+              convo.state = { ...action.payload.state };
+            }
+            // an abort means the request (almost certainly) reached the server,
+            // so the turn's rows exist under the client-minted id even when the
+            // start event never arrived — stamp it so retry can target the prompt
+            const lastUserMessage = convo.messages.findLast(
+              (m) => m.role === "user",
+            );
+            if (lastUserMessage && !lastUserMessage.externalId) {
+              lastUserMessage.externalId = action.meta.arg.user_message_id;
+            }
             appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
-              // update history w/ synthetic tool_result entries for each unresolved tool call
-              // as having a tool_call without a matching tool_result is invalid
-              const syntheticToolResults =
-                action.payload.unresolved_tool_calls.map((tc) => ({
-                  role: "tool" as const,
-                  content: "Tool execution interrupted by user",
-                  tool_call_id: tc.toolCallId,
-                }));
-              convo.history.push(...syntheticToolResults);
-
               // update message state so that unresolved tools are marked as ended
               convo.messages.forEach((msg) => {
                 if (msg.type === "tool_call" && msg.status === "started") {

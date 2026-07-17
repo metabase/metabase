@@ -16,8 +16,8 @@ import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
@@ -139,19 +139,15 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           )}`,
         );
       }
-      const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column!(
+      const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
         columns[columnIndex],
       );
       return showTotals;
     }
     useEffect(() => {
       // This is needed in case the cell counts didn't change, but the data or cell sizes did
-      (
-        leftHeaderRef.current as Collection | null
-      )?.recomputeCellSizesAndPositions?.();
-      (
-        topHeaderRef.current as Collection | null
-      )?.recomputeCellSizesAndPositions?.();
+      leftHeaderRef.current?.recomputeCellSizesAndPositions?.();
+      topHeaderRef.current?.recomputeCellSizesAndPositions?.();
       gridRef.current?.recomputeGridSize?.();
     }, [
       data,
@@ -254,6 +250,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       let newColumnWidths: Partial<HeaderWidthType> = {};
 
       if (columnType === "leftHeader") {
+        // Unjustified type cast. FIXME
         const newLeftHeaderColumnWidths = [...(leftHeaderWidths as number[])];
         newLeftHeaderColumnWidths[columnIndex] = Math.max(
           newWidth,
@@ -477,6 +474,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       )
                     }
                     onScroll={({ scrollLeft }) =>
+                      // Unjustified type cast. FIXME
                       onScroll({ scrollLeft } as OnScrollParams)
                     }
                     scrollLeft={scrollLeft}
@@ -515,6 +513,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           height={bodyHeight - scrollBarOffsetSize()}
                           scrollTop={scrollTop}
                           onScroll={({ scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({ scrollTop } as OnScrollParams)
                           }
                         />
@@ -567,6 +566,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                             );
                           }}
                           onScroll={({ scrollLeft, scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({
                               scrollLeft,
                               scrollTop,

@@ -83,7 +83,7 @@
 (def legal-top-level-paths
   "Known top-level paths for directory with serialization output.
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
-  #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "curated_search_entries" "snippets" "transforms"})
+  #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
 
 (defn- path-interner
   "Returns a function that interns `:serdes/meta` path vectors.

@@ -276,7 +276,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers
-    (mt/with-premium-features #{:workspaces :config-text-file}
+    (mt/with-premium-features #{:workspaces :config-text-file :transforms-basic :hosting}
       ;; The default test-time `db-connection-timeout-ms` is 5s. BigQuery's
       ;; first call through a freshly-built impersonated client (cold gRPC
       ;; handshake + impersonation token mint + `listDatasets`) regularly
@@ -652,7 +652,14 @@
                                               (str "no app-db Table row should point at a table in the isolation DB " isolation-schema
                                                    " (leaked: " (pr-str (map :name leaked)) ")")))
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
-                                            "no app-db Table row points at the isolation schema")))))))))
+                                            "no app-db Table row points at the isolation schema"))))
+                                  (testing "DELETE /api/transform/:id/table succeeds for the workspace user"
+                                    (let [outcome (try (mt/user-http-request :crowberto :delete 204
+                                                                             (format "transform/%d/table" (:id transform)))
+                                                       ::ok
+                                                       (catch Throwable t [::failed (ex-message t)]))]
+                                      (is (= ::ok outcome)
+                                          (str "deleting the transform output table failed; outcome=" (pr-str outcome))))))))))
                         (finally
                           ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The

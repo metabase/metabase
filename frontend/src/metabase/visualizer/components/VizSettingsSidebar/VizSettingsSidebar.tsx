@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
@@ -49,6 +49,7 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         error: null,
       };
     } catch (error) {
+      // Unjustified type cast. FIXME
       return { widgets: [], error: error as Error };
     }
   }, [transformedSeries, handleChangeSettings]);

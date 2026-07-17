@@ -1,6 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -11,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
+import { Link, push } from "metabase/router";
 import {
   Anchor,
   Box,
@@ -147,7 +146,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 <tr>
                   <td colSpan={2}>
                     <Flex
-                      c="text-tertiary"
+                      c="text-disabled"
                       justify="center"
                     >{t`No tasks`}</Flex>
                   </td>

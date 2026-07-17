@@ -14,6 +14,7 @@
    ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
    ;; `check-isolation-permissions`, `destroy-workspace-isolation!`).
    [metabase.driver.bigquery-cloud-sdk.workspaces]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
@@ -26,7 +27,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some empty? not-empty]]
@@ -46,6 +47,7 @@
     BigQuery$TableOption
     BigQueryException
     BigQueryOptions
+    Clustering
     Dataset
     DatasetId
     Field
@@ -56,6 +58,7 @@
     JobInfo
     QueryJobConfiguration
     Schema
+    StandardTableDefinition
     Table
     TableDefinition$Type
     TableId
@@ -782,12 +785,20 @@
      ;; realizing more rows as per the maximum result size
      (.setMaxResults *page-size*))))
 
+(defn- query-results-page
+  "Fetch one page of query-job results from `job` with the given `options`. A thin wrapper over `.getQueryResults`
+  that exists as a redefable seam so tests can simulate BigQuery returning nil for a later page."
+  ^TableResult [^Job job options]
+  (.getQueryResults job options))
+
 (defn- adaptive-query-next-page
   "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
   but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
   be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
   targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
-  large parsed page in memory. Returns nil once the result set is exhausted."
+  large parsed page in memory. Returns nil once the result set is exhausted; throws if BigQuery reports another
+  page is available (non-blank page token) but fails to return it, so we surface the error instead of silently
+  truncating the result set."
   [^Job job]
   (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
@@ -801,11 +812,12 @@
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
             (log/trace "BigQuery: Fetching new page")
             (*page-callback*)
-            (.getQueryResults job
-                              (u/varargs BigQuery$QueryResultsOption
-                                [(BigQuery$QueryResultsOption/pageSize
-                                  (next-page-size budget bytes rows Long/MAX_VALUE))
-                                 (BigQuery$QueryResultsOption/pageToken token)]))))))))
+            (or (query-results-page job
+                                    (u/varargs BigQuery$QueryResultsOption
+                                      [(BigQuery$QueryResultsOption/pageSize
+                                        (next-page-size budget bytes rows Long/MAX_VALUE))
+                                       (BigQuery$QueryResultsOption/pageToken token)]))
+                (throw (ex-info "Cannot get next page from BigQuery" {})))))))))
 
 (defn- reducible-bigquery-results
   "Reducible over the rows of `page` and its successors. `next-page` is the adaptive page-advance: given the
@@ -982,6 +994,9 @@
                               :expressions/integer              true
                               :expressions/text                 true
                               :identifiers-with-spaces          true
+                              ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
+                              :index/fetch                      true
+                              :index/inline-create              true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :nested-fields                    true
@@ -1094,6 +1109,56 @@
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; BigQuery has no secondary indexes. Clustering is the index-equivalent, inlined as `CLUSTER BY` into both creation
+;; seams (the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`). It's unnamed, so reconcile matches
+;; it by kind + columns.
+
+(defmethod driver/supported-index-methods :bigquery-cloud-sdk
+  [_driver _database]
+  {:clustering {:lifecycle    :inline
+                :display-name (deferred-tru "Clustering")
+                :fields       [driver.common/index-columns-field]}})
+
+(defn- clustering-clause
+  "Inline `CLUSTER BY col, ...` clause for a table's `indexes`, or nil when there's no clustering."
+  [indexes]
+  (when-let [{:keys [columns]} (some #(when (= :clustering (:kind %)) %) indexes)]
+    (let [cols (str/join ", " (map #(sql.u/quote-name :bigquery-cloud-sdk :field (:name %)) columns))]
+      (format "CLUSTER BY %s" cols))))
+
+(defn- table-clustering-columns
+  "Clustering columns of the BigQuery `table` in `schema`, in clustering order, or nil when the table is absent, isn't a
+  standard table (view/external), or isn't clustered. Reads table metadata directly, no SQL."
+  [database schema table]
+  (when-not (or (str/blank? schema) (str/blank? table))
+    (let [details    (driver.conn/effective-details database)
+          client     (database-details->client details)
+          project-id (bigquery.common/get-project-id details)]
+      (when-let [^Table bq-table (get-table* client project-id schema table)]
+        (let [definition (.getDefinition bq-table)]
+          (when (instance? StandardTableDefinition definition)
+            (when-let [^Clustering clustering (.getClustering ^StandardTableDefinition definition)]
+              (not-empty (vec (.getFields clustering))))))))))
+
+(defmethod driver/fetch-table-indexes :bigquery-cloud-sdk
+  [_driver database schema table]
+  (if-let [cluster-cols (table-clustering-columns database schema table)]
+    [{:name              nil
+      :kind              :clustering
+      :access-method     nil
+      :is-unique         false
+      :is-primary        false
+      :is-valid          true
+      :key-columns       cluster-cols
+      :include-columns   []
+      :partial-predicate nil
+      :definition        (format "CLUSTER BY %s" (str/join ", " cluster-cols))}]
+    []))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Transforms Support                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -1104,10 +1169,13 @@
       (qn (name table)))))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
-  [_driver {:keys [query output-table]}]
+  [_driver {:keys [query output-table indexes]}]
   (let [{sql-query :query sql-params :params} query
-        table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query)
+        table-str (get-table-str output-table)
+        cluster   (clustering-clause indexes)]
+    [(if cluster
+       (format "CREATE OR REPLACE TABLE %s %s AS %s" table-str cluster sql-query)
+       (format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query))
      sql-params]))
 
 (defmethod driver/compile-insert :bigquery-cloud-sdk
@@ -1123,8 +1191,10 @@
     [(str "DROP TABLE IF EXISTS " table-str)]))
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
-  [driver database-id table-name column-definitions & {:keys [primary-key]}]
-  (let [sql       (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+  [driver database-id table-name column-definitions & {:keys [primary-key indexes]}]
+  (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        cluster   (clustering-clause indexes)
+        sql       (if cluster (str base " " cluster) base)
         database  (t2/select-one :model/Database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))

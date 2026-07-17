@@ -1,9 +1,9 @@
 import type { Location } from "history";
 import { useEffect, useMemo, useRef } from "react";
-import { replace } from "react-router-redux";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {

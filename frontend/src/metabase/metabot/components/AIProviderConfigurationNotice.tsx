@@ -23,7 +23,7 @@ export function AIProviderConfigurationNotice({
 
   return (
     <Text
-      c="text-tertiary"
+      c="text-disabled"
       maw={!inline ? "16rem" : undefined}
       ta={!inline ? "center" : undefined}
       lh="lg"
@@ -86,7 +86,7 @@ export const getMetabotNotConfiguredToastProps = ({
   dark: false,
   icon: "metabot" as const,
   iconColor: "core-brand" as const,
-  toastColor: "error",
+  toastColor: "feedback-negative" as const,
   dismissIconColor: "text-secondary" as const,
   timeout: 0,
   style: {

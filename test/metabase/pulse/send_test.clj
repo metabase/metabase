@@ -9,6 +9,8 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -692,6 +694,24 @@
     (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
+
+(deftest send-pulse-with-no-self-service-creator-test
+  (testing "A dashboard subscription still sends successfully when its creator has no data permissions on the underlying table (#18009)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card      {card-id :id} {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                        (lib/aggregate (lib/count)))}
+                     :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+        (mt/with-no-data-perms-for-all-users!
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card       card-id
+                                 :pulse      {:dashboard_id dash-id :creator_id (mt/user->id :rasta)}
+                                 :pulse-card {:dashboard_card_id dc-id}}]
+            (mt/with-fake-inbox
+              (let [results (pulse.test-util/with-captured-channel-send-messages!
+                              (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                (is (seq (:channel/email results)))))))))))
 
 (deftest send-skip-alert-test
   (testing "alerts are skipped (#63189)"

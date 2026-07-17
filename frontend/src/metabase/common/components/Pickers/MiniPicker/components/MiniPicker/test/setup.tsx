@@ -25,6 +25,7 @@ import {
 
 import { MiniPicker, type MiniPickerProps } from "..";
 
+// Unjustified type cast. FIXME
 const collectionItemModels = [
   "dataset",
   "metric",

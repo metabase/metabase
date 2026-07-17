@@ -72,7 +72,7 @@ function buildSectionTree(
     icon: getCollectionIcon({
       type: sectionType,
       is_library_root: true,
-    } as Collection),
+    }),
     children,
     nonNavigable: true,
     type: sectionType,
@@ -82,7 +82,7 @@ function buildSectionTree(
     can_write: false,
     can_restore: false,
     can_delete: false,
-  } as CollectionTreeItem;
+  };
 }
 
 export function NavbarLibrarySection({

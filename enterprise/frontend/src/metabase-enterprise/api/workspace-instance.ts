@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import { invalidateTags, tag } from "./tags";
 
 export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,7 +25,7 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/workspace-instance/current",
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("workspace"), listTag("workspace")]),
+        invalidateTags(error, [tag("workspace"), tag("table-remapping")]),
     }),
     listTableRemappings: builder.query<TableRemapping[], void>({
       query: () => ({

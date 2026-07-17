@@ -40,7 +40,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
     echo "CURRENT_VERSION: ${CURRENT_VERSION}"
 
     matches=0
-    for l in backport double-backport triple-backport; do
+    for l in backport single-backport double-backport triple-backport; do
         if [[ ",$labels," == *",$l,"* ]]; then
             # N.B. not ((matches++)) — that exits 1 when matches=0 under set -e
             matches=$((matches + 1))
@@ -51,6 +51,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
     version=$((CURRENT_VERSION + 1))
     # Backport labels shift the target version back so migrations land on the correct release branch.
     [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
+    [[ ",$labels," == *",single-backport,"* ]] && version=$((CURRENT_VERSION))
     [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
     [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
 
@@ -104,7 +105,7 @@ if [[ "$errors" -gt 0 ]]; then
     fi
     echo "" >&2
     echo "If this PR will be backported, ensure the correct backport label is applied" >&2
-    echo "(backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
+    echo "(backport, single-backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
     echo "plan to create the backport PRs manually. Base the label on the oldest" >&2
     echo "release you're targeting, and simply close any unwanted PRs." >&2
     echo "" >&2

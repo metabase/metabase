@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -11,6 +10,7 @@ import {
   createMockDashboardState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { IconName } from "metabase-types/api";
 import {
   createMockDashboard,

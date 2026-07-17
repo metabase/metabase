@@ -81,20 +81,7 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.id,
         cell: ({ row }) => (
           <Flex justify="center">
-            <Badge
-              variant="default"
-              bg="background_page-secondary"
-              c="text-primary"
-              tt="none"
-              bd="1px solid var(--mb-color-border-neutral)"
-              h="auto"
-              px="sm"
-              py="xs"
-              fz="md"
-              lh="xs"
-              fw={400}
-              miw={29}
-            >
+            <Badge variant="outline" size="sm" miw={29}>
               {row.original.id}
             </Badge>
           </Flex>
@@ -251,7 +238,7 @@ export const NotificationsTable = ({
         onRowClick={handleRowClick}
         getRowProps={getRowProps}
         emptyState={
-          <Flex c="text-tertiary" justify="center">{t`No results`}</Flex>
+          <Flex c="text-disabled" justify="center">{t`No results`}</Flex>
         }
       />
     </Card>

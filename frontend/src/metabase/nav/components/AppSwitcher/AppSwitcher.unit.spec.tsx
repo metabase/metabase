@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { Route } from "react-router";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -9,6 +8,7 @@ import {
   createMockAdminAppState,
   createMockAdminState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
@@ -22,6 +22,7 @@ import { AppSwitcher } from "./AppSwitcher";
 const USER = createMockUser();
 
 const REGULAR_ITEMS = [
+  // Unjustified type cast. FIXME
   USER.first_name as string,
   USER.email,
   "Help",
@@ -99,6 +100,7 @@ describe("ProfileLink", () => {
 
     // Should always render a profile link
     expect(
+      // Unjustified type cast. FIXME
       await screen.findByText(USER.first_name as string),
     ).toBeInTheDocument();
     expect(await screen.findByText(USER.email)).toBeInTheDocument();

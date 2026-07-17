@@ -32,9 +32,12 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -42,7 +45,10 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -597,6 +603,118 @@
                   "  ) AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
+(deftest ^:parallel nested-field-pivot-compile-test
+  (mt/test-driver :postgres
+    (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
+      (let [mp       (lib.tu/mock-metadata-provider
+                      {:database (assoc meta/database :engine :postgres :id 1)
+                       :tables   [(merge (meta/table-metadata :venues)
+                                         {:id 1 :db-id 1 :name "json_table" :schema nil})]
+                       :fields   [(merge (meta/field-metadata :venues :id)
+                                         {:id            1
+                                          :table-id      1
+                                          :name          "category"
+                                          :nfc-path      ["payload" "category"]
+                                          :base-type     :type/Text
+                                          :effective-type :type/Text
+                                          :database-type "text"})
+                                  (merge (meta/field-metadata :venues :name)
+                                         {:id 2 :table-id 1 :name "region"})]})
+            json-col (lib.metadata/field mp 1)
+            reg-col  (lib.metadata/field mp 2)
+            base     (-> (lib/query mp (lib.metadata/table mp 1))
+                         (lib/breakout json-col)
+                         (lib/breakout reg-col)
+                         (lib/aggregate (lib/count)))
+            bks      (lib/breakouts base)
+            pivot-q  (lib.pivot/with-pivot base
+                       {:rows               [(lib.options/uuid (first bks))]
+                        :columns            [(lib.options/uuid (second bks))]
+                        :show-row-totals    true
+                        :show-column-totals true})]
+        (qp.store/with-metadata-provider mp
+          (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
+            (is (= ["SELECT"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
+                    "  \"__mb_source\".\"region\" AS \"region\","
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) AS \"pivot-grouping\","
+                    "  COUNT(*) AS \"count\""
+                    "FROM"
+                    "  ("
+                    "    SELECT"
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "      \"json_table\".\"region\" AS \"region\","
+                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "    FROM"
+                    "      \"json_table\""
+                    "  ) AS \"__mb_source\""
+                    "GROUP BY"
+                    "  GROUPING SETS ("
+                    "    ("
+                    "      \"__mb_source\".\"__mb_pivot_nfc\","
+                    "      \"__mb_source\".\"region\""
+                    "    ),"
+                    "    (\"__mb_source\".\"region\"),"
+                    "    (\"__mb_source\".\"__mb_pivot_nfc\"),"
+                    "    ()"
+                    "  )"
+                    "ORDER BY"
+                    "  GROUPING("
+                    "    \"__mb_source\".\"region\","
+                    "    \"__mb_source\".\"__mb_pivot_nfc\""
+                    "  ) ASC,"
+                    "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
+                    "  \"__mb_source\".\"region\" ASC"]
+                   (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
+
+(deftest nested-field-pivot-e2e-test
+  (mt/test-driver :postgres
+    (mt/dataset json
+      (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
+        (let [mp        (mt/metadata-provider)
+              json-tbl  (lib.metadata/table mp (mt/id :json))
+              q-base    (lib/query mp json-tbl)
+              cols      (lib/breakoutable-columns q-base)
+              doop-col  (m/find-first #(= (:name %) "json_bit → doop") cols)
+              bloop-col (m/find-first #(= (:name %) "bloop") cols)]
+          (assert (and doop-col bloop-col)
+                  "expected json_bit → doop and bloop columns from json dataset")
+          (let [pivot-q (-> q-base
+                            (lib/breakout doop-col)
+                            (lib/breakout bloop-col)
+                            (lib/aggregate (lib/count))
+                            ;; Use the legacy positional pivot keys — same shape as what dashboards and the
+                            ;; REST API send. `apply-legacy-pivot-keys` in the native path will convert these
+                            ;; to a `:pivot` clause; the multi-query path reads them directly.
+                            (assoc :pivot-rows [0] :pivot-cols [1]))]
+            (qp.pivot.test-util/with-pivot-parity-check
+              (let [results (qp.pivot/run-pivot-query pivot-q)
+                    rows    (mt/rows results)
+                    pgs     (mapv #(nth % 2) rows)]
+                (is (= #{;; pivot-grouping = 0  base detail rows
+                         ["boop" "doopdoopy" 0 1]
+                         ["boop" "moopywoop" 0 1]
+                         ["boop" "woopywoop" 0 1]
+                         ["boop" "zoopyzoop" 0 1]
+                         [nil    "doopyboop" 0 1]
+                         ;; pivot-grouping = 1  per-bloop subtotals (doop dropped)
+                         [nil    "doopdoopy" 1 1]
+                         [nil    "doopyboop" 1 1]
+                         [nil    "moopywoop" 1 1]
+                         [nil    "woopywoop" 1 1]
+                         [nil    "zoopyzoop" 1 1]
+                         ;; pivot-grouping = 2  per-doop subtotals (bloop dropped)
+                         ["boop" nil 2 4]
+                         [nil    nil 2 1]
+                         ;; pivot-grouping = 3  grand total
+                         [nil    nil 3 5]}
+                       (set rows)))
+                (is (= (sort pgs) pgs)
+                    "rows should appear in non-decreasing pivot-grouping order")))))))))
+
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
@@ -1008,6 +1126,37 @@
                                    :limit        10}})
                       :data
                       (select-keys [:rows :native_form]))))))))))
+
+(deftest enum-field-filter-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [mp            (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
+             table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")
+             type-field    (lib.metadata/field mp type-field-id)]
+         (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (lib/query mp (lib.metadata/table mp table-id))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :value  ["toucan"]}]))))))
+         (testing "a native field filter over a postgres enum column filters correctly (#63537)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (-> (lib/native-query mp "SELECT * FROM birds WHERE {{type}}")
+                               (lib/with-template-tags
+                                 {"type" {:name         "type"
+                                          :display-name "Type"
+                                          :type         :dimension
+                                          :dimension    (lib/ref type-field)
+                                          :widget-type  :string/=}}))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension [:template-tag "type"]]
+                                         :value  ["toucan"]}])))))))))))
 
 (deftest enums-test-3
   (mt/test-driver :postgres

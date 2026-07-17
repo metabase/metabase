@@ -13,11 +13,13 @@ type AdhocQueryResult = {
 
 export function useAdhocBreakoutQuery(query: Query | null): AdhocQueryResult {
   const jsQuery = useMemo(
+    // Unjustified type cast. FIXME
     () => (query ? (Lib.toJsQuery(query) as DatasetQuery) : null),
     [query],
   );
 
   const { data, isFetching } = useGetAdhocQueryQuery(
+    // Unjustified type cast. FIXME
     jsQuery ?? ({} as DatasetQuery),
     { skip: !jsQuery },
   );

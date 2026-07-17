@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionPermissionsGraphEndpoint,
@@ -10,6 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   Collection,
   CollectionPermissionsGraph,

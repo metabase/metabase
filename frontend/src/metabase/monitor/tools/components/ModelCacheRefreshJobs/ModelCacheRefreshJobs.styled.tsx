@@ -16,7 +16,7 @@ export const IconButtonContainer = styled.button`
   cursor: pointer;
 
   .Icon {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   &:hover {

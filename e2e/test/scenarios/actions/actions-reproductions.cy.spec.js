@@ -258,7 +258,7 @@ describe("issue 51020", () => {
       cy.findByText("Update a dashboard filter").click();
       cy.findByTestId("click-target-column").click();
     });
-    H.popover().findByText(columnName).click();
+    H.selectDropdown().findByText(columnName).click();
     cy.button("Done").click();
 
     cy.findByLabelText("Add action").click();
@@ -266,9 +266,9 @@ describe("issue 51020", () => {
     H.modal().within(() => {
       cy.findByText(modelName).click();
       cy.findByText("Update").click();
-      cy.findAllByText("Ask the user").eq(0).click();
+      cy.findAllByDisplayValue("Ask the user").eq(0).click();
     });
-    H.popover().findByText("ID").click();
+    H.selectDropdown().findByText("ID").click();
     cy.button("Done").click();
 
     H.saveDashboard();

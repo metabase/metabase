@@ -1,6 +1,5 @@
 import Image from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
-import type { JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
@@ -59,6 +58,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
       dispatch,
       publicApi.endpoints.getPublicDocument,
     );
+    // Unjustified type cast. FIXME
     return doc as Document;
   }, [uuid, dispatch]);
 
@@ -102,7 +102,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   const editor = useEditor(
     {
       extensions,
-      content: (document?.document as JSONContent) || "",
+      content: document?.document || "",
       editable: false,
       immediatelyRender: false,
     },
@@ -111,7 +111,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
 
   useEffect(() => {
     if (editor && document?.document) {
-      editor.commands.setContent(document.document as JSONContent);
+      editor.commands.setContent(document.document);
     }
   }, [editor, document?.document]);
 

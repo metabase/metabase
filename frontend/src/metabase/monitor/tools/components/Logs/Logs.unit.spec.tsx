@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
-import { Route } from "react-router";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockLocation,
   createMockRoutingState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
@@ -74,7 +74,7 @@ describe("Logs", () => {
         if (callCount === 1) {
           return new Promise<unknown>((res) => {
             resolveFirst = res;
-          }) as Promise<any>;
+          });
         }
         return [log];
       });

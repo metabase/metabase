@@ -524,3 +524,12 @@
             "Should include users wildcard")
         (is (some #(= ["transactions" "total"] %) (normalize-fields result))
             "Should include transactions.total")))))
+
+;;; ------------------------------------------------ Parse errors --------------------------------------------------
+
+(deftest parse-error-test
+  (testing "unparseable SQL surfaces as a transport-agnostic parse error"
+    (let [e (try
+              (sql-parsing/referenced-tables "postgres" "SELECT !!!")
+              (catch Exception e e))]
+      (is (sql-parsing/parse-error? e)))))

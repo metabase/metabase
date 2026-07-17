@@ -176,16 +176,24 @@
       (interface/simple-query?-impl parser sql-string))))
 
 (mu/defn add-into-clause :- :string
-  "Add an INTO clause to a SELECT statement.
+  "Rewrite a SELECT into a SQL Server `SELECT ... INTO` statement, wrapping each base table in a
+  self-UNION subquery so the created table doesn't inherit a source column's IDENTITY property.
 
   Transforms: 'SELECT * FROM products'
-  Into:       'SELECT * INTO \"TABLE\" FROM products'
+  Into:       'SELECT * INTO \"TABLE\" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
 
-  Used by SQL Server compile-transform which requires SELECT INTO syntax
-  instead of CREATE TABLE AS SELECT."
+  Used by SQL Server compile-transform, which requires SELECT INTO instead of CREATE TABLE AS SELECT;
+  the self-UNION wrap prevents a later incremental append from hitting SQL Server error 8101."
   [driver :- :keyword
    sql :- :string
    table-name :- :string]
+  (when-not (= driver :sqlserver)
+    (throw (ex-info (str "add-into-clause is only supported for :sqlserver. It wraps each base table in a "
+                         "self-UNION subquery to strip inherited IDENTITY columns. Before enabling another "
+                         "driver, verify this does not cause a performance regression: some engines (e.g. "
+                         "MySQL) may fully materialize the inner subquery instead of pushing the outer WHERE "
+                         "down into it, so a filtered query over a large table would scan the whole table.")
+                    {:driver driver})))
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))

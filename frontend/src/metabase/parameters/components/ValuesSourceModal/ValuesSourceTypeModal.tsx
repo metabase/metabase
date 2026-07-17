@@ -10,14 +10,12 @@ import {
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { connect, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Button, Flex, Icon, Radio, Stack } from "metabase/ui";
+import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -165,7 +163,8 @@ const serializeSourceType = (sourceType: ValuesSourceType): string =>
 const deserializeSourceType = (value: string): ValuesSourceType =>
   value === CONNECTED_FIELDS_SENTINEL_VALUE
     ? null
-    : (value as ValuesSourceType);
+    : // Unjustified type cast. FIXME
+      (value as ValuesSourceType);
 
 const SourceTypeOptions = ({
   parameter,
@@ -263,7 +262,12 @@ const FieldSourceModal = ({
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -413,7 +417,12 @@ const CardSourceModal = ({
         ) : isError ? (
           <ModalEmptyState>{t`An error occurred in your query`}</ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -431,6 +440,8 @@ interface ColumnSelectProps {
   onChange: (column: Lib.ColumnMetadata | undefined) => void;
 }
 
+const NONE_VALUE = "none";
+
 const ColumnSelect = ({
   query,
   columns,
@@ -441,35 +452,36 @@ const ColumnSelect = ({
   withNoneOption,
   onChange,
 }: ColumnSelectProps) => {
-  const handleChange = useCallback(
-    (event: SelectChangeEvent<Lib.ColumnMetadata | undefined>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
+  const value = (() => {
+    const selectedIndex =
+      selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
+    if (selectedIndex >= 0) {
+      return String(selectedIndex);
+    }
+    return withNoneOption ? NONE_VALUE : null;
+  })();
+
+  const handleChange = (newValue: string | null) => {
+    const isColumnSelected = newValue !== null && newValue !== NONE_VALUE;
+    onChange(isColumnSelected ? columns[Number(newValue)] : undefined);
+  };
 
   return (
     <ModalSection>
       <ModalLabel>{label}</ModalLabel>
       {columns.length > 0 ? (
         <Select
-          value={selectedColumn}
+          value={value}
           placeholder={placeholder}
-          onChange={handleChange}
-        >
-          {[
-            ...(withNoneOption
-              ? [<Option key="none" name={t`None`} value={undefined} />]
-              : []),
-            ...columns.map((column, index) => (
-              <Option
-                key={index}
-                name={Lib.displayInfo(query, STAGE_INDEX, column).displayName}
-                value={column}
-              />
-            )),
+          data={[
+            ...(withNoneOption ? [{ value: NONE_VALUE, label: t`None` }] : []),
+            ...columns.map((column, index) => ({
+              value: String(index),
+              label: Lib.displayInfo(query, STAGE_INDEX, column).displayName,
+            })),
           ]}
-        </Select>
+          onChange={handleChange}
+        />
       ) : emptyMessage != null ? (
         <ModalErrorMessage>{emptyMessage}</ModalErrorMessage>
       ) : null}

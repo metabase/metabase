@@ -177,11 +177,11 @@ describe("CustomGeoJSONWIdget", () => {
 
     // Select map features for key and name
     const keySelect = within(screen.getByTestId("map-region-key-select"));
-    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await keySelect.findByPlaceholderText(/Select/));
     await userEvent.click(await screen.findByText("scalerank"));
 
     const nameSelect = within(screen.getByTestId("map-region-name-select"));
-    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(await nameSelect.findByPlaceholderText(/Select/));
     await userEvent.click(screen.getByText("featureclass"));
 
     // Save and check body contains data
@@ -197,6 +197,7 @@ describe("CustomGeoJSONWIdget", () => {
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
+      // Unjustified type cast. FIXME
       (item) => (item as CustomGeoJSONMap).name === "Test Two",
     );
     expect(testMapEntry).toEqual({
@@ -241,11 +242,11 @@ describe("CustomGeoJSONWIdget", () => {
 
     // Select map features for key and name
     const keySelect = within(screen.getByTestId("map-region-key-select"));
-    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await keySelect.findByPlaceholderText(/Select/));
     await userEvent.click(await screen.findByText("featureclass"));
 
     const nameSelect = within(screen.getByTestId("map-region-name-select"));
-    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(await nameSelect.findByPlaceholderText(/Select/));
     await userEvent.click(screen.getByText("scalerank"));
 
     await userEvent.click(screen.getByRole("button", { name: /Save map/i }));
@@ -260,6 +261,7 @@ describe("CustomGeoJSONWIdget", () => {
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
+      // Unjustified type cast. FIXME
       (item) => (item as CustomGeoJSONMap).name === "Test Edit",
     );
     expect(testMapEntry).toEqual({

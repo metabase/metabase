@@ -34,8 +34,6 @@ Here's a basic breakdown of what each auth type enables:
 | Browser to navigate collections                       | ✅  | ❌    |
 | Metabot AI chat                                       | ✅  | ❌    |
 
-Currently, you can't embed [documents](../documents/introduction.md).
-
 ### SSO embeds
 
 With SSO, Metabase can know who's viewing what, which unlocks a lot of power. You can automatically apply [data permissions](../permissions/embedding.md), which means you can give people access to all the cool tools Metabase provides, and everyone will only ever see the data they're allowed to.
@@ -69,7 +67,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Export results\*                                                                                                     | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)         | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
 | [Data segregation](../permissions/embedding.md)                                                                      | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
-| [Drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
+| [Drill-through menu](../questions/visualizations/drill-through.md) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Query builder](../questions/query-builder/editor.md)                                                                | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Basic appearance customization](../configuring-metabase/appearance.md)\*\*                                          | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Advanced theming](./appearance.md)                                                                                  | ✅                                   | ✅                                    | ❌                                    | ❌                                  | ❌                                     |
@@ -101,6 +99,11 @@ If you're using an AI agent to help you embed Metabase in your app, check out [A
 [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) tracks embed usage, including embedding context, authentication methods, hostname, and other metadata. Check out the [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
 
 For information about the anonymous usage data Metabase collects from embedded components, see [Embedding telemetry](../installation-and-operation/information-collection.md#embedding-telemetry).
+
+## Embedding limitations
+
+- Currently, you can't embed [documents](../documents/introduction.md) (though you can create [public documents](./public-links.md)).
+- Embeds don't render [custom visualizations](../questions/visualizations/custom.md): any card that uses one falls back to the default visualization (a table).
 
 ## Further reading
 

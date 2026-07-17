@@ -1,7 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { WithRouterProps } from "react-router";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
@@ -12,16 +9,18 @@ import CreateCollectionModal, {
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import {
-  LegacyStaticEmbeddingModal,
-  type LegacyStaticEmbeddingModalProps,
-} from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
+import { LegacyStaticEmbeddingModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
 import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import type {
+  LegacyStaticEmbeddingModalProps,
+  SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
+import type { WithRouterProps } from "metabase/router";
+import { push, withRouter } from "metabase/router";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -106,6 +105,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         </Modal>
       );
     case "embed": {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
       return (
         <SdkIframeEmbedSetupModal
@@ -116,6 +116,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     }
     case STATIC_LEGACY_EMBEDDING_TYPE: {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
 
       return (

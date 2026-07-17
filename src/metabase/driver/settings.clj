@@ -127,6 +127,38 @@
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
+(defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
+  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a \"service unavailable\" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+
+(defsetting jdbc-data-warehouse-connection-pool-max-pending-checkouts
+  "Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit [[jdbc-data-warehouse-max-connection-pool-size]]. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements [[jdbc-data-warehouse-connection-pool-checkout-timeout-ms]], which bounds how long each query
+  waits; this bounds how many can wait at the same time."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.")
+
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))

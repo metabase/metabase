@@ -1,4 +1,4 @@
-import type { NonEmpty } from "metabase/i18n/types";
+import type { NonEmpty } from "metabase/content-translation/types";
 import { clone } from "metabase/utils/clone";
 import type { DictionaryArray } from "metabase-types/api";
 

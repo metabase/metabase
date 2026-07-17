@@ -1,10 +1,10 @@
-import { IndexRoute, Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 
 export const getRoutes = () => (
   <>
-    <IndexRoute component={NotificationsAdminPage} />
+    <Route index component={NotificationsAdminPage} />
     <Route path=":notificationId" component={NotificationsAdminPage} />
   </>
 );

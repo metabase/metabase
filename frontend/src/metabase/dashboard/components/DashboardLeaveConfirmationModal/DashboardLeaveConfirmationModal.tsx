@@ -1,4 +1,3 @@
-import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
@@ -6,6 +5,7 @@ import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
+import { type Route, type WithRouterProps, withRouter } from "metabase/router";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
@@ -40,7 +40,7 @@ export const DashboardLeaveConfirmationModal = withRouter(
           title: t`Discard your changes?`,
           message: t`Your changes haven’t been saved, so you’ll lose them if you navigate away.`,
           actionBtn: {
-            color: "danger" as const,
+            color: "feedback-negative" as const,
             message: t`Discard changes`,
           },
         };

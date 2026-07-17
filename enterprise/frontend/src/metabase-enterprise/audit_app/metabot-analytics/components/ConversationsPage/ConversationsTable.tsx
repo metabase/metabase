@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -9,7 +8,8 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
-import { Badge, Ellipsified, Flex } from "metabase/ui";
+import { push } from "metabase/router";
+import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
@@ -77,6 +77,17 @@ export function ConversationsTable({
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           >{t`Tokens`}</SortableColumnHeader>
+          <SortableColumnHeader
+            name="cache_read_tokens"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >
+            <Tooltip
+              label={t`Portion of tokens served from the provider cache. A subset of Tokens, not an additional count.`}
+            >
+              <span>{t`Cached tokens`}</span>
+            </Tooltip>
+          </SortableColumnHeader>
           <th>{t`Queries`}</th>
           <th>{t`Searches`}</th>
           <SortableColumnHeader
@@ -89,7 +100,7 @@ export function ConversationsTable({
       <tbody>
         {showLoadingAndError && (
           <tr>
-            <td colSpan={8}>
+            <td colSpan={9}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
@@ -99,8 +110,8 @@ export function ConversationsTable({
           <>
             {conversations.length === 0 && (
               <tr>
-                <td colSpan={8}>
-                  <Flex c="text-tertiary" justify="center">
+                <td colSpan={9}>
+                  <Flex c="text-disabled" justify="center">
                     {t`No conversations found`}
                   </Flex>
                 </td>
@@ -116,7 +127,7 @@ export function ConversationsTable({
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
                   {convo.profile_id && (
-                    <Badge size="sm" variant="light">
+                    <Badge color="brand" variant="filled">
                       {renderMetabotProfileLabel(convo.profile_id)}
                     </Badge>
                   )}
@@ -128,6 +139,7 @@ export function ConversationsTable({
                 </td>
                 <td>{formatNumber(convo.message_count)}</td>
                 <td>{formatNumber(convo.total_tokens)}</td>
+                <td>{formatNumber(convo.cache_read_tokens)}</td>
                 <td>{formatNumber(convo.query_count)}</td>
                 <td>{formatNumber(convo.search_count)}</td>
                 <td>{convo.ip_address ?? EMPTY_CELL_PLACEHOLDER}</td>

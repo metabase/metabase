@@ -164,9 +164,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
             --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -181,9 +179,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
           --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@mongo+-@python+-@OSS+-@skip'}}" \
           --spec "$SPEC_PATH"
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Rewrite JUnit hook failures
@@ -213,21 +209,18 @@ jobs:
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
-      # Quarantine gate (DEV-2082). Compare this job's ultimate test failures
-      # (recorded by after:spec into ./target/quarantine-failures.jsonl) against
-      # ci-conductor's quarantine list and decide whether the job should pass:
-      # pass if every failure is quarantined, fail if any isn't. This mirrors
-      # what Trunk's analytics-uploader does for us today. Runs in dry-run mode
-      # for now (QUARANTINE_DRY_RUN defaults to true) — it only prints the
-      # verdict and never fails the job. `continue-on-error` is belt-and-braces
-      # while it's observational; drop both it and the dry run to enforce.
-      - name: Quarantine gate (dry run)
-        if: always()
-        continue-on-error: true
-        timeout-minutes: 2
-        shell: bash
-        run: bun e2e/support/check-quarantine.ts
+      - name: Quarantine gate
+        # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.
+        if: ${{ !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure') }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: e2e
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7

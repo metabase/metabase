@@ -151,6 +151,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     permissionView?: "group" | "database";
     showTransformPermissions?: boolean;
   }) => {
+    // Unjustified type cast. FIXME
     return [] as any;
   },
   getDataColumns: ({
@@ -163,11 +164,14 @@ const getDefaultFeatureLevelPermissions = () => ({
     groupType?: SpecialGroupType;
     isExternal?: boolean;
     showTransformPermissions?: boolean;
+    // Unjustified type cast. FIXME
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
+  // Unjustified type cast. FIXME
   dataModelQueryProps: {} as any,
+  // Unjustified type cast. FIXME
   databaseDetailsQueryProps: {} as any,
 });
 
@@ -176,6 +180,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
 
 const getDefaultAdminPermissionsTabs = () => ({
   getRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   tabs: [] as { name: string; value: string }[],
 });
 
@@ -183,6 +188,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABS = getDefaultAdminPermissionsTabs();
 
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
@@ -194,6 +200,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS =
   getDefaultApplicationPermissions();
 
 const getDefaultGroupManagers = (): PluginGroupManagersType => ({
+  // Unjustified type cast. FIXME
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
 

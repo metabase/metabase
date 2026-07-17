@@ -9,7 +9,6 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
-import { api } from "metabase/api/client";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -18,6 +17,7 @@ import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Box, Code, Group } from "metabase/ui";
+import { getBasename } from "metabase/utils/basename";
 
 import S from "./help.module.css";
 
@@ -29,7 +29,7 @@ function navigatorInfo() {
 // to support Metabase deployments at a subpath.
 function getConnectionPoolDetailsUrl() {
   const path = "/api/bug-reporting/connection-pool-details";
-  return new URL(api.basename + path, location.origin).href;
+  return new URL(getBasename() + path, location.origin).href;
 }
 
 const template = `**Describe the bug**

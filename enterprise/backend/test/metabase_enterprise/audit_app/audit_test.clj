@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -318,3 +319,137 @@
       (testing "Fields without lowercase versions should be converted to lowercase"
         (is (= "product"
                (t2/select-one-fn :name :model/Field :id single-field-id)))))))
+
+(defn- audit-view-table
+  "The single active `metabase_table` row for audit view `view-name` (a lower-cased name), or nil.
+   Matched case-insensitively so it finds the same view across host engines whose name casing differs."
+  [view-name]
+  (t2/select-one [:model/Table :id :name :schema :active]
+                 :db_id audit/audit-db-id
+                 :active true
+                 {:where [:= [:lower :name] view-name]}))
+
+(deftest audit-db-self-heals-duplicate-rows-from-stale-schema-test
+  ;; GHY-3974 Mode A: when an interrupted or raced `adjust-audit-db-to-host!` leaves an audit
+  ;; `metabase_table` row at a schema the host driver does not report, the next schema sync sees the
+  ;; driver-reported tuple as new (insert) and the existing row as old (retire) — duplicating the view
+  ;; and breaking customer content that still points at the now-inactive row. `ensure-audit-db-installed!`
+  ;; must reconcile back to a single active row per view and leave dependent content on an active table.
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (with-audit-db-restoration!
+      (ee-audit/ensure-audit-db-installed!)
+      (let [v-content (audit-view-table "v_content")
+            orig-id   (:id v-content)]
+        (is (some? orig-id) "expected a v_content table after install")
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   audit/audit-db-id
+                        :table_id      orig-id
+                        :dataset_query {:database audit/audit-db-id
+                                        :type     :query
+                                        :query    {:source-table orig-id}}}]
+          (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
+            ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
+            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
+            (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
+                "stale-schema sync should produce a duplicate pair")
+            (is (false? (t2/select-one-fn :active :model/Table :id orig-id))
+                "the row the customer card points at is retired"))
+          (testing "ensure-audit-db-installed! self-heals the duplicate"
+            (ee-audit/ensure-audit-db-installed!)
+            (let [rows (t2/select [:model/Table :id :name :active]
+                                  :db_id audit/audit-db-id
+                                  {:where [:= [:lower :name] "v_content"]})]
+              (is (= 1 (count rows)) "exactly one metabase_table row per view after heal")
+              (is (every? :active rows) "the surviving row is active"))
+            (testing "the customer card still points at an active table"
+              (is (true? (t2/select-one-fn :active :model/Table
+                                           :id (t2/select-one-fn :table_id :model/Card :id card-id)))
+                  "card's table_id must reference an active table after heal"))))))))
+
+(deftest audit-db-reconcile-preserves-content-on-the-deleted-duplicate-test
+  ;; GHY-3974 Mode A, destructive path: the sibling test above only covers a card pointing at the row that
+  ;; becomes the *survivor*. But in real Mode A there are *two* referenced rows — Metabase's own bundled audit
+  ;; cards reference the original (now retired) row, so any customer card that landed on the freshly-synced active
+  ;; row points at the row reconcile chooses to delete. A naive `(t2/update! :model/Card {:table_id orphan} ...)`
+  ;; repoint is a no-op (Card's before-update re-derives `table_id` from the unchanged `dataset_query`), and the
+  ;; orphan's FK is ON DELETE CASCADE, so deleting it would destroy the customer card. A correct heal must rewrite
+  ;; the card's query/field refs onto the survivor and keep it resolving.
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (with-audit-db-restoration!
+      (ee-audit/ensure-audit-db-installed!)
+      (let [v-content (audit-view-table "v_content")
+            orig-id   (:id v-content)]
+        (is (some? orig-id) "expected a v_content table after install")
+        ;; a card on the ORIGINAL row stands in for bundled content, forcing orig to win as survivor
+        (mt/with-temp [:model/Card _bundled
+                       {:database_id   audit/audit-db-id
+                        :table_id      orig-id
+                        :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
+          (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
+            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
+            (let [rows   (t2/select [:model/Table :id :active] :db_id audit/audit-db-id
+                                    {:where [:= [:lower :name] "v_content"]})
+                  new-id (:id (first (filter :active rows)))]
+              (is (= 2 (count rows)) "stale-schema sync should produce a duplicate pair")
+              (is (some? new-id) "a freshly-synced active row exists")
+              (let [a-field    (t2/select-one [:model/Field :id :name :base_type] :table_id new-id)
+                    a-field-id (:id a-field)]
+                (mt/with-temp [:model/Card {card-id :id}
+                               {:database_id     audit/audit-db-id
+                                :table_id        new-id
+                                :dataset_query   {:database audit/audit-db-id
+                                                  :type     :query
+                                                  :query    (cond-> {:source-table new-id}
+                                                              a-field-id (assoc :fields [[:field a-field-id nil]]))}
+                                ;; legacy-style result_metadata (id at position 1), as the QP stores it
+                                :result_metadata (when a-field-id
+                                                   [{:name      (:name a-field)
+                                                     :base_type (:base_type a-field)
+                                                     :id        a-field-id
+                                                     :field_ref [:field a-field-id nil]}])}]
+                  (testing "ensure-audit-db-installed! self-heals without destroying the customer card"
+                    (ee-audit/ensure-audit-db-installed!)
+                    (is (true? (t2/exists? :model/Card :id card-id))
+                        "customer card must still exist after heal (must not be cascade-deleted)")
+                    (let [healed       (t2/select-one :model/Card :id card-id)
+                          healed-tid   (:table_id healed)
+                          ref-field-id (-> healed :dataset_query :stages first :fields first lib/field-ref-id)]
+                      (is (some? healed-tid) "card's table_id must not be nil after heal")
+                      (is (true? (t2/select-one-fn :active :model/Table :id healed-tid))
+                          "card's table_id must reference an active table after heal")
+                      (when a-field-id
+                        (is (some? ref-field-id) "card's field ref survived the rewrite")
+                        (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id ref-field-id))
+                            "card's field ref must resolve to a field on the survivor table")
+                        (testing "result_metadata (legacy field_ref) is remapped onto the survivor"
+                          (let [col (-> healed :result_metadata first)]
+                            (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id (:id col)))
+                                "result_metadata :id resolves to a survivor field")
+                            (is (= (:id col) (nth (:field_ref col) 1))
+                                "result_metadata legacy :field_ref id matches the remapped :id")))))))))))))))
+
+(deftest checksum-not-advanced-until-host-adjust-completes-test
+  ;; GHY-3974 Mode B: `last-analytics-checksum` must not advance until the audit DB is fully back at the
+  ;; host-canonical schema. Today the checksum is written right after the serdes load but *before*
+  ;; `adjust-audit-db-to-host!`; a process death in that window leaves rows at the postgres "source"
+  ;; convention (schema="public", postgres types) while the checksum already says "up to date", so
+  ;; `should-load-audit?` returns false forever and the host-adjust never re-runs. If the host-adjust
+  ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (try
+      (t2/delete! :model/Database :is_audit true)
+      (audit/last-analytics-checksum! 0)
+      (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
+        (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
+                                    ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
+          (is (thrown-with-msg? Exception #"host-adjust interrupted"
+                                (ee-audit/ensure-audit-db-installed!)))
+          (is (= 0 (audit/last-analytics-checksum))
+              "checksum stays 0 so the next boot re-runs the load and host-adjust")))
+      (finally
+        ;; restore a clean, installed audit DB for sibling tests regardless of how this test exits
+        (t2/delete! :model/Database :is_audit true)
+        (audit/last-analytics-checksum! 0)
+        (mbc/ensure-audit-db-installed!)))))

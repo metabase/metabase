@@ -1,6 +1,7 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui";
 
@@ -72,7 +73,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {subtext && (
             <Flex
               flex="0 0 auto"
-              c={active ? "text-secondary" : "text-tertiary"}
+              c={active ? "text-secondary" : "text-disabled"}
               fz="0.75rem"
               lh="1rem"
               maw="40%"
@@ -87,7 +88,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
 
         {item.subtitle && (
           <Text
-            c={active ? "text-secondary" : "text-tertiary"}
+            c={active ? "text-secondary" : "text-disabled"}
             component="span"
             lh="1rem"
             style={{
@@ -117,6 +118,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           role="link"
           w="100%"
           lh={1}
+          className={CS.noDecoration}
         >
           {content}
         </Box>

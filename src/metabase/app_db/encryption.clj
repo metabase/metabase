@@ -18,7 +18,8 @@
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
-   [:workspace_database :database_details]])
+   [:workspace_database :database_details]
+   [:auth_identity :credentials]])
 
 (defn- reencrypt-encrypted-json-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-json-columns`."

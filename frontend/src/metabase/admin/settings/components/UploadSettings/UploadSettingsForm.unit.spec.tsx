@@ -32,6 +32,7 @@ import {
   UploadSettingsFormView,
 } from "./UploadSettingsForm";
 
+// Unjustified type cast. FIXME
 const TEST_DATABASES = [
   createMockDatabase({
     id: 1,
@@ -146,6 +147,15 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     setup();
     expect(
       screen.getByText("Allow people to upload data to collections"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render the supported-databases helper text under the dropdown", async () => {
+    setup();
+    expect(
+      screen.getByText(
+        "PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.",
+      ),
     ).toBeInTheDocument();
   });
 

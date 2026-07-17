@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   findRequests,
@@ -22,6 +21,7 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
+import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { AdminNotification, UserListResult } from "metabase-types/api";
 import {

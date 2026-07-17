@@ -33,7 +33,7 @@ export function CancelationSection({ run }: CancelationSectionProps) {
       <div>
         <Button
           variant="filled"
-          color="error"
+          color="feedback-negative"
           disabled={isCanceling}
           onClick={openModal}
         >

@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import type { JSX } from "react";
-import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { createMockAppState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import PublicApp from "./PublicApp";
 

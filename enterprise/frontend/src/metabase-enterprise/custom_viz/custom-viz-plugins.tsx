@@ -17,6 +17,7 @@ import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -35,6 +36,7 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { SandboxedPluginContainer } from "./components/SandboxedPluginContainer";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -53,6 +55,11 @@ const failedPluginHashes = new Map<
   CustomVizPluginRuntime["bundle_hash"]
 >();
 
+// Monotonic per-plugin load counters for latest-wins ordering of overlapping
+// dev reloads.
+const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
+const loadAppliedSeqByPluginId = new Map<CustomVizPluginId, number>();
+
 /**
  * Remove a previously-loaded custom-viz display from the global
  * visualizations registry and drop its load/failure cache entries, so a
@@ -68,6 +75,8 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
         PLUGIN_CUSTOM_VIZ.releaseCustomVizAsset(id);
         loadedPlugins.delete(id);
         failedPluginHashes.delete(id);
+        loadStartedSeqByPluginId.delete(id);
+        loadAppliedSeqByPluginId.delete(id);
       }
     }
   }
@@ -167,8 +176,17 @@ export function useAutoLoadCustomVizPlugin(
   const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoadingState] = useState(false);
   const loadingRef = useRef<string | null>(null);
+
+  const loadingCountRef = useRef(0);
+  const setLoading = useCallback((isLoading: boolean) => {
+    loadingCountRef.current = Math.max(
+      0,
+      loadingCountRef.current + (isLoading ? 1 : -1),
+    );
+    setLoadingState(loadingCountRef.current > 0);
+  }, []);
 
   const onInfo = useCallback(
     (message: string) => {
@@ -203,7 +221,7 @@ export function useAutoLoadCustomVizPlugin(
         setLoading(false);
       }
     },
-    [onInfo, sandboxMode],
+    [onInfo, sandboxMode, setLoading],
   );
 
   useEffect(() => {
@@ -279,6 +297,13 @@ export type LoadCustomVizPluginOptions = {
   sandboxMode?: SandboxMode;
 };
 
+class BundleFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+    this.name = "BundleFetchError";
+  }
+}
+
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -302,6 +327,9 @@ export async function loadCustomVizPlugin(
 
   ensureVizApi();
 
+  const loadSeq = (loadStartedSeqByPluginId.get(plugin.id) ?? 0) + 1;
+  loadStartedSeqByPluginId.set(plugin.id, loadSeq);
+
   try {
     const params: Record<string, string> = {};
     if (cacheBustSuffix) {
@@ -309,15 +337,27 @@ export async function loadCustomVizPlugin(
     } else if (currentHash) {
       params.v = currentHash;
     }
-    const res = await api.fetch({
-      method: "GET",
-      url: plugin.bundle_url,
-      params,
-      cache: "no-store",
+
+    const fetchBundle = async () => {
+      const res = await api.fetch({
+        method: "GET",
+        url: plugin.bundle_url,
+        params,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new BundleFetchError(res.status);
+      }
+      return res;
+    };
+    const isLatest = () => loadStartedSeqByPluginId.get(plugin.id) === loadSeq;
+
+    const res = await retry(fetchBundle, {
+      maxRetries: plugin.dev_bundle_url ? 4 : 0,
+      delayMs: () => 300,
+      shouldRetry: (error) =>
+        isLatest() && error instanceof BundleFetchError && error.status >= 500,
     });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
 
     const text = await res.text();
 
@@ -337,6 +377,7 @@ export async function loadCustomVizPlugin(
 
     const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
       defineSetting(definition) {
+        // Unjustified type cast. FIXME
         return definition as unknown as CustomVisualizationSettingDefinition<
           Record<string, unknown>
         >;
@@ -384,6 +425,10 @@ export async function loadCustomVizPlugin(
       isDev: Boolean(plugin.dev_bundle_url),
     });
 
+    if (!isLatest()) {
+      return identifier;
+    }
+
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).
     // Check visualizations map directly (not loadedPlugins) because HMR may
@@ -397,10 +442,18 @@ export async function loadCustomVizPlugin(
       identifier,
       hash: currentHash,
     });
+    loadAppliedSeqByPluginId.set(plugin.id, loadSeq);
     failedPluginHashes.delete(plugin.id);
 
     return identifier;
   } catch (error) {
+    // Suppress the failure if a newer load has superseded this one
+    const superseded =
+      (loadAppliedSeqByPluginId.get(plugin.id) ?? 0) > loadSeq ||
+      (loadStartedSeqByPluginId.get(plugin.id) ?? 0) > loadSeq;
+    if (superseded) {
+      return null;
+    }
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
@@ -464,12 +517,15 @@ function createCustomVizWrapper(
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
+      // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
-      settings: settings as unknown as GenericVizPluginProps["settings"],
+      settings,
       colorScheme: resolvedColorScheme,
+      // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
       ) => void,
+      // Unjustified type cast. FIXME
       onHover: onHoverChange as unknown as (
         hoverObject?: CustomVizHoverObject | null,
       ) => void,
@@ -481,10 +537,10 @@ function createCustomVizWrapper(
     );
 
     return (
-      <div
-        ref={containerRef}
-        data-plugin-sandbox={pluginId}
-        style={{ width: "100%", height: "100%" }}
+      <SandboxedPluginContainer
+        containerRef={containerRef}
+        fill
+        pluginId={pluginId}
       />
     );
   };

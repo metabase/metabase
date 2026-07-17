@@ -9,20 +9,22 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts ip-address]}]
+  [{:keys [conversation-id user-id created-at summary slack-team-id slack-channel-id slack-thread-ts ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
                 created-at (assoc :created_at created-at)
                 summary (assoc :summary summary)
-                state (assoc :state state)
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
                 slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
-  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
+  [{:keys [conversation-id created-at role profile-id total-tokens data data-version
+           deleted-at external-id finished]
+    :as   options
+    :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
           :model/MetabotMessage
           (cond-> {:conversation_id conversation-id
@@ -30,12 +32,28 @@
                    :profile_id      profile-id
                    :total_tokens    total-tokens
                    :data            data
-                   :external_id     (str (random-uuid))}
-            created-at (assoc :created_at created-at)
-            deleted-at (assoc :deleted_at deleted-at)))))
+                   :data_version    data-version
+                   :external_id     (or external-id (str (random-uuid)))}
+            created-at       (assoc :created_at created-at)
+            deleted-at       (assoc :deleted_at deleted-at)
+            (contains? options :finished) (assoc :finished finished)))))
+
+(defn- insert-usage!
+  "Insert an `ai_usage_log` row for a conversation. `cache-read-tokens` may be
+   omitted to seed a pre-cache-columns row (NULL in the table)."
+  [{:keys [conversation-id cache-read-tokens]}]
+  (t2/insert! :model/AiUsageLog
+              (cond-> {:conversation_id   conversation-id
+                       :source            "agent"
+                       :model             "anthropic/claude-sonnet-4-6"
+                       :prompt_tokens     1
+                       :completion_tokens 1
+                       :total_tokens      2}
+                cache-read-tokens (assoc :cache_read_tokens cache-read-tokens))))
 
 (defn- delete-conversations!
   [conversation-ids]
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id (vec conversation-ids)]})
   (t2/delete! :model/MetabotConversation {:where [:in :id (vec conversation-ids)]}))
 
 (defn- insert-feedback!
@@ -76,8 +94,7 @@
           (insert-conversation! {:conversation-id convo-1
                                  :user-id         test-user-id
                                  :created-at      jan-1
-                                 :summary         "First conversation"
-                                 :state           {:step "one"}})
+                                 :summary         "First conversation"})
           (insert-conversation! {:conversation-id convo-2
                                  :user-id         test-user-id
                                  :created-at      jan-2
@@ -91,38 +108,44 @@
                             :role            "user"
                             :profile-id      "ignored-user-model"
                             :total-tokens    3
-                            :data            [{:role "user" :content "hello"}]})
+                            :data            [{:type "text" :text "hello"}]})
           (insert-message! {:conversation-id convo-1
                             :created-at      jan-3
                             :role            "assistant"
                             :profile-id      "nlq"
                             :total-tokens    7
-                            :data            [{:role "assistant" :content "hi"}]})
+                            :data            [{:type "text" :text "hi"}]})
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-4
                             :role            "user"
                             :profile-id      "ignored-user-model"
                             :total-tokens    2
-                            :data            [{:role "user" :content "question"}]})
+                            :data            [{:type "text" :text "question"}]})
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-5
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    11
-                            :data            [{:role "assistant" :content "answer"}]})
+                            :data            [{:type "text" :text "answer"}]})
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-5
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    13
-                            :data            [{:role "assistant" :content "follow-up"}]})
+                            :data            [{:type "text" :text "follow-up"}]})
           (insert-message! {:conversation-id convo-3
                             :created-at      jan-4
                             :role            "assistant"
                             :profile-id      "deleted-model"
                             :total-tokens    99
-                            :data            [{:role "assistant" :content "deleted"}]
+                            :data            [{:type "text" :text "deleted"}]
                             :deleted-at      jan-5})
+          ;; convo-1 sums across usage rows; convo-2 also has a NULL-cache row
+          ;; (predates the cache-token columns); convo-3 has no usage rows at all.
+          (insert-usage! {:conversation-id convo-1 :cache-read-tokens 100})
+          (insert-usage! {:conversation-id convo-1 :cache-read-tokens 25})
+          (insert-usage! {:conversation-id convo-2 :cache-read-tokens 40})
+          (insert-usage! {:conversation-id convo-2})
           (thunk {:test-user-id  test-user-id
                   :response-path response-path
                   :convo-1       convo-1
@@ -149,16 +172,19 @@
         (is (= 50 (:limit response)))
         (is (= 0 (:offset response)))
         (is (= [convo-3 convo-2 convo-1] conversation-ids))
-        (is (nil? (:profile_id convo-3-response)))
-        (is (= 0 (:message_count convo-3-response)))
-        (is (= 0 (:assistant_message_count convo-3-response)))
-        (is (= 0 (:total_tokens convo-3-response)))
+        (testing "a soft-deleted / regenerated agent response still counts as spend"
+          (is (= "deleted-model" (:profile_id convo-3-response)))
+          (is (= 1 (:message_count convo-3-response)))
+          (is (= 1 (:assistant_message_count convo-3-response)))
+          (is (= 99 (:total_tokens convo-3-response)))
+          (is (= 0 (:cache_read_tokens convo-3-response))))
         (is (= {:conversation_id         convo-1
                 :summary                 "First conversation"
                 :message_count           2
                 :user_message_count      1
                 :assistant_message_count 1
                 :total_tokens            10
+                :cache_read_tokens       125
                 :profile_id              "nlq"
                 :user                    {:id         test-user-id
                                           :email      "metabot-analytics-list-test@metabase.com"
@@ -166,16 +192,65 @@
                                           :last_name  "Analytics"}}
                (-> (select-keys convo-1-response [:conversation_id :summary :message_count
                                                   :user_message_count :assistant_message_count :total_tokens
-                                                  :profile_id :user])
+                                                  :cache_read_tokens :profile_id :user])
                    (update :user select-keys [:id :email :first_name :last_name]))))
         (is (= {:conversation_id         convo-2
                 :message_count           3
                 :user_message_count      1
                 :assistant_message_count 2
                 :total_tokens            26
+                :cache_read_tokens       40
                 :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
-                                              :assistant_message_count :total_tokens :profile_id])))))))
+                                              :assistant_message_count :total_tokens :cache_read_tokens
+                                              :profile_id])))))))
+
+(deftest list-and-detail-agree-for-regenerated-conversation-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "the list summary and detail report the same counts for a regenerated conversation"
+      (mt/with-temp [:model/User {owner-id :id} {}]
+        (let [conversation-id (str (random-uuid))
+              day             #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
+              insert!         #(insert-message! (assoc % :conversation-id conversation-id))]
+          (try
+            (insert-conversation! {:conversation-id conversation-id
+                                   :user-id         owner-id
+                                   :created-at      (day 1)
+                                   :summary         "Regeneration parity"})
+            (insert! {:created-at (day 1)
+                      :role "user"
+                      :profile-id "ignored-user-profile"
+                      :total-tokens 2
+                      :data [{:type "text" :text "find orders"}]})
+            (insert! {:created-at (day 2)
+                      :role "assistant"
+                      :profile-id "internal"
+                      :total-tokens 10
+                      :deleted-at (day 3)
+                      :data [{:type "text" :text "first"}
+                             {:type "tool-search"
+                              :toolCallId "s1"
+                              :state "output-available"
+                              :input {}
+                              :output {:output "results"}}]})
+            (insert! {:created-at (day 3)
+                      :role "assistant"
+                      :profile-id "internal"
+                      :total-tokens 20
+                      :data [{:type "text" :text "kept"}]})
+            (let [summary (find-conversation
+                           (:data (mt/user-http-request :crowberto :get 200
+                                                        (str "ee/metabot-analytics/conversations?user_id=" owner-id)))
+                           conversation-id)
+                  detail  (mt/user-http-request :crowberto :get 200
+                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+              (is (some? summary))
+              (doseq [k [:message_count :total_tokens :search_count :query_count]]
+                (is (= (get detail k) (get summary k))))
+              (is (= [3 32 1]
+                     ((juxt :message_count :total_tokens :search_count) detail))))
+            (finally
+              (delete-conversations! [conversation-id]))))))))
 
 (deftest list-conversations-pagination-test
   (with-list-conversations-fixture!
@@ -203,12 +278,15 @@
    and always returned `created_at` order would fail five of the six cases.
 
    Designed orderings (asc):
-     created_at:    (a, m, z)   jan-1 / jan-2 / jan-3
-     user:          (m, a, z)   first_name Alice / Ben / Chloe
-     profile_id:    (z, a, m)   1-profile / 2-profile / 3-profile
-     ip_address:    (z, m, a)   10.0.0.1 / 10.0.0.2 / 10.0.0.3
-     message_count: (m, z, a)   counts 1, 2, 3
-     total_tokens:  (a, z, m)   tokens 10, 20, 30"
+     created_at:        (a, m, z)   jan-1 / jan-2 / jan-3
+     user:              (m, a, z)   first_name Alice / Ben / Chloe
+     profile_id:        (z, a, m)   1-profile / 2-profile / 3-profile
+     ip_address:        (z, m, a)   10.0.0.1 / 10.0.0.2 / 10.0.0.3
+     message_count:     (m, z, a)   counts 1, 2, 3
+     total_tokens:      (a, z, m)   tokens 10, 20, 30
+     cache_read_tokens: (z, a, m)   cache reads 5, 15 (7+8), 25
+       (all six permutations of three handles are taken, so this one
+        necessarily repeats profile_id's ordering)"
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {user-a :id} {:email      "metabot-analytics-sort-a@metabase.com"
@@ -235,7 +313,7 @@
                                               :role            "assistant"
                                               :profile-id      profile-id
                                               :total-tokens    tokens
-                                              :data            [{:role "assistant" :content "hi"}]}))]
+                                              :data            [{:type "text" :text "hi"}]}))]
         (try
           (insert-conversation! {:conversation-id convo-a :user-id user-a
                                  :created-at jan-1 :ip-address "10.0.0.3"})
@@ -249,6 +327,10 @@
           (seed-msg! convo-m "3-profile" 30)
           (seed-msg! convo-z "1-profile" 10)
           (seed-msg! convo-z "1-profile" 10)
+          (insert-usage! {:conversation-id convo-a :cache-read-tokens 7})
+          (insert-usage! {:conversation-id convo-a :cache-read-tokens 8})
+          (insert-usage! {:conversation-id convo-m :cache-read-tokens 25})
+          (insert-usage! {:conversation-id convo-z :cache-read-tokens 5})
           (thunk {:response-path response-path
                   :convo-a       convo-a
                   :convo-m       convo-m
@@ -265,7 +347,8 @@
                ["profile_id"    [convo-z convo-a convo-m]]
                ["ip_address"    [convo-z convo-m convo-a]]
                ["message_count" [convo-m convo-z convo-a]]
-               ["total_tokens"  [convo-a convo-z convo-m]]]]
+               ["total_tokens"  [convo-a convo-z convo-m]]
+               ["cache_read_tokens" [convo-z convo-a convo-m]]]]
         (testing (str "sort_by=" sort-by " &sort_dir=asc")
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str response-path "&sort_by=" sort-by "&sort_dir=asc"))]
@@ -375,14 +458,13 @@
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
-                                 :summary         "Conversation detail"
-                                 :state           {:foo "bar"}})
+                                 :summary         "Conversation detail"})
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
                             :role            "user"
                             :profile-id      "ignored-user-profile"
                             :total-tokens    4
-                            :data            [{:role "user" :content "hello"}]})
+                            :data            [{:type "text" :text "hello"}]})
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-2
                             :role            "assistant"
@@ -401,13 +483,131 @@
             (is (nil? (:slack_permalink response)))
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
-            (is (= 2 (count (:chat_messages response))))
+            (is (= 2 (:message_count response)))
             (is (= [] (:feedback response)))
-            (let [{:keys [role type externalId]} (last (:chat_messages response))]
-              (is (= ["agent" "text"] [role type]))
-              (is (string? externalId))))
+            (is (= 2 (count (:messages response)))
+                "one user prompt + one assistant reply, as flat single-level chat messages")
+            (let [[user-msg asst-msg] (:messages response)]
+              (is (= ["user" "text" "hello"] [(:role user-msg) (:type user-msg) (:message user-msg)]))
+              (is (nil? (:parent_message_id user-msg)) "the root prompt has no parent")
+              (is (not (contains? asst-msg :kept))
+                  "no :kept on the wire; the client derives the current path from sibling order")
+              (is (= ["agent" "text"] [(:role asst-msg) (:type asst-msg)]))
+              (is (= (:id user-msg) (:parent_message_id asst-msg))
+                  "the reply points at its prompt's message id")
+              (is (string? (:externalId asst-msg)) "the agent message keeps its feedback external id")))
           (finally
             (delete-conversations! [conversation-id])))))))
+
+(defn- with-detail-conversation!
+  [thunk]
+  (mt/with-premium-features #{:audit-app}
+    (let [conversation-id (str (random-uuid))
+          user-id         (mt/user->id :crowberto)
+          day             #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
+          insert!         #(insert-message! (assoc % :conversation-id conversation-id))
+          fetch           #(mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+      (try
+        (insert-conversation! {:conversation-id conversation-id :user-id user-id :created-at (day 1)})
+        (thunk {:user-id user-id :day day :insert! insert! :fetch fetch})
+        (finally
+          (delete-conversations! [conversation-id]))))))
+
+(defn- message-by-text
+  [messages text]
+  (or (some #(when (= text (:message %)) %) messages)
+      (throw (ex-info (str "Message not found: " text) {:text text}))))
+
+(deftest get-conversation-detail-attempts-test
+  (testing "a prompt's regenerated attempts surface as flat, chronologically ordered sibling messages"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 2
+                  :data [{:type "text" :text "count the orders"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 10
+                  :deleted-at (day 4) :data [{:type "text" :text "first try"}]})
+        (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 20
+                  :deleted-at (day 4) :data [{:type "text" :text "second try"}]})
+        (insert! {:created-at (day 4) :role "assistant" :profile-id "internal" :total-tokens 30
+                  :data [{:type "text" :text "kept answer"}]})
+        (let [{:keys [messages total_tokens message_count]} (fetch)
+              [prompt & attempts] messages]
+          (is (= ["first try" "second try" "kept answer"] (map :message attempts)))
+          (is (every? #(= (:id prompt) (:parent_message_id %)) attempts))
+          (is (= [62 4] [total_tokens message_count])))))))
+
+(deftest get-conversation-detail-parent-pointers-test
+  (testing "a follow-up prompt points at the kept (live) reply, not a regenerated-away one"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q1"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :deleted-at (day 3) :data [{:type "text" :text "discarded"}]})
+        (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "kept"}]})
+        (insert! {:created-at (day 4) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q2"}]})
+        (insert! {:created-at (day 5) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "a2"}]})
+        (let [messages (:messages (fetch))
+              q1       (message-by-text messages "q1")
+              kept     (message-by-text messages "kept")
+              q2       (message-by-text messages "q2")]
+          (is (nil? (:parent_message_id q1)))
+          (is (= (:id q1) (:parent_message_id kept)))
+          (is (= (:id kept) (:parent_message_id q2))))))))
+
+(deftest get-conversation-detail-turn-with-no-live-reply-test
+  (testing "a turn whose only reply was soft-deleted still keeps the following turn on the path"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q1"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :deleted-at (day 3) :data [{:type "text" :text "orphaned"}]})
+        (insert! {:created-at (day 4) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q2"}]})
+        (insert! {:created-at (day 5) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "a2"}]})
+        (let [messages (:messages (fetch))
+              q1       (message-by-text messages "q1")
+              q2       (message-by-text messages "q2")]
+          (is (= (:id q1) (:parent_message_id q2))))))))
+
+(deftest get-conversation-detail-in-flight-attempt-test
+  (testing "a still-streaming reply surfaces as an in-progress message"
+    (with-detail-conversation!
+      (fn [{:keys [insert! fetch]}]
+        (insert! {:role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "still thinking?"}]})
+        (insert! {:role "assistant" :profile-id "internal" :total-tokens 0 :data [] :finished nil})
+        (let [{:keys [messages message_count]} (fetch)]
+          (is (= ["user" "agent"] (map :role messages)))
+          (is (= "turn_in_progress" (:type (second messages))))
+          (is (= 2 message_count)))))))
+
+(deftest get-conversation-detail-feedback-on-discarded-attempt-test
+  (testing "feedback on a regenerated-away attempt still resolves to that attempt's message"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day user-id fetch]}]
+        (let [discarded-ext (str (random-uuid))]
+          (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 2
+                    :data [{:type "text" :text "help"}]})
+          (let [discarded-id (insert! {:created-at (day 2) :role "assistant" :profile-id "internal"
+                                       :total-tokens 10 :deleted-at (day 3) :external-id discarded-ext
+                                       :data [{:type "text" :text "thumbs-downed answer"}]})]
+            (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 20
+                      :data [{:type "text" :text "kept answer"}]})
+            (insert-feedback! {:message-id discarded-id :user-id user-id :positive false
+                               :issue-type "incorrect" :freeform "wrong table"
+                               :created-at (day 2) :updated-at (day 2)})
+            (let [{:keys [feedback messages]} (fetch)
+                  attempt-exts (into #{} (keep :externalId) messages)]
+              (is (= 1 (count feedback)))
+              (is (= discarded-ext (:external_id (first feedback))))
+              (is (contains? attempt-exts discarded-ext)))))))))
 
 (deftest get-conversation-detail-queries-test
   (mt/with-premium-features #{:audit-app}
@@ -429,7 +629,7 @@
                             :role            "user"
                             :profile-id      "ignored-user-model"
                             :total-tokens    3
-                            :data            [{:role "user" :content "show me orders"}]})
+                            :data            [{:type "text" :text "show me orders"}]})
           ;; successful create_sql_query — should appear in :queries
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-2
@@ -437,32 +637,28 @@
                             :profile-id      "internal"
                             :total-tokens    20
                             :data            [{:type "text" :text "Sure, here it is."}
-                                              {:type     "tool-input"
-                                               :id       "call-success"
-                                               :function "create_sql_query"
-                                               :arguments {:database_id (mt/id) :sql_query sql}}
-                                              {:type   "tool-output"
-                                               :id     "call-success"
-                                               :result {:output "<result>...</result>"
-                                                        :structured-output {:query-id      "qid-success"
-                                                                            :query-content sql
-                                                                            :query         {:database (mt/id)
-                                                                                            :type     :native
-                                                                                            :native   {:query sql}}
-                                                                            :database      (mt/id)}}}]})
-          ;; failed create_sql_query (only :output, no :structured-output) — should NOT appear in :queries
+                                              {:type         "tool-create_sql_query"
+                                               :toolCallId   "call-success"
+                                               :state        "output-available"
+                                               :input        {:database_id (mt/id) :sql_query sql}
+                                               :output       {:output "<result>...</result>"
+                                                              :structured_output {:query-id      "qid-success"
+                                                                                  :query-content sql
+                                                                                  :query         {:database (mt/id)
+                                                                                                  :type     :native
+                                                                                                  :native   {:query sql}}
+                                                                                  :database      (mt/id)}}}]})
+          ;; failed create_sql_query (only :output, no structured output) — should NOT appear in :queries
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-3
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [{:type     "tool-input"
-                                               :id       "call-failed"
-                                               :function "create_sql_query"
-                                               :arguments {:database_id (mt/id) :sql_query "SELEKT bad"}}
-                                              {:type   "tool-output"
-                                               :id     "call-failed"
-                                               :result {:output "<result>SQL query construction failed.</result>"}}]})
+                            :data            [{:type         "tool-create_sql_query"
+                                               :toolCallId   "call-failed"
+                                               :state        "output-available"
+                                               :input        {:database_id (mt/id) :sql_query "SELEKT bad"}
+                                               :output       {:output "<result>SQL query construction failed.</result>"}}]})
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))
                 queries  (:queries response)]
@@ -480,16 +676,16 @@
           (finally
             (delete-conversations! [conversation-id])))))))
 
-(defn- search-input-block
+(defn- search-part
   [call-id]
-  {:type "tool-input" :id call-id :function "search" :arguments {:q "foo"}})
-
-(defn- search-output-block
-  [call-id]
-  {:type "tool-output" :id call-id :result {:output "<result>...</result>"}})
+  {:type         "tool-search"
+   :toolCallId   call-id
+   :state        "output-available"
+   :input        {:q "foo"}
+   :output       {:output "<result>...</result>"}})
 
 (defn- with-search-count-fixture!
-  "Seed conversations with varying numbers of search tool-input blocks so we
+  "Seed conversations with varying numbers of search tool parts so we
    can assert both list and detail `:search_count` behavior without perturbing
    the existing list fixture."
   [thunk]
@@ -529,24 +725,26 @@
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [(search-input-block "call-a")
-                                              (search-output-block "call-a")]})
+                            :data            [(search-part "call-a")]})
           (insert-message! {:conversation-id convo-two
                             :created-at      jan-2
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [{:type "tool-input" :id "call-x" :function "analyze_chart" :arguments {}}
-                                              (search-input-block "call-b")
-                                              (search-output-block "call-b")]})
-          ;; convo-errored: a single search whose tool-output is marked errored — should still count.
+                            :data            [{:type "tool-analyze_chart" :toolCallId "call-x"
+                                               :state "input-available" :input {}}
+                                              (search-part "call-b")]})
+          ;; convo-errored: a single search whose call errored — should still count.
           (insert-message! {:conversation-id convo-errored
                             :created-at      jan-3
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    4
-                            :data            [(search-input-block "call-err")
-                                              {:type "tool-output" :id "call-err" :error "boom"}]})
+                            :data            [{:type         "tool-search"
+                                               :toolCallId   "call-err"
+                                               :state        "output-error"
+                                               :input        {:q "foo"}
+                                               :errorText    "boom"}]})
           (thunk {:test-user-id  test-user-id
                   :convo-none    convo-none
                   :convo-two     convo-two
@@ -577,13 +775,13 @@
             (is (= expected (:search_count response))
                 (format "expected search_count=%d for %s" expected convo))))))))
 
-(defn- query-tool-input-block
+(defn- query-tool-part
   [call-id tool-name]
-  {:type "tool-input" :id call-id :function tool-name :arguments {}})
-
-(defn- query-tool-output-block
-  [call-id]
-  {:type "tool-output" :id call-id :result {:output "ok"}})
+  {:type         (str "tool-" tool-name)
+   :toolCallId   call-id
+   :state        "output-available"
+   :input        {}
+   :output       {:output "ok"}})
 
 (defn- with-query-count-fixture!
   "Seed conversations that exercise `:query_count` for every query-generation
@@ -620,8 +818,7 @@
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    5
-                            :data            [(search-input-block "call-s")
-                                              (search-output-block "call-s")]})
+                            :data            [(search-part "call-s")]})
           ;; convo-mixed: one search + create_sql_query in msg 1, then one edit_sql_query
           ;; and one construct_notebook_query in msg 2 — three counted queries.
           (insert-message! {:conversation-id convo-mixed
@@ -629,31 +826,24 @@
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [(search-input-block "call-mixed-s")
-                                              (search-output-block "call-mixed-s")
-                                              (query-tool-input-block "call-a" "create_sql_query")
-                                              (query-tool-output-block "call-a")]})
+                            :data            [(search-part "call-mixed-s")
+                                              (query-tool-part "call-a" "create_sql_query")]})
           (insert-message! {:conversation-id convo-mixed
                             :created-at      mar-2
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [(query-tool-input-block "call-b" "edit_sql_query")
-                                              (query-tool-output-block "call-b")
-                                              (query-tool-input-block "call-c" "construct_notebook_query")
-                                              (query-tool-output-block "call-c")]})
+                            :data            [(query-tool-part "call-b" "edit_sql_query")
+                                              (query-tool-part "call-c" "construct_notebook_query")]})
           ;; convo-edits: search + edit + replace
           (insert-message! {:conversation-id convo-edits
                             :created-at      mar-3
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    4
-                            :data            [(search-input-block "call-edits-s")
-                                              (search-output-block "call-edits-s")
-                                              (query-tool-input-block "call-e" "edit_sql_query")
-                                              (query-tool-output-block "call-e")
-                                              (query-tool-input-block "call-r" "replace_sql_query")
-                                              (query-tool-output-block "call-r")]})
+                            :data            [(search-part "call-edits-s")
+                                              (query-tool-part "call-e" "edit_sql_query")
+                                              (query-tool-part "call-r" "replace_sql_query")]})
           (thunk {:test-user-id test-user-id
                   :convo-none   convo-none
                   :convo-mixed  convo-mixed

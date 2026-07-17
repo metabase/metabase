@@ -55,6 +55,7 @@ export const createMockMetabotGroupPermissions = (
 
   return Object.entries(defaults).map(([permType, permValue]) => ({
     group_id: groupId,
+    // Unjustified type cast. FIXME
     perm_type: permType as AIToolKey,
     perm_value: permValue,
   }));

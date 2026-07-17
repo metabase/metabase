@@ -5,15 +5,16 @@ import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
-import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
+import {
+  getSdkAuthMethod,
+  getSdkLocaleUsed,
+  trackSdkSimpleEvent,
+} from "./snowplow";
 
 export function useIsTrackingEnabled(): boolean {
   // Default false so we don't fire events during the settings-load window for users who opted out.
   return useSetting("anon-tracking-enabled") ?? false;
 }
-
-export const EMBEDDING_SDK_SCHEMA =
-  "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
 
 // CreateQuestion is intentionally excluded — it renders InteractiveQuestion with
 // questionId="new", which already fires an InteractiveQuestion event (id_new: true).
@@ -160,10 +161,12 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     const sdkVersion = getSdkPackageVersion();
 
     const definedProperties = Object.fromEntries(
+      // Unjustified type cast. FIXME
       Object.entries(properties as Record<string, unknown>).filter(
         ([, value]) => value !== undefined,
       ),
     );
+    // Unjustified type cast. FIXME
     const mergedProperties = {
       ...SDK_COMPONENT_DEFAULT_PROPERTIES[componentName],
       ...definedProperties,
@@ -171,13 +174,14 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
 
     const serializedProperties = Object.fromEntries(
       Object.entries(
+        // Unjustified type cast. FIXME
         mergedProperties as Record<string, boolean | string | null | undefined>,
       ).map(([key, value]) => [key, value == null ? null : String(value)]),
     );
 
-    trackSdkEvent({
-      schema: EMBEDDING_SDK_SCHEMA,
-      data: {
+    trackSdkSimpleEvent({
+      event: "embedding_sdk_component_rendered",
+      event_detail: JSON.stringify({
         component: componentName,
         properties: serializedProperties,
         global: {
@@ -185,7 +189,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
           sdk_version: sdkVersion,
           locale_used: getSdkLocaleUsed(),
         },
-      },
+      }),
     });
     // deps are intentionally limited to the two gate flags — fires once when both
     // become true, capturing entityId and properties as a snapshot at that moment.

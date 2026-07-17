@@ -73,12 +73,12 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                   {match(plugin.status)
                     .with("active", () => (
                       <Group align="center" flex="0 0 auto" gap="xs">
-                        <Icon c="success" name="check" />
-                        <Text c="success" fw={700}>{t`Enabled`}</Text>
+                        <Icon c="feedback-positive" name="check" />
+                        <Text c="feedback-positive" fw={700}>{t`Enabled`}</Text>
                       </Group>
                     ))
                     .with("error", () => (
-                      <Text c="error" fw={700}>{t`Error`}</Text>
+                      <Text c="feedback-negative" fw={700}>{t`Error`}</Text>
                     ))
                     .with("pending", () => (
                       <Text
@@ -98,7 +98,11 @@ export function EditDevCustomVizForm({ plugin }: Props) {
               />
               <FormErrorMessage />
               <Group justify="flex-end">
-                <Button variant="subtle" color="error" onClick={handleRemove}>
+                <Button
+                  variant="subtle"
+                  color="feedback-negative"
+                  onClick={handleRemove}
+                >
                   {t`Disable`}
                 </Button>
                 <FormSubmitButton

@@ -11,7 +11,10 @@ import {
 } from "metabase/forms";
 import { Button, Checkbox, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
+import {
+  useCreateWorkspaceMutation,
+  useLazyListWorkspacesQuery,
+} from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
 import { trackWorkspaceCreated } from "../../../analytics";
@@ -72,6 +75,7 @@ function NewWorkspaceForm({
   onClose,
 }: NewWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
+  const [fetchWorkspaces] = useLazyListWorkspacesQuery();
 
   const handleSubmit = async ({
     name,
@@ -81,6 +85,7 @@ function NewWorkspaceForm({
       name,
       database_ids: database_ids.map(Number),
     }).unwrap();
+    await fetchWorkspaces();
     trackWorkspaceCreated({ workspaceId: workspace.id });
     onCreate(workspace);
   };

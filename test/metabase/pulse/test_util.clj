@@ -41,7 +41,7 @@
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (constantly :noop)]
+  `(with-redefs [channel/send! (constantly :noop)]
      (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!

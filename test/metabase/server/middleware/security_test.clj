@@ -573,19 +573,38 @@
     (mt/with-temporary-setting-values [csp-img-enabled false
                                        csp-img-allowed-hosts "example.com"]
       (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
-  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+  (testing "with csp-img-enabled, img-src is restricted to 'self', data: and the tile server by default"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts ""]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts ""
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "nil csp-img-allowed-hosts behaves like empty input"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts nil]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts nil
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
-      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com https://*.tile.openstreetmap.org"
              (csp-directive "img-src"))))))
+
+(deftest csp-header-img-src-tile-server-tests
+  (testing "img-src always allows the configured map tile server"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (testing "{s} subdomain placeholder is replaced with wildcard"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
+                 (csp-directive "img-src")))))
+      (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+                 (csp-directive "img-src")))))
+      (testing "a relative tile template contributes no host"
+        (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data:" (csp-directive "img-src"))))))))
 
 (deftest csp-header-font-src-tests
   (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
@@ -621,9 +640,10 @@
         (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
         (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
   (testing "in prod the dev server origin is not added"
-    (mt/with-temporary-setting-values [csp-img-enabled true]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
       (with-redefs [config/is-dev? false]
-        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))
         (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
 
 (deftest ^:parallel parse-allowed-resource-hosts-test

@@ -3,9 +3,8 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
-   [metabase-enterprise.semantic-search.embedding]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -17,11 +16,12 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
 
+;; import-vars requires full namespace symbols, so it can't use the alias
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
@@ -29,30 +29,30 @@
  [metabase-enterprise.semantic-search.embedding
   get-embeddings-batch])
 
-(defn- fallback-engine
-  "Find the highest priority search engine available for fallback."
-  []
-  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
+(defn- fallback-engine []
+  (search.engine/fallback-engine :search.engine/semantic))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
-;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  (and
-   (some? semantic.db.datasource/db-url)
-   (semantic.settings/semantic-search-enabled)))
+  ;; Gate engine selection on a usable embedder. App-db mode gives every Postgres instance a pgvector
+  ;; store, so without this the engine auto-activates with no embedder configured and every index and
+  ;; query embed fails. available?/capable? skip the gate on purpose: an existing index still needs
+  ;; maintenance while the embedder is temporarily unconfigured.
+  (and (semantic.util/semantic-search-available?)
+       (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
 (defn build-hnsw-index-async!
   "Build the HNSW index on the active semantic search index in the background, returning promptly.
 
-  No-ops when semantic search isn't available on this instance. Backs the just-in-time HNSW build, which
+  No-ops when semantic search isn't active on this instance. Backs the just-in-time HNSW build, which
   runs only when an instance is configured to the `:hnsw` vector-search strategy."
   []
-  (when (semantic.util/semantic-search-available?)
+  (when (semantic.util/semantic-search-active?)
     (future
       (try
         (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
@@ -190,9 +190,14 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/debug "repair-index! called prior to init!")
+      ;; Semantic can become active at runtime (license applied, or added to additional-search-engines)
+      ;; without init! ever having run; initializing here lets the periodic repair task backfill the index.
+      (do
+        (log/info "No active semantic index, initializing it instead of repairing")
+        (init! searchable-documents {}))
       (semantic.repair/with-repair-table!
         pgvector
+        index-metadata
         (fn [repair-table-name]
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents

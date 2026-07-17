@@ -14,11 +14,20 @@ import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Button, Ellipsified, Image, Modal, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Ellipsified,
+  Image,
+  Modal,
+  Select,
+  SelectItem,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import type {
   CustomGeoJSONMap,
@@ -47,7 +56,7 @@ export const CustomGeoJSONWidget = () => {
     settingDetails,
   } = useAdminSetting("custom-geojson");
 
-  const customGeoJsonSetting = settingValue as CustomGeoJSONSetting;
+  const customGeoJsonSetting = settingValue;
   const mapsExcludingBuiltIns = getMapsExcludingBuiltIns(customGeoJsonSetting);
 
   const handleSave = useCallback(async (): Promise<void> => {
@@ -140,7 +149,7 @@ export const CustomGeoJSONWidget = () => {
       {!hasCustomMaps && (
         <Stack p="xl" align="center" gap="md">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-disabled">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
@@ -219,7 +228,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="danger"
+                    color="feedback-negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
@@ -249,6 +258,12 @@ interface GeoJsonPropertySelectProps {
   dataTestId: string;
 }
 
+const SampleValues = ({ values }: { values: string[] }) => (
+  <Ellipsified fz="0.75rem" fw="bold">
+    {t`Sample values:`} {values.join(", ")}
+  </Ellipsified>
+);
+
 const GeoJsonPropertySelect = ({
   value,
   onChange,
@@ -272,35 +287,43 @@ const GeoJsonPropertySelect = ({
     }
   }
 
+  const selectedValues = value !== null ? options[value] : undefined;
+
   return (
-    <div data-testid={dataTestId}>
+    <Stack gap="sm" data-testid={dataTestId}>
       <Select
-        value={value || ""}
-        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value)
-        }
+        value={value}
         placeholder={t`Select…`}
-      >
-        {Object.entries(options).map(([name, values]) => (
-          <Option key={name} value={name}>
-            <div>
-              <div style={{ textAlign: "left" }}>{name}</div>
-              <div
-                className={cx(CS.mt1, CS.h6)}
-                style={{
-                  maxWidth: 250,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {t`Sample values:`} {values.join(", ")}
-              </div>
-            </div>
-          </Option>
-        ))}
-      </Select>
-    </div>
+        comboboxProps={{
+          width: 300,
+          position: "top-start",
+          withinPortal: true,
+          keepMounted: false,
+        }}
+        data={Object.keys(options).map((name) => ({
+          value: name,
+          label: name,
+        }))}
+        onChange={(newValue) => {
+          if (newValue !== null) {
+            onChange(newValue);
+          }
+        }}
+        renderOption={(item) => (
+          <SelectItem selected={item.checked} w="100%">
+            <Stack gap="sm" w="100%">
+              <Ellipsified>{item.option.label}</Ellipsified>
+              <SampleValues values={options[item.option.value] ?? []} />
+            </Stack>
+          </SelectItem>
+        )}
+      />
+      {selectedValues && (
+        <Box w={0} miw="100%">
+          <SampleValues values={selectedValues} />
+        </Box>
+      )}
+    </Stack>
   );
 };
 

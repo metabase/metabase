@@ -180,7 +180,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to send comment`,
       });
     } else {
@@ -216,6 +216,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       <Tabs
         value={activeTab}
         onChange={(value) => {
+          // Unjustified type cast. FIXME
           setActiveTab(value as SidesheetTab);
         }}
       >
@@ -254,7 +255,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
             >
               <Image w={120} h={120} src={noResultsSource} />
 
-              <Text fw="700" c="text-tertiary">{t`No comments`}</Text>
+              <Text fw="700" c="text-disabled">{t`No comments`}</Text>
             </Flex>
           )}
 

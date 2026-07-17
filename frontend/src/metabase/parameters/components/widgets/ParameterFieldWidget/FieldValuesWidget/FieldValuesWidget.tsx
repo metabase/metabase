@@ -18,17 +18,16 @@ import {
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
   parseStringValue,
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -560,7 +559,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={16} />
+    <Loader size="xs" />
   </div>
 );
 
@@ -665,9 +664,8 @@ function renderOptions({
       } else if (loadingState === "LOADED" && isFiltered) {
         return (
           <NoMatchState
-            fields={fields.map(
-              (field) =>
-                field.searchField(disablePKRemappingForSearch) as Field | null,
+            fields={fields.map((field) =>
+              field.searchField(disablePKRemappingForSearch),
             )}
           />
         );
@@ -739,10 +737,9 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          ...(entityIdentifier
-            ? { entityIdentifier }
-            : { dashboard_id: dashboardId }),
-          parameter_id: parameter.id,
+          dashId: dashboardId,
+          ...(entityIdentifier && { entityIdentifier }),
+          paramId: parameter.id,
           value,
         }
       : skipToken,
@@ -751,8 +748,9 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
-          parameter_id: parameter.id,
+          cardId,
+          ...(entityIdentifier && { entityIdentifier }),
+          paramId: parameter.id,
           value,
         }
       : skipToken,

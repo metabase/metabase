@@ -139,18 +139,105 @@
   []
   (pos? *transaction-depth*))
 
+;; Accumulate 0-arity thunks to run just before / just after the outermost transaction commits. Each is
+;; bound to a fresh atom when the outermost transaction starts (see [[do-with-transaction]]) and shared by
+;; the whole nested-transaction tree; nil outside any transaction.
+(def ^:private ^:dynamic *before-commit-callbacks* nil)
+(def ^:private ^:dynamic *after-commit-callbacks* nil)
+
+(def ^:dynamic *transaction-state*
+  "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
+  nested-transaction tree and thrown away when the outermost transaction ends. Any subsystem can stash
+  namespaced keys here to pass data between the transaction body and its before-/after-commit callbacks
+  (e.g. the mq outbox stashes messages to insert before commit and the rows to publish after commit).
+  Bound to a fresh atom at the outermost transaction boundary; nil outside any transaction."
+  nil)
+
+(defn transaction-state
+  "Returns the current per-transaction [[*transaction-state*]] atom, or nil if not in a transaction."
+  []
+  *transaction-state*)
+
+(defn do-before-commit
+  "Run `thunk` just before the current outermost transaction commits — while the transaction is still
+  open, so any DB writes it makes commit atomically with it, and a throw from it rolls the whole
+  transaction back. Outside a transaction, runs `thunk` immediately. Mirror of [[do-after-commit]] for
+  work that must land *inside* the committing transaction."
+  [thunk]
+  (if-let [callbacks *before-commit-callbacks*]
+    (do (swap! callbacks conj thunk) nil)
+    (thunk)))
+
+(defn do-after-commit
+  "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
+  Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
+  Use to *schedule* post-commit work — enqueue async work, fire a `future`, publish an event — that must
+  observe committed state (e.g. a reconcile that reads the row).
+  Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
+  so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
+  async job you schedule, which acquires its own connection."
+  [thunk]
+  (if-let [callbacks *after-commit-callbacks*]
+    (do (swap! callbacks conj thunk) nil)
+    (thunk)))
+
+(defn- run-after-commit-callbacks! [callbacks]
+  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
+  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
+  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
+  ;; immediately rather than enqueue into this now-drained accumulator.
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *after-commit-callbacks*      nil]
+    (doseq [thunk @callbacks]
+      ;; the transaction already committed; a failing callback must not unwind it
+      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+    (reset! callbacks [])))
+
+(defn- discard-callbacks-after!
+  "Truncate the `callbacks` atom back to its first `n` entries, dropping any that a now-rolling-back
+  nested transaction registered after its savepoint so they never fire at outer-commit time."
+  [callbacks n]
+  (when callbacks
+    (swap! callbacks
+           (fn [cbs]
+             ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
+             ;; captured closures) through the backing array until the outer transaction finishes
+             (into [] (subvec cbs 0 (min n (count cbs))))))))
+
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
+            (let [savepoint      (.setSavepoint connection)
+                  before-count   (some-> *before-commit-callbacks* deref count)
+                  after-count    (some-> *after-commit-callbacks* deref count)
+                  state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
+                                   @*transaction-state*)]
               (try
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
+                    ;; top-level transaction. Run before-commit callbacks first, while the transaction is
+                    ;; still open, so their writes commit atomically with it. They are NOT wrapped in
+                    ;; try/catch — a throwing callback must propagate to the catch below and roll back.
+                    (loop []
+                      (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
+                        (doseq [cb callbacks] (cb))
+                        ;; a before-commit callback may register more (before- or after-commit); run those too
+                        (recur)))
+                    ;; commit; after-commit side effects run after the transaction bindings unwind
                     (.commit connection))
                   result)
                 (catch Throwable txn-e
+                  ;; the nested body failed, so its before-/after-commit callbacks must never fire — discard
+                  ;; those it registered before rolling back, otherwise a throwing .rollback would leave them
+                  ;; in the shared accumulators to run at outer-commit time for data that was rolled back
+                  (when after-count  (discard-callbacks-after! *after-commit-callbacks*  after-count))
+                  (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
                   (try
                     (.rollback connection savepoint)
+                    ;; restore transaction-state to its pre-savepoint value so data the rolled-back
+                    ;; sub-transaction stashed is discarded and not seen by the outer commit
+                    (when state-snapshot
+                      (reset! *transaction-state* state-snapshot))
                     (catch Exception rollback-e
                       (throw (ex-info
                               (str "Error rolling back after previous error: " (ex-message txn-e))
@@ -201,8 +288,17 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f))))
+    (let [outermost? (zero? *transaction-depth*)
+          callbacks  (if outermost? (atom []) *after-commit-callbacks*)
+          result     (binding [*transaction-depth*       (inc *transaction-depth*)
+                               ;; one set of accumulators + state for the whole tree, created at the outermost txn
+                               *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
+                               *transaction-state*       (if outermost? (atom {}) *transaction-state*)
+                               *after-commit-callbacks*  callbacks]
+                       (do-transaction connection f))]
+      (when outermost?
+        (run-after-commit-callbacks! callbacks))
+      result)))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively

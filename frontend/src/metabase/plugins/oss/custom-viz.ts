@@ -22,7 +22,9 @@ const noopCustomVizIcon = (
 const getDefaultPluginCustomViz = () => ({
   // Admin settings pages
   ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
   CustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
   CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
 
   // Hooks & functions
@@ -30,6 +32,7 @@ const getDefaultPluginCustomViz = () => ({
     loading: false,
   }),
   useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
+    // Unjustified type cast. FIXME
     ({ plugins: undefined, isLoading: false }) as {
       plugins: CustomVizPluginRuntime[] | undefined;
       isLoading: boolean;
@@ -40,6 +43,7 @@ const getDefaultPluginCustomViz = () => ({
       cacheBustSuffix?: string;
       onInfo?: (message: string) => void;
     },
+    // Unjustified type cast. FIXME
   ) => null as string | null,
   /**
    * Load (and register) the plugin backing a `custom:*` display, if it is
@@ -53,6 +57,7 @@ const getDefaultPluginCustomViz = () => ({
   getPluginAssetUrl: (
     _pluginId: CustomVizPluginId,
     _assetPath: string | null,
+    // Unjustified type cast. FIXME
   ) => undefined as string | undefined,
 
   // Only the SDK really implements these: its icon `<img>` is cross-origin and

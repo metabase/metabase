@@ -265,6 +265,15 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  fix-modules-config
+  {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
+   :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
+              ["./bin/mage fix-modules-config --port 59498" "Use the dev REPL on a specific nREPL port"]]
+   ;; Cold-JVM fallback invokes `clojure -X:dev dev.modules-config/fix-config!`.
+   :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
