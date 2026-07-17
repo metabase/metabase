@@ -161,9 +161,6 @@ export const FieldValuesWidgetInner = forwardRef<
     }),
   );
   const [isExpanded, setIsExpanded] = useState(false);
-  const selectedValue =
-    value.filter(isNotNull).map((value) => String(value))[0] ?? "";
-  const [inputValue, setInputValue] = useState(selectedValue);
   const dispatch = useDispatch();
   const tc = useTranslateContent();
 
@@ -187,12 +184,6 @@ export const FieldValuesWidgetInner = forwardRef<
       setIsExpanded(true);
     }
   }, [width, previousWidth]);
-
-  useEffect(() => {
-    if (selectedValue !== "") {
-      setInputValue(selectedValue);
-    }
-  }, [selectedValue]);
 
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
@@ -369,24 +360,24 @@ export const FieldValuesWidgetInner = forwardRef<
       : parseStringValue(value);
   };
 
-  const handleSingleValueChange = (newValue: string) => {
-    setInputValue(newValue);
-    onInputChange(newValue);
-    const parsedValue = parseFreeformValue(newValue);
-    onChange(parsedValue !== null ? [parsedValue] : []);
-  };
+  const parseValue = (value: string) =>
+    parseFreeformValue(value)?.toString() ?? null;
+
+  const commitValues = (values: string[]) =>
+    onChange(isNumericParameter ? values.map(parseNumericValue) : values);
+
+  const fieldValues = value.filter(isNotNull).map(String);
+  const optionsData = options.map(getOption).filter(isNotNull);
 
   const handleSingleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") {
       return;
     }
     const inputValue = event.currentTarget.value;
-    const firstOption = options
-      .map((option) => getOption(option))
-      .filter(isNotNull)[0];
+    const firstOption = optionsData[0];
     if (firstOption && firstOption.value !== inputValue) {
       event.preventDefault();
-      handleSingleValueChange(firstOption.value);
+      commitValues([firstOption.value]);
     }
   };
 
@@ -425,11 +416,8 @@ export const FieldValuesWidgetInner = forwardRef<
           />
         ) : multi ? (
           <MultiAutocompleteWithTranslation
-            value={value.filter(isNotNull).map((value) => String(value))}
-            data={options
-              .filter((option) => getValue(option) != null)
-              .map((option) => getOption(option))
-              .filter(isNotNull)}
+            value={fieldValues}
+            data={optionsData}
             placeholder={tokenFieldPlaceholder}
             rightSection={isLoading ? <Loader size="xs" /> : undefined}
             nothingFoundMessage={getNothingFoundMessage({
@@ -444,15 +432,7 @@ export const FieldValuesWidgetInner = forwardRef<
               position: "bottom-start",
             }}
             data-testid="token-field"
-            parseValue={(value) => {
-              if (isNumericParameter) {
-                const number = parseNumber(value);
-                return number != null ? String(number) : null;
-              } else {
-                const string = value.trim();
-                return string.length > 0 ? string : null;
-              }
-            }}
+            parseValue={parseValue}
             renderValue={({ value }) => (
               <RemappedValue
                 parameter={parameter}
@@ -477,11 +457,8 @@ export const FieldValuesWidgetInner = forwardRef<
           />
         ) : (
           <Autocomplete
-            value={inputValue}
-            data={options
-              .filter((option) => isNotNull(getValue(option)))
-              .map((option) => getOption(option))
-              .filter(isNotNull)}
+            value={fieldValues[0] ?? ""}
+            data={optionsData}
             placeholder={tokenFieldPlaceholder}
             rightSection={isLoading ? <Loader size="xs" /> : undefined}
             autoFocus={autoFocus}
@@ -497,8 +474,10 @@ export const FieldValuesWidgetInner = forwardRef<
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} tc={tc} />
             )}
+            parseValue={parseValue}
             onKeyDown={handleSingleValueKeyDown}
-            onChange={handleSingleValueChange}
+            onSearchChange={onInputChange}
+            onChange={(value) => commitValues(value !== "" ? [value] : [])}
           />
         )}
       </div>

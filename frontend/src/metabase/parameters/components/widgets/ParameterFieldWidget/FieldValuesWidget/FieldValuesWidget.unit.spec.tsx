@@ -129,4 +129,58 @@ describe("FieldValuesWidget", () => {
       expect(onChange).toHaveBeenLastCalledWith(["Gadget"]);
     });
   });
+
+  describe("remapped values (value ≠ label)", () => {
+    const REMAPPED_VALUES: [string | number, string][] = [
+      [1, "Gadget"],
+      [2, "Gizmo"],
+    ];
+
+    it("should commit the underlying value, not the label, when clicking a remapped option", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({ values: REMAPPED_VALUES }),
+      );
+      const { onChange } = setup({
+        placeholder: "Value",
+        disableList: true,
+        parameter: createMockParameter({
+          values_source_type: "static-list",
+          values_source_config: { values: REMAPPED_VALUES },
+          values_query_type: "list",
+        }),
+      });
+
+      const input = screen.getByPlaceholderText("Value");
+      await userEvent.click(input);
+      await userEvent.click(await screen.findByText("Gadget"));
+
+      // Mantine's Autocomplete commits option.label on submit; the widget must
+      // commit the underlying value "1" instead of the display label "Gadget".
+      expect(onChange).toHaveBeenLastCalledWith(["1"]);
+    });
+
+    it("should not clear a numeric filter when clicking a remapped option", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({ values: REMAPPED_VALUES }),
+      );
+      const { onChange } = setup({
+        placeholder: "Value",
+        disableList: true,
+        parameter: createMockParameter({
+          type: "number/=",
+          values_source_type: "static-list",
+          values_source_config: { values: REMAPPED_VALUES },
+          values_query_type: "list",
+        }),
+      });
+
+      const input = screen.getByPlaceholderText("Value");
+      await userEvent.click(input);
+      await userEvent.click(await screen.findByText("Gadget"));
+
+      // Committing the label "Gadget" fails numeric parsing and clears the
+      // filter (onChange([])); the underlying value 1 must be committed.
+      expect(onChange).toHaveBeenLastCalledWith([1]);
+    });
+  });
 });
