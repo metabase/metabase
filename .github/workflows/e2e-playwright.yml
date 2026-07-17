@@ -37,15 +37,23 @@ jobs:
     needs: uberjar
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
-    name: e2e-playwright-ee-w${{ matrix.workers }}
+    name: e2e-playwright-ee-s${{ matrix.shard }}
     strategy:
       fail-fast: false
-      # Worker-count A/B on the real runner class. workers=1 is the serial
-      # baseline (shared step-backend); workers>1 boots one jar backend per
-      # worker (PW_PER_WORKER_BACKEND). Trim to [1] once numbers are in.
+      # Sharded across N jobs to keep wall-clock down as the suite grows.
+      # Each shard runs a slice of specs with workers=2 + per-worker backends
+      # (the A/B winner — see git history for the workers=1 vs 2 comparison).
+      # Playwright's --shard split is count/order-based, not duration-balanced,
+      # so a shard that draws several of the largest specs can run long; bump
+      # SHARD_TOTAL (and the matrix list) as spec count climbs, and revisit a
+      # timings-balanced split if imbalance bites. Each shard re-pays the ~13m
+      # setup (snapshot gen etc.), so this trades total CI minutes for lower
+      # wall-clock — the intended tradeoff.
       matrix:
-        workers: [1, 2]
+        shard: [1, 2, 3, 4]
     env:
+      # Keep in sync with the shard matrix above.
+      SHARD_TOTAL: 4
       MB_EDITION: ee
       # resolveToken() in e2e-playwright/support/api.ts reads the
       # CYPRESS_-prefixed names first — same secrets as e2e-test.yml.
@@ -110,12 +118,13 @@ jobs:
       - name: Run Playwright tests
         working-directory: e2e-playwright
         env:
-          PW_PER_WORKER_BACKEND: ${{ matrix.workers > 1 && '1' || '' }}
-          PW_ACTION_TIMEOUT: ${{ matrix.workers > 1 && '30000' || '' }}
+          # workers=2 + per-worker backends on every shard (the A/B winner).
+          PW_PER_WORKER_BACKEND: "1"
+          PW_ACTION_TIMEOUT: "30000"
           # Worker backends boot from the fetched jar with capped heaps.
           JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
           PW_WORKER_MAX_HEAP: 1500m
-        run: bunx playwright test --workers=${{ matrix.workers }} ${{ matrix.workers > 1 && '--fully-parallel' || '' }}
+        run: bunx playwright test --workers=2 --fully-parallel --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
 
       # Plain GitHub artifact only — deliberately NOT the upload-test-results
       # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
@@ -124,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: playwright-timings-w${{ matrix.workers }}
+          name: playwright-timings-s${{ matrix.shard }}
           path: |
             e2e-playwright/target/junit/playwright.xml
             e2e-playwright/target/playwright-results.json
@@ -134,7 +143,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-w${{ matrix.workers }}
+          name: playwright-report-s${{ matrix.shard }}
           path: |
             e2e-playwright/playwright-report
             e2e-playwright/test-results
