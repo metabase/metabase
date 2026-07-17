@@ -138,7 +138,9 @@ const baseConfig = {
     "/target/cljs_release/",
     "/frontend/test/",
   ],
-  testEnvironment: "jest-environment-jsdom",
+  // Reuses one jsdom instance per worker (module isolation is unaffected);
+  // see the header comment in the environment file for reset semantics.
+  testEnvironment: "<rootDir>/frontend/test/shared-jsdom-environment.js",
 };
 
 /** @type {import('jest').Config} */
