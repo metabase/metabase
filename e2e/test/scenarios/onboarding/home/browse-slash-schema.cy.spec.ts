@@ -46,8 +46,7 @@ describe(
       cy.log("browse to the schema from the database page");
       cy.visit(`/browse/databases/${WRITABLE_DB_ID}`);
       cy.findByRole("heading", { name: SLASH_SCHEMA }).click();
-      // known limitation: this URL works for in-app navigation only — a hard page load of it is
-      // rejected at the HTTP layer because of the percent-encoded slash in the path (#77353)
+
       cy.location("pathname").should(
         "eq",
         `/browse/databases/${WRITABLE_DB_ID}/schema/${encodeURIComponent(SLASH_SCHEMA)}`,
