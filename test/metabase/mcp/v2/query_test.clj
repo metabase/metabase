@@ -53,6 +53,58 @@
         (is (nil? (q/next-page-cursor! sid uid {:database (mt/id)} [1] {})))
         (is (nil? (q/next-page-cursor! sid uid "not-a-map" [1] {})))))))
 
+(defn- products-orders-fanout-query
+  "Products fanned out 1:many onto their Orders: the same source-table PK spans many result
+   rows, ordered by a non-unique column (TITLE) so page boundaries land inside a PK group.
+   The projection is restricted to keyset-safe columns — Products.ID, Products.TITLE, and the
+   joined Orders.ID, which is unique per result row and so serves as the completeness check."
+  []
+  (let [provider (mp)
+        orders   (lib.metadata/table provider (mt/id :orders))
+        p-id     (lib.metadata/field provider (mt/id :products :id))
+        p-title  (lib.metadata/field provider (mt/id :products :title))
+        o-id     (lib.metadata/field provider (mt/id :orders :id))
+        o-pid    (lib.metadata/field provider (mt/id :orders :product_id))]
+    (-> (lib/query provider (lib.metadata/table provider (mt/id :products)))
+        (lib/join (-> (lib/join-clause orders [(lib/= p-id o-pid)])
+                      (lib/with-join-fields [o-id])))
+        (lib/filter (lib/<= p-id 2))
+        (lib/order-by p-title :asc)
+        (lib/with-fields [p-id p-title]))))
+
+(deftest next-page-cursor-fan-out-join-test
+  ;; The contract pinned here is "no silent gaps": whenever a cursor IS minted, following the
+  ;; chain must serve exactly the unpaged result set — and when that can't be guaranteed, the
+  ;; mechanism must mint nothing (the caller then sees a truncated page with no cursor: an
+  ;; explicit dead end, not a gap). A fan-out join breaks both mint-time tiebreakers: the
+  ;; source-table PK repeats across result rows (a PK-only boundary drops the boundary row's
+  ;; remaining fan-out rows), and the full-tuple fallback imposes a tie order the already-served
+  ;; first page never ran under (dropping AND repeating rows around each boundary).
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query     (products-orders-fanout-query)
+          o-id-of   (fn [row] (nth row 2))
+          reference (let [[rows _] (run-rows+cols query)] (mapv o-id-of rows))
+          page-size 50
+          {:keys [paged refused?]}
+          (loop [q (lib/limit query page-size), acc [], pages 1]
+            (let [[rows cols] (run-rows+cols q)
+                  acc' (into acc (map o-id-of) rows)]
+              (if (or (< (count rows) page-size) (> pages 10))
+                {:paged acc' :refused? false}
+                (if-let [nxt (#'q/next-page-query (lib/prepare-for-serialization q) cols (last rows))]
+                  (recur (lib/query (mp) nxt) acc' (inc pages))
+                  {:paged acc' :refused? true}))))]
+      (testing "GHY-4142: paging a 1:many join must either serve every result row exactly once or mint no cursor at all"
+        (is (> (count reference) page-size)
+            "fixture must span multiple pages, or no boundary is exercised")
+        (is (= (count paged) (count (distinct paged)))
+            "no row served twice")
+        (when-not refused?
+          (is (= (count reference) (count paged))
+              "rows served across a completed cursor chain equal the unpaged run — a shortfall means a page boundary dropped fan-out rows")
+          (is (= [] (->> reference (remove (set paged)) sort vec))
+              "every unpaged row appears on some page — ids listed here were dropped at a boundary"))))))
+
 (deftest next-page-cursor-pages-without-gaps-or-dups-test
   ;; Proves the keyset seek is correct across page boundaries: for a unique-key (PK) source, paging
   ;; returns strictly increasing, distinct PKs — no row skipped, none repeated. (The non-unique-key
