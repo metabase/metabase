@@ -162,6 +162,9 @@ export const FieldValuesWidgetInner = forwardRef<
     }),
   );
   const [isExpanded, setIsExpanded] = useState(false);
+  const selectedValue =
+    value.filter(isNotNull).map((value) => String(value))[0] ?? "";
+  const [inputValue, setInputValue] = useState(selectedValue);
   const dispatch = useDispatch();
   const tc = useTranslateContent();
 
@@ -185,6 +188,12 @@ export const FieldValuesWidgetInner = forwardRef<
       setIsExpanded(true);
     }
   }, [width, previousWidth]);
+
+  useEffect(() => {
+    if (selectedValue !== "") {
+      setInputValue(selectedValue);
+    }
+  }, [selectedValue]);
 
   const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
@@ -362,6 +371,7 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const handleSingleValueChange = (newValue: string) => {
+    setInputValue(newValue);
     onInputChange(newValue);
     const parsedValue = parseFreeformValue(newValue);
     onChange(parsedValue !== null ? [parsedValue] : []);
@@ -468,9 +478,7 @@ export const FieldValuesWidgetInner = forwardRef<
           />
         ) : (
           <Autocomplete
-            value={
-              value.filter(isNotNull).map((value) => String(value))[0] ?? ""
-            }
+            value={inputValue}
             data={options
               .filter((option) => isNotNull(getValue(option)))
               .map((option) => getOption(option))
