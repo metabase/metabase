@@ -77,7 +77,6 @@
                :interestingness_score
                :contextual_interestingness_score
                :row_count
-               :segment_name
-               :timeline_interestingness))
+               :segment_name))
    :id
    {:default []}))

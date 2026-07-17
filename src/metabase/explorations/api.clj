@@ -319,11 +319,7 @@
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
-   [:row_count                        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-   [:timeline_interestingness         {:optional true} [:maybe [:sequential
-                                                                [:map
-                                                                 [:timeline_id           ms/PositiveInt]
-                                                                 [:interestingness_score {:optional true} [:maybe number?]]]]]]])
+   [:row_count                        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::ExplorationPageNode
   "A page within a block: the bundle of queries for one (card, dimension, query_type) under the
@@ -838,9 +834,7 @@
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
   intended for the frontend to poll while pending queries finish. The `interestingness_score`
   column is left-joined from `exploration_query_result` so clients can rank/highlight without a
-  second roundtrip; pending or errored queries get `nil`. Per-`(query, timeline)` scores are
-  batched-hydrated as `:timeline_interestingness` so the client can highlight relevant timelines
-  for the focused chart."
+  second roundtrip; pending or errored queries get `nil`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
   (t2/hydrate
@@ -854,8 +848,7 @@
                :where     [:= :exploration_thread.exploration_id id]
                :order-by  [[:exploration_query.position :asc]
                            [:exploration_query.id :asc]]})
-   :segment_name
-   :timeline_interestingness))
+   :segment_name))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up

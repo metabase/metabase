@@ -92,7 +92,6 @@
    "ExplorationPage"
    "ExplorationQuery"
    "ExplorationQueryResult"
-   "ExplorationQueryTimelineInterestingness"
    "ExplorationThread"
    "ExplorationThreadTimeline"
    "HTTPAction"
