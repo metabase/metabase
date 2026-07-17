@@ -372,3 +372,17 @@
               (doseq [[model id] result]
                 (is (= "card" model))
                 (is (= 0 (mod id 2)))))))))))
+
+(deftest check-permissions-for-model-transform-test
+  (testing "transform readability is enforced in the engine — on the ranked set, so :total reflects
+            it and every search surface agrees — via the source database's transforms permission"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/User {user-id :id} {}]
+      (let [check     #'search.impl/check-permissions-for-model
+            transform {:model "transform" :id 1 :database_id db-id}
+            orphaned  {:model "transform" :id 2 :database_id nil}]
+        (testing "a superuser sees every transform, including one whose source database was deleted"
+          (is (check {:current-user-id (mt/user->id :crowberto)} transform))
+          (is (check {:current-user-id (mt/user->id :crowberto)} orphaned)))
+        (testing "a user without the transforms permission on the source database is filtered out"
+          (is (not (check {:current-user-id user-id} transform))))))))

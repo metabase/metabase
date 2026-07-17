@@ -106,6 +106,13 @@
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
 
+(defmethod check-permissions-for-model :transform
+  [search-ctx instance]
+  ;; Enforce transform readability here — in the ranked set — rather than as a post-filter on the
+  ;; page, so `:total` reflects it and every search surface agrees. `:database_id` is the indexed
+  ;; source database; a nil one (orphaned transform) only passes for superusers.
+  (perms/has-db-transforms-permission? (:current-user-id search-ctx) (:database_id instance)))
+
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
