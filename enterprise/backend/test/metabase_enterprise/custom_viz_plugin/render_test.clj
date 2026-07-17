@@ -73,21 +73,30 @@
         (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "feature-off"
                                                  :display_name "Feature Off"
                                                  :status       :active
-                                                 :enabled      true}]
-          (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
-            (mt/with-premium-features #{}
-              (let [card {:display :custom:feature-off}]
-                (is (= :table
-                       (card/detect-pulse-chart-type card nil multi-col-data))))))))
+                                                 :enabled      true
+                                                 :bundle_hash  "abc"}]
+          (mt/with-premium-features #{}
+            (let [card {:display :custom:feature-off}]
+              (is (= :table
+                     (card/detect-pulse-chart-type card nil multi-col-data)))))))
       (testing "custom viz with registered plugin and bundle resolves to :javascript_visualization"
         (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "has-bundle"
                                                  :display_name "Has Bundle"
                                                  :status       :active
-                                                 :enabled      true}]
-          (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
-            (let [card {:display :custom:has-bundle}]
-              (is (= :javascript_visualization
-                     (card/detect-pulse-chart-type card nil multi-col-data))))))))))
+                                                 :enabled      true
+                                                 :bundle_hash  "abc"}]
+          (let [card {:display :custom:has-bundle}]
+            (is (= :javascript_visualization
+                   (card/detect-pulse-chart-type card nil multi-col-data))))))
+      (testing "dev-only custom viz (dev_bundle_url, no uploaded bundle) resolves to :javascript_visualization"
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier     "dev-only"
+                                                 :display_name   "Dev Only"
+                                                 :status         :active
+                                                 :enabled        true
+                                                 :dev_bundle_url "http://localhost:9876"}]
+          (let [card {:display :custom:dev-only}]
+            (is (= :javascript_visualization
+                   (card/detect-pulse-chart-type card nil multi-col-data)))))))))
 
 ;;; ------------------------------------------------ javascript_visualization rendering ------------------------------------------------
 

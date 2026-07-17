@@ -8,7 +8,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
@@ -24,6 +25,18 @@
   (when (and config/ee-available? (premium-features/enable-custom-viz?)
              (custom-viz-display? display-type))
     (subs (name display-type) (count "custom:"))))
+
+(defn custom-viz-static-support?
+  "True when `display-type` is a custom visualization whose enabled plugin can be rendered statically —
+   i.e. it has an uploaded bundle (a `bundle_hash`) or a dev bundle URL. A cheap structural check only:
+   bundle content is resolved once at render time, which falls back to a table render when resolution
+   fails."
+  [display-type]
+  (boolean
+   (when-let [identifier (custom-viz-identifier display-type)]
+     (let [plugin (t2/select-one [:model/CustomVizPlugin :bundle_hash :dev_bundle_url]
+                                 :identifier identifier :enabled true)]
+       (or (:bundle_hash plugin) (:dev_bundle_url plugin))))))
 
 (defn- extract-value-sources
   "Extracts column references from mappings that aren't strings"

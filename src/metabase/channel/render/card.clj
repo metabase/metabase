@@ -7,7 +7,6 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
-   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -149,12 +148,7 @@
                           tyype (pr-str card-name) (apply format reason args))
               tyype)]
       (cond
-        (when-let [identifier (render.util/custom-viz-identifier display-type)]
-          ;; do not load the (potentially multi-MB) :bundle blob eagerly;
-          ;; resolve-bundle re-fetches bytes from the cache as needed.
-          (let [plugin (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
-                                      :identifier identifier :enabled true)]
-            (some-> plugin custom-viz-plugin/resolve-bundle :content)))
+        (render.util/custom-viz-static-support? display-type)
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         (or (empty? rows)
