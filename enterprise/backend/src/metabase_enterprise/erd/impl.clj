@@ -14,6 +14,9 @@
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
+;; every key below is always present in the response ([[build-erd-field]] builds a map literal) — nullable
+;; fields are `[:maybe ...]`, not `{:optional true}`, so the generated TS types don't force needless
+;; `undefined` handling on the frontend
 (mr/def ::erd-field
   [:map
    [:id :int]
@@ -23,11 +26,11 @@
    ;; `base_type` / `effective_type` are emitted so the frontend can use the
    ;; shared `getColumnIcon` helper (which keys off Lib type predicates) instead
    ;; of redoing icon mapping from `database_type` strings.
-   [:base_type {:optional true} [:maybe :string]]
-   [:effective_type {:optional true} [:maybe :string]]
-   [:semantic_type {:optional true} [:maybe :string]]
-   [:fk_target_field_id {:optional true} [:maybe :int]]
-   [:fk_target_table_id {:optional true} [:maybe :int]]])
+   [:base_type [:maybe :string]]
+   [:effective_type [:maybe :string]]
+   [:semantic_type [:maybe :string]]
+   [:fk_target_field_id [:maybe :int]]
+   [:fk_target_table_id [:maybe :int]]])
 
 ;; Mirrors the `:owner` hydration on Table: when `owner_user_id` is set we
 ;; return the full user shape, otherwise (`owner_email` only) we return a
@@ -41,15 +44,18 @@
     [:first_name  {:optional true} [:maybe :string]]
     [:last_name   {:optional true} [:maybe :string]]]])
 
+;; like ::erd-field, every key is always present ([[build-erd-node]] is a map literal)
 (mr/def ::erd-node
   [:map
    [:table_id :int]
    [:name :string]
    [:display_name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:owner       {:optional true} ::erd-owner]
-   [:schema {:optional true} [:maybe :string]]
-   [:visibility_type {:optional true} [:maybe :keyword]]
+   [:description [:maybe :string]]
+   [:owner ::erd-owner]
+   [:schema [:maybe :string]]
+   ;; matches the frontend's TableVisibilityType union: only :hidden/:technical/:cruft are assignable today
+   ;; (see metabase.warehouse-schema.models.table/visibility-types) but :retired/:sensitive exist in legacy rows
+   [:visibility_type [:maybe [:enum :hidden :retired :sensitive :technical :cruft]]]
    [:db_id :int]
    [:fields [:sequential ::erd-field]]])
 

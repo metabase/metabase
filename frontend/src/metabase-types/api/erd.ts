@@ -1,53 +1,61 @@
 import type {
-  ConcreteTableId,
-  DatabaseId,
-  FieldId,
-  SchemaName,
-  Table,
-  TableId,
-  TableVisibilityType,
-} from "./";
+  GetApiEeErdData,
+  MetabaseEnterpriseErdImplErdEdge,
+  MetabaseEnterpriseErdImplErdField,
+  MetabaseEnterpriseErdImplErdNode,
+  MetabaseEnterpriseErdImplErdOwner,
+} from "metabase-types/openapi";
 
-export type ErdRelationship = "one-to-one" | "many-to-one";
+import type { ConcreteTableId, DatabaseId, FieldId, SchemaName } from "./";
 
-// The ERD endpoint never traverses cards / saved-question virtual tables —
-/// hence ConcreteTableId instead of TableId.
-export type ErdField = {
+// Aliases over the generated OpenAPI types — the backend response schema
+// (metabase-enterprise.erd.impl) fully describes the wire format. The only
+// hand-written layer re-applies semantic id aliases (plain `number`/`string`
+// on the wire): the ERD endpoint never traverses cards / saved-question
+// virtual tables, hence ConcreteTableId rather than TableId.
+//
+// The `_Matches*` assertions below guarantee the overrides stay structurally
+// identical to the generated types — if a backend schema change drifts an
+// overridden field (e.g. an id becomes a string), this file fails to compile
+// instead of the override silently masking the change.
+
+export type ErdOwner = MetabaseEnterpriseErdImplErdOwner;
+
+export type ErdField = Omit<
+  MetabaseEnterpriseErdImplErdField,
+  "id" | "fk_target_field_id" | "fk_target_table_id"
+> & {
   id: FieldId;
-  name: string;
-  display_name: string;
-  database_type: string;
-  base_type: string;
-  effective_type: string | null;
-  semantic_type: string | null;
   fk_target_field_id: FieldId | null;
   fk_target_table_id: ConcreteTableId | null;
 };
 
-export type ErdNode = {
+export type ErdNode = Omit<
+  MetabaseEnterpriseErdImplErdNode,
+  "table_id" | "db_id" | "schema" | "fields"
+> & {
   table_id: ConcreteTableId;
-  name: string;
-  display_name: string;
-  description: string | null;
-  owner: Table["owner"];
-  schema: SchemaName | null;
-  visibility_type: TableVisibilityType;
   db_id: DatabaseId;
+  schema: SchemaName | null;
   fields: ErdField[];
 };
 
-export type ErdEdge = {
+export type ErdEdge = Omit<
+  MetabaseEnterpriseErdImplErdEdge,
+  "source_table_id" | "source_field_id" | "target_table_id" | "target_field_id"
+> & {
   source_table_id: ConcreteTableId;
   source_field_id: FieldId;
   target_table_id: ConcreteTableId;
   target_field_id: FieldId;
-  relationship: ErdRelationship;
 };
 
 export type ErdResponse = {
   nodes: ErdNode[];
   edges: ErdEdge[];
 };
+
+export type ErdRelationship = ErdEdge["relationship"];
 
 /**
  * Backend semantics:
@@ -57,8 +65,31 @@ export type ErdResponse = {
  *  - With no `schema` but explicit `table-ids`, those are the focal set.
  *  - At least one of `schema` or `table-ids` must be provided.
  */
-export type ErdParams = {
+export type ErdParams = Omit<GetApiEeErdData["query"], "table-ids"> & {
   "database-id": DatabaseId;
-  "table-ids"?: TableId[];
-  schema?: SchemaName;
+  "table-ids"?: ConcreteTableId[] | null;
+  schema?: SchemaName | null;
 };
+
+type MutuallyAssignable<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
+
+// `Expect<false>` violates the generic constraint, turning drift into a
+// compile error on the offending line.
+type Expect<_T extends true> = never;
+
+type _MatchesErdField = Expect<
+  MutuallyAssignable<ErdField, MetabaseEnterpriseErdImplErdField>
+>;
+type _MatchesErdNode = Expect<
+  MutuallyAssignable<ErdNode, MetabaseEnterpriseErdImplErdNode>
+>;
+type _MatchesErdEdge = Expect<
+  MutuallyAssignable<ErdEdge, MetabaseEnterpriseErdImplErdEdge>
+>;
+type _MatchesErdParams = Expect<
+  MutuallyAssignable<ErdParams, GetApiEeErdData["query"]>
+>;

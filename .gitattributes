@@ -12,4 +12,3 @@
 # CI automation, not edited by hand. Mark generated so tools/humans don't review or diff them as source.
 docs/api.json                  linguist-generated
 docs/api.html                  linguist-generated
-resources/openapi/openapi.json linguist-generated

@@ -79,6 +79,7 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "frontend/src/metabase-types/openapi/**",
       "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
@@ -1030,6 +1031,32 @@ const configs = [
               name: "custom-viz",
               allowTypeImports: true,
               message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: the module is generated and gitignored, and runtime imports (e.g. generated enums) would require every jest/webpack/storybook pipeline to generate it first. See .claude/context-logs/2026-07-03-openapi-types-pipeline-design.md.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["enterprise/frontend/**/*.ts", "enterprise/frontend/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: the module is generated and gitignored, and runtime imports (e.g. generated enums) would require every jest/webpack/storybook pipeline to generate it first. See .claude/context-logs/2026-07-03-openapi-types-pipeline-design.md.",
             },
           ],
         },
