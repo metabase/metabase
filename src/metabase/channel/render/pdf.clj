@@ -85,8 +85,9 @@
   "Display types whose static-viz (ECharts/visx) renderer honors an explicit width AND height, so we can render them
   to exactly fit their grid cell (like the frontend).
 
-  Other types (pie, gauge, funnel, progress, scalar, table, ...) have a fixed size when rendered, and resized to fit
-  their grid cell, preserving aspect ratio."
+  Pies also fill their box (their static-viz component lays the legend out to the box), but are handled separately
+  since they aren't in this set. Other types (gauge, funnel, progress, scalar, table, ...) have a fixed size when
+  rendered, and are resized to fit their grid cell, preserving aspect ratio."
   #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
 
 (def ^:private table-like-chart-types
@@ -561,7 +562,7 @@
   "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those are
   drawn natively at the PDF level.
 
-  Used for card types that can't fill an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); resize
+  Used for card types that can't fill an arbitrary box (gauge, funnel, progress, scalar, table, ...); resize
   to fit while preserving aspect."
   ^bytes [timezone {:keys [card dashcard result]} px-width]
   (-> (render.card/render-pulse-card :inline timezone card dashcard result
@@ -571,7 +572,7 @@
 
 (defn- draw-image-in-cell!
   "Draw `img`, resizing to fit (preserving aspect) within a cell rectangle, horizontally centered and top-anchored.
-  Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...). Horizontal centering keeps a narrow
+  Used for card types that can't fill an arbitrary box (scalar, gauge, ...). Horizontal centering keeps a narrow
   scalar (e.g. a big number) from hugging the left edge of its cell."
   [^PDPageContentStream cs ^PDImageXObject img x top-y cell-w cell-h]
   (let [iw    (.getWidth img)
@@ -1095,11 +1096,10 @@
         body-top   (- top-y header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
-        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
-        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
+        ;; Rectangular charts and pies both fill their box exactly; the pie's static-viz component
+        ;; then places its legend to the side (wide box) or below (tall box).
         fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display)
-                            (>= cell-w body-h)))
+                       (= :pie display))
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
         tabular?   (contains? table-like-chart-types chart-type)
         ;; a no-row result detects as :empty regardless of display -> no-results placeholder
@@ -1136,7 +1136,7 @@
           :let [png (when fill?
                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
 
-          ;; rectangular charts (and wide pies): fill the body area exactly
+          ;; rectangular charts and pies: fill the body area exactly
           png
           (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
                       (float x) (float (- body-top body-h))
