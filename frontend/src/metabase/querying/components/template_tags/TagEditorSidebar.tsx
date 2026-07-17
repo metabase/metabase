@@ -70,7 +70,8 @@ export function TagEditorSidebar({
   const parameters = question.parameters();
   const parametersById = _.indexBy(parameters, "id");
 
-  const effectiveSection = tags.length === 0 ? "help" : section;
+  const settingsTabVisible = tags.length !== 0;
+  const effectiveSection = settingsTabVisible ? section : "help";
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
@@ -82,12 +83,14 @@ export function TagEditorSidebar({
   return (
     <SidebarContent title={t`Variables and parameters`} onClose={onClose}>
       <div data-testid="tag-editor-sidebar">
-        <Tabs radius={0} value={effectiveSection} onChange={handleTabChange}>
-          <Tabs.List grow>
-            <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
-            <Tabs.Tab value="help">{t`Help`}</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
+        {settingsTabVisible && (
+          <Tabs radius={0} value={effectiveSection} onChange={handleTabChange}>
+            <Tabs.List grow>
+              <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
+              <Tabs.Tab value="help">{t`Help`}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+        )}
 
         {effectiveSection === "settings" ? (
           <SettingsPane
