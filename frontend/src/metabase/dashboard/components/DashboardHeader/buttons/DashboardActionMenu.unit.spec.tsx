@@ -5,7 +5,6 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { getIsSharing } from "metabase/dashboard/selectors";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
@@ -65,6 +64,9 @@ const setup = ({
           dashboard={dashboard}
           isFullscreen={false}
           onFullscreenChange={jest.fn()}
+          refreshPeriod={null}
+          onRefreshPeriodChange={jest.fn()}
+          setRefreshElapsedHook={jest.fn()}
           parameterQueryParams={{}}
         >
           <DashboardActionMenu
@@ -126,98 +128,40 @@ const openMenu = () => {
 };
 
 describe("DashboardActionMenu", () => {
-  describe("dashboard subscriptions", () => {
-    describe("admins", () => {
-      it("should show the 'Subscriptions' menu item if email and slack are not setup", async () => {
-        setup({ isAdmin: true, hasEmailSetup: false, hasSlackSetup: false });
-        await openMenu();
-        expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      });
+  it("should show the 'Enter fullscreen' and 'Auto-refresh' items", async () => {
+    setup({ isAdmin: true });
+    await openMenu();
 
-      it("should show the 'Subscriptions' menu item if email and slack are setup", async () => {
-        setup({ isAdmin: true, hasEmailSetup: true, hasSlackSetup: true });
-        await openMenu();
-        expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      });
+    expect(await screen.findByText("Enter fullscreen")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("dashboard-auto-refresh-menu-item"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Auto-refresh")).toBeInTheDocument();
+    expect(screen.getByText("Duplicate")).toBeInTheDocument();
+  });
 
-      it("should toggle the subscriptions sidebar on click", async () => {
-        const { store } = setup({ isAdmin: true });
-        expect(getIsSharing(store.getState())).toBe(false);
-        await openMenu();
-        await userEvent.click(await screen.findByText("Subscriptions"));
-        expect(getIsSharing(store.getState())).toBe(true);
-        await openMenu();
-        await userEvent.click(await screen.findByText("Subscriptions"));
-        expect(getIsSharing(store.getState())).toBe(false);
-      });
+  it("should drill into the auto-refresh options when the trigger is clicked", async () => {
+    setup({ isAdmin: true });
+    await openMenu();
 
-      it("should not show the subscriptions menu item if there are no data cards", async () => {
-        setup({
-          isAdmin: true,
-          dashboard: {
-            dashcards: [
-              createMockDashboardCard({
-                card: createMockCard({ display: "text" }),
-              }),
-            ],
-          },
-        });
-        await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
-      });
-    });
+    await userEvent.click(
+      screen.getByTestId("dashboard-auto-refresh-menu-item"),
+    );
 
-    describe("non-admins", () => {
-      it("should show 'Subscriptions' option when email is set up, but slack is not setup", async () => {
-        setup({ isAdmin: false, hasEmailSetup: true, hasSlackSetup: false });
-        await openMenu();
-        expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      });
+    // The main menu items are replaced by the auto-refresh options
+    expect(screen.getByText("Auto Refresh")).toBeInTheDocument();
+    expect(screen.getByText("Off")).toBeInTheDocument();
+    expect(screen.getByText("1 minute")).toBeInTheDocument();
+    expect(screen.getByText("60 minutes")).toBeInTheDocument();
+    expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Enter fullscreen")).not.toBeInTheDocument();
+  });
 
-      it("should show 'Subscriptions' option when email is not set up, but slack is setup", async () => {
-        setup({ isAdmin: false, hasEmailSetup: false, hasSlackSetup: true });
-        await openMenu();
-        expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      });
+  it("should not show a 'Subscriptions' item (it now lives in the header)", async () => {
+    setup({ isAdmin: true, hasEmailSetup: true, hasSlackSetup: true });
+    await openMenu();
 
-      it("should not show the subscriptions menu item if there are no data cards", async () => {
-        setup({
-          isAdmin: false,
-          dashboard: {
-            dashcards: [
-              createMockDashboardCard({
-                card: createMockCard({ display: "heading" }),
-              }),
-            ],
-          },
-        });
-        await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
-      });
-    });
-
-    describe("enterprise", () => {
-      it('should show the "Subscriptions" menu item to non-admins with subscription permissions', async () => {
-        setup({
-          canManageSubscriptions: true,
-          hasEmailSetup: true,
-          isEnterprise: true,
-          isAdmin: false,
-        });
-        await openMenu();
-        expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      });
-
-      it('should not show the "Subscriptions" menu item to non-admins without subscription permissions', async () => {
-        setup({
-          canManageSubscriptions: false,
-          hasEmailSetup: true,
-          isEnterprise: true,
-          isAdmin: false,
-        });
-        await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
-      });
-    });
+    expect(await screen.findByText("Enter fullscreen")).toBeInTheDocument();
+    expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
   });
 });

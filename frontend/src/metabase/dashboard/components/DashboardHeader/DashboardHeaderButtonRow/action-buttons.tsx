@@ -13,6 +13,7 @@ import {
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
   DashboardInfoButton,
+  DashboardSubscriptionsButton,
   EditDashboardButton,
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
@@ -70,6 +71,10 @@ export const dashboardActionButtons: Record<
     component: DashboardSharingMenu,
     enabled: ({ isEditing }) => !isEditing,
   },
+  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS_BUTTON]: {
+    component: DashboardSubscriptionsButton,
+    enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard?.archived,
+  },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
@@ -85,6 +90,18 @@ export const dashboardActionButtons: Record<
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: () => <DashboardInfoButton />,
     enabled: ({ isEditing }) => !isEditing,
+  },
+  [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR]: {
+    // Ticking countdown circle shown only while auto-refresh is active. It
+    // replaces the standalone auto-refresh button (which now lives inside the
+    // overflow menu) and also shows in fullscreen mode. Clicking it opens the
+    // auto-refresh options popover.
+    component: () => <RefreshWidget />,
+    enabled: ({ isEditing, dashboard, refreshPeriod }) =>
+      !isEditing &&
+      !dashboard?.archived &&
+      refreshPeriod != null &&
+      refreshPeriod > 0,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: ({
