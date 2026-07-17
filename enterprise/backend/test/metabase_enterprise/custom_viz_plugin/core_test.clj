@@ -1,4 +1,4 @@
-(ns metabase-enterprise.custom-viz-plugin.core-test
+(ns ^:synchronous metabase-enterprise.custom-viz-plugin.core-test
   "Tests for the defenterprise custom-viz-plugin functions — both OSS stubs and EE implementations."
   (:require
    [clojure.test :refer :all]

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.custom-viz-plugin.render-test
+(ns ^:synchronous metabase-enterprise.custom-viz-plugin.render-test
   "Tests for custom viz integration in the render pipeline (card type detection and static viz)."
   (:require
    [clojure.test :refer :all]
