@@ -598,12 +598,12 @@
           ;; and the queries the planner then runs) into an exploration they can write (IDOR).
           _             (api/check-404 (t2/exists? :model/ExplorationThread
                                                    :id src-thread-id :exploration_id id))
-          metric        (first (:metrics block))
-          card-id       (:card_id metric)
+          metric-selection (first (:metrics block))
+          card-id       (:card_id metric-selection)
           card          (api/check-404 (when card-id (t2/select-one :model/Card :id card-id)))
           card-name     (:name card)
           mp            (lib-be/application-database-metadata-provider (:database_id card))
-          enriched-filters (qp.context/enrich-explore-filters mp card block metric explore_filters)
+          enriched-filters (qp.context/enrich-explore-filters mp card block metric-selection explore_filters)
           top-level-follow-up? (nil? (:source_page_id src-thread))
           ;; Append, don't overwrite: a source block that itself came from a prior drill already
           ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.

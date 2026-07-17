@@ -109,16 +109,11 @@
   "Integer Field id from a (possibly JSON-decoded) mapping/filter target, or nil when the
   target is missing, name-based, or not a `:field` ref."
   [target]
-  (when target
-    (try
-      (let [ref-clause (normalize-target-ref target)]
-        (when (and (vector? ref-clause)
-                   (= :field (first ref-clause))
-                   (>= (count ref-clause) 3))
-          (let [id-or-name (nth ref-clause 2)]
-            (when (pos-int? id-or-name)
-              id-or-name))))
-      (catch Exception _ nil))))
+  (let [ref-clause (normalize-target-ref target)]
+    (when (and (vector? ref-clause) (= :field (first ref-clause)))
+      (let [id-or-name (nth ref-clause 2 nil)]
+        (when (pos-int? id-or-name)
+          id-or-name)))))
 
 (defn extract-default-temporal-breakout-col
   "If the metric Card's `dataset_query` carries a temporal breakout (its default

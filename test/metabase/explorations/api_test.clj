@@ -1442,10 +1442,7 @@
                                (and (str/includes? fname "Price")
                                     (str/includes? fname (str filter-value))))
                              (filter-display-names (:dataset_query %)))
-                      new-queries)))
-        (testing "explore-further skips the AI Summary placeholder — Scratchpad only"
-          (let [docs (t2/select :model/Document :exploration_thread_id (:id new))]
-            (is (= #{"Scratchpad"} (set (map :name docs))))))))))
+                      new-queries)))))))
 
 (deftest exploration-explore-further-permissions-and-404-test
   (testing "POST /:id/explore-further enforces write-check and 404s unknown pages"

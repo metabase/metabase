@@ -230,16 +230,16 @@
       base)))
 
 (defn- block-dims-by-field-id
-  "Index enriched block dimensions by the integer Field id of their mapping `:target`.
-  Used to resolve an explore-filter `field_ref` to a dim without per-dim lib column matching."
-  [block-dimensions dimension-mappings]
-  (let [target-by-dim-id (qp.mbql/index-dimension-targets dimension-mappings)]
-    (into {}
-          (keep (fn [dim]
-                  (when-let [fid (some-> (get target-by-dim-id (:dimension_id dim))
-                                         qp.mbql/target-field-id)]
-                    [fid dim])))
-          block-dimensions)))
+  "Index enriched block dimensions by the integer Field id of their mapping `:target`, given a
+  prebuilt `{dimension_id → target}` index. Used to resolve an explore-filter `field_ref` to a
+  dim without per-dim lib column matching."
+  [block-dimensions target-by-dim-id]
+  (into {}
+        (for [dim block-dimensions
+              :let [fid (some-> (get target-by-dim-id (:dimension_id dim))
+                                qp.mbql/target-field-id)]
+              :when fid]
+          [fid dim])))
 
 (defn- dimension-for-explore-filter
   "Match `filter-spec` to one of `block-dimensions` via the metric's `:dimension_mappings`,
@@ -249,7 +249,8 @@
     (get block-dims-by-fid fid)))
 
 (defn- explore-filter-column-display-name
-  "Fallback label from the metric query column when no block dim matched the filter."
+  "Fallback label from the metric query column when no block dim matched the filter. Returns nil on
+  `lib/query` and `lib/find-matching-column` exceptions to keep it best-effort."
   [mp card filter-spec]
   (try
     (let [base       (lib/query mp (:dataset_query card))
@@ -267,28 +268,27 @@
       (explore-filter-column-display-name mp card filter-spec)))
 
 (defn- expression-ref-name
-  "The expression name of `field-ref` when it is an `:expression` ref, else nil. Defensive: a
-  malformed ref yields nil rather than throwing out of enrichment."
+  "The expression name of `field-ref` when it is an `:expression` ref, else nil. `normalize-target-ref`
+  is total (nil/value, never throws) and `nth` has a default, so a malformed ref yields nil."
   [field-ref]
-  (try
-    (let [ref-clause (qp.mbql/normalize-target-ref field-ref)]
-      (when (and (vector? ref-clause) (= :expression (first ref-clause)))
-        (nth ref-clause 2 nil)))
-    (catch Exception _ nil)))
+  (let [ref-clause (qp.mbql/normalize-target-ref field-ref)]
+    (when (and (vector? ref-clause) (= :expression (first ref-clause)))
+      (nth ref-clause 2 nil))))
 
 (defn- explore-filter-dimension-target
   "The `top-n-other` variant breaks out on a synthetic CASE expression named after its dimension
   (`qp.variants/dataset-query \"top-n-other\"`: `expr-name = (or display_name dimension_id \"value\")`)
   that lives only on the variant query, not the metric Card — so a click ref against it resolves to
   no Card column and can't be labeled (Field-id lookup) or applied. Map that expression name back to
-  the dimension's real `:target` via the metric's `:dimension_mappings`, so the drilled filter scopes
-  the actual column. Returns the target ref, or nil when `field-ref` isn't such an expression."
-  [block metric field-ref]
+  the dimension's real `:target` via the prebuilt `{dimension_id → target}` index, so the drilled
+  filter scopes the actual column. Returns the target ref, or nil when `field-ref` isn't such an
+  expression."
+  [block-dimensions target-by-dim-id field-ref]
   (when-let [expr-name (expression-ref-name field-ref)]
     (some (fn [dim]
             (when (= expr-name (or (:display_name dim) (:dimension_id dim) "value"))
-              (qp.mbql/find-dimension-target (:dimension_id dim) (:dimension_mappings metric))))
-          (:dimensions block))))
+              (get target-by-dim-id (:dimension_id dim))))
+          block-dimensions)))
 
 (defn enrich-explore-filters
   "Normalize and label each request filter. A `top-n-other` bucket's click ref is a synthetic
@@ -297,13 +297,15 @@
   Then stamp the BE-computed `:dimension_name`, preserving the FE-supplied `:display_value` when
   present. Enriches block dims with `:group` from the metric Card so same-named dimensions qualify
   the same way as query `:dimension_name` labels."
-  [mp card block metric explore-filters]
+  [mp card block metric-selection explore-filters]
   (let [card-dims         (u/index-by :id (:dimensions card))
         block-dims        (mapv #(block/enrich-with-card-group % card-dims)
                                 (or (:dimensions block) []))
-        block-dims-by-fid (block-dims-by-field-id block-dims (:dimension_mappings metric))]
+        target-by-dim-id  (qp.mbql/index-dimension-targets (:dimension_mappings metric-selection))
+        block-dims-by-fid (block-dims-by-field-id block-dims target-by-dim-id)]
     (mapv (fn [filter-spec]
-            (let [target         (explore-filter-dimension-target block metric (:field_ref filter-spec))
+            (let [target         (explore-filter-dimension-target block-dims target-by-dim-id
+                                                                  (:field_ref filter-spec))
                   filter-spec    (cond-> filter-spec
                                    target (assoc :field_ref target))
                   dimension-name (explore-filter-dimension-name mp card block-dims
