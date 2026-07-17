@@ -20,7 +20,9 @@ export {
   createRoutes,
   formatPattern,
   useRouterHistory,
-  withRouter,
+  // The public facade no longer exposes `withRouter`; only `RouterProvider`'s v3
+  // bootstrap still needs the raw HOC to seed the router context.
+  withRouter as reactRouterWithRouter,
 } from "react-router";
 
 // v3's own path matcher, used to work out how much of the URL each matched route
