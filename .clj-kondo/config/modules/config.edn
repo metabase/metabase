@@ -1902,6 +1902,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -1995,12 +1996,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{driver
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database
-                    :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
   {:team "UX West"
@@ -3131,7 +3132,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3564,6 +3564,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models

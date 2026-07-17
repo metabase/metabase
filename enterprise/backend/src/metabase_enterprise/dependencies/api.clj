@@ -194,7 +194,7 @@
   - `entity-type-field`: Database column name for entity type (e.g., :to_entity_type)
   - `entity-id-field`: Database column name for entity ID (e.g., :to_entity_id)
   - `include-archived-items`: How to handle archived items (:exclude, :all, :only). Defaults to :exclude.
-    This applies to both archived collections AND archived entities (cards/dashboards/documents/snippets/tables).
+    This applies to both archived collections AND archived entities (cards/dashboards/documents/snippets).
 
   Returns a compound [:or ...] clause checking whether entities at those columns are readable.
 
@@ -203,9 +203,9 @@
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
-    Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
-    Note: archived_at is not checked separately as archived tables always have active=false.
+  - Table: Uses perms/visible-table-filter-select with appropriate permissions. Tables are NOT filtered by
+    active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped or
+    hidden tables stay visible.
   - Transform: Analysts can view any transform they have source view permission to."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
@@ -266,27 +266,20 @@
                                                            :only [:= archived-column true]
                                                            :all nil)]}]]))
 
-                     ;; Table with visible-filter-clause and active/visibility_type filtering
+                     ;; Table with visible-filter-clause; inactive/hidden tables are always included
+                     ;; so that dependencies broken by dropped tables stay visible
                      :model/Table
-                     (let [active-column          (keyword (name table-name) "active")
-                           visibility-type-column (keyword (name table-name) "visibility_type")]
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from   [table-name]
-                                              :where  [:and
-                                                       [:in id-column
-                                                        (perms/visible-table-filter-select
-                                                         :id
-                                                         {:user-id       api/*current-user-id*
-                                                          :is-superuser? api/*is-superuser?*}
-                                                         {:perms/view-data      :unrestricted
-                                                          :perms/create-queries :query-builder})]
-                                                       (case include-archived-items
-                                                         :exclude [:and
-                                                                   [:= active-column true]
-                                                                   [:= visibility-type-column nil]]
-                                                         (:only :all) nil)]}]])
+                     [:and
+                      [:= entity-type-field (name entity-type)]
+                      [:in entity-id-field {:select [:id]
+                                            :from   [table-name]
+                                            :where  [:in id-column
+                                                     (perms/visible-table-filter-select
+                                                      :id
+                                                      {:user-id       api/*current-user-id*
+                                                       :is-superuser? api/*is-superuser?*}
+                                                      {:perms/view-data      :unrestricted
+                                                       :perms/create-queries :query-builder})]}]]
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
@@ -727,14 +720,12 @@
                                                         nil))]
                                   {:filter (mi/exclude-internal-content-hsql model :table-alias :entity)
                                    :filter-joins #{}})
+        ;; note that tables are not filtered by active/visibility_type, so that dependencies
+        ;; broken by dropped tables stay visible
         archived-filter (when-not (= query-type :breaking)
                           {:filter (case entity-type
                                      (:card :dashboard :document :snippet :segment :measure)
                                      [:= :entity.archived false]
-                                     :table
-                                     [:and
-                                      [:= :entity.active true]
-                                      [:= :entity.visibility_type nil]]
                                      nil)
                            :filter-joins #{}})
         personal-filter (when-not include-personal-collections

@@ -43,6 +43,7 @@ function createMockChartMeasurements(
       yTicksWidthLeft: 0,
       yTicksWidthRight: 0,
       xTicksHeight: 0,
+      xTickWidthCap: 0,
       firstXTickWidth: 0,
       lastXTickWidth: 0,
     },
