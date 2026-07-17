@@ -255,7 +255,7 @@ Keep the icon **simple and monochromatic** — avoid gradients and multiple colo
 
 ## Static Visualizations (Email / Slack / PDF)
 
-Provide a `StaticVisualizationComponent` to enable rendering in non-interactive contexts: email attachments, Slack previews, and PDF exports.
+Provide a `StaticVisualizationComponent` to enable rendering in non-interactive contexts: email attachments, Slack previews, and PDF attachments.
 
 ```tsx
 const StaticVisualizationComponent = ({
