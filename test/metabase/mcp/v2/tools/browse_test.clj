@@ -105,6 +105,25 @@
          #"`offset` with get_fields pages the fields of one large table"
          (#'browse/get-fields {:action "get_fields" :table_ids [1 2] :offset 5})))))
 
+(deftest get-fields-dedups-table-ids-test
+  (testing "GHY-4138: duplicate table_ids are deduped before the guards run — the same id twice is
+            one table, so it does not trip the single-table `offset` rule or inflate the 20-id cap"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {t :id}  {:db_id db-id :schema "public" :name "orders"}
+                   :model/Field    _        {:table_id t :name "id"    :base_type :type/Integer :position 0}
+                   :model/Field    _        {:table_id t :name "total" :base_type :type/Float   :position 1}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (testing "the same table twice with an explicit offset pages that one table, not rejected"
+            (let [[envelope] (call! {:action "get_fields" :table_ids [t t] :offset 1})]
+              (is (= [t] (map :id (:tables envelope))))
+              (is (= 2 (:total_fields (first (:tables envelope))))
+                  "offset paging engaged on the single deduped table")))
+          (testing "repeated ids do not count toward the 20-id cap"
+            (let [[envelope] (call! {:action "get_fields" :table_ids (vec (repeat 25 t))})]
+              (is (= [t] (map :id (:tables envelope)))
+                  "25 copies of one table is one table — served, not rejected as over the cap"))))))))
+
 ;;; ------------------------------------------------ Byte budget ---------------------------------------------------
 
 (deftest ^:parallel assemble-tables-within-budget-test

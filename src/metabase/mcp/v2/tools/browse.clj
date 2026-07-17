@@ -438,44 +438,47 @@
 
 (defn- get-fields
   [{:keys [table_ids include_hidden offset] :as args}]
-  (when (empty? table_ids)
-    (common/throw-teaching-error "`table_ids` must name at least one table."))
-  (when (> (count table_ids) max-table-ids)
-    (common/throw-teaching-error
-     (format "`table_ids` accepts at most %d ids per call — you passed %d; split the request."
-             max-table-ids (count table_ids))))
-  (when (and offset (> (count table_ids) 1))
-    (common/throw-teaching-error
-     "`offset` with get_fields pages the fields of one large table — request that table alone."))
-  (let [table-ids (into [] (distinct) table_ids)
-        {fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
-        ;; A table whose database isn't browsable (a stub or router-destination database) is
-        ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
-        ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
-        browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
-                           (when (seq db-ids)
-                             (t2/select-pks-set :model/Database
-                                                {:where [:and
-                                                         [:in :id db-ids]
-                                                         (schema.table/browsable-databases-honeysql-filter)]})))
-        browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
-        rows      (filterv browsable? fetched)
-        missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
-        detailed? (or (contains? args :fields)
-                      (= :detailed (common/response-format args)))
-        rows      (cond-> rows detailed? attach-inline-values)
-        related   (related-tables-by-requested-table rows)
-        payloads  (mapv #(project-table args related %) rows)
-        {:keys [tables omitted message]} (assemble-tables payloads offset)
-        omitted   (into (mapv (fn [id]
-                                {:id     id
-                                 :reason "not found — it may not exist, or you may not have access to it"})
-                              missing)
-                        omitted)
-        body      (cond-> {:tables tables}
-                    (seq omitted) (assoc :omitted omitted))]
-    (common/success-content (cond-> (json/encode body)
-                              message (str "\n" message)))))
+  ;; Dedup before the guards: the cap and the single-table `offset` rule are about distinct tables,
+  ;; so `[1 1]` is one table (a valid `offset` target), not two, and repeated ids don't inflate the
+  ;; count toward the cap.
+  (let [table-ids (into [] (distinct) table_ids)]
+    (when (empty? table-ids)
+      (common/throw-teaching-error "`table_ids` must name at least one table."))
+    (when (> (count table-ids) max-table-ids)
+      (common/throw-teaching-error
+       (format "`table_ids` accepts at most %d ids per call — you passed %d; split the request."
+               max-table-ids (count table-ids))))
+    (when (and offset (> (count table-ids) 1))
+      (common/throw-teaching-error
+       "`offset` with get_fields pages the fields of one large table — request that table alone."))
+    (let [{fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
+          ;; A table whose database isn't browsable (a stub or router-destination database) is
+          ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
+          ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
+          browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
+                             (when (seq db-ids)
+                               (t2/select-pks-set :model/Database
+                                                  {:where [:and
+                                                           [:in :id db-ids]
+                                                           (schema.table/browsable-databases-honeysql-filter)]})))
+          browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
+          rows      (filterv browsable? fetched)
+          missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
+          detailed? (or (contains? args :fields)
+                        (= :detailed (common/response-format args)))
+          rows      (cond-> rows detailed? attach-inline-values)
+          related   (related-tables-by-requested-table rows)
+          payloads  (mapv #(project-table args related %) rows)
+          {:keys [tables omitted message]} (assemble-tables payloads offset)
+          omitted   (into (mapv (fn [id]
+                                  {:id     id
+                                   :reason "not found — it may not exist, or you may not have access to it"})
+                                missing)
+                          omitted)
+          body      (cond-> {:tables tables}
+                      (seq omitted) (assoc :omitted omitted))]
+      (common/success-content (cond-> (json/encode body)
+                                message (str "\n" message))))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
