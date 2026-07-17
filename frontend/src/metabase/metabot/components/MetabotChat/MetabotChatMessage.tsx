@@ -37,6 +37,7 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
+import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -68,6 +69,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
       isUserVisibleDataPartMessage(message),
     )
     .with({ type: "tool_call" }, () => false)
+    .with({ type: "chain_of_thought" }, () => true)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
@@ -232,6 +234,9 @@ export const AgentMessage = ({
         ))
         .with({ type: "tool_call" }, (m) => (
           <AgentToolCallMessage message={m} />
+        ))
+        .with({ type: "chain_of_thought" }, (m) => (
+          <MetabotChainOfThought message={m} isStreaming={isStreaming} />
         ))
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
@@ -557,7 +562,11 @@ export const Messages = ({
                 ? feedbackState.submitted[message.externalId]
                 : undefined
             }
-            hideActions={next?.role === "agent" || (isDoingScience && !next)}
+            hideActions={
+              message.type === "chain_of_thought" ||
+              next?.role === "agent" ||
+              (isDoingScience && !next)
+            }
             extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
             isStreaming={isDoingScience && !next}

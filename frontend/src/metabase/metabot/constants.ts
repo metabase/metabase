@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
+import type { IconName } from "metabase-types/api";
 
 export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 
@@ -111,14 +112,20 @@ export const METABOT_ERR_MSG = {
 };
 
 export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
-  get construct_notebook_query() {
-    return t`Creating a query`;
+  get analyze_chart() {
+    return t`Inspecting the visualization`;
   },
   get analyze_data() {
     return t`Analyzing the data`;
   },
-  get analyze_chart() {
-    return t`Inspecting the visualization`;
+  get construct_notebook_query() {
+    return t`Creating a query`;
+  },
+  get get_field_values() {
+    return t`Retrieving table metadata`;
+  },
+  get get_transform_details() {
+    return t`Getting transform details`;
   },
   get save_entity() {
     return t`Saving`;
@@ -126,14 +133,32 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get list_available_fields() {
     return undefined;
   },
-  get search_data_sources() {
-    return t`Checking available data sources`;
+  get load_skill() {
+    return t`Loading skill`;
+  },
+  get read_resource() {
+    return t`Reading resource`;
   },
   get search() {
     return t`Searching`;
   },
+  get search_data_sources() {
+    return t`Checking available data sources`;
+  },
   get search_metabase_documentation() {
     return t`Consulting the docs`;
+  },
+  get search_tables() {
+    return t`Searching database tables`;
+  },
+  get search_transforms() {
+    return t`Searching transforms`;
+  },
+  get todo_read() {
+    return t`Planning`;
+  },
+  get todo_write() {
+    return t`Planning`;
   },
   get write_transform_python() {
     return t`Writing Python`;
@@ -141,22 +166,28 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get write_transform_sql() {
     return t`Writing SQL`;
   },
-  get todo_write() {
-    return t`Planning`;
-  },
-  get todo_read() {
-    return t`Planning`;
-  },
-  get search_transforms() {
-    return t`Searching transforms`;
-  },
-  get get_transform_details() {
-    return t`Getting transform details`;
-  },
-  get get_field_values() {
-    return t`Retrieving table metadata`;
-  },
-  get search_tables() {
-    return t`Searching database tables`;
-  },
 };
+
+// Icon that reflects what each tool is doing, shown in the chain-of-thought
+// timeline. Falls back to DEFAULT_TOOL_CALL_ICON for anything unmapped.
+export const TOOL_CALL_ICONS: Record<string, IconName> = {
+  construct_notebook_query: "notebook",
+  analyze_data: "insight",
+  analyze_chart: "bar",
+  list_available_fields: "list",
+  search_data_sources: "database",
+  search: "search",
+  search_metabase_documentation: "reference",
+  write_transform_python: "function",
+  write_transform_sql: "database",
+  todo_write: "ordered_list",
+  todo_read: "ordered_list",
+  search_transforms: "search",
+  get_transform_details: "info",
+  get_field_values: "list",
+  search_tables: "database",
+  read_resource: "document",
+  load_skill: "book_open",
+};
+
+export const DEFAULT_TOOL_CALL_ICON: IconName = "bolt";

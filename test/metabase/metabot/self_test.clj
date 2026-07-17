@@ -184,7 +184,31 @@
                :result      {:data []}
                :error       nil
                :duration-ms 1234}]
-             (into [] (self.core/lite-aisdk-xf) chunks))))))
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "streams reasoning deltas and carries provider metadata on the end"
+    (let [chunks [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "Think"}
+                  {:type :reasoning-delta :id "r1" :delta "ing"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}]]
+      (is (= [{:type :reasoning :id "r1" :text "Think"}
+              {:type :reasoning :id "r1" :text "ing"}
+              {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "sig"}}}]
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "a reasoning-end without provider metadata emits no carrier"
+    (is (= [{:type :reasoning :id "r1" :text "hm"}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "hm"}
+                  {:type :reasoning-end :id "r1"}])))))
+
+(deftest aisdk-xf-reasoning-grouping-test
+  (testing "non-streaming mode joins reasoning deltas into one part with metadata"
+    (is (= [{:type :reasoning :id "r1" :text "abc" :provider-metadata {:anthropic {:signature "sig"}}}]
+           (into [] (self.core/aisdk-xf)
+                 [{:type :reasoning-start :id "r1"}
+                  {:type :reasoning-delta :id "r1" :delta "ab"}
+                  {:type :reasoning-delta :id "r1" :delta "c"}
+                  {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
 ;;; tool executor
 
@@ -453,6 +477,41 @@
            (mapv :type
                  (sse-events [{:type :text :id "t1" :text "hi"}
                               {:type :data :data-type "state" :data {:queries {}}}]))))))
+
+(deftest parts->aisdk-sse-xf-reasoning-test
+  (testing "consecutive same-id :reasoning parts share one block; completion closes it"
+    (is (= [["reasoning-start" "r1" nil]
+            ["reasoning-delta" "r1" "Think"]
+            ["reasoning-delta" "r1" "ing"]
+            ["reasoning-end" "r1" nil]
+            ["finish" nil nil]]
+           (mapv (juxt :type :id :delta)
+                 (sse-events [{:type :reasoning :id "r1" :text "Think"}
+                              {:type :reasoning :id "r1" :text "ing"}])))))
+  (testing "reasoning and text close each other in both directions"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end"
+            "text-start" "text-delta" "text-end"
+            "reasoning-start" "reasoning-delta" "reasoning-end"
+            "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hmm"}
+                              {:type :text :id "t1" :text "answer"}
+                              {:type :reasoning :id "r2" :text "more"}])))))
+  (testing "empty-text parts (metadata carriers) emit nothing"
+    (is (= ["finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}]))))
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "hi"}
+                              {:type :reasoning :id "r1" :text ""
+                               :provider-metadata {:anthropic {:signature "sig"}}}])))))
+  (testing "a tool part closes an open reasoning block first"
+    (is (= ["reasoning-start" "reasoning-delta" "reasoning-end" "tool-input-available" "finish"]
+           (mapv :type
+                 (sse-events [{:type :reasoning :id "r1" :text "planning"}
+                              {:type :tool-input :id "call-1" :function "search" :arguments {}}]))))))
 
 (deftest parts->aisdk-sse-xf-tool-test
   (testing "tool input and successful output"

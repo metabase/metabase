@@ -21,7 +21,6 @@ import type { MetabotConfig } from "../Metabot";
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
@@ -185,10 +184,6 @@ export const MetabotChat = ({
                 debug={metabot.debugMode}
                 conversationId={metabot.conversationId}
               />
-              {/* loading */}
-              {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.activeToolCalls} />
-              )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}

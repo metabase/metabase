@@ -10,6 +10,7 @@ import {
 import { uuid } from "metabase/utils/uuid";
 
 import type {
+  MetabotAgentChainOfThoughtMessage,
   MetabotAgentId,
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
@@ -54,6 +55,133 @@ export const pushNewToolCall = (
     message: TOOL_CALL_MESSAGES[toolName],
     status: "started",
   });
+};
+
+const ensureChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
+  const existing = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  if (existing?.type === "chain_of_thought") {
+    // the shell is created at turn start; the first real step stamps the clock
+    if (existing.startedAtMs == null && nowMs != null) {
+      existing.startedAtMs = nowMs;
+    }
+    return existing;
+  }
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    startedAtMs: nowMs,
+  });
+  const chain = convo.messages[convo.messages.length - 1];
+  if (chain.type !== "chain_of_thought") {
+    throw new Error("just-pushed chain message is not a chain");
+  }
+  convo.activeChainId = chain.id;
+  return chain;
+};
+
+// Open an empty chain at turn start so the "Thinking…" indicator shows
+// immediately instead of a separate loader; the first step stamps the clock.
+export const openChain = (convo: WritableDraft<MetabotConverstationState>) => {
+  ensureChain(convo);
+};
+
+const dropChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+) => {
+  convo.messages = convo.messages.filter((m) => m.id !== id);
+};
+
+// A new reasoning block always starts its own step, so tool calls between blocks
+// keep the timeline chronological.
+export const startChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  ensureChain(convo, nowMs).steps.push({ kind: "reasoning", text: "" });
+};
+
+export const appendChainReasoning = (
+  convo: WritableDraft<MetabotConverstationState>,
+  text: string,
+  nowMs?: number,
+) => {
+  const chain = ensureChain(convo, nowMs);
+  const last = chain.steps.at(-1);
+  if (last?.kind === "reasoning") {
+    last.text += text;
+  } else {
+    chain.steps.push({ kind: "reasoning", text });
+  }
+};
+
+export const addChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  { id, name, nowMs }: { id: string; name: string; nowMs?: number },
+) => {
+  const chain = ensureChain(convo, nowMs);
+  const exists = chain.steps.some((s) => s.kind === "tool" && s.id === id);
+  if (!exists) {
+    chain.steps.push({ kind: "tool", id, name, status: "started" });
+  }
+};
+
+export const endChainTool = (
+  convo: WritableDraft<MetabotConverstationState>,
+  id: string,
+) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  if (chain?.type === "chain_of_thought") {
+    for (const step of chain.steps) {
+      if (step.kind === "tool" && step.id === id) {
+        step.status = "ended";
+      }
+    }
+  }
+};
+
+// End the current chain so later reasoning/tools start a fresh one after the
+// answer text (keeps chains chronological with interleaved answer segments). A
+// chain that never gathered a step (e.g. a plain text answer) is dropped rather
+// than persisted as an empty "Thinking…" row.
+export const closeChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+  nowMs?: number,
+) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  if (chain?.type === "chain_of_thought") {
+    if (chain.steps.length === 0) {
+      dropChain(convo, chain.id);
+    } else if (chain.endedAtMs == null) {
+      chain.endedAtMs = nowMs;
+    }
+  }
+  convo.activeChainId = undefined;
+};
+
+// Turn teardown: drop an empty chain left open (e.g. an aborted turn that never
+// produced reasoning), and release the active id.
+export const finalizeChain = (
+  convo: WritableDraft<MetabotConverstationState>,
+) => {
+  const chain = convo.activeChainId
+    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    : undefined;
+  if (chain?.type === "chain_of_thought" && chain.steps.length === 0) {
+    dropChain(convo, chain.id);
+  }
+  convo.activeChainId = undefined;
 };
 
 export const getRequestConversation = (
@@ -114,6 +242,7 @@ export const createConversation = (
     visible: false,
     state: {},
     activeToolCalls: [],
+    activeChainId: undefined,
     profileOverride: undefined,
     pendingMessageExternalId: undefined,
     ...overrides,

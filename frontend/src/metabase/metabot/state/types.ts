@@ -89,10 +89,25 @@ export type MetabotAgentTurnInProgressMessage = {
   externalId?: string;
 };
 
+// The turn's reasoning + tool activity, in chronological order. Held in the
+// message list so it renders inline and persists after the turn, but
+// client-only: never sent to the model or saved server-side.
+export type MetabotAgentChainOfThoughtMessage = {
+  id: string;
+  role: "agent";
+  type: "chain_of_thought";
+  steps: MetabotChainStep[];
+  // wall-clock span of the reasoning/tool phase, for the "Thought for Ns" label
+  startedAtMs?: number;
+  endedAtMs?: number;
+  externalId?: string;
+};
+
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
+  | MetabotAgentChainOfThoughtMessage
   | MetabotAgentTurnAbortedMessage
   | MetabotAgentTurnErroredMessage
   | MetabotAgentTurnInProgressMessage;
@@ -113,6 +128,12 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
+// A step in the turn's chain of thought: streamed provider reasoning or a tool
+// invocation. Rendered as one interleaved, collapsible timeline.
+export type MetabotChainStep =
+  | { kind: "reasoning"; text: string }
+  | { kind: "tool"; id: string; name: string; status: "started" | "ended" };
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
   suggestedCodeEdits: Partial<
@@ -131,6 +152,9 @@ export interface MetabotConverstationState {
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
+  // id of the current turn's chain_of_thought message while it's still
+  // accumulating steps; undefined between turns
+  activeChainId: string | undefined;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {

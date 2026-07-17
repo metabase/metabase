@@ -154,6 +154,12 @@
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
+    :reasoning-start       (cond-> {:type :reasoning
+                                    :id   (:id chunk)
+                                    :text (->> (map :delta chunks)
+                                               (str/join ""))}
+                             (some :providerMetadata chunks)
+                             (assoc :provider-metadata (some :providerMetadata chunks)))
     :tool-input-start      {:type      :tool-input
                             :id        (:toolCallId chunk)
                             :function  (:toolName chunk)
@@ -203,6 +209,15 @@
               (-> (flush! result)
                   ;; TODO: check if I can just pass through text-delta?
                   (rf {:type :text :id (:id chunk) :text (:delta chunk)}))
+
+              (and stream-text? (#{:reasoning-start :reasoning-end} (:type chunk)))
+              (cond-> (flush! result)
+                (:providerMetadata chunk)
+                (rf {:type :reasoning :id (:id chunk) :text "" :provider-metadata (:providerMetadata chunk)}))
+
+              (and stream-text? (= :reasoning-delta (:type chunk)))
+              (-> (flush! result)
+                  (rf {:type :reasoning :id (:id chunk) :text (:delta chunk)}))
 
               (not= chunk-id @current-id)
               (u/prog1 (flush! result)
@@ -317,6 +332,7 @@
     :start (1st)      -> start + start-step
     :start (Nth)      -> finish-step + start-step
     :text             -> [text-end]? [text-start]? text-delta
+    :reasoning        -> [reasoning-end]? [reasoning-start]? reasoning-delta (empty text -> nothing)
     :tool-input-start -> tool-input-start
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
@@ -335,6 +351,7 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           current-reasoning-id (volatile! nil)
            start-event       (fn [id]
                                (format-sse-event
                                 (cond-> {:type "start" :messageId id}
@@ -344,6 +361,11 @@
                                  (do (vreset! current-text-id nil)
                                      (rf result (format-sse-event {:type "text-end" :id id})))
                                  result))
+           close-reasoning-block (fn [result]
+                                   (if-let [id @current-reasoning-id]
+                                     (do (vreset! current-reasoning-id nil)
+                                         (rf result (format-sse-event {:type "reasoning-end" :id id})))
+                                     result))
            ensure-started    (fn [result]
                                (if @started?
                                  result
@@ -358,6 +380,7 @@
                                 (when @finish-error-code {:errorCode @finish-error-code}))]
             (-> result
                 close-text-block
+                close-reasoning-block
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
@@ -366,12 +389,12 @@
                 (rf done-sse-line)
                 (rf))))
          ([result part]
-          ;; Any non-text part implicitly closes the current text block before
-          ;; its own events are emitted; the :text branch handles its own
-          ;; closing semantics (only closes when the id changes).
-          (let [result (if (= :text (:type part))
-                         result
-                         (close-text-block result))]
+          ;; Any part of a different kind implicitly closes the open text or
+          ;; reasoning block before its own events are emitted; the :text and
+          ;; :reasoning branches handle their own closing (only on id change).
+          (let [result (cond-> result
+                         (not= :text (:type part))      close-text-block
+                         (not= :reasoning (:type part)) close-reasoning-block)]
             (case (:type part)
               :start
               (if @started?
@@ -393,6 +416,21 @@
                     (-> result
                         (rf (format-sse-event {:type "text-start" :id id}))
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
+
+              ;; Lazy open: empty parts (metadata carriers, redacted/signature-only
+              ;; ends) emit nothing, so no "Thinking..." flash appears for reasoning
+              ;; the provider never actually surfaces as text.
+              :reasoning
+              (if (str/blank? (:text part))
+                result
+                (let [id (or (:id part) (mkid))]
+                  (if (= id @current-reasoning-id)
+                    (rf result (format-sse-event {:type "reasoning-delta" :id id :delta (:text part)}))
+                    (let [result (close-reasoning-block result)]
+                      (vreset! current-reasoning-id id)
+                      (-> result
+                          (rf (format-sse-event {:type "reasoning-start" :id id}))
+                          (rf (format-sse-event {:type "reasoning-delta" :id id :delta (:text part)})))))))
 
               :tool-input-start
               (rf result (format-sse-event {:type       "tool-input-start"
