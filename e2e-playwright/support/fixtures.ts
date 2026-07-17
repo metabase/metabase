@@ -151,7 +151,12 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       // while the static form goes through Playwright's transpiler.
       // parallelIndex, not workerIndex: replacement workers land on the same
       // slot and reuse the still-running backend instead of booting another.
-      const backend = await startWorkerBackend(workerInfo.parallelIndex);
+      // PW_SLOT_OFFSET partitions slots between concurrent INVOCATIONS
+      // (e.g. porting agents each verifying their own spec on their own
+      // backend): slot = parallelIndex + offset.
+      const backend = await startWorkerBackend(
+        workerInfo.parallelIndex + Number(process.env.PW_SLOT_OFFSET || 0),
+      );
       console.log(
         `[worker ${workerInfo.workerIndex} slot ${workerInfo.parallelIndex}] backend on :${backend.port} ${
           backend.startupMs === 0

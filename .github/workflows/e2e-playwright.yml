@@ -93,7 +93,9 @@ jobs:
 
       - name: Install Playwright dependencies
         working-directory: e2e-playwright
-        run: bun install
+        # Retry once: registry tarball extraction can fail transiently
+        # (observed: "Fail extracting tarball for xlsx").
+        run: bun install || (sleep 10 && bun install)
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

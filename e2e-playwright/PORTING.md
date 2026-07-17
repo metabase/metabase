@@ -102,3 +102,23 @@ every fix made while stabilizing a port gets classified and fed back:**
   orchestrator's own runs. Concurrent playwright invocations both restore()
   and corrupt each other. Kill/finish any background run before starting
   another (the coordinator has now made this mistake twice).
+- **dnd-kit drags of elements clipped by a scroll container**: real mouse
+  can't press on clipped coordinates — use the synthetic MouseEvent
+  sequence (`moveDnDKitElementSynthetic` in question-settings.ts; fold into
+  dashboard-cards.ts at consolidation). Real-mouse `moveDnDKitElementOnto`
+  stays the default for visible targets.
+- **Editor autocomplete on slow CI**: fixed debounce sleeps aren't enough —
+  wrap the completion assertion in a toPass loop that re-nudges by retyping
+  the last character (see native-subquery.spec.ts).
+- **Mixed-content text nodes**: testing-library exact `findByText` matches an
+  element's direct text nodes; Playwright exact getByText compares full
+  element text. When the target text has inline element siblings ("Slack is
+  not configured. <a>Set up Slack</a>"), exact → case-sensitive substring
+  regex instead.
+- **Snapshots go stale after schema migrations**: restore only auto-migrates
+  under is-dev?, which e2e-mode backends never set — after pulling a
+  migration, regenerate e2e/snapshots (`node e2e/runner/run_cypress_ci.js
+  snapshot --expose grepTags="-@external"`) or restores silently serve the
+  old schema (Cypress fails identically).
+- **Rename-collapses-navbar applies to ANY EditableText title** (dashboards
+  too, not just questions) — use the toPass open+assert loop.

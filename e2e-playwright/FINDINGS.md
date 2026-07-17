@@ -214,3 +214,27 @@ dividend found during porting gets an entry here in the same PR.**
     `invoke("attr")`; the port's expect.poll genuinely retries. Also: the
     writable-Postgres describe upstream carries no @external tag despite
     requiring live QA containers — a tagging gap.
+
+## Wave 8 additions (self-verifying agent loop)
+
+27. **QA-DB gating can pass by racing** (`document-title` port): the
+    "Doing science..." loading assertion flashes even when the QA database
+    connection is refused instantly — the Cypress original can go green
+    against an unreachable QA DB. Also: `cypress.env.json` hardcodes
+    `QA_DB_ENABLED: "true"` regardless of whether containers run.
+
+28. **Silent snapshot staleness after migrations**: `restore-snapshot!`
+    only auto-migrates when `config/is-dev?`, which source-mode e2e
+    backends (run-mode e2e) never satisfy — local restores silently serve
+    pre-migration schemas until snapshots are regenerated; the Cypress
+    original fails identically. Found when a 2-day-old migration broke the
+    security-center port.
+
+29. **Another no-op test**: bookmarks-collection's "removes items from
+    bookmarks list when they are archived" never asserted the removal; the
+    port asserts it (passes — behavior fine, test was dead).
+
+30. **Latent time-drift flake in Cypress** (`relative-datetime`): `now` is
+    captured at module load with only ~4 minutes of tolerance in the
+    minutes-unit tests; the Cypress spec runs ~3.5 minutes — one slow CI
+    run from flaking. The port captures `now` per test.

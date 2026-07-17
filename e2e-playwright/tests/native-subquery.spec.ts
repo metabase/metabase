@@ -195,9 +195,22 @@ test.describe("scenarios > question > native subquery", () => {
     // See https://github.com/metabase/metabase/pull/20970
     await page.waitForTimeout(1000);
 
-    await expect(
-      nativeEditorCompletion(page, "A_UNIQUE_COLUMN_NAME").first(),
-    ).toBeVisible();
+    // On slower CI machines the completion fetch can outlive the debounce
+    // sleep, and the tooltip won't re-open on its own — nudge by retyping
+    // the last character until the named completion appears.
+    await expect(async () => {
+      const completion = nativeEditorCompletion(
+        page,
+        "A_UNIQUE_COLUMN_NAME",
+      ).first();
+      try {
+        await expect(completion).toBeVisible({ timeout: 3000 });
+      } catch (error) {
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("e", { delay: 50 });
+        throw error;
+      }
+    }).toPass({ timeout: 20_000 });
 
     await typeInNativeEditor(page, ` {{#${questionId2}}}`);
 

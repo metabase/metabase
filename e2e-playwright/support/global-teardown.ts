@@ -9,6 +9,11 @@ export default function globalTeardown() {
   if (!process.env.PW_PER_WORKER_BACKEND) {
     return;
   }
+  // Porting agents iterate repeatedly against their own slot backend —
+  // keep it alive across runs (the orchestrator reaps slots at wave end).
+  if (process.env.PW_KEEP_SLOT_BACKENDS) {
+    return;
+  }
   for (let slot = 0; slot < 16; slot++) {
     try {
       const pids = execSync(`lsof -ti:${4100 + slot}`, { encoding: "utf8" })
