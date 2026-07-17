@@ -60,6 +60,48 @@
       (is (= 400 (:status-code (ex-data (try (validate-filters! {:type ["question" "snippet"]})
                                              (catch clojure.lang.ExceptionInfo e e)))))))))
 
+;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `validate-filters!` as
+;; destructive, though it only validates and throws
+(deftest collection-id-root-is-inert-test
+  (testing "GHY-4137: collection_id \"root\" is documented as \"no scoping\" and resolves to nil, so
+            it must not trip the collection teaching errors the way a real collection id does"
+    (testing "\"root\" passes every check a real collection id would fail"
+      (is (some? (validate-filters! {:type ["database"] :collection_id "root"}))
+          "collectionless type + root: no error")
+      (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
+          "table + root (no Library feature): no error")
+      (is (some? (validate-filters! {:type ["snippet"] :collection_id "root"}))
+          "snippet + root: no error")
+      (is (some? (validate-filters! {:recent true :collection_id "root"}))
+          "recents + root: no error"))
+    (testing "a real collection id still errors where it genuinely can't apply"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"don't live in collections"
+                            (validate-filters! {:type ["database"] :collection_id "someEntityId01234567_"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot filter snippets"
+                            (validate-filters! {:type ["snippet"] :collection_id "someEntityId01234567_"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"recent: true supports only the type filter"
+                            (validate-filters! {:recent true :collection_id "someEntityId01234567_"}))))))
+
+(defn- nothing-to-search?
+  "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
+   A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
+  [args]
+  (try
+    (tools.search/search-tool args {:token-scopes #{"agent:search"}})
+    false
+    (catch clojure.lang.ExceptionInfo e
+      (boolean (re-find #"Nothing to search for" (ex-message e))))))
+
+(deftest ^:parallel collection-id-root-alone-is-empty-request-test
+  (testing "GHY-4137: \"root\" is inert everywhere — as the *only* argument it scopes nothing, so
+            the request has no query and no real filter and is rejected as empty rather than
+            listing the entire instance"
+    (is (nothing-to-search? {:collection_id "root"}))
+    (is (nothing-to-search? {}) "sanity: a truly empty request is also rejected"))
+  (testing "\"root\" combined with a real query or filter is a valid search — it passes validation"
+    (is (not (nothing-to-search? {:collection_id "root" :type ["dashboard"]})))
+    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]})))))
+
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
             also omit unreadable ancestors"

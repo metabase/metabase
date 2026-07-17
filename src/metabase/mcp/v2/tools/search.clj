@@ -157,6 +157,19 @@
           "or recent: true for your recently viewed items.")))
   args)
 
+(def ^:private no-scoping-collection-ids
+  "`collection_id` values that mean \"no scoping\": absent (nil, stripped before the handler) or
+   the documented \"root\" sentinel. Both are inert — they must neither scope the search nor trip
+   the collection teaching errors."
+  #{nil "root"})
+
+(defn- collection-scoping?
+  "True when `collection_id` names a real collection to scope to — present and not an inert
+   value. A missing or \"root\" filter does nothing, so it must not trip the collection checks."
+  [{:keys [collection_id] :as args}]
+  (and (contains? args :collection_id)
+       (not (contains? no-scoping-collection-ids collection_id))))
+
 (defn- validate-filters!
   [{:keys [type created_by archived] :as args}]
   (let [types (set type)]
@@ -171,7 +184,7 @@
          (format "created_by only applies to types that index a creator: %s. Remove %s from type or drop created_by."
                  (str/join ", " (sort created-by-types))
                  (str/join ", " bad)))))
-    (when (contains? args :collection_id)
+    (when (collection-scoping? args)
       (when-let [bad (seq (sort (filter collectionless-types types)))]
         (common/throw-teaching-error
          (format "collection_id cannot filter %s — these types don't live in collections. Remove them from type or drop collection_id."
@@ -189,7 +202,7 @@
          (format "Recents only track %s — remove %s from type or drop recent: true."
                  (str/join ", " (sort (keys type->rv-model)))
                  (str/join ", " bad))))
-      (when (or created_by (contains? args :collection_id) (true? archived))
+      (when (or created_by (collection-scoping? args) (true? archived))
         (common/throw-teaching-error
          "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
     args))
@@ -208,7 +221,7 @@
    read check, or nil when it names the root (no scoping). The search context takes numeric
    ids only, so entity_ids are translated here."
   [collection-id]
-  (when-not (contains? #{nil "root"} collection-id)
+  (when-not (contains? no-scoping-collection-ids collection-id)
     (:id (common/resolve-and-read :model/Collection collection-id
                                   (fn [id]
                                     (when-let [collection (t2/select-one :model/Collection :id id)]
@@ -339,7 +352,7 @@
    {:keys [token-scopes]}]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
         filters?  (boolean (or (seq type)
-                               (contains? args :collection_id)
+                               (collection-scoping? args)
                                (:created_by args)
                                (true? archived)))
         limit     (or (:limit args) 20)
