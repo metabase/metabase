@@ -42,6 +42,12 @@ const enrolled =
 if (enrolled) {
   jest.useFakeTimers();
 
+  // Marks this file as regime-managed. Helpers (findRequests) advance the
+  // fake clock only under this flag — specs that call jest.useFakeTimers()
+  // themselves keep stock helper behaviour (their waitFor budget is the
+  // 1s default, which clock-advancing helpers would exhaust in two polls).
+  (globalThis as Record<string, unknown>).__FAST_TESTS_REGIME__ = true;
+
   // waitFor's budget elapses in fake time, which helpers like findRequests
   // advance by hundreds of ms per poll — the default 1s budget allows only
   // ~2 polls. Fake milliseconds are free, so give waitFor plenty.

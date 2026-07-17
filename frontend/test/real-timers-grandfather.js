@@ -7,18 +7,7 @@
  * verify with: bun x jest <path>
  */
 module.exports = [
-  "enterprise/frontend/src/metabase-enterprise/audit_app/containers/UnsubscribeUserModal/UnsubscribeUserModal.unit.spec.tsx",
-  "enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForDatabases.unit.spec.tsx",
   "enterprise/frontend/src/metabase-enterprise/metabot/components/MetabotAdmin/MetabaseAIProviderSetup.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/EditableDashboard/enterprise.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/EditableDashboard/premium.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard/tests/enterprise.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard/tests/premium.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/StaticDashboard/tests/enterprise.unit.spec.tsx",
-  "frontend/src/embedding-sdk-bundle/components/public/dashboard/StaticDashboard/tests/premium.unit.spec.tsx",
-  "frontend/src/metabase/admin/settings/components/SettingsPages/EmailSettingsPage.unit.spec.tsx",
-  "frontend/src/metabase/api/utils/use-token-refresh.unit.spec.tsx",
   "frontend/src/metabase/forms/components/FormDateInput/FormDateInput.unit.spec.tsx",
-  "frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.unit.spec.tsx",
   "frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.unit.spec.ts",
 ];
