@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -377,9 +376,7 @@ export const FieldValuesWidgetInner = forwardRef<
     const firstOption = optionsData[0];
     if (firstOption && firstOption.value !== inputValue) {
       event.preventDefault();
-      const form = event.currentTarget.form;
-      flushSync(() => commitValues([firstOption.value]));
-      form?.requestSubmit();
+      commitValues([firstOption.value]);
     }
   };
 
