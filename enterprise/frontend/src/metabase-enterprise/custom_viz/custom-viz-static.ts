@@ -28,7 +28,6 @@ type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
   >;
 };
 
-// Registry for custom viz plugins in the GraalJS static-viz context.
 export const customVizRegistry: Map<
   string,
   CustomVisualization<Record<string, unknown>>

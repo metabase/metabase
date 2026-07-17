@@ -119,11 +119,6 @@ function getVisualizerRawSeries(
   ];
 }
 
-/**
- * Initialize the static viz context: set settings and apply enterprise overrides.
- * Called by RenderChart on every render; the backend also calls it directly
- * before registerCustomVizPlugin so that the EE registry is active.
- */
 export function initializeContext(options: RenderChartOptions) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set(

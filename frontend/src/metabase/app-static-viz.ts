@@ -30,7 +30,8 @@ export function registerCustomVizPlugin(
   identifier: string,
   pluginId: CustomVizPluginId,
 ): void {
-  // The plugin bundle assigns its factory to a global
+  // The plugin bundle assigns this global at eval time, so it isn't part of
+  // the typed global scope in the GraalJS context.
   const globals = globalThis as {
     __customVizPlugin__?: Parameters<typeof registerCustomVizPluginImpl>[0];
   };
