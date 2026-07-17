@@ -93,6 +93,36 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
+  # Compile the CLJS that e2e specs import (shadow-cljs `app` build, an npm-module
+  # consumed by the Cypress webpack preprocessor) once, in parallel with the uberjar
+  # build, and share it as an artifact. Each e2e chunk downloads it (~5s) instead of
+  # compiling it themselves (~50s). Chunks fall back to compiling if the artifact is
+  # missing (see e2e-test.yml), so this job failing or being skipped never blocks e2e.
+  # The compile is edition-independent: MB_EDITION only affects rspack bundling and
+  # the Cypress runner, not the shadow-cljs build.
+  e2e-cljs:
+    name: Compile CLJS for e2e
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.e2e_all == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+      - name: Upload compiled CLJS
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+          if-no-files-found: error
+          # a re-run of all jobs would otherwise fail the upload (artifacts are immutable per name)
+          overwrite: true
+
   backend-tests:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
     needs: [create-test-plan]
