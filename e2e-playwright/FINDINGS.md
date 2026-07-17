@@ -165,3 +165,28 @@ dividend found during porting gets an entry here in the same PR.**
     Cypress's inter-command latency masks it; the port handles it with an
     effect-verified `pressShortcut` retry helper (no weakened assertions)
     and documents the dead windows.
+
+## Wave 6 additions (binning, filters, native-filters, dashboard-management, onboarding)
+
+20. **Vacuous 403 assertion across an 18-invocation permission matrix**
+    (`dashboard-management.cy.spec.js`): `assertOnRequest` reads
+    `xhr.status`, which doesn't exist on Cypress interceptions (it's
+    `xhr.response.statusCode`) — so it asserted `undefined !== 403`, always
+    true. The port makes the status check real for the first time.
+
+21. **Harness self-defense**: the binning port's agent caught a latent bug
+    in our OWN earlier helper (metrics.ts binning picker used
+    case-insensitive substring matching — "Total" would select the
+    "Subtotal" row). The review loop guards the new harness, not just the
+    ported specs.
+
+22. **Third confirmed hit of the dimension-template-tag regression**
+    (FINDINGS #2): sql-field-filter's widget test fails identically in
+    Cypress against this backend — the regression's blast radius now spans
+    three specs, mapped for free by the port's fidelity checks.
+
+23. More silently-weak Cypress assertions made real: a Save-button check on
+    the `disabled` attribute where the button is actually gated by
+    `aria-disabled` (passes vacuously upstream); another `.get()` silently
+    de-scoping a `within()` chain in `multiAutocompleteInput`; a regex
+    passed to chai-jQuery `contain` (which expects a string).

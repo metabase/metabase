@@ -83,7 +83,13 @@ export function tableHeaderColumn(page: Page, name: string): Locator {
 }
 
 export async function tableHeaderClick(page: Page, name: string) {
-  await tableHeaderColumn(page, name).click();
+  // Click the header's text, not the cell center — wide cells (e.g.
+  // "Created At") can have their center over the resize gutter, where the
+  // click is swallowed and the column popover never opens.
+  await tableHeaderColumn(page, name)
+    .getByText(name, { exact: true })
+    .first()
+    .click();
 }
 
 export function expressionEditorWidget(page: Page): Locator {
