@@ -44,7 +44,7 @@ jobs:
       # baseline (shared step-backend); workers>1 boots one jar backend per
       # worker (PW_PER_WORKER_BACKEND). Trim to [1] once numbers are in.
       matrix:
-        workers: [1, 2, 3]
+        workers: [1, 2]
     env:
       MB_EDITION: ee
       # resolveToken() in e2e-playwright/support/api.ts reads the

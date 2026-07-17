@@ -161,6 +161,21 @@ it's paid once per run regardless of suite size, so it amortizes on real
 suites — and a prebuilt-jar boot (the CI mode) should be substantially
 cheaper.
 
+**CI matrix on the standard 4vCPU/16GB runners** (20 files / 137 tests,
+per-worker jar backends with 1.5GB heap caps, boots included in test step):
+
+| workers | test step | outcome |
+|---|---|---|
+| 1 (serial) | 753s | clean |
+| 2 | 594s (**1.27×**) | clean, 2 flaky-recovered |
+| 3 | 585s (1.29×) | 1 contention flake |
+
+Verdict: CPU-bound at this runner class — workers=2 is the sweet spot
+(~25-30% wall-clock cut, ≈1.4× pure test throughput net of boots); a third
+worker buys nothing and starts tipping contention-sensitive tests. Bigger
+parallelism needs bigger runners (the same suite does 2×+ at 4 workers on a
+14-core machine). The workflow matrix is trimmed to [1, 2].
+
 What it took to make parallel backends work (all handled in
 `support/worker-backend.ts` / `fixtures.ts`):
 
