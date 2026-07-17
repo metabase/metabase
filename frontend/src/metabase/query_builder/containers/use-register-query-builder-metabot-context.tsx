@@ -15,7 +15,7 @@ import {
   getVisualizationSvgDataUri,
 } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/chart-definition-legacy";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {

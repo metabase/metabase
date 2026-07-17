@@ -1,6 +1,6 @@
 import { checkNotNull } from "metabase/utils/types";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,

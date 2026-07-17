@@ -101,7 +101,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_NAME,
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -346,7 +345,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: "Foo",
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -403,7 +401,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_IN_ORDERS,
         description: "Hey oh",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -417,7 +414,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_IN_PEOPLE,
         description: "This is a segment in the PEOPLE table",
-        table_id: PEOPLE_ID,
         definition: {
           type: "query",
           database: 1,

@@ -3,6 +3,8 @@ export * from "./middleware";
 export * from "./navigation";
 export * from "./Navigate";
 export * from "./react-router";
+export * from "./redirect";
+export * from "./route";
 export * from "./Outlet";
 export * from "./routing-reducer";
 export * from "./sync";

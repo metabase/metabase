@@ -1,7 +1,7 @@
 // these tests use QuestionChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 

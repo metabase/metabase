@@ -75,6 +75,12 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const isAnalytics =
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
   const canShare = !isAnalytics;
+  // Creating a public link is a write, so hide that action when the dashboard is
+  // not writable (e.g. a remote-synced entity on a read-only instance). An
+  // existing public link stays visible either way — viewing and copying it are
+  // reads. Embedding stays available; its Publish button is disabled instead.
+  const canWrite = canShare && dashboard.can_write;
+  const hasPublicLink = Boolean(dashboard.public_uuid);
   // x-ray dashboards have string ids and can't be invite targets.
   const inviteTarget: InviteTarget | undefined =
     typeof dashboard.id === "number"
@@ -86,9 +92,9 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       <SharingMenu>
         <InviteToViewMenuItem onClick={openInvite} />
         <CopyDashboardLinkMenuItem dashboard={dashboard} />
-        {canShare && isPublicSharingEnabled && (
+        {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
-            hasPublicLink={Boolean(dashboard.public_uuid)}
+            hasPublicLink={hasPublicLink}
             onClick={() => setModalType("dashboard-public-link")}
           />
         )}
