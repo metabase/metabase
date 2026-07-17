@@ -45,8 +45,11 @@ import {
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
-// schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
-// percent-encoded in a URL path, so they must be passed as a query parameter instead (#77353)
+/**
+ * schema names containing slashes, backslashes, or percent signs are rejected
+ * at the HTTP layer when percent-encoded in a URL path, so they must be passed
+ * as a query parameter instead (#77353)
+ */
 export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
   /[/\\%]/.test(schema);
 
