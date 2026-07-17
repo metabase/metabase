@@ -8,6 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.util.dynamic-goals :as u.dynamic-goals]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
@@ -101,18 +102,10 @@
       (qp query (inject-referenced-cards rff result)))
     qp))
 
-(defn- ->goal-source
-  [goal-value]
-  (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
-    (perf/select-keys goal-value [:card_id :column])))
-
 (defn viz-settings->specs
   "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
-  (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
-        sources  (keep ->goal-source
-                       (cons (:graph.goal_value viz)
-                             (mapcat (juxt :min :max) segments)))]
+  (let [sources (keep u.dynamic-goals/card-ref (u.dynamic-goals/goal-values viz))]
     (when (seq sources)
       (perf/mapv (fn [[card-id ss]]
                    {:card_id card-id
