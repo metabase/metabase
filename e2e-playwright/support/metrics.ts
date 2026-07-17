@@ -53,9 +53,12 @@ export async function changeBinningForDimension(
     toBinning,
   }: { name: string; fromBinning?: string; toBinning: string },
 ) {
+  // Case-sensitive regex, not string hasText (which is case-insensitive
+  // substring — "Total" would match the "Subtotal" row). Flagged by the
+  // binning port's agent review.
   const dimension = page
     .getByTestId("dimension-list-item")
-    .filter({ hasText: name })
+    .filter({ hasText: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) })
     .first();
   await dimension.hover();
   const binningButton = dimension.getByTestId("dimension-list-item-binning");

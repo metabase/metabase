@@ -190,3 +190,27 @@ dividend found during porting gets an entry here in the same PR.**
     `aria-disabled` (passes vacuously upstream); another `.get()` silently
     de-scoping a `within()` chain in `multiAutocompleteInput`; a regex
     passed to chai-jQuery `contain` (which expects a string).
+
+## Wave 7 additions (native pack, schema-viewer, detail-view, glossary, filters/oauth)
+
+24. **Two more real app bugs — an MBQL5 load-path template-tag cluster**
+    (native-subquery / native-snippet-tags, both reproduced identically by
+    the Cypress originals on this backend): (a) card-reference tags are no
+    longer rewritten to slugs on question load (`GET /api/card/:id` never
+    fires from `updateTemplateTagNames`); (b) variable tags living inside a
+    snippet's content aren't surfaced on saved-question load (no widget, no
+    Variables sidebar entry) though they persist in template-tags. Combined
+    with the dimension-tag parameters regression (#2/#22), three
+    independent specs now point at one load-path reconciliation cluster —
+    mapped for free by port-fidelity cross-checks.
+
+25. **Another silently-ignored assertion argument**:
+    `H.NativeEditor.completions("ANOTHER")` — completions() takes no
+    argument, so the test only ever checked that *some* completion tooltip
+    was visible. Port asserts the named completion.
+
+26. **Latent upstream flake source made explicit** (schema-viewer): the
+    Cypress camera-zoom assertions snapshot an *animating* transform via
+    `invoke("attr")`; the port's expect.poll genuinely retries. Also: the
+    writable-Postgres describe upstream carries no @external tag despite
+    requiring live QA containers — a tagging gap.

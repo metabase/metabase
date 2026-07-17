@@ -66,16 +66,29 @@ test.describe("scenarios > question > bookmarks", () => {
     // placeholder — getByLabel can't match that; role+name can.
     await page.getByTestId("saved-question-header-title").click();
     const titleInput = page.getByRole("textbox", { name: "Add title" });
+    // Editing state can lag the click under CPU contention (CI parallel
+    // legs) — confirm the textbox actually has the value before typing.
+    await expect(titleInput).toHaveValue("Orders");
     await titleInput.press("End");
     await titleInput.pressSequentially(" 2");
+    // Anchor the rename on its PUT — blur alone can race the re-render.
+    const renamed = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" &&
+        /^\/api\/card\/\d+$/.test(new URL(response.url()).pathname),
+    );
     await titleInput.blur();
+    await renamed;
 
-    // The rename re-render can collapse the navbar; re-open (self-healing,
-    // no-op when already open) before asserting the bookmark name updated.
-    await openNavigationSidebar(page);
-    await expect(
-      navigationSidebar(page).getByText("Orders 2", { exact: true }),
-    ).toBeVisible();
+    // The rename re-render can collapse the navbar at any moment after blur
+    // (even after a successful re-open) — retry the whole open+assert unit
+    // until the collapse has landed and been healed.
+    await expect(async () => {
+      await openNavigationSidebar(page);
+      await expect(
+        navigationSidebar(page).getByText("Orders 2", { exact: true }),
+      ).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 15_000 });
 
     // Turn the question into a model
     await openQuestionActions(page, "Turn into a model");

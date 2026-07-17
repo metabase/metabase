@@ -92,3 +92,13 @@ every fix made while stabilizing a port gets classified and fed back:**
   Register at the true trigger.
 - Hash/URL assertions that Cypress retried (`location().should`) must be
   `expect.poll` in Playwright — one-shot checks catch transient states.
+- **Native parameter widgets duplicate their accessible name** on the wrapper
+  div and inner textbox — `getByLabel` can resolve the div; use
+  `getByRole("textbox", { name })` for widget inputs.
+- **React-flow canvas nodes** can legitimately sit outside the window (the
+  camera decides placement). Cypress fires events regardless; the faithful
+  equivalent for node clicks is `dispatchEvent("click")`.
+- **One test-runner at a time on the shared backend** — including the
+  orchestrator's own runs. Concurrent playwright invocations both restore()
+  and corrupt each other. Kill/finish any background run before starting
+  another (the coordinator has now made this mistake twice).
