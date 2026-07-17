@@ -152,7 +152,8 @@
    (batch-fetch-query-metadata*
     (into []
           (comp (filter not-empty)
-                (map lib-be/normalize-query))
+                (map lib-be/normalize-query)
+                (filter not-empty))
           queries)
     opts)))
 
