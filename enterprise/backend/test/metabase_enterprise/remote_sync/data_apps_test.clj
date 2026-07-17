@@ -44,8 +44,8 @@
           (is (true? (:enabled app)))
           (is (= "SALESBUNDLE" (String. ^bytes (:bundle app) "UTF-8"))))))))
 
-(deftest import-keeps-data-apps-absent-from-repo-test
-  (testing "an import whose repo no longer has an app dir keeps that app (a sync never deletes)"
+(deftest import-prunes-data-apps-absent-from-repo-test
+  (testing "an import whose repo no longer has an app dir prunes that app (the repo is the source of truth)"
     (mt/with-model-cleanup [:model/DataApp]
       (import! {"main" {"data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
                         "data_apps/gone/i.js"         "X"
@@ -54,7 +54,7 @@
       (is (= #{"gone" "kept"} (t2/select-fn-set :name :model/DataApp)))
       (import! {"main" {"data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
                         "data_apps/kept/i.js"         "K"}})
-      (is (some? (t2/select-one :model/DataApp :name "gone"))
-          "the app absent from the later import is kept, not pruned")
+      (is (nil? (t2/select-one :model/DataApp :name "gone"))
+          "the app absent from the later import is pruned")
       (is (some? (t2/select-one :model/DataApp :name "kept"))
           "the still-present app is kept"))))
