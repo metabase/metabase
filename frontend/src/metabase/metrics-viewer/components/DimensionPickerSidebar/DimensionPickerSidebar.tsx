@@ -319,12 +319,12 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       <ScrollArea pb="lg" offsetScrollbars="present">
         {showAllFields && (
           <AllFieldsList
+            key={isSearching ? "searching" : "browsing"}
             activeDimensionBreakout={activeDimensionBreakout}
             sections={filteredSections}
             metricSourceDataById={sourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
-            expandAllMetricGroups={isSearching}
             onSelect={handleAllFieldsSelect}
           />
         )}

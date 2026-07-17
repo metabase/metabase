@@ -176,9 +176,11 @@ describe("DimensionPickerSidebar", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
 
-    expect(
-      screen.getByRole("button", { name: "Swapped dates" }),
-    ).not.toHaveAttribute("aria-pressed", "true");
+    for (const button of screen.getAllByRole("button", {
+      name: "Swapped dates",
+    })) {
+      expect(button).not.toHaveAttribute("aria-pressed", "true");
+    }
   });
 
   it("filters dimensions with search", async () => {
@@ -1003,8 +1005,6 @@ describe("DimensionPickerSidebar", () => {
       "true",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
-
     const createdAtButtons = screen.getAllByRole("button", {
       name: "Created At",
     });
@@ -1077,11 +1077,11 @@ describe("DimensionPickerSidebar", () => {
     );
     expect(
       screen.getByRole("button", { name: "Total Orders" }),
-    ).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByText("Shared dimensions")).toBeInTheDocument();
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByText("Shared dimensions")).toHaveLength(2);
     expect(
-      screen.getByRole("button", { name: "Customer Name" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("button", { name: "Customer Name" }),
+    ).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Placed At" }),
     ).toBeInTheDocument();
@@ -1098,11 +1098,10 @@ describe("DimensionPickerSidebar", () => {
     );
     expect(
       screen.getByRole("button", { name: "Total Orders" }),
-    ).toHaveAttribute("aria-expanded", "true");
-    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    ).toHaveAttribute("aria-expanded", "false");
     expect(
-      screen.getByRole("button", { name: "Order Status" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Order Status" }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "ARR" }));
 
@@ -1112,13 +1111,13 @@ describe("DimensionPickerSidebar", () => {
     );
     expect(
       screen.getByRole("button", { name: "Total Orders" }),
-    ).toHaveAttribute("aria-expanded", "true");
+    ).toHaveAttribute("aria-expanded", "false");
     expect(
       screen.queryByRole("button", { name: "Placed At" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Order Status" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Order Status" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not repeat the metric name inside its expanded section without shared dimensions", async () => {
@@ -1168,7 +1167,7 @@ describe("DimensionPickerSidebar", () => {
     expect(screen.getAllByText("Revenue")).toHaveLength(1);
   });
 
-  it("expands all metric accordions while searching all fields", async () => {
+  it("expands all metric accordions in See all and while searching all fields (UXW-4850)", async () => {
     setup({
       dimensions: {
         shared: [],
@@ -1212,6 +1211,12 @@ describe("DimensionPickerSidebar", () => {
       "aria-expanded",
       "true",
     );
+    expect(
+      screen.getByRole("button", { name: "Total Orders" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
+
     expect(
       screen.getByRole("button", { name: "Total Orders" }),
     ).toHaveAttribute("aria-expanded", "false");
@@ -1271,12 +1276,12 @@ describe("DimensionPickerSidebar", () => {
     });
     expect(revenueAccordions).toHaveLength(2);
     expect(revenueAccordions[0]).toHaveAttribute("aria-expanded", "true");
-    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "false");
+    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "true");
 
     await userEvent.click(revenueAccordions[1]);
 
     expect(revenueAccordions[0]).toHaveAttribute("aria-expanded", "true");
-    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "true");
+    expect(revenueAccordions[1]).toHaveAttribute("aria-expanded", "false");
   });
 
   it("uses circle indicators for expression metric dropdown rows", async () => {
@@ -1445,9 +1450,9 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
 
     expect(screen.queryByText("Product")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Created At" }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Created At" })).toHaveLength(
+      2,
+    );
     expect(screen.getByRole("button", { name: "Title" })).toBeInTheDocument();
   });
 
