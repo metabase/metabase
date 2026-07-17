@@ -19,11 +19,12 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { type WithRouterProps, push } from "metabase/router";
-import { Flex, Stack } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
 
@@ -41,7 +42,6 @@ import {
   trackAlertsManagementSearchPerformed,
 } from "../analytics";
 
-import S from "./NotificationsAdminPage.module.css";
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
@@ -313,7 +313,7 @@ export const NotificationsAdminPage = ({
   return (
     <>
       <Flex ref={containerRef} h="100%" wrap="nowrap">
-        <Stack className={S.main} flex={1} gap="md">
+        <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Alerts management`}</MonitorHeaderTitle>
 
           <NotificationsTabs
@@ -335,7 +335,9 @@ export const NotificationsAdminPage = ({
           <NotificationsTable
             notifications={notifications}
             error={error}
+            isFetching={isFetching}
             isLoading={isLoading}
+            page={urlState.page}
             rowSelection={rowSelection}
             selectedDetailId={notificationId}
             sorting={sorting}
@@ -355,7 +357,7 @@ export const NotificationsAdminPage = ({
               onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
             />
           </Flex>
-        </Stack>
+        </MonitorMain>
 
         {isSidebarOpen && (
           <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>

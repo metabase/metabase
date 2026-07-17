@@ -4,8 +4,9 @@ import { useLayoutEffect, useState } from "react";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
   useLazyListBreakingGraphNodesQuery,
@@ -23,7 +24,6 @@ import {
 } from "metabase-enterprise/dependencies/utils";
 import type { DependencyEntry } from "metabase-types/api";
 
-import S from "./DependencyDiagnostics.module.css";
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
@@ -167,7 +167,7 @@ export function DependencyDiagnostics({
 
   return (
     <Flex ref={containerRef} h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="md">
+      <MonitorMain>
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
           mode={mode}
@@ -186,7 +186,9 @@ export function DependencyDiagnostics({
           <DiagnosticsTable
             nodes={nodes}
             mode={mode}
+            page={page}
             sortOptions={getSortOptions(params)}
+            isFetching={isFetching}
             isLoading={isLoading}
             onSelect={onRowClick}
             onSortOptionsChange={handleSortOptionsChange}
@@ -200,7 +202,7 @@ export function DependencyDiagnostics({
             onPageChange={handlePageChange}
           />
         )}
-      </Stack>
+      </MonitorMain>
       {selectedNode != null && (
         <Sidebar containerWidth={containerWidth}>
           <DiagnosticsSidebar

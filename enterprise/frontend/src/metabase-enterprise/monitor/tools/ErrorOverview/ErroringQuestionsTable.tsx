@@ -9,13 +9,13 @@ import { type MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { useScrollToTop } from "metabase/common/hooks";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
   Card,
   Ellipsified,
-  Stack,
-  Text,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -42,7 +42,9 @@ const COLUMN_WIDTHS = [
 
 type ErroringQuestionsTableProps = {
   cards: ErroringCard[];
+  isFetching: boolean;
   isLoading: boolean;
+  page: number;
   sorting: ErroringQuestionsSorting;
   rowSelection: RowSelectionState;
   rerunningCardIds: Set<CardId>;
@@ -52,7 +54,9 @@ type ErroringQuestionsTableProps = {
 
 export const ErroringQuestionsTable = ({
   cards,
+  isFetching,
   isLoading,
+  page,
   sorting,
   rowSelection,
   rerunningCardIds,
@@ -117,6 +121,12 @@ export const ErroringQuestionsTable = ({
     onSortingChange: handleSortingChange,
   });
 
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sorting],
+    skip: isFetching,
+  });
+
   return (
     <Card
       flex="0 1 auto"
@@ -138,11 +148,7 @@ export const ErroringQuestionsTable = ({
           headerCheckboxAriaLabel={t`Select all`}
           ariaLabel={t`Erroring questions`}
           isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
-          emptyState={
-            <Stack p="xl" align="center">
-              <Text c="text-disabled">{t`No results`}</Text>
-            </Stack>
-          }
+          emptyState={<MonitorEmptyState label={t`No erroring questions`} />}
           getRowProps={() => ({ "data-testid": "erroring-question" })}
           getRowHref={getRowHref}
           onRowClick={handleRowClick}

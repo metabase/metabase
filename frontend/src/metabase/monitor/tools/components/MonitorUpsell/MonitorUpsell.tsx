@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { BaseUpsellPage } from "metabase/monitor/upsells";
 
-export const ToolsUpsell = () => {
+export const MonitorUpsell = () => {
   usePageTitle(t`Erroring questions`);
 
   return (

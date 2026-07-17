@@ -15,11 +15,11 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { type WithRouterProps, withRouter } from "metabase/router";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Center, Flex } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
-import S from "./ErrorOverview.module.css";
 import { ErroringQuestionsSearch } from "./ErroringQuestionsSearch";
 import { ErroringQuestionsTable } from "./ErroringQuestionsTable";
 import type {
@@ -115,7 +115,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
   return (
     <>
       <Flex h="100%" wrap="nowrap">
-        <Stack className={S.main} flex={1} gap="md">
+        <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
           {pageError != null ? (
@@ -134,7 +134,9 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
 
               <ErroringQuestionsTable
                 cards={cards}
+                isFetching={isFetching}
                 isLoading={isLoading}
+                page={page}
                 sorting={sorting}
                 rowSelection={rowSelection}
                 rerunningCardIds={rerunningCardIds}
@@ -157,7 +159,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
               )}
             </>
           )}
-        </Stack>
+        </MonitorMain>
       </Flex>
 
       <BulkActionBar
