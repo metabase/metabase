@@ -81,13 +81,16 @@ jobs:
           SHA: ${{ steps.head.outputs.sha }}
           PR: ${{ steps.head.outputs.pr }}
         run: |
-          gh workflow run eval-run.yml -R metabase/evals \
-            -f branch="$BRANCH" \
-            -f commit="$SHA" \
-            -f pr="$PR" \
-            -f surfaces="${{ inputs.surfaces || 'metabot' }}" \
-            -f sample="${{ inputs.sample || '2' }}" \
-            -f agent_model="${{ inputs.agent_model || 'claude-sonnet-4-6' }}"
+          # Plain REST with an explicit ref: `gh workflow run` would first resolve the default
+          # branch over GraphQL, which the fine-grained PAT (no Contents permission) can't do.
+          gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
+            -f ref=main \
+            -f "inputs[branch]=$BRANCH" \
+            -f "inputs[commit]=$SHA" \
+            -f "inputs[pr]=$PR" \
+            -f "inputs[surfaces]=${{ inputs.surfaces || 'metabot' }}" \
+            -f "inputs[sample]=${{ inputs.sample || '2' }}" \
+            -f "inputs[agent_model]=${{ inputs.agent_model || 'claude-sonnet-4-6' }}"
 
       # Button semantics: the label is consumed by the press, never left as state. 404 means a
       # concurrent event already removed it — same end state, not a failure.
