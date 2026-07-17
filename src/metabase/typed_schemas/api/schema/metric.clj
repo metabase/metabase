@@ -2,7 +2,7 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
-   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.typed-schemas.api.common :as common]
@@ -36,12 +36,12 @@
 (defn- metric-details
   "Returns metric details with queryable dimensions for schema generation."
   [card]
-  (let [response (entity-details/get-metric-details {:metric-id                       (:id card)
-                                                     ;; The typed schema does not use the default temporal dimension.
-                                                     :with-default-temporal-breakout? false
-                                                     :with-field-values?              false
-                                                     :with-queryable-dimensions?      true
-                                                     :with-segments?                  false})]
+  (let [response (metabot/get-metric-details {:metric-id                       (:id card)
+                                              ;; The typed schema does not use the default temporal dimension.
+                                              :with-default-temporal-breakout? false
+                                              :with-field-values?              false
+                                              :with-queryable-dimensions?      true
+                                              :with-segments?                  false})]
     (or (:structured-output response)
         (let [error-message (:output response)]
           (throw (ex-info (metric-details-error-message card error-message)

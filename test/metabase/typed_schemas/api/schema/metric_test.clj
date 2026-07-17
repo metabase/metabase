@@ -1,7 +1,7 @@
 (ns metabase.typed-schemas.api.schema.metric-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.typed-schemas.api.schema.metric :as schema.metric]
@@ -51,7 +51,7 @@
                {:dataset_query {:stages [{:source-card 42}]}})))))
 
 (deftest metric-details-skips-default-temporal-breakout-test
-  (mt/with-dynamic-fn-redefs [entity-details/get-metric-details
+  (mt/with-dynamic-fn-redefs [metabot/get-metric-details
                               (fn [options]
                                 (is (false? (:with-default-temporal-breakout? options)))
                                 {:structured-output {:id 247}})]
@@ -59,7 +59,7 @@
            (#'schema.metric/metric-details {:id 247})))))
 
 (deftest metric-details-surfaces-error-responses-test
-  (mt/with-dynamic-fn-redefs [entity-details/get-metric-details
+  (mt/with-dynamic-fn-redefs [metabot/get-metric-details
                               (constantly {:output "Not found."
                                            :status-code 404})]
     (let [exception (try

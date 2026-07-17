@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.core :as metabot]
    [metabase.test :as mt]
    [metabase.typed-schemas.api.schema.common :as schema.common]
    [metabase.typed-schemas.api.schema.table :as schema.table]
@@ -109,7 +109,7 @@
              (schema.table/measure-schema 10 2 total-revenue-measure))))))
 
 (deftest table-schemas-surface-detail-error-responses-test
-  (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+  (mt/with-dynamic-fn-redefs [metabot/get-table-details
                               (constantly {:output "Not found."
                                            :status-code 404})]
     (let [exception (try
