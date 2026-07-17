@@ -277,20 +277,10 @@
 
 ;;; ------------------------------------------------ Search mode ---------------------------------------------------
 
-(defn- trustworthy-total?
-  "The engine's match count is taken before the metabot pipeline drops transforms whose sources
-   the caller can't read, so it can overcount when transforms may be in the result set. Only
-   superusers ever see transforms in search, so only their transform-inclusive searches are
-   affected; every other search's total is exact."
-  [entity-types]
-  (not (and api/*is-superuser?* (contains? (set entity-types) "transform"))))
-
 (defn- engine-results
-  "Run the shared metabot search pipeline and return `{:rows [...] :total <int-or-nil>}`.
-   Rows are the postprocessed+enriched results with `:collection_path` attached; `total` is
-   the engine's match count when exactly one search ran (single query or filters-only
-   listing) and the total is trustworthy, and nil otherwise (rank-fused multi-query results,
-   or a superuser search that may drop unreadable transforms — see [[trustworthy-total?]])."
+  "Run the shared metabot search pipeline and return `{:rows [...] :total <int>}`. Rows are the
+   postprocessed+enriched results with `:collection_path` attached; `total` is the engine's match
+   count for the (fused) result set."
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
   (let [results (metabot.search/search
                  (cond-> {:term-queries     (vec term_queries)
@@ -303,8 +293,7 @@
                    created_by    (assoc :created-by #{api/*current-user-id*})
                    collection-id (assoc :collection-id collection-id)))]
     {:rows  (add-collection-paths (vec results))
-     :total (when (trustworthy-total? entity-types)
-              (:total (meta results)))}))
+     :total (:total (meta results))}))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
@@ -352,12 +341,18 @@
       (mapv #(projections/project :search-result fmt %) rows))))
 
 (registry/deftool search-tool
-  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type, collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you can read and must be requested on its own, not alongside other types; queries narrow snippets by name substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace: \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it unknowable."
-  {:name         "search"
-   :scope        metabot.scope/agent-search
-   :extra-scopes #{metabot.scope/agent-snippets-read}
-   :annotations  {:readOnlyHint true :idempotentHint true}
-   :args         search-args-schema}
+  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or
+  semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type,
+  collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all
+  dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you
+  can read and must be requested on its own, not alongside other types; queries narrow snippets by name
+  substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace:
+  \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it
+  unknowable."  {:name "search"
+                 :scope        metabot.scope/agent-search
+                 :extra-scopes #{metabot.scope/agent-snippets-read}
+                 :annotations  {:readOnlyHint true :idempotentHint true}
+                 :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args}
    {:keys [token-scopes]}]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))

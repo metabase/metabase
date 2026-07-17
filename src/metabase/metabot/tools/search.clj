@@ -15,7 +15,6 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
-   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -184,22 +183,6 @@
                       (assoc :base_table_portable_fk [db-name schema table-name])))
                   r)
                 r))))))
-
-(defn- remove-unreadable-transforms
-  "Remove transforms from search results that the user cannot read.
-  This filters out transforms where the user doesn't have access to the source tables/database."
-  [results]
-  (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
-        readable-ids (when (seq transform-ids)
-                       (->> (t2/select :model/Transform :id [:in transform-ids])
-                            transforms/add-source-readable
-                            (filter :source_readable)
-                            (map :id)
-                            set))]
-    (cond->> results
-      (seq transform-ids) (filterv (fn [result]
-                                     (or (not= "transform" (:type result))
-                                         (contains? readable-ids (:id result))))))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -373,8 +356,7 @@
                              enrich-with-collection-descriptions
                              enrich-with-database-engines
                              enrich-with-portable-entity-ids
-                             enrich-with-metric-base-tables
-                             remove-unreadable-transforms)]
+                             enrich-with-metric-base-tables)]
     (vary-meta results assoc :total total)))
 
 (defn- table-refs->results
@@ -495,8 +477,7 @@
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
-         enrich-with-measure-segment-base-tables
-         remove-unreadable-transforms)))
+         enrich-with-measure-segment-base-tables)))
 
 (defn- format-search-output
   "Format search results as an LLM-ready string."
