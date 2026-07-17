@@ -230,7 +230,7 @@ const TableSelector = ({
     <SchemaAndTableDataSelector
       selectedTableId={selectedTable?.id || null}
       selectedDatabaseId={database?.id}
-      databases={[database]}
+      databases={database ? [database] : []}
       setSourceTableFn={setTableId}
       isInitiallyOpen={false}
       readOnly={readOnly}
