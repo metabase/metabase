@@ -877,9 +877,9 @@
         (execute! (str
                    (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
-        (let [init-result    (driver/init-workspace-isolation! :redshift (mt/db) workspace)
-              iso-user       (-> init-result :database_details :user)
-              workspace+det  (merge workspace init-result)]
+        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+              iso-user       (-> workspace+det :database_details :user)]
           (try
             ;; Seed the foreign-grantor default-priv: connect as the foreign role
             ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
