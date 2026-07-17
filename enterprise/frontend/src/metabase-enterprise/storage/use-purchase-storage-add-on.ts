@@ -38,10 +38,9 @@ export function usePurchaseStorageAddOn() {
   });
   // Until loaded, "no attached DWH" is indistinguishable from "not fetched yet".
   const areDatabasesLoaded = databasesResponse !== undefined;
-  const attachedDwhDatabase = databasesResponse?.data?.find(
+  const hasAttachedDwh = !!databasesResponse?.data?.some(
     (db) => db.is_attached_dwh,
   );
-  const hasAttachedDwh = !!attachedDwhDatabase?.can_upload;
 
   // Keeps us in setting-up from the POST until storage is ready; collapses on
   // its own on error (mutation no longer pending or successful).

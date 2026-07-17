@@ -24,8 +24,12 @@ export const CSVPanel = ({
   onCloseAddDataModal,
   uploadsEnabled,
 }: CSVPanelProps) => {
-  const { isSettingUp, isLoadingStorageAddOn, canSetUpStorage } =
-    useStorageSetup();
+  const {
+    isSettingUp,
+    isLoadingStorageAddOn,
+    canSetUpStorage,
+    hasAttachedDwh,
+  } = useStorageSetup();
 
   const showObtainPermissionPrompt = uploadsEnabled && !canUpload;
   const showEnableUploadsCTA = !uploadsEnabled && canManageUploads;
@@ -61,7 +65,7 @@ export const CSVPanel = ({
           to: Urls.uploadsSettings(),
         }}
         secondaryAction={
-          canSetUpStorage ? (
+          canSetUpStorage && !hasAttachedDwh ? (
             <StoragePurchaseButton location="add-data-modal-csv" />
           ) : undefined
         }

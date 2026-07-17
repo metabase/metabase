@@ -36,21 +36,27 @@ const TestConsumer = () => {
 interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   hasAttachedDwhDatabase?: boolean;
+  canUploadToDwh?: boolean;
   isHosted?: boolean;
+  isAdmin?: boolean;
   addOns?: ICloudAddOnProduct[];
+  purchaseStatus?: number;
 }
 
 const setup = ({
   tokenFeatures = {},
   hasAttachedDwhDatabase = false,
+  canUploadToDwh = true,
   isHosted = true,
+  isAdmin = true,
   addOns = [mockStorageCloudAddOn],
+  purchaseStatus = 200,
 }: SetupOpts = {}) => {
   const settingValues = {
     "is-hosted?": isHosted,
     "token-features": createMockTokenFeatures(tokenFeatures),
     "uploads-settings": {
-      db_id: hasAttachedDwhDatabase ? 1 : null,
+      db_id: hasAttachedDwhDatabase && canUploadToDwh ? 1 : null,
       schema_name: null,
       table_prefix: null,
     },
@@ -64,22 +70,23 @@ const setup = ({
       }),
     }),
   );
-  // Storage is only "ready" once the provisioned Cloud Storage database
-  // (marked `is_attached_dwh`) surfaces in the databases list and accepts
-  // uploads, so seed it when the provisioned state is expected.
+  // Storage is "ready" once the provisioned Cloud Storage database (marked
+  // `is_attached_dwh`) surfaces in the databases list, so seed it when the
+  // provisioned state is expected. Whether it accepts uploads is a separate,
+  // possibly permanent state (`canUploadToDwh`).
   setupDatabaseListEndpoint(
     hasAttachedDwhDatabase
       ? [
           createMockDatabase({
             id: 1,
-            can_upload: true,
+            can_upload: canUploadToDwh,
             is_attached_dwh: true,
           }),
         ]
       : [],
   );
   fetchMock.get("path:/api/ee/cloud-add-ons/addons", addOns);
-  fetchMock.post("path:/api/ee/cloud-add-ons/dwh-rent", 200);
+  fetchMock.post("path:/api/ee/cloud-add-ons/dwh-rent", purchaseStatus);
   fetchMock.post(
     "path:/api/premium-features/token/refresh",
     createMockTokenStatus(),
@@ -92,7 +99,7 @@ const setup = ({
     </StorageSetupProvider>,
     {
       storeInitialState: createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: mockSettings(settingValues),
       }),
     },
@@ -197,6 +204,83 @@ describe("StorageSetupProvider", () => {
     expect(
       screen.queryByText("Metabase Storage is ready"),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not enter the setting-up state on load when storage exists but uploads are disabled", async () => {
+    // Storage is provisioned but its database does not accept uploads (uploads
+    // disabled or pointed elsewhere) — a permanent state, not provisioning.
+    // Regression for #77822: this used to read as setting-up and poll the
+    // settings and databases endpoints forever on every page.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      canUploadToDwh: false,
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/database")).toBe(true);
+    });
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Metabase Storage is ready"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("stays inert for non-admins, even in a state that reads as provisioning for admins", async () => {
+    // The token feature is on and no DWH database exists — for an admin this
+    // is the provisioning window with its polling. Non-admins cannot set up
+    // storage, so nothing may be fetched on their behalf.
+    setup({ isAdmin: false, tokenFeatures: { attached_dwh: true } });
+
+    await screen.findByRole("button", { name: "Open purchase modal" });
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/database")).toBe(false);
+  });
+
+  it("stays inert on self-hosted instances", async () => {
+    setup({ isHosted: false, tokenFeatures: { attached_dwh: true } });
+
+    await screen.findByRole("button", { name: "Open purchase modal" });
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/database")).toBe(false);
+  });
+
+  it("shows an error toast and leaves the setting-up state when the purchase fails", async () => {
+    setup({ purchaseStatus: 500 });
+
+    await purchaseStorage();
+
+    expect(
+      await screen.findByText(
+        "It looks like something went wrong. Please refresh the page and try again.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText("Metabase Storage is ready"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("leaves the setting-up state after a purchase once the DWH database appears, even if it does not accept uploads yet", async () => {
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      canUploadToDwh: false,
+    });
+
+    await purchaseStorage();
+
+    await waitFor(() => {
+      expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    });
+    expect(
+      await screen.findByText("Metabase Storage is ready"),
+    ).toBeInTheDocument();
   });
 
   describe("purchase confirmation modal", () => {

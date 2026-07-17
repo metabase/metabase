@@ -36,6 +36,7 @@ interface SetupOpts {
   addOns?: ICloudAddOnProduct[];
   tokenFeatures?: Partial<TokenFeatures>;
   hasAttachedDwhDatabase?: boolean;
+  canUploadToDwh?: boolean;
   panelProps?: Partial<PanelProps>;
 }
 
@@ -43,6 +44,7 @@ const setup = ({
   addOns = [mockStorageCloudAddOn],
   tokenFeatures = {},
   hasAttachedDwhDatabase = false,
+  canUploadToDwh = true,
   panelProps,
 }: SetupOpts = {}) => {
   const props = { ...DEFAULT_PANEL_PROPS, ...panelProps };
@@ -58,7 +60,13 @@ const setup = ({
   setupPropertiesEndpoints(createMockSettings(settingValues));
   setupDatabaseListEndpoint(
     hasAttachedDwhDatabase
-      ? [createMockDatabase({ id: 1, can_upload: true, is_attached_dwh: true })]
+      ? [
+          createMockDatabase({
+            id: 1,
+            can_upload: canUploadToDwh,
+            is_attached_dwh: true,
+          }),
+        ]
       : [],
   );
   fetchMock.get("path:/api/ee/cloud-add-ons/addons", addOns);
@@ -149,6 +157,31 @@ describe("CSVPanel storage purchase", () => {
     expect(await screen.findByText("Setting up storage")).toBeInTheDocument();
     expect(
       screen.queryByText(/You are not permitted to upload CSV files/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the enable-uploads CTA without the storage upsell when storage exists but uploads are disabled", async () => {
+    // Storage is provisioned, but uploads are turned off on its database — a
+    // steady state an admin resolves in the Uploads settings. Regression for
+    // #77822: this used to render the setting-up spinner (with endless
+    // polling), and offering to buy storage again would be wrong.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+      canUploadToDwh: false,
+    });
+
+    // The upsell-free subtitle only renders once the databases list has
+    // resolved and the panel knows storage is already provisioned.
+    expect(
+      await screen.findByText(
+        /To work with CSVs, enable file uploads in your database\./,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Enable uploads")).toBeInTheDocument();
+    expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Add Metabase Storage/ }),
     ).not.toBeInTheDocument();
   });
 
