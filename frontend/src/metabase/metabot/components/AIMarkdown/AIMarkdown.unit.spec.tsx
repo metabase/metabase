@@ -1,5 +1,4 @@
-import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -81,12 +80,13 @@ FROM orders
       `.trim(),
     });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Copy code" }),
-    );
+    // NOTE: use fireEvent rather than userEvent here — userEvent.setup()
+    // installs its own clipboard stub on navigator, replacing the jest.fn()
+    // mock this test asserts against.
+    fireEvent.click(await screen.findByRole("button", { name: "Copy code" }));
 
     const writeText = jest.mocked(navigator.clipboard.writeText);
-    expect(writeText).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0][0]).toContain("SELECT *\nFROM orders");
     expect(writeText.mock.calls[0][0]).not.toContain("```");
   });

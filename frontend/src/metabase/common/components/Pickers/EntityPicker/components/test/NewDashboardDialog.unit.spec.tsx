@@ -96,8 +96,11 @@ describe("NewDashboardDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
-    const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
-    expect(apiCalls).toHaveLength(1);
+    let apiCalls;
+    await waitFor(() => {
+      apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
+      expect(apiCalls).toHaveLength(1);
+    });
     const call = apiCalls[0];
     // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
@@ -116,8 +119,11 @@ describe("NewDashboardDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
-    const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
-    expect(apiCalls).toHaveLength(1);
+    let apiCalls;
+    await waitFor(() => {
+      apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
+      expect(apiCalls).toHaveLength(1);
+    });
     const call = apiCalls[0];
     // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);

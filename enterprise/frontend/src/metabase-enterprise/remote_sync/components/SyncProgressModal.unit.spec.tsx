@@ -334,6 +334,12 @@ describe("SyncProgressModal", () => {
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(await screen.findByText("Cancelling…")).toBeInTheDocument();
+
+      // Let the delayed cancel response resolve so the in-progress label clears; otherwise the request
+      // stays pending under fake timers and the shared afterEach fetch flush hangs.
+      await waitFor(() => {
+        expect(screen.queryByText("Cancelling…")).not.toBeInTheDocument();
+      });
     });
   });
 });

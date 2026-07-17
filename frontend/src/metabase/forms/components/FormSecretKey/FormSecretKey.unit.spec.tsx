@@ -85,9 +85,11 @@ describe("FormSecretKey", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
 
-      expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
-        1,
-      );
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("generate-random-token"),
+        ).toHaveLength(1);
+      });
 
       // The modal's text input should contain the generated token
       await waitFor(() => {
@@ -216,16 +218,25 @@ describe("FormSecretKey", () => {
       setup({ initialValues: { secret: undefined } });
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-      const input = screen.getByRole("textbox", { name: "New secret key" });
+      const input = await screen.findByRole("textbox", {
+        name: "New secret key",
+      });
+      // Wait for the auto-generated token to populate the (initially
+      // non-editable) input before interacting with it.
+      await waitFor(() => expect(input).toHaveValue(GENERATED_TOKEN));
 
       await userEvent.clear(input);
       await userEvent.type(input, "1234");
       // Token is too short, so 'Done' button should be disabled
-      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      });
 
       await userEvent.clear(input);
       await userEvent.type(input, "12345678");
-      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
     });
   });
 });

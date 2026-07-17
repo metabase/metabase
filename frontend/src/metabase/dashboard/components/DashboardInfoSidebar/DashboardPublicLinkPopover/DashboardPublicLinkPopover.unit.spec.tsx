@@ -102,14 +102,16 @@ describe("DashboardPublicLinkPopover", () => {
   it("should call the Dashboard public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
-    expect(
-      fetchMock.callHistory.calls(
-        `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
-        {
-          method: "DELETE",
-        },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+          {
+            method: "DELETE",
+          },
+        ),
+      ).toHaveLength(1);
+    });
   });
 
   it("should not show non-admins the option to remove a public link", () => {

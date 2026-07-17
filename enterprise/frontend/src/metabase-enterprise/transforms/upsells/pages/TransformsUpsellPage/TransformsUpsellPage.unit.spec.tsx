@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
 
 import {
@@ -63,14 +63,16 @@ describe("TransformsUpsellPage", () => {
     );
 
     expect(
-      screen.getByText("Setting up transforms, please wait"),
+      await screen.findByText("Setting up transforms, please wait"),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls(
-        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
-        { method: "POST" },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+          { method: "POST" },
+        ),
+      ).toHaveLength(1);
+    });
   });
 
   it("skips the free bucket overview if the user has had transforms before", async () => {
@@ -92,14 +94,16 @@ describe("TransformsUpsellPage", () => {
     );
 
     expect(
-      screen.getByText("Setting up transforms, please wait"),
+      await screen.findByText("Setting up transforms, please wait"),
     ).toBeInTheDocument();
 
-    expect(
-      fetchMock.callHistory.calls(
-        "path:/api/ee/cloud-add-ons/transforms-basic-metered",
-        { method: "POST" },
-      ),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          "path:/api/ee/cloud-add-ons/transforms-basic-metered",
+          { method: "POST" },
+        ),
+      ).toHaveLength(1);
+    });
   });
 });

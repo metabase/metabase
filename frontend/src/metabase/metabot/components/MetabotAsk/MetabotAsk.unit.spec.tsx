@@ -18,6 +18,14 @@ const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
 
 describe("MetabotAsk", () => {
+  // The TipTap/ProseMirror prompt editor these tests drive processes input
+  // through real timers/microtasks; the fast-test regime's frozen fake timers
+  // prevent messages from ever being submitted. Opt this file back into real
+  // timers.
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
   it("shows the greeting and closes the global Metabot sidebar", async () => {
     const metabotInitialState = assocIn(
       getMetabotInitialState(),

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import {
   getLastFeedbackCall,
@@ -83,6 +83,9 @@ describe("EmbedHomepage (OSS)", () => {
 
     await userEvent.click(screen.getByText("Embedding done, all good"));
 
+    await waitFor(() => {
+      expect(getLastHomepageSettingSettingCall()).toBeDefined();
+    });
     const lastCall = getLastHomepageSettingSettingCall();
 
     const body = await lastCall?.request?.json();
@@ -95,6 +98,9 @@ describe("EmbedHomepage (OSS)", () => {
 
     await userEvent.click(screen.getByText("I'm not interested right now"));
 
+    await waitFor(() => {
+      expect(getLastHomepageSettingSettingCall()).toBeDefined();
+    });
     const lastCall = getLastHomepageSettingSettingCall();
 
     const body = await lastCall?.request?.json();
@@ -156,6 +162,9 @@ describe("EmbedHomepage (OSS)", () => {
 
       await userEvent.click(screen.getByText("Skip"));
 
+      await waitFor(() => {
+        expect(getLastHomepageSettingSettingCall()).toBeDefined();
+      });
       const lastCall = getLastHomepageSettingSettingCall();
 
       const body = await lastCall?.request?.json();
@@ -184,10 +193,16 @@ describe("EmbedHomepage (OSS)", () => {
 
       await userEvent.click(screen.getByText("Send"));
 
+      await waitFor(() => {
+        expect(getLastHomepageSettingSettingCall()).toBeDefined();
+      });
       const lastCall = getLastHomepageSettingSettingCall();
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismissed-run-into-issues" });
 
+      await waitFor(() => {
+        expect(getLastFeedbackCall()).toBeDefined();
+      });
       const feedbackBody = await getLastFeedbackCall()?.request?.json();
 
       expect(feedbackBody).toEqual({

@@ -46,7 +46,7 @@ describe("useCallbackEffect", () => {
 
     await clickPromise;
 
-    expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
+    expect(await screen.findByText("Status: not scheduled")).toBeInTheDocument();
     expect(callback).toHaveBeenCalledTimes(1);
   });
 });

@@ -33,6 +33,11 @@ jest.mock("metabase/redux/query-builder", () => ({
 
 describe("metabot > context", () => {
   beforeEach(() => {
+    // The TipTap/ProseMirror prompt editor these tests drive processes input
+    // through real timers/microtasks; the fast-test regime's frozen fake
+    // timers prevent messages from ever being submitted. Opt back into real
+    // timers.
+    jest.useRealTimers();
     jest.clearAllMocks();
     fetchMock.get(
       "path:/api/metabot/permissions/user-permissions",

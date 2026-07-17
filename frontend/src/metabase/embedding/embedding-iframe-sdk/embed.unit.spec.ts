@@ -27,6 +27,10 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    // These specs drive async iframe message-passing and guest-token refresh
+    // choreography via real setTimeout(0) promise flushes; that timing is the
+    // subject under test, so opt out of the fast-test regime's fake timers.
+    jest.useRealTimers();
     jest.resetModules();
     delete window.metabaseConfig;
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- require after jest.resetModules

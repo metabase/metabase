@@ -146,6 +146,14 @@ describe("TopLevelCollectionsList", () => {
       );
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      // Let the delayed requests resolve so they don't stay pending under fake timers, which would hang
+      // the shared afterEach fetch flush.
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("should show empty state when no collections exist", async () => {

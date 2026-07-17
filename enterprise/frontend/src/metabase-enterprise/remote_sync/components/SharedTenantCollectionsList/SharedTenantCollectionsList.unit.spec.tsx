@@ -138,6 +138,14 @@ describe("SharedTenantCollectionsList", () => {
       );
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      // Let the delayed request resolve so it doesn't stay pending under fake timers, which would hang
+      // the shared afterEach fetch flush.
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("should show empty state when no collections exist", async () => {
@@ -248,9 +256,11 @@ describe("SharedTenantCollectionsList", () => {
 
       await userEvent.click(screen.getByRole("switch"));
 
-      // Wait a bit to ensure no API call is made
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
+      // The toggle is deferred: it updates form state only (switch flips) and must not call the
+      // collection API until the form is submitted.
+      await waitFor(() => {
+        expect(screen.getByRole("switch")).toBeChecked();
+      });
       expect(fetchMock.callHistory.called("update-collection")).toBe(false);
     });
 
