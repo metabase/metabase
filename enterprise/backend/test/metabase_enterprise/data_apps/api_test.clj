@@ -91,7 +91,7 @@
       (t2/insert! :model/DataApp :name "failed" :display_name "Failed" :bundle_path "data_apps/failed/index.js"
                   :sync_error "Could not read bundle")
       (is (=? [{:name "ready" :display_name "Ready"}]
-              (mt/user-http-request :crowberto :get 200 "apps?available=true"))))))
+              (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
 
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps}
