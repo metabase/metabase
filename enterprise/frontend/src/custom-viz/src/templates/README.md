@@ -266,7 +266,12 @@ const StaticVisualizationComponent = ({
   const { getColor, fontFamily } = renderingContext;
 
   return (
-    <svg viewBox={`0 0 540 360`} xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width={540}
+      height={360}
+      viewBox="0 0 540 360"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       {/* Pure rendering — no event handlers */}
     </svg>
   );
