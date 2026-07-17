@@ -136,11 +136,14 @@ dividend found during porting gets an entry here in the same PR.**
     responses. The Playwright port must register the wait at the true
     trigger; a naive 1:1 port would hang. (Porting rule updated.)
 
-17. **HTML5 drag-and-drop honesty** (`collections.ts dragAndDrop`): the
-    Cypress helper fires dragstart→drop→dragend only; real HTML5 dnd never
-    delivers `drop` without dragenter/dragover on the target, and react-dnd
-    tracks the active target from those. The port fires the real sequence
-    with real coordinates — closer to what browsers actually do.
+17. **Real HTML5 drag-and-drop — the thing Cypress's own comment wishes
+    for.** The Cypress spec carries a long apology that synthetic dnd
+    events "will not guarantee that the drag and drop functionality will
+    work in the real world" and that the test "would not have caught
+    metabase#30614". Playwright's `dragTo` drives actual mouse input with
+    CDP drag interception — the browser itself synthesizes the full drag
+    event stream. The ported pin-by-dragging test now exercises exactly the
+    interaction the upstream comment says it can't.
 
 18. **Embedding rendering is context-sensitive and Cypress hid it**:
     /embed/* and /public/* pages render differently when framed (borders,
@@ -150,3 +153,15 @@ dividend found during porting gets an entry here in the same PR.**
     a dead `database_id` param in the spec's factory call, another
     never-awaited intercept, and a `site-url` coupling in embed preview
     iframes that only shows up with more than one backend.
+
+19. **kbar drops keystrokes in real usage** (`command-palette.spec.ts`,
+    instrumented and verified): kbar detaches/re-attaches its window keydown
+    listener whenever any action re-registers (RTK Query refetches do this
+    at arbitrary times) and keeps it detached while a modal is open or
+    mid-close-transition. Keystrokes landing in those windows silently
+    vanish — a trusted `?` keydown was observed reaching `window` with no
+    handler attached. User-reachable; very plausibly the root cause of the
+    kbar `realPress` flake from the 2026 Chrome-upgrade investigation.
+    Cypress's inter-command latency masks it; the port handles it with an
+    effect-verified `pressShortcut` retry helper (no weakened assertions)
+    and documents the dead windows.
