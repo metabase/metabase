@@ -13,12 +13,11 @@ Metabase's native 2FA applies to password logins and LDAP logins. 2FA for Single
 
 ## Turn on two-factor authentication
 
-An admin can turn 2FA on for your Metabase, and people opt in to signing in with 2FA from their own [account settings](./account-settings.md#two-factor-authentication).
+An admin can turn 2FA on for your Metabase:
 
 1. Go to **Admin settings** > **Settings** > **Authentication**.
 2. Find the **Two-factor authentication** card.
 3. Toggle it to **Enabled**.
-
 Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll in 2FA.
 
 If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set `MB_MFA_ENFORCEMENT` to `optional` to let people enroll, or `off` to turn 2FA off.

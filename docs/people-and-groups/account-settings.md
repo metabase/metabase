@@ -31,7 +31,9 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 ## Two-factor authentication
 
-If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Security** tab in your account. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
+{% include plans-blockquote.html feature="Two-factor authentication" %}
+
+If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Security** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
 ### Set up two-factor authentication
 
@@ -43,7 +45,7 @@ If your admin has turned on [two-factor authentication](./two-factor-authenticat
 
 ### Logging in with two-factor authentication
 
-After you enter your email and password, Metabase asks for a code:
+Once you set up two-factor authentication, Metabase will ask for a code every time you log in. After you enter your email and password:
 
 - Enter the six-digit code from your authenticator app.
 - Lost your app? Click **Use a recovery code instead** and enter one of your saved codes.
@@ -55,7 +57,7 @@ Recovery codes are single-use, so it's worth generating a fresh set if you're ru
 
 ### Turn off two-factor authentication
 
-On the **Security** tab, click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
+In your account settings, on the **Security** tab , click **Disable**. Your account will be protected by your password only, and your recovery codes will stop working.
 
 ## Account login history
 
