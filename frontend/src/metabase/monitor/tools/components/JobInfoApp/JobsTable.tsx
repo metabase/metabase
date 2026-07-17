@@ -82,9 +82,7 @@ function getColumns(): TreeTableColumnDef<JobRow>[] {
       enableSorting: true,
       sortDescFirst: false,
       accessorFn: (job) => job.key,
-      cell: ({ row }) => (
-        <Ellipsified fw="bold">{row.original.key}</Ellipsified>
-      ),
+      cell: ({ row }) => <Ellipsified>{row.original.key}</Ellipsified>,
     },
     {
       id: "class",

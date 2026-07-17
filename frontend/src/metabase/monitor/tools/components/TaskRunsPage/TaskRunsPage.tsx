@@ -23,6 +23,8 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
   const [
     {
       page,
+      sort_column,
+      sort_direction,
       "run-type": runType,
       "entity-type": entityType,
       "entity-id": entityId,
@@ -32,6 +34,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
     },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
+  const sortingOptions = { sort_column, sort_direction };
 
   const {
     data: taskRunsData,
@@ -42,6 +45,8 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
+      "sort-column": sort_column,
+      "sort-direction": sort_direction,
       "run-type": runType ?? undefined,
       "entity-type": entityType ?? undefined,
       "entity-id": entityId ?? undefined,
@@ -115,7 +120,14 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
           <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
         </Center>
       ) : (
-        <TaskRunsTable taskRuns={taskRuns} isLoading={isLoading} />
+        <TaskRunsTable
+          taskRuns={taskRuns}
+          isLoading={isLoading}
+          sortingOptions={sortingOptions}
+          onSortingOptionsChange={(sortingOptions) =>
+            patchUrlState({ ...sortingOptions, page: 0 })
+          }
+        />
       )}
 
       {!isLoading && error === undefined && (

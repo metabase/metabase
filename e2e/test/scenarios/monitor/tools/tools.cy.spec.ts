@@ -724,7 +724,7 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
   }) {
     const offset = page * limit;
 
-    cy.intercept("GET", `/api/task/runs?limit=${limit}&offset=${offset}`, {
+    cy.intercept("GET", `/api/task/runs?limit=${limit}&offset=${offset}*`, {
       status: 200,
       body: {
         data: stubRunsPageRows(page),

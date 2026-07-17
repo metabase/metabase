@@ -132,14 +132,12 @@ describe("scenarios > admin > permissions > application", () => {
         cy.log("Monitor tools smoke test");
         cy.location("pathname").should("contain", "/monitor/tasks");
         cy.findByRole("heading", {
-          name: "Troubleshooting logs",
+          name: "Background tasks",
         });
 
         cy.findByTestId("monitor-nav").findByText("Erroring questions").click();
         cy.location("pathname").should("eq", "/monitor/errors");
-        cy.findByTestId("monitor-main").findByText(
-          "Questions that errored when last run",
-        );
+        cy.findByTestId("monitor-main").findByText("Erroring questions");
       });
     });
 

@@ -2,7 +2,7 @@ import type { Log } from "metabase-types/api/util";
 
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { SortingOptions } from "./sorting";
+import type { SortDirection, SortingOptions } from "./sorting";
 
 // "unknown" status is only expected for historical tasks (before Task['status'] was introduced)
 export type TaskStatus = "success" | "started" | "failed" | "unknown";
@@ -20,7 +20,14 @@ export interface Task {
   run_id: number | null;
 }
 
-export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
+export type ListTasksSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "duration"
+  | "task"
+  | "status"
+  | "db_name"
+  | "db_engine";
 
 export type ListTasksRequest = {
   status?: TaskStatus;
@@ -105,12 +112,22 @@ export type TaskRunStartedAtParam =
   | TaskRunDateFilterOption
   | `${TaskRunDateFilterOption}~`;
 
+export type ListTaskRunsSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "run_type"
+  | "status"
+  | "entity_name"
+  | "task_count";
+
 export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
   status?: TaskRunStatus;
   "started-at"?: TaskRunStartedAtParam;
+  "sort-column"?: ListTaskRunsSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListTaskRunsResponse = {
