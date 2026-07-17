@@ -277,11 +277,20 @@
 
 ;;; ------------------------------------------------ Search mode ---------------------------------------------------
 
+(defn- trustworthy-total?
+  "The engine's match count is taken before the metabot pipeline drops transforms whose sources
+   the caller can't read, so it can overcount when transforms may be in the result set. Only
+   superusers ever see transforms in search, so only their transform-inclusive searches are
+   affected; every other search's total is exact."
+  [entity-types]
+  (not (and api/*is-superuser?* (contains? (set entity-types) "transform"))))
+
 (defn- engine-results
   "Run the shared metabot search pipeline and return `{:rows [...] :total <int-or-nil>}`.
    Rows are the postprocessed+enriched results with `:collection_path` attached; `total` is
    the engine's match count when exactly one search ran (single query or filters-only
-   listing) and nil for rank-fused multi-query results."
+   listing) and the total is trustworthy, and nil otherwise (rank-fused multi-query results,
+   or a superuser search that may drop unreadable transforms — see [[trustworthy-total?]])."
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
   (let [results (metabot.search/search
                  (cond-> {:term-queries     (vec term_queries)
@@ -294,7 +303,8 @@
                    created_by    (assoc :created-by #{api/*current-user-id*})
                    collection-id (assoc :collection-id collection-id)))]
     {:rows  (add-collection-paths (vec results))
-     :total (:total (meta results))}))
+     :total (when (trustworthy-total? entity-types)
+              (:total (meta results)))}))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 

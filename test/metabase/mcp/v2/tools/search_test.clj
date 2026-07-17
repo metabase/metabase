@@ -1,7 +1,9 @@
 (ns metabase.mcp.v2.tools.search-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.mcp.v2.tools.search :as tools.search]
+   [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]))
 
@@ -12,6 +14,12 @@
 
 (def ^:private validate-filters!
   #'tools.search/validate-filters!)
+
+(def ^:private engine-results
+  #'tools.search/engine-results)
+
+(def ^:private trustworthy-total?
+  #'tools.search/trustworthy-total?)
 
 (defn- path-for
   "`:collection_path` that `user` sees for a row contained in `collection-id`."
@@ -101,6 +109,30 @@
   (testing "\"root\" combined with a real query or filter is a valid search — it passes validation"
     (is (not (nothing-to-search? {:collection_id "root" :type ["dashboard"]})))
     (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]})))))
+
+(deftest ^:parallel trustworthy-total?-test
+  (testing "GHY-4137: the engine's total is taken before the metabot pipeline drops transforms
+            whose sources the caller can't read, so it is untrustworthy only when a superuser
+            searches transforms — every other search's total is exact"
+    (binding [api/*is-superuser?* true]
+      (is (not (trustworthy-total? ["question" "transform"])) "superuser + transform: untrustworthy")
+      (is (trustworthy-total? ["question" "dashboard"])       "superuser, no transform: exact"))
+    (binding [api/*is-superuser?* false]
+      (is (trustworthy-total? ["question" "transform"]) "non-superuser never sees transforms: exact")
+      (is (trustworthy-total? ["question"])             "non-superuser, no transform: exact"))))
+
+(deftest engine-results-omits-untrustworthy-total-test
+  (testing "GHY-4137: engine-results drops the total exactly when it is untrustworthy"
+    (with-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
+      (testing "a superuser searching transforms gets no total (it would overcount)"
+        (mt/with-test-user :crowberto
+          (is (nil? (:total (engine-results {} ["question" "transform"] nil 20 0))))))
+      (testing "a superuser search without transforms keeps the exact total"
+        (mt/with-test-user :crowberto
+          (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0))))))
+      (testing "a non-superuser searching transforms keeps the total — they never see transforms"
+        (mt/with-test-user :rasta
+          (is (= 30 (:total (engine-results {} ["question" "transform"] nil 20 0)))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
