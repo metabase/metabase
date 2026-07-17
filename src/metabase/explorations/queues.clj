@@ -1,12 +1,13 @@
 (ns metabase.explorations.queues
-  "Wires the two units of exploration work onto the persistent queue.
+  "Wires the three units of exploration work onto the persistent queue.
 
     :queue/exploration-plan            one message per started thread
     :queue/exploration-query           one message per planned query
+    :queue/exploration-timeline-score  one message per (done query, selected timeline) pair
 
-  Each stage publishes the next: starting a thread enqueues a plan, and planning enqueues that
-  thread's queries. `metabase.explorations.runner` holds the actual work; this namespace is only
-  the plumbing.
+  Each stage publishes the next: starting a thread enqueues a plan, planning enqueues that thread's
+  queries, and a query finishing enqueues its timeline pairs. `metabase.explorations.runner`
+  holds the actual work; this namespace is only the plumbing.
 
   Every publish happens inside the transaction that produced the rows the message names, so the
   queues are declared `:transactional :require`: a message exists iff the write that justified it
@@ -15,11 +16,12 @@
 
   Delivery is at-least-once with a bounded retry budget and no dead-letter queue, so each queue also
   declares an `:on-error` handler. This matters more here than for most work: an exploration's
-  completion gate is \"no queries still pending\", and the client polls until the thread completes.
-  A batch that exhausted its retries and vanished would strand the row in `pending` and the user on
-  a spinner forever. The `:on-error` handlers write the terminal state the UI already knows how to
-  render (`error` on a query, the planning-failed doc on a thread that never planned), so giving up
-  is something the user sees rather than something that hangs."
+  completion gate is \"no queries still pending and every pair scored\", and the client polls until
+  the thread completes. A batch that exhausted its retries and vanished would strand the row in
+  `pending` and the user on a spinner forever. The `:on-error` handlers write the terminal state the
+  UI already knows how to render (`error` on a query, a null-score sentinel on a pair, the
+  planning-failed doc on a thread that never planned), so giving up is something the user sees
+  rather than something that hangs."
   (:require
    [metabase.explorations.runner :as runner]
    [metabase.explorations.settings :as explorations.settings]
@@ -37,6 +39,13 @@
   thread's completion gate is re-checked so the client stops polling."
   [{:keys [query-id]} error]
   (let [thread-id (runner/fail-query! query-id (ex-message error))]
+    (runner/maybe-complete-thread! thread-id)))
+
+(defn- fail-pair-message!
+  "Terminal state for one timeline-score message: the pair is recorded unscored, which is what lets
+  its thread complete rather than waiting forever on a score that is never coming."
+  [{:keys [query-id timeline-id]} _error]
+  (let [thread-id (runner/fail-pair! query-id timeline-id)]
     (runner/maybe-complete-thread! thread-id)))
 
 (defn- record-failure!
@@ -86,6 +95,14 @@
    :on-error (fn [{:keys [messages error]}]
                (run! #(record-failure! fail-query-message! % error) messages))})
 
+(mq/def-queue! :queue/exploration-timeline-score
+  {:transactional :require
+   :max-batch-messages 100
+   :max-concurrent-batches #(explorations.settings/explorations-worker-count)
+   :on-error (fn [{:keys [messages error]}]
+               (run! #(record-failure! fail-pair-message! % error) messages)
+               (log/warn error "Timeline scoring gave up after exhausting retries; pair recorded unscored"))})
+
 ;;; ------------------------------------------ Publishing ------------------------------------------
 
 (defn start-thread!
@@ -110,6 +127,15 @@
         (doseq [id ids]
           (mq/put q {:query-id id}))))))
 
+(defn- publish-timeline-pairs!
+  "Enqueue scoring for a freshly-done `query-id` against each timeline selected on its thread."
+  [thread-id query-id]
+  (when-let [timeline-ids (seq (runner/thread-timeline-ids thread-id))]
+    (t2/with-transaction [_conn]
+      (mq/with-queue :queue/exploration-timeline-score [q]
+        (doseq [timeline-id timeline-ids]
+          (mq/put q {:query-id query-id :timeline-id timeline-id}))))))
+
 ;;; ------------------------------------------- Listeners -------------------------------------------
 
 (mq/def-listener! :queue/exploration-plan [messages]
@@ -124,5 +150,13 @@
   (deliver-batch! messages
                   (fn [{:keys [query-id]}]
                     (when-let [thread-id (runner/run-query! query-id)]
+                      (publish-timeline-pairs! thread-id query-id)
                       (runner/maybe-complete-thread! thread-id)))
                   fail-query-message!))
+
+(mq/def-listener! :queue/exploration-timeline-score [messages]
+  (deliver-batch! messages
+                  (fn [{:keys [query-id timeline-id]}]
+                    (when-let [thread-id (runner/score-pair! query-id timeline-id)]
+                      (runner/maybe-complete-thread! thread-id)))
+                  fail-pair-message!))

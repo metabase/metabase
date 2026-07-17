@@ -6,6 +6,7 @@
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan]
    [metabase.explorations.runner :as runner]
+   [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope]
@@ -328,6 +329,170 @@
                                  :data   {:cols [{:name "x"} {:name "y"}]
                                           :rows [["a" 1] ["b" 2]]}})
     q))
+
+(deftest timeline-iteration-claims-and-scores-pair-test
+  (testing "When a thread-selected timeline has no score for a done query, the worker scores it"
+    (mt/with-temp [:model/User u {:email "ti-runner-claim@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.71)]
+          (runner/score-pair! (:id q) (:id tl)))
+        (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                    :exploration_query_id (:id q)
+                                    :timeline_id (:id tl))]
+          (is (some? scored))
+          (is (= 0.71 (:interestingness_score scored)))
+          (is (some? (:scored_at scored))))))))
+
+(deftest timeline-iteration-records-nil-on-scorer-failure-test
+  (testing "If the scorer throws or returns nil, scored_at is still set so we don't retry forever"
+    (mt/with-temp [:model/User u {:email "ti-runner-fail@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] (throw (ex-info "boom" {})))]
+          (runner/score-pair! (:id q) (:id tl)))
+        (let [scored (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                    :exploration_query_id (:id q)
+                                    :timeline_id (:id tl))]
+          (is (some? scored))
+          (is (nil? (:interestingness_score scored)))
+          (is (some? (:scored_at scored))))))))
+
+(deftest timeline-iteration-is-idempotent-test
+  (testing "Once a (query, timeline) pair is scored, subsequent iterations don't duplicate it"
+    (mt/with-temp [:model/User u {:email "ti-runner-idem@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            _link  (t2/insert! :model/ExplorationThreadTimeline
+                               {:exploration_thread_id (:id thread)
+                                :timeline_id           (:id tl)
+                                :position              0})]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.5)]
+          ;; at-least-once: the same pair can be delivered repeatedly
+          (dotimes [_ 6] (runner/score-pair! (:id q) (:id tl))))
+        (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
+                           :exploration_query_id (:id q)
+                           :timeline_id (:id tl))))))))
+
+(deftest timeline-iteration-takes-over-an-unscored-row-test
+  (testing "A pair reserved but left unscored (its delivery crashed) is scored in place on redelivery,
+            with no duplicate row — no stale-claim window to wait out any more"
+    (mt/with-temp [:model/User u {:email "ti-runner-stale@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread    (temp-thread! (:id u))
+            q         (done-query-with-fake-result! (:id thread) (:id card))
+            _link     (t2/insert! :model/ExplorationThreadTimeline
+                                  {:exploration_thread_id (:id thread)
+                                   :timeline_id           (:id tl)
+                                   :position              0})
+            ;; a worker that reserved the pair and died before scoring it
+            orphan    (first (t2/insert-returning-instances!
+                              :model/ExplorationQueryTimelineInterestingness
+                              {:exploration_query_id (:id q)
+                               :timeline_id          (:id tl)}))
+            _unscored (t2/update! :model/ExplorationQueryTimelineInterestingness (:id orphan)
+                                  {:scored_at nil})]
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] 0.42)]
+          (runner/score-pair! (:id q) (:id tl)))
+        (let [reclaimed (t2/select-one :model/ExplorationQueryTimelineInterestingness :id (:id orphan))]
+          (is (= 0.42 (:interestingness_score reclaimed))
+              "the orphaned reservation was scored in place")
+          (is (some? (:scored_at reclaimed))))
+        (is (= 1 (t2/count :model/ExplorationQueryTimelineInterestingness
+                           :exploration_query_id (:id q)
+                           :timeline_id (:id tl)))
+            "no duplicate row was inserted alongside it")))))
+
+(deftest fail-pair-writes-the-unscored-sentinel-test
+  (testing "When the queue gives up on a pair, fail-pair! records the null-score sentinel so the
+            pair stops blocking its thread's completion gate"
+    (mt/with-temp [:model/User u {:email "ti-runner-failpair@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        (is (= (:id thread) (runner/fail-pair! (:id q) (:id tl))))
+        (let [sentinel (t2/select-one :model/ExplorationQueryTimelineInterestingness
+                                      :exploration_query_id (:id q) :timeline_id (:id tl))]
+          (is (some? sentinel))
+          (is (nil? (:interestingness_score sentinel)))
+          (is (some? (:scored_at sentinel))
+              "scored_at is set, so the completion gate no longer waits on this pair"))))))
+
+(deftest score-pair-skips-a-canceled-thread-test
+  (testing "A timeline-score message delivered for a thread the user canceled is a no-op: no LLM
+            scoring call and no interestingness row. A canceled thread is terminal and nobody is
+            waiting on its scores, so spending an LLM call on one would be pure waste — the same
+            guard run-query! and plan-thread! already apply"
+    (mt/with-temp [:model/User u {:email "ti-runner-canceled@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))
+            called (atom 0)]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        (let [now (OffsetDateTime/now)]
+          (t2/update! :model/ExplorationThread (:id thread) {:canceled_at now :completed_at now}))
+        (mt/with-dynamic-fn-redefs [explorations.timeline-interestingness/score-query-timeline
+                                    (fn [_ _] (swap! called inc) 0.5)]
+          (is (nil? (runner/score-pair! (:id q) (:id tl)))
+              "score-pair! must return nil for a canceled thread"))
+        (is (zero? @called) "the scorer (and its LLM call) must not run for a canceled thread")
+        (is (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                             :exploration_query_id (:id q) :timeline_id (:id tl)))
+            "and no interestingness row was reserved")))))
+
+(deftest score-pair-rethrows-a-transient-reservation-failure-test
+  (testing "The reservation insert's catch must not treat every failure as a lost unique-constraint
+            race. A transient DB error — after which no row actually exists — is rethrown so the
+            message is retried, rather than swallowed as a race loss that leaves the pair unscored
+            forever"
+    (mt/with-temp [:model/User u {:email "ti-runner-transient@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
+      (let [thread (temp-thread! (:id u))
+            q      (done-query-with-fake-result! (:id thread) (:id card))]
+        (t2/insert! :model/ExplorationThreadTimeline
+                    {:exploration_thread_id (:id thread) :timeline_id (:id tl) :position 0})
+        ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: we want the reservation insert to blow up
+        ;; the way a transient DB error would, with no row left behind.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [t2/insert-returning-instances! (fn [& _] (throw (ex-info "transient db blip" {})))]
+          (is (thrown-with-msg? Throwable #"transient db blip"
+                                (runner/score-pair! (:id q) (:id tl)))
+              "a transient reservation failure is rethrown, not swallowed as a race loss"))
+        (is (zero? (t2/count :model/ExplorationQueryTimelineInterestingness
+                             :exploration_query_id (:id q) :timeline_id (:id tl)))
+            "no reservation row exists — the failure was genuine, not a lost race")))))
 
 ;; ---------------------------- Cancellation guards ----------------------------
 

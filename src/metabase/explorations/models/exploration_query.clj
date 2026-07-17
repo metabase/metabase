@@ -61,6 +61,9 @@
                                     (map :id queries)]}))
    :id))
 
+(defn- ->timeline-score [row]
+  (select-keys row [:timeline_id :interestingness_score]))
+
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :segment_name]
   [_model k queries]
   (mi/instances-with-hydrated-data
@@ -69,3 +72,15 @@
       (when (seq seg-ids)
         (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in seg-ids])))
    :segment_id))
+
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :timeline_interestingness]
+  [_model k queries]
+  (mi/instances-with-hydrated-data
+   queries k
+   #(->> (t2/select [:model/ExplorationQueryTimelineInterestingness
+                     :exploration_query_id :timeline_id :interestingness_score]
+                    :exploration_query_id [:in (map :id queries)])
+         (group-by :exploration_query_id)
+         (into {} (map (fn [[qid rows]] [qid (mapv ->timeline-score rows)]))))
+   :id
+   {:default []}))

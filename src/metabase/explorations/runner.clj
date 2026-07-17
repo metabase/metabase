@@ -1,9 +1,10 @@
 (ns metabase.explorations.runner
-  "The work an exploration does in the background, as two plain functions:
+  "The work an exploration does in the background, as three plain functions:
 
     [[plan-thread!]]  — ask the LLM which charts to build, and materialize them as
                         `:model/ExplorationQuery` rows
     [[run-query!]]    — run one query's MBQL through the QP and store the result
+    [[score-pair!]]   — score one `(query, timeline)` pair for interestingness
 
   Each is idempotent for calling from MQ."
   (:require
@@ -16,18 +17,26 @@
    [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
+   [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.time Duration OffsetDateTime)))
+   (java.time Duration OffsetDateTime)
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private llm-scoring-deadline-ms
+  "Hard wall-clock cap on a single timeline-scoring LLM call, enforced via [[u/with-timeout]] (which
+  runs the call in a `future`, conveying dynamic bindings, and cancels it on timeout)."
+  (* 90 1000))
 
 ;;; ------------------------------------- Prometheus metrics -------------------------------------
 
@@ -163,9 +172,10 @@
 
 (defn- claim-analysis-if-ready!
   "Atomically flip `exploration_thread.analysis_started_at` from NULL to NOW() iff every
-  query on the thread has reached a terminal status (anything other than `pending`).
-  Returns true iff this caller was the one that claimed it — the unique caller who should
-  run the handler. The matching `completed_at` flip happens later, after the handler finishes."
+  query on the thread has reached a terminal status (anything other than `pending`)
+  AND every (query, timeline) pair has `scored_at` set. Returns true iff this caller
+  was the one that claimed it — the unique caller who should run the handler. The
+  matching `completed_at` flip happens later, after the handler finishes."
   [thread-id]
   (pos?
    (t2/query-one
@@ -179,7 +189,21 @@
                             :from   [:exploration_query]
                             :where  [:and
                                      [:= :exploration_thread_id thread-id]
-                                     [:= :status "pending"]]}]]})))
+                                     [:= :status "pending"]]}]
+              [:not-exists {:select    [1]
+                            :from      [[:exploration_query :q]]
+                            :join      [[:exploration_thread_timeline :ett]
+                                        [:= :ett.exploration_thread_id :q.exploration_thread_id]]
+                            :left-join [[:exploration_query_timeline_interestingness :s]
+                                        [:and
+                                         [:= :s.exploration_query_id :q.id]
+                                         [:= :s.timeline_id :ett.timeline_id]]]
+                            :where     [:and
+                                        [:= :q.exploration_thread_id thread-id]
+                                        [:= :q.status "done"]
+                                        [:or
+                                         [:= :s.id nil]
+                                         [:= :s.scored_at nil]]]}]]})))
 
 (defn- mark-thread-fully-completed!
   "Set `completed_at` to NOW(). This is what the UI polls on to decide it's done
@@ -202,9 +226,10 @@
 
 (defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`
-  (a query reaching a terminal status). If this call is the one that claims the analysis
-  run, runs `on-thread-completed` on a background `future`. Safe to call repeatedly:
-  subsequent calls are no-ops thanks to the `analysis_started_at IS NULL` predicate.
+  (a query reaching a terminal status, or a timeline pair being scored). If this call is
+  the one that claims the analysis run, runs `on-thread-completed` on a background
+  `future`. Safe to call repeatedly: subsequent calls are no-ops thanks to the
+  `analysis_started_at IS NULL` predicate.
 
   `thread-id` may be nil (e.g. the runner couldn't resolve the thread for a now-deleted
   query); in that case this is a no-op."
@@ -424,9 +449,9 @@
   "Execute the pending `ExplorationQuery` `query-id`, flip it to `done`, and return its thread id.
 
   Also returns the thread id — without re-running anything — for a query that is *already* `done`:
-  the delivery that ran it may have persisted the result but then failed to run its follow-up
-  completion check, and the redelivery is what re-runs that check (which is idempotent). Skipping it
-  there could strand the thread short of completion. Returns nil when there is nothing to do: the
+  the delivery that ran it may have persisted the result but then failed to publish its timeline
+  pairs, and the redelivery is what re-runs that follow-up (which is idempotent). Skipping it there
+  would strand the pairs unpublished forever. Returns nil when there is nothing to publish: the
   query is still pending (or on a canceled thread), terminally `error`, or gone."
   [query-id]
   (if-let [row (runnable-query query-id)]
@@ -452,6 +477,87 @@
                              :error_message message
                              :finished_at   (OffsetDateTime/now)}))
       (record-query-outcome! "error"))
+    thread-id))
+
+(defn- score-pair-row!
+  "Run the LLM scorer for `(query-id, timeline-id)` and write `interestingness_score` +
+  `scored_at` onto claim row `id`. Failures (including a scorer that overruns
+  [[llm-scoring-deadline-ms]]) are caught and recorded as a nil score, not rethrown: a poison pair
+  must not be retried forever, and an unscored pair would stall its thread's completion gate.
+
+  Runs inside `request/with-current-user` on the exploration's creator so the scorer's metabot
+  permission / usage-limit gate resolves against them. A nil creator (deleted exploration) scores nil."
+  [id query-id timeline-id creator-id]
+  (let [score (try
+                (when creator-id
+                  (request/with-current-user creator-id
+                    (u/with-timeout llm-scoring-deadline-ms
+                      (explorations.timeline-interestingness/score-query-timeline query-id timeline-id))))
+                (catch TimeoutException _
+                  (log/warnf "Timeline scoring for query=%s timeline=%s timed out after %dms; treating as unscored"
+                             query-id timeline-id llm-scoring-deadline-ms)
+                  nil)
+                (catch Throwable e
+                  (log/warnf e "Timeline scoring failed for query=%s timeline=%s" query-id timeline-id)
+                  nil))]
+    (t2/update! :model/ExplorationQueryTimelineInterestingness id
+                {:interestingness_score score
+                 :scored_at             (OffsetDateTime/now)})))
+
+(defn score-pair!
+  "Score the `(query-id, timeline-id)` pair and return the query's thread id, or nil if there was
+  nothing to do.
+
+  Idempotent for use in MQ. Skips a canceled thread — like [[run-query!]] and [[plan-thread!]], a
+  terminal thread nobody is waiting on must not cost an LLM scoring call."
+  [query-id timeline-id]
+  (when-let [eq (t2/select-one :model/ExplorationQuery
+                               {:select [:eq.id :eq.exploration_thread_id :eq.status]
+                                :from   [[:exploration_query :eq]]
+                                :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
+                                :where  [:and
+                                         [:= :eq.id query-id]
+                                         [:= :eq.status "done"]
+                                         [:= :et.canceled_at nil]]})]
+    (let [existing (t2/select-one [:model/ExplorationQueryTimelineInterestingness :id :scored_at]
+                                  :exploration_query_id query-id :timeline_id timeline-id)
+          row-id   (cond
+                     (:scored_at existing) nil                          ; already scored — nothing to do
+                     existing              (:id existing)               ; reserved but unscored — take it
+                     :else                 (try
+                                             (:id (first (t2/insert-returning-instances!
+                                                          :model/ExplorationQueryTimelineInterestingness
+                                                          {:exploration_query_id query-id
+                                                           :timeline_id          timeline-id})))
+                                             (catch Throwable e
+                                               ;; Only a genuine unique-constraint race leaves a row behind — treat
+                                               ;; that as a benign loss and let the winner score it. A transient
+                                               ;; failure leaves no row: rethrow so the message is retried, rather
+                                               ;; than swallowing it and leaving the pair unscored forever.
+                                               (if (t2/exists? :model/ExplorationQueryTimelineInterestingness
+                                                               :exploration_query_id query-id :timeline_id timeline-id)
+                                                 (do (log/tracef e "Lost race reserving timeline pair (q=%s, t=%s)"
+                                                                 query-id timeline-id)
+                                                     nil)
+                                                 (throw e)))))]
+      (when row-id
+        (score-pair-row! row-id query-id timeline-id (exploration-creator-id eq)))
+      (:exploration_thread_id eq))))
+
+(defn fail-pair!
+  "Record a terminal scoring failure for `(query-id, timeline-id)`"
+  [query-id timeline-id]
+  (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery :id query-id)]
+    (when thread-id
+      (if-let [existing (t2/select-one [:model/ExplorationQueryTimelineInterestingness :id :scored_at]
+                                       :exploration_query_id query-id :timeline_id timeline-id)]
+        (when-not (:scored_at existing)
+          (t2/update! :model/ExplorationQueryTimelineInterestingness (:id existing)
+                      {:scored_at (OffsetDateTime/now)}))
+        (t2/insert! :model/ExplorationQueryTimelineInterestingness
+                    {:exploration_query_id query-id
+                     :timeline_id          timeline-id
+                     :scored_at            (OffsetDateTime/now)})))
     thread-id))
 
 (defn- canceled-mid-plan-cleanup!
@@ -518,3 +624,8 @@
   "Ids of `thread-id`'s queries still awaiting execution."
   [thread-id]
   (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id thread-id :status "pending"))
+
+(defn thread-timeline-ids
+  "Ids of the timelines selected on `thread-id`, each of which is scored against every done query."
+  [thread-id]
+  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline :exploration_thread_id thread-id))

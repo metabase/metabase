@@ -821,6 +821,110 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
+      id: v64.qtinterest
+      author: jdswanson
+      comment: Create exploration_query_timeline_interestingness scoring table
+      changes:
+        - createTable:
+            tableName: exploration_query_timeline_interestingness
+            remarks: LLM-backed relevance score for a thread-selected timeline against a specific exploration query's chart.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_query_id
+                  type: int
+                  remarks: The exploration_query whose chart this score is about
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timeline_id
+                  type: int
+                  remarks: The timeline being scored against the chart
+                  constraints:
+                    nullable: false
+              - column:
+                  name: interestingness_score
+                  type: double
+                  remarks: LLM relevance score in [0.0, 1.0]; null when the LLM is unconfigured, returned a malformed response, or the call failed.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: scored_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp the scoring attempt completed; null while the row is reserved by a worker but not yet finished. Acts as the in-flight claim marker.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the row was inserted (i.e. when the worker reserved the pair)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Last update timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.qtinterestuq
+      author: jdswanson
+      comment: Unique constraint on exploration_query_timeline_interestingness (query, timeline)
+      changes:
+        - addUniqueConstraint:
+            tableName: exploration_query_timeline_interestingness
+            columnNames: exploration_query_id, timeline_id
+            constraintName: uq_eqti_query_timeline
+
+  - changeSet:
+      id: v64.qtinterestfkq
+      author: jdswanson
+      comment: FK exploration_query_timeline_interestingness.exploration_query_id -> exploration_query.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_timeline_interestingness
+            baseColumnNames: exploration_query_id
+            referencedTableName: exploration_query
+            referencedColumnNames: id
+            constraintName: fk_eqti_query_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v64.eqtitimelineidx
+      author: nvoxland
+      comment: Index on exploration_query_timeline_interestingness.timeline_id
+      changes:
+        - createIndex:
+            tableName: exploration_query_timeline_interestingness
+            indexName: idx_eqti_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
+      id: v64.qtinterestfkt
+      author: jdswanson
+      comment: FK exploration_query_timeline_interestingness.timeline_id -> timeline.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query_timeline_interestingness
+            baseColumnNames: timeline_id
+            referencedTableName: timeline
+            referencedColumnNames: id
+            constraintName: fk_eqti_timeline_id
+            onDelete: CASCADE
+
+  - changeSet:
       id: v64.g4ersd
       author: nvoxland
       comment: Add exploration_thread.completed_at
@@ -831,7 +935,7 @@ databaseChangeLog:
               - column:
                   name: completed_at
                   type: ${timestamp_type}
-                  remarks: Set once when every query in the thread has reached a terminal status (done or error). Used as a CAS gate so completion handlers fire exactly once.
+                  remarks: Set once when every query in the thread has reached a terminal status (done or error) AND every (query, timeline) pair has been scored. Used as a CAS gate so completion handlers fire exactly once.
                   constraints:
                     nullable: true
 
@@ -846,7 +950,7 @@ databaseChangeLog:
               - column:
                   name: analysis_started_at
                   type: ${timestamp_type}
-                  remarks: Set once when every query in the thread has reached a terminal status. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
+                  remarks: Set once when every query in the thread has reached a terminal status AND every (query, timeline) pair has been scored. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
                   constraints:
                     nullable: true
 

@@ -45,6 +45,7 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
+import { getMostInterestingTimelineId } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
 import {
   type ExplorationSortOrder,
@@ -389,6 +390,13 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
     );
   }, [selectedPage, allTimelinesById]);
 
+  const selectedQueries: ExplorationQuery[] = useMemo(() => {
+    if (selectedPage) {
+      return selectedPage.queries;
+    }
+    return [];
+  }, [selectedPage]);
+
   const availableTimelineIds: ReadonlySet<TimelineId> = useMemo(
     () => new Set(availableTimelines.map((t) => t.id)),
     [availableTimelines],
@@ -408,8 +416,8 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
         return num;
       }
     }
-    return null;
-  }, [selectedPage, location.query, availableTimelineIds]);
+    return getMostInterestingTimelineId(selectedQueries, availableTimelineIds);
+  }, [selectedPage, location.query, selectedQueries, availableTimelineIds]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() => {
     if (selectedTimelineId == null) {

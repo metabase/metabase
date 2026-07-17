@@ -54,6 +54,7 @@
     :model/ExplorationPage                   metabase.explorations.models.exploration-page
     :model/ExplorationQuery                  metabase.explorations.models.exploration-query
     :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
+    :model/ExplorationQueryTimelineInterestingness metabase.explorations.models.exploration-query-timeline-interestingness
     :model/ExplorationThread                 metabase.explorations.models.exploration-thread
     :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
