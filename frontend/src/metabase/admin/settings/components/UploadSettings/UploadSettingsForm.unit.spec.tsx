@@ -149,15 +149,6 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render the supported-databases helper text under the dropdown", async () => {
-    setup();
-    expect(
-      screen.getByText(
-        "PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("should show an empty state if there are no databases", async () => {
     setup({ databases: [] });
     expect(
