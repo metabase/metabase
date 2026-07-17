@@ -215,33 +215,6 @@
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
-(defenterprise new-table-view-data-permission-levels
-  "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
-  :feature :advanced-permissions
-  [db-id group-ids]
-  (if (empty? group-ids)
-    {}
-    ;; We don't check for connection impersonations here, because impersonations are set at the
-    ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
-    (let [blocked-group-ids (t2/select-fn-set :group_id :model/DataPermissions
-                                              :db_id db-id
-                                              :perm_type :perms/view-data
-                                              :perm_value :blocked
-                                              :group_id [:in group-ids]
-                                              {:select-distinct [:group_id]})
-          sandbox-group-ids (when (premium-features/enable-sandboxes?)
-                              (into #{}
-                                    (map :group_id)
-                                    (t2/query {:select [[:s.group_id :group_id]]
-                                               :from   [[(t2/table-name :model/Sandbox) :s]]
-                                               :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
-                                               :where  [:and
-                                                        [:in :s.group_id group-ids]
-                                                        [:= :t.db_id db-id]]})))
-          blocked-groups    (into (or blocked-group-ids #{})
-                                  sandbox-group-ids)]
-      (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
-
 (defenterprise new-table-sandboxed-groups
   "Returns the subset of `group-ids` that must have new tables on `db-id` forced to `:blocked` view-data regardless of
   the new table's schema, because they have a sandbox on a table in this DB. A sandbox is a stronger condition than
@@ -262,3 +235,22 @@
                      :where  [:and
                               [:in :s.group_id group-ids]
                               [:= :t.db_id db-id]]}))))
+
+(defenterprise new-table-view-data-permission-levels
+  "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
+  :feature :advanced-permissions
+  [db-id group-ids]
+  (if (empty? group-ids)
+    {}
+    ;; We don't check for connection impersonations here, because impersonations are set at the
+    ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
+    (let [blocked-group-ids (t2/select-fn-set :group_id :model/DataPermissions
+                                              :db_id db-id
+                                              :perm_type :perms/view-data
+                                              :perm_value :blocked
+                                              :group_id [:in group-ids]
+                                              {:select-distinct [:group_id]})
+          sandbox-group-ids (new-table-sandboxed-groups db-id group-ids)
+          blocked-groups    (into (or blocked-group-ids #{})
+                                  sandbox-group-ids)]
+      (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
