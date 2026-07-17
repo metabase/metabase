@@ -6,10 +6,9 @@ import {
   MonitorHeaderTabs,
 } from "metabase/monitor/components/MonitorHeaderTabs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-
-import S from "./TasksTabs.module.css";
 
 type TasksTabsProps = {
   children: ReactNode;
@@ -23,13 +22,13 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="md">
+      <MonitorMain>
         <Stack gap="lg">
           <MonitorHeaderTitle>{t`Background tasks`}</MonitorHeaderTitle>
           <MonitorHeaderTabs tabs={tabs} />
         </Stack>
         {children}
-      </Stack>
+      </MonitorMain>
     </Flex>
   );
 };

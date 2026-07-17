@@ -15,6 +15,7 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -24,7 +25,6 @@ import {
   Ellipsified,
   Flex,
   Icon,
-  Stack,
   Text,
   Tooltip,
   TreeTable,
@@ -36,8 +36,6 @@ import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
-
-import S from "./ModelCacheRefreshJobs.module.css";
 
 const PAGE_SIZE = 20;
 
@@ -135,10 +133,10 @@ export function ModelCacheRefreshJobs() {
 export function ModelCachePage({ children }: { children?: ReactNode }) {
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="md">
+      <MonitorMain>
         <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
-      </Stack>
+      </MonitorMain>
       {children /* refresh modal */}
     </Flex>
   );

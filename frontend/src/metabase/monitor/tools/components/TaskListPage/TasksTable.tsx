@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
@@ -33,7 +33,9 @@ const COLUMN_WIDTHS = [0.25, 0.15, 0.12, 0.16, 0.16, 0.1, 0.06];
 
 interface Props {
   databases: Database[];
+  isFetching: boolean;
   isLoading: boolean;
+  page: number;
   sortingOptions: SortingOptions<ListTasksSortColumn>;
   tasks: Task[];
   onSortingOptionsChange: (
@@ -43,7 +45,9 @@ interface Props {
 
 export const TasksTable = ({
   databases,
+  isFetching,
   isLoading,
+  page,
   sortingOptions,
   tasks,
   onSortingOptionsChange,
@@ -78,6 +82,12 @@ export const TasksTable = ({
     getNodeId: (task) => String(task.id),
     onRowActivate: handleRowActivate,
     onSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortingOptions],
+    skip: isFetching,
   });
 
   return (

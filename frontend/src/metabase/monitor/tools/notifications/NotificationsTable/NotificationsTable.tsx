@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -36,7 +37,9 @@ import {
 type Props = {
   notifications: AdminNotification[];
   error: unknown;
+  isFetching: boolean;
   isLoading: boolean;
+  page: number;
   rowSelection: RowSelectionState;
   selectedDetailId: NotificationId | undefined;
   sorting: SortingState;
@@ -50,7 +53,9 @@ const getNodeId = (notification: AdminNotification) => String(notification.id);
 export const NotificationsTable = ({
   notifications,
   error,
+  isFetching,
   isLoading,
+  page,
   rowSelection,
   selectedDetailId,
   sorting,
@@ -210,6 +215,12 @@ export const NotificationsTable = ({
   useEffect(() => {
     setActiveRowId(selectedRowId);
   }, [selectedRowId, setActiveRowId]);
+
+  useScrollToTop({
+    ref: instance.containerRef,
+    keys: [page, sorting],
+    skip: isFetching,
+  });
 
   const getRowProps = useCallback(
     (row: Row<AdminNotification>) => ({

@@ -125,7 +125,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           to={Urls.monitor()}
           leftSection={
             <Icon
-              name="gauge"
+              name="pulse"
               {...(currentApp === "monitor"
                 ? CURRENT_APP_ICON_OVERRIDES
                 : null)}

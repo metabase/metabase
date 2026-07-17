@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { useSortingStateChange } from "metabase/common/hooks";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import {
@@ -32,7 +32,9 @@ import { DEFAULT_SORTING, TASK_RUN_SORT_COLUMNS } from "./utils";
 const COLUMN_WIDTHS = [0.2, 0.2, 0.17, 0.17, 0.13, 0.13];
 
 type TaskRunsTableProps = {
+  isFetching: boolean;
   isLoading: boolean;
+  page: number;
   sortingOptions: SortingOptions<ListTaskRunsSortColumn>;
   taskRuns: TaskRun[];
   onSortingOptionsChange: (
@@ -41,7 +43,9 @@ type TaskRunsTableProps = {
 };
 
 export const TaskRunsTable = ({
+  isFetching,
   isLoading,
+  page,
   sortingOptions,
   taskRuns,
   onSortingOptionsChange,
@@ -71,6 +75,12 @@ export const TaskRunsTable = ({
     getNodeId: (taskRun) => String(taskRun.id),
     onRowActivate: handleRowActivate,
     onSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortingOptions],
+    skip: isFetching,
   });
 
   return (

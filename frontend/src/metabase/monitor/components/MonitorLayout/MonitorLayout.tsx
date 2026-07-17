@@ -16,7 +16,7 @@ import {
 } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
@@ -156,7 +156,18 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
 
   return (
     <AreaLayout
-      logo={<FixedSizeIcon name="gauge" size={28} c="brand" />}
+      logo={
+        <Flex
+          bdrs="50%"
+          bg="background_surface-brand-subtle"
+          w="2rem"
+          h="2rem"
+          align="center"
+          justify="center"
+        >
+          <FixedSizeIcon name="pulse" size={14} c="brand" />
+        </Flex>
+      }
       testId="monitor-nav"
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}

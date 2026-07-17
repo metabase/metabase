@@ -9,6 +9,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { Link } from "metabase/router";
 import {
@@ -62,7 +63,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="lg">
+      <MonitorMain gap="lg">
         <MonitorBackLink
           to={Urls.monitorTasksList()}
           label={t`Back to Tasks`}
@@ -190,7 +191,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           </Stack>
         </MonitorPageContent>
         {/* </Box> */}
-      </Stack>
+      </MonitorMain>
     </Flex>
   );
 };

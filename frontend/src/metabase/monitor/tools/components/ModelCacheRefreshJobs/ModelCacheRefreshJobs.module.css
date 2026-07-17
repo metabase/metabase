@@ -1,7 +1,3 @@
-.main {
-  overflow: hidden;
-}
-
 .errorBox {
   padding: 0.5rem 1rem;
   border-radius: var(--mantine-radius-sm);

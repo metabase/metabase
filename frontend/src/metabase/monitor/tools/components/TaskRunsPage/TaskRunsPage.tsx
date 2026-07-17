@@ -38,6 +38,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
 
   const {
     data: taskRunsData,
+    isFetching,
     isLoading,
     error,
   } = useAbortableQuery(
@@ -122,7 +123,9 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
       ) : (
         <TaskRunsTable
           taskRuns={taskRuns}
+          isFetching={isFetching}
           isLoading={isLoading}
+          page={page}
           sortingOptions={sortingOptions}
           onSortingOptionsChange={(sortingOptions) =>
             patchUrlState({ ...sortingOptions, page: 0 })

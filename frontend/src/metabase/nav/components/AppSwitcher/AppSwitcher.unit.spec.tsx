@@ -331,7 +331,7 @@ const assertActiveApp = async (current: CurrentApp) => {
   ).toBeInTheDocument();
   expect(
     await within(await getMonitorMenuItem()).findByRole("img", {
-      name: current === "monitor" ? /check_filled/i : /gauge/i,
+      name: current === "monitor" ? /check_filled/i : /pulse/i,
     }),
   ).toBeInTheDocument();
 };

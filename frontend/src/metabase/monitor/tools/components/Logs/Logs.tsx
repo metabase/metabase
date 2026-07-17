@@ -10,6 +10,7 @@ import {
   getAllProcessUUIDs,
 } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Link, withRouter } from "metabase/router";
 import {
   Button,
@@ -20,13 +21,11 @@ import {
   Group,
   Icon,
   Select,
-  Stack,
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 
-import S from "./Logs.module.css";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
 import { filterLogs, urlStateConfig } from "./utils";
 
@@ -70,7 +69,7 @@ const LogsBase = ({
   return (
     <>
       <Flex h="100%" wrap="nowrap">
-        <Stack className={S.main} flex={1} gap="md">
+        <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Application logs`}</MonitorHeaderTitle>
 
           {!loaded || error != null ? (
@@ -170,7 +169,7 @@ const LogsBase = ({
               />
             </>
           )}
-        </Stack>
+        </MonitorMain>
       </Flex>
 
       {

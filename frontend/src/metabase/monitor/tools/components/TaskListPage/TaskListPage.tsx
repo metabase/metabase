@@ -24,6 +24,7 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
 
   const {
     data: tasksData,
+    isFetching,
     isLoading: isLoadingTasks,
     error: tasksError,
   } = useAbortableQuery(
@@ -74,7 +75,9 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
       ) : (
         <TasksTable
           databases={databases}
+          isFetching={isFetching}
           isLoading={isLoading}
+          page={page}
           sortingOptions={sortingOptions}
           tasks={tasks}
           onSortingOptionsChange={(sortingOptions) =>

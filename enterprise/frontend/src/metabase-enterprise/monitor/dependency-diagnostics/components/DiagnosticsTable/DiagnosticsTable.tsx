@@ -1,6 +1,7 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import { useScrollToTop } from "metabase/common/hooks";
 import {
   Card,
   TreeTable,
@@ -26,7 +27,9 @@ import { getColumnWidths, getColumns, getNotFoundMessage } from "./utils";
 type DiagnosticsTableProps = {
   nodes: DependencyNode[];
   mode: DependencyDiagnosticsMode;
+  page: number;
   sortOptions: DependencySortOptions | undefined;
+  isFetching?: boolean;
   isLoading?: boolean;
   onSelect: (node: DependencyNode) => void;
   onSortOptionsChange: (sortOptions: DependencySortOptions | undefined) => void;
@@ -35,7 +38,9 @@ type DiagnosticsTableProps = {
 export const DiagnosticsTable = function DiagnosticsTable({
   nodes,
   mode,
+  page,
   sortOptions,
+  isFetching = false,
   isLoading = false,
   onSelect,
   onSortOptionsChange,
@@ -70,6 +75,12 @@ export const DiagnosticsTable = function DiagnosticsTable({
     getNodeId: (node) => getNodeId(node.id, node.type),
     onRowActivate: handleRowActivate,
     onSortingChange: handleSortingChange,
+  });
+
+  useScrollToTop({
+    ref: treeTableInstance.containerRef,
+    keys: [page, sortOptions],
+    skip: isFetching,
   });
 
   return (

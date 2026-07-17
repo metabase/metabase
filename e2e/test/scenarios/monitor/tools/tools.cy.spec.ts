@@ -537,7 +537,7 @@ describe("monitor > tools", () => {
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
-    cy.findByRole("button", { name: "Try for free" });
+    cy.findByRole("link", { name: "Upgrade to Pro" });
   });
 
   describe("issue 57113", () => {

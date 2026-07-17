@@ -8,6 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
 import { Link, push } from "metabase/router";
@@ -46,7 +47,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <Stack className={S.main} flex={1} gap="lg">
+      <MonitorMain gap="lg">
         <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
 
         <MonitorPageContent className={S.content}>
@@ -159,7 +160,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
             </Grid.Col>
           </Grid>
         </MonitorPageContent>
-      </Stack>
+      </MonitorMain>
     </Flex>
   );
 };

@@ -10,7 +10,7 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
-import { ToolsUpsell } from "metabase/monitor/tools/components/ToolsUpsell";
+import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
   getTasksRoutes,
@@ -71,7 +71,7 @@ export function getMonitorRoutes(
           </Route>
           <Route
             path="errors"
-            component={PLUGIN_MONITOR_TOOLS.COMPONENT || ToolsUpsell}
+            component={PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell}
           />
           <Route path="model-caching" component={ModelCachePage}>
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />

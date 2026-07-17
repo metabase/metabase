@@ -52,8 +52,8 @@ jest.mock("metabase/monitor/tools/components/ModelCacheRefreshJobs", () => ({
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
 }));
-jest.mock("metabase/monitor/tools/components/ToolsUpsell", () => ({
-  ToolsUpsell: () => (
+jest.mock("metabase/monitor/tools/components/MonitorUpsell", () => ({
+  MonitorUpsell: () => (
     <div data-testid="errors-upsell">{"Erroring questions"}</div>
   ),
 }));
