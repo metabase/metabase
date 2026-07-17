@@ -1,15 +1,16 @@
 import type {
   CreateCustomVisualization,
   CustomVisualization,
-  CustomVisualizationSettingDefinition,
 } from "custom-viz";
 
-// Deep imports so the static-viz bundle doesn't pull in every plugin module.
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import MetabaseSettings from "metabase/utils/settings";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
-import type { Visualization } from "metabase/visualizations/types/visualization";
+import type {
+  StaticCustomVisualization,
+  Visualization,
+} from "metabase/visualizations/types/visualization";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 import type {
@@ -18,7 +19,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import { applyDefaultVisualizationProps } from "./custom-viz-common";
+import { brandSettingDefinition } from "./custom-viz-settings";
 
 type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
   __METABASE_VIZ_API__?: Omit<
@@ -39,14 +40,33 @@ function formatValue(value: unknown, options?: ColumnSettings): string {
   return String(result ?? "");
 }
 
+function applyStaticVisualizationProps(
+  vizDef: CustomVisualization<Record<string, unknown>>,
+  props: {
+    identifier: VisualizationDisplay;
+    pluginId: CustomVizPluginId;
+    getUiName: () => string;
+  },
+): StaticCustomVisualization {
+  const Component = vizDef.StaticVisualizationComponent ?? (() => null);
+  Object.assign(Component, {
+    settings: vizDef.settings ?? {},
+    checkRenderable: vizDef.checkRenderable,
+    minSize: vizDef.minSize,
+    defaultSize: vizDef.defaultSize,
+    ...props,
+  } satisfies Partial<Record<keyof Visualization, unknown>>);
+  return Component;
+}
+
 export function registerCustomVizPlugin(
   factory: CreateCustomVisualization<Record<string, unknown>>,
   identifier: string,
   pluginId: CustomVizPluginId,
 ) {
-  // Plugin bundles read column types and value formatting from this global
-  // lazily (see the custom-viz package). Text measurement is unavailable in
-  // the GraalJS context — static components get it via renderingContext.
+  // Text measurement is unavailable in the GraalJS context, so the API object
+  // assigned here omits the measure-text functions the global Window
+  // declaration includes. The cast narrows Window so the assignment type-checks.
   (window as StaticVizApiWindow).__METABASE_VIZ_API__ = {
     columnTypes: customVizColumnTypes,
     formatValue,
@@ -55,27 +75,22 @@ export function registerCustomVizPlugin(
   const locale = MetabaseSettings.get("site-locale") ?? "en";
   const vizDef = factory({
     defineSetting(definition) {
-      // Unjustified type cast. FIXME
-      return definition as unknown as CustomVisualizationSettingDefinition<
-        Record<string, unknown>
-      >;
+      return brandSettingDefinition(definition);
     },
     locale,
   });
   const display: VisualizationDisplay = `custom:${identifier}`;
   customVizRegistry.set(display, vizDef);
 
-  // Register in main visualizations Map so getVisualizationRaw() resolves
-  // the plugin's settings for getComputedSettingsForSeries()
-  const Component = (vizDef.StaticVisualizationComponent ??
-    (() => null)) as unknown as Visualization;
-  applyDefaultVisualizationProps(Component, vizDef, {
+  const Component = applyStaticVisualizationProps(vizDef, {
     identifier: display,
     pluginId,
     getUiName: () => identifier,
   });
   if (!visualizations.has(display)) {
-    registerVisualization(Component);
+    // TO IMPROVE: The registry accepts later down the line only Visualization components, so the cast is necessary to satisfy the type-checker.
+    // Static viz components might not need registration at all.
+    registerVisualization(Component as unknown as Visualization);
   }
 }
 

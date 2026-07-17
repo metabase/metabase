@@ -1,3 +1,4 @@
+import type { CustomStaticVisualizationProps } from "custom-viz";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import type {
@@ -628,6 +629,10 @@ export type Visualization = ComponentType<
   } & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
+
+export type StaticCustomVisualization = ComponentType<
+  CustomStaticVisualizationProps<Record<string, unknown>>
+>;
 
 export type VisualizationDefinition = {
   name?: string;
