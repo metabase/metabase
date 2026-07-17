@@ -3,6 +3,7 @@ import { test as base, BrowserContext, APIRequestContext } from "@playwright/tes
 import { MetabaseApi } from "./api";
 import { BASE_URL } from "./env";
 import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
+import { startWorkerBackend } from "./worker-backend";
 
 /**
  * Port of the Cypress auth model (e2e/support/commands/user/authentication.ts):
@@ -140,7 +141,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         await use({ url: BASE_URL });
         return;
       }
-      const { startWorkerBackend } = await import("./worker-backend");
+      // Static import above, NOT a dynamic `await import()`: node without
+      // native TS support can't load a raw .ts dynamically at runtime
+      // (CI failed with "Cannot use import statement outside a module"),
+      // while the static form goes through Playwright's transpiler.
       // parallelIndex, not workerIndex: replacement workers land on the same
       // slot and reuse the still-running backend instead of booting another.
       const backend = await startWorkerBackend(workerInfo.parallelIndex);
