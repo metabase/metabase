@@ -546,6 +546,13 @@ lead that survived did so because the agent happened to narrate it out loud.
   fooled the cross-check on 11 tests at once. Worth knowing concretely, because
   unlike the bundle cases it is cheap to spot: check the origin, not just the
   pathname.
+  **The fix has a cost — know it before you debug a mystery.** Slot backends now
+  boot with `MB_SITE_URL` (`worker-backend.ts`), and env **beats the app DB**, so
+  any test that *writes* `site-url` through the API or admin UI is silently
+  defeated: the write "succeeds", the setting doesn't change, and the assertion
+  fails somewhere unrelated. That's the sole fixme in `click-behavior.spec.ts`
+  (33379) and it will bite any other spec that sets site-url. If you hit it,
+  the test isn't wrong and the app isn't broken — the harness is overriding you.
 - **Cypress's `create*` API helpers are not thin wrappers.** `H.createDashboard`
   holds `enable_embedding`, `embedding_type`, `embedding_params`,
   `auto_apply_filters` and `dashcards` back from `POST /api/dashboard` (which
