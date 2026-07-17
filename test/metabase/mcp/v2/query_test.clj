@@ -103,7 +103,9 @@
           (is (= (count reference) (count paged))
               "rows served across a completed cursor chain equal the unpaged run — a shortfall means a page boundary dropped fan-out rows")
           (is (= [] (->> reference (remove (set paged)) sort vec))
-              "every unpaged row appears on some page — ids listed here were dropped at a boundary"))))))
+              "every unpaged row appears on some page — ids listed here were dropped at a boundary")))
+      (testing "GHY-4142: a fan-out page refuses the cursor — sound fan-out paging would need the total order imposed on the first page's own execution, which the cursor mint can't do retroactively"
+        (is (true? refused?))))))
 
 (deftest next-page-cursor-pages-without-gaps-or-dups-test
   ;; Proves the keyset seek is correct across page boundaries: for a unique-key (PK) source, paging
