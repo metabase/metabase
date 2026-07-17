@@ -278,35 +278,41 @@
                           (:use_verified_content metabot)
                           false)
         limit           (or limit 50)
-        ;; Context shared by every per-query search and the final hydration. `:search-string` and
-        ;; `:search-engine` vary per query; `:offset`/`:limit` are deliberately omitted here —
-        ;; `ranked-results` ignores them, and applying them per query before fusion would page the
-        ;; offset-N tail of each ranking, which is not the tail of the fused ranking.
-        base-opts       (cond-> {:models                              search-models
-                                 :table-db-id                         database-id
-                                 :created-at                          created-at
-                                 :last-edited-at                      last-edited-at
-                                 :current-user-id                     api/*current-user-id*
-                                 :is-impersonated-user?               (perms/impersonated-user?)
-                                 :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                 :is-superuser?                       api/*is-superuser?*
-                                 :current-user-perms                  @api/*current-user-permissions-set*
-                                 :filter-items-in-personal-collection "exclude-others"
-                                 :context                             :metabot
-                                 :archived                            (boolean archived)}
-                          ;; Don't include search-native-query key if nil so that we don't
-                          ;; inadvertently filter out search models that don't support it
-                          search-native-query (assoc :search-native-query (boolean search-native-query))
-                          use-verified?       (assoc :curated true)
-                          weights             (assoc :weights weights)
-                          (seq created-by)    (assoc :created-by (set created-by))
-                          collection-id       (assoc :collection collection-id))
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> (assoc base-opts :search-string search-string)
-                                                  search-engine (assoc :search-engine (name search-engine))))
+                                                (cond-> {:search-string                       search-string
+                                                         :models                              search-models
+                                                         :table-db-id                         database-id
+                                                         :created-at                          created-at
+                                                         :last-edited-at                      last-edited-at
+                                                         :current-user-id                     api/*current-user-id*
+                                                         :is-impersonated-user?               (perms/impersonated-user?)
+                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
+                                                         :is-superuser?                       api/*is-superuser?*
+                                                         :current-user-perms                  @api/*current-user-permissions-set*
+                                                         :filter-items-in-personal-collection "exclude-others"
+                                                         :context                             :metabot
+                                                         :archived                            (boolean archived)}
+                                                  ;; Don't include search-native-query key if nil so that we don't
+                                                  ;; inadvertently filter out search models that don't support it
+                                                  search-native-query
+                                                  (assoc :search-native-query (boolean search-native-query))
+                                                  use-verified?
+                                                  (assoc :curated true)
+                                                  weights
+                                                  (assoc :weights weights)
+                                                  search-engine
+                                                  (assoc :search-engine (name search-engine))
+                                                  (seq created-by)
+                                                  (assoc :created-by (set created-by))
+                                                  collection-id
+                                                  (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                                           search-string (:models search-context))
+                                ;; No :limit/:offset in the per-query context — ranked-results returns the
+                                ;; full ranked pool; the fused ranking is paginated once, below. Applying
+                                ;; offset per query before fusion would page the offset-N tail of each
+                                ;; ranking, which is not the tail of the fused ranking.
                                 ranked         (search/ranked-results search-context)
                                 result-models  (frequencies (map :model ranked))]
                             (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
@@ -340,10 +346,13 @@
         ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
         ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
         {:keys [data total]} (search/search-results
-                              (search/search-context (assoc base-opts
-                                                            :search-string nil
-                                                            :offset (or offset 0)
-                                                            :limit limit))
+                              (search/search-context {:search-string      nil
+                                                      :models             search-models
+                                                      :current-user-id    api/*current-user-id*
+                                                      :current-user-perms @api/*current-user-permissions-set*
+                                                      :is-superuser?      api/*is-superuser?*
+                                                      :offset             (or offset 0)
+                                                      :limit              limit})
                               search/model-set
                               (vec fused-ranked))
         results         (->> data
