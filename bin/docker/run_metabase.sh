@@ -14,10 +14,8 @@ JAVA_OPTS="${JAVA_OPTS} --add-opens java.base/java.nio=ALL-UNNAMED"
 # Truffle (GraalJS/GraalPy) loads a native library; JDK 25+ warns and future JDKs
 # will block it unless native access is enabled
 JAVA_OPTS="${JAVA_OPTS} --enable-native-access=ALL-UNNAMED"
-JAVA_OPTS="${JAVA_OPTS} -XX:+UseZGC"
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseCompactObjectHeaders"
 JAVA_OPTS="${JAVA_OPTS} -XX:+UseDynamicNumberOfGCThreads"
-JAVA_OPTS="${JAVA_OPTS} -XX:+ZUncommit"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
