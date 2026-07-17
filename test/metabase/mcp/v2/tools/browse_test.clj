@@ -431,7 +431,20 @@
                                           :limit  2            :offset      2})]
               (is (= 1 (:returned envelope)))
               (is (= ["t3"] (map :name (:data envelope))))
-              (is (nil? line)))))))))
+              (is (nil? line))))))))
+  (testing "GHY-4138: a truncated search already narrowed by `search` steers on offset only"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "sales_a"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "sales_b"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "sales_c"}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (let [[envelope line] (call! {:action "list_tables" :database_id db-id :schema "public"
+                                        :search "sales"        :limit       2})]
+            (is (= 2 (:returned envelope)))
+            (is (= 3 (:total envelope)))
+            (is (re-find #"continue with `offset: 2`\." line))
+            (is (not (str/includes? line "narrow with `search`")))))))))
 
 (deftest list-models-test
   (testing "GHY-4138: list_models returns the database's models and nothing else"

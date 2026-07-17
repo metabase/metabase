@@ -216,7 +216,8 @@
                    (let [needle (u/lower-case-en search)]
                      (filterv (partial matches-search? needle) tables))
                    (vec tables))]
-    (paged-list-content args filtered {:param :search} #(project-rows :table args %))))
+    ;; Once search was supplied there is nothing left to narrow by, so drop the `:search` steering.
+    (paged-list-content args filtered (if search {} {:param :search}) #(project-rows :table args %))))
 
 (def ^:private question-select-columns
   "Columns `list_models` selects for the `:question` projection."
