@@ -107,6 +107,62 @@ const cs = (value: string) =>
 const documentTitleInput = (page: Page) =>
   page.getByRole("textbox", { name: "Document Title", exact: true });
 
+/**
+ * Press Enter in the title input and wait for focus to actually reach the
+ * document body.
+ *
+ * The handover is asynchronous — measured at ~20ms — and Playwright's next
+ * keystroke beats it, so the first character is swallowed by the still-focused
+ * title input ("NEW: " arrives as "EW: ", or "One" as "ne"). Upstream never
+ * waits: cy.realType's own startup latency is longer than the handover, so the
+ * race is invisible in Cypress.
+ */
+async function pressTitleEnterAndAwaitBodyFocus(page: Page, title: Locator) {
+  await title.press("Enter");
+  await expect(documentContent(page).getByRole("textbox")).toBeFocused();
+}
+
+/**
+ * Click a card embed's rename pencil and wait for the title input to take focus.
+ *
+ * Same hazard as pressTitleEnterAndAwaitBodyFocus: CardEmbedNode focuses and
+ * selects the input from a `useEffect` ([isEditingTitle]), so it happens after
+ * React commits rather than during the click. Typing first either loses the
+ * keystrokes or lands them before `select()` runs, appending to the old name
+ * instead of replacing it. Only the input's existence is hover/edit-gated, so
+ * there is exactly one while renaming.
+ */
+/**
+ * The anchor-link menu that is actually shown.
+ *
+ * AnchorLinkMenu toggles visibility with `opacity` alone (0 -> 1 via its
+ * `visible` CSS-module class), and every heading renders one, portaled to
+ * document.body. Playwright's `visible` ignores opacity, so the upstream
+ * `filter(":visible").first()` selects an arbitrary heading's menu here.
+ *
+ * Selecting by class substring does NOT work across builds: the dev bundle
+ * names the class `AnchorLinkMenu-module__visible___xxxxx`, but the production
+ * (jar) bundle minifies it to an opaque token like `O6wZQ` with no `visible`
+ * substring. `opacity` is the actual show/hide signal in both, so resolve the
+ * shown menu by its computed opacity and return that one.
+ */
+async function shownAnchorLinkMenu(page: Page): Promise<Locator> {
+  const menus = page.locator('[data-testid="anchor-link-menu"]');
+  const shownIndex = async () =>
+    menus.evaluateAll((els) =>
+      els.findIndex((el) => getComputedStyle(el).opacity === "1"),
+    );
+  await expect.poll(shownIndex).toBeGreaterThanOrEqual(0);
+  return menus.nth(await shownIndex());
+}
+
+async function clickRenamePencil(page: Page) {
+  await icon(page, "pencil").click();
+  await expect(
+    page.locator('[data-testid="document-card-embed"] input'),
+  ).toBeFocused();
+}
+
 /** Port of H.newButton("Document").click(). */
 async function newDocumentFromNewMenu(page: Page) {
   await newButton(page).click();
@@ -487,15 +543,36 @@ test.describe("documents", () => {
 
     await popover(page).getByText("Move to trash", { exact: true }).click();
 
-    // Force the click since this is hidden behind a toast notification
+    // Upstream: `.click({ force: true })` — "hidden behind a toast
+    // notification". Cypress's force click dispatches the event ON the subject,
+    // so the toast never matters. Playwright's `force` only skips the
+    // actionability *checks* — it still performs a real mouse click at the
+    // element's centre, which the toast receives instead when it overlaps, and
+    // the navigation silently never happens (the failure then surfaces as
+    // "Test Document" missing from the trash table, nowhere near the cause).
+    // dispatchEvent is the faithful equivalent of Cypress's force click.
     await navigationSidebar(page)
       .getByText("Trash", { exact: true })
-      .click({ force: true });
+      .dispatchEvent("click");
+    // Fail here, rather than on a confusing empty-table locator, if the
+    // navigation didn't happen.
+    await expect.poll(() => pathname(page)).toBe("/trash");
+
     const trashedDocument = getUnpinnedSection(page).getByText("Test Document", {
       exact: true,
     });
     await expect(trashedDocument).toBeAttached();
-    await trashedDocument.click();
+
+    // The trash list remounts its rows while the items request settles, so the
+    // row can detach between the locator resolving and the click landing —
+    // Playwright then reports "element was detached from the DOM, retrying" and
+    // can starve (seen ~1 run in 6). Cypress's click is retried from the
+    // findByText, which absorbs the remount. Retry the click+navigation as a
+    // unit, like the toPass loops used elsewhere for re-rendering targets.
+    await expect(async () => {
+      await trashedDocument.click({ timeout: 5000 });
+      await expect(documentTitleInput(page)).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30000 });
 
     // test that deleted documents cannot be edited (metabase#63112)
     await expect(documentTitleInput(page)).toBeVisible();
@@ -564,19 +641,15 @@ test.describe("documents", () => {
     const title = documentTitleInput(page);
     await expect(title).toBeFocused();
     await title.pressSequentially("Doc Title");
-    await title.press("Enter");
+    await pressTitleEnterAndAwaitBodyFocus(page, title);
 
     // Add some content to the document body
     await addToDocument(page, "One\nTwo");
 
-    // Click back on the title to focus it and hit Enter. Upstream chains
-    // .click().type("{enter}") as two Cypress commands, which leaves a gap for
-    // focus to land on the input; Playwright's click->press is fast enough to
-    // beat it, and the Enter is then handled with the editor still focused —
-    // which leaves the first character selected, so typing eats the "O".
+    // Click back on the title to focus it and hit Enter
     await title.click();
     await expect(title).toBeFocused();
-    await title.press("Enter");
+    await pressTitleEnterAndAwaitBodyFocus(page, title);
 
     // Focus should be placed at the beginning of the document body
     await page.keyboard.type("NEW: ", { delay: 10 });
@@ -1262,7 +1335,7 @@ test.describe("documents", () => {
 
         // Rename card
         await page.getByTestId("card-embed-title").hover();
-        await icon(page, "pencil").click();
+        await clickRenamePencil(page);
         await page.keyboard.type("New name", { delay: 10 });
         await page.keyboard.press("Enter");
 
@@ -1683,7 +1756,13 @@ test.describe("documents", () => {
       await expect(getDocumentCard(page, "New question")).toBeAttached();
       const saveButton = page.getByRole("button", { name: "Save", exact: true });
       await expect(saveButton).toBeVisible();
+      // Upstream's expectUnstructuredSnowplowEvent below polls until
+      // document_add_card arrives, which incidentally waits out this save. The
+      // stub is a no-op, so without an explicit wait the rename below races the
+      // re-render the save triggers and the pencil click lands on a stale node.
+      const documentSaved = waitForDocumentUpdate(page);
       await saveButton.click();
+      await documentSaved;
 
       await expectUnstructuredSnowplowEvent({
         event: "document_add_card",
@@ -1694,7 +1773,7 @@ test.describe("documents", () => {
       await documentContent(page)
         .getByText("New question", { exact: true })
         .hover();
-      await icon(page, "pencil").click();
+      await clickRenamePencil(page);
       await page.keyboard.type("New native question", { delay: 10 });
 
       await page.locator(".node-paragraph").first().click(); // unfocus cardEmbed
@@ -2022,13 +2101,15 @@ test.describe("documents", () => {
         .getByRole("heading", { name: "First Heading", exact: true })
         .hover();
 
-      // Filter to visible one since all blocks have hidden buttons
+      // Upstream's `filter(":visible").first()` is vacuous in Playwright: the
+      // menu is hidden with opacity alone, which Playwright's `visible` ignores,
+      // so the assertion would pass even with the menu fully transparent. Assert
+      // on the menu that actually carries the `visible` class (see
+      // shownAnchorLinkMenu).
       await expect(
-        page
-          .getByTestId("anchor-link-menu")
-          .filter({ visible: true })
-          .first()
-          .getByRole("button", { name: /copy link/i }),
+        (await shownAnchorLinkMenu(page)).getByRole("button", {
+          name: /copy link/i,
+        }),
       ).toBeVisible();
     });
 
@@ -2049,11 +2130,16 @@ test.describe("documents", () => {
         .getByRole("heading", { name: "First Heading", exact: true })
         .hover();
 
-      // Filter to visible one since all blocks have hidden buttons
-      await page
-        .getByTestId("anchor-link-menu")
-        .filter({ visible: true })
-        .first()
+      // Upstream filters to the ":visible" menu and takes .first(). That does
+      // not port directly: AnchorLinkMenu shows/hides itself purely with
+      // `opacity` (AnchorLinkMenu.module.css), and Playwright's `visible`
+      // ignores opacity — so `filter({ visible: true })` matches EVERY
+      // heading's menu, not just the shown one. The menus are also portaled to
+      // document.body, so DOM order is mount order rather than document order,
+      // and `.first()` can land on the Second Heading's menu — which is far down
+      // the page, giving "element is outside of the viewport" after 30s.
+      // Select the genuinely-shown menu by its `visible` class instead.
+      await (await shownAnchorLinkMenu(page))
         .getByRole("button", { name: /copy link/i })
         .click();
 
@@ -2094,13 +2180,12 @@ test.describe("documents", () => {
         .getByRole("heading", { name: "First Heading", exact: true })
         .hover();
 
-      // Filter to visible one since all blocks have hidden menus
+      // See shownAnchorLinkMenu: opacity-only hiding makes the upstream
+      // ":visible" filter meaningless under Playwright.
       await expect(
-        page
-          .getByTestId("anchor-link-menu")
-          .filter({ visible: true })
-          .first()
-          .getByRole("button", { name: /copy link/i }),
+        (await shownAnchorLinkMenu(page)).getByRole("button", {
+          name: /copy link/i,
+        }),
       ).toBeVisible();
 
       // Comments button uses ForwardRefLink, so it's a link role not button

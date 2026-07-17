@@ -67,3 +67,5 @@ filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js
 dashboard-filters/parameters.cy.spec.js
 metrics/metrics-explorer.cy.spec.ts
 embedding/interactive-embedding.cy.spec.js
+dashboard-cards/click-behavior.cy.spec.js
+documents/documents.cy.spec.ts

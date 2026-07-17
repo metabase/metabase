@@ -593,3 +593,18 @@ lead that survived did so because the agent happened to narrate it out loud.
   nothing is hittable there — verified by dispatching Cypress's own synthetic
   sequence at that exact point. Click the point itself. When a Cypress helper's
   comment names DOM that no longer exists, don't port the workaround.
+
+## Gotchas added while porting documents (wave 9, slot 9)
+
+- **Never select on a CSS-module class name — it's minified in the jar.** The
+  dev (rspack) bundle names classes readably (`Foo-module__visible___xxxxx`);
+  the production jar bundle minifies them to opaque tokens with **no stable
+  substring** (measured: `AnchorLinkMenu`'s shown state was `vs_4B O6wZQ`, no
+  `visible` anywhere). So `[class*="__visible"]` matches in source mode and
+  matches **nothing** on the jar — a selector that is green locally and red in
+  CI. This is the canonical case for the jar-mode-default rule; it was caught
+  only by re-verifying on the jar. Select on `data-testid`, role, or the
+  rendered style that actually drives the behaviour. For `AnchorLinkMenu`
+  (shown via `opacity` alone, which Playwright's visibility ignores),
+  `shownAnchorLinkMenu` resolves the `opacity === "1"` menu with `evaluateAll`
+  inside an `expect.poll` — build-agnostic.

@@ -37,7 +37,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 
 | Slot | Spec file (lines) | State when the agent died |
 |---|---|---|
-| 1 | `tests/click-behavior.spec.ts` (2786) | **DONE — verified and landed.** See findings-inbox/click-behavior.md. Two of its fixes are spike-wide: `restore()` now re-points `site-url` at the worker's own backend, and `saveDashboard` gained `awaitRequest`. Read the site-url note under "open threads" — it changes how to read a Cypress cross-check. |
+| 1 | `tests/click-behavior.spec.ts` (2786) | **DONE — verified and landed.** **41 pass / 1 fixme on the CI uberjar**, clean under `--repeat-each=2` (82 passed / 2 skipped), tsc clean. Source `dashboard-cards/click-behavior.cy.spec.js` is in PORTED.txt; findings in `findings-inbox/click-behavior.md`. Two shared-helper changes: `saveDashboard` gained `awaitRequest` (`support/dashboard.ts`), and `openLegacyStaticEmbeddingModal` gained `activeTab` (`support/embedding.ts`) — both optional, backwards-compatible. **Dividend: two upstream tests assert an href the app never produces and pass anyway** (assertions inside `H.onNextAnchorClick` never enforce). The 1 fixme (33379) is blocked by thread #4's `MB_SITE_URL` pin — **see the trade-off table in the findings; it affects any spec that writes site-url.** Not WIP; leave alone. |
 | 2 | `tests/dashboard-reproductions.spec.ts` (2438) | **DONE — verified and landed.** 40 pass / 1 skipped (`@skip` upstream) / **0 fixme**, on the **CI uberjar**, clean under `--repeat-each=2` (80/82). Source `dashboard/dashboard-reproductions.cy.spec.js` is in PORTED.txt; findings in `findings-inbox/dashboard-reproductions.md`. **Fixed a harness bug affecting every slot — see open thread #4 below (`MB_SITE_URL`).** A suspected product bug (12926) was **disproven by the jar** after Cypress had failed it identically — the fidelity cross-check alone did not catch it. Not WIP; leave alone. |
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **DONE — verified and landed.** 43/43 on the CI uberjar, clean under `--repeat-each=2` (86/86). Source is `dashboard-filters/parameters.cy.spec.js` (not `dashboard-parameters.cy.spec.js` — no such file). The suspected product bug is **disproven**: see open thread #2. Needed one helper fix (`undo` → newest toast); the spec itself was already correct. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | **DONE — verified and landed.** 46 pass / 0 skipped / 0 fixme, clean under `--repeat-each=2`. Not WIP; leave alone. |
@@ -45,7 +45,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 6 | `tests/dashboard-core.spec.ts` (2131) | **Full file green (45 passed / 1 skipped `@skip` upstream), one flake open.** Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ Electron, predates the `--browser chrome` rule — re-run before citing). **Open (needs a decision, not a fix):** `--repeat-each=2` (89 passed / 1 failed / 2 skipped) caught `auto-scrolling to a dashcard via a url hash param` (:1318); measured **3 fail / 2 pass over 5 runs on a quiet box**. Cause is app-side: `DashCard` scrolls once in `useMount` and clears the `scrollTo` hash immediately, so any later remount/reflow loses the scroll and nothing re-scrolls. Left unmodified and unskipped on purpose — the port's `toBeInViewport()` is *stronger* than Cypress's `should("be.visible")` (which ignores scroll position), so weakening it makes the test vacuous and a `toPass` retry would mask the very behaviour under test. Not claimed as a product bug (fidelity bar not met). See `findings-inbox/dashboard-core.md`. |
 | 7 | `tests/documents-comments.spec.ts` (2009) | **DONE — verified and landed.** 47 pass / 1 skipped (the original's `it.skip`), clean under `--repeat-each=2`. In PORTED.txt; findings in `findings-inbox/documents-comments.md`. Not WIP; leave alone. |
 | 8 | `tests/interactive-embedding.spec.ts` (2673) | **DONE — verified and landed.** 73 pass / 6 skipped (@external), clean under `--repeat-each=2`, tsc clean. The "mid-write" note was wrong: all 79 upstream tests were already there and typechecked. Not WIP; leave alone. Yielded 4 new PORTING gotchas + 2 infra dividends — see `findings-inbox/interactive-embedding.md`, and **the two config items below want an owner.** |
-| 9 | `tests/documents.spec.ts` (2241) | Written; never run, never typechecked. |
+| 9 | `tests/documents.spec.ts` (2241) | **DONE — verified and landed.** 36 pass / 1 skipped on the CI uberjar, 72/2 under `--repeat-each=2`, tsc clean. Landed by the coordinator after the porting agent stalled twice on the stream watchdog mid-fix. Yielded a general gotcha (CSS-module class names are minified in the jar — never select on them; the class-substring selector was source-green and jar-red). See `findings-inbox/documents.md` §7. Not WIP; leave alone. |
 
 Their new helper modules are equally unverified: `support/click-behavior.ts`,
 `dashboard-core.ts`, `dashboard-parameters.ts`, `dashboard-repros.ts`,
@@ -180,6 +180,19 @@ a restored DB value, independent of the artifact.
 > react-router `Link` navigation doesn't. If you have a **landed port that was
 > verified on a slot before this fix and had drill-through tests fixme'd**,
 > it's worth a recheck.
+
+> **Known side effect (found in slot 1, click-behavior).** Because env beats the
+> app DB — the property that makes this survive `restore()` — a test that *writes*
+> site-url is now **silently defeated**: the PUT reports success and the value
+> does not change (measured on the jar: `https://…/subpath` requested,
+> `http://localhost:4101` still returned). Any spec whose scenario is "site-url
+> differs from the real origin" cannot run on a slot; click-behavior's
+> metabase#33379 test is `test.fixme`'d for exactly this. The escape hatch, if
+> another spec needs it, is a post-`restore()` `PUT /api/setting/site-url`
+> instead of the env pin — same effect, one PUT per restore, but overridable.
+> Slot 1 had built that variant independently and removed it in favour of this
+> one; noting the trade-off rather than re-opening it. Trade-off table in
+> `findings-inbox/click-behavior.md`.
 
 Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like
