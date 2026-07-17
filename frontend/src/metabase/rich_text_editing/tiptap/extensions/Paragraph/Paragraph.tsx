@@ -19,7 +19,7 @@ export const CustomParagraph = Paragraph.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("paragraph")];
+    return [createProseMirrorPlugin(Paragraph.name)];
   },
 });
 

@@ -34,7 +34,7 @@ export const CustomOrderedList = OrderedList.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("orderedList")];
+    return [createProseMirrorPlugin(OrderedList.name)];
   },
 });
 

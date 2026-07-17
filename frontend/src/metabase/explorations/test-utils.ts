@@ -1,7 +1,6 @@
 import type {
   Exploration,
   ExplorationBlockNode,
-  ExplorationDocument,
   ExplorationMetric,
   ExplorationPageNode,
   ExplorationQuery,
@@ -207,7 +206,6 @@ export function createThread(
 export interface CreateExplorationOpts {
   queries?: ExplorationQuery[];
   blocks?: ExplorationBlockNode[];
-  documents?: ExplorationDocument[];
   /** Thread chat prompt — set when the exploration was created with LLM context. */
   prompt?: string | null;
   thread?: Partial<ExplorationThread>;
@@ -217,7 +215,6 @@ export interface CreateExplorationOpts {
 export function createExploration({
   queries = [],
   blocks,
-  documents = [],
   prompt = null,
   thread: threadOverrides = {},
   threads,
@@ -256,25 +253,10 @@ export function createExploration({
       createThread({
         queries,
         blocks: finalBlocks,
-        documents,
         prompt,
         ...threadOverrides,
       }),
     ],
-  };
-}
-
-export function createExplorationDocument(
-  overrides: Partial<ExplorationDocument> &
-    Pick<ExplorationDocument, "id" | "name">,
-): ExplorationDocument {
-  return {
-    exploration_thread_id: 1,
-    creator_id: 1,
-    content_type: "text/html",
-    created_at: "2026-04-30T00:00:00Z",
-    updated_at: "2026-04-30T00:00:00Z",
-    ...overrides,
   };
 }
 

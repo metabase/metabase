@@ -8,15 +8,14 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.documents.core :as documents]
    [metabase.events.core :as events]
-   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.queues :as explorations.queues]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -34,11 +33,6 @@
 
 ;;; ----------------------------------------- helpers -----------------------------------------
 
-(def ^:private default-document-name
-  "Base name for auto-created exploration documents. Appended with \" 2\", \" 3\", etc. when
-  duplicates exist on a thread."
-  "Scratchpad")
-
 (defn- get-exploration-or-404 [id]
   (api/check-404 (t2/select-one :model/Exploration :id id)))
 
@@ -54,39 +48,6 @@
       (if new-coll
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
-
-(defn- thread-ids-of-exploration-query
-  "HoneySQL subquery selecting every thread id belonging to an exploration. Used as the
-  `:in` clause for the thread-doc cascades below."
-  [exploration-id]
-  {:select [:id] :from [:exploration_thread] :where [:= :exploration_id exploration-id]})
-
-(defn- cascade-collection-id-to-thread-documents!
-  "Propagate an Exploration's new `collection_id` to all documents attached to its threads.
-  Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
-  [exploration-id new-coll-id]
-  (t2/update! :model/Document
-              :exploration_thread_id [:in (thread-ids-of-exploration-query exploration-id)]
-              {:collection_id new-coll-id}))
-
-(defn- cascade-archived-to-thread-documents!
-  "Propagate an Exploration's archive flip to all documents attached to its threads.
-  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
-  on archive, flip every doc that wasn't already archived directly; on unarchive,
-  flip every doc that was cascade-archived. Docs with `archived_directly=true`
-  (user-archived) are never touched."
-  [exploration-id new-archived?]
-  (let [thread-ids (thread-ids-of-exploration-query exploration-id)]
-    (if new-archived?
-      (t2/update! :model/Document
-                  :exploration_thread_id [:in thread-ids]
-                  :archived              false
-                  {:archived true :archived_directly false})
-      (t2/update! :model/Document
-                  :exploration_thread_id [:in thread-ids]
-                  :archived              true
-                  :archived_directly     false
-                  {:archived false}))))
 
 (defn- exploration-query-dim-label
   "Display label for a dimension inside an ExplorationQuery `name`. When `ambiguous?` and the dim
@@ -200,23 +161,8 @@
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
-                  [:threads :queries :documents :timelines])
+                  [:threads :queries :timelines])
       (update :threads #(some->> % gate-threads-derived-data))))
-
-(defn- insert-thread-default-documents!
-  "Insert the default Scratchpad doc, plus an AI-summary placeholder when configured."
-  ([thread-id coll-id]
-   (insert-thread-default-documents! thread-id coll-id {}))
-  ([thread-id coll-id {:keys [include-ai-summary?] :or {include-ai-summary? true}}]
-   (t2/insert! :model/Document
-               {:name                  default-document-name
-                :document              {:type "doc" :content []}
-                :content_type          documents/prose-mirror-content-type
-                :creator_id            api/*current-user-id*
-                :collection_id         coll-id
-                :exploration_thread_id thread-id})
-   (when (and include-ai-summary? (ai-summary/current-user-can-create-ai-summary?))
-     (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id))))
 
 (defn- positional-rows
   "Stamp `:exploration_thread_id` and a 0-based `:position` onto each row in `rows`."
@@ -246,23 +192,19 @@
                 (positional-rows thread-id
                                  (map (fn [tl-id] {:timeline_id tl-id}) (distinct timeline-ids))))))
 
-(defn- reset-ai-summary-doc!
-  [thread-id]
-  (when-let [doc-id (t2/select-one-fn :ai_summary_document_id :model/ExplorationThread :id thread-id)]
-    (t2/update! :model/Document doc-id {:document (ai-summary/placeholder-pm-doc)})))
-
 (defn- reset-thread-for-rerun!
   "CAS-reset a *terminal* thread (`completed_at` set — natural completion, terminal failure, or
-  cancel) back to the freshly-created state the planning worker claims: `started_at` set, every
-  other lifecycle timestamp NULL, and zero `exploration_query` rows — exactly the shape
-  `claim-unplanned-thread!` (see `metabase.explorations.task.runner`) will pick up. Returns true
-  when the reset applied; false when the guarded UPDATE matched no row.
+  cancel) back to the freshly-started state a new plan run expects: `started_at` set, every other
+  lifecycle timestamp NULL, and zero `exploration_query` rows. On success it enqueues a fresh
+  planning message (`explorations.queues/start-thread!`) inside the same transaction, so planning
+  re-runs iff the reset committed. Returns true when the reset applied; false when the guarded
+  UPDATE matched no row.
 
   The guard refuses while the thread is still in flight: not yet terminal, or a query worker
   still holds a `running` row (possible on a canceled thread, whose in-flight queries run to
-  natural completion). A restart racing in-flight work could otherwise strand late-inserted
-  query rows on a thread whose `query_plan_started_at` we just cleared — a state the planner
-  never re-claims — or let the worker's completion CAS stamp the freshly-reset thread."
+  natural completion). A restart racing in-flight work could otherwise strand query rows a
+  still-running planner inserts after the reset, or let an in-flight query worker's completion
+  CAS stamp the freshly-reset thread."
   [thread-id]
   (t2/with-transaction [_conn]
     (when (pos? (t2/query-one
@@ -282,7 +224,9 @@
                                                   [:= :exploration_thread_id thread-id]
                                                   [:= :status "running"]]}]]}))
       (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
-      (reset-ai-summary-doc! thread-id)
+      ;; Enqueue planning inside the reset transaction so the plan message publishes iff the reset
+      ;; commits (:queue/exploration-plan is :transactional :require).
+      (explorations.queues/start-thread! thread-id)
       true)))
 
 (defn- stringify-dim-types
@@ -375,11 +319,7 @@
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
-   [:row_count                        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-   [:timeline_interestingness         {:optional true} [:maybe [:sequential
-                                                                [:map
-                                                                 [:timeline_id           ms/PositiveInt]
-                                                                 [:interestingness_score {:optional true} [:maybe number?]]]]]]])
+   [:row_count                        {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::ExplorationPageNode
   "A page within a block: the bundle of queries for one (card, dimension, query_type) under the
@@ -408,17 +348,6 @@
    [:position ms/IntGreaterThanOrEqualToZero]
    [:pages    [:sequential ::ExplorationPageNode]]])
 
-(mr/def ::ExplorationDocument
-  "Schema for a document attached to an exploration thread."
-  [:map
-   [:id                    ms/PositiveInt]
-   [:name                  :string]
-   [:exploration_thread_id ms/PositiveInt]
-   [:creator_id            ms/PositiveInt]
-   [:content_type          :string]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]])
-
 (mr/def ::HydratedThread
   "Schema for an Exploration thread with hydrated selections and queries."
   [:map
@@ -430,10 +359,8 @@
    [:started_at                 {:optional true} [:maybe :any]]
    [:canceled_at                {:optional true} [:maybe :any]]
    [:completed_at               {:optional true} [:maybe :any]]
-   [:ai_summary_document_id     {:optional true} [:maybe ms/PositiveInt]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
    [:blocks                     {:optional true} [:maybe [:sequential ::ExplorationBlockNode]]]
-   [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]
    [:timelines                  {:optional true}
     [:maybe [:sequential
              [:map
@@ -470,10 +397,10 @@
    [:updated_at    {:optional true} [:maybe :any]]])
 
 (mr/def ::ExplorationSummary
-  "Lightweight row for the `GET /mine` list. No threads/queries/documents — just the metadata
+  "Lightweight row for the `GET /mine` list. No threads/queries — just the metadata
   needed to render a list entry, plus `current_user_last_touched_at`, the timestamp the list is
   sorted by (the caller's own most-recent touch of this exploration, composed across the
-  exploration's revisions, its attached documents' revisions, and its creation)."
+  exploration's revisions and its creation)."
   [:map
    [:id                           ms/PositiveInt]
    [:name                         ms/NonBlankString]
@@ -587,10 +514,8 @@
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and stamp the thread as started. The background planning worker (see
-  `metabase.explorations.query-plan`) picks the thread up, calls an LLM to decide which charts
-  to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
-  with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
+  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns
+  immediately with an empty queries list. Clients should poll `GET /:id/queries` until rows appear.
 
   Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
@@ -599,7 +524,7 @@
    {:keys [name description prompt collection_id blocks timeline_ids]} :- CreateExploration]
   (api/create-check :model/Exploration {:collection_id collection_id})
   ;; Block metric-card and timeline references are persisted verbatim and read back unfiltered
-  ;; (planning context, AI-summary name/event lookups, thread hydration), so attach time is the
+  ;; (planning context, thread hydration), so attach time is the
   ;; permission boundary: every referenced id must exist (404) and be readable (403) by the creator.
   (doseq [card-id (distinct (mapcat #(map :card_id (:metrics %)) blocks))]
     (api/read-check :model/Card card-id))
@@ -612,22 +537,20 @@
                                                                     :description   description
                                                                     :collection_id collection_id
                                                                     :creator_id    api/*current-user-id*}))
-                coll-id     (:collection_id exploration)
-                ;; `started_at` is the signal to the background planning worker that this thread
-                ;; is ready to plan + execute: the worker's claim predicate matches threads with
-                ;; `started_at IS NOT NULL` and `query_plan_started_at IS NULL`. Setting it in the
-                ;; INSERT is safe — the worker reads on another connection, so it can't see (or
-                ;; claim) the thread before this whole transaction, including the dependent
-                ;; document/block/timeline rows below, commits atomically.
+                ;; `started_at` marks the thread as started (past the draft phase). Planning itself
+                ;; is kicked off by the `start-thread!` enqueue below — its plan message rides a
+                ;; `:transactional :require` queue, so it publishes only once this whole transaction,
+                ;; including the dependent block/timeline rows below, commits atomically.
+                ;; The plan listener therefore can never observe (or plan) a half-built thread.
                 thread      (first (t2/insert-returning-instances! :model/ExplorationThread
                                                                    {:exploration_id (:id exploration)
                                                                     :prompt         prompt
                                                                     :position       0
                                                                     :started_at     (t/offset-date-time)}))
                 tid         (:id thread)]
-            (insert-thread-default-documents! tid coll-id)
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
+            (explorations.queues/start-thread! tid)
             (t2/select-one :model/Exploration :id (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.
@@ -674,8 +597,7 @@
           next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
                                                    :exploration_id id
                                                    {:order-by [[:position :desc] [:id :desc]]})
-                                 0))
-          coll-id       (:collection_id exploration)]
+                                 0))]
       (t2/with-transaction [_]
         (let [thread (first (t2/insert-returning-instances!
                              :model/ExplorationThread
@@ -687,7 +609,6 @@
                               ;; under the one owning the drilled page
                               :source_page_id page_id}))
               tid    (:id thread)]
-          (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
           (t2/insert! :model/ExplorationBlock
                       {:exploration_thread_id tid
                        :type                  (:type block)
@@ -712,12 +633,10 @@
 
 (defn- my-explorations-honeysql
   "HoneySQL for the explorations `user-id` created or edited, ordered by that user's most-recent
-  touch (descending). \"Touch\" is the union of three streams, all attributed to the user:
+  touch (descending). \"Touch\" is the union of two streams, all attributed to the user:
 
     1. the user's `Exploration` revisions (metadata / structure edits),
-    2. the user's `Document` revisions for documents attached to the exploration's threads
-       (scratchpad / AI-summary edits, mapped back via `exploration_thread`),
-    3. `exploration.created_at` for explorations the user created — creation is a touch, and
+    2. `exploration.created_at` for explorations the user created — creation is a touch, and
        `created_at` stays reliable even after the creation revision ages out of the
        `revision/max-revisions` cap.
 
@@ -736,11 +655,6 @@
                     [{:select [[:model_id :eid] [:timestamp :ts]]
                       :from   [:revision]
                       :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
-                     {:select [[:t.exploration_id :eid] [:dr.timestamp :ts]]
-                      :from   [[:revision :dr]]
-                      :join   [[:document :d]           [:= :d.id :dr.model_id]
-                               [:exploration_thread :t] [:= :t.id :d.exploration_thread_id]]
-                      :where  [:and [:= :dr.model "Document"] [:= :dr.user_id user-id]]}
                      {:select [[:id :eid] [:created_at :ts]]
                       :from   [:exploration]
                       :where  [:= :creator_id user-id]}]}
@@ -764,10 +678,10 @@
 (api.macros/defendpoint :get "/mine" :- ::MineResponse
   "Explorations the current user created or edited, most-recently-touched first, paginated.
 
-  \"Touched\" composes the user's own edits to the exploration, to its attached documents
-  (scratchpad / AI-summary), and its creation — see [[my-explorations-honeysql]]. Explorations
-  that were moved into a collection the user can no longer read are excluded, as are archived
-  ones. Returns the collection-items envelope: `{:total :limit :offset :data}`."
+  \"Touched\" composes the user's own edits to the exploration and its creation — see
+  [[my-explorations-honeysql]]. Explorations that were moved into a collection the user can no
+  longer read are excluded, as are archived ones. Returns the collection-items envelope:
+  `{:total :limit :offset :data}`."
   []
   (let [limit  (request/limit)
         offset (request/offset)
@@ -789,30 +703,17 @@
 
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
-
-  Moving an exploration cascades the new `collection_id` onto every document attached to its
-  threads. Archiving or unarchiving the exploration cascades the new `archived` flag onto those
-  same documents (skipping any that were directly user-archived, mirroring the dashboard /
-  dashboard-question pattern)."
+  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
-  (let [existing            (get-exploration-or-404 id)
-        updates'            (api/updates-with-archived-directly existing updates)
-        moving?             (and (contains? updates' :collection_id)
-                                 (not= (:collection_id existing) (:collection_id updates')))
-        archiving-changing? (and (contains? updates' :archived)
-                                 (not= (:archived existing) (:archived updates')))]
+  (let [existing (get-exploration-or-404 id)
+        updates' (api/updates-with-archived-directly existing updates)]
     (api/write-check existing)
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_]
       (when (seq updates')
-        (t2/update! :model/Exploration id updates'))
-      (when moving?
-        (cascade-collection-id-to-thread-documents! id (:collection_id updates')))
-      (when archiving-changing?
-        (cascade-archived-to-thread-documents! id (:archived updates'))))
+        (t2/update! :model/Exploration id updates')))
     (let [updated (t2/select-one :model/Exploration :id id)]
       (when (seq updates')
         (events/publish-event! :event/exploration-update
@@ -822,8 +723,8 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Hard-delete an exploration. Soft delete is `PUT /api/exploration/:id {archived: true}`.
 
-  Cascades to every `exploration_thread`, `exploration_query`, and attached `document`
-  via the on-delete-cascade FKs configured in the explorations migration."
+  Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade
+  FKs configured in the explorations migration."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
@@ -850,18 +751,10 @@
   [page-id]
   (api/check-404 (t2/select-one :model/ExplorationPage :id page-id)))
 
-(def ^:private document-summary-columns
-  [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
-
 (defn- get-thread-or-404
   "Fetch the thread, or 404."
   [thread-id]
   (api/check-404 (t2/select-one :model/ExplorationThread :id thread-id)))
-
-(defn- read-check-thread [thread-id]
-  (let [thread (get-thread-or-404 thread-id)]
-    (api/read-check (get-exploration-or-404 (:exploration_id thread)))
-    thread))
 
 (defn- write-check-thread [thread-id]
   (let [thread (get-thread-or-404 thread-id)]
@@ -870,14 +763,13 @@
 
 (api.macros/defendpoint :post "/thread/:thread-id/restart" :- ::HydratedExploration
   "Re-run one exploration thread in place, keeping its selections: drops the thread's materialized
-  queries, resets its AI Summary doc to the placeholder, and clears the terminal-state gates so the
-  background planner re-claims it. Returns the parent exploration. Only a terminal thread
-  (completed, failed, or canceled) can restart; while planning, execution, or analysis is still in
-  flight this returns a 409 — cancel the thread first, then restart.
+  queries and clears the terminal-state gates so the background planner re-claims it. Returns the
+  parent exploration. Only a terminal thread (completed, failed, or canceled) can restart; while
+  planning, execution, or analysis is still in flight this returns a 409 — cancel the thread
+  first, then restart.
 
   No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
-  is no revision to record (the revision push skips unchanged objects). The AI-summary document
-  reset does record a Document revision, which is what `/mine`'s last-touched ordering composes."
+  is no revision to record (the revision push skips unchanged objects)."
   [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
@@ -898,7 +790,7 @@
   "Cancel an in-flight exploration thread. Stamps `canceled_at` and `completed_at` on the thread,
   and bulk-flips any still-`pending` ExplorationQuery rows to `canceled`. In-flight queries
   currently mid-QP-execution are left to run to natural completion — their result rows are
-  orphaned but harmless (timeline scoring and AI Summary both skip canceled threads).
+  orphaned but harmless (timeline scoring skips canceled threads).
 
   Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or
   prior cancel) returns 200 with its existing state. Authorization is the same write check as
@@ -938,133 +830,11 @@
             :where  [:in :id pending-ids]})))))
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
 
-(api.macros/defendpoint :get "/thread/:thread-id/documents" :- [:sequential ::ExplorationDocument]
-  "List all documents owned by an exploration thread, ordered by creation time."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
-  (read-check-thread thread-id)
-  (t2/select (into [:model/Document] document-summary-columns)
-             :exploration_thread_id thread-id
-             :archived false
-             {:order-by [[:created_at :asc] [:id :asc]]}))
-
-(defn- next-document-name
-  "Return the next auto-incremented name for [[default-document-name]] on `thread-id`.
-  Bare name counts as 1, so the sequence is: Scratchpad, Scratchpad 2, Scratchpad 3, ..."
-  [thread-id]
-  (let [base    default-document-name
-        pattern (re-pattern (str base " (\\d+)"))
-        names   (->> (t2/select-fn-set :name :model/Document
-                                       :exploration_thread_id thread-id
-                                       :archived false
-                                       :name [:like (str base "%")])
-                     (keep (fn [n]
-                             (if (= n base)
-                               1
-                               (when-let [m (re-matches pattern n)]
-                                 (parse-long (second m)))))))]
-    (if (empty? names)
-      base
-      (str base " " (inc (apply max names))))))
-
-(api.macros/defendpoint :post "/thread/:thread-id/documents" :- ::ExplorationDocument
-  "Create an additional empty document on an exploration thread."
-  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
-  (write-check-thread thread-id)
-  (let [doc-id (t2/insert-returning-pk! :model/Document
-                                        {:name                  (next-document-name thread-id)
-                                         :document              {:type "doc" :content []}
-                                         :content_type          documents/prose-mirror-content-type
-                                         :creator_id            api/*current-user-id*
-                                         :exploration_thread_id thread-id})]
-    (t2/select-one (into [:model/Document] document-summary-columns) :id doc-id)))
-
-(defn- get-thread-document-or-404
-  "Fetch a document that belongs to the given thread, or 404."
-  [thread-id document-id]
-  (api/check-404 (t2/select-one :model/Document
-                                :id document-id
-                                :exploration_thread_id thread-id
-                                :archived false)))
-
-(defn- append-chart-nodes
-  "Append a static `cardEmbed` node referencing `card-id` (the per-document materialized
-  Card carrying display / visualization_settings / dataset_query) and `stored-result-id`
-  (the cached snapshot the static renderer reads bytes from) to the end of a prose-mirror
-  document body. The embed is wrapped in a `resizeNode` to match the FE schema for all
-  `cardEmbed` nodes (live and static).
-
-  `chart-href` is written onto the node so the FE turns the embed's title into a link back
-  to the chart's page in the exploration (instead of the saved-Card URL the title would
-  otherwise navigate to).
-
-  Tolerates a missing/non-doc root by replacing it with an empty doc."
-  [doc card-id stored-result-id chart-href]
-  (let [base  (if (and (map? doc) (= "doc" (:type doc)))
-                doc
-                {:type "doc" :content []})
-        embed {:type    "resizeNode"
-               :content [{:type  "cardEmbed"
-                          :attrs (cond-> {:id card-id :name nil :stored_result_id stored-result-id}
-                                   chart-href (assoc :chart_href chart-href))}]}]
-    (update base :content (fnil into []) [embed])))
-
-(api.macros/defendpoint :post "/thread/:thread-id/documents/:document-id/append" :- ::ExplorationDocument
-  "Append a static `cardEmbed` representing a *composite chart* — built from one or more
-  `ExplorationQuery` snapshots combined into a single qp-result — to the end of the document
-  body.
-
-  The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry
-  for single-query charts; multiple for combined cartesian / heat-map charts). The BE
-  combines those source snapshots (`metabase.explorations.composite/combine`) into one
-  ephemeral `stored_result` and materialises one ephemeral `report_card` referencing it.
-  The cardEmbed node remains single-card.
-
-  - `chart_href` is written onto the node so the FE makes the embed's card title a link
-    back to the source chart in the exploration view.
-  - `display` / `visualization_settings` are FE-computed render settings (from
-    `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card. Either may
-    be omitted — the legacy `pick-display+viz-settings` recompute fills the gap.
-
-  All source EQs must belong to `thread-id`. Each append produces a fresh ephemeral card;
-  the same source snapshot can back many embeds, possibly across documents."
-  [{:keys [thread-id document-id]} :- [:map
-                                       [:thread-id   ms/PositiveInt]
-                                       [:document-id ms/PositiveInt]]
-   _query-params
-   {:keys [exploration_query_ids display visualization_settings]}
-   :- [:map
-       [:exploration_query_ids   [:sequential {:min 1} ms/PositiveInt]]
-       [:display                 {:optional true} [:maybe :string]]
-       [:visualization_settings  {:optional true} [:maybe :map]]]]
-  (write-check-thread thread-id)
-  (let [doc (get-thread-document-or-404 thread-id document-id)]
-    ;; Every requested EQ must exist and belong to this thread — validate in one query.
-    (api/check-404 (= (count (distinct exploration_query_ids))
-                      (t2/count :model/ExplorationQuery
-                                :id [:in exploration_query_ids]
-                                :exploration_thread_id thread-id)))
-    (t2/with-transaction [_conn]
-      (let [{:keys [card-id stored-result-id primary-eq]}
-            (eqr/create-ephemeral-card-for-exploration-queries!
-             exploration_query_ids (:id doc) (:collection_id doc)
-             @api/*current-user*
-             {:display                display
-              :visualization-settings visualization_settings})
-            exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-            chart-href (explorations.blocks/page-url exp-id (:page_id primary-eq))
-            new-body (-> (:document doc)
-                         (append-chart-nodes card-id stored-result-id chart-href)
-                         documents/add-ids-to-nodes)]
-        (t2/update! :model/Document (:id doc) {:document new-body})))
-    (t2/select-one (into [:model/Document] document-summary-columns) :id (:id doc))))
-
 (api.macros/defendpoint :get "/:id/queries" :- [:sequential ::ExplorationQuerySummary]
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
   intended for the frontend to poll while pending queries finish. The `interestingness_score`
   column is left-joined from `exploration_query_result` so clients can rank/highlight without a
-  second roundtrip; pending or errored queries get `nil`. Per-`(query, timeline)` scores are
-  batched-hydrated as `:timeline_interestingness` so the client can highlight relevant timelines
-  for the focused chart."
+  second roundtrip; pending or errored queries get `nil`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
   (t2/hydrate
@@ -1078,8 +848,7 @@
                :where     [:= :exploration_thread.exploration_id id]
                :order-by  [[:exploration_query.position :asc]
                            [:exploration_query.id :asc]]})
-   :segment_name
-   :timeline_interestingness))
+   :segment_name))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up

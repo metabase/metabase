@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -2994,26 +2993,6 @@
                             ["Dashboard" (:id dash)])))
         (is (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})
                        ["Dashboard" (:id dash)]))))))
-
-(deftest serdes-descendants-excludes-exploration-documents-test
-  (testing "Documents tied to an exploration thread are not included in Collection descendants (UXW-4091)"
-    (mt/with-temp [:model/Collection         coll      {:name "Coll"}
-                   :model/User               user      {:email "explo@example.com"}
-                   :model/Exploration        explo     {:name "Explo" :creator_id (:id user)}
-                   :model/ExplorationThread  thread    {:exploration_id (:id explo) :position 0}
-                   :model/Document           plain-doc {:name          "Plain Doc"
-                                                        :creator_id    (:id user)
-                                                        :collection_id (:id coll)}
-                   :model/Document           explo-doc {:name                  "Exploration Doc"
-                                                        :creator_id            (:id user)
-                                                        :collection_id         (:id coll)
-                                                        :exploration_thread_id (:id thread)}]
-      (when config/ee-available?
-        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
-          (is (contains? descendants ["Document" (:id plain-doc)])
-              "plain documents should be included")
-          (is (not (contains? descendants ["Document" (:id explo-doc)]))
-              "exploration documents should be excluded"))))))
 
 (deftest serdes-descendants-skip-archived-test-2
   (testing "Collection descendants with skip-archived: true includes non-archived items"

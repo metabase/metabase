@@ -94,8 +94,6 @@
    :verified                       true
    :curated?                       true
    :ids                            [1 2 3 4]
-   :non-temporal-dim-ids           "[1]"
-   :has-temporal-dim               true
    :display-type                   ["line"]
    :models                         (disj search.config/all-models "dataset")
    :enabled-transform-source-types #{"mbql"}})
@@ -110,16 +108,14 @@
               :where
               [:and
                [:= 1 2]
-               [:or [:= nil :search_index.dashboard_id] nil]
-               [:= nil :search_index.exploration_thread_id]]}
+               [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
               [:and
                [:in :search_index.model ["a"]]
-               [:or [:= nil :search_index.dashboard_id] nil]
-               [:= nil :search_index.exploration_thread_id]]}
+               [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
@@ -135,7 +131,6 @@
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
-                [:= nil :search_index.exploration_thread_id]
                 [:in
                  :search_index.model
                  #{"dashboard"
@@ -155,8 +150,6 @@
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]
                 [:>= [:cast :search_index.model_created_at :date] #t "2024-10-01"]
-                [:= :search_index.non_temporal_dim_ids "[1]"]
-                [:= :search_index.has_temporal_dim true]
                 :and
                 [:= :search_index.database_id 231]
                 [:in :search_index.display_type ["line"]]

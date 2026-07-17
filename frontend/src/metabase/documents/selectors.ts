@@ -39,16 +39,6 @@ export const getSelectedEmbedIndex = createSelector(
   (documents): number | null => documents.selectedEmbedIndex,
 );
 
-export const getSelectedCardEmbed = createSelector(
-  [getCardEmbeds, getSelectedEmbedIndex],
-  (cardEmbeds, selectedEmbedIndex) => {
-    if (selectedEmbedIndex === null) {
-      return null;
-    }
-    return cardEmbeds[selectedEmbedIndex];
-  },
-);
-
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument || null,

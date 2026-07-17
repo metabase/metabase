@@ -4,7 +4,6 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
   createBlock,
   createExploration,
-  createExplorationDocument,
   createPage,
   createQuery,
   createThread,
@@ -18,7 +17,7 @@ import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   isHiddenTreeItem,
-  pickInitialSidebarEntity,
+  pickInitialSidebarPage,
 } from "./utils";
 
 const allTreeFilter = getExplorationSidebarTabsInfo().all.treeItemFilter;
@@ -263,6 +262,56 @@ describe("getExplorationSidebarTree sorting", () => {
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1", "2", "3"]);
   });
 
+  it("orders zero-row pages with errors at the bottom", () => {
+    const done = createQuery({
+      id: 1,
+      name: "Done",
+      status: "done",
+    });
+    const running = createQuery({ id: 2, name: "Running", status: "pending" });
+    const empty = createQuery({
+      id: 3,
+      name: "Empty",
+      status: "done",
+      row_count: 0,
+    });
+
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [empty, running, done],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({
+              id: 3,
+              name: "Empty",
+              position: 0,
+              query_ids: [empty.id],
+            }),
+            createPage({
+              id: 2,
+              name: "Running",
+              position: 1,
+              query_ids: [running.id],
+            }),
+            createPage({
+              id: 1,
+              name: "Done",
+              position: 2,
+              query_ids: [done.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const heading = getMetricHeadings(tree)[0];
+    expect(getLeafIds(heading)).toEqual(["1", "2", "3"]);
+    expect(getPageData(heading, "3")).toMatchObject({ status: "error" });
+  });
+
   it("orders metric headings by their best settled child score", () => {
     const metricALeaf = createQuery({
       id: 1,
@@ -356,6 +405,172 @@ describe("getExplorationSidebarTree sorting", () => {
 
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1", "2"]);
   });
+
+  it("sorts follow-up thread pages by the initial thread's interestingness scores", () => {
+    const sharedCardId = 1;
+    const countryDim = "dim-country";
+    const planDim = "dim-plan";
+
+    const initialCountry = createQuery({
+      id: 1,
+      name: "Revenue by country",
+      status: "done",
+      card_id: sharedCardId,
+      dimension_id: countryDim,
+      interestingness_score: 0.9,
+    });
+    const initialPlan = createQuery({
+      id: 2,
+      name: "Revenue by plan",
+      status: "done",
+      card_id: sharedCardId,
+      dimension_id: planDim,
+      interestingness_score: 0.2,
+    });
+
+    const followUpPlan = createQuery({
+      id: 3,
+      name: "Revenue by plan (TX)",
+      status: "done",
+      exploration_thread_id: 2,
+      card_id: sharedCardId,
+      dimension_id: planDim,
+      interestingness_score: 0.99,
+    });
+    const followUpCountry = createQuery({
+      id: 4,
+      name: "Revenue by country (TX)",
+      status: "done",
+      exploration_thread_id: 2,
+      card_id: sharedCardId,
+      dimension_id: countryDim,
+      interestingness_score: 0.01,
+    });
+
+    const exploration = createExploration({
+      threads: [
+        createThread({
+          id: 1,
+          position: 0,
+          queries: [initialCountry, initialPlan],
+          blocks: [
+            createBlock({
+              id: METRIC_A_BLOCK_ID,
+              name: "Revenue",
+              position: 0,
+              pages: [
+                createPage({
+                  id: 100,
+                  name: "By country",
+                  position: 0,
+                  query_ids: [initialCountry.id],
+                }),
+                createPage({
+                  id: 101,
+                  name: "By plan",
+                  position: 1,
+                  query_ids: [initialPlan.id],
+                }),
+              ],
+            }),
+          ],
+        }),
+        createThread({
+          id: 2,
+          name: "State = TX",
+          position: 1,
+          source_page_id: 100,
+          queries: [followUpPlan, followUpCountry],
+          blocks: [
+            createBlock({
+              id: 30,
+              name: "Revenue",
+              position: 0,
+              pages: [
+                createPage({
+                  id: 200,
+                  name: "By plan",
+                  position: 0,
+                  query_ids: [followUpPlan.id],
+                }),
+                createPage({
+                  id: 201,
+                  name: "By country",
+                  position: 1,
+                  query_ids: [followUpCountry.id],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const followUpNode = tree.find((node) => node.id === 2);
+    const followUpPageIds = (followUpNode?.children ?? [])
+      .filter((child) => child.data?.type === "page")
+      .map((child) => String(child.id));
+
+    expect(followUpPageIds).toEqual(["201", "200"]);
+    expect(
+      followUpNode?.children?.find((child) => child.id === "201")?.data,
+    ).toMatchObject({
+      type: "page",
+      interestingness_score: 0.9,
+    });
+    expect(
+      followUpNode?.children?.find((child) => child.id === "200")?.data,
+    ).toMatchObject({
+      type: "page",
+      interestingness_score: 0.2,
+    });
+  });
+
+  it("uses the max effective score across grouped queries, preferring contextual over heuristic", () => {
+    const groupedLowContextual = createQuery({
+      id: 1,
+      name: "Revenue (US)",
+      status: "done",
+      card_id: 1,
+      dimension_id: "dim-region",
+      interestingness_score: 0.9,
+      contextual_interestingness_score: 0.4,
+    });
+    const groupedHighContextual = createQuery({
+      id: 2,
+      name: "Revenue (EU)",
+      status: "done",
+      card_id: 1,
+      dimension_id: "dim-region",
+      interestingness_score: 0.3,
+      contextual_interestingness_score: 0.85,
+    });
+
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [groupedLowContextual, groupedHighContextual],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 100,
+              name: "Revenue by region",
+              position: 0,
+              query_ids: [groupedLowContextual.id, groupedHighContextual.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(getPageData(getMetricHeadings(tree)[0], "100")).toMatchObject({
+      status: "done",
+      interestingness_score: 0.85,
+    });
+  });
 });
 
 describe("getExplorationSidebarTree passes BE-computed names through", () => {
@@ -410,7 +625,7 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
   });
 });
 
-describe("pickInitialSidebarEntity", () => {
+describe("pickInitialSidebarPage", () => {
   const METRIC_A_BLOCK_ID = 10;
 
   it("picks a fully settled page over a page still waiting on a sibling query", () => {
@@ -457,10 +672,7 @@ describe("pickInitialSidebarEntity", () => {
       ],
     });
 
-    expect(pickInitialSidebarEntity(tree)).toEqual({
-      type: "page",
-      id: "3",
-    });
+    expect(pickInitialSidebarPage(tree)).toBe("3");
   });
 });
 
@@ -516,48 +728,6 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
     const tree = buildTree(["done", "done"]);
     expect(headingStatus(tree)).toBe("done");
     expect(threadStatus(tree)).toBe("done");
-  });
-});
-
-describe("getExplorationSidebarTree AI summary document status", () => {
-  function aiSummaryDocumentStatus(
-    tree: ReturnType<typeof getExplorationSidebarTree>,
-  ) {
-    const doc = tree[0]?.children?.find(
-      (node) => node.data?.type === "document" && node.data.isAiSummary,
-    );
-    return doc?.data?.type === "document" ? doc.data.status : undefined;
-  }
-
-  function buildTree(threadOverrides: Parameters<typeof createExploration>[0]) {
-    return getAllTabExplorationSidebarTree({
-      queries: [],
-      blocks: [],
-      documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
-      ...threadOverrides,
-    });
-  }
-
-  it("is running while the AI summary document is generating", () => {
-    const tree = buildTree({
-      thread: {
-        ai_summary_document_id: 99,
-        completed_at: null,
-        canceled_at: null,
-      },
-    });
-    expect(aiSummaryDocumentStatus(tree)).toBe("running");
-  });
-
-  it("is done once the AI summary document has finished", () => {
-    const tree = buildTree({
-      thread: {
-        ai_summary_document_id: 99,
-        completed_at: "2026-04-30T00:01:00Z",
-        canceled_at: null,
-      },
-    });
-    expect(aiSummaryDocumentStatus(tree)).toBe("done");
   });
 });
 
@@ -708,43 +878,6 @@ describe("getExplorationSidebarTabsInfo", () => {
       expect(
         getAllPageIds(getFilteredSidebarTree(exploration, "stars")),
       ).toEqual([]);
-    });
-
-    it("excludes AI summary documents", () => {
-      const exploration = createExploration({
-        queries: [starredQuery],
-        blocks: [
-          createBlock({
-            id: BLOCK_ID,
-            name: "Revenue",
-            position: 0,
-            pages: [
-              createPage({
-                id: STARRED_PAGE_ID,
-                name: "Starred",
-                position: 0,
-                query_ids: [starredQuery.id],
-                starred: true,
-              }),
-            ],
-          }),
-        ],
-        documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
-        thread: { ai_summary_document_id: 99 },
-      });
-
-      expect(getFilteredSidebarTree(exploration, "stars")).toEqual([
-        expect.objectContaining({
-          children: [
-            expect.objectContaining({
-              id: String(BLOCK_ID),
-              children: [
-                expect.objectContaining({ id: String(STARRED_PAGE_ID) }),
-              ],
-            }),
-          ],
-        }),
-      ]);
     });
   });
 

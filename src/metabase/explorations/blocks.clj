@@ -14,12 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn page-url
-  "Relative URL of a page in the exploration detail view. Used by the document-append endpoint
-   and the AI summary materializer to deep-link a static `cardEmbed`'s title back to its page."
-  [exploration-id page-id]
-  (str "/question/research/" exploration-id "/page/" page-id))
-
 ;;; ------------------------------------------- names -------------------------------------------
 
 (defn- dimension-anchored?
@@ -96,8 +90,7 @@
 (defn- page-long-name
   "A page's full, self-describing name, generated from parts: `<metric> by <dimension>
    <variant>` (e.g. `Number of Orders by Category over time`). Self-contained — used where a
-   page is shown without its block heading for context (comment deep-links, AI-summary chart
-   embeds)."
+   page is shown without its block heading for context (e.g. comment deep-links)."
   [page queries card-name-by-id]
   (let [metric (page-metric-name page card-name-by-id)
         dim    (page-dimension-label page queries)]

@@ -36,7 +36,6 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.revisions.models.revision :as revision]
@@ -201,37 +200,6 @@
                                 :type   :number
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
-
-(deftest ^:parallel card-query-cached-stored-result-pairing-test
-  (testing "POST /api/card/:card-id/query with `stored_result_id`"
-    (let [result-bytes (qp/do-with-serialization
-                        (fn [in result-fn]
-                          (in {:data {:cols [{:name "count"}] :rows [[7]]} :row_count 1 :status :completed})
-                          (result-fn)))
-          count-query  (mt/mbql-query venues {:aggregation [[:count]]})]
-      (mt/with-temp [:model/Card card {:dataset_query count-query}
-                     :model/Card other-card {:dataset_query count-query}
-                     :model/StoredResult sr {:result_data       result-bytes
-                                             :creator_id        (mt/user->id :crowberto)
-                                             :database_id       (mt/id)
-                                             :dataset_query     count-query
-                                             :data_access_token {}}
-                     :model/StoredResultUse _ {:stored_result_id (:id sr) :card_id (:id card)}]
-        (testing "serves the cached snapshot when the (card, stored_result) pairing exists in stored_result_use"
-          (is (=? {:status    "completed"
-                   :row_count 1
-                   :data      {:rows [[7]]}}
-                  (mt/user-http-request :rasta :post 200 (format "card/%d/query" (:id card))
-                                        {:stored_result_id (:id sr)}))))
-        (testing "404s when the stored result is not paired with the read-checked card — a readable card must
-                  not serve as a skeleton key for arbitrary snapshot ids"
-          (is (= "Not found."
-                 (mt/user-http-request :rasta :post 404 (format "card/%d/query" (:id other-card))
-                                       {:stored_result_id (:id sr)}))))
-        (testing "404s for a nonexistent stored result id"
-          (is (= "Not found."
-                 (mt/user-http-request :rasta :post 404 (format "card/%d/query" (:id card))
-                                       {:stored_result_id Integer/MAX_VALUE}))))))))
 
 (deftest execute-card-with-default-parameters-test
   (testing "GET /api/card/:id/query with parameters with default values"

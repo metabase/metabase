@@ -1,7 +1,14 @@
 (ns metabase.metabot.tools.explorations
-  "Exploration-specific tool wrappers."
+  "Exploration-specific tool wrappers.
+
+  Every tool here returns `{:output <json-string>}`: the exploration chat FE applies plan edits
+  by parsing the tool result it sees on the `tool-output-available` stream event, and only a
+  result's `:output` string makes it onto the wire (see
+  `metabase.metabot.self.core/tool-output->wire-output`) — a bare map would reach the LLM but
+  stream to the client as an empty string, and the plan would silently never update."
   (:require
    [metabase.explorations.core :as explorations]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -17,7 +24,7 @@
    and the metric ids it can slice. Use this to choose valid metric and dimension ids before
    calling `add_research_groups`. Pass `q` to filter by a search term."
   [{:keys [q]} :- get-research-candidates-schema]
-  (explorations/research-candidates {:q q}))
+  {:output (json/encode (explorations/research-candidates {:q q}))})
 
 (def ^:private add-research-groups-schema
   [:map {:closed true}
@@ -46,7 +53,7 @@
      of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
      loose metrics."
   [{:keys [groups]} :- add-research-groups-schema]
-  (explorations/research-groups {:groups groups}))
+  {:output (json/encode (explorations/research-groups {:groups groups}))})
 
 (def ^:private remove-from-research-plan-schema
   [:map {:closed true}
@@ -78,9 +85,9 @@
    remove an entire group prefer `block_ids` directly. Removing a block, member, or id that isn't
    in the plan is a no-op."
   [{:keys [block_ids members timeline_ids]} :- remove-from-research-plan-schema]
-  {:block_ids    block_ids
-   :members      members
-   :timeline_ids timeline_ids})
+  {:output (json/encode {:block_ids    block_ids
+                         :members      members
+                         :timeline_ids timeline_ids})})
 
 (def ^:private set-exploration-name-schema
   [:map {:closed true}
@@ -90,7 +97,7 @@
   set-exploration-name-tool
   "Set the name of the research artifact."
   [{:keys [name]} :- set-exploration-name-schema]
-  {:name  name})
+  {:output (json/encode {:name name})})
 
 (def ^:private select-exploration-timelines-schema
   [:map {:closed true}
@@ -100,4 +107,4 @@
   select-exploration-timelines-tool
   "Select the timelines to include in the research. Populates the research artifact with the chosen timelines."
   [{:keys [timeline_ids]} :- select-exploration-timelines-schema]
-  {:timeline_ids timeline_ids})
+  {:output (json/encode {:timeline_ids timeline_ids})})

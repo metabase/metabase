@@ -37,6 +37,7 @@ import type {
   IconName,
   SingleSeries,
   Timeline,
+  TimelineEvent,
   TimelineId,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
@@ -58,6 +59,7 @@ interface ExplorationGroupVisualizationProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
+  timelineEvents: TimelineEvent[];
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
@@ -151,6 +153,7 @@ function ExplorationGroupVisualizationChart({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
+  timelineEvents,
   groupName,
   commentDrafts,
   setCommentDrafts,
@@ -201,16 +204,20 @@ function ExplorationGroupVisualizationChart({
     }));
     return buildSeriesGroup({
       queriesWithDatasets,
-      selectedTimelineId,
     });
     // datasets are reconstructed every render but its identity-stable
     // entries make this safe; including the array directly would cause
     // an unstable dep warning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queries, selectedTimelineId, ...datasets]);
+  }, [queries, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
-    return seriesGroup?.isTimeseries && availableTimelines.length > 0;
+    return (
+      seriesGroup?.isTimeseries &&
+      availableTimelines.length > 0 &&
+      // row doesn't support timelines
+      !seriesGroup.series.some((s) => s.card.display === "row")
+    );
   }, [seriesGroup, availableTimelines]);
 
   const computedSettings = useMemo(
@@ -341,6 +348,7 @@ function ExplorationGroupVisualizationChart({
             <ExplorationCartesianChart
               key={series[0].card.id}
               series={series}
+              timelineEvents={timelineEvents}
               mode={clickActionsMode}
               highlighted={highlighted}
             />
@@ -401,18 +409,21 @@ function ExplorationGroupVisualizationChart({
 
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
+  timelineEvents: TimelineEvent[];
   mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
 }
 
 function ExplorationCartesianChart({
   series,
+  timelineEvents,
   mode,
   highlighted,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
       rawSeries={series}
+      timelineEvents={timelineEvents}
       className={S.chart}
       mode={mode}
       highlighted={highlighted}
@@ -511,6 +522,7 @@ function ExplorationMap({
 
 interface ExplorationVisualizationProps {
   rawSeries: SingleSeries[];
+  timelineEvents?: TimelineEvent[];
   className?: string;
   mode?: ClickActionsMode;
   highlighted?: HighlightedObject | null;
@@ -518,6 +530,7 @@ interface ExplorationVisualizationProps {
 
 export function ExplorationVisualization({
   rawSeries,
+  timelineEvents,
   className,
   mode,
   highlighted,
@@ -529,6 +542,7 @@ export function ExplorationVisualization({
       <Warnings warnings={warnings} className={S.warnings} size={18} />
       <Visualization
         rawSeries={rawSeries}
+        timelineEvents={timelineEvents}
         className={className}
         onUpdateWarnings={setWarnings}
         mode={mode}

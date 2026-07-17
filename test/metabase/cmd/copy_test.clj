@@ -39,7 +39,6 @@
     :model/Dependency
     :model/DependencyStatus
     :model/ExplorationQueryResult
-    :model/ExplorationQueryTimelineInterestingness
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

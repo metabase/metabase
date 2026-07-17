@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
-import {
-  OTHER_BUCKET_LABEL,
-  TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD,
-} from "metabase/explorations/constants";
+import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
@@ -36,7 +33,6 @@ import type {
   RowValues,
   SeriesSettings,
   SingleSeries,
-  TimelineId,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -51,7 +47,6 @@ interface ExplorationQueryWithDataset extends ExplorationQuery {
 
 interface BuildSeriesGroupParams {
   queriesWithDatasets: ExplorationQueryWithDataset[];
-  selectedTimelineId: TimelineId | null;
 }
 
 export interface LegendItem {
@@ -68,7 +63,6 @@ export interface SeriesGroup {
 
 export function buildSeriesGroup({
   queriesWithDatasets,
-  selectedTimelineId,
 }: BuildSeriesGroupParams): SeriesGroup {
   let isTimeseries = false;
   let stackCount: number | undefined;
@@ -100,7 +94,6 @@ export function buildSeriesGroup({
         queryWithDataset,
         queriesWithDatasets.length,
         queriesWithSegments.length,
-        selectedTimelineId,
       );
       isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
       // this works because we should always get the same stackCount for all queries in a group
@@ -153,7 +146,6 @@ function getDisplay(
   queryWithDataset: ExplorationQueryWithDataset,
   numQueries: number,
   numSegmentQueries: number,
-  selectedTimelineId: TimelineId | null,
 ): GetDisplayResult {
   const { cols, rows } = queryWithDataset.dataset.data;
   const isTimeseries = cols.some(isDate);
@@ -184,8 +176,6 @@ function getDisplay(
         // the page header tells you the breakout column, not the date column
         // so we need an x axis label here
         "graph.x_axis.labels_enabled": true,
-        "timeline.selected_timeline_ids":
-          selectedTimelineId != null ? [selectedTimelineId] : undefined,
       },
       stackCount: shouldStack ? breakoutValues.size : undefined,
       isTimeseries,
@@ -199,8 +189,6 @@ function getDisplay(
       display: "line",
       settings: {
         "graph.split_panels": shouldStack,
-        "timeline.selected_timeline_ids":
-          selectedTimelineId != null ? [selectedTimelineId] : undefined,
       },
       stackCount: shouldStack ? numQueries : undefined,
       isTimeseries,
@@ -436,66 +424,6 @@ export function getHeatMapSeries({
       },
     },
   ];
-}
-
-/**
- * Aggregates `timeline_interestingness` across queries by taking the max
- * score per timeline. Used by group pages so a timeline counts as
- * interesting if any sub-query finds it interesting.
- *
- * Queries without `timeline_interestingness` (BE may omit the field) and
- * entries with `null` scores are ignored.
- */
-export function getMaxTimelineInterestingness(
-  queries: ExplorationQuery[],
-): Map<TimelineId, number> {
-  const map = new Map<TimelineId, number>();
-  for (const q of queries) {
-    for (const e of q.timeline_interestingness ?? []) {
-      if (e.interestingness_score == null) {
-        continue;
-      }
-      const prev = map.get(e.timeline_id);
-      if (prev == null || e.interestingness_score > prev) {
-        map.set(e.timeline_id, e.interestingness_score);
-      }
-    }
-  }
-  return map;
-}
-
-/**
- * Picks the most-interesting timeline for `queries` restricted to the
- * timelines actually available in the dropdown. Returns `null` when no
- * candidate passes the threshold or when no scored timeline is available.
- *
- * Drives the auto-default selection on threads where the user hasn't
- * manually picked a timeline yet.
- */
-export function getMostInterestingTimelineId(
-  queries: ExplorationQuery[],
-  availableTimelineIds: ReadonlySet<TimelineId>,
-): TimelineId | null {
-  if (availableTimelineIds.size === 1) {
-    const id = availableTimelineIds.values().next().value;
-    if (id) {
-      return id;
-    }
-  }
-
-  let best: { id: TimelineId; score: number } | null = null;
-  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
-    if (!availableTimelineIds.has(id)) {
-      continue;
-    }
-    if (score < TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
-      continue;
-    }
-    if (best == null || score > best.score) {
-      best = { id, score };
-    }
-  }
-  return best?.id ?? null;
 }
 
 export function getExploreFurtherFilters(

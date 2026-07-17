@@ -10,7 +10,6 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
@@ -149,16 +148,10 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (as-> (t2/select :model/Document {:where [:and
-                                                    (collection/visible-collection-filter-clause)
-                                                    [:= :archived false]
-                                                    ;; Documents attached to an exploration thread are
-                                                    ;; internal to that exploration — every other listing
-                                                    ;; surface (search, recents, collection items)
-                                                    ;; excludes them too.
-                                                    [:= :exploration_thread_id nil]]}) docs
-            (filter mi/can-read? docs)
-            (t2/hydrate docs :creator :can_write :is_remote_synced))})
+  {:items (t2/hydrate (t2/select :model/Document {:where [:and
+                                                          (collection/visible-collection-filter-clause)
+                                                          [:= :archived false]]})
+                      :creator :can_write :is_remote_synced)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

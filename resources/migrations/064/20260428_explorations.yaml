@@ -821,164 +821,6 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v64.62346w
-      author: nvoxland
-      comment: Add document.exploration_thread_id
-      changes:
-        - addColumn:
-            tableName: document
-            columns:
-              - column:
-                  name: exploration_thread_id
-                  type: int
-                  remarks: Optional owning exploration thread
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.64fsvsd
-      author: nvoxland
-      comment: Index on document.exploration_thread_id
-      changes:
-        - createIndex:
-            tableName: document
-            indexName: idx_document_exploration_thread_id
-            columns:
-              - column:
-                  name: exploration_thread_id
-
-  - changeSet:
-      id: v64.g43sdfg
-      author: nvoxland
-      comment: FK document.exploration_thread_id -> exploration_thread.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: document
-            baseColumnNames: exploration_thread_id
-            referencedTableName: exploration_thread
-            referencedColumnNames: id
-            constraintName: fk_document_exploration_thread_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v64.7gjeaasdg
-      author: nvoxland
-      comment: Backfill an empty Scratchpad document per exploration_thread (matches the runtime default document name)
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO document (name, document, content_type, creator_id, exploration_thread_id)
-              SELECT 'Scratchpad', '{"type":"doc","content":[]}', 'application/json+vnd.prose-mirror', e.creator_id, t.id
-              FROM exploration_thread t
-              JOIN exploration e ON e.id = t.exploration_id
-              WHERE NOT EXISTS (SELECT 1 FROM document d WHERE d.exploration_thread_id = t.id)
-      rollback:
-
-  - changeSet:
-      id: v64.qtinterest
-      author: jdswanson
-      comment: Create exploration_query_timeline_interestingness scoring table
-      changes:
-        - createTable:
-            tableName: exploration_query_timeline_interestingness
-            remarks: LLM-backed relevance score for a thread-selected timeline against a specific exploration query's chart.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  remarks: Primary key
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: exploration_query_id
-                  type: int
-                  remarks: The exploration_query whose chart this score is about
-                  constraints:
-                    nullable: false
-              - column:
-                  name: timeline_id
-                  type: int
-                  remarks: The timeline being scored against the chart
-                  constraints:
-                    nullable: false
-              - column:
-                  name: interestingness_score
-                  type: double
-                  remarks: LLM relevance score in [0.0, 1.0]; null when the LLM is unconfigured, returned a malformed response, or the call failed.
-                  constraints:
-                    nullable: true
-              - column:
-                  name: scored_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp the scoring attempt completed; null while the row is reserved by a worker but not yet finished. Acts as the in-flight claim marker.
-                  constraints:
-                    nullable: true
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the row was inserted (i.e. when the worker reserved the pair)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: Last update timestamp
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v64.qtinterestuq
-      author: jdswanson
-      comment: Unique constraint on exploration_query_timeline_interestingness (query, timeline)
-      changes:
-        - addUniqueConstraint:
-            tableName: exploration_query_timeline_interestingness
-            columnNames: exploration_query_id, timeline_id
-            constraintName: uq_eqti_query_timeline
-
-  - changeSet:
-      id: v64.qtinterestfkq
-      author: jdswanson
-      comment: FK exploration_query_timeline_interestingness.exploration_query_id -> exploration_query.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_query_timeline_interestingness
-            baseColumnNames: exploration_query_id
-            referencedTableName: exploration_query
-            referencedColumnNames: id
-            constraintName: fk_eqti_query_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v64.eqtitimelineidx
-      author: nvoxland
-      comment: Index on exploration_query_timeline_interestingness.timeline_id
-      changes:
-        - createIndex:
-            tableName: exploration_query_timeline_interestingness
-            indexName: idx_eqti_timeline_id
-            columns:
-              - column:
-                  name: timeline_id
-
-  - changeSet:
-      id: v64.qtinterestfkt
-      author: jdswanson
-      comment: FK exploration_query_timeline_interestingness.timeline_id -> timeline.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_query_timeline_interestingness
-            baseColumnNames: timeline_id
-            referencedTableName: timeline
-            referencedColumnNames: id
-            constraintName: fk_eqti_timeline_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v64.g4ersd
       author: nvoxland
       comment: Add exploration_thread.completed_at
@@ -989,7 +831,7 @@ databaseChangeLog:
               - column:
                   name: completed_at
                   type: ${timestamp_type}
-                  remarks: Set once when every query in the thread has reached a terminal status (done or error) AND every (query, timeline) pair has been scored. Used as a CAS gate so completion handlers fire exactly once.
+                  remarks: Set once when every query in the thread has reached a terminal status (done or error). Used as a CAS gate so completion handlers fire exactly once.
                   constraints:
                     nullable: true
 
@@ -1004,69 +846,9 @@ databaseChangeLog:
               - column:
                   name: analysis_started_at
                   type: ${timestamp_type}
-                  remarks: Set once when every query in the thread has reached a terminal status AND every (query, timeline) pair has been scored. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
+                  remarks: Set once when every query in the thread has reached a terminal status. CAS gate that ensures the auto-insights handler fires exactly once per thread. completed_at is set later, when the handler finishes.
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v64.j5tdfdg
-      author: nvoxland
-      comment: Add exploration_thread.ai_summary_document_id
-      changes:
-        - addColumn:
-            tableName: exploration_thread
-            columns:
-              - column:
-                  name: ai_summary_document_id
-                  type: int
-                  remarks: FK to the AI Summary doc for this thread.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v64.expthreadaidocidx
-      author: nvoxland
-      comment: Index on exploration_thread.ai_summary_document_id
-      changes:
-        - createIndex:
-            tableName: exploration_thread
-            indexName: idx_exploration_thread_ai_summary_document_id
-            columns:
-              - column:
-                  name: ai_summary_document_id
-
-  - changeSet:
-      id: v64.t4fsce
-      author: nvoxland
-      comment: FK exploration_thread.ai_summary_document_id -> document.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_thread
-            baseColumnNames: ai_summary_document_id
-            referencedTableName: document
-            referencedColumnNames: id
-            constraintName: fk_exploration_thread_ai_summary_document_id
-            onDelete: SET NULL
-
-  - changeSet:
-      id: v64.864345s
-      author: nvoxland
-      comment: Backfill exploration_thread.ai_summary_document_id from each thread's 'AI Summary' document
-      changes:
-        - sql:
-            sql: >-
-              UPDATE exploration_thread
-              SET ai_summary_document_id = (
-                SELECT d.id
-                FROM document d
-                WHERE d.exploration_thread_id = exploration_thread.id
-                  AND d.name = 'AI Summary'
-                  AND d.archived = FALSE
-                ORDER BY d.id ASC
-                LIMIT 1
-              )
-              WHERE ai_summary_document_id IS NULL
-      rollback:
 
   - changeSet:
       id: v64.sruse
@@ -1091,12 +873,6 @@ databaseChangeLog:
                   remarks: The cached snapshot this row references
                   constraints:
                     nullable: false
-              - column:
-                  name: card_id
-                  type: int
-                  remarks: The referencing Card
-                  constraints:
-                    nullable: true
               - column:
                   name: exploration_id
                   type: int
@@ -1141,31 +917,6 @@ databaseChangeLog:
             referencedTableName: stored_result
             referencedColumnNames: id
             constraintName: fk_stored_result_use_stored_result_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v64.srusecardidx
-      author: nvoxland
-      comment: Index on stored_result_use.card_id
-      changes:
-        - createIndex:
-            tableName: stored_result_use
-            indexName: idx_stored_result_use_card_id
-            columns:
-              - column:
-                  name: card_id
-
-  - changeSet:
-      id: v64.srusecardfk
-      author: nvoxland
-      comment: FK stored_result_use.card_id -> report_card.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: stored_result_use
-            baseColumnNames: card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_stored_result_use_card_id
             onDelete: CASCADE
 
   - changeSet:
