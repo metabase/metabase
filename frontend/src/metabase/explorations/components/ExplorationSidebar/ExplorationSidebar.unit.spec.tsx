@@ -1399,7 +1399,7 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
-        selectedEntityId: { type: "page", id: "1" },
+        selectedPageId: String(1),
       });
 
       const rows = screen.getAllByRole("treeitem");
