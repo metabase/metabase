@@ -15,7 +15,8 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -80,15 +81,30 @@
     (contains? #{400 404} status-code) error-code-invalid-params
     :else                              error-code-internal))
 
+(def ^:private client-error-status-codes
+  "Status codes that mark an exception as deliberately caller-facing — its message is safe to
+   return. Everything else is an internal failure whose message may embed SQL, schema, or
+   connection detail."
+  #{400 401 403 404})
+
 (defn ->mcp-error-content
-  "Convert a caught exception into MCP error content. `ex-info`s surface their message (the
-   teaching-error channel); anything else becomes a generic internal error. An explicit
-   `::error-code` in `ex-data` wins over the `:status-code` mapping."
+  "Convert a caught exception into MCP error content, and the single point where an exception
+   message is judged safe to return. Only deliberately caller-facing errors surface their
+   message: an explicit `::error-code` (other than internal) or a client (4xx) `:status-code`
+   in `ex-data` — teaching errors, not-found, scope denials. Every other exception — incidental
+   `ex-info`s from libraries (whose messages may embed SQL or connection detail), 5xx
+   invariants, and non-`ex-info` failures like JDBC or NPE — becomes a generic internal error;
+   the real exception is logged server-side for debugging but never returned to the client."
   [e]
-  (let [{::keys [error-code] :keys [status-code]} (ex-data e)]
-    (error-content (or (ex-message e) "Internal error")
-                   (or error-code
-                       (status-code->error-code status-code)))))
+  (let [{::keys [error-code] :keys [status-code]} (ex-data e)
+        code (or (when (and error-code (not= error-code error-code-internal)) error-code)
+                 (when (contains? client-error-status-codes status-code)
+                   (status-code->error-code status-code)))]
+    (if code
+      (error-content (or (ex-message e) "Internal error") code)
+      (do
+        (log/error e "Unhandled error dispatching MCP v2 tool call")
+        (error-content "Internal error" error-code-internal)))))
 
 ;;; ------------------------------------------------ List envelope -------------------------------------------------
 

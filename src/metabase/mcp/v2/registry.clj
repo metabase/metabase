@@ -216,10 +216,10 @@
                                         :token-scopes    token-scopes
                                         :client-info     (:client-info options)
                                         :request-context (:request-context options)})
-            (catch clojure.lang.ExceptionInfo e
-              (common/->mcp-error-content e))
+            ;; Every failure is sanitized in one place: only deliberately caller-facing errors
+            ;; surface their message; internal ones are logged and returned generically.
             (catch Exception e
-              (common/error-content (or (ex-message e) "Internal error") common/error-code-internal))))))))
+              (common/->mcp-error-content e))))))))
 
 (defn call-tool
   "Dispatch a v2 MCP `tools/call`. Returns MCP content on success, or error content on failure.

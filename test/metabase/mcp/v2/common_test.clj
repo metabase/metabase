@@ -38,6 +38,33 @@
       (is (= "Use `fields` OR `response_format`, not both."
              (-> content :content first :text))))))
 
+(deftest ^:parallel error-redaction-test
+  (let [text #(-> % :content first :text)]
+    (testing "GHY-4137: only deliberately caller-facing errors surface their message — client
+              (4xx) status codes or an explicit ::error-code"
+      (doseq [[label e expected] [["teaching 400"  (ex-info "Use fields OR response_format." {:status-code 400})       "Use fields OR response_format."]
+                                  ["not-found 404" (ex-info "card 7 not found." {:status-code 404})                    "card 7 not found."]
+                                  ["scope 403"     (ex-info "Insufficient scope." {:status-code 403
+                                                                                   ::common/error-code common/error-code-invalid-request}) "Insufficient scope."]]]
+        (testing label
+          (is (= expected (text (common/->mcp-error-content e)))))))
+    (testing "internal failures are redacted to a generic message — their real text may embed SQL,
+              schema, or connection detail and must never reach the client"
+      (doseq [[label e] [["projection 500 invariant" (ex-info "No projection registered for type: widget" {:status-code 500})]
+                         ["ex-info with no status-code (library wrap)" (ex-info "Error executing query: SELECT * FROM secret_accounts" {:query {}})]
+                         ["JDBC SQLException" (java.sql.SQLException. "ERROR: relation \"secret_accounts\" does not exist")]
+                         ["NPE naming an internal class" (NullPointerException. "metabase.driver.internal.Foo is null")]]]
+        (testing label
+          (let [content (common/->mcp-error-content e)]
+            (is (:isError content))
+            (is (= "Internal error" (text content)))
+            (is (= common/error-code-internal (::common/error-code content))
+                "internal errors carry the internal JSON-RPC code")))))
+    (testing "an explicit internal ::error-code never surfaces its message even on an ex-info"
+      (is (= "Internal error"
+             (text (common/->mcp-error-content
+                    (ex-info "leaky internal detail" {::common/error-code common/error-code-internal}))))))))
+
 (deftest ^:parallel success-content-test
   (testing "read responses default to text-only"
     (is (= {:content [{:type "text" :text "hi"}]} (common/success-content "hi"))))
