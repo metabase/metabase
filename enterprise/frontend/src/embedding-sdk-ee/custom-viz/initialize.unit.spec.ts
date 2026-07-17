@@ -1,7 +1,24 @@
 import { api } from "metabase/api/client";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 
-import { sdkCustomVizAssetManager } from "./initialize";
+import { getSdkSandboxMode, sdkCustomVizAssetManager } from "./initialize";
+
+describe("getSdkSandboxMode", () => {
+  afterEach(() => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+  });
+
+  it('returns "hosted-signed" when running as EAJS (simple embedding)', () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+    expect(getSdkSandboxMode()).toBe("hosted-signed");
+  });
+
+  it('returns "blank" for the react-sdk npm package (not EAJS)', () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+    expect(getSdkSandboxMode()).toBe("blank");
+  });
+});
 
 const okResponse = () =>
   // Unjustified type cast. FIXME

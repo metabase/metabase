@@ -17,6 +17,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
+   [metabase-enterprise.custom-viz-plugin.api.sandbox-eajs]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
@@ -108,7 +109,13 @@
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
+   ;; The donor GET (unauthed, token-signature is the auth) is tried first, then the rest of the
+   ;; session-authed custom-viz routes. Both stay behind the :custom-viz premium gate.
+   "/custom-viz-plugin"            (premium-handler
+                                    (handlers/routes
+                                     metabase-enterprise.custom-viz-plugin.api.sandbox-eajs/routes
+                                     metabase-enterprise.custom-viz-plugin.api/routes)
+                                    :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.

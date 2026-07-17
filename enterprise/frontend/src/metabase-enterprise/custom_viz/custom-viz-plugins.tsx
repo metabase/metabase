@@ -55,6 +55,14 @@ const failedPluginHashes = new Map<
   CustomVizPluginRuntime["bundle_hash"]
 >();
 
+// Dedupes concurrent loads of the same plugin (multiple render paths funnel
+// into loadCustomVizPlugin before any registers it) so only one sandbox/donor
+// iframe is created per plugin.
+const inFlightLoads = new Map<
+  CustomVizPluginId,
+  { hash: string | null; promise: Promise<string | null> }
+>();
+
 // Monotonic per-plugin load counters for latest-wins ordering of overlapping
 // dev reloads.
 const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
@@ -77,6 +85,7 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
         failedPluginHashes.delete(id);
         loadStartedSeqByPluginId.delete(id);
         loadAppliedSeqByPluginId.delete(id);
+        inFlightLoads.delete(id);
       }
     }
   }
@@ -313,7 +322,7 @@ export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
 ): Promise<string | null> {
-  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
+  const { cacheBustSuffix } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
   if (
@@ -324,6 +333,43 @@ export async function loadCustomVizPlugin(
   ) {
     return existing.identifier;
   }
+
+  // Dedupe concurrent loads for the same plugin+hash, for example when a
+  // dashboard has two cards with the same custom display: each card's
+  // auto-load hook fires in the same render flush, before either load has
+  // registered in loadedPlugins, and each would otherwise create its own
+  // sandbox (and, in EAJS, its own donor iframe + mint).
+  if (!cacheBustSuffix) {
+    const inFlight = inFlightLoads.get(plugin.id);
+    if (inFlight && inFlight.hash === currentHash) {
+      return inFlight.promise;
+    }
+  }
+
+  const promise = runLoadCustomVizPlugin(plugin, options);
+
+  // Dev reloads must always create a fresh sandbox, so they never share
+  // (or publish) an in-flight entry.
+  if (cacheBustSuffix) {
+    return promise;
+  }
+
+  inFlightLoads.set(plugin.id, { hash: currentHash, promise });
+  try {
+    return await promise;
+  } finally {
+    if (inFlightLoads.get(plugin.id)?.promise === promise) {
+      inFlightLoads.delete(plugin.id);
+    }
+  }
+}
+
+async function runLoadCustomVizPlugin(
+  plugin: CustomVizPluginRuntime,
+  options: LoadCustomVizPluginOptions = {},
+): Promise<string | null> {
+  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
+  const currentHash = plugin.bundle_hash ?? null;
 
   ensureVizApi();
 

@@ -56,6 +56,7 @@
   auth-call?
   cacheable?
   device-info
+  embed-sdk-eajs-entrypoint?
   embed?
   embedded?
   geocode-ip-addresses

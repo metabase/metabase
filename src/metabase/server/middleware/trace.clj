@@ -12,6 +12,7 @@
    returns immediately and calls `respond` later on a different thread. The span
    must stay open until `respond` or `raise` is called."
   (:require
+   [clojure.string :as str]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [steffan-westcott.clj-otel.api.trace.span :as span])
@@ -20,6 +21,13 @@
    (io.opentelemetry.context Context Scope)))
 
 (set! *warn-on-reflection* true)
+
+(defn- redact-query-string
+  "Redact signed `token` values before a request's query string is exported to a span, so short-lived
+   capability tokens (e.g. the custom-viz sandbox donor token) don't leak into traces."
+  ^String [^String qs]
+  (when qs
+    (str/replace qs #"(?i)(token=)[^&]*" "$1[REDACTED]")))
 
 (defn- parse-frontend-trace-id
   "Extract the trace ID from a W3C traceparent header.
@@ -75,7 +83,7 @@
                                                                :http/request-id (:metabase-request-id request)
                                                                :http/referer    (get-in request [:headers "referer"])}
                                                         (:query-string request)
-                                                        (assoc :http/query-string (:query-string request)))})
+                                                        (assoc :http/query-string (redact-query-string (:query-string request))))})
               ^Span span (span/get-span span-ctx)
               ^Scope scope (.makeCurrent ^Context span-ctx)
               span-id    (.getSpanId (.getSpanContext span))]

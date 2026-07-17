@@ -1,5 +1,6 @@
 (ns ^:synchronous metabase-enterprise.custom-viz-plugin.api-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -480,6 +481,110 @@
     (mt/with-premium-features #{:custom-viz}
       (is (= "Unauthenticated"
              (client/client :get 401 "ee/custom-viz-plugin/sandbox-host"))))))
+
+;;; -------------------------------------- Signed EAJS Sandbox-host Endpoint --------------------------------------
+
+(def ^:private test-origin "https://customer.example")
+
+(defn- now-seconds ^long []
+  (quot (System/currentTimeMillis) 1000))
+
+(defn- sign-eajs-token
+  "Sign `claims` with the real donor signing key, so tests can craft adversarial tokens."
+  [claims]
+  (jwt/sign claims (custom-viz.settings/custom-viz-sandbox-signing-key) {:alg :hs256}))
+
+(defn- mint-url!
+  "Mint a donor URL for `origin` via the authed sign endpoint and return the raw token."
+  [origin]
+  (let [{:keys [url]} (mt/user-http-request :rasta :post 200
+                                            "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin origin})]
+    (second (re-find #"token=(.+)$" url))))
+
+(deftest sandbox-host-eajs-sign-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "POST /sandbox-host-eajs/sign requires authentication"
+      (is (= "Unauthenticated"
+             (client/client :post 401 "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin test-origin}))))
+    (testing "a well-formed origin mints a relative donor URL (EAJS has no origin allowlist to check against)"
+      (let [{:keys [url]} (mt/user-http-request :rasta :post 200
+                                                "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin test-origin})]
+        (is (str/starts-with? url "/api/ee/custom-viz-plugin/sandbox-host-eajs?token="))
+        (testing "and the minted token serves a donor page whose CSP names that origin"
+          (let [token (second (re-find #"token=(.+)$" url))
+                resp  (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host-eajs" :token token)]
+            (is (str/includes? (get-in resp [:headers "Content-Security-Policy"]) test-origin))))))
+    (testing "a missing origin is a 400"
+      (is (mt/user-http-request :rasta :post 400 "ee/custom-viz-plugin/sandbox-host-eajs/sign" {})))
+    (testing "a malformed origin (path/garbage) is a 400"
+      (is (mt/user-http-request :rasta :post 400
+                                "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin "https://customer.example/steal"}))
+      (is (mt/user-http-request :rasta :post 400
+                                "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin "not-a-url"}))))
+  (testing "POST /sandbox-host-eajs/sign requires the :custom-viz premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Custom Visualizations"
+       (mt/user-http-request :rasta :post 402
+                             "ee/custom-viz-plugin/sandbox-host-eajs/sign" {:origin test-origin})))))
+
+(deftest sandbox-host-eajs-donor-happy-path-test
+  (mt/with-premium-features #{:custom-viz}
+    (let [token   (mint-url! test-origin)
+          resp    (client/client-full-response :get 200 "ee/custom-viz-plugin/sandbox-host-eajs" :token token)
+          headers (:headers resp)]
+      (testing "serves the inert donor document with the marker meta tag"
+        (is (str/includes? (:body resp) "<!doctype html>"))
+        (is (str/includes? (:body resp) "<meta name=\"mb-sandbox-host\" content=\"1\">"))
+        (is (str/starts-with? (get headers "Content-Type") "text/html")))
+      (testing "CSP allows eval inside the iframe and frame-ancestors names the minted origin"
+        (is (= (str "default-src 'none'; script-src 'unsafe-eval'; frame-ancestors 'self' " test-origin ";")
+               (get headers "Content-Security-Policy"))))
+      (testing "no X-Frame-Options is served, so the page can be framed cross-origin"
+        (is (nil? (get headers "X-Frame-Options"))))
+      (testing "the donor response is never cached"
+        (is (= "private, no-store, max-age=0" (get headers "Cache-Control"))))
+      (testing "hardening headers are present"
+        (is (= "no-referrer" (get headers "Referrer-Policy")))
+        (is (= "nosniff"     (get headers "X-Content-Type-Options")))))))
+
+(deftest sandbox-host-eajs-donor-rejects-bad-tokens-test
+  (mt/with-premium-features #{:custom-viz}
+    (let [valid   (mint-url! test-origin)
+          now     (now-seconds)
+          base    {:purpose "custom-viz-sandbox-eajs" :jti (str (random-uuid)) :v 1 :origin test-origin}
+          check-404 (fn [token]
+                      (let [resp (apply client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host-eajs"
+                                        (when token [:token token]))]
+                        (is (= "private, no-store, max-age=0" (get-in resp [:headers "Cache-Control"])))
+                        ;; a rejected token must never yield the eval-permitting, origin-framed donor document
+                        (is (not (str/includes? (str (:body resp)) "mb-sandbox-host")))
+                        (is (not (str/includes? (str (get-in resp [:headers "Content-Security-Policy"])) "unsafe-eval")))))]
+      (testing "missing token"
+        (check-404 nil))
+      (testing "oversized token (rejected before parsing)"
+        (check-404 (apply str (repeat 3000 "a"))))
+      (testing "tampered signature"
+        (let [[h p s] (str/split valid #"\.")
+              s'      (str (if (= \a (first s)) "b" "a") (subs s 1))]
+          (check-404 (str/join "." [h p s']))))
+      (testing "wrong purpose"
+        (check-404 (sign-eajs-token (assoc base :purpose "some-other-purpose"
+                                           :iat now :exp (+ now 120)))))
+      (testing "expired token"
+        (check-404 (sign-eajs-token (assoc base :iat (- now 600) :exp (- now 300)))))
+      (testing "lifetime window larger than allowed"
+        (check-404 (sign-eajs-token (assoc base :iat now :exp (+ now 400)))))))
+  (testing "GET /sandbox-host-eajs requires the :custom-viz premium feature"
+    (mt/with-premium-features #{}
+      (is (= 402 (:status (client/client-full-response
+                           :get 402 "ee/custom-viz-plugin/sandbox-host-eajs" :token "whatever")))))))
+
+(deftest custom-viz-list-still-requires-auth-test
+  (testing "splitting out the unauthed donor route must not expose the other custom-viz routes"
+    (mt/with-premium-features #{:custom-viz}
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/list")))
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/"))))))
 
 ;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
 
