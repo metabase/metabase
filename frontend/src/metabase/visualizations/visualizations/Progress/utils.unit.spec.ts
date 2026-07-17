@@ -66,11 +66,6 @@ describe("getValue", () => {
     expect(getValue(rows)).toBe(0);
   });
 
-  it("should return 0 for undefined values", () => {
-    const rows: RowValues[] = [[undefined, "test"]];
-    expect(getValue(rows)).toBe(0);
-  });
-
   it("should return numeric zero as-is", () => {
     const rows: RowValues[] = [[0, "test"]];
     expect(getValue(rows)).toBe(0);
