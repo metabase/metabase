@@ -156,6 +156,71 @@ describe("AccordionList", () => {
     expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
   });
 
+  describe("when a search matches nothing without globalSearch (GDGT-2845)", () => {
+    const TYPELESS_SECTION = [{ items: [{ name: "Foo" }, { name: "Bar" }] }];
+
+    it("keeps the search box and shows an empty state for a type-less section", () => {
+      render(<AccordionList sections={TYPELESS_SECTION} searchable />);
+
+      const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+      fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+      expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+      assertAbsence(["Foo", "Bar"]);
+    });
+
+    it("keeps the search box and shows an empty state for a typed section", () => {
+      const sections = [
+        { name: "Back", type: "back" as const, items: [{ name: "Foo" }] },
+      ];
+      render(<AccordionList sections={sections} searchable />);
+
+      const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+      fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+      expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+      assertAbsence(["Foo"]);
+    });
+
+    it("keeps the search box and shows an empty state for an alwaysExpanded list", () => {
+      render(
+        <AccordionList sections={TYPELESS_SECTION} searchable alwaysExpanded />,
+      );
+
+      const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+      fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+      expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+      assertAbsence(["Foo", "Bar"]);
+    });
+
+    it("shows matches again once the query is cleared", () => {
+      render(<AccordionList sections={TYPELESS_SECTION} searchable />);
+
+      const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+      fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+      assertAbsence(["Foo", "Bar"]);
+
+      fireEvent.change(SEARCH_FIELD, { target: { value: "" } });
+      assertPresence(["Foo", "Bar"]);
+      expect(
+        screen.queryByText("Didn't find any results"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show an empty state when the list is not searchable", () => {
+      render(<AccordionList sections={TYPELESS_SECTION} searchable={false} />);
+
+      expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Didn't find any results"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("with the `renderItemWrapper` prop", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
       const renderItemWrapper = (itemContent: ReactNode) => {
