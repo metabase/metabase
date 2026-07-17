@@ -25,7 +25,7 @@ If you configure Metabase through environment variables or a [config file](../co
 ## Supported methods
 
 - **Authenticator app (primary).** People scan a QR code with an app like Google Authenticator or 1Password, which then generates a new six-digit code every 30 seconds.
-- **Email code (fallback at login).** If you've set up [email](../configuring-metabase/email.md), people who are already enrolled can have Metabase email them a one-time code when they can't reach their authenticator app. You can only use the code once, and expires after ten minutes. If email isn't configured, Metabase hides this option.
+- **Email code (fallback at login).** If an admin has set up [email](../configuring-metabase/email.md), people who are already enrolled in two-factor authentication can have Metabase email them a one-time code when they can't reach their authenticator app. You can only use the code once, and expires after ten minutes. If email isn't configured, Metabase hides this option.
 - **Recovery codes.** When someone enrolls in 2FA, Metabase gives them ten single-use codes to save.
 
 Metabase doesn't support SMS codes or hardware keys (passkeys, U2F, or WebAuthn).
@@ -40,7 +40,7 @@ If you're using Metabase Cloud, we've encrypted your keys for you.
 
 ### Set up email for the fallback code
 
-The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip setting up email, people will have to rely on their authenticator app and recovery codes only.
+Metabase requires people to use an email address as a login, but that doesn't mean that email is set up. The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip setting up email, people will have to rely on their authenticator app and recovery codes only.
 
 ## See who's enrolled
 
