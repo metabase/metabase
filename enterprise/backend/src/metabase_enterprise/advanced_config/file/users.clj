@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-config.file.users
   (:require
+   [clojure.data :as data]
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
@@ -41,8 +42,9 @@
     (do
       (log/info (u/format-color :blue "Updating User with email %s" (pr-str (:email user))))
       (let [new-user (update user :login_attributes
-                             #(merge % (:login_attributes existing-user)))]
-        (t2/update! :model/User (:id existing-user) new-user)))
+                             #(merge % (:login_attributes existing-user)))
+            [_ user-to-save _] (data/diff existing-user new-user)]
+        (t2/update! :model/User (:id existing-user) user-to-save)))
     ;; create a new user. If they are the first non-internal User, force them to be an admin.
     (let [user (cond-> user
                  (not (setup/has-user-setup)) (assoc :is_superuser true))]
