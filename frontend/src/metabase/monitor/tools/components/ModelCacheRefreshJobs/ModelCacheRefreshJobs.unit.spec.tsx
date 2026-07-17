@@ -23,7 +23,7 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
 describe("ModelCacheRefreshJobs", () => {
   it("shows empty state when there are no cache logs", async () => {
     await setup({ logs: [] });
-    expect(await screen.findByText("No results")).toBeInTheDocument();
+    expect(await screen.findByText("No log entries")).toBeInTheDocument();
     expect(screen.queryByTestId("model-cache-log-row")).not.toBeInTheDocument();
   });
 
@@ -34,7 +34,7 @@ describe("ModelCacheRefreshJobs", () => {
         getMockModelCacheInfo({ id: 2, card_id: 2, state: "deletable" }),
       ],
     });
-    expect(await screen.findByText("No results")).toBeInTheDocument();
+    expect(await screen.findByText("No log entries")).toBeInTheDocument();
     expect(screen.queryByTestId("model-cache-log-row")).not.toBeInTheDocument();
   });
 

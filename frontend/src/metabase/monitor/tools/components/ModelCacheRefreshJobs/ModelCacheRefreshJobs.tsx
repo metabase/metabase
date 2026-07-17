@@ -13,6 +13,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
@@ -107,11 +108,7 @@ export function ModelCacheRefreshJobs() {
             instance={treeTableInstance}
             hierarchical={false}
             ariaLabel={t`Model caching log`}
-            emptyState={
-              <Stack p="xl" align="center">
-                <Text c="text-disabled">{t`No results`}</Text>
-              </Stack>
-            }
+            emptyState={<MonitorEmptyState label={t`No log entries`} />}
             getRowProps={() => ({ "data-testid": "model-cache-log-row" })}
             onRowClick={handleRowActivate}
           />
