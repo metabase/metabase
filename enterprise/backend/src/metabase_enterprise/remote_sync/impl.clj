@@ -668,24 +668,27 @@
 (defn- commit-staged!
   "Open a commit on `snapshot`, stage into it via `stage-fn`, then finish it.
 
-  `stage-fn` will be passed the open commit. It should return the synced write-rows.
+  `stage-fn` will be passed the open commit. It should return the synced write-rows. `report-progress`, when
+  non-nil, is a reporter fn forwarded unchanged to `finish-commit!` (fired forced at the commit checkpoint,
+  before the push, then throttled during the push itself).
 
   Will abort the commit if it is empty.
 
   Returns `[version, write-rows]` where version is the new commit SHA or `:remote-sync/empty-commit` if empty.
 
   Will abort the commit and throw on any Throwable."
-  [snapshot message stage-fn]
-  (let [commit (source.p/open-commit snapshot)]
-    (try
-      (let [synced  (stage-fn commit)
-            version (if (source.p/empty-commit? commit)
-                      (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
-                      (source.p/finish-commit! commit message))]
-        [synced version])
-      (catch Throwable e
-        (source.p/abort-commit! commit)
-        (throw e)))))
+  ([snapshot message stage-fn] (commit-staged! snapshot message stage-fn nil))
+  ([snapshot message stage-fn report-progress]
+   (let [commit (source.p/open-commit snapshot)]
+     (try
+       (let [synced  (stage-fn commit)
+             version (if (source.p/empty-commit? commit)
+                       (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
+                       (source.p/finish-commit! commit message report-progress))]
+         [synced version])
+       (catch Throwable e
+         (source.p/abort-commit! commit)
+         (throw e))))))
 
 (defn- export-merged!
   "Export when the remote branch has advanced beyond the last synced version. Runs an entity-identity 3-way merge of
@@ -996,13 +999,22 @@
   "Stage WriteRows ({:model_type :model_id, optional :id/:file_path}) to `commit`, chunking internally per
   model type so each chunk's entities load in one query with bounded memory. Callers pass a flat seq.
 
+  `on-chunk`, when non-nil, is called once per staged chunk with the cumulative number of rows staged so
+  far — used to drive serialize-phase progress. It must not realize `rows`.
+
   Returns:
    - [{:id :file_path :content_hash}]"
-  [commit opts rows]
-  (->> rows
-       (->sized-chunks)
-       (mapcat #(chunk-stage-writes commit opts %))
-       (doall)))
+  ([commit opts rows] (stage-writes commit opts rows nil))
+  ([commit opts rows on-chunk]
+   (let [staged (volatile! 0)]
+     (->> rows
+          (->sized-chunks)
+          (mapcat (fn [chunk]
+                    (let [res (chunk-stage-writes commit opts chunk)]
+                      (vswap! staged + (count (:rows chunk)))
+                      (when on-chunk (on-chunk @staged))
+                      res)))
+          (doall)))))
 
 (defn- stage-deletes [commit delete-paths]
   (doseq [delete-path delete-paths]
@@ -1052,6 +1064,9 @@
                                                         hits)
                                                 [:else :content_hash]))))))))
 
+(def ^:private export-progress-plan-done 0.33) ; phase 1 (plan) complete / serialize start
+(def ^:private export-progress-serialize 0.66) ; phase 2 (serialize) complete
+
 (defn- full-export!
   "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
 
@@ -1059,39 +1074,56 @@
    - {:status :success}
    or throws"
   [snapshot task-id message sync-timestamp]
-  (let [export-rows (exportable-write-rows)]
+  (let [export-rows (vec (exportable-write-rows))]
     (when (empty? export-rows)
       (throw (ex-info "No remote-syncable content available." {})))
-    (remote-sync.task/update-progress! task-id 0.3)
-    (let [opts             (serdes/storage-base-context)
-          [synced version] (commit-staged! snapshot message
-                                           (fn [commit]
-                                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                                             (stage-writes commit opts export-rows)))]
-      (t2/with-transaction [_]
-        (when-not (= version :remote-sync/empty-commit)
-          (remote-sync.task/set-version! task-id version))
-        (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-        (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-      (if (= version :remote-sync/empty-commit)
-        (do
-          (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-          {:status :success :outcome {:kind "push-skipped"}})
-        {:status :success
-         :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))
+    (let [report (remote-sync.task/make-progress-reporter task-id)
+          total  (count export-rows)
+          span   (- export-progress-serialize export-progress-plan-done)]
+      (report export-progress-plan-done {:force? true})
+      (let [opts             (serdes/storage-base-context)
+            [synced version] (commit-staged! snapshot message
+                                             (fn [commit]
+                                               (source.p/replace-all! commit) ; replace the managed dirs wholesale
+                                               (let [synced (stage-writes commit opts export-rows
+                                                                          (fn [staged]
+                                                                            (report (+ export-progress-plan-done
+                                                                                       (* span (/ staged total))))))]
+                                                 (report export-progress-serialize {:force? true})
+                                                 synced))
+                                             report)]
+        (t2/with-transaction [_]
+          (when-not (= version :remote-sync/empty-commit)
+            (remote-sync.task/set-version! task-id version))
+          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+            (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+          (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
+        (if (= version :remote-sync/empty-commit)
+          (do
+            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+            {:status :success :outcome {:kind "push-skipped"}})
+          {:status :success
+           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
-        delete-paths (into (vec delete-paths) disabled-files)]
-    (remote-sync.task/update-progress! task-id 0.3)
+        delete-paths (into (vec delete-paths) disabled-files)
+        report       (remote-sync.task/make-progress-reporter task-id)
+        total        (max 1 (count writes))
+        span         (- export-progress-serialize export-progress-plan-done)]
+    (report export-progress-plan-done {:force? true})
     (let [opts             (serdes/storage-base-context)
           [synced version] (commit-staged! snapshot message
                                            (fn [commit]
-                                             (let [synced (stage-writes commit opts writes)]
+                                             (let [synced (stage-writes commit opts writes
+                                                                        (fn [staged]
+                                                                          (report (+ export-progress-plan-done
+                                                                                     (* span (/ staged total))))))]
                                                (stage-deletes commit delete-paths)
-                                               synced)))]
+                                               (report export-progress-serialize {:force? true})
+                                               synced))
+                                           report)]
       (t2/with-transaction [_]
         (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))
