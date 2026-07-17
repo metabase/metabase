@@ -15,6 +15,9 @@
 (def ^:private validate-filters!
   #'tools.search/validate-filters!)
 
+(def ^:private resolve-collection-filter
+  #'tools.search/resolve-collection-filter)
+
 (def ^:private engine-results
   #'tools.search/engine-results)
 
@@ -89,6 +92,33 @@
                             (validate-filters! {:type ["snippet"] :collection_id "someEntityId01234567_"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"recent: true supports only the type filter"
                             (validate-filters! {:recent true :collection_id "someEntityId01234567_"}))))))
+
+;; not ^:parallel: with-premium-features rebinds a global, and the `!` in validate-filters! trips
+;; the kondo deftest lint
+(deftest table-collection-id-requires-library-feature-test
+  (testing "GHY-4137: filtering tables by a real collection_id requires the Library feature; on an
+            instance without it the combination is a teaching error, but \"root\" stays inert"
+    (mt/with-premium-features #{}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the Library feature"
+                            (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
+          "no Library feature + real collection id: error")
+      (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
+          "\"root\" is inert even without the Library feature"))
+    (mt/with-premium-features #{:library}
+      (is (some? (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
+          "with the Library feature, table + collection id is allowed"))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest collection-scoping-accepts-numeric-id-test
+  (testing "GHY-4137: collection_id may be a numeric id, not only a string entity_id — a numeric id
+            counts as scoping"
+    (testing "validate-filters! trips the collectionless error for a numeric id on a collectionless type"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"don't live in collections"
+                            (validate-filters! {:type ["database"] :collection_id 5}))))
+    (testing "resolve-collection-filter resolves a real numeric collection id behind the read check"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= coll-id (resolve-collection-filter coll-id))))))))
 
 (defn- nothing-to-search?
   "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
