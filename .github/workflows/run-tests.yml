@@ -116,7 +116,8 @@ jobs:
           name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
           path: target/cljs_dev
           if-no-files-found: error
-          # a re-run of all jobs would otherwise fail the upload (artifacts are immutable per name)
+          # Uploads fail when an artifact of this name already exists in the run
+          # replace it rather than fail on a re-run.
           overwrite: true
 
   backend-tests:
