@@ -185,7 +185,7 @@
           (metabot.persistence/start-turn! conversation_id profile-id message
                                            :hostname hostname
                                            :pii-info pii-info)]
-      (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
+      (log/info "Using best native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
         :profile-id       profile-id
