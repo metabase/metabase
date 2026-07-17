@@ -41,7 +41,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 2 | `tests/dashboard-reproductions.spec.ts` (2438) | First chunk running; unverified. |
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **Mid-investigation of a suspected product bug** — see below. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | Partially verified; was re-running "Entry points" after a fresh backend rendered correctly. |
-| 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | Unverified. |
+| 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 6 | `tests/dashboard-core.spec.ts` (2124) | **Closest to done** — "all chunks green", full-file run pending. Start here. |
 | 7 | `tests/documents-comments.spec.ts` (2009) | Typechecks; never run. |
 | 8 | `tests/interactive-embedding.spec.ts` (2624) | **Spec was mid-write — likely incomplete.** Check it parses before running. |
@@ -83,6 +83,15 @@ The agent observed `query_metadata` containing field 61 while the parameter's
 value options came back empty, and was about to cross-check against the
 original Cypress spec when it died. Either a real bug or a port artifact —
 the Cypress cross-check is the deciding step, and it was never run.
+
+**3. `dashboard-filters-reproductions-1` — 6 fixmes with no root cause.**
+The port is landed and verified, and the *original Cypress spec* run against
+the same backend fails the same 6 tests at the same assertions — so the port is
+faithful and something real is behind them. Snapshot staleness is ruled out
+(snapshot Jul 17 > latest migration Jul 15), but the cause is not established,
+and both harnesses shared one source-mode backend + rspack server, so a common
+environmental cause isn't excluded. **Decider**: if CI's Cypress leg is green on
+this spec, the delta is environmental; if red, it's a pre-existing regression.
 
 Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like

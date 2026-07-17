@@ -24,6 +24,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
+import { expect } from "@playwright/test";
 import type { Locator, Page, Response } from "@playwright/test";
 
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
@@ -78,14 +79,37 @@ export type DashCard = {
   dashboard_id: number;
 } & Record<string, unknown>;
 
-/** Port of H.createDashboard — accepts arbitrary dashboard details. */
+/**
+ * Port of H.createDashboard — accepts arbitrary dashboard details.
+ *
+ * Like the Cypress helper, embedding/auto-apply settings can't ride along on
+ * the POST (`/api/dashboard` ignores them); they need a follow-up PUT, without
+ * which the embed page renders "Embedding is not enabled for this object".
+ */
 export async function createDashboard(
   api: MetabaseApi,
   details: DashboardDetails = {},
 ): Promise<{ id: number }> {
-  const { name = "Test Dashboard", ...rest } = details;
+  const {
+    name = "Test Dashboard",
+    auto_apply_filters,
+    enable_embedding,
+    embedding_type,
+    embedding_params,
+    ...rest
+  } = details;
   const response = await api.post("/api/dashboard", { name, ...rest });
-  return (await response.json()) as { id: number };
+  const dashboard = (await response.json()) as { id: number };
+
+  if (enable_embedding != null || auto_apply_filters != null) {
+    await api.put(`/api/dashboard/${dashboard.id}`, {
+      auto_apply_filters,
+      enable_embedding,
+      embedding_type,
+      embedding_params,
+    });
+  }
+  return dashboard;
 }
 
 /** Port of H.createQuestion (api/createQuestion.ts) returning the card id. */
@@ -322,6 +346,48 @@ export function editingFilterWidget(page: Page, name?: string): Locator {
 /** Case-sensitive substring matcher (Cypress :contains semantics). */
 export function caseSensitiveSubstring(text: string): RegExp {
   return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+}
+
+/**
+ * Port of cy.findByDisplayValue: the form control in `scope` whose *current*
+ * value equals `value`. Unlike dashboard-cards.ts inputWithValue this also
+ * matches textarea/select, like the testing-library query does — the dashboard
+ * title (EditableText) renders a <textarea>, which an input-only scan misses.
+ */
+export async function findByDisplayValue(
+  scope: Locator,
+  value: string,
+): Promise<Locator> {
+  const controls = scope.locator("input, textarea, select");
+  await expect(controls.first()).toBeVisible();
+  const count = await controls.count();
+  for (let index = 0; index < count; index++) {
+    if ((await controls.nth(index).inputValue()) === value) {
+      return controls.nth(index);
+    }
+  }
+  throw new Error(`No form control with display value "${value}" found`);
+}
+
+/**
+ * Port of Cypress's "not.be.visible" for an element scrolled out of an
+ * overflow-scrolling ancestor. Playwright's toBeVisible() ignores scroll
+ * clipping (it only checks the box is non-empty), so compare the element's
+ * rect against its scroll container's instead of the viewport's.
+ */
+export async function isClippedByScrollContainer(
+  element: Locator,
+  container: Locator,
+): Promise<boolean> {
+  const elementBox = await element.boundingBox();
+  const containerBox = await container.boundingBox();
+  if (!elementBox || !containerBox) {
+    return true;
+  }
+  return (
+    elementBox.y + elementBox.height <= containerBox.y ||
+    elementBox.y >= containerBox.y + containerBox.height
+  );
 }
 
 /** Port of H.goToTab (e2e-dashboard-helpers.ts). */

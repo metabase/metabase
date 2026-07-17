@@ -61,3 +61,4 @@ data-model/data-model-shared-1.cy.spec.ts
 onboarding/embedding-homepage.cy.spec.ts
 onboarding/notifications.cy.spec.js
 dashboard/dashboard.cy.spec.js
+filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js
