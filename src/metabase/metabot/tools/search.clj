@@ -312,9 +312,11 @@
                           (let [search-context (search/search-context
                                                 (cond-> (assoc base-opts :search-string search-string)
                                                   search-engine (assoc :search-engine (name search-engine))))
-                                ranked         (search/ranked-results search-context)]
-                            (log/infof "[METABOT-SEARCH] Query '%s' (models %s) returned entity types: %s"
-                                       search-string (:models search-context) (frequencies (map :model ranked)))
+                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
+                                                          search-string (:models search-context))
+                                ranked         (search/ranked-results search-context)
+                                result-models  (frequencies (map :model ranked))]
+                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
                             ranked))
         ranked-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
