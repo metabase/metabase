@@ -106,7 +106,6 @@ export const CommandSuggestion = forwardRef<
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
-  const { capabilities } = host;
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -119,8 +118,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled, metabotName, capabilities),
-    [isMetabotEnabled, metabotName, capabilities],
+    () => getAllCommandSections(isMetabotEnabled, metabotName),
+    [isMetabotEnabled, metabotName],
   );
 
   const allCommandOptions = useMemo(
@@ -153,8 +152,7 @@ export const CommandSuggestion = forwardRef<
     onSelectItem: setNewQuestionType,
   });
 
-  const areChartsAllowed =
-    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
+  const areChartsAllowed = !editor.isActive("supportingText");
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =

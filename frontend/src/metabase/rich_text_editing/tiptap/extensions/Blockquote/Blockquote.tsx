@@ -26,7 +26,7 @@ export const CustomBlockquote = Blockquote.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("blockquote")];
+    return [createProseMirrorPlugin(Blockquote.name)];
   },
 });
 

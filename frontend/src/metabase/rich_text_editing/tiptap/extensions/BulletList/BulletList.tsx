@@ -22,7 +22,7 @@ export const CustomBulletList = BulletList.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("bulletList")];
+    return [createProseMirrorPlugin(BulletList.name)];
   },
 });
 

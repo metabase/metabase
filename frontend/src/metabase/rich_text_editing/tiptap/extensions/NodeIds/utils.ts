@@ -23,21 +23,8 @@ export function createIdAttribute() {
   };
 }
 
-// keep in sync with nodes-with-id on the backend
-export const NODES_WITH_ID = [
-  "paragraph",
-  "heading",
-  "bulletList",
-  "orderedList",
-  "blockquote",
-  "codeBlock",
-  "cardEmbed",
-  "supportingText",
-] as const;
-export type NodesWithId = (typeof NODES_WITH_ID)[number];
-
 // needed to upgrade documents without ids and to fix duplicated ids when splitting nodes
-export function createProseMirrorPlugin(nodeName: NodesWithId) {
+export function createProseMirrorPlugin(nodeName: string) {
   return new Plugin({
     appendTransaction: (_trs, _old, state) => {
       const { doc, tr } = state;

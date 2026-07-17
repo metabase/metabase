@@ -1,8 +1,0 @@
-.sidebar {
-  height: 100%;
-  width: 360px;
-  flex-shrink: 0;
-  background-color: var(--mb-color-background-secondary);
-  border-left: 1px solid var(--mb-color-border);
-  overflow-y: auto;
-}

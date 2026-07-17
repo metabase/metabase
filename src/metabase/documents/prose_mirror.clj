@@ -5,9 +5,7 @@
    [clojure.walk :as walk]))
 
 (def card-embed-type
-  "Type of a card-embed node. Carries either `:id` (live Card reference) or
-  `:stored_result_id` (cached snapshot in `stored_result`). Live-mode embeds render
-  through the Card; static-mode embeds render from the cached blob and are read-only."
+  "Type of a card-embed node"
   "cardEmbed")
 
 (def smart-link-type
@@ -77,8 +75,7 @@
        (str/join " ")))
 
 (defn card-ids
-  "Get the Card ids referenced by live-mode `cardEmbed` nodes (those with a positive `:id`).
-  Static-mode embeds (with `:stored_result_id`) are skipped — they don't reference a Card."
+  "Get all card-ids"
   [document]
   (collect-ast document #(when (and (= card-embed-type (:type %))
                                     (pos-int? (-> % :attrs :id)))

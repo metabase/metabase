@@ -124,7 +124,6 @@
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
-    :conditions     {:exploration_thread_id nil}  ; exclude exploration scratch docs from sync
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
     :enabled?       true}
@@ -758,7 +757,7 @@
 (defn- object-matches-conditions?
   "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).
    A key MISSING from `object` does not match, even against a nil condition value — eligibility needs
-   positive evidence the condition holds (e.g. the Document spec's `{:exploration_thread_id nil}` must
+   positive evidence the condition holds (e.g. the snippet spec's `{:built_in_type nil}` must
    see an explicit nil, not an absent key), so a partial payload can't sneak conditioned rows into
    sync scope.
    NOTE: only handles scalar values — non-scalar `:conditions` (e.g. `[:not= ...]`) are not supported here.

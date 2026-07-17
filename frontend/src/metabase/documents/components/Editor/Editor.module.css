@@ -35,6 +35,13 @@
   font-size: var(--mantine-font-size-md);
 }
 
+@media print {
+  .editorContent :global(.ProseMirror) {
+    margin-inline: 0;
+    max-width: none;
+  }
+}
+
 /* Apply typography styles only to elements NOT inside .editor-style-boundary */
 .editorContent
   :global(.ProseMirror)

@@ -64,7 +64,6 @@
     :model/ExplorationBookmark
     :model/ExplorationQuery
     :model/ExplorationQueryResult
-    :model/ExplorationQueryTimelineInterestingness
     :model/ExplorationThread
     :model/ExplorationBlock
     :model/ExplorationPage

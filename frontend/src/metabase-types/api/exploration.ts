@@ -1,7 +1,6 @@
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { RowValue } from "./dataset";
-import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -198,11 +197,6 @@ export interface ExplorationThreadTimeline {
   timeline?: Timeline & { events?: TimelineEvent[] };
 }
 
-export interface ExplorationQueryTimelineInterestingness {
-  timeline_id: TimelineId;
-  interestingness_score: number | null;
-}
-
 export type ExplorationQueryStatus =
   | "pending"
   | "running"
@@ -259,21 +253,11 @@ export interface ExplorationQuery {
   entity_id: string;
   interestingness_score: number | null;
   contextual_interestingness_score?: number | null;
-  timeline_interestingness?: ExplorationQueryTimelineInterestingness[];
   dataset_query: DatasetQuery;
   segment_id: SegmentId | null;
   segment_name: string | null;
   params?: ExplorationQueryParams | null;
-}
-
-export interface ExplorationDocument {
-  id: DocumentId;
-  exploration_thread_id: ExplorationThreadId;
-  name: string;
-  creator_id: UserId;
-  content_type: string;
-  created_at?: string | null;
-  updated_at?: string | null;
+  row_count?: number | null;
 }
 
 /**
@@ -320,21 +304,10 @@ export function getExplorationQueryGroupStatus(
   if (queries.some((q) => q.status === "canceled")) {
     return "canceled";
   }
-  return "done";
-}
-
-export function getExplorationQueryGroupInterestingness(
-  queries: ExplorationQuery[],
-): number | null {
-  let max: number | null = null;
-  for (const q of queries) {
-    const score =
-      q.contextual_interestingness_score ?? q.interestingness_score ?? null;
-    if (score != null && (max == null || score > max)) {
-      max = score;
-    }
+  if (queries.every((q) => q.row_count === 0)) {
+    return "error";
   }
-  return max;
+  return "done";
 }
 
 export interface ExplorationThread {
@@ -354,8 +327,6 @@ export interface ExplorationThread {
   dimensions?: ExplorationThreadDimension[];
   timelines?: ExplorationThreadTimeline[];
   queries?: ExplorationQuery[];
-  documents?: ExplorationDocument[];
-  ai_summary_document_id?: DocumentId | null;
   blocks?: ExplorationBlockNode[] | null;
 }
 

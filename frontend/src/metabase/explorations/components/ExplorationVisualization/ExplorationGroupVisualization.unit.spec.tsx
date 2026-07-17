@@ -13,12 +13,14 @@ import type {
   ExplorationQuery,
   HydratedExplorationExploreFilter,
   Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
   createMockTimeline,
+  createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 
@@ -129,10 +131,25 @@ function makeTimeseriesDataset(): Dataset {
         createMockColumn({ name: "ts", base_type: "type/DateTime" }),
         createMockColumn({ name: "count", base_type: "type/Integer" }),
       ],
+      // Need more than MIN_ROWS_TO_SHOW_LINE_OR_BAR (3) to avoid row fallback.
       rows: [
         ["2025-01-01", 1],
         ["2025-02-01", 2],
+        ["2025-03-01", 3],
+        ["2025-04-01", 4],
       ],
+    }),
+  });
+}
+
+function makeSmallTimeseriesDataset(): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      rows: [["2025-01-01", 1]],
     }),
   });
 }
@@ -183,6 +200,7 @@ interface SetupOpts {
   errors?: Map<number, unknown>;
   availableTimelines?: Timeline[];
   selectedTimelineId?: number | null;
+  timelineEvents?: TimelineEvent[];
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
@@ -197,6 +215,7 @@ function setup({
   errors,
   availableTimelines = [],
   selectedTimelineId = null,
+  timelineEvents = [],
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
@@ -233,6 +252,7 @@ function setup({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
+          timelineEvents={timelineEvents}
           commentDrafts={{}}
           setCommentDrafts={jest.fn()}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
@@ -417,6 +437,31 @@ describe("ExplorationGroupVisualization", () => {
     ).toBeInTheDocument();
   });
 
+  it("passes selected timeline events to Visualization for timeseries charts", () => {
+    const releasesEvent = createMockTimelineEvent({
+      id: 10,
+      name: "Releases event",
+      timeline_id: 42,
+    });
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      availableTimelines: [
+        createMockTimeline({
+          id: 42,
+          name: "Releases",
+          events: [releasesEvent],
+        }),
+      ],
+      selectedTimelineId: 42,
+      timelineEvents: [releasesEvent],
+    });
+
+    expect(lastVisualizationProps?.timelineEvents).toEqual([releasesEvent]);
+  });
+
   it("does not show the timeline dropdown for non-timeseries charts", () => {
     setup({
       queries: [
@@ -439,6 +484,27 @@ describe("ExplorationGroupVisualization", () => {
       ]),
       availableTimelines: [createMockTimeline({ id: 1, name: "Releases" })],
     });
+
+    expect(
+      screen.queryByRole("button", { name: "Select timeline" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the timeline dropdown when a timeseries group falls back to row charts", () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Revenue trend", status: "done" }),
+      ],
+      datasets: new Map([[101, makeSmallTimeseriesDataset()]]),
+      availableTimelines: [createMockTimeline({ id: 1, name: "Releases" })],
+    });
+
+    const rawSeries = JSON.parse(
+      screen
+        .getByTestId("visualization-stub")
+        .getAttribute("data-raw-series") ?? "[]",
+    );
+    expect(rawSeries[0].card.display).toBe("row");
 
     expect(
       screen.queryByRole("button", { name: "Select timeline" }),

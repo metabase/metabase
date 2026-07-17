@@ -26,8 +26,6 @@ import {
   getCommentLabel,
   getExploreFurtherFilters,
   getHeatMapSeries,
-  getMaxTimelineInterestingness,
-  getMostInterestingTimelineId,
 } from "./utils";
 
 registerVisualizations();
@@ -35,7 +33,6 @@ registerVisualizations();
 function makeQuery(
   overrides: Partial<ExplorationQuery> & {
     id: number;
-    timeline_interestingness?: ExplorationQuery["timeline_interestingness"];
   },
 ): ExplorationQuery {
   return createQuery({
@@ -125,7 +122,6 @@ const smallTimeFacetDataset = makeDataset(
 function buildSeriesGroupFor(query: ExplorationQuery, dataset: Dataset) {
   return buildSeriesGroup({
     queriesWithDatasets: [{ ...query, dataset }],
-    selectedTimelineId: null,
   });
 }
 
@@ -146,144 +142,6 @@ describe("getHeatMapSeries", () => {
 
     const segmentColumn = data.rows.map((row) => row[row.length - 1]);
     expect(segmentColumn).toEqual(["(All)", "Enterprise", "SMB"]);
-  });
-});
-
-describe("getMaxTimelineInterestingness", () => {
-  it("returns an empty map when no query has timeline_interestingness", () => {
-    expect(
-      getMaxTimelineInterestingness([
-        makeQuery({ id: 1 }),
-        makeQuery({ id: 2 }),
-      ]).size,
-    ).toBe(0);
-  });
-
-  it("ignores entries with null score", () => {
-    const result = getMaxTimelineInterestingness([
-      makeQuery({
-        id: 1,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: null },
-          { timeline_id: 20, interestingness_score: 0.8 },
-        ],
-      }),
-    ]);
-    expect(result.has(10)).toBe(false);
-    expect(result.get(20)).toBeCloseTo(0.8);
-  });
-
-  it("takes the max score across queries per timeline", () => {
-    const result = getMaxTimelineInterestingness([
-      makeQuery({
-        id: 1,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: 0.4 },
-          { timeline_id: 20, interestingness_score: 0.9 },
-        ],
-      }),
-      makeQuery({
-        id: 2,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: 0.85 },
-          { timeline_id: 20, interestingness_score: 0.6 },
-        ],
-      }),
-    ]);
-    expect(result.get(10)).toBeCloseTo(0.85);
-    expect(result.get(20)).toBeCloseTo(0.9);
-  });
-});
-
-describe("getMostInterestingTimelineId", () => {
-  it("returns the highest-scoring timeline whose id is available", () => {
-    const id = getMostInterestingTimelineId(
-      [
-        makeQuery({
-          id: 1,
-          timeline_interestingness: [
-            { timeline_id: 10, interestingness_score: 0.8 },
-            { timeline_id: 20, interestingness_score: 0.95 },
-            { timeline_id: 30, interestingness_score: 0.75 },
-          ],
-        }),
-      ],
-      new Set([10, 20, 30]),
-    );
-    expect(id).toBe(20);
-  });
-
-  it("skips timelines that are not in the available set even if they score higher", () => {
-    const id = getMostInterestingTimelineId(
-      [
-        makeQuery({
-          id: 1,
-          timeline_interestingness: [
-            { timeline_id: 10, interestingness_score: 0.99 }, // not available
-            { timeline_id: 20, interestingness_score: 0.85 },
-          ],
-        }),
-      ],
-      new Set([20]),
-    );
-    expect(id).toBe(20);
-  });
-
-  it("returns null when no available timeline passes the threshold", () => {
-    const id = getMostInterestingTimelineId(
-      [
-        makeQuery({
-          id: 1,
-          timeline_interestingness: [
-            { timeline_id: 10, interestingness_score: 0.5 },
-            { timeline_id: 20, interestingness_score: 0.6 },
-          ],
-        }),
-      ],
-      new Set([10, 20]),
-    );
-    expect(id).toBeNull();
-  });
-
-  it("returns null when no timeline has scores and more than one is available", () => {
-    const id = getMostInterestingTimelineId(
-      [makeQuery({ id: 1 })],
-      new Set([10, 20]),
-    );
-    expect(id).toBeNull();
-  });
-
-  it("auto-picks the sole available timeline even when no query has scored it", () => {
-    const id = getMostInterestingTimelineId(
-      [makeQuery({ id: 1 })],
-      new Set([10]),
-    );
-    expect(id).toBe(10);
-  });
-
-  it("uses max-across-queries when picking the best", () => {
-    // Timeline 10 scores 0.85 on q1 and 0.4 on q2 → max 0.85.
-    // Timeline 20 scores 0.6 on q1 and 0.9 on q2 → max 0.9. Wins.
-    const id = getMostInterestingTimelineId(
-      [
-        makeQuery({
-          id: 1,
-          timeline_interestingness: [
-            { timeline_id: 10, interestingness_score: 0.85 },
-            { timeline_id: 20, interestingness_score: 0.6 },
-          ],
-        }),
-        makeQuery({
-          id: 2,
-          timeline_interestingness: [
-            { timeline_id: 10, interestingness_score: 0.4 },
-            { timeline_id: 20, interestingness_score: 0.9 },
-          ],
-        }),
-      ],
-      new Set([10, 20]),
-    );
-    expect(id).toBe(20);
   });
 });
 
@@ -672,7 +530,6 @@ describe("buildSeriesGroup", () => {
     );
     const group = buildSeriesGroup({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
-      selectedTimelineId: null,
     });
     expect(group.series[0].card.display).toBe("table");
   });
@@ -689,7 +546,6 @@ describe("buildSeriesGroup", () => {
           dataset: stateDataset,
         },
       ],
-      selectedTimelineId: null,
     });
     const ramp1 = group.series[0].card.visualization_settings["map.colors"];
     const ramp2 = group.series[1].card.visualization_settings["map.colors"];

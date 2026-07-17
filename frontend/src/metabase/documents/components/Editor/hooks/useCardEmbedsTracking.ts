@@ -21,8 +21,6 @@ const extractCardEmbeds = (editor: TiptapEditor): CardEmbedRef[] => {
       refs.push({
         id: node.attrs.id,
         name: node.attrs.name,
-        stored_result_id: node.attrs.stored_result_id,
-        sort: node.attrs.sort,
       });
     }
   });

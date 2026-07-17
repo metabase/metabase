@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
@@ -194,3 +195,25 @@
                        (t2/select-one-fn :credentials :model/AuthIdentity
                                          :user_id user-id :provider "totp"))
               "sanity: the old key can no longer read the row"))))))
+
+(deftest lost-encryption-key-fails-closed-test
+  (testing "an instance started with the wrong key: verify errors (no bypass, no session), and
+            admin removal — which never decrypts — still recovers the account"
+    (let [secret (totp/generate-secret)
+          k1     "0123456789abcdef-key-A"
+          k2     "totally-different-key-B!"]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (encryption-test/with-secret-key k1
+          (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                           :provider    "totp"
+                                           :confirmed_at (t/instant)
+                                           :credentials  {:secret secret}}))
+        (encryption-test/with-secret-key k2
+          (testing "verification fails closed — an error, never a false-positive login"
+            (is (thrown? Exception
+                         (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
+          (testing "the enrollment row survives the failed attempt"
+            (is (= 1 (t2/count :auth_identity :user_id user-id :provider "totp"))))
+          (testing "disable! deletes without decrypting, so the admin escape hatch works"
+            (is (true? (enrollment/disable! user-id)))
+            (is (zero? (t2/count :auth_identity :user_id user-id :provider "totp")))))))))

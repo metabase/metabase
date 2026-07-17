@@ -1,9 +1,7 @@
 (ns metabase.queries.models.stored-result-use
-  "Tracks references to a `stored_result` snapshot. Each row records one referencing entity:
-  exactly one of `card_id` (a document cardEmbed's materialized Card) or `exploration_id`
-  (the exploration that produced the snapshot) is set. Used for lifecycle/GC and serdes, and by
-  the cached card-query endpoint to validate that a client-supplied `stored_result_id` is actually
-  paired with the card being read-checked. Lives in the queries module alongside `:model/StoredResult`."
+  "Tracks references to a `stored_result` snapshot. Each row records the `exploration_id`
+  (the exploration that produced the snapshot). Used for lifecycle/GC and serdes — not
+  for read authorization. Lives in the queries module alongside `:model/StoredResult`."
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -16,7 +14,7 @@
 
 (t2/define-before-insert :model/StoredResultUse
   [row]
-  (when (= (some? (:card_id row)) (some? (:exploration_id row)))
-    (throw (ex-info "stored_result_use requires exactly one of :card_id or :exploration_id to be set"
-                    {:card_id (:card_id row) :exploration_id (:exploration_id row)})))
+  (when-not (:exploration_id row)
+    (throw (ex-info "stored_result_use requires :exploration_id to be set"
+                    {:exploration_id (:exploration_id row)})))
   row)

@@ -33,15 +33,11 @@
              (dissoc search.config/filters :id)))
 
 (defn- spec-supported-attr-keys
-  "All attr keys a spec supports, including those provided by function attrs.
+  "All attr keys a spec supports.
   Keys with value false are excluded — false means 'not present' in the spec DSL."
   [spec]
   (into #{}
-        (mapcat (fn [[k v]]
-                  (cond
-                    (search.spec/function-attr? v) (conj (search.spec/function-attr-provides v) k)
-                    v [k]
-                    :else [])))
+        (keep (fn [[k v]] (when v k)))
         (:attrs spec)))
 
 (defn search-context->applicable-models
@@ -205,15 +201,11 @@
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
-    [[:dashboard-questions [:and
-                            [:or
-                             ;; leverage the fact that only card-related models populate this attribute
-                             [:= nil :search_index.dashboard_id]
-                             (when (:include-dashboard-questions? search-context)
-                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
-                            ;; documents with an exploration thread id are similar to a Dashboard Question - they aren't
-                            ;; searchable outside of their owning Exploration.
-                            [:= nil :search_index.exploration_thread_id]]]]
+    [[:dashboard-questions [:or
+                            ;; leverage the fact that only card-related models populate this attribute
+                            [:= nil :search_index.dashboard_id]
+                            (when (:include-dashboard-questions? search-context)
+                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]
