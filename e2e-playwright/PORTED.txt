@@ -51,6 +51,7 @@ admin-2/security-center.cy.spec.ts
 filters/relative-datetime.cy.spec.js
 question/settings.cy.spec.js
 documents/comments.cy.spec.ts
+dashboard/dashboard-reproductions.cy.spec.js
 # wave 9 in flight:
 visualizations-charts/gauge.cy.spec.js
 visualizations-charts/funnel.cy.spec.js

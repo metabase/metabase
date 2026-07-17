@@ -68,6 +68,7 @@
 - `LINK_URL`
 - `URL_WITH_PARAMS`
 - `URL_WITH_FILLED_PARAMS`
+- `URL_WITH_FILLED_PARAMS_ACTUAL` — `URL_WITH_FILLED_PARAMS` interpolates `FILTER_VALUE` ("123"), but neither
 - `NORMAL_USER_ID` — Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */
 - `USER_GROUPS` — Mirrors USER_GROUPS in e2e/support/cypress_data.js (fixed ids baked into
 - `aside` — The click-behavior sidebar. Cypress used bare cy.get("aside"); the only
@@ -110,7 +111,7 @@
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph: GET the graph, merge, PUT it back. */
 - `createQuestion` — Port of H.createQuestion for arbitrary details (collection_id,
 - `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard — unlike the spike's
-- `createDashboard` — Port of H.createDashboard accepting arbitrary details. */
+- `createDashboard` — Port of H.createDashboard (e2e/support/helpers/api/createDashboard.ts).
 - `createDashboardWithTabsLocal` — Port of the spec's createDashboardWithTabsLocal (also covers the one
 - `tabSlugMap` — Build the `${tabId}-${tabName}` slug map keyed by tab name. */
 - `captureNextAnchorClick` — Port of H.onNextAnchorClick: the frontend opens external URLs by creating
@@ -247,8 +248,10 @@
 - `assertTabSelected` — Port of H.assertTabSelected. */
 - `openDashboardSettingsSidebar` — Port of H.openDashboardSettingsSidebar. */
 - `closeDashboardSettingsSidebar` — Port of H.closeDashboardSettingsSidebar. */
+- `closeDashboardInfoSidebarWhenSettled` — closeDashboardInfoSidebar, retried as a unit.
 - `clickBehaviorSidebar` — Port of H.clickBehaviorSidebar(dashcardIndex): hover the card, click its
 - `countOpaqueElements` — Count the elements a locator matches that are NOT transparent.
+- `lastIndexInViewport` — Index of the LAST element a locator matches whose bounding box lies fully
 - `updatePermissionsGraph` — Port of cy.updatePermissionsGraph: GET the graph, merge, PUT it back. */
 - `sandboxTable` — Port of cy.sandboxTable: look up the table's schema/db, grant the group
 - `addParameterMappingToFirstDashcard` — The GET dashboard → PUT dashcards[0].parameter_mappings dance that issues

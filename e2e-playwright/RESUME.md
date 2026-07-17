@@ -38,7 +38,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | Slot | Spec file (lines) | State when the agent died |
 |---|---|---|
 | 1 | `tests/click-behavior.spec.ts` (2786) | Verification run in progress; result never seen. |
-| 2 | `tests/dashboard-reproductions.spec.ts` (2438) | First chunk running; unverified. |
+| 2 | `tests/dashboard-reproductions.spec.ts` (2438) | **DONE — verified and landed.** 40 pass / 1 skipped (`@skip` upstream) / **0 fixme**, on the **CI uberjar**, clean under `--repeat-each=2` (80/82). Source `dashboard/dashboard-reproductions.cy.spec.js` is in PORTED.txt; findings in `findings-inbox/dashboard-reproductions.md`. **Fixed a harness bug affecting every slot — see open thread #4 below (`MB_SITE_URL`).** A suspected product bug (12926) was **disproven by the jar** after Cypress had failed it identically — the fidelity cross-check alone did not catch it. Not WIP; leave alone. |
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **DONE — verified and landed.** 43/43 on the CI uberjar, clean under `--repeat-each=2` (86/86). Source is `dashboard-filters/parameters.cy.spec.js` (not `dashboard-parameters.cy.spec.js` — no such file). The suspected product bug is **disproven**: see open thread #2. Needed one helper fix (`undo` → newest toast); the spec itself was already correct. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | **DONE — verified and landed.** 46 pass / 0 skipped / 0 fixme, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** **39 pass / 1 skipped on the CI uberjar** (updated 2026-07-18: the 6 `test.fixme`s were re-enabled — they pass on the jar and were never product bugs; see thread #3). Only the upstream `@skip` remains. Note the 6 still fail on a local source-mode `--hot` backend — known artifact, CI is the gate. Not WIP; leave alone. |
@@ -57,7 +57,7 @@ Their new helper modules are equally unverified: `support/click-behavior.ts`,
 `repro1.png`, `scratch-repro2.ts`, `tests/zz-scratch-fixme.spec.ts` — agent
 scratch files, not part of the port.
 
-## Two open threads worth picking up
+## Open threads worth picking up
 
 **1. `native-subquery` autocomplete — SOLVED, and it retracted a finding.**
 The wave-8 CI failure (run 29569211972, 373/374 both legs) turned out to be a
@@ -155,6 +155,31 @@ the only standing product-bug claims.
 > **Consequence:** these 6 pass in CI (jar) and **fail on a local `--hot` run**.
 > Same trade already accepted for #22/#24's re-enabled tests. Local red here is
 > the known artifact, not a regression.
+
+**4. Slot backends had the wrong `site-url` — FIXED 2026-07-18 (harness bug).**
+Every per-worker backend restored `site-url = http://localhost:4000` from the
+e2e snapshot (they were captured against the standard :4000 dev backend), and
+`restore()` reinstated it per test. The frontend prefixes root-relative
+navigation targets with site-url (`getWithSiteUrl` in `utils/dom.ts`, called by
+`openUrl` in `visualizations/lib/open-url.ts:105`), so on a slot backend every
+**click-behavior / drill-through** navigation left for **:4000** — a different
+backend without the test's data. It fails *quietly*: the URL still matches
+`/question`, so `toHaveURL(/\/question/)` passes and the test dies later on a
+downstream assertion. All 4 of `dashboard-reproductions`' issue-17879 tests
+failed this way (in **both** harnesses — the Cypress screenshot showed the
+browser parked on `localhost:4000/question#…` reading "We're a little lost").
+
+Fixed in `support/worker-backend.ts`: slot backends now boot with
+`MB_SITE_URL=http://localhost:<port>`. Settings resolve env before the app DB,
+so it survives `restore()` (a DB write would not). 17879 went **0/4 → 4/4**
+(and from 30s timeouts to 5s each). Applies to source and jar mode alike — it's
+a restored DB value, independent of the artifact.
+
+> Scope: this is **not** the cause of threads #2/#3 (see #3 — those pass on the
+> jar at :4111 with site-url untouched). `openUrl` targets get the prefix;
+> react-router `Link` navigation doesn't. If you have a **landed port that was
+> verified on a slot before this fix and had drill-through tests fixme'd**,
+> it's worth a recheck.
 
 Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like

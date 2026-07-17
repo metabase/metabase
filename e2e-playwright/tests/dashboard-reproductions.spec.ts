@@ -196,8 +196,19 @@ test.describe("issue 61013", () => {
     await picker
       .getByPlaceholder("Search…", { exact: true })
       .pressSequentially(dashboardName);
-    await picker.getByText(dashboardName, { exact: true }).click();
-    await page.getByTestId("entity-picker-select-button").click();
+
+    // pressSequentially fires a debounced /api/search per keystroke, and a late
+    // response re-renders the result list and drops the selection — which
+    // re-disables Select. Asserting "enabled" then clicking still loses the
+    // race, so retry pick+Select as one unit until the modal actually closes.
+    const selectButton = page.getByTestId("entity-picker-select-button");
+    await expect(async () => {
+      await picker
+        .getByText(dashboardName, { exact: true })
+        .click({ timeout: 5000 });
+      await selectButton.click({ timeout: 5000 });
+      await expect(picker).toHaveCount(0, { timeout: 5000 });
+    }).toPass({ timeout: 30_000 });
   }
 
   test("should only add one card and save correctly to the dashboard when the dashboard is empty but has multiple tabs (metabase#61013)", async ({
@@ -394,7 +405,7 @@ test.describe("issue 12926", () => {
     // so a common frontend/environment cause is not excluded. FINDINGS #24 was
     // retracted after exactly this reasoning error. Next step is the same one
     // that retracted it: re-run against the CI uberjar + static assets.
-    test.fixme("should load the card with correct parameters after save", async ({
+    test("should load the card with correct parameters after save", async ({
       page,
       mb,
     }) => {
