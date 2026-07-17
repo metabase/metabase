@@ -35,6 +35,8 @@ export function DataAppsNavbarSection({
             key={dataApp.name}
             icon="app"
             onClick={onItemSelect}
+            rel="noopener noreferrer"
+            target="_blank"
             url={Urls.dataApp(dataApp.name)}
           >
             {dataApp.display_name}
