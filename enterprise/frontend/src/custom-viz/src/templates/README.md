@@ -304,4 +304,4 @@ Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine
   (no flexbox/grid, limited font support).
 - Avoid external dependencies that rely on browser APIs.
 - Inline images as base64 `data:` URLs or inline `<svg>` (see [Using Images](#using-images) above).
-- Keep rendering pure: data and settings in, JSX out.
+- `StaticVisualization` should be a pure component.
