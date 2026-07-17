@@ -165,6 +165,16 @@ lead that survived did so because the agent happened to narrate it out loud.
   `error-context.md` vanish before you read them. Use
   `scratchpad/run-<spec>-slot<N>.log`, and `--output` when artifacts matter.
   Also: `git status` will show sibling agents' files — only touch your own.
+- **Don't poll for a marker you never wrote to the log.**
+  `cmd > run.log; echo "EXIT: $?"` sends the marker to the *task output*, not
+  into `run.log` — so a `until grep -q "EXIT:" run.log` gate never fires. It
+  looks like the run is hanging, and every such gate becomes an immortal
+  `sleep` loop. One agent left **30** of them spinning and repeatedly
+  mis-read "task completed, output file empty" as a harness quirk. Either put
+  the marker in the log (`{ cmd; echo "EXIT: $?"; } > run.log 2>&1`) or gate on
+  something Playwright itself writes (`^\s+[0-9]+ (passed|failed)`). Before
+  finishing, `pgrep -f "until grep"` and reap your own — matching on *your*
+  log filenames, since siblings' pollers look identical.
 - **Porting agents must run verification in the FOREGROUND.** A backgrounded
   run leaves the agent waiting on a notification that never arrives, so it
   ends its turn silently and the slot stalls until the orchestrator resumes

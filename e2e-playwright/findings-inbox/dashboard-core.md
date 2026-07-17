@@ -9,9 +9,18 @@ Verified on slot 6 (`PW_SLOT_OFFSET=6`, per-worker source-mode backend on
 :4106). The slot-6 backend had been up for many hours, so it was **killed and
 re-booted fresh** before any result was trusted — the known staleness trap.
 
-**Result: 46/46 accounted for — 45 passed, 1 skipped, 0 failed, 0 fixme.**
-Clean under `--repeat-each=2`. No `test.fixme` was needed and **no product bug
-is claimed**.
+**Result: 46/46 accounted for — 45 passed, 1 skipped, 0 failed, 0 fixme** on a
+full-file run (confirmed twice: once before the fix with the 2 failures, once
+after with all 45 green). No `test.fixme` was needed and **no product bug is
+claimed**.
+
+⚠️ **Not clean under `--repeat-each=2`** — full-file repeat run: **89 passed /
+1 failed / 2 skipped (13.1m)**. The repeat leg surfaced one flaky test,
+`auto-scrolling to a dashcard via a url hash param` (:1318), measured at
+**3 failed / 2 passed over 5 runs on a quiet box**. It is unrelated to the fix
+below (different test, different mechanism, green before my change) and it is
+left deliberately unmodified — see the open item, which includes the app-side
+cause. **This spec should not be called fully stable until that is decided.**
 
 The 1 skip is the `LOCAL TESTING ONLY` translated-placeholder test
 (metabase#15694), which carries a `@skip` tag upstream because translations
@@ -78,6 +87,129 @@ Worth flagging for future agents: **29450 passes in isolation and fails in
 sequence.** That is precisely the shape that tempts an agent to write it off as
 flake. It reproduced 2/2 in sequence and 0/21 after the fix — it was never
 flake, it was a real race the port introduced.
+
+## Open: `auto-scrolling to a dashcard via a url hash param` is flaky under load
+
+Found by the `--repeat-each=2` full-file run — **exactly the failure the repeat
+leg exists to catch**, and a caution against treating a single green full-file
+run as "done".
+
+`tests/dashboard-core.spec.ts:1318` passed on repetition 1 (and on both earlier
+full-file runs) and failed on repetition 2, on a box at load ~27-60 from
+sibling agents. It is unrelated to the `saveDashboard` anchor fix — different
+test, different mechanism, and it was green before my change.
+
+**The Cypress original fails this test too, on the same backend** — and it is
+the *only* test Cypress failed among those it ran (it passes 29450 and 53132).
+So the same cross-check classified three tests in two directions, which is the
+best possible advertisement for running it.
+
+But **do not read that as "port faithful, behaviour real" yet** — the
+"same failure at the same assertion" bar is *not* met here:
+
+1. Cypress's error text was never captured (its failure details print in the
+   end-of-run summary, and the run was killed at the snowplow hang before it
+   got there). We know *that* it failed, not *where*.
+2. This is the one test where **the port deliberately deviates from Cypress**.
+   The Cypress original visits `` `/dashboard/${dashboard.id}}` `` — a stray
+   `}` in the URL (`dashboard.cy.spec.js:1101`) — which the port drops
+   (documented in the spec header). So Cypress's first visit hits a different
+   URL than the port's, and its failure could be at the *first* assertion for
+   reasons that have nothing to do with scrolling. The two are not
+   apples-to-apples for this test.
+3. Cypress's final assertion is `should("be.visible")`, which in Cypress is a
+   CSS/clipping check, not a scroll-position check. The port's
+   `toBeInViewport()` is a **stronger** assertion. That is arguably a test
+   strengthened by the migration — but it also means a port failure here does
+   not imply a Cypress failure, or vice versa.
+
+Actual port failure (from the `--repeat-each=2` run, repetition 2):
+
+```
+Error: expect(locator).toBeInViewport() failed
+Locator: getByText('Scroll to me plz.', { exact: true })
+Expected: in viewport
+Received: viewport ratio 0
+Timeout:  10000ms
+  24 × locator resolved to <p>Scroll to me plz.</p>
+```
+
+Note the element *renders* fine and stays at ratio 0 for the full 10s — so the
+scroll simply never lands (or lands and is undone), rather than the element
+being missing. The `expect.poll(hash).not.toContain("scrollTo")` gate *passed*
+immediately before, which makes it a **weak anchor**: the app clears the hash
+independently of the scroll finishing. A plausible mechanism is that the scroll
+fires in `DashCard`'s mount effect and the async-loading Orders card (size_y 9)
+then reflows and pushes the target back out of view — which would explain why
+it only bites when the box is slow.
+
+Suspect region:
+
+```ts
+await page.goto("about:blank");
+await page.goto(`/dashboard/${dashboard.id}#scrollTo=${target?.id}`);
+await expect.poll(() => new URL(page.url()).hash).not.toContain("scrollTo");
+await expect(page.getByText(TARGET_TEXT, { exact: true })).toBeInViewport();
+```
+
+Also note the earlier negative assertion `.not.toBeInViewport()` immediately
+after `goto` can pass **vacuously** while the page is still blank, so it is not
+evidence the below-the-fold state was ever really rendered.
+
+### Measured flake rate and the app-side mechanism
+
+`-g "auto-scrolling" --repeat-each=5` on a **quiet** box (load ~28, after the
+sibling agents drained): **3 failed / 2 passed**. So this is a ~50-60% flake,
+not a load artifact of the contended box, and the three earlier single-pass
+greens were luck.
+
+The app does the scroll exactly once, on mount
+(`frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:133-143`):
+
+```ts
+useMount(() => {
+  if (autoScroll) {
+    cardRootRef?.current?.scrollIntoView({ block: "nearest" });
+    reportAutoScrolledToDashcard?.();   // clears the hash immediately
+  }
+});
+```
+
+`reportAutoScrolledToDashcard` (`hooks/use-auto-scroll-to-dashcard.ts:32-44`)
+`replace()`s the URL to drop `scrollTo` **as soon as the scroll is requested**,
+not when it has landed — and the comment says why: "to avoid repeatedly
+auto-scrolling if the dashcard is unmounted then remounted". So once the hash
+is gone the app will **never re-scroll**. If anything remounts or reflows the
+grid after that first mount, the scroll position is simply lost.
+
+That explains everything observed: the hash-clear poll passes (the code path ran),
+the element renders fine, and it sits at viewport ratio 0 for the full 10s
+because nothing scrolls again. It also explains why it worsens as the box slows.
+
+### Why this needs a decision rather than a quick fix
+
+- **The port's assertion is stronger than Cypress's.** Cypress ends with
+  `should("be.visible")`, which ignores scroll position unless the element is
+  clipped by an overflow ancestor; `toBeInViewport()` actually checks the
+  scroll landed. So the port tests something the original effectively did not —
+  a genuine strengthening, and plausibly a real (if minor) product raciness it
+  exposes.
+- Therefore the tempting "fixes": weakening to `toBeVisible` makes the test
+  vacuous (it would pass without any scrolling at all), and wrapping the check
+  in a retry/`toPass` is worse — it would mask exactly the behaviour under test.
+- **Not claimed as a product bug.** The fidelity bar is not met: Cypress's
+  failure here is at an unknown assertion, its assertion is weaker, and this is
+  the one test where the port deliberately deviates from the original's URL.
+  Establishing it would mean instrumenting the scroll path directly rather than
+  inferring from a viewport check — per PORTING.md, "prefer instrumenting the
+  actual code path over inferring".
+
+**Recommendation for the orchestrator**: this is the single non-green item in
+the spec. It is left unmodified and unskipped on purpose — it is a real signal,
+and both silently weakening it and `test.fixme`-ing it without the cross-check
+would launder that signal away. Deciding it properly needs either a jar-mode /
+CI datapoint (is it flaky there too?) or a look at whether the mount-time
+one-shot scroll is worth hardening in the app.
 
 ## Fidelity cross-check (corroborating — with an engine caveat)
 

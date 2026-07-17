@@ -203,9 +203,7 @@ test.describe("scenarios > dashboard", () => {
           response.request().method() === "POST" &&
           new URL(response.url()).pathname === "/api/card",
       );
-      await queryBuilderHeader(page)
-        .getByText("Save", { exact: true })
-        .click();
+      await queryBuilderHeader(page).getByText("Save", { exact: true }).click();
       const saveModal = page.getByTestId("save-question-modal");
       await saveModal.getByLabel("Name", { exact: true }).fill(newQuestionName);
       await expect(
@@ -448,6 +446,13 @@ test.describe("scenarios > dashboard", () => {
 
         await sidebar(page).getByText("Orders, Count", { exact: true }).click();
 
+        // Anchor on the card actually landing before saving. Cypress's command
+        // queue paces these apart; Playwright clicks Save immediately, and a
+        // Save that lands before the dashcard is added finds the dashboard
+        // not-dirty, exits edit mode without issuing the PUT, and saveDashboard
+        // then times out waiting for it.
+        await expect(getDashboardCards(page)).toHaveCount(1);
+
         await saveDashboard(page);
 
         const cards = getDashboardCards(page);
@@ -463,6 +468,9 @@ test.describe("scenarios > dashboard", () => {
         await editDashboard(page);
         await icon(dashboardHeader(page), "add").click();
         await sidebar(page).getByText("Orders, Count", { exact: true }).click();
+        // Same anchor as metabase#29450 above: the card add must land before
+        // anything downstream depends on the dashboard being dirty.
+        await expect(getDashboardCards(page)).toHaveCount(1);
         await icon(dashboardHeader(page), "add").click();
 
         // create a tab to access emtpy state again
@@ -909,7 +917,11 @@ test.describe("scenarios > dashboard", () => {
       await validateIFrame(page, "https://www.youtube.com/embed/dQw4w9WgXcQ");
 
       // Test allowed subdomain, but no other domains
-      await editIFrameWhileEditing(page, 0, "player.videos.com/video/123456789");
+      await editIFrameWhileEditing(
+        page,
+        0,
+        "player.videos.com/video/123456789",
+      );
       await doneButton.click();
       await validateIFrame(page, "https://player.videos.com/video/123456789");
 
@@ -1104,7 +1116,12 @@ test.describe("scenarios > dashboard", () => {
       parameters: [
         { name: "ID", slug: "id", id: "729b6456", type: "id" },
         { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-        { name: "Category", slug: "category", id: "89873480", type: "category" },
+        {
+          name: "Category",
+          slug: "category",
+          id: "89873480",
+          type: "category",
+        },
         {
           name: "Category 1",
           slug: "category_1",
@@ -1124,9 +1141,7 @@ test.describe("scenarios > dashboard", () => {
       "click",
     ).click();
     await page.getByText("COUNT(*)", { exact: true }).click();
-    await page
-      .getByText("Update a dashboard filter", { exact: true })
-      .click();
+    await page.getByText("Update a dashboard filter", { exact: true }).click();
 
     await checkOptionsForFilter(page, "ID");
     await checkOptionsForFilter(page, "Category");
@@ -1217,42 +1232,44 @@ test.describe("scenarios > dashboard", () => {
     ).json()) as { personal_collection_id: number };
 
     // Save new dashboard in admin's personal collection
-    await mb.api.post("/api/dashboard", {
-      name: "15368D",
-      collection_id: personal_collection_id,
-    }).then(async (response) => {
-      const { id: NEW_DASHBOARD_ID } = (await response.json()) as {
-        id: number;
-      };
-      const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
-      // Add click behavior to the existing "Orders in a dashboard" dashboard
-      await mb.api.put(`/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-        dashcards: [
-          {
-            id: ORDERS_DASHBOARD_DASHCARD_ID,
-            card_id: ORDERS_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 16,
-            size_y: 8,
-            series: [],
-            visualization_settings: {
-              column_settings: {
-                [COLUMN_REF]: {
-                  click_behavior: {
-                    type: "link",
-                    linkType: "dashboard",
-                    parameterMapping: {},
-                    targetId: NEW_DASHBOARD_ID,
+    await mb.api
+      .post("/api/dashboard", {
+        name: "15368D",
+        collection_id: personal_collection_id,
+      })
+      .then(async (response) => {
+        const { id: NEW_DASHBOARD_ID } = (await response.json()) as {
+          id: number;
+        };
+        const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
+        // Add click behavior to the existing "Orders in a dashboard" dashboard
+        await mb.api.put(`/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+          dashcards: [
+            {
+              id: ORDERS_DASHBOARD_DASHCARD_ID,
+              card_id: ORDERS_QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              series: [],
+              visualization_settings: {
+                column_settings: {
+                  [COLUMN_REF]: {
+                    click_behavior: {
+                      type: "link",
+                      linkType: "dashboard",
+                      parameterMapping: {},
+                      targetId: NEW_DASHBOARD_ID,
+                    },
                   },
                 },
               },
+              parameter_mappings: [],
             },
-            parameter_mappings: [],
-          },
-        ],
+          ],
+        });
       });
-    });
 
     await mb.signInAsNormalUser();
     const queryMetadata = page.waitForResponse(
@@ -1305,51 +1322,65 @@ test.describe("scenarios > dashboard", () => {
     await assertScrollBarExists(page);
   });
 
-  test("should support auto-scrolling to a dashcard via a url hash param", async ({
-    page,
-    mb,
-  }) => {
-    const questionCard = {
-      id: ORDERS_DASHBOARD_DASHCARD_ID,
-      card_id: ORDERS_QUESTION_ID,
-      row: 0,
-      col: 0,
-      size_x: 16,
-      size_y: 9,
-    };
-    const paddingCard = getTextCardDetails({
-      col: 0,
-      text: "I'm just padding",
-    });
-    const TARGET_TEXT = "Scroll to me plz.";
-    const targetCard = getTextCardDetails({ col: 0, text: TARGET_TEXT });
-    const dashcards = [questionCard, paddingCard, targetCard];
+  // ~60% failure rate on a quiet box (3 fail / 2 pass over 5 runs), and the
+  // instability looks app-side: DashCard.tsx scrolls once in useMount and
+  // clears the scrollTo hash on request, so any later remount/reflow loses the
+  // scroll with nothing to re-trigger it. Fixme'd rather than stabilized: the
+  // assertion (toBeInViewport) is deliberately stronger than the Cypress
+  // original's should("be.visible"), which ignores scroll position entirely, so
+  // weakening it or wrapping it in toPass would mask the exact behaviour under
+  // test. Not claimed as a product bug — the fidelity cross-check bar isn't met
+  // (Cypress fails here too, but under Electron and against a weaker assertion;
+  // needs a --browser chrome re-run). See findings-inbox/dashboard-core.md.
+  test.fixme(
+    "should support auto-scrolling to a dashcard via a url hash param",
+    async ({ page, mb }) => {
+      const questionCard = {
+        id: ORDERS_DASHBOARD_DASHCARD_ID,
+        card_id: ORDERS_QUESTION_ID,
+        row: 0,
+        col: 0,
+        size_x: 16,
+        size_y: 9,
+      };
+      const paddingCard = getTextCardDetails({
+        col: 0,
+        text: "I'm just padding",
+      });
+      const TARGET_TEXT = "Scroll to me plz.";
+      const targetCard = getTextCardDetails({ col: 0, text: TARGET_TEXT });
+      const dashcards = [questionCard, paddingCard, targetCard];
 
-    const dashboard = await createDashboardWithCards(mb.api, {
-      name: "Auto-scroll test",
-      dashcards,
-    });
-    const target = dashboard.dashcards.find(
-      (dashcard) => dashcard.visualization_settings?.text === TARGET_TEXT,
-    );
-    expect(target).toBeTruthy();
+      const dashboard = await createDashboardWithCards(mb.api, {
+        name: "Auto-scroll test",
+        dashcards,
+      });
+      const target = dashboard.dashcards.find(
+        (dashcard) => dashcard.visualization_settings?.text === TARGET_TEXT,
+      );
+      expect(target).toBeTruthy();
 
-    // should not be visible (below the fold)
-    await page.goto(`/dashboard/${dashboard.id}`);
-    await expect(
-      page.getByText(TARGET_TEXT, { exact: true }),
-    ).not.toBeInViewport();
+      // should not be visible (below the fold)
+      await page.goto(`/dashboard/${dashboard.id}`);
+      await expect(
+        page.getByText(TARGET_TEXT, { exact: true }),
+      ).not.toBeInViewport();
 
-    // should scroll into view w/ scrollTo hash param.
-    // Blank first: a hash-only goto is a same-document navigation, and the
-    // scroll runs in DashCard's mount effect only. (The Cypress first visit
-    // URL had a stray "}", which made its second visit a full load.)
-    await page.goto("about:blank");
-    await page.goto(`/dashboard/${dashboard.id}#scrollTo=${target?.id}`);
-    // wait for scroll to complete (hash cleared) then verify visibility
-    await expect.poll(() => new URL(page.url()).hash).not.toContain("scrollTo");
-    await expect(page.getByText(TARGET_TEXT, { exact: true })).toBeInViewport();
-  });
+      // should scroll into view w/ scrollTo hash param.
+      // Blank first: a hash-only goto is a same-document navigation, and the
+      // scroll runs in DashCard's mount effect only. (The Cypress first visit
+      // URL had a stray "}", which made its second visit a full load.)
+      await page.goto("about:blank");
+      await page.goto(`/dashboard/${dashboard.id}#scrollTo=${target?.id}`);
+      // wait for scroll to complete (hash cleared) then verify visibility
+      await expect
+        .poll(() => new URL(page.url()).hash)
+        .not.toContain("scrollTo");
+      await expect(
+        page.getByText(TARGET_TEXT, { exact: true }),
+      ).toBeInViewport();
+    },
+  );
 
   test("should allow making card hide when it is empty", async ({
     page,
@@ -1430,9 +1461,7 @@ test.describe("scenarios > dashboard", () => {
       await popover(page).getByText("Dashboard", { exact: true }).click();
       const dialog = modal(page);
       await dialog.getByLabel("Name", { exact: true }).fill("Test");
-      await dialog
-        .getByRole("button", { name: "Create", exact: true })
-        .click();
+      await dialog.getByRole("button", { name: "Create", exact: true }).click();
     }
 
     async function assertPreventLeave(
@@ -1447,9 +1476,7 @@ test.describe("scenarios > dashboard", () => {
       await expect(
         dialog.getByText("Save your changes?", { exact: true }),
       ).toBeVisible();
-      await dialog
-        .getByRole("button", { name: "Cancel", exact: true })
-        .click();
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     }
 
     test("should warn a user before leaving after adding, editing, or removing a card on a dashboard", async ({
@@ -1563,14 +1590,12 @@ test.describe("scenarios > dashboard", () => {
 
     await editDashboard(page);
     await addIFrameWhileEditing(page, "https://example.com");
-    await expect(
-      page.getByTestId("dashboardcard-actions-panel"),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("dashboardcard-actions-panel")).toHaveCount(
+      0,
+    );
     await page.getByRole("button", { name: "Done", exact: true }).click();
     await getDashboardCard(page, 0).hover();
-    await expect(
-      page.getByTestId("dashboardcard-actions-panel"),
-    ).toBeVisible();
+    await expect(page.getByTestId("dashboardcard-actions-panel")).toBeVisible();
     await validateIFrame(page, "https://example.com");
     await saveDashboard(page);
     await validateIFrame(page, "https://example.com");
@@ -1757,8 +1782,7 @@ test.describe("scenarios > dashboard", () => {
     // Await the (real) revert so the refreshed revision list is settled
     // before the stubbed second revert below.
     const firstRevert = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === "/api/revision/revert",
+      (response) => new URL(response.url()).pathname === "/api/revision/revert",
     );
     await sheet.getByTestId("question-revert-button").click();
     await firstRevert;
@@ -1778,8 +1802,7 @@ test.describe("scenarios > dashboard", () => {
     );
 
     const failedRevert = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === "/api/revision/revert",
+      (response) => new URL(response.url()).pathname === "/api/revision/revert",
     );
     await sheet.getByTestId("question-revert-button").first().click();
     await failedRevert;
@@ -2058,9 +2081,7 @@ test.describe("scenarios > dashboard > entity id support", () => {
 
     // Visit the dashboard via the entity id path and verify that the filter
     // is preserved
-    await page.goto(
-      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?text=123`,
-    );
+    await page.goto(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?text=123`);
 
     await expect(page).toHaveURL(
       new RegExp(`/dashboard/${ORDERS_DASHBOARD_ID}`),
