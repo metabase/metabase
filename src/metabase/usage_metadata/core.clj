@@ -9,7 +9,8 @@
 
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Deterministically mine creation-ready Measure candidates from verified, official-collection,
-  or popular questions and models. Existing Measures are excluded by exact definition."
+  or popular questions and models. Bare row counts are excluded; existing Measures are excluded by
+  semantic definition."
   [opts :- ::usage-metadata.schema/candidate-opts]
   (insights/candidate-measures opts))
 
