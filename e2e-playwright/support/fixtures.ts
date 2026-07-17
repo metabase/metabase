@@ -13,14 +13,18 @@ import { startWorkerBackend } from "./worker-backend";
  */
 class MetabaseHarness {
   readonly api: MetabaseApi;
+  /** The backend this test actually targets (per-worker port when enabled). */
+  readonly baseUrl: string;
   private sessionId: string | undefined;
 
   constructor(
     private context: BrowserContext,
     request: APIRequestContext,
     private sampleDbUrl?: string,
+    baseUrl: string = BASE_URL,
   ) {
     this.api = new MetabaseApi(request, () => this.sessionId);
+    this.baseUrl = baseUrl;
   }
 
   async signIn(user: UserName = "admin") {
@@ -171,7 +175,12 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   mb: async ({ context, request, workerBackend }, use) => {
     await use(
-      new MetabaseHarness(context, request, workerBackend.sampleDbUrl),
+      new MetabaseHarness(
+        context,
+        request,
+        workerBackend.sampleDbUrl,
+        workerBackend.url,
+      ),
     );
   },
 });

@@ -49,14 +49,21 @@ export async function visitFullAppEmbeddingUrl(
   {
     url,
     qs,
-  }: { url: string; qs: Record<string, string | number | boolean> },
+    // Per-worker-backend mode overrides the test's baseURL; the static
+    // BASE_URL would point the iframe at the wrong backend. Pass mb.baseUrl.
+    baseUrl = BASE_URL,
+  }: {
+    url: string;
+    qs: Record<string, string | number | boolean>;
+    baseUrl?: string;
+  },
 ): Promise<FrameLocator> {
   // Chromium's Private Network Access rules block the framed app's requests
   // to local addresses because the fulfilled document has no IP address
   // space; granting the permission to the app origin lifts that.
   await page
     .context()
-    .grantPermissions(["local-network-access"], { origin: BASE_URL });
+    .grantPermissions(["local-network-access"], { origin: baseUrl });
 
   // The backend sends X-Frame-Options: DENY and frame-ancestors 'none';
   // Cypress's proxy strips those headers, so strip them from document
@@ -64,7 +71,7 @@ export async function visitFullAppEmbeddingUrl(
   // on the backend's set-cookie headers when the runner is bun.
   await page.route(
     (routeUrl) =>
-      routeUrl.href.startsWith(BASE_URL) &&
+      routeUrl.href.startsWith(baseUrl) &&
       routeUrl.pathname !== HARNESS_PATH,
     async (route) => {
       if (route.request().resourceType() !== "document") {
@@ -94,11 +101,11 @@ export async function visitFullAppEmbeddingUrl(
   );
   // The harness page must live on the app origin: a setContent page is not a
   // secure context, so Chromium blocks the iframe's local-network requests.
-  const harnessUrl = `${BASE_URL}${HARNESS_PATH}`;
+  const harnessUrl = `${baseUrl}${HARNESS_PATH}`;
   await page.route(harnessUrl, (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: `<!doctype html><html><body style="margin:0"><iframe id="embed" name="embed" src="${BASE_URL}${url}?${params.toString()}" style="width:100%;height:100vh;border:0"></iframe></body></html>`,
+      body: `<!doctype html><html><body style="margin:0"><iframe id="embed" name="embed" src="${baseUrl}${url}?${params.toString()}" style="width:100%;height:100vh;border:0"></iframe></body></html>`,
     }),
   );
   await page.goto(harnessUrl);

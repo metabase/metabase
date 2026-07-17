@@ -61,15 +61,18 @@ test.describe("scenarios > question > bookmarks", () => {
       navigationSidebar(page).getByText("Orders", { exact: true }),
     ).toBeVisible();
 
-    // Rename bookmarked question. The testid sits on the EditableText root;
-    // its textarea holds the value, and blur submits the rename.
-    const title = page.getByTestId("saved-question-header-title");
-    await title.click();
-    const titleInput = title.locator("textarea");
+    // Rename bookmarked question. Clicking the title swaps in a focused
+    // textbox whose accessible name ("Add title") comes from its
+    // placeholder — getByLabel can't match that; role+name can.
+    await page.getByTestId("saved-question-header-title").click();
+    const titleInput = page.getByRole("textbox", { name: "Add title" });
     await titleInput.press("End");
     await titleInput.pressSequentially(" 2");
     await titleInput.blur();
 
+    // The rename re-render can collapse the navbar; re-open (self-healing,
+    // no-op when already open) before asserting the bookmark name updated.
+    await openNavigationSidebar(page);
     await expect(
       navigationSidebar(page).getByText("Orders 2", { exact: true }),
     ).toBeVisible();

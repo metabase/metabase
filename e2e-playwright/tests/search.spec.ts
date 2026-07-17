@@ -42,10 +42,12 @@ const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const visitEmbeddingWithSearch = (
   page: Page,
+  baseUrl: string,
   url = "/",
 ): Promise<FrameLocator> =>
   visitFullAppEmbeddingUrl(page, {
     url,
+    baseUrl,
     qs: {
       top_nav: true,
       search: true,
@@ -59,8 +61,8 @@ test.describe("scenarios > search", () => {
   });
 
   test.describe("universal search", () => {
-    test("should work for admin (metabase#20018)", async ({ page }) => {
-      const embed = await visitEmbeddingWithSearch(page, "/");
+    test("should work for admin (metabase#20018)", async ({ page, mb }) => {
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       const searchBar = getSearchBar(embed);
       await searchBar.click();
       await searchBar.pressSequentially("orders count");
@@ -116,7 +118,7 @@ test.describe("scenarios > search", () => {
       mb,
     }) => {
       await mb.signInAsNormalUser();
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       const search = waitForSearchResponse(page);
       await getSearchBar(embed).fill("product");
       await getSearchBar(embed).press("Enter");
@@ -131,7 +133,7 @@ test.describe("scenarios > search", () => {
       mb,
     }) => {
       await mb.signIn("nodata");
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       const search = waitForSearchResponse(page);
       await getSearchBar(embed).fill("product");
       await getSearchBar(embed).press("Enter");
@@ -154,7 +156,7 @@ test.describe("scenarios > search", () => {
           searchRequests.push(request.url());
         }
       });
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       const search = waitForSearchResponse(page);
       await getSearchBar(embed).click();
       await getSearchBar(embed).pressSequentially("ord");
@@ -200,7 +202,7 @@ test.describe("scenarios > search", () => {
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       });
       await mb.signInAsNormalUser();
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       await getSearchBar(embed).click();
       await getSearchBar(embed).pressSequentially("Test");
 
@@ -226,7 +228,7 @@ test.describe("scenarios > search", () => {
           "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
       });
       await mb.signInAsNormalUser();
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
       await getSearchBar(embed).click();
       await getSearchBar(embed).pressSequentially("Test");
 
@@ -248,9 +250,11 @@ test.describe("scenarios > search", () => {
 
     test("should not dismiss when a dashboard finishes loading (metabase#35009)", async ({
       page,
+      mb,
     }) => {
       const embed = await visitEmbeddingWithSearch(
         page,
+        mb.baseUrl,
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
 
@@ -289,7 +293,7 @@ test.describe("scenarios > search", () => {
           await route.fulfill({ response });
         },
       );
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
 
       // Type as soon as possible, before the dashboard has finished loading
       await getSearchBar(embed).click();
@@ -308,8 +312,9 @@ test.describe("scenarios > search", () => {
   test.describe("accessing full page search with `Enter`", () => {
     test("should not render full page search if user has not entered a text query", async ({
       page,
+      mb,
     }) => {
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
 
       const recentViews = page.waitForResponse(
         (response) =>
@@ -330,8 +335,9 @@ test.describe("scenarios > search", () => {
 
     test("should render full page search when search text is present and user clicks 'Enter'", async ({
       page,
+      mb,
     }) => {
-      const embed = await visitEmbeddingWithSearch(page, "/");
+      const embed = await visitEmbeddingWithSearch(page, mb.baseUrl, "/");
 
       const search = waitForSearchResponse(page);
       await getSearchBar(embed).click();
@@ -409,6 +415,7 @@ test.describe("issue 28788", () => {
 
     const embed = await visitFullAppEmbeddingUrl(page, {
       url: "/",
+      baseUrl: mb.baseUrl,
       qs: { top_nav: true, search: true },
     });
     const search = waitForSearchResponse(page);
