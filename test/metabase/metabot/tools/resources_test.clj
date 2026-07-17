@@ -190,6 +190,33 @@
     (is (thrown? Exception
                  (#'read-resource/dispatch "https://example.com")))))
 
+(deftest dispatch-rejects-non-numeric-id-test
+  (testing "a non-numeric id segment throws a directive error stating the numeric-id contract"
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://question/VZbHZIeqQ2HhZv5r0pO6a")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://table/orders")))
+    (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
+                          (#'read-resource/dispatch "metabase://collection/root"))))
+  (testing "the error carries agent-error metadata"
+    (let [e (try
+              (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
+              (catch Exception e e))]
+      (is (= 400 (:status-code (ex-data e))))
+      (is (true? (:agent-error? (ex-data e))))))
+  (testing "the directive error text reaches read_resource output"
+    (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://model/VZbHZIeqQ2HhZv5r0pO6a/fields"]})]
+      (is (str/includes? output "URIs use the numeric entity id"))))
+  (testing "non-id segments are unaffected — schema names and field ids may be non-numeric"
+    (is (= ["database" "1" "schemas" "PUBLIC" "tables"]
+           (:segments (#'read-resource/parse-uri "metabase://database/1/schemas/PUBLIC/tables"))))
+    (is (nil? (#'read-resource/check-numeric-id-segment!
+               "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
+
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
     (read-resource/read-resource

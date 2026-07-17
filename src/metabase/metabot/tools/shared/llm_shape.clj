@@ -692,8 +692,23 @@
       (clojure.core/name result-type)
       "item")))
 
+(defn- search-result-uri-type
+  "Map a search-result type to the entity-type segment of its `read_resource` URI, or nil
+   when the type has no URI form (i.e. no dispatch clause in `metabot.tools.resources`)."
+  [result-type]
+  (let [t (some-> result-type clojure.core/name)]
+    (case t
+      ("model" "dataset") "model"
+      ("card" "question") "question"
+      ("database" "collection" "table" "metric"
+                  "measure" "segment" "transform" "dashboard") t
+      nil)))
+
 (defn search-result->xml
   "Format a single search result as XML element.
+   Emits a `uri` attribute (the numeric-id `read_resource` URI) for every type that has a
+   URI form, so the LLM feeds it back verbatim instead of assembling URIs by hand — the
+   failure mode there is pasting the `portable_entity_id` NanoID into the id slot.
    Includes database_id, database_engine, and fully_qualified_name for table/model results
    to match Python AI Service search output. For saved-question and model results also
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
@@ -726,6 +741,9 @@
      :search_result
      {:search_tag_name (search-result-tag-name type)
       :search_id (str id)
+      :search_uri (when id
+                    (when-let [uri-type (search-result-uri-type type)]
+                      (metabase-uri uri-type id)))
       :search_name name
       :search_has_verified (some? verified)
       :search_verified verified
