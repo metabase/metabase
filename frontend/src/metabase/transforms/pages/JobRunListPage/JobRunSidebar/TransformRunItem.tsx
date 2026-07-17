@@ -13,7 +13,7 @@ import {
 import { Anchor, Box, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { TransformRunForJobRun } from "metabase-types/api";
 
 import S from "./TransformRunItem.module.css";

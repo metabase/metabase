@@ -6,7 +6,7 @@ import _ from "underscore";
 import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
-import { displayNameForColumn } from "metabase/utils/formatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,

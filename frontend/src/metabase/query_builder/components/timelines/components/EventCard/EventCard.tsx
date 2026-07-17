@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

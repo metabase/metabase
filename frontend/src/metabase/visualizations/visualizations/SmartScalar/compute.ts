@@ -4,8 +4,10 @@ import { t } from "ttag";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import {
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/value-formatting";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";

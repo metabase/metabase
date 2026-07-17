@@ -11,7 +11,7 @@ import { Route } from "metabase/router";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/utils/formatting/datetime-utils";
+} from "metabase/value-formatting";
 import type { CollectionItem, IconName } from "metabase-types/api";
 import {
   createMockCollection,

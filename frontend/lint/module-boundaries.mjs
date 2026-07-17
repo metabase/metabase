@@ -135,6 +135,7 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
+  createElement({ type: "shared", name: "value-formatting" }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -347,6 +348,27 @@ const rules = [
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
+  },
+  // formatting is a leaf utility module. Most of it lived at the lib tier
+  // before it was unified here, and it must stay importable from anywhere -
+  // so nothing app-ward may leak into it. The only exceptions are the JSX
+  // glue (common links) and the SDK link handling in ui.tsx.
+  {
+    from: ["shared/value-formatting"],
+    disallow: ["shared/*"],
+    message:
+      "formatting is a leaf module - value formatting must not depend on app code (only common/embedding-sdk JSX glue is allowed)",
+  },
+  {
+    from: ["shared/value-formatting"],
+    allow: [
+      "shared/value-formatting",
+      "shared/common",
+      "shared/embedding-sdk",
+      "shared/embedding-sdk-shared",
+      // specs only: SDK plugin setup for testing the ui.tsx link renderer
+      "shared/embedding-sdk-window-bridge",
+    ],
   },
   {
     from: ["feature/*"],

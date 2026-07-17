@@ -3,7 +3,7 @@ import innerText from "react-innertext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { formatValue } from "metabase/visualizations/lib/formatting/value";
+import { formatValue } from "metabase/value-formatting";
 import type { ColumnSettings } from "metabase-types/api";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";

@@ -1,7 +1,12 @@
 import micromatch from "micromatch";
 
 export type ModuleDef = { type: string; pattern: string };
-export type Rule = { from: string[]; allow: string[] };
+export type Rule = {
+  from: string[];
+  allow?: string[];
+  disallow?: string[];
+  message?: string;
+};
 
 export type ModuleNode = { type: string; regex: RegExp };
 
@@ -203,8 +208,10 @@ export function buildModuleGraph(
     allTypes.map((type) => [type, new Set()]),
   );
   for (const rule of rules) {
+    // The graph over-approximates which imports are possible, so disallow
+    // rules (which only narrow permissions) are safely ignored.
     const fromTypes = rule.from.flatMap(expandPattern);
-    const allowTypes = rule.allow.flatMap(expandPattern);
+    const allowTypes = (rule.allow ?? []).flatMap(expandPattern);
     for (const target of allowTypes) {
       for (const importer of fromTypes) {
         if (importer !== target) {

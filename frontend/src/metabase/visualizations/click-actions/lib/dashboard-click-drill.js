@@ -8,8 +8,10 @@ import {
   getTargetForQueryParams,
 } from "metabase/parameters/utils/click-behavior";
 import * as Urls from "metabase/urls";
-import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
-import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
+import {
+  getDataFromClicked,
+  renderLinkURLForClick,
+} from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";

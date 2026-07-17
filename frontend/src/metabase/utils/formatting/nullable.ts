@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "../constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 
 export function formatNullable<T>(value: T | null | undefined) {
   return value ?? NULL_DISPLAY_VALUE;

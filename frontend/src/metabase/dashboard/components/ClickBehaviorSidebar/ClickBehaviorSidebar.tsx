@@ -10,7 +10,7 @@ import {
 } from "metabase/dashboard/context";
 import { isTableDisplay } from "metabase/dashboard/utils";
 import { canSaveClickBehavior } from "metabase/parameters/utils/click-behavior";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
+import { clickBehaviorIsValid } from "metabase/value-formatting";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ClickBehavior,

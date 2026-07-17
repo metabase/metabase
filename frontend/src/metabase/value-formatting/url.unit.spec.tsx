@@ -7,14 +7,14 @@ import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { formatUrl, slugify } from "./url";
+import { registerJsxFormatting } from "./ui";
+import { formatUrl } from "./url";
 import { formatValue } from "./value";
 
 registerJsxFormatting();
@@ -397,25 +397,5 @@ describe("formatUrl", () => {
         column: null,
       }),
     ).toEqual("foobar");
-  });
-
-  describe("slugify", () => {
-    it("should slugify Chinese", () => {
-      expect(slugify("類型")).toEqual("%E9%A1%9E%E5%9E%8B");
-    });
-
-    it("should slugify multiple words", () => {
-      expect(slugify("Test Parameter")).toEqual("test_parameter");
-    });
-
-    it("should slugify Russian", () => {
-      expect(slugify("русский язык")).toEqual(
-        "%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9_%D1%8F%D0%B7%D1%8B%D0%BA",
-      );
-    });
-
-    it("should slugify diacritics", () => {
-      expect(slugify("än umlaut")).toEqual("%C3%A4n_umlaut");
-    });
   });
 });
