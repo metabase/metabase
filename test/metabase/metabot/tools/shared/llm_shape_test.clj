@@ -653,6 +653,25 @@
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
 
+(deftest ^:parallel search-result-write-permission-test
+  (testing "renders false as an explicit destination permission"
+    (is (str/includes? (llm-shape/search-result->xml
+                        {:id 5 :type :dashboard :name "Read only" :can_write false})
+                       "can_write=\"false\"")))
+  (testing "omits write permission for search entities where it is not supplied"
+    (is (not (str/includes? (llm-shape/search-result->xml
+                             {:id 1 :type :table :name "Orders"})
+                            "can_write=")))))
+
+(deftest ^:parallel list-item-write-permission-test
+  (is (str/includes? (llm-shape/metabot-list->xml
+                      {:list-type :dashboards
+                       :items     [{:type "dashboard" :id 5 :name "Read only" :can_write false}]
+                       :total     1
+                       :page      1
+                       :pages     1})
+                     "can_write=\"false\"")))
+
 (deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
     (let [results [{:id 1 :type :metric :name "Metric 1"}

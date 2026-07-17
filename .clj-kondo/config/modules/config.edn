@@ -1363,6 +1363,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Glossary
                     :model/Measure

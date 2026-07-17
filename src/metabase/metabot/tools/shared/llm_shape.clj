@@ -709,7 +709,7 @@
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
    without a separate `entity_details` round-trip."
-  [{:keys [id type name description verified official curated data_authority data_layer collection
+  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
   (let [fqn (cond
@@ -736,6 +736,8 @@
       :search_official official
       :search_has_curated (some? curated)
       :search_curated curated
+      :search_has_can_write (some? can_write)
+      :search_can_write can_write
       :search_data_layer (some-> data_layer clojure.core/name)
       :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
                                (clojure.core/name data_authority))
@@ -864,7 +866,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 
@@ -872,8 +874,9 @@
   [item]
   (->> item-attr-keys
        (keep (fn [k]
-               (when-let [v (get item k)]
-                 (str (clojure.core/name k) "=\"" (escape-xml v) "\""))))
+               (let [v (get item k)]
+                 (when (if (= k :can_write) (contains? item k) v)
+                   (str (clojure.core/name k) "=\"" (escape-xml (str v)) "\"")))))
        (str/join " ")))
 
 (defn- list-item->xml

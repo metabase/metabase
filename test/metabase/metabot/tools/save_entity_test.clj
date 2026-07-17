@@ -6,6 +6,7 @@
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- venues-query []
@@ -21,6 +22,20 @@
                                       :query_id "q-1"
                                       :queries  [query]
                                       :visualization_settings {:chart_type :bar}}}}
+           :context {}})))
+
+(defn- rehydrated-chart-memory
+  "A chart memory whose query has crossed the JSON persistence boundary between turns."
+  []
+  (let [query (-> (venues-query)
+                  (dissoc :lib/metadata)
+                  json/encode
+                  json/decode+kw)]
+    (atom {:state   {:queries {"q-1" query}
+                     :charts  {"c-1" {:chart_id "c-1"
+                                      :query_id "q-1"
+                                      :queries  [query]
+                                      :visualization_settings {:chart_type "bar"}}}}
            :context {}})))
 
 (defn- save! [destination]
@@ -49,6 +64,19 @@
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= {:type "collection" :id (:id coll)}
                    (get-in part [:data :destination])))))))))
+
+(deftest save-rehydrated-chart-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {:name "Persisted charts"}]
+        (let [result (binding [shared/*memory-atom* (rehydrated-chart-memory)]
+                       (save-entity/save-entity-tool
+                        {:chart_id    "c-1"
+                         :name        "Venues by price"
+                         :description "Count of venues grouped by price."
+                         :destination {:target_type "collection" :collection_id (:id coll)}}))]
+          (testing "saves a generated query after its enum values were stringified between turns"
+            (is (integer? (get-in result [:structured-output :card-id])))))))))
 
 (deftest save-stamps-card-origin-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -130,6 +158,54 @@
                          :destination {:target_type "collection" :collection_id nil}}))
               card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
           (is (= :line (:display card))))))))
+
+(def ^:private document-ast
+  {:type "doc"
+   :content [{:type "paragraph" :content [{:type "text" :text "Intro"}]}
+             {:type "paragraph" :content [{:type "text" :text "Outro"}]}]})
+
+(defn- card-embed [card-id]
+  {:type "resizeNode"
+   :content [{:type "cardEmbed" :attrs {:id card-id}}]})
+
+(deftest save-to-document-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Document  doc  {:name          "Q3 report"
+                                            :collection_id (:id coll)
+                                            :document      document-ast}]
+        (let [result (save! {:target_type "document" :document_id (:id doc)})
+              card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
+          (testing "creates a document question inheriting the document's collection"
+            (is (= (:id doc) (:document_id card)))
+            (is (= (:id coll) (:collection_id card)))
+            (is (= "Venues by price" (:name card))))
+          (testing "omitting position appends a card embed at the end of the document"
+            (is (= (conj (:content document-ast) (card-embed (:id card)))
+                   (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content]))))
+          (testing "the destination points at the document"
+            (is (= {:type "document" :id (:id doc)}
+                   (get-in result [:data-parts 0 :data :destination])))))))))
+
+(deftest save-to-document-position-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Document doc {:name "Q3 report" :document document-ast}]
+        (let [result (save! {:target_type "document" :document_id (:id doc) :position 1})
+              card-id (get-in result [:structured-output :card-id])]
+          (testing "an explicit position inserts before the block at that index"
+            (is (= [(first (:content document-ast))
+                    (card-embed card-id)
+                    (second (:content document-ast))]
+                   (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content])))))))))
+
+(deftest save-to-document-requires-id-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "a missing document_id fails destination schema validation"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"document_id"
+                            (save! {:target_type "document"}))))))
 
 (deftest unknown-chart-test
   (mt/with-current-user (mt/user->id :crowberto)
