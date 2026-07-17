@@ -33,6 +33,11 @@ registerVisualizations();
 const MCP_TOOL_CALLS_TABLE_ID = 2001;
 const GROUP_MEMBERS_TABLE_ID = 2002;
 
+// Field ids are deterministic — `table_id * 100 + field index` (see `buildTable`). Indices below
+// match the field order of the `v_mcp_tool_calls` table defined further down.
+const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
+const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
+
 const BASE_TYPE = {
   text: "type/Text",
   integer: "type/Integer",
@@ -253,8 +258,8 @@ describe("McpAnalyticsPage", () => {
           if (typeof body !== "string") {
             return false;
           }
-          const query = JSON.parse(body).query;
-          return query?.page != null && query["order-by"]?.[0]?.[0] === "asc";
+          const stage = JSON.parse(body).stages?.[0];
+          return stage?.page != null && stage["order-by"]?.[0]?.[0] === "asc";
         });
       expect(sortedAscending).toBe(true);
     });
@@ -287,7 +292,7 @@ describe("McpAnalyticsPage", () => {
           if (typeof body !== "string") {
             return false;
           }
-          return JSON.parse(body)?.query?.page?.page === 2;
+          return JSON.parse(body)?.stages?.[0]?.page?.page === 2;
         });
       expect(requestedPage2).toBe(true);
     });
@@ -301,16 +306,26 @@ describe("McpAnalyticsPage", () => {
       await screen.findByRole("tab", { name: "Tool calls" }),
     );
 
-    // The events request is the paginated one (carries a `page` clause); its order-by must have a
-    // tiebreaker beyond created_at so pages can't skip/duplicate rows on tied timestamps.
+    // The events request is the paginated one (carries a `page` clause); its order-by must be
+    // created_at followed by the tool_call_id (PK) tiebreaker, so pages can't skip/duplicate rows
+    // on tied timestamps.
     await waitFor(() => {
-      const eventsQuery = fetchMock.callHistory
+      const eventsStage = fetchMock.callHistory
         .calls("dataset")
         .map((call) => call.options?.body)
         .filter((body): body is string => typeof body === "string")
-        .map((body) => JSON.parse(body).query)
-        .find((query) => query?.page != null);
-      expect(eventsQuery?.["order-by"]).toHaveLength(2);
+        .map((body) => JSON.parse(body).stages?.[0])
+        .find((stage) => stage?.page != null);
+      // pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
+      const orderBy = eventsStage?.["order-by"] as [
+        string,
+        object,
+        [string, object, number],
+      ][];
+      expect(orderBy?.map((clause) => clause[2][2])).toEqual([
+        CREATED_AT_FIELD_ID,
+        TOOL_CALL_ID_FIELD_ID,
+      ]);
     });
   });
 

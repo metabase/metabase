@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { Dataset, LegacyDatasetQuery } from "metabase-types/api";
+import type { Dataset } from "metabase-types/api";
 
 import { paginateEventsQuery } from "../query-utils";
 
@@ -24,18 +24,11 @@ export function useMcpEventsQuery(
 ): EventsPageResult {
   const jsQuery = useMemo(
     () =>
-      query
-        ? Lib.toLegacyQuery(paginateEventsQuery(query, page, pageSize))
-        : null,
+      query ? Lib.toJsQuery(paginateEventsQuery(query, page, pageSize)) : null,
     [query, page, pageSize],
   );
 
-  const { data, isFetching } = useGetAdhocQueryQuery(
-    // The hook requires an argument, but the request is skipped when `jsQuery` is
-    // null, so this placeholder query is never actually executed.
-    jsQuery ?? ({} as LegacyDatasetQuery),
-    { skip: !jsQuery },
-  );
+  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? skipToken);
 
   return { data, isFetching };
 }

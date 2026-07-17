@@ -48,7 +48,10 @@ function parseSortColumn(param: QueryParam): McpEventSortColumn {
 }
 
 function parseSortDirection(param: QueryParam): SortDirection {
-  return getFirstParamValue(param) === "asc" ? "asc" : DEFAULT_SORT_DIRECTION;
+  const value = getFirstParamValue(param);
+  // we don't want to use `value` directly because it may be an invalid sort direction
+  // coming from URL params
+  return value === "asc" || value === "desc" ? value : DEFAULT_SORT_DIRECTION;
 }
 
 const mcpPageUrlStateConfig: UrlStateConfig<McpPageUrlState> = {

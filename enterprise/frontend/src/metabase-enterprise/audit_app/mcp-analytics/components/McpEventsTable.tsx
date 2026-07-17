@@ -104,25 +104,39 @@ type SortProps = {
   ) => void;
 };
 
-type Props = McpFilters &
+type Nullable<T> = { [K in keyof T]: T[K] | null };
+
+// The audit metadata sources the inner table needs, all resolved.
+type MetadataSources = {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
+};
+
+type BaseProps = McpFilters &
   PaginationProps &
   SortProps & {
-    provider: MetadataProvider | null;
-    table: TableMetadata | CardMetadata | null;
-    groupMembersTable: TableMetadata | CardMetadata | null;
     hasTenants: boolean;
     hasPii: boolean;
   };
 
-type InnerProps = McpFilters &
-  PaginationProps &
-  SortProps & {
-    provider: MetadataProvider;
-    table: TableMetadata | CardMetadata;
-    groupMembersTable: TableMetadata | CardMetadata;
-    hasTenants: boolean;
-    hasPii: boolean;
-  };
+// Sources are still loading in the outer props (hence nullable); the inner component only renders
+// once they're resolved, so it takes them non-null.
+type Props = BaseProps & Nullable<MetadataSources>;
+type InnerProps = BaseProps & MetadataSources;
+
+/**
+ * Retain the last non-nullish value so a component keeps rendering the previous result while the
+ * next one loads. RTK query hooks return `undefined` data mid-fetch; without this a consumer would
+ * blank out on every refetch.
+ */
+function useRetainedValue<T>(value: T | undefined): T | undefined {
+  const ref = useRef(value);
+  if (value != null) {
+    ref.current = value;
+  }
+  return value ?? ref.current;
+}
 
 /**
  * Row-level events table for the Events tab. Renders nothing until the audit metadata is
@@ -192,28 +206,30 @@ function McpEventsTableInner({
     ],
   );
 
-  const { data, isFetching } = useMcpEventsQuery(query, page, EVENTS_PAGE_SIZE);
-
-  // Keep the last resolved page mounted while the next one loads — a fresh RTK query returns
-  // `undefined` data during the fetch, so without this the table would blank out on every page or
-  // sort change. We overlay a spinner on the retained rows instead.
-  const lastData = useRef(data);
-  if (data) {
-    lastData.current = data;
-  }
-  const shown = data ?? lastData.current;
+  const { data: latestData, isFetching } = useMcpEventsQuery(
+    query,
+    page,
+    EVENTS_PAGE_SIZE,
+  );
+  // Retain the previous page while the next one loads, so the table doesn't blank out on every
+  // page or sort change; we overlay a spinner on the retained rows instead. From here on `data` is
+  // simply the warehouse result — the retention is an implementation detail of the hook.
+  const data = useRetainedValue(latestData);
 
   const columns = useMemo(
     () => eventColumns(hasTenants, hasPii),
     [hasTenants, hasPii],
   );
-  const rows: RowValues[] = shown?.data?.rows ?? [];
-  // Result column names are upper- or lower-cased depending on the warehouse (the audit DB is H2,
-  // which upper-cases; Postgres lower-cases), so match case-insensitively.
+  const rows: RowValues[] = data?.data?.rows ?? [];
+  // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
+  // not the curated `columns` we render. So we can't reuse the `columns` index; we map each curated
+  // column to its position in the result by name. Names are upper- or lower-cased depending on the
+  // warehouse (the audit DB is H2, which upper-cases; Postgres lower-cases), so match
+  // case-insensitively.
   const columnIndex = useMemo(() => {
-    const cols = shown?.data?.cols ?? [];
+    const cols = data?.data?.cols ?? [];
     return new Map(cols.map((col, index) => [col.name.toLowerCase(), index]));
-  }, [shown]);
+  }, [data]);
 
   const showEmpty = !isFetching && rows.length === 0;
 
@@ -231,11 +247,7 @@ function McpEventsTableInner({
                     name={column.sort}
                     sortingOptions={sortingOptions}
                     onSortingOptionsChange={onSortingOptionsChange}
-                    columnHeaderProps={
-                      column.align === "right"
-                        ? { style: { textAlign: "right" } }
-                        : undefined
-                    }
+                    columnHeaderProps={{ style: { textAlign: column.align } }}
                   >
                     {column.title}
                   </SortableColumnHeader>
@@ -260,11 +272,7 @@ function McpEventsTableInner({
                       return (
                         <td
                           key={column.key}
-                          style={
-                            column.align === "right"
-                              ? { textAlign: "right" }
-                              : undefined
-                          }
+                          style={{ textAlign: column.align }}
                         >
                           {renderCell(column, value)}
                         </td>
