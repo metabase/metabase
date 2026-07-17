@@ -62,7 +62,7 @@ export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   onMapZoomChange: (zoom: number) => void;
   onRenderError: (error?: unknown) => void;
   onFiltering: (filtering: boolean) => void;
-  onChangeCardAndRun: OnChangeCardAndRun;
+  onChangeCardAndRun?: OnChangeCardAndRun | null;
 }
 
 export class LeafletMap<
@@ -325,7 +325,7 @@ export class LeafletMap<
       const updatedQuestion = question.setQuery(updatedQuery);
       const nextCard = updatedQuestion.card();
 
-      onChangeCardAndRun({ nextCard });
+      onChangeCardAndRun?.({ nextCard });
     }
 
     this.props.onFiltering(false);
