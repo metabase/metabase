@@ -193,16 +193,37 @@ dividend found during porting gets an entry here in the same PR.**
 
 ## Wave 7 additions (native pack, schema-viewer, detail-view, glossary, filters/oauth)
 
-24. **Two more real app bugs — an MBQL5 load-path template-tag cluster**
-    (native-subquery / native-snippet-tags, both reproduced identically by
-    the Cypress originals on this backend): (a) card-reference tags are no
+24. ~~**Two more real app bugs — an MBQL5 load-path template-tag cluster**~~
+    **RETRACTED 2026-07-17 — does not reproduce. Do not cite this as a
+    migration dividend.** The original claim was: (a) card-reference tags no
     longer rewritten to slugs on question load (`GET /api/card/:id` never
-    fires from `updateTemplateTagNames`); (b) variable tags living inside a
-    snippet's content aren't surfaced on saved-question load (no widget, no
-    Variables sidebar entry) though they persist in template-tags. Combined
-    with the dimension-tag parameters regression (#2/#22), three
-    independent specs now point at one load-path reconciliation cluster —
-    mapped for free by port-fidelity cross-checks.
+    fires from `updateTemplateTagNames`); (b) snippet-inner variable tags not
+    surfaced on saved-question load.
+
+    Re-verified against the CI uberjar (run 29569211972's own artifact) while
+    chasing an unrelated CI failure: **both sub-claims are false there**.
+    `GET /api/card/:id` fires and the rewrite lands (instrumented); the
+    `test.fixme`'d card-tag test passes end-to-end and has been re-enabled.
+    Both `native-snippet-tags` fixmes also pass on the jar (verified by
+    temporarily flipping them; that spec is restored byte-identical).
+
+    One mechanism explains why we mis-read it: where the rewrite *does* land,
+    the loaded question is dirty, so the QB runs it via `/api/dataset` and the
+    card-query endpoint never fires — which is what the original
+    investigation saw and read as "the rewrite never happened". See
+    `findings-inbox/native-subquery-ci-failure.md` for the evidence.
+
+    **Caveat**: the source-mode side was not re-verified (slots were busy).
+    The repo outside `e2e-playwright/` is identical between the jar's commit
+    and HEAD, so a genuine behavioural split isn't possible — a stale slot
+    backend or stale hot bundle is the likely explanation, but that remains a
+    hypothesis, not a confirmed cause.
+
+    **Action owed**: re-check the dimension-tag `parameters: []` regression
+    (#2/#22) the same way, against the jar. Those cards also return
+    `parameters: []`, and #2/#22 rest on the same kind of observation that
+    just failed to survive scrutiny. Until that's done, treat the "load-path
+    reconciliation cluster" framing as unsupported.
 
 25. **Another silently-ignored assertion argument**:
     `H.NativeEditor.completions("ANOTHER")` — completions() takes no

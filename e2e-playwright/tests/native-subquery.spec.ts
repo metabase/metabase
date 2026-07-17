@@ -23,10 +23,11 @@
  *   EditableText gotcha; Cypress relied on navigation timing instead).
  * - The move in "autocomplete should complete question slugs" also anchors on
  *   the PUT /api/card response, so navigating away can't cancel the move.
- * - "card reference tags should update..." is test.fixme: it fails because of
- *   an app bug (card tag slugs not rewritten on question load), reproduced
- *   byte-for-byte by the original Cypress spec against the same backend. See
- *   the FIXME on the test.
+ * - "card reference tags should update..." was briefly test.fixme'd as an app
+ *   bug (card tag slugs not rewritten on question load). That does not hold
+ *   against the CI uberjar — the rewrite works; the visitQuestion hang above
+ *   was the real cause. It is enabled again. See
+ *   findings-inbox/native-subquery-ci-failure.md.
  */
 import { test, expect } from "../support/fixtures";
 import { openQuestionActions, visitModel } from "../support/models";

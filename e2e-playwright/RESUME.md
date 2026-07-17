@@ -59,17 +59,24 @@ scratch files, not part of the port.
 
 ## Two open threads worth picking up
 
-**1. `native-subquery` autocomplete — CI-only, deterministic (unresolved).**
-Wave-8 CI (run 29569211972) came back 373/374 on both matrix legs. The single
-failure: `tests/native-subquery.spec.ts:153`, where `visitQuestion` times out
-because the FE never fires `POST /api/card/{id}/query` for a native card that
-references another saved question via a `{{#id}}` card template tag. Passes
-locally against source-mode backends; fails against the CI uberjar on both legs.
-It sits directly on the MBQL5 card-tag bug cluster already in FINDINGS.md
-(parameters:[], card-tag slug rewrite, snippet-inner tags). An agent was
-reproducing it against the downloaded CI jar on slot 11 when usage ran out —
-no conclusion reached. **Do not assume it's a test bug.** Repro path: download
-the run's ee-uberjar artifact, boot a slot backend with `JAR_PATH=<jar>`.
+**1. `native-subquery` autocomplete — SOLVED, and it retracted a finding.**
+The wave-8 CI failure (run 29569211972, 373/374 both legs) turned out to be a
+**port bug, not an app bug**: loading a card whose `{{#id}}` tag is unslugged
+triggers `updateTemplateTagNames` to rewrite the query text, which leaves the
+saved question *dirty*, so the QB runs it through `/api/dataset` and the
+`POST /api/card/:id/query` that `visitQuestion` waits for never fires. The
+Cypress original used a bare `cy.visit` with no wait, so only the port was
+exposed. Fixed with `visitQuestionEitherEndpoint` (`support/native-extras.ts`);
+verified 4/4 × 3 runs in jar mode.
+
+**The same investigation retracted FINDINGS #24** — neither sub-claim
+reproduces against the CI uberjar, and the previously-fixme'd test now passes
+and is re-enabled. See the retraction note in FINDINGS.md and the evidence in
+`findings-inbox/native-subquery-ci-failure.md`. **Open action**: re-verify
+#2/#22 (the dimension-tag `parameters: []` regression) against the jar the same
+way — they rest on the same kind of observation and also involve cards that
+return `parameters: []`. Until then the "load-path cluster" framing is
+unsupported and shouldn't go in front of colleagues.
 
 **2. `dashboard-parameters` suspected product bug (unverified).**
 The agent observed `query_metadata` containing field 61 while the parameter's
