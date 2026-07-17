@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppsNavbarSection } from "./DataAppsNavbarSection";
 
@@ -21,8 +20,8 @@ describe("DataAppsNavbarSection", () => {
 
   it("shows every data app as a link", async () => {
     fetchMock.get("path:/api/apps?available=true", [
-      createMockDataApp({ id: 1, name: "gizmo", display_name: "Gizmo" }),
-      createMockDataApp({ id: 2, name: "gadget", display_name: "Gadget" }),
+      { name: "gizmo", display_name: "Gizmo" },
+      { name: "gadget", display_name: "Gadget" },
     ]);
 
     renderWithProviders(

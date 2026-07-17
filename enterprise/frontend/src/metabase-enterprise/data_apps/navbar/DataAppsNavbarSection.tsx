@@ -27,12 +27,12 @@ export function DataAppsNavbarSection({
         initialState="expanded"
         iconPosition="right"
         iconSize={8}
-        role="section"
         aria-label={t`Data apps`}
       >
         {dataApps.map((dataApp) => (
           <PaddedSidebarLink
-            key={dataApp.id}
+            // Data-app names are globally unique slugs, enforced by the database.
+            key={dataApp.name}
             icon="app"
             onClick={onItemSelect}
             url={Urls.dataApp(dataApp.name)}
