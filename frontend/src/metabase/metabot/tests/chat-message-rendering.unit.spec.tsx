@@ -1,5 +1,11 @@
+import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
+import {
+  setupCardEndpoints,
+  setupCollectionByIdEndpoint,
+  setupDocumentEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   MetabotAgentChatMessage,
@@ -9,7 +15,12 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDocument,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
@@ -24,6 +35,7 @@ const setup = (message: MetabotAgentChatMessage) =>
     <AgentMessage
       debug={false}
       readonly={false}
+      conversationId="convo-1"
       hideActions
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
@@ -47,6 +59,7 @@ describe("AgentMessage", () => {
         ]}
         isDoingScience
         debug={false}
+        conversationId="convo-1"
       />,
     );
 
@@ -74,6 +87,7 @@ describe("AgentMessage", () => {
           messages={conversation}
           isDoingScience={false}
           debug={false}
+          conversationId="convo-1"
         />,
       );
 
@@ -89,6 +103,7 @@ describe("AgentMessage", () => {
           isDoingScience={false}
           debug={false}
           readonly
+          conversationId="convo-1"
         />,
       );
 
@@ -98,6 +113,78 @@ describe("AgentMessage", () => {
       expect(
         screen.queryByTestId("metabot-chat-message-thumbs-down"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("entity_saved", () => {
+    it("renders a 'Chart X saved to Y' block with the container's current name", async () => {
+      setupCollectionByIdEndpoint({
+        collections: [
+          createMockCollection({ id: 5, name: "Personal Collection" }),
+        ],
+      });
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-entity_saved",
+          data: {
+            chart_id: "chart-1",
+            card_id: 99,
+            destination: { type: "collection", id: 5 },
+          },
+        },
+      });
+
+      expect(
+        await screen.findByText("Personal Collection"),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+    });
+
+    it("renders a plain 'saved' row when the container can't be loaded", async () => {
+      fetchMock.get("path:/api/collection/5", { status: 404 });
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-entity_saved",
+          data: {
+            chart_id: "chart-1",
+            card_id: 99,
+            destination: { type: "collection", id: 5 },
+          },
+        },
+      });
+
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+      expect(screen.getByText(/saved/)).toBeInTheDocument();
+      expect(screen.queryByText(/saved to/)).not.toBeInTheDocument();
+    });
+
+    it("resolves a document destination's current name", async () => {
+      setupDocumentEndpoints(createMockDocument({ id: 7, name: "Q3 report" }));
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-entity_saved",
+          data: {
+            chart_id: "chart-1",
+            card_id: 99,
+            destination: { type: "document", id: 7 },
+          },
+        },
+      });
+
+      expect(await screen.findByText("Q3 report")).toBeInTheDocument();
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
     });
   });
 
@@ -160,6 +247,7 @@ describe("AgentMessage", () => {
         <AgentMessage
           debug
           readonly={false}
+          conversationId="convo-1"
           hideActions
           setFeedbackMessage={() => {}}
           submittedFeedback={undefined}
@@ -211,6 +299,7 @@ describe("UserMessage chart mentions", () => {
         ]}
         isDoingScience={false}
         debug={false}
+        conversationId="convo-1"
       />,
       {
         storeInitialState: createMockState({

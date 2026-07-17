@@ -4,8 +4,13 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { useCreateCardMutation, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryQuery,
+  useGetCardQuery,
+} from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { useSaveMetabotEntityMutation } from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -27,6 +32,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import {
@@ -44,15 +50,30 @@ import S from "./MetabotInlineChart.module.css";
  * result; the title bar links out to the full question.
  */
 export function MetabotInlineChart({
-  value: { id: entityId, title, description, display, query },
+  value: { id: chartId, title, description, display, query },
   readonly = false,
+  conversationId,
 }: {
   value: GeneratedCard;
   readonly?: boolean;
+  conversationId: string;
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();
+  const recordedCardId = useSelector((state) =>
+    getSavedChartCardId(state, chartId),
+  );
   const siteUrl = useSetting("site-url");
+
+  const { data: savedCard, error: savedCardError } = useGetCardQuery(
+    recordedCardId != null
+      ? { id: recordedCardId, ignore_error: true }
+      : skipToken,
+  );
+  const isLinkSevered =
+    isResourceNotFoundError(savedCardError) ||
+    (savedCard != null && savedCard.metabot_chart_id !== chartId);
+  const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
   const question = useMemo(() => {
     const base = new Question({
@@ -84,8 +105,10 @@ export function MetabotInlineChart({
 
   const link = useMemo(
     () =>
-      `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
-    [card],
+      savedCardId != null
+        ? Urls.question(question.setId(savedCardId))
+        : `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
+    [card, question, savedCardId],
   );
 
   const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);
@@ -126,7 +149,9 @@ export function MetabotInlineChart({
           </ActionIcon>
         </Tooltip>
         <SaveChartAction
-          entityId={entityId}
+          conversationId={conversationId}
+          chartId={chartId}
+          savedCardId={savedCardId}
           question={question}
           readonly={readonly}
         />
@@ -151,31 +176,36 @@ export function MetabotInlineChart({
 }
 
 function SaveChartAction({
-  entityId,
+  conversationId,
+  chartId,
+  savedCardId,
   question,
   readonly,
 }: {
-  entityId: string;
+  conversationId: string;
+  chartId: string;
+  savedCardId: number | undefined;
   question: Question;
   readonly: boolean;
 }) {
   const dispatch = useDispatch();
-  const [createCard] = useCreateCardMutation();
+  const [saveMetabotEntity] = useSaveMetabotEntityMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const savedCardId = useSelector((state) =>
-    getSavedChartCardId(state, entityId),
-  );
 
   const handleCreate = async (
     newQuestion: Question,
     options?: { dashboardTabId?: DashboardTabId },
   ) => {
-    const created = await createCard({
-      ...newQuestion.card(),
-      dashboard_tab_id: options?.dashboardTabId,
+    const created = await saveMetabotEntity({
+      conversation_id: conversationId,
+      chart_id: chartId,
+      card: {
+        ...newQuestion.card(),
+        dashboard_tab_id: options?.dashboardTabId,
+      },
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ entityId, cardId: created.id }));
+    dispatch(markChartSaved({ entityId: chartId, cardId: created.id }));
     dispatch(
       addUndo({
         icon: "check_filled",

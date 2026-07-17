@@ -12,8 +12,10 @@ import S from "./MetabotQuestion.module.css";
 const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
   message.type === "data_part" && message.part.type === "data-navigate_to";
 
+const AGENT_ID = "omnibot";
+
 export function MetabotChatHistory() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent(AGENT_ID);
   const { messages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,7 @@ export function MetabotChatHistory() {
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
+          conversationId={metabot.conversationId}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}

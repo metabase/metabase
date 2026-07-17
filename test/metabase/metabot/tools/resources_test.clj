@@ -268,6 +268,31 @@
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
+(deftest read-document-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
+                   :model/Document {document-id :id}
+                   {:name     "Q3 report"
+                    :document {:type "doc"
+                               :content [{:type "heading"
+                                          :content [{:type "text" :text "Revenue"}]}
+                                         {:type "resizeNode"
+                                          :content [{:type "cardEmbed" :attrs {:id card-id}}]}
+                                         {:type "paragraph"
+                                          :content [{:type "text" :text "Detailed analysis"}]}]}}]
+      (testing "fetches an indexed outline of the document's top-level blocks"
+        (let [{:keys [output] :as result} (read-resource/read-resource
+                                           {:uris [(str "metabase://document/" document-id)]})]
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  result))
+          (is (str/includes? output "Q3 report"))
+          (is (str/includes? output "[0] heading: Revenue"))
+          (is (str/includes? output (str "[1] resizeNode (embeds card " card-id ")")))
+          (is (str/includes? output "[2] paragraph: Detailed analysis"))))
+      (testing "returns error for unknown document"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris ["metabase://document/99999"]})))))))
+
 (deftest read-conversation-chart-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [query {:database (mt/id)
@@ -564,14 +589,18 @@
 (deftest read-collections-and-collection-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Marketing" :location "/"}
-                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}]
+                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}
+                   :model/Document {doc-id :id} {:name "Campaign plan" :collection_id coll-id}]
       (testing "metabase://collections lists root collections (excluding trash)"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
       (testing "metabase://collection/{id}/items lists members with drill-in URIs"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
           (is (str/includes? output "Sales report"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output "Campaign plan"))
+          (is (str/includes? output (str "uri=\"metabase://document/" doc-id "\"")))
+          (is (str/includes? output "can_write=\"true\"")))))))
 
 (deftest read-table-derived-test
   (mt/with-current-user (mt/user->id :crowberto)

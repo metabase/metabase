@@ -1,0 +1,69 @@
+## Metabot provenance columns for saved questions: which conversation a card was
+## saved from and which generated chart it materializes, so a reloaded conversation
+## can mark its inline charts as saved. The conversation FK is SET NULL on delete —
+## trimming conversations must not delete or block the cards saved from them.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.7msecd
+      author: undrfined
+      comment: Add metabot_conversation_id column to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metabot_conversation_id
+                  type: varchar(36)
+                  remarks: The Metabot conversation this card was saved from; NULL when not AI-generated or after the conversation is trimmed
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: metabot_conversation_id
+
+  - changeSet:
+      id: v63.d47pcb
+      author: undrfined
+      comment: Add metabot_chart_id column to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metabot_chart_id
+                  type: varchar(36)
+                  remarks: The generated chart id within the Metabot conversation this card was saved from; used to match the card back to its inline chart
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_card
+            columnName: metabot_chart_id
+
+  - changeSet:
+      id: v63.fzmofw
+      author: undrfined
+      comment: Add index for report_card.metabot_conversation_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_metabot_conversation_id
+            columns:
+              - column:
+                  name: metabot_conversation_id
+
+  - changeSet:
+      id: v63.h29xu4
+      author: undrfined
+      comment: Add foreign key on report_card(metabot_conversation_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: metabot_conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            constraintName: fk_report_card_metabot_conversation_id
+            onDelete: SET NULL
