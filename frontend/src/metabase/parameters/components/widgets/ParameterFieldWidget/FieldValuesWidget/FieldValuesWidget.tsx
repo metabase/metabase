@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -376,7 +377,9 @@ export const FieldValuesWidgetInner = forwardRef<
     const firstOption = optionsData[0];
     if (firstOption && firstOption.value !== inputValue) {
       event.preventDefault();
-      commitValues([firstOption.value]);
+      const form = event.currentTarget.form;
+      flushSync(() => commitValues([firstOption.value]));
+      form?.requestSubmit();
     }
   };
 
@@ -445,13 +448,7 @@ export const FieldValuesWidgetInner = forwardRef<
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} tc={tc} />
             )}
-            onChange={(values) => {
-              if (isNumericParameter) {
-                onChange(values.map(parseNumericValue));
-              } else {
-                onChange(values);
-              }
-            }}
+            onChange={commitValues}
             onSearchChange={onInputChange}
           />
         ) : (
