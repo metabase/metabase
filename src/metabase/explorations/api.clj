@@ -672,6 +672,7 @@
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
           (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+          (explorations.queues/start-thread! tid)
           (let [persisted (t2/select-one :model/Exploration :id id)]
             (events/publish-event! :event/exploration-update
                                    {:object persisted :user-id api/*current-user-id*})

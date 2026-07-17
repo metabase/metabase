@@ -6,10 +6,12 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
+   [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1471,6 +1473,38 @@
                                     (str/includes? fname (str filter-value))))
                              (filter-display-names (:dataset_query %)))
                       new-queries)))))))
+
+(deftest exploration-explore-further-enqueues-planning-test
+  (testing "POST /:id/explore-further enqueues a plan message for the new follow-up thread"
+    ;; Regression: the endpoint stamped `started_at` but never called `start-thread!`, so under the
+    ;; persistent-queue model the follow-up thread was created and marked started yet never planned —
+    ;; "Explore further" returned 200 and then did nothing. `started_at` is only a state marker; the
+    ;; plan message enqueued by `start-thread!` is what actually triggers planning (see
+    ;; `metabase.explorations.queues`).
+    (mt/with-temp [:model/User u {:email "explore-further-enqueue@example.com"}
+                   :model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")]
+      (let [body     {:name       "base drill"
+                      :prompt     "why down?"
+                      :metrics    [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                      :dimensions [{:dimension_id "category" :display_name "Category"}
+                                   {:dimension_id "price"    :display_name "Price"}]}
+            created  (create-exploration! u body)
+            expl-id  (:id created)
+            page-id  (some :id (filter #(str/includes? (:name %) "Price")
+                                       (-> created :threads first :blocks first :pages)))
+            enqueued (atom [])]
+        (with-redefs [explorations.queues/start-thread! (fn [tid] (swap! enqueued conj tid))]
+          (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" expl-id)
+                                {:page_id         page-id
+                                 :explore_filters [{:field_ref     ["field" {} (mt/id :venues :price)]
+                                                    :value         2
+                                                    :display_value "2"}]}))
+        (let [new-thread-id (->> (t2/select :model/ExplorationThread
+                                            :exploration_id expl-id
+                                            {:order-by [[:position :desc] [:id :desc]]})
+                                 first :id)]
+          (is (= [new-thread-id] @enqueued)
+              "explore-further must enqueue planning for the new thread via start-thread!"))))))
 
 (deftest exploration-explore-further-permissions-and-404-test
   (testing "POST /:id/explore-further enforces write-check and 404s unknown pages"
