@@ -56,11 +56,12 @@ export function PieChartWithBottomLegend({
   );
   const chartSvg = renderPieSvg(option, side, isStorybook);
 
-  const svgWidth = hasDimensions ? width : DIMENSIONS.maxSideLength;
-  const svgHeight = hasDimensions ? height : side + gap + legendHeight;
-
-  // Vertically center the [circle | gap | legend] block in the box (top-anchored for emails).
+  // The [circle | gap | legend] block; also the SVG height for emails, which fit the box to it.
   const blockHeight = side + gap + legendHeight;
+  const svgWidth = hasDimensions ? width : DIMENSIONS.maxSideLength;
+  const svgHeight = hasDimensions ? height : blockHeight;
+
+  // Vertically center the block in the box (top-anchored for emails).
   const topOffset = hasDimensions
     ? Math.max(0, (svgHeight - blockHeight) / 2)
     : 0;

@@ -150,22 +150,16 @@ export function calculateNumRowsCols(
   fontWeight: number,
   legendItemMarginRight: number,
 ) {
-  const fitsInColumns = (cols: number) => {
-    const colWidth = Math.floor(width / cols);
-    return items.every(
+  const maxItemWidth = Math.max(
+    ...items.map(
       (item) =>
-        calculateItemWidth(item, fontSize, fontWeight) +
-          legendItemMarginRight <=
-        colWidth,
-    );
-  };
+        calculateItemWidth(item, fontSize, fontWeight) + legendItemMarginRight,
+    ),
+  );
 
-  // Most columns whose width still fits every item without truncation, but at least one -- a box
-  // too narrow for two columns gets one full-width column, not truncated multi-column text.
-  let numCols = 1;
-  while (numCols < items.length && fitsInColumns(numCols + 1)) {
-    numCols++;
-  }
+  // Most columns that still fit the widest item without truncation, at least 1.
+  const numColsThatFit = Math.floor(width / Math.ceil(maxItemWidth));
+  let numCols = Math.max(1, Math.min(items.length, numColsThatFit));
 
   const numRows = Math.ceil(items.length / numCols);
 

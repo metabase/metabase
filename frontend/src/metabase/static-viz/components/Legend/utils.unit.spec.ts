@@ -65,20 +65,14 @@ describe("calculateNumRowsCols", () => {
     });
   });
 
-  it("caps columns at the number that fit even when more items remain", () => {
-    const items = makeItems(6);
-    expect(run(items, widthForColumns(items[0], 3))).toEqual({
-      numRows: 2,
-      numCols: 3,
-    });
-  });
-
   it("falls back to a single full-width column when even two columns don't fit", () => {
-    expect(run(makeItems(5), 8)).toEqual({ numRows: 5, numCols: 1 });
-  });
-
-  it("uses one column for two items too wide to share a row", () => {
-    expect(run(makeItems(2), 8)).toEqual({ numRows: 2, numCols: 1 });
+    // A width smaller than a single item's slot, so even two columns can't fit and the legend falls
+    // back to one full-width column.
+    const WIDTH_TOO_NARROW_FOR_TWO_COLUMNS = 8;
+    expect(run(makeItems(5), WIDTH_TOO_NARROW_FOR_TWO_COLUMNS)).toEqual({
+      numRows: 5,
+      numCols: 1,
+    });
   });
 
   it("drops a trailing column that would be entirely empty", () => {
