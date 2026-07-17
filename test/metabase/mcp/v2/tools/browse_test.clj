@@ -221,7 +221,7 @@
           (is (not (contains? ids stub)) "a stub database is hidden even from an admin")
           (is (not (contains? ids dest)) "a router destination database is hidden even from an admin"))))))
 
-;;; ------------------------------ Router-destination isolation (P0: cross-tenant data) ---------------------------
+;;; --------------------------- Router-destination isolation (cross-database data access) -------------------------
 ;;; Database routing is a multi-tenant boundary: a user browses a *router* database and their
 ;;; queries are rerouted to their own *destination* database by user attribute. A destination
 ;;; addressed directly — by database id or by a table id inside it — bypasses that boundary and can
@@ -232,7 +232,7 @@
 ;;; destinations — so these tests hold that line if those helpers ever change.
 
 (deftest browse-allows-router-blocks-destinations-test
-  (testing "GHY-4138 (P0): the router is browsable, but its destination databases are unreachable
+  (testing "GHY-4138: the router is browsable, but its destination databases are unreachable
             directly through every action — and the caller here holds FULL data permissions, so the
             refusal is provably the routing guard, not a permission failure"
     (mt/with-temp [:model/Database {router :id}   {:name "Sales Router"}
