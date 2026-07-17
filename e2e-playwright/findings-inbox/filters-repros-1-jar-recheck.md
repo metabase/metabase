@@ -114,6 +114,27 @@ no drill-through) always passed.
 dividend of the "we found a real bug" kind.** The 6 fixmes are removed and the
 tests run.
 
+## Landed state of the spec (measured, not asserted)
+
+Re-enabling changes what CI runs, so the whole file was run on the jar, twice:
+
+| Full-spec jar run | Result |
+|---|---|
+| run 1 | 38 passed / **1 failed** / 1 skipped — failure was `25248`, *not* one of the 6 |
+| run 2 | **39 passed / 1 skipped / 0 failed** |
+
+So the spec's real state is **39 running, 1 upstream `@skip`** (`metabase#12985-2`,
+`{ tags: "@skip" }` upstream) — up from "33 pass / 7 skipped".
+
+**Loose end I did not chase (out of scope, flagged honestly):** `issue 25248 ›
+should allow mapping parameters to combined cards individually` failed once in
+run 1 and then passed **3/3 in isolation** and again in run 2 — 1 red in 5
+observations. It is not one of the 6 and it is not newly-enabled code, but I
+re-enabled tests that run *before* it (`21528` at :1068 navigates through admin →
+Table Metadata), so "my change perturbs its sequence" is not fully excluded —
+run 2 passing the same sequence argues against it. Treat as a suspected flake;
+if CI reddens on `25248`, look here first.
+
 ## What is NOT established (scope caveats — read before quoting this)
 
 - **Root cause is not identified.** Jar mode changes *two* variables at once —

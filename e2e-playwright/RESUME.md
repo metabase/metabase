@@ -41,7 +41,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 2 | `tests/dashboard-reproductions.spec.ts` (2438) | First chunk running; unverified. |
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **DONE — verified and landed.** 43/43 on the CI uberjar, clean under `--repeat-each=2` (86/86). Source is `dashboard-filters/parameters.cy.spec.js` (not `dashboard-parameters.cy.spec.js` — no such file). The suspected product bug is **disproven**: see open thread #2. Needed one helper fix (`undo` → newest toast); the spec itself was already correct. |
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | **DONE — verified and landed.** 46 pass / 0 skipped / 0 fixme, clean under `--repeat-each=2`. Not WIP; leave alone. |
-| 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
+| 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** **39 pass / 1 skipped on the CI uberjar** (updated 2026-07-18: the 6 `test.fixme`s were re-enabled — they pass on the jar and were never product bugs; see thread #3). Only the upstream `@skip` remains. Note the 6 still fail on a local source-mode `--hot` backend — known artifact, CI is the gate. Not WIP; leave alone. |
 | 6 | `tests/dashboard-core.spec.ts` (2131) | **Full file green (45 passed / 1 skipped `@skip` upstream), one flake open.** Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ Electron, predates the `--browser chrome` rule — re-run before citing). **Open (needs a decision, not a fix):** `--repeat-each=2` (89 passed / 1 failed / 2 skipped) caught `auto-scrolling to a dashcard via a url hash param` (:1318); measured **3 fail / 2 pass over 5 runs on a quiet box**. Cause is app-side: `DashCard` scrolls once in `useMount` and clears the `scrollTo` hash immediately, so any later remount/reflow loses the scroll and nothing re-scrolls. Left unmodified and unskipped on purpose — the port's `toBeInViewport()` is *stronger* than Cypress's `should("be.visible")` (which ignores scroll position), so weakening it makes the test vacuous and a `toPass` retry would mask the very behaviour under test. Not claimed as a product bug (fidelity bar not met). See `findings-inbox/dashboard-core.md`. |
 | 7 | `tests/documents-comments.spec.ts` (2009) | **DONE — verified and landed.** 47 pass / 1 skipped (the original's `it.skip`), clean under `--repeat-each=2`. In PORTED.txt; findings in `findings-inbox/documents-comments.md`. Not WIP; leave alone. |
 | 8 | `tests/interactive-embedding.spec.ts` (2624) | **Spec was mid-write — likely incomplete.** Check it parses before running. |
@@ -120,8 +120,9 @@ returns it too).
 
 **3. `dashboard-filters-reproductions-1` — 6 fixmes. CLOSED 2026-07-18. Not bugs.**
 All six **pass against the CI EE uberjar** (`751c2a98`, slot 11 / :4111): 6/6,
-and 12/12 under `--repeat-each=2`. All six are **re-enabled**; the spec now runs
-39 tests with one upstream `@skip`. Full evidence:
+and 12/12 under `--repeat-each=2`. All six are **re-enabled**, and the full spec
+was re-measured on the jar: **39 passed / 1 skipped** (the upstream `@skip`), up
+from "33 pass / 7 skipped". Full evidence:
 `findings-inbox/filters-repros-1-jar-recheck.md`.
 
 The controlled comparison — same slot, same box, same spec, only the artifact
