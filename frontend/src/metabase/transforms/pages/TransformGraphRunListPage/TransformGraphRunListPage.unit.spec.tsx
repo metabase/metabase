@@ -93,6 +93,11 @@ describe("TransformGraphRunListPage", () => {
     expect(within(table).getAllByText("Transformation")).toHaveLength(2);
   });
 
+  it("shows the Detailed view switch unchecked in the grouped view", async () => {
+    setup({ runs: [] });
+    expect(await screen.findByLabelText("Detailed view")).not.toBeChecked();
+  });
+
   it("greys a deleted-entity run and hides the Transforms section for a deleted job", async () => {
     const deletedJobRun = createMockTransformGraphRun({
       run_type: "job",

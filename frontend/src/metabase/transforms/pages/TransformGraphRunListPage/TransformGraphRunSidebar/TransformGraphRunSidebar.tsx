@@ -40,7 +40,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
-import { formatRunName, isDeletedRun } from "../TransformGraphRunTable";
+import { isDeletedRun, renderRunName } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
 import S from "./TransformGraphRunSidebar.module.css";
@@ -273,12 +273,12 @@ function TransformGraphRunSidebarHeader({
   return (
     <Group
       justify="space-between"
-      align="start"
+      align="center"
       wrap="nowrap"
       gap="sm"
       data-testid="transform-graph-run-sidebar-header"
     >
-      <Title order={3}>{formatRunName(run)}</Title>
+      <Title order={3}>{renderRunName(run, { gap: "sm" })}</Title>
       <Group gap="xs" wrap="nowrap">
         <HeaderEntityActions run={run} />
         <ActionIcon aria-label={t`Close`} onClick={onClose}>

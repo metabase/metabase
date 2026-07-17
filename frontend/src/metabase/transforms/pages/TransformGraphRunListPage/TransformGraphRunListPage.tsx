@@ -2,7 +2,6 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -13,9 +12,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
-import { RunTabs } from "metabase/transforms/components/RunTabs";
+import { replace } from "metabase/router";
+import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -46,7 +45,6 @@ type TransformGraphRunListPageProps = {
 export function TransformGraphRunListPage({
   location,
 }: TransformGraphRunListPageProps) {
-  usePageTitle(t`Runs`);
   const params = useMemo(() => getParsedParams(location), [location]);
   const filterOptions = useMemo(() => getFilterOptions(params), [params]);
   const { page = 0 } = params;
@@ -149,7 +147,6 @@ export function TransformGraphRunListPage({
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
         <PaneHeader
           breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          tabs={<RunTabs />}
           py={0}
           showMetabotButton
         />
@@ -159,11 +156,14 @@ export function TransformGraphRunListPage({
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
-            <TransformGraphRunFilterBar
-              filterOptions={filterOptions}
-              transforms={transforms}
-              onFilterOptionsChange={handleFilterOptionsChange}
-            />
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <TransformGraphRunFilterBar
+                filterOptions={filterOptions}
+                transforms={transforms}
+                onFilterOptionsChange={handleFilterOptionsChange}
+              />
+              <DetailedViewSwitch detailed={false} />
+            </Group>
             <TransformGraphRunTable
               runs={runs}
               hasFilters={hasFilterOptions(filterOptions)}

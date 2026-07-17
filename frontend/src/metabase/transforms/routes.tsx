@@ -16,6 +16,7 @@ import {
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
+import { RunsPage } from "./pages/RunsPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
 import { TransformGraphRunListPage } from "./pages/TransformGraphRunListPage";
 import { TransformIndexesPage } from "./pages/TransformIndexesPage";
@@ -48,7 +49,7 @@ export function getDataStudioTransformRoutes() {
   return (
     <Route element={<TransformsNotDisabled />}>
       <Route index element={<RoutedTransformListPage />} />
-      <Route path="runs">
+      <Route path="runs" element={<RunsPage />}>
         <Route index element={<RoutedTransformGraphRunListPage />} />
         <Route path="individual" element={<RoutedRunListPage />} />
       </Route>

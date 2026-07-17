@@ -10,7 +10,7 @@ import {
   isErrorStatus,
   parseTimestampWithTimezone,
 } from "metabase/transforms/utils";
-import type { TreeTableColumnDef } from "metabase/ui";
+import type { MantineSize, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
   Ellipsified,
@@ -87,17 +87,37 @@ function renderRunEntityName(run: TransformGraphRun): ReactNode {
   );
 }
 
-function renderRunName(run: TransformGraphRun): ReactNode {
+type RenderRunNameOptions = {
+  gap?: MantineSize;
+};
+
+export function renderRunName(
+  run: TransformGraphRun,
+  { gap = "xs" }: RenderRunNameOptions = {},
+): ReactNode {
   const name = renderRunEntityName(run);
   const count = dagDependencyCount(run);
   if (count == null) {
     return name;
   }
   const chevron = (
-    <Icon name="chevronright" c="icon-secondary" size={8} aria-hidden />
+    <Icon
+      name="chevronright"
+      c="icon-secondary"
+      size={8}
+      mt="0.15em"
+      aria-hidden
+    />
   );
   const countText = (
-    <Text component="span" c="text-secondary" style={{ whiteSpace: "nowrap" }}>
+    <Text
+      component="span"
+      c="text-secondary"
+      fz="inherit"
+      lh="inherit"
+      fw="normal"
+      style={{ whiteSpace: "nowrap" }}
+    >
       {run.direction === "upstream"
         ? dependenciesText(count)
         : dependentsText(count)}
@@ -108,7 +128,7 @@ function renderRunName(run: TransformGraphRun): ReactNode {
       component="span"
       display="inline-flex"
       align="center"
-      gap="xs"
+      gap={gap}
       miw={0}
     >
       {run.direction === "upstream" ? (

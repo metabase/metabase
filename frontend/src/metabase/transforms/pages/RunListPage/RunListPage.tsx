@@ -13,13 +13,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
-import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { replace } from "metabase/router";
+import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
-import { RunTabs } from "metabase/transforms/components/RunTabs";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
 
@@ -47,7 +46,6 @@ type RunListPageProps = {
 };
 
 export function RunListPage({ location }: RunListPageProps) {
-  usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -166,7 +164,6 @@ export function RunListPage({ location }: RunListPageProps) {
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
         <PaneHeader
           breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          tabs={<RunTabs />}
           py={0}
           showMetabotButton
         />
@@ -177,12 +174,15 @@ export function RunListPage({ location }: RunListPageProps) {
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
             {isMeterLocked && <LockedTransformsBanner />}
-            <RunFilterBar
-              filterOptions={getFilterOptions(params)}
-              transforms={transforms}
-              tags={tags}
-              onFilterOptionsChange={handleFilterOptionsChange}
-            />
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <RunFilterBar
+                filterOptions={getFilterOptions(params)}
+                transforms={transforms}
+                tags={tags}
+                onFilterOptionsChange={handleFilterOptionsChange}
+              />
+              <DetailedViewSwitch detailed={true} />
+            </Group>
             <RunTable
               runs={runs}
               tags={tags}

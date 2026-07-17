@@ -1938,7 +1938,7 @@ LIMIT
       getRunStatus().should("have.text", "Run in progress…");
 
       getRunsNavLink().click();
-      getIndividualRunsTab().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().findByText("In progress").click();
       cy.findByTestId("run-list-sidebar").button("Cancel run").click();
       H.modal().button("Yes").click();
@@ -3111,7 +3111,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("be.visible");
 
       getRunsNavLink().click();
-      getIndividualRunsTab().click();
+      getDetailedViewSwitch().click();
       getTransformRunTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
@@ -3653,7 +3653,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
-    getIndividualRunsTab().click();
+    getDetailedViewSwitch().click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
@@ -3703,7 +3703,7 @@ describe("scenarios > admin > transforms > runs", () => {
 
     createInitialData();
     getRunsNavLink().click();
-    getIndividualRunsTab().click();
+    getDetailedViewSwitch().click();
 
     // ascending: "MBQL transform" < "SQL transform"
     testSorting({
@@ -4040,8 +4040,8 @@ function visitRunListPage() {
   return cy.visit("/data-studio/transforms/runs/individual");
 }
 
-function getIndividualRunsTab() {
-  return cy.findByRole("tab", { name: "Individual transform runs" });
+function getDetailedViewSwitch() {
+  return cy.findByTestId("detailed-view-switch");
 }
 
 function runTransformAndWaitForSuccess() {
