@@ -64,6 +64,18 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+  /* stable keys mean only newly-appended steps animate */
+  animation: chain-step-in 140ms ease both;
+}
+
+@keyframes chain-step-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .marker {
@@ -88,4 +100,12 @@
   color: var(--mb-color-text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;
+  /* optical nudge to the icon's visual center; transform avoids layout rounding */
+  transform: translateY(-0.5px);
+}
+
+/* reasoning summaries use bold section headers; keep them at body weight */
+.stepContent strong,
+.stepContent b {
+  font-weight: inherit;
 }

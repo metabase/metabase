@@ -18,25 +18,18 @@ import S from "./MetabotChainOfThought.module.css";
 
 const toolLabel = (name: string) => TOOL_CALL_MESSAGES[name] ?? t`Working`;
 
-// A short live headline of the current thinking, drawn from the reasoning stream
-// (which is already the provider's summarized thinking) — like ChatGPT's rolling
-// summary. Falls back to the current tool's status, then a generic label.
+// live headline: the current reasoning block's first line, else the active
+// tool's status, else nothing
 const summarize = (steps: MetabotChainStep[]): string | undefined => {
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
     if (step.kind === "reasoning") {
-      const line = step.text
-        .split(/\r?\n/)
-        .map((l) =>
-          l
-            .replace(/^[#>\-*\s]+/, "")
-            .replace(/[*_`]/g, "")
-            .trim(),
-        )
-        .filter(Boolean)
-        .at(-1);
-      if (line) {
-        return line;
+      const firstLine = (step.text.split(/\r?\n/)[0] ?? "")
+        .replace(/^[#>\-*\s]+/, "")
+        .replace(/[*_`]/g, "")
+        .trim();
+      if (firstLine) {
+        return firstLine;
       }
     }
     if (step.kind === "tool") {

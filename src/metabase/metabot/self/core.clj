@@ -351,7 +351,11 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           ;; providers' native reasoning ids are long; emit short sequential ones,
+           ;; keeping the provider id only to detect block boundaries
            current-reasoning-id (volatile! nil)
+           reasoning-n          (volatile! 0)
+           reasoning-wire-id    (volatile! nil)
            start-event       (fn [id]
                                (format-sse-event
                                 (cond-> {:type "start" :messageId id}

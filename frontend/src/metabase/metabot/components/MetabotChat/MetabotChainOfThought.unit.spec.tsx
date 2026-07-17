@@ -34,17 +34,16 @@ describe("MetabotChainOfThought", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a live reasoning summary headline while streaming", () => {
+  it("shows the reasoning block's first line as the header summary", () => {
     setup(
       chain({
         steps: [
-          { kind: "reasoning", text: "First line\nComparing the tables" },
+          { kind: "reasoning", text: "Exploring the schema\nmore detail here" },
         ],
       }),
       true,
     );
-    // the latest reasoning line becomes the header summary
-    expect(screen.getAllByText("Comparing the tables").length).toBeGreaterThan(
+    expect(screen.getAllByText("Exploring the schema").length).toBeGreaterThan(
       0,
     );
   });
