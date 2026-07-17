@@ -57,6 +57,7 @@ describe("Dashboard utils", () => {
 
       const successfulFetch = Promise.resolve(data);
 
+      // Unjustified type cast. FIXME
       const result = (await fetchDataOrError(successfulFetch)) as any;
 
       expect(result.error).toBeUndefined();
@@ -77,6 +78,7 @@ describe("Dashboard utils", () => {
 
       const result = await fetchDataOrError(failedFetch);
       expect(result).toBeTruthy();
+      // Unjustified type cast. FIXME
       expect((result as { error: unknown }).error).toEqual(error);
     });
 

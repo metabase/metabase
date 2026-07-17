@@ -307,7 +307,7 @@
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
-                          (u/seek (comp not semantic?) (search.engine/supported-engines)))
+                          (search.engine/fallback-engine semantic-engine))
         fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion

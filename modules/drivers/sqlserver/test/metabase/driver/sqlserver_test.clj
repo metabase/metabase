@@ -926,17 +926,98 @@
 
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
-    (testing "compile-transform creates SELECT INTO"
-      ;; Both formats are valid T-SQL: double-quoted identifiers (Macaw/JSQLParser)
-      ;; and bracketed identifiers (SQLGlot). SQL Server accepts both.
-      (is (contains? #{["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
-                       ["SELECT * INTO [PRODUCTS_COPY] FROM products" nil]}
-                     (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
-                                                           :output-table "PRODUCTS_COPY"}))))
+    (testing "compile-transform wraps each base table in a self-UNION subquery so the target doesn't inherit
+              a source column's IDENTITY property, and injects a SELECT INTO"
+      (testing "single table"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM products"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "ORDER BY is preserved on the outer query"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products ORDER BY date DESC" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM products ORDER BY date DESC"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "TOP + ORDER BY are both preserved on the outer query"
+        (is (= ["SELECT TOP 10 * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products ORDER BY date DESC" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT TOP 10 * FROM products ORDER BY date DESC"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a schema-qualified table is wrapped, schema qualification preserved on the inner reference"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM dbo.products UNION ALL SELECT * FROM dbo.products WHERE 1 = 0) AS products" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM dbo.products"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a two-table join wraps both tables, each keeping its own alias"
+        (is (= ["SELECT p.id, o.total INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS p JOIN (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS o ON p.id = o.product_id" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT p.id, o.total FROM products p JOIN orders o ON p.id = o.product_id"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a self-join wraps the same table twice, each occurrence keeping its own distinct alias"
+        (is (= ["SELECT a.id, b.id INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS a JOIN (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS b ON a.parent_id = b.id" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT a.id, b.id FROM products a JOIN products b ON a.parent_id = b.id"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a CTE is left untouched; the base table it references is wrapped"
+        (is (= ["WITH cte AS (SELECT * FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products) SELECT * INTO [PRODUCTS_COPY] FROM cte" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "WITH cte AS (SELECT * FROM products) SELECT * FROM cte"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "an OR-ed WHERE passes through unchanged on the outer query"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products WHERE a = 1 OR b = 2" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM products WHERE a = 1 OR b = 2"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a derived table (subquery in FROM) is left untouched; the base table inside it is wrapped"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products) AS x" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM (SELECT * FROM products) x"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a table-valued function is left untouched"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM dbo.SOME_FUNC(1, 2) AS f" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM dbo.some_func(1, 2) AS f"}
+                 :output-table "PRODUCTS_COPY"}))))
+      (testing "a subquery in WHERE also has its base table wrapped"
+        (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products WHERE id IN (SELECT product_id FROM (SELECT * FROM orders UNION ALL SELECT * FROM orders WHERE 1 = 0) AS orders)" nil]
+               (driver/compile-transform
+                :sqlserver
+                {:query        {:query "SELECT * FROM products WHERE id IN (SELECT product_id FROM orders)"}
+                 :output-table "PRODUCTS_COPY"})))))
+    (testing "positional params appear exactly once (only bare table references are wrapped, not filters)"
+      (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products WHERE id = ?" [42]]
+             (driver/compile-transform
+              :sqlserver
+              {:query        {:query "SELECT * FROM products WHERE id = ?" :params [42]}
+               :output-table "PRODUCTS_COPY"}))))
+    (testing "a schema-qualified column reference is rewritten to the derived-table alias"
+      (is (= ["SELECT products.id INTO [PRODUCTS_COPY] FROM (SELECT * FROM dbo.products UNION ALL SELECT * FROM dbo.products WHERE 1 = 0) AS products" nil]
+             (driver/compile-transform
+              :sqlserver
+              {:query        {:query "SELECT dbo.products.id FROM dbo.products"}
+               :output-table "PRODUCTS_COPY"}))))
+    (testing "a catalog-qualified column reference is rewritten to the derived-table alias"
+      (is (= ["SELECT products.id INTO [PRODUCTS_COPY] FROM (SELECT * FROM mydb.dbo.products UNION ALL SELECT * FROM mydb.dbo.products WHERE 1 = 0) AS products" nil]
+             (driver/compile-transform
+              :sqlserver
+              {:query        {:query "SELECT mydb.dbo.products.id FROM mydb.dbo.products"}
+               :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
-             (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
-                                                :output-table "PRODUCTS_COPY"}))))))
+             (driver/compile-insert
+              :sqlserver
+              {:query        {:query "SELECT * FROM products"}
+               :output-table "PRODUCTS_COPY"}))))))
 
 (deftest table-privileges-test
   (mt/test-driver :sqlserver
@@ -996,3 +1077,35 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "nonclustered renders with double-quoted identifiers; UNIQUE only when asked, ASC/DESC per column"
+    (is (= [["CREATE NONCLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :nonclustered :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE NONCLUSTERED INDEX \"by_cat\" ON \"dbo\".\"t\" (\"category\" DESC, \"price\" ASC)"]]
+           (driver/compile-create-index :sqlserver "dbo" "t"
+                                        {:kind :nonclustered :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc} {:name "price" :direction :asc}]}))))
+  (testing "clustered renders the CLUSTERED keyword"
+    (is (= [["CREATE CLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :clustered :name "by_cat" :columns [{:name "category"}]}))))
+  (testing "SQL Server has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via a T-SQL IF NOT EXISTS block"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by_cat" :if-not-exists true
+                                                 :columns [{:name "category"}]})]
+      (is (str/starts-with? stmt "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'by_cat'")
+          "guards on the index name before creating")
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by_cat\"")
+          "still emits the create")))
+  (testing "a SQL-injection payload is escaped in every context the name lands: quoted identifier and N'' literal"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by\"cat'; DROP TABLE x; --" :if-not-exists true
+                                                 :columns [{:name "cat\"; DROP TABLE x; --"}]})]
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by\"\"cat'; DROP TABLE x; --\"")
+          "index name is a doubled-quote identifier in the CREATE")
+      (is (str/includes? stmt "(\"cat\"\"; DROP TABLE x; --\")")
+          "column is a doubled-quote identifier")
+      (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
+          "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))

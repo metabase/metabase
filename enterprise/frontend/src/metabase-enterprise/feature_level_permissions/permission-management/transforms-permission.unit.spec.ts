@@ -22,6 +22,7 @@ const getPermissionGraph = ({
   viewDataValue?: string;
   createQueriesValue?: string;
 } = {}): GroupsPermissions =>
+  // Unjustified type cast. FIXME
   ({
     [defaultGroupId]: {
       [databaseId]: {
@@ -42,6 +43,7 @@ const getPermissionGraph = ({
 const isAdmin = true;
 const isNotAdmin = false;
 
+// Unjustified type cast. FIXME
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",
@@ -108,6 +110,7 @@ describe("buildTransformsPermission", () => {
     });
 
     it("returns 'no' value when transforms permission is not set in graph", () => {
+      // Unjustified type cast. FIXME
       const permissions = {
         [defaultGroupId]: {
           [databaseId]: {
@@ -285,6 +288,7 @@ describe("buildTransformsPermission", () => {
     });
 
     it("does not show warning when group has same or higher permission than default group", () => {
+      // Unjustified type cast. FIXME
       const permissions = {
         [defaultGroupId]: {
           [databaseId]: {

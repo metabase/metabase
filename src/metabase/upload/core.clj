@@ -15,6 +15,8 @@
   can-create-upload?
   create-csv-upload!
   delete-upload!
+  max-upload-part-count
+  max-upload-size-bytes
   model-hydrate-based-on-upload
   parse-csv
   update-action-schema

@@ -126,6 +126,7 @@ export function setup({
       path="/"
       component={() => (
         <SegmentDetailPage
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
           segment={segment}
           tabUrls={tabUrls}

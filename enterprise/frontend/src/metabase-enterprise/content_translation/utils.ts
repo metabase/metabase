@@ -42,6 +42,7 @@ export function translateContentString<T>(
   }
 
   if (Array.isArray(rawMsgid)) {
+    // Unjustified type cast. FIXME
     return rawMsgid.map((msgid) =>
       translateContentString(dictionary, locale, msgid),
     ) as T;
@@ -147,6 +148,7 @@ export const translateDisplayNames = <T>({
 
   const traverse = (element: T): T => {
     if (Array.isArray(element)) {
+      // Unjustified type cast. FIXME
       return element.map((item) => traverse(item)) as T;
     }
 
@@ -166,7 +168,8 @@ export const translateDisplayNames = <T>({
               tc,
               locale,
             })
-          : traverse(value as T);
+          : // Unjustified type cast. FIXME
+            traverse(value as T);
 
         return I.assoc(acc, key, newValue);
       }, element);

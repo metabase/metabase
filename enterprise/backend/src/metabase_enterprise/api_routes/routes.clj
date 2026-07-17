@@ -30,6 +30,7 @@
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
+   [metabase-enterprise.mfa.routes]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -133,6 +134,11 @@
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
+   ;; Deliberately NOT premium-handler-gated: managing an existing enrollment (disable/status/recover)
+   ;; must keep working through a license lapse — the fail-closed rationale applies here too, since
+   ;; a lapsed-license user still needs to manage their enrolled second factor. The :multi-factor-auth
+   ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
+   "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; :dependencies is deliberate: transform test runs ship with Dependency Tracking,
    ;; not their own flag. Revisit if :transforms-advanced materializes.

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -12,7 +12,6 @@ import {
 import { getFetchRefreshTokenFn } from "embedding-sdk-bundle/store/selectors";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
@@ -32,7 +31,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler: OnBeforeRequestHandler = async (
   config,
@@ -118,7 +117,10 @@ export const useInitDataInternal = ({
   const isDataUninitialized = () =>
     reduxStore.getState().sdk.initStatus.status === "uninitialized";
 
-  const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+  const fetchRefreshTokenFnFromStore = useSyncExternalStore(
+    reduxStore.subscribe,
+    () => getFetchRefreshTokenFn(reduxStore.getState()),
+  );
 
   const sdkPackageVersion = getSdkPackageVersion();
 

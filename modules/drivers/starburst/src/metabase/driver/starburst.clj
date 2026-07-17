@@ -49,7 +49,7 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (set! *warn-on-reflection* true)
 
@@ -293,30 +293,30 @@
   [:raw (if bool "TRUE" "FALSE")])
 
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:starburst :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:starburst :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:starburst :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   ;; recent starburst versions have a `log10` function (not `log`)
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:starburst :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   ;; starburst will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
 
 (defmethod sql.qp/->honeysql [:starburst :time]
-  [_ [_ t]]
+  [_ [_ _opts t]]
   ;; Convert t to locale time, then format as sql. Then add cast.
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
@@ -362,7 +362,7 @@
      (->at-time-zone y)]))
 
 (defmethod sql.qp/->honeysql [:starburst :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         with_timezone? (or (sql.qp.u/field-with-tz? arg)
@@ -1033,8 +1033,8 @@
   (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) role))
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
 
 ;; starburst returns line numbers in error messages which will be off by 1 if
 ;; the remark is prepended (#64133)

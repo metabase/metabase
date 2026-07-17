@@ -1,10 +1,10 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 import { adminToolsGrantAccess } from "metabase/urls";
 

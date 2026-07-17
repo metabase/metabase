@@ -18,6 +18,7 @@ import { CurrentWorkspacePage } from "./CurrentWorkspacePage";
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
 function setup({
+  // Unjustified type cast. FIXME
   remappings = [] as TableRemapping[],
   workspace = createMockCurrentWorkspace({
     name: "Dev workspace",

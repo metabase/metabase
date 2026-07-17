@@ -139,7 +139,9 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
-    :model/OsiAiContext]
+    :model/OsiAiContext
+    ;; 63+
+    :model/McpFeedback]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

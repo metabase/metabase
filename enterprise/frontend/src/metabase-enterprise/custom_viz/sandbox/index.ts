@@ -50,6 +50,7 @@ export async function createPluginSandbox(
         // unwrap membrane-proxied Error
         let message: string;
         try {
+          // Unjustified type cast. FIXME
           message = String((e as { message?: unknown })?.message ?? e);
         } catch {
           message = "Unknown error inside plugin sandbox";

@@ -62,6 +62,7 @@ export const StaticRowChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
+  // Unjustified type cast. FIXME
   const data = extractRemappedColumns(
     rawSeries[0].data,
   ) as RemappingHydratedChartData;

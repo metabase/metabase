@@ -18,12 +18,12 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { IndexRedirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -222,18 +222,14 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="actions" />
+        <Route index component={redirect("actions")} />
         <Route path="actions" component={ModelActions}>
-          <ModalRoute
-            path="new"
-            modal={ActionCreator}
-            modalProps={{ transitionProps: { duration: 0 } }}
-          />
-          <ModalRoute
-            path=":actionId"
-            modal={ActionCreator}
-            modalProps={{ transitionProps: { duration: 0 } }}
-          />
+          {modalRoute("new", ActionCreator, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
+          {modalRoute(":actionId", ActionCreator, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
         </Route>
       </Route>
       <Route path="/question/:slug" component={() => null} />
@@ -712,6 +708,7 @@ describe("ModelActions", () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
       });
+      // Unjustified type cast. FIXME
       const modelName = model.displayName() as string;
 
       expect(screen.queryByText(modelName)).not.toBeInTheDocument();

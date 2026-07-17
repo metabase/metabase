@@ -252,6 +252,7 @@ function getSidebar(
       // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
       <TagEditorSidebar
         {...props}
+        // Unjustified type cast. FIXME
         query={question.legacyNativeQuery() as NativeQuery}
         onClose={toggleTemplateTagsEditor}
       />
@@ -283,6 +284,7 @@ function getTempRawSeries(
     return rawSeries;
   }
 
+  // Unjustified type cast. FIXME
   return [
     {
       ...rawSeries[0],
@@ -327,6 +329,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const fields = useMemo(
     () =>
       getSortedModelFields(
+        // Unjustified type cast. FIXME
         (resultsMetadata?.columns as unknown as Field[]) ?? [],
         visualizationSettings ?? {},
       ),
@@ -671,6 +674,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       <EditBar
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
+        // Unjustified type cast. FIXME
         title={question.displayName() as string}
         center={
           <EditorTabs

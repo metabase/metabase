@@ -110,10 +110,10 @@
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
-        ([result {t :type :keys [message content_block delta error] :as chunk}]
+        ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
-               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+               chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
            (cond-> result
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
@@ -252,28 +252,28 @@
   by other provider adapters."
   "<<<METABOT_CACHE_BREAKPOINT>>>")
 
-(defn- system->cached-content-blocks
+(defn system->cached-content-blocks
   "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
 
   If `system` contains the cache breakpoint sentinel, split it into two content
   blocks: a cached static prefix and an uncached dynamic suffix. The model sees
   the concatenation; the split is purely a wire-protocol device for caching.
 
-  If the sentinel is absent, fall back to a single cached content block covering
-  the whole prompt."
+  If the sentinel is absent (or nothing but whitespace follows it) fall back to
+  a single cached content block covering the whole prompt."
   [system]
-  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
-    (if (neg? idx)
+  (let [idx    (.indexOf ^String system ^String system-cache-breakpoint-sentinel)
+        suffix (when-not (neg? idx)
+                 (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel)))))]
+    (if (or (neg? idx) (str/blank? suffix))
       [{:type          "text"
-        :text          system
+        :text          (if (neg? idx) system (str/trimr (subs system 0 idx)))
         :cache_control {:type "ephemeral"}}]
-      (let [prefix (str/trimr (subs system 0 idx))
-            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
-        [{:type          "text"
-          :text          prefix
-          :cache_control {:type "ephemeral"}}
-         {:type "text"
-          :text suffix}]))))
+      [{:type          "text"
+        :text          (str/trimr (subs system 0 idx))
+        :cache_control {:type "ephemeral"}}
+       {:type "text"
+        :text suffix}])))
 
 (defn- anthropic-error-msg
   "Canonical, status-specific Anthropic error message."
@@ -312,8 +312,6 @@
   "Fetch the full Anthropic model catalog (`GET /v1/models`).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   [{:keys [credentials ai-proxy?]}]
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "Anthropic")))
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
                                   (when-let [k (or (not-empty (:api-key credentials))

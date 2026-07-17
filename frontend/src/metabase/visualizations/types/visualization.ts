@@ -205,7 +205,7 @@ export interface VisualizationProps {
   ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -228,7 +228,7 @@ export type VisualizationPassThroughProps = {
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table

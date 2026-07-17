@@ -316,7 +316,9 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         isShowingQuestionInfoSidebar: false,
       }))
       .addCase(OPEN_QUESTION_SETTINGS, (state) =>
+        // Unjustified type cast. FIXME
         setUIControls(state, {
+          // Unjustified type cast. FIXME
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
         } as Partial<QueryBuilderUIControls>),
@@ -325,12 +327,16 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         ...state,
         isShowingQuestionSettingsSidebar: false,
       }))
-      .addCase(OPEN_TIMELINES, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingTimelineSidebar: true,
-      }))
+      .addCase<string, { type: string; payload: number[] | undefined }>(
+        OPEN_TIMELINES,
+        (state, action) => ({
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          isShowingTimelineSidebar: true,
+          focusedTimelineEventIds: action.payload ?? null,
+        }),
+      )
       .addCase(CLOSE_TIMELINES, (state) => ({
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -682,7 +688,11 @@ export const card = createReducer<Card | null>(null, (builder) => {
           visualization_settings: action.payload.card.visualization_settings,
         };
       },
-    )
+    );
+
+  // a separate builder statement keeps the expression shallow enough for
+  // TypeScript's instantiation-depth limit (TS2589)
+  builder
     .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
       if (!state) {
         return state;

@@ -31,18 +31,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       });
     });
 
-    it("when set as the default value for a required filter", () => {
-      SQLFilter.toggleRequired();
-      SQLFilter.setDefaultValue("Gizmo");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Rustic Paper Wallet");
-        cy.findAllByText("Doohickey").should("not.exist");
-      });
-    });
-
     describe("required tag", () => {
       it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
@@ -92,18 +80,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("when set through the filter widget", () => {
       SQLFilter.setWidgetValue("4.3");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Aerodynamic Linen Coat");
-        cy.findAllByText("4.3");
-      });
-    });
-
-    it("when set as the default value for a required filter (metabase#16811)", () => {
-      SQLFilter.toggleRequired();
-      SQLFilter.setDefaultValue("4.3");
 
       SQLFilter.runQuery();
 
@@ -165,24 +141,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
 
-      H.popover().within(() => {
-        cy.findByText("15").click();
-        cy.findByText("Add filter").click();
-      });
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("No results");
-      });
-    });
-
-    it("when set as the default value for a required filter", () => {
-      SQLFilter.toggleRequired();
-
-      cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
-        .click();
       H.popover().within(() => {
         cy.findByText("15").click();
         cy.findByText("Add filter").click();

@@ -248,6 +248,7 @@ describe("DashCardMenu", () => {
   });
 
   it("should not display query export options when query is running", async () => {
+    // Unjustified type cast. FIXME
     setup({ result: {} as any });
 
     await userEvent.click(getIcon("ellipsis"));

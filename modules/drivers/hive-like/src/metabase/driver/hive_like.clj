@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :hive-like
-                  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
+                  :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
 (doseq [[feature supported?] {:now           true
@@ -172,22 +172,22 @@
           3)])
 
 (defmethod sql.qp/->honeysql [:hive-like :replace]
-  [driver [_ arg pattern replacement]]
+  [driver [_ _opts arg pattern replacement]]
   [:regexp_replace
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver pattern)
    (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) 0])
 
 (defmethod sql.qp/->honeysql [:hive-like :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:hive-like :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/add-interval-honeysql-form :hive-like

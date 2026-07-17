@@ -52,7 +52,9 @@ export const ProviderModelPicker = ({
   const [sendToast] = useToast();
 
   useEffect(() => {
-    setModel(connectedModel);
+    if (connectedModel) {
+      setModel(connectedModel);
+    }
   }, [connectedModel]);
 
   const modelOptions = useMemo(() => getLlmModelOptions(models), [models]);

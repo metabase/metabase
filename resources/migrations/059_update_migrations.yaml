@@ -3482,6 +3482,29 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
+  - changeSet:
+      id: v59.2026-07-10T22:29:16
+      author: escherize
+      comment: Add confirmed_at to auth_identity so MFA enrollment state is queryable in SQL
+      changes:
+        - addColumn:
+            tableName: auth_identity
+            columns:
+              - column:
+                  name: confirmed_at
+                  type: ${timestamp_type}
+                  remarks: When this identity was confirmed (e.g. MFA enrollment completed). Null = unconfirmed.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-07-10T22:29:17
+      author: escherize
+      comment: Backfill auth_identity.confirmed_at from the (possibly encrypted) credentials JSON
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillMfaConfirmedAt"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -47,12 +47,15 @@ describe("content translation utils", () => {
     });
 
     it("should return msgid when msgid is not a string", () => {
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", 123 as any)).toBe(
         123,
       );
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", {} as any)).toEqual(
         {},
       );
+      // Unjustified type cast. FIXME
       expect(translateContentString(mockDictionary, "es", [] as any)).toEqual(
         [],
       );

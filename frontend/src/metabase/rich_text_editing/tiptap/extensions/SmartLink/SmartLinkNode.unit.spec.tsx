@@ -31,6 +31,7 @@ function createProps(
   updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
+  // Unjustified type cast. FIXME
   return {
     node,
     updateAttributes: updateAttributes ?? jest.fn(),

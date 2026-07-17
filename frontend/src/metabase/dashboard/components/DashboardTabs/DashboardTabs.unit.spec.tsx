@@ -125,6 +125,7 @@ function queryTab(numOrName: number | string) {
 }
 
 async function selectTab(num: number) {
+  // Unjustified type cast. FIXME
   const selectedTab = queryTab(num) as HTMLElement;
   await userEvent.click(selectedTab);
   return selectedTab;

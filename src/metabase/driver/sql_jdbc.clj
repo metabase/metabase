@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -25,7 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.performance :refer [mapv select-keys]]
    [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
@@ -189,18 +189,24 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-index-sql :default
-  [driver schema table-name index-name column-names & _]
-  (with-quoting driver
-    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
-                           (map keyword)
-                           column-names)]
-      (first (sql/format {:create-index [(keyword index-name) index-spec]}
-                         :quoted true
-                         :dialect (sql.qp/quote-style driver))))))
+  [driver schema table-name index-name column-names & {:keys [unique if-not-exists]}]
+  (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                         (map keyword)
+                         column-names)
+        index-ref  (cond-> (if unique
+                             [:unique (keyword index-name)]
+                             [(keyword index-name)])
+                     if-not-exists (conj :if-not-exists))]
+    (first (sql.qp/format-honeysql driver {:create-index [index-ref index-spec]}))))
+
+(defmethod driver/compile-create-index :sql-jdbc
+  [driver schema table {index-name :name, :keys [columns] :as structured}]
+  [[(create-index-sql driver schema table index-name (map :name columns)
+                      (select-keys structured [:kind :unique :if-not-exists]))]])
 
 (defmethod driver/create-index! :sql-jdbc
-  [driver database-id schema table-name index-name column-names & _]
-  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+  [driver database-id schema table-name index-name column-names & {:as opts}]
+  (let [sql (create-index-sql driver schema table-name index-name column-names opts)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))
     nil))
@@ -213,11 +219,9 @@
 
 (defmethod drop-index-sql :default
   [driver schema _table-name index-name]
-  (first (sql/format {:drop-index [(keyword (if schema
-                                              (str (name schema) "." (name index-name))
-                                              (name index-name)))]}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (first (sql.qp/format-honeysql driver {:drop-index [(keyword (if schema
+                                                                 (str (name schema) "." (name index-name))
+                                                                 (name index-name)))]})))
 
 (defmethod driver/drop-index! :sql-jdbc
   [driver database-id schema table-name index-name & _]

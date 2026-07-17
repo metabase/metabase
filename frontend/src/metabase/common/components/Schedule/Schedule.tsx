@@ -88,6 +88,7 @@ export const Schedule = ({
       if (updatedField === "schedule_type") {
         // When a new schedule type is selected, use the default values for that type
         newSchedule = {
+          // Unjustified type cast. FIXME
           schedule_type: newValue as ScheduleType,
           ...defaults,
         };
@@ -211,6 +212,7 @@ export const Schedule = ({
           c(
             "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
           )
+            // Unjustified type cast. FIXME
             .jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(msgid`Minute`, "Minutes", schedule_minute as number).toLocaleLowerCase()}`,
       )
       .with("hourly", () => {

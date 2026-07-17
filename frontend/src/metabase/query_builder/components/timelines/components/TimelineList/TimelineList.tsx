@@ -1,4 +1,4 @@
-import TimelineCard from "metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard";
+import { TimelineCard } from "metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineListProps {

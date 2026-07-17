@@ -10,8 +10,8 @@ import {
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { initMetaplow } from "metabase/utils/metaplow";
 

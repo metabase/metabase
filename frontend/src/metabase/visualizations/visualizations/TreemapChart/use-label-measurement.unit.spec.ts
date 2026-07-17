@@ -44,6 +44,7 @@ function createMockChartRef(
     getLayout: () => ({ x: 0, y: 0, ...rect }),
     children: id.includes("-") ? [] : [{}],
   }));
+  // Unjustified type cast. FIXME
   const chart = {
     getModel: () => ({
       getSeriesByIndex: () => ({
@@ -57,6 +58,7 @@ function createMockChartRef(
       }),
     }),
   } as unknown as EChartsType;
+  // Unjustified type cast. FIXME
   return { current: chart } as MutableRefObject<EChartsType | undefined>;
 }
 

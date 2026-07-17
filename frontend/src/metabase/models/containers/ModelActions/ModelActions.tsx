@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
 import {
@@ -17,6 +16,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
+import { replace } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -111,7 +111,7 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
+      {/* Required for rendering child modal routes */}
       {children}
     </>
   );

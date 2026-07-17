@@ -24,6 +24,7 @@ jest.mock("@mantine/hooks", () => ({
   useClipboard: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
 const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;

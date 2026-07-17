@@ -11,7 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
@@ -41,6 +40,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Route } from "metabase/router";
+import { push, replace } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";

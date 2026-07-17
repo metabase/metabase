@@ -17,6 +17,7 @@ const setup = ({
   slug?: string;
   onClose?: () => void;
 } = {}) => {
+  // Unjustified type cast. FIXME
   const props = {
     onClose,
     params: { slug },

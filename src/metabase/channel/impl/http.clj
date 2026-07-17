@@ -1,6 +1,7 @@
 (ns metabase.channel.impl.http
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
@@ -36,12 +37,24 @@
    [:type    [:= :channel/http]]
    [:details HTTPDetails]])
 
+(defn- check-url!
+  [url]
+  (when (str/blank? url)
+    (throw (ex-info (tru "No URL is configured for this webhook.") {:status-code 400})))
+  (when-not (try
+              (u/valid-host? (channel.settings/http-channel-host-strategy) url)
+              (catch Exception e
+                (throw (ex-info (tru "Invalid webhook URL: {0}" (ex-message e))
+                                {:status-code 400
+                                 :url         url}
+                                e))))
+    (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
+                    {:status-code 400}))))
+
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (when-not (u/valid-host? (channel.settings/http-channel-host-strategy) url)
-    (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
-                    {:status-code 400})))
+  (check-url! url)
   (let [req (merge
              {:accept       :json
               :content-type :json

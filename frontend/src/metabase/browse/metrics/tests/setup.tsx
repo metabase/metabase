@@ -242,6 +242,7 @@ export function setup({
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
   const mockRecentMetrics = mockMetrics.map((metric) =>
+    // Unjustified type cast. FIXME
     createMockRecentMetric(metric as RecentMetric),
   );
 

@@ -27,7 +27,6 @@ import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
@@ -39,7 +38,7 @@ import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { useRouterHistory } from "metabase/router";
+import { syncHistoryWithStore, useRouterHistory } from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
@@ -49,7 +48,7 @@ import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";

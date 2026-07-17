@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -42,6 +41,7 @@ import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
+import { push } from "metabase/router";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,

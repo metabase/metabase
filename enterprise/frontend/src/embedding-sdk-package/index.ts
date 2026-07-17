@@ -90,9 +90,9 @@ export {
 } from "embedding-sdk-bundle/components/public/StaticQuestion";
 export { type MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 
+export type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
 export type {
   CustomDashboardCardMenuItem,
-  DashCardMenuItem,
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   DashboardCardMenu,

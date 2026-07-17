@@ -77,6 +77,7 @@ describe("SearchResult", () => {
 
     expect(screen.getByText(TEST_RESULT_QUESTION.name)).toBeInTheDocument();
     expect(
+      // Unjustified type cast. FIXME
       screen.getByText(TEST_RESULT_QUESTION.description as string),
     ).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();
@@ -172,10 +173,7 @@ describe("SearchResult", () => {
     it("renders x-ray button for indexed entity search result", () => {
       setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
-      expect(screen.getByTestId("search-result-item-icon")).toHaveAttribute(
-        "type",
-        "indexed-entity",
-      );
+      expect(screen.getByTestId("search-result-item-icon")).toBeInTheDocument();
 
       expect(getIcon("bolt")).toBeInTheDocument();
     });

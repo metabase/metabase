@@ -33,8 +33,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-tool-calls-conv-test
@@ -50,8 +52,10 @@
                  {:type :tool-input :function string? :arguments map?}]
                 (take 2 parts)))
         (is (=? {:type  :usage
-                 :usage {:promptTokens     pos-int?
-                         :completionTokens pos-int?}}
+                 :usage {:promptTokens        pos-int?
+                         :completionTokens    pos-int?
+                         :cacheCreationTokens nat-int?
+                         :cacheReadTokens     nat-int?}}
                 (last parts)))))))
 
 (deftest ^:parallel openai-structured-output-conv-test
@@ -69,8 +73,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
@@ -88,8 +94,10 @@
                {:type :text :text string?}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-reasoning-items-are-ignored-test
@@ -112,8 +120,10 @@
         (is (=? [{:type :start}
                  {:type :text :text string?}
                  {:type  :usage
-                  :usage {:promptTokens     pos-int?
-                          :completionTokens pos-int?}}]
+                  :usage {:promptTokens        pos-int?
+                          :completionTokens    pos-int?
+                          :cacheCreationTokens nat-int?
+                          :cacheReadTokens     nat-int?}}]
                 (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
 (deftest ^:parallel openai-response-failed-surfaces-error-test
@@ -154,7 +164,8 @@
       (testing "persistence picks up a non-nil error payload"
         (is (=? {:message "boom"} (:error err))))
       (testing "wire serializer emits the message (not an empty string)"
-        (is (= "3:\"boom\"" (self.core/format-error-line err)))))))
+        (is (= (self.core/format-sse-event {:type "error" :errorText "boom"})
+               (self.core/format-error-line err)))))))
 
 (deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
   (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"
@@ -174,8 +185,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
@@ -184,27 +197,61 @@
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel openai-usage-strips-nested-details-test
-  (testing "nested *_details maps from reasoning models are stripped"
-    (let [raw-chunks (fixture "openai-text"
-                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
-          ;; Patch the last chunk to include nested usage details like reasoning models return
-          patched    (mapv (fn [chunk]
-                             (if (= (:type chunk) "response.completed")
-                               (assoc-in chunk [:response :usage]
-                                         {:input_tokens          20
-                                          :output_tokens         8
-                                          :total_tokens          28
-                                          :input_tokens_details  {:cached_tokens 5 :audio_tokens 0}
-                                          :output_tokens_details {:reasoning_tokens 3 :audio_tokens 0}})
-                               chunk))
-                           raw-chunks)
-          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)
-          usage      (:usage (last parts))]
-      ;; no nested maps — safe for merge-with + in accumulate-usage-xf
-      (is (= {:promptTokens 20
-              :completionTokens 8}
-             usage)))))
+(defn- usage-from-patched-fixture
+  "Run the openai-text fixture through the full pipeline with its terminal
+  `response.completed` usage replaced by `usage`, and return the final
+  AISDK `:usage` map."
+  [usage]
+  (let [raw-chunks (fixture "openai-text"
+                            {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+        patched    (mapv (fn [chunk]
+                           (cond-> chunk
+                             (= (:type chunk) "response.completed")
+                             (assoc-in [:response :usage] usage)))
+                         raw-chunks)
+        parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
+    (:usage (last parts))))
+
+(deftest ^:parallel openai-usage-reports-cached-tokens-test
+  (testing "cached tokens from input_tokens_details (Responses API shape) are reported as :cacheReadTokens"
+    (is (= {:promptTokens        2006
+            :completionTokens    300
+            :cacheCreationTokens 0
+            :cacheReadTokens     1920}
+           (usage-from-patched-fixture
+            {:input_tokens          2006
+             :output_tokens         300
+             :total_tokens          2306
+             :input_tokens_details  {:cached_tokens 1920 :cache_write_tokens 0}
+             :output_tokens_details {:reasoning_tokens 0}})))))
+
+(deftest ^:parallel openai-usage-zero-cached-tokens-test
+  (testing "input_token_details missing the cache keys reports zero cache tokens"
+    (is (= {:promptTokens        20
+            :completionTokens    8
+            :cacheCreationTokens 0
+            :cacheReadTokens     0}
+           (usage-from-patched-fixture
+            {:input_tokens          20
+             :output_tokens         8
+             :total_tokens          28
+             :input_tokens_details  {}
+             :output_tokens_details {:reasoning_tokens 3}})))))
+
+(deftest ^:parallel openai-usage-cache-write-tokens-passthrough-test
+  (testing "a (hypothetical) non-zero cache_write_tokens is passed through as :cacheCreationTokens"
+    ;; The live API always reports cache_write_tokens 0 (automatic caching bills no writes), but if
+    ;; OpenAI ever starts populating it we want the count to flow through rather than be dropped.
+    (is (= {:promptTokens        20
+            :completionTokens    8
+            :cacheCreationTokens 7
+            :cacheReadTokens     0}
+           (usage-from-patched-fixture
+            {:input_tokens          20
+             :output_tokens         8
+             :total_tokens          28
+             :input_tokens_details  {:cached_tokens 0 :cache_write_tokens 7}
+             :output_tokens_details {:reasoning_tokens 3}})))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->openai-input tests
@@ -260,10 +307,10 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-5.5" "gpt-5.4-mini" "gpt-5"]]
+    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
       (is (true? (#'openai/supported-model? {:id id})) id)))
   (testing "non-white-listed models are not supported"
-    (doseq [id ["gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
+    (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
       (is (false? (#'openai/supported-model? {:id id})) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
@@ -271,7 +318,9 @@
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-5-mini"             :created 30}
+                                    :body   {:data [{:id "gpt-5.6-sol"            :created 40}
+                                                    {:id "gpt-5.6-luna"           :created 39}
+                                                    {:id "gpt-5-mini"             :created 30}
                                                     {:id "gpt-5"                  :created 28}
                                                     {:id "gpt-5.4"                :created 25}
                                                     {:id "gpt-4.1"                :created 20}
@@ -280,9 +329,38 @@
                                                     {:id "o3"                     :created 15}
                                                     {:id "text-embedding-3-small" :created 8}
                                                     {:id "whisper-1"              :created 7}]}})]
-        (is (= [{:id "gpt-5" :display_name "GPT-5"}
-                {:id "gpt-5.4" :display_name "GPT-5.4"}]
+        (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
+                {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
+                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
                (:models (openai/list-models))))))))
+
+(deftest list-models-explicit-credentials-test
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-explicit"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []}
+               (openai/list-models {:credentials {:api-key "sk-explicit"}})))))))
+
+(deftest list-models-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-setting"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []}
+               (openai/list-models {:credentials {:api-key ""}})))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenAI API key is set"
+           (openai/list-models {:credentials {:api-key ""}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; temperature support tests
@@ -294,7 +372,7 @@
       (is (true? (#'openai/model-supports-temperature? model))
           model)))
   (testing "GPT-5 family and o-series reasoning models do not"
-    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol"
                    "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
           model))))

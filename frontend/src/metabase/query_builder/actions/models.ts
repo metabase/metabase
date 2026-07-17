@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
@@ -8,6 +7,7 @@ import type {
   GetState,
 } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 
 import { getQuestion } from "../selectors";
 

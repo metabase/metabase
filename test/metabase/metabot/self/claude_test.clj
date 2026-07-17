@@ -40,6 +40,23 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-text-id-from-content-block-index-test
+  (testing "text blocks (no provider id) take their id from the content-block index, matching @ai-sdk/anthropic"
+    (let [raw    [{:type "message_start" :message {:id "msg-1" :model "claude-haiku-4-5"}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hello"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "world"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) raw)]
+      (is (= [["text-start" "0"] ["text-delta" "0"] ["text-end" "0"]
+              ["text-start" "1"] ["text-delta" "1"] ["text-end" "1"]]
+             (->> chunks
+                  (filter #(#{:text-start :text-delta :text-end} (:type %)))
+                  (mapv (juxt (comp name :type) :id))))))))
+
 (deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
   (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
     (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
@@ -47,7 +64,8 @@
           parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
           err   (m/find-first #(= :error (:type %)) parts)]
       (is (=? {:message "Overloaded"} (:error err)))
-      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+      (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
+             (self.core/format-error-line err))))))
 
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
@@ -389,6 +407,17 @@
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
 
+(deftest claude-system-cache-breakpoint-blank-suffix-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
+      (let [body (capture-claude-request-body!
+                  {:input  [{:role :user :content "hi"}]
+                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+        (is (= [{:type          "text"
+                 :text          "Stable prefix content."
+                 :cache_control {:type "ephemeral"}}]
+               (:system body)))))))
+
 (deftest system-templates-cache-breakpoint-presence-test
   (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
     (let [system-dir (io/file (io/resource "metabot/prompts/system"))
@@ -448,6 +477,34 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
+
+(deftest list-models-explicit-credentials-test
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
+
+(deftest list-models-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-setting"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key ""}})))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"

@@ -22,6 +22,7 @@ export default {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(RowChart);
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ name: "Card", display: "row" }),
@@ -57,6 +58,7 @@ Default.parameters = {
 };
 
 export const WithLongNames = () => {
+  // Unjustified type cast. FIXME
   const [series, setSeries] = useState([
     {
       card: createMockCard({ name: "Card", display: "row" }),

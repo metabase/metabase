@@ -76,6 +76,7 @@ export function PeopleListingApp({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       updateStatus(tab as ActiveStatus);
     }
   };

@@ -4,13 +4,13 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import {
   ActionIcon,
   Box,
   Flex,
   Group,
   Icon,
+  Loader,
   Stack,
   Tabs,
   Text,
@@ -83,6 +83,7 @@ function ExecutionResultTabs({
           value={tab}
           onChange={(value) => {
             if (value) {
+              // Unjustified type cast. FIXME
               onTabChange(value as ResultsTab);
             }
           }}
@@ -103,8 +104,8 @@ function getRunQueryShortcut() {
 
 function LoadingState() {
   return (
-    <Flex p="md" className={S.loading}>
-      <LoadingSpinner />
+    <Flex p="md" align="center" justify="center" className={S.loading}>
+      <Loader size="lg" color="core-brand" />
     </Flex>
   );
 }

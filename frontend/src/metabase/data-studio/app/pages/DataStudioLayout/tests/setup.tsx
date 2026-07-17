@@ -51,13 +51,21 @@ const createRemoteSyncSettings = ({
 
 const setupRemoteSyncSettingsEndpoints = (
   settings: Partial<RemoteSyncSettings> = {},
-  tokenFeatures?: Partial<TokenFeatures>,
+  {
+    tokenFeatures,
+    transformsEnabled = false,
+    transformsSetupComplete = false,
+  }: Pick<
+    StoreStateOptions,
+    "tokenFeatures" | "transformsEnabled" | "transformsSetupComplete"
+  > = {},
 ) => {
-  const remoteSyncSettings = createRemoteSyncSettings(settings);
   setupPropertiesEndpoints(
-    createMockSettings({
-      ...remoteSyncSettings,
-      "token-features": createMockTokenFeatures(tokenFeatures),
+    createSettingsValues({
+      remoteSyncSettings: settings,
+      tokenFeatures,
+      transformsEnabled,
+      transformsSetupComplete,
     }),
   );
 };
@@ -102,16 +110,37 @@ interface StoreStateOptions {
   canAccessTransforms?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
+  transformsEnabled?: boolean;
+  transformsSetupComplete?: boolean;
 }
+
+const createSettingsValues = ({
+  remoteSyncSettings = {},
+  tokenFeatures,
+  transformsEnabled = false,
+  transformsSetupComplete = false,
+}: Pick<
+  StoreStateOptions,
+  | "remoteSyncSettings"
+  | "tokenFeatures"
+  | "transformsEnabled"
+  | "transformsSetupComplete"
+> = {}) =>
+  createMockSettings({
+    ...createRemoteSyncSettings(remoteSyncSettings),
+    "transforms-enabled": transformsEnabled,
+    "transforms-setup-complete": transformsSetupComplete,
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
 
 const createStoreState = ({
   isAdmin = true,
   canAccessTransforms = false,
   remoteSyncSettings = {},
   tokenFeatures,
+  transformsEnabled = false,
+  transformsSetupComplete = false,
 }: StoreStateOptions = {}) => {
-  const settings = createRemoteSyncSettings(remoteSyncSettings);
-
   return createMockState({
     currentUser: createMockUser({
       is_superuser: isAdmin,
@@ -121,10 +150,14 @@ const createStoreState = ({
         can_access_transforms: canAccessTransforms,
       },
     }),
-    settings: mockSettings({
-      ...settings,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
+    settings: mockSettings(
+      createSettingsValues({
+        remoteSyncSettings,
+        tokenFeatures,
+        transformsEnabled,
+        transformsSetupComplete,
+      }),
+    ),
   });
 };
 
@@ -140,6 +173,8 @@ interface SetupOpts {
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
+  transformsEnabled?: boolean;
+  transformsSetupComplete?: boolean;
 }
 
 export const setup = ({
@@ -154,6 +189,8 @@ export const setup = ({
   isNavbarOpened = true,
   enterprisePlugins,
   tokenFeatures,
+  transformsEnabled = false,
+  transformsSetupComplete = false,
 }: SetupOpts = {}) => {
   // Build collections list
   const collections: Collection[] = [];
@@ -181,7 +218,11 @@ export const setup = ({
   };
 
   setupSettingsEndpoints([]);
-  setupRemoteSyncSettingsEndpoints(remoteSyncSettings, tokenFeatures);
+  setupRemoteSyncSettingsEndpoints(remoteSyncSettings, {
+    tokenFeatures,
+    transformsEnabled,
+    transformsSetupComplete,
+  });
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
@@ -197,6 +238,8 @@ export const setup = ({
     canAccessTransforms,
     remoteSyncSettings,
     tokenFeatures,
+    transformsEnabled,
+    transformsSetupComplete,
   });
 
   if (enterprisePlugins) {

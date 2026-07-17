@@ -30,11 +30,16 @@
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
 (defn pgvector-configured?
-  "True when a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL).
+  "True when a dedicated pgvector store is configured (MB_PGVECTOR_DB_URL).
+  Deliberately excludes pgvector-on-the-app-db: entity retrieval's tables are not yet schema-isolated
+  (bare `library_entity_index*` names, dropped and recreated on rebuild), so it stays dedicated-only
+  until they are.
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
+  even when the library-retrieval feature is turned on after startup (a common onboarding flow).
+  A plain URL check, not [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]: mode
+  resolution can probe the app db, which a dedicated-only scheduling gate has no business doing."
   []
-  (string? (not-empty semantic.db.datasource/db-url)))
+  (semantic.db.datasource/dedicated-url-configured?))
 
 (defn available?
   "Whether the entity-retrieval mirror can run right now. All four must hold:
@@ -48,9 +53,11 @@
   The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
   re-evaluate per use."
   []
-  (and (pgvector-configured?)
-       (premium-features/has-feature? :library)
+  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
+  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
+  (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)
+       (pgvector-configured?)
        (embedding/embedding-supported? (embedding/get-configured-model))))
 
 (defn- index-ready?

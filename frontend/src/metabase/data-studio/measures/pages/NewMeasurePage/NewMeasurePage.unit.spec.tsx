@@ -25,6 +25,7 @@ function setup({ table }: SetupOpts) {
       path="/"
       component={() => (
         <NewMeasurePage
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
           table={table}
           breadcrumbs={<div />}

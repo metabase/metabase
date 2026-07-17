@@ -13,6 +13,7 @@ import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
 const mockPaletteActionImpl = (opts: Partial<PaletteActionImpl>) =>
+  // Unjustified type cast. FIXME
   ({
     name: "test action",
     id: "action-1",

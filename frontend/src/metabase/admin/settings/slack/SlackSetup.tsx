@@ -52,10 +52,9 @@ const SlackConnectionStatus = ({
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Badge
-            circle
-            size="12"
-            bg={isValid ? "feedback-positive" : "feedback-negative"}
-            style={{ flexShrink: 0 }}
+            color={isValid ? "positive" : "negative"}
+            flex="0 0 auto"
+            indicator
           />
           <Text>
             {isValid ? t`Slack app is working` : t`Slack app is not working.`}
