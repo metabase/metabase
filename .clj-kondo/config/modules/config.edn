@@ -2986,6 +2986,7 @@
            metabase-enterprise.content-diagnostics.init}
    :uses #{api
            collections
+           documents
            models
            premium-features
            request

@@ -33,3 +33,9 @@
 (deftest stale-threshold-setting-default-test
   (testing "the staleness window defaults to 90 days"
     (is (= 90 (cd.settings/content-diagnostics-stale-threshold-days)))))
+
+(deftest slow-threshold-setting-defaults-test
+  (testing "the slow-card query-time threshold defaults to 15 seconds"
+    (is (= 15 (cd.settings/content-diagnostics-slow-card-threshold-seconds))))
+  (testing "the slow-transform run-time threshold defaults to 60 seconds"
+    (is (= 60 (cd.settings/content-diagnostics-slow-transform-threshold-seconds)))))
