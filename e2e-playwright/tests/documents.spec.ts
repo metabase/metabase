@@ -569,8 +569,13 @@ test.describe("documents", () => {
     // Add some content to the document body
     await addToDocument(page, "One\nTwo");
 
-    // Click back on the title to focus it and hit Enter
+    // Click back on the title to focus it and hit Enter. Upstream chains
+    // .click().type("{enter}") as two Cypress commands, which leaves a gap for
+    // focus to land on the input; Playwright's click->press is fast enough to
+    // beat it, and the Enter is then handled with the editor still focused —
+    // which leaves the first character selected, so typing eats the "O".
     await title.click();
+    await expect(title).toBeFocused();
     await title.press("Enter");
 
     // Focus should be placed at the beginning of the document body
@@ -1303,9 +1308,18 @@ test.describe("documents", () => {
           { y: 200 },
         );
 
+        // Upstream asserts the card gets SHORTER after dragging the resize
+        // handle DOWN by 200px. That is backwards, and it only passes by
+        // accident: H.documentDoDrag's final `.trigger("mouseup")` is called
+        // with no coordinates, so Cypress fires it at the BODY'S CENTRE
+        // (y=400) rather than at the drag destination (y=870). The resize
+        // commits to that stray point, which happens to sit *above* the handle
+        // (y=670), so the card shrinks. Replaying that exact sequence here
+        // reproduces Cypress's number (426 -> 264) to the pixel; a real drag
+        // grows the card by exactly the delta. See findings-inbox/documents.md.
         await expect
-          .poll(async () => (await card.boundingBox())?.height ?? Infinity)
-          .toBeLessThan(ogHeight);
+          .poll(async () => (await card.boundingBox())?.height ?? 0)
+          .toBeCloseTo(ogHeight + 200, -1);
       });
 
       const PADDING_CARD = 1;

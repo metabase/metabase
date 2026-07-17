@@ -5,15 +5,26 @@ Playwright spec, 47 tests). Slot 4 / port 4104, source-mode backend.
 
 ## Status
 
-First full run on a **freshly booted** backend: 45 passed / 1 failed. After the
-fix below: green, and stable under `--repeat-each=2`. One fix needed, and it
-was a **port bug, not a product bug** — established by running the Cypress
-original against the same backend (it passes).
+**Landed green: 46 tests, 0 skipped, 0 `test.fixme`, 92/92 under
+`--repeat-each=2`.** tsc clean. In PORTED.txt as
+`metrics/metrics-explorer.cy.spec.ts` (note: the source is `.ts`, not `.js`).
 
-The previous agent's "blank UI" symptom did not recur on a fresh backend,
-matching its own last note. That was backend staleness (known gotcha —
-PORTING.md: "Long-lived `--hot` backends degrade after hours"), not a product
-issue. No finding.
+Two fixes were needed, **both port bugs, neither a product bug**:
+
+1. A stricter-than-upstream visibility assertion (Finding 1) — settled by
+   running the Cypress original against the same backend, where it passes.
+2. A dropped-keystroke race in the spec's own focus helper (Finding 2) —
+   flaked at ~40% (2/5); 5/5 after the fix.
+
+**No product bugs found, and none claimed.** The previous agent's "blank UI"
+symptom did not recur on a freshly booted backend, matching its own last note.
+That was backend staleness (known gotcha — PORTING.md: "Long-lived `--hot`
+backends degrade after hours"), not a product issue.
+
+Worth noting for the wider argument: the two defects here were **both in the
+port**, and the one that superficially looked like a product bug (a chart
+series "not visible") evaporated on the Cypress cross-check. That's the rule
+earning its keep for the fourth time.
 
 ## Finding 1 — `should("be.visible")` on a multi-element subject is an ANY, not ALL, assertion
 
@@ -110,6 +121,75 @@ The test-suite dividend: the upstream assertion is weaker than it reads. "Chart
 series colors should match legend colors" passes as long as *any* path of that
 colour is visible, so it would not catch the line path disappearing. Worth
 noting if anyone strengthens this test later.
+
+## Finding 2 — lazily-mounted CodeMirror + `autoFocus` silently swallows the first keystrokes
+
+**Classification: NEW GOTCHA (port rule). Not a product bug** — the app behaves
+correctly for a real user; this is a harness race.
+
+Test: `Expression custom names › should keep each expression's own name when an
+earlier expression is removed` (port line 1300). Flaked at ~40% (2/5 failures)
+with two different-looking symptoms that share one cause:
+
+- `expect(searchBarPills).toHaveCount(1)` → received **2** — a lost `+` turned
+  `Count of orders + Test Measure` into two independent metric pills.
+- `locator.click` timeout on `mini-picker` → `Browse all` — the picker was in the
+  wrong state because the operator never landed.
+
+### Root cause
+
+`MetricSearchInput.tsx` renders **two different trees**:
+
+```tsx
+{isCollapsed ? (
+  <> {/* unfocused: MetricPill / MetricExpressionPill — no editor at all */} </>
+) : (
+  <div className={S.codeEditor} onFocus={...}>
+    <CodeMirror autoFocus data-testid="metrics-viewer-search-input" ... />
+  </div>
+)}
+```
+
+The CodeMirror editor **does not exist** until the container is clicked, and it
+takes focus via `autoFocus` (a React effect). Playwright's `click()` resolves as
+soon as the event dispatches — before the editor mounts and autofocuses — so a
+`page.keyboard.type()` issued immediately after goes to `document.body` and is
+lost. The helper returned the input locator without ever waiting on it:
+
+```ts
+await formula.click({ position: { x: box.width - 5, y: box.height / 2 } });
+return page.getByTestId("metrics-viewer-search-input"); // never awaited
+```
+
+Cypress didn't expose this because `cy.type()` re-resolves and retries the
+subject before typing, so it naturally waited out the mount.
+
+### Fix
+
+`support/metrics-explorer.ts` — confirm the editor actually holds focus, mirroring
+the existing `focusNativeEditor` guard in `support/native-editor.ts`:
+
+```ts
+await formula.click({ position: { x: box.width - 5, y: box.height / 2 } });
+const input = page.getByTestId("metrics-viewer-search-input");
+await expect(input.locator(".cm-content")).toBeFocused();
+return input;
+```
+
+5/5 green after the fix (was 3/5).
+
+### Rule to add to PORTING.md
+
+Rule 5 says *"CodeMirror/keyboard: click to focus, then `page.keyboard.type()`"*.
+Add the missing half: **after clicking, assert the editor took focus before
+typing** — `expect(editor.locator(".cm-content")).toBeFocused()` (or the
+`cm-focused` class check `focusNativeEditor` uses). This matters most where the
+editor is **mounted lazily on focus**, as in MetricSearchInput: the click
+resolves before the mount+autoFocus effect, and dropped keystrokes surface far
+away from their cause (a wrong pill count, or an unrelated picker timeout).
+`page.keyboard.*` has no implicit retry — unlike `cy.type()`, which re-resolves
+its subject — so any `keyboard` call following a click that *creates* the focus
+target needs this guard.
 
 ## Infra note — snowplow-micro is needed for the Cypress cross-check
 

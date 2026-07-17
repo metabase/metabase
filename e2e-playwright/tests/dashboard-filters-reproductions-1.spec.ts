@@ -375,15 +375,20 @@ test.describe("issue 12720, issue 47172", () => {
     });
   });
 
-  // Both tests in this describe are fixme'd: a dashcard title drill-through
-  // does not carry the dashboard filter's value into the question URL, so the
-  // search string stays empty. Verified 2026-07-17 against this slot backend:
-  // the ORIGINAL Cypress spec fails identically here ("expected '' to include
-  // '2029-01-01~'"), so this is not a porting defect. Cause not established —
-  // the e2e snapshot is newer than the latest migration, so snapshot staleness
-  // is ruled out; whether CI (jar backend + static assets) also fails is
-  // unverified from this spec. Remove fixme once the drill-through carries the
-  // parameter again.
+  // Both tests were test.fixme'd on 2026-07-17 ("the drill-through does not
+  // carry the filter value; the original Cypress spec fails identically, so
+  // something real is behind it"). RE-ENABLED 2026-07-18 — that was wrong.
+  // Both PASS against the CI EE uberjar (COMMIT-ID 751c2a98, slot 11 / :4111,
+  // static FE assets): 6/6 and 12/12 under --repeat-each=2. They fail only
+  // against a local source-mode backend + rspack hot bundle — verified as a
+  // same-slot, same-box control, so the differing variable is the ARTIFACT.
+  // "Cypress fails identically" established only that the port is faithful:
+  // both harnesses share one backend and one FE bundle, so a shared
+  // environmental cause fails both while the app is fine (see PORTING.md, and
+  // FINDINGS #2/#22/#24 — three claims retracted on exactly this reasoning).
+  // If these fail on your local hot bundle, that is the known local artifact,
+  // not a regression; CI (jar) is the gate. See
+  // findings-inbox/filters-repros-1-jar-recheck.md.
   test("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", async ({
     page,
     mb,
@@ -1058,13 +1063,15 @@ test.describe("issue 21528", () => {
     });
   });
 
-  // The FK-remapped field values ("Rustic Paper Wallet - 1") never render in
-  // the native question's parameter dropdown. Verified 2026-07-17: the
-  // ORIGINAL Cypress spec fails identically against this same backend
-  // ("Expected to find content: 'Rustic Paper Wallet - 1' within the element:
-  // <div...Popover...> but never did"), so this is not a porting defect.
-  // Cause not established (snapshot staleness ruled out — it is newer than the
-  // latest migration); CI behavior unverified from this spec.
+  // Was test.fixme'd 2026-07-17 (FK-remapped values never render in the
+  // dropdown; "the original Cypress spec fails identically"). RE-ENABLED
+  // 2026-07-18: it PASSES against the CI EE uberjar (751c2a98, slot 11), and
+  // fails only against a local source-mode backend + rspack hot bundle
+  // (same-slot control). The Cypress agreement showed fidelity, not reality —
+  // both harnesses shared one backend and one FE bundle. This one was flagged
+  // in RESUME.md as "suspiciously close in shape to FINDINGS #2's symptom"
+  // (values missing from a parameter widget); #2 is retracted, and so is this.
+  // See findings-inbox/filters-repros-1-jar-recheck.md.
   test("should show dashboard ID filter values when mapped to a native question with a foreign key field filter", async ({
     page,
   }) => {
@@ -1757,13 +1764,14 @@ test.describe("issue 25374", () => {
     await expect.poll(urlSearch(page)).toBe("?equal_to=1%2C2%2C3");
   });
 
-  // 25374-1/-3/-4 are fixme'd: the drill-through from the dashcard to the
-  // question does not produce a result table (25374-2, which only reloads the
-  // dashboard, passes). Verified 2026-07-17: the ORIGINAL Cypress spec fails
-  // identically against this same backend, at the same assertions — -1 and -4
-  // on `[data-testid="table-header"]`, -3 on `[data-testid=cell-data]`. Not a
-  // porting defect; cause not established (snapshot staleness ruled out), CI
-  // behavior unverified from this spec.
+  // 25374-1/-3/-4 were test.fixme'd 2026-07-17 (the dashcard drill-through
+  // produces no result table; "the original Cypress spec fails identically").
+  // RE-ENABLED 2026-07-18: all three PASS against the CI EE uberjar (751c2a98,
+  // slot 11), and fail only against a local source-mode backend + rspack hot
+  // bundle (same-slot control). The Cypress cross-check established fidelity
+  // only — both harnesses share one backend and one FE bundle, which is how
+  // FINDINGS #2/#22/#24 each became a retraction. See
+  // findings-inbox/filters-repros-1-jar-recheck.md.
   test("should pass comma-separated values down to the connected question (metabase#25374-1)", async ({
     page,
   }) => {

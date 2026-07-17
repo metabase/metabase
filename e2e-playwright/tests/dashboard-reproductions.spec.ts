@@ -45,7 +45,6 @@ import {
 } from "../support/dashboard-core";
 import {
   addTextBox,
-  closeDashboardInfoSidebar,
   openDashboardInfoSidebar,
 } from "../support/dashboard-management";
 import {
@@ -63,8 +62,10 @@ import {
   addParameterMappingToFirstDashcard,
   assertTabSelected,
   clickBehaviorSidebar,
+  closeDashboardInfoSidebarWhenSettled,
   closeDashboardSettingsSidebar,
   countOpaqueElements,
+  lastIndexInViewport,
   delayResponses,
   gateResponses,
   isDashcardQueryResponse,
@@ -531,7 +532,7 @@ test.describe("issue 16559", () => {
     await expect(
       latestRevisionEvent(page).getByText("You created this.", { exact: true }),
     ).toBeVisible();
-    await closeDashboardInfoSidebar(page);
+    await closeDashboardInfoSidebarWhenSettled(page);
 
     // Edit dashboard
     await editDashboard(page);
@@ -551,7 +552,7 @@ test.describe("issue 16559", () => {
     await expect(
       latestRevisionEvent(page).getByText("You added a card.", { exact: true }),
     ).toBeVisible();
-    await closeDashboardInfoSidebar(page);
+    await closeDashboardInfoSidebarWhenSettled(page);
 
     // Change dashboard name — EditableText: click + type + blur, anchored
     // on the PUT the blur fires.
@@ -598,7 +599,7 @@ test.describe("issue 16559", () => {
         exact: true,
       }),
     ).toBeVisible();
-    await closeDashboardInfoSidebar(page);
+    await closeDashboardInfoSidebarWhenSettled(page);
 
     // Toggle auto-apply filters
     await openDashboardSettingsSidebar(page);
@@ -621,7 +622,7 @@ test.describe("issue 16559", () => {
         { exact: true },
       ),
     ).toBeVisible();
-    await closeDashboardInfoSidebar(page);
+    await closeDashboardInfoSidebarWhenSettled(page);
 
     // Move dashboard to another collection
     await icon(dashboardHeader(page), "ellipsis").click();
@@ -2349,11 +2350,25 @@ test.describe("issue 64138", () => {
     // hovering marker icons should not open their tooltips
     const markers = card.locator(".leaflet-marker-icon");
     await expect(markers.first()).toBeVisible();
-    await markers.last().hover();
+    // cy: getMarkerIcon(0).realHover() — "pick the last one so it will be on
+    // top" (leaflet orders markers back-to-front). Leaflet keeps markers in the
+    // DOM that its camera has placed outside the viewport, and upstream's
+    // .last() is one of them here: Cypress dispatches the hover at off-viewport
+    // coordinates without erroring, hovering nothing, so its "no tooltip" check
+    // passes vacuously. Playwright refuses the point (even forced), so hover the
+    // topmost marker that is actually in the viewport — same intent, really
+    // exercised.
+    // force: the map draws thousands of overlapping pins, so Playwright's
+    // hit-target check reports a *neighbouring* marker on top. Cypress's real
+    // mouse does no such check. Whatever is topmost at this point is still a
+    // marker, so the tooltip assertion below stays meaningful.
+    const topmostVisibleMarker = await lastIndexInViewport(markers);
+    expect(topmostVisibleMarker).toBeGreaterThanOrEqual(0);
+    await markers.nth(topmostVisibleMarker).hover({ force: true });
     await expect(popover(page)).toHaveCount(0);
 
     // clicking marker icons should not navigate to the question
-    await markers.last().click({ force: true });
+    await markers.nth(topmostVisibleMarker).click({ force: true });
     await page.waitForTimeout(500);
     expect(new URL(page.url()).pathname).toMatch(/^\/dashboard\/\d+$/);
     await expect(modal(page)).toHaveCount(0);

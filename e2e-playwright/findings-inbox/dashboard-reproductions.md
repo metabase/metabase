@@ -238,7 +238,58 @@ environment and the fixme comes off.
 
 ---
 
-## 6. Methodology note: a Cypress baseline taken under load is not a baseline
+## 6. Port bug: a wait invented by the port, on an endpoint that never fires (issue 51524)
+
+**Classification:** port bug (agent-introduced), fixed. Worth a brief note.
+
+`47170 › should show legible dark mode colors in fullscreen mode
+(metabase#51524)` hung 30s on `waitForResponse` for `PUT /api/user/:id`.
+Upstream has **no wait at all** here — it clicks "Dark" and navigates. The port
+added the wait to close that race, but guessed the endpoint: the color scheme
+is a *setting*, not a user field. `AppThemeProvider.handleUpdateColorScheme`
+calls `updateSetting({ key: "color-scheme" })` → **`PUT
+/api/setting/color-scheme`** (`frontend/src/metabase/api/settings.ts:51`).
+
+Kept the wait (it removes a real race that upstream just gets away with) but
+pointed it at the request that actually fires. Lesson: when a port *adds* an
+anchor upstream didn't have, verify the endpoint exists — an invented wait on a
+never-fired request is indistinguishable from a product hang.
+
+---
+
+## 7. NEW GOTCHA: Cypress `realHover` silently hovers nothing off-viewport; Playwright refuses (issue 64138)
+
+**Classification:** new gotcha → PORTING.md. Also a (mild) upstream
+test-strength observation.
+
+`64138` hovers a leaflet map marker and asserts no tooltip opens in edit mode.
+Upstream picks `.last()` ("so it will be on top" — leaflet orders markers
+back-to-front). Two distinct problems, in sequence:
+
+1. **Off-viewport.** The map draws ~4,000 pins and leaflet keeps camera-placed
+   markers in the DOM outside the viewport. `.last()` is one. Playwright's
+   mouse refuses such a point — **`force: true` does not help**, the error
+   changes from an actionability timeout to a hard "Element is outside of the
+   viewport". Cypress's `realHover` dispatches CDP mouse events at the reported
+   coordinates *without* erroring, so it hovers **nothing** and the upstream
+   "no tooltip" assertion passes **vacuously**.
+2. **Overlapping neighbours.** Once a genuinely in-viewport marker is chosen,
+   Playwright's hit-target check reports a *neighbouring* marker on top
+   (thousands of overlapping pins). Cypress's real mouse does no such check.
+
+**Fix pattern:** added `lastIndexInViewport(locator)` to
+`support/dashboard-repros.ts` — the topmost element actually inside the
+viewport — then `hover({ force: true })` on it. Whatever is topmost at that
+point is still a marker, so the assertion stays meaningful rather than vacuous.
+This is the hover-side sibling of the documented react-flow/dnd-kit
+"camera-placed / clipped element" gotchas; unlike those, the answer is *not*
+synthetic dispatch — for a **negative** assertion a synthetic event is either
+vacuous or falsely strong (it bypasses `pointer-events: none`, which may be the
+very mechanism under test). Pick a real, reachable target instead.
+
+---
+
+## 8. Methodology note: a Cypress baseline taken under load is not a baseline
 
 My first Cypress cross-check ran with Cypress's default 4s `defaultCommandTimeout`
 against a machine running three other agents' Playwright suites + JVMs: **20/41

@@ -49,6 +49,25 @@ export async function closeDashboardSettingsSidebar(page: Page) {
 }
 
 /**
+ * closeDashboardInfoSidebar, retried as a unit.
+ *
+ * The revision-history sidesheet re-renders while its content settles (16559
+ * opens it right after a save), which detaches the Close button mid-click:
+ * Playwright reports "element was detached from the DOM, retrying" until the
+ * action times out, because each retry lands in another re-render. Retrying
+ * the click *and* the closed assertion together lets an attempt fall between
+ * re-renders. Same shape as the documented toPass open+assert loop.
+ */
+export async function closeDashboardInfoSidebarWhenSettled(page: Page) {
+  await expect(async () => {
+    await sidesheet(page)
+      .getByLabel("Close", { exact: true })
+      .click({ timeout: 5000 });
+    await expect(sidesheet(page)).toHaveCount(0);
+  }).toPass({ timeout: 30_000 });
+}
+
+/**
  * Port of H.clickBehaviorSidebar(dashcardIndex): hover the card, click its
  * "Click behavior" action, return the sidebar locator.
  */
@@ -79,6 +98,37 @@ export function countOpaqueElements(locator: Locator): Promise<number> {
       elements.filter((element) => getComputedStyle(element).opacity !== "0")
         .length,
   );
+}
+
+/**
+ * Index of the LAST element a locator matches whose bounding box lies fully
+ * inside the viewport, or -1 if none do.
+ *
+ * For elements a camera positions (leaflet markers, canvas nodes), the DOM
+ * keeps entries that sit outside the viewport. Cypress's realHover dispatches
+ * CDP mouse events at whatever coordinates the rect reports and does not error
+ * when they fall outside the viewport — it just hovers nothing, which makes a
+ * following "no tooltip" assertion pass vacuously. Playwright's mouse refuses
+ * such a point outright (even with `force`), so pick a target that is really
+ * hoverable instead of faking the event.
+ */
+export function lastIndexInViewport(locator: Locator): Promise<number> {
+  return locator.evaluateAll((elements) => {
+    for (let index = elements.length - 1; index >= 0; index--) {
+      const rect = elements[index].getBoundingClientRect();
+      const isInViewport =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.innerHeight &&
+        rect.right <= window.innerWidth;
+      if (isInViewport) {
+        return index;
+      }
+    }
+    return -1;
+  });
 }
 
 // === permissions (ports of the Cypress custom commands) ===

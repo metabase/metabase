@@ -28,6 +28,13 @@ export const MetricsViewer = {
    * Port of MetricsViewer.searchInput(): click the right edge of the formula
    * container to focus the CodeMirror input without accidentally hitting a
    * pill (which would trigger the swap-metric flow), then return the input.
+   *
+   * MetricSearchInput renders collapsed pills while unfocused and only mounts
+   * the CodeMirror editor once the container is clicked, autofocusing it from
+   * an effect. The click resolves before that effect runs, so keystrokes sent
+   * straight after it are silently dropped (a lost "+" turns an expression
+   * into two separate metric pills). Wait for the editor's contenteditable to
+   * actually hold focus — same guard as focusNativeEditor in native-editor.ts.
    */
   searchInput: async (page: Page): Promise<Locator> => {
     const formula = MetricsViewer.formulaInput(page);
@@ -36,7 +43,9 @@ export const MetricsViewer = {
       throw new Error("metrics-formula-input is not visible");
     }
     await formula.click({ position: { x: box.width - 5, y: box.height / 2 } });
-    return page.getByTestId("metrics-viewer-search-input");
+    const input = page.getByTestId("metrics-viewer-search-input");
+    await expect(input.locator(".cm-content")).toBeFocused();
+    return input;
   },
 
   searchBarPills: (page: Page): Locator =>

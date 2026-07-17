@@ -9,7 +9,31 @@ Verified on slot 5 (`PW_SLOT_OFFSET=5`, per-worker source-mode backend on
 `--repeat-each=2` (66 passed / 14 skipped). The 7 skipped are 6 `test.fixme`
 (below) + `metabase#12985-2`, which carries `{ tags: "@skip" }` upstream.
 
+> **Update 2026-07-18:** the 6 `test.fixme`s are **re-enabled** — they pass on
+> the CI uberjar (see the retraction under the next heading). The spec's real
+> state is **39 tests running, 1 upstream `@skip`**. On a local source-mode
+> `--hot` backend those 6 fail; that is a known local-artifact, CI is the gate.
+
 ## Pre-existing failures reproduced identically by Cypress (6 → test.fixme)
+
+> **RETRACTED 2026-07-18 — superseded. This section's conclusion is wrong; the
+> 6 tests are re-enabled and green.** All six **pass against the CI EE uberjar**
+> (`751c2a98`, slot 11): 6/6, 12/12 under `--repeat-each=2`. A same-slot control
+> shows they fail *only* on a local source-mode backend + rspack hot bundle, so
+> the differing variable is the **artifact**, not the app. There is no
+> "pre-existing failure" and no product bug here.
+>
+> What went wrong in the reasoning below: "the original Cypress spec fails
+> identically on the same backend" proves the **port is faithful** and nothing
+> more. Both harnesses share one backend *and one FE bundle*, so a shared
+> environmental cause fails both while the app is fine. The section below even
+> names this gap correctly under "Not established" — and then the fixmes were
+> landed as though it had been closed. The cross-check also ran **Electron**,
+> predating the `--browser chrome` rule.
+>
+> This is the fourth claim of this exact shape to die (FINDINGS #2, #22, #24).
+> Evidence: `findings-inbox/filters-repros-1-jar-recheck.md`. The "Migration
+> dividends" and "New gotchas" sections below are unaffected and still stand.
 
 The headline result. I ran the **original Cypress spec against the same
 slot-5 backend** (`MB_JETTY_PORT=4105 bunx cypress run --spec …`, so port 4000

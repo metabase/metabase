@@ -40,7 +40,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 1 | `tests/click-behavior.spec.ts` (2786) | Verification run in progress; result never seen. |
 | 2 | `tests/dashboard-reproductions.spec.ts` (2438) | First chunk running; unverified. |
 | 3 | `tests/dashboard-parameters.spec.ts` (2989) | **DONE — verified and landed.** 43/43 on the CI uberjar, clean under `--repeat-each=2` (86/86). Source is `dashboard-filters/parameters.cy.spec.js` (not `dashboard-parameters.cy.spec.js` — no such file). The suspected product bug is **disproven**: see open thread #2. Needed one helper fix (`undo` → newest toast); the spec itself was already correct. |
-| 4 | `tests/metrics-explorer.spec.ts` (2560) | Partially verified; was re-running "Entry points" after a fresh backend rendered correctly. |
+| 4 | `tests/metrics-explorer.spec.ts` (2560) | **DONE — verified and landed.** 46 pass / 0 skipped / 0 fixme, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 6 | `tests/dashboard-core.spec.ts` (2131) | **Full file green (45 passed / 1 skipped `@skip` upstream), one flake open.** Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ Electron, predates the `--browser chrome` rule — re-run before citing). **Open (needs a decision, not a fix):** `--repeat-each=2` (89 passed / 1 failed / 2 skipped) caught `auto-scrolling to a dashcard via a url hash param` (:1318); measured **3 fail / 2 pass over 5 runs on a quiet box**. Cause is app-side: `DashCard` scrolls once in `useMount` and clears the `scrollTo` hash immediately, so any later remount/reflow loses the scroll and nothing re-scrolls. Left unmodified and unskipped on purpose — the port's `toBeInViewport()` is *stronger* than Cypress's `should("be.visible")` (which ignores scroll position), so weakening it makes the test vacuous and a `toPass` retry would mask the very behaviour under test. Not claimed as a product bug (fidelity bar not met). See `findings-inbox/dashboard-core.md`. |
 | 7 | `tests/documents-comments.spec.ts` (2009) | **DONE — verified and landed.** 47 pass / 1 skipped (the original's `it.skip`), clean under `--repeat-each=2`. In PORTED.txt; findings in `findings-inbox/documents-comments.md`. Not WIP; leave alone. |
@@ -50,7 +50,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 Their new helper modules are equally unverified: `support/click-behavior.ts`,
 `dashboard-core.ts`, `dashboard-parameters.ts`, `dashboard-repros.ts`,
 `documents-core.ts`, `documents.ts`, `filters-repros.ts`,
-`interactive-embedding.ts`, `metrics-explorer.ts`.
+`interactive-embedding.ts`. (`metrics-explorer.ts` is verified — slot 4.)
 
 ### Debris to delete
 
@@ -118,33 +118,42 @@ the MBQL5 `dimension[1]` story (Lib converts to legacy refs first), stale CLJS
 (the bundle *has* `ref->legacy-ref`), and `parameters: []` (normal; the jar
 returns it too).
 
-**3. `dashboard-filters-reproductions-1` — 6 fixmes with no root cause.**
-The port is landed and verified, and the *original Cypress spec* run against
-the same backend fails the same 6 tests at the same assertions — so the port is
-faithful and something real is behind them. Snapshot staleness is ruled out
-(snapshot Jul 17 > latest migration Jul 15), but the cause is not established,
-and both harnesses shared one source-mode backend + rspack server, so a common
-environmental cause isn't excluded. **Decider**: if CI's Cypress leg is green on
-this spec, the delta is environmental; if red, it's a pre-existing regression.
+**3. `dashboard-filters-reproductions-1` — 6 fixmes. CLOSED 2026-07-18. Not bugs.**
+All six **pass against the CI EE uberjar** (`751c2a98`, slot 11 / :4111): 6/6,
+and 12/12 under `--repeat-each=2`. All six are **re-enabled**; the spec now runs
+39 tests with one upstream `@skip`. Full evidence:
+`findings-inbox/filters-repros-1-jar-recheck.md`.
 
-> **⚠️ Re-read this thread in light of open thread #2 (settled 2026-07-18).**
-> "The port is faithful **and** something real is behind them" does not follow —
-> that inference is exactly what #2 falsified. Both harnesses here shared one
-> source-mode backend *and one rspack hot bundle*, and in #2 that bundle
-> produced a failure in **both** harnesses for a test that passes on the jar.
-> These 6 fixmes rest on the same argument and are now **unsupported**.
-> **Cheaper, stronger decider than waiting on CI**: re-run the 6 against the CI
-> uberjar (`JAR_PATH=…`, ~2 min/spec — recipe in PORTING.md). Do that before any
-> of them is cited as a product finding, and un-fixme whatever passes.
-> Note `21528` ("FK-remapped field values missing from a parameter dropdown") is
-> suspiciously close in shape to #2's own symptom.
+The controlled comparison — same slot, same box, same spec, only the artifact
+swapped:
 
-> **Named candidate for that "common environmental cause"**: the shared
-> `e2e/tmp` H2 sample-DB lock and the snapshot-pinned `site-url` (see
-> PORTING.md). Here *both* harnesses failed, which fits a shared backend whose
-> sample DB was contended — unlike #22, where only Cypress failed because the
-> Playwright harness re-points and Cypress doesn't. Cheap check before the CI
-> decider: re-run on a quiesced box with nothing else on 41xx/:4000.
+| Artifact | Result |
+|---|---|
+| CI uberjar `751c2a9` + static FE assets | **6/6 pass** |
+| Source-mode backend `6c67bb8` + rspack hot bundle | **6/6 fail**, at the original assertions |
+
+So the 2026-07-17 observation was real; the **inference** from it was wrong. The
+justification ("the original Cypress spec fails identically, so something real
+is behind them") established *fidelity only* — both harnesses share one backend
+and one FE bundle, which is exactly what thread #2 falsified. This is the
+field-61 pattern reproduced on a second, independent spec, and it is now the
+**fourth** claim of this shape to die (#2, #22, #24, and this). `21528` — flagged
+here as "suspiciously close in shape to #2's symptom" — was indeed the same
+thing.
+
+**No product-bug dividends came out of this spec.** FINDINGS #1 and #3 remain
+the only standing product-bug claims.
+
+> **Not established** (don't over-quote this): the root cause. Jar mode swaps
+> the backend artifact *and* the FE bundle together, so this run doesn't isolate
+> which; #2's byte-equivalent-payload evidence points at the **hot bundle**, but
+> that's a hypothesis. The rspack server had been up ~3h with HEAD moving under
+> it, and PORTING.md already warns long-lived `--hot` builds degrade — the cheap
+> unrun experiment is *restart rspack, re-test source mode*.
+>
+> **Consequence:** these 6 pass in CI (jar) and **fail on a local `--hot` run**.
+> Same trade already accepted for #22/#24's re-enabled tests. Local red here is
+> the known artifact, not a regression.
 
 Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like
@@ -163,11 +172,15 @@ a wave only when there's headroom to finish it.
 1. Delete the debris files listed above.
 2. ~~Finish slot 6 (`dashboard-core`)~~ — **done**; verified green and landed.
 3. Reconcile `PORTED.txt` against reality; regenerate QUEUE.md.
-4. ~~Cypress cross-check for dashboard-parameters~~ — **done**; not a bug
-   (open thread #2, now closed). The live follow-up is thread #3: re-run
-   `dashboard-filters-reproductions-1`'s 6 fixmes against the CI uberjar, since
-   #2 showed their justification doesn't hold. Highest-value open item — it
-   decides whether we have any product-bug dividends left at all.
+4. ~~Cypress cross-check for dashboard-parameters~~ (thread #2) and ~~re-run
+   `dashboard-filters-reproductions-1`'s 6 fixmes against the CI uberjar~~
+   (thread #3) — **both done; neither is a bug.** All 6 fixmes pass on the jar
+   and are re-enabled. That answers "do we have any product-bug dividends left":
+   **FINDINGS #1 and #3, and nothing else.** Every claim resting on "the Cypress
+   original fails identically" is now retracted (#2, #22, #24, + these 6).
+   The migration case should lean on the dividends that *did* survive —
+   strengthened assertions, silently-vacuous upstream tests, infra findings —
+   not on product bugs.
 5. Then resume the dispatch loop from QUEUE.md as described in PORTING.md.
 
 ## How to verify a spec (the loop every agent runs)

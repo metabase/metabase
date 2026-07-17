@@ -22,6 +22,27 @@ no port-4000 contact) **with `--browser chrome`**, and comparing:
   the sample-DB re-point gotcha below, which silently pointed Cypress at a
   different database and made a faithful port look drifted.
 
+Running the original (two traps that cost a session ~40 min):
+
+- **Grep the run to the single test.** `--env grep="…"` does **nothing** —
+  `config.js` reads `config.expose.grep ??= process.env.GREP`, so use the
+  `GREP` env var. An *un-grepped* full-file Cypress run is not a usable
+  baseline: metrics-explorer mass-failed 17+ tests on one attempt and passed
+  those same tests on the next, on a shared dev backend.
+  ```bash
+  MB_JETTY_PORT=410N GREP="the exact test title" bunx cypress run \
+    --browser chrome --config-file e2e/support/cypress.config.js --spec <spec>
+  ```
+- **Snowplow-tagged specs need `snowplow-micro` up** (`snowplow/docker-compose.yml`,
+  `:9090`) — it is *not* in "Local services the ports assume" because the ports
+  stub snowplow to no-ops (rule 6), but the **original** `cy.request()`s
+  `/micro/reset` in a `beforeEach` and `/micro/bad` in an `afterEach`. With the
+  container down the entire describe dies in the before-each hook and looks
+  catastrophic. Only the cross-check needs it.
+- Don't leave the run unattended in a way that can be killed: a foreground
+  poll loop that hits its own timeout takes the Cypress process down with it.
+  Poll in short increments.
+
 This rule exists because we published a product-bug finding that didn't
 survive it. FINDINGS #24 claimed a card-tag rewrite "never fires"; re-checked
 against the CI uberjar, it fires fine — a *different code path* (the question
@@ -41,6 +62,22 @@ between filter types" failed in **both** harnesses, at the same assertion, on a
 backend payloads. Identical FE source, opposite behaviour: the local rspack hot
 bundle was the differing variable. Had we stopped at "Cypress agrees", we would
 have shipped a second bogus product-bug claim.
+
+It has now happened **twice on unrelated specs**. `dashboard-filters-reproductions-1`
+carried 6 `test.fixme`s on this same argument; all 6 pass on the jar (12/12 under
+`--repeat-each=2`) and fail only on a local source-mode backend + hot bundle —
+verified as a same-slot, same-box control, so the artifact is the only variable.
+Four claims of this shape have now been retracted (#2, #22, #24, and those 6).
+**Treat "the Cypress original fails identically" as a fidelity check and nothing
+else — it is the single most reliable way we have found to fool ourselves.**
+
+The cheap control that settles it: run the failing test on **both artifacts on
+one slot** — jar (`JAR_PATH=…`), then kill it, `rm -rf $TMPDIR/mb-pw-slot-<N>`,
+and re-run source-mode. Same box, same spec, one variable. And **verify the
+backend you think you booted**: `ps` the port's PID, check
+`/api/session/properties` → `version.hash` against `target/uberjar/COMMIT-ID`,
+and check whether `/` serves hashed static assets or `:8080/*.hot.bundle.js`.
+"I exported JAR_PATH" is not evidence when the artifact *is* the claim.
 
 **The decider for real-vs-environmental is a different ARTIFACT, not a second
 harness on the same one.** Run it against the CI uberjar:
@@ -134,6 +171,17 @@ lead that survived did so because the agent happened to narrate it out loud.
    never-awaited intercepts (note it in the spec header).
 3. Strict-mode multi-match: prefer scoping; else `.first()` with a comment.
    Cypress first-match semantics (`.prop`, `.contains`) = `.first()`.
+   **But `should("be.visible"|"be.hidden"|"be.checked"|"be.disabled")` on a
+   multi-element subject is an ANY-of-set assertion, NOT first-match**:
+   chai-jquery resolves it to `$el.is(":visible")` and jQuery's `.is()` is true
+   when *any* element matches (Cypress swaps in its own visibility logic via
+   `$.expr.filters.visible`, but keeps `.is()`'s any-semantics). Porting those
+   with `.first()` silently *strengthens* the assertion and fails on innocent
+   DOM. Port as "at least one match satisfies it" —
+   `.filter({ visible: true }).first()`. Real case: ECharts renders two paths
+   per series (line + symbol marker); a single-point series has a zero-extent
+   line path (`d="M480.31 68.1"`) that Playwright rightly calls hidden, so
+   `.first()` failed where upstream passed on the marker.
 4. Elements that appear on hover (row ellipses, card actions): hover the
    container first. Mantine Switch: click the `role="switch"` input
    (`{ force: true }`), not the label. `findByDisplayValue` → value comes
@@ -142,6 +190,16 @@ lead that survived did so because the agent happened to narrate it out loud.
    `pressSequentially` — no realPress machinery. Typeahead/search boxes
    need real keystrokes (`pressSequentially`), not `fill()`, when the test
    depends on debounce/dropdown behavior.
+   **After the click, assert the editor actually took focus before typing** —
+   `expect(editor.locator(".cm-content")).toBeFocused()` (or the `cm-focused`
+   class check in `focusNativeEditor`). `page.keyboard.*` types at
+   `document.activeElement` with no retry, unlike `cy.type()` which
+   re-resolves its subject. Critical where the editor is **mounted lazily on
+   focus** (MetricSearchInput renders collapsed pills until clicked, then
+   mounts CodeMirror with `autoFocus` in an effect): `click()` resolves before
+   the mount, the first keystrokes go to `<body>`, and the damage surfaces far
+   from the cause — a dropped `+` became "2 pills, expected 1" and an
+   unrelated mini-picker timeout.
 6. Snowplow helpers → no-op stubs with a TODO block. `@external`-tagged
    content (QA DBs) → `test.skip` gated on `QA_DB_ENABLED`.
 7. EE/token: `mb.api.activateToken("pro-self-hosted")`;
@@ -239,6 +297,17 @@ lead that survived did so because the agent happened to narrate it out loud.
   `error-context.md` vanish before you read them. Use
   `scratchpad/run-<spec>-slot<N>.log`, and `--output` when artifacts matter.
   Also: `git status` will show sibling agents' files — only touch your own.
+- **Never `git commit -a` / `git add -A` in a shared worktree — you will commit
+  other agents' half-finished work under your message.** This has happened:
+  commit `c9105405ada` *"land documents-comments"* also carries
+  `dashboard-filters-reproductions-1.spec.ts | 12 ++++------` — another agent's
+  in-progress `test.fixme` flips, swept up mid-investigation and committed under
+  an unrelated message. It landed 6 un-fixme'd tests that, at that moment, no
+  evidence yet supported. Signature from the *victim's* side, which is genuinely
+  disorienting: `git diff` on your own file returns **empty** and `git status` is
+  clean, while the file on disk plainly contains your edits — it reads as "my
+  edit vanished" or "the tool is lying", when in fact someone committed it for
+  you. Stage explicit paths, always.
 - **Don't poll for a marker you never wrote to the log.**
   `cmd > run.log; echo "EXIT: $?"` sends the marker to the *task output*, not
   into `run.log` — so a `until grep -q "EXIT:" run.log` gate never fires. It

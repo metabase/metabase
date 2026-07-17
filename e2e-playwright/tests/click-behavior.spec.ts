@@ -1654,6 +1654,15 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       await paramPopover
         .getByPlaceholder("Search the list")
         .pressSequentially("Dell Adams");
+      // Cypress types and clicks "Update filter" straight away. Here the
+      // search Combobox's listbox renders in a portal on top of that button
+      // and never clears on its own (Playwright retried the click for the full
+      // 30s action timeout, reporting the listbox as intercepting pointer
+      // events), so the click can't land. Selecting the matching option is the
+      // same user intent, closes the listbox, and sets the same filter value —
+      // it's also the pattern the other ported filter specs already use
+      // (dashboard-filters-number-source).
+      await paramPopover.getByText("Dell Adams", { exact: true }).click();
       await paramPopover
         .getByRole("button", { name: "Update filter" })
         .click();
@@ -2002,6 +2011,7 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       await openLegacyStaticEmbeddingModal(page, mb.api, {
         resource: "dashboard",
         resourceId: dashCard.dashboard_id,
+        activeTab: "parameters",
         unpublishBeforeOpen: false,
       });
 

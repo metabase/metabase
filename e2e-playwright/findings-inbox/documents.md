@@ -147,4 +147,76 @@ not clear undo history on save" in run 2), both passing in the other run. The
 Cypress spec appears order/timing-flaky here. Not investigated further; the
 Playwright port is stable across `--repeat-each=2` (see summary).
 
+## 5. "should support resizing cards" asserts the OPPOSITE of what the app does, and passes by accident
+
+**Test-suite defect — the strongest dividend in this spec. NOT a product bug: the
+app's resize behaviour is correct.**
+
+Upstream drags the card's resize handle **down** by 200px and asserts the card
+gets **shorter**:
+
+```js
+H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), { y: 200 });
+...
+expect(newHeight).to.be.lessThan(ogHeight as number);
+```
+
+That is backwards, and it passes anyway. Root cause is in `H.documentDoDrag`
+(`e2e/support/helpers/e2e-document-helpers.ts:211`):
+
+```js
+cy.wrap(handle).trigger("mousedown", { clientX: rect.x, clientY: rect.y, force: true });
+cy.get("body")
+  .trigger("mousemove", { clientX: rect.x + deltaX, clientY: rect.y + deltaY, force: true })
+  .trigger("mouseup");                      // <-- NO coordinates
+```
+
+The final `.trigger("mouseup")` passes no `clientX/clientY`, so Cypress fires it
+at the **body's centre** (y=400) instead of the drag destination (y=870). The
+resize commits to that stray point — which happens to sit *above* the handle
+(y=670) — so the card shrinks. The `{ y: 200 }` delta is effectively discarded.
+
+### Evidence (measured, not inferred)
+
+Instrumented the Cypress helper + spec temporarily (reverted; `e2e/` tree clean)
+to print the real numbers, against the same slot-9 backend:
+
+```
+PROBEVALUES og=426 new=264
+rect={"rectX":600,"rectY":670,"rectW":64,"rectH":4,"deltaX":0,"deltaY":200,
+      "innerW":1280,"innerH":800,"scrollY":0}
+cardText="Accounts by Created At (Month)" cardBox=264
+```
+
+The handle rect (600, 670) and delta (+200) are **identical** to the port's. The
+port measured 426 -> **626** (grew by exactly the 200px dragged — correct). The
+only difference is the mouseup coordinates. Replaying upstream's exact sequence
+in Playwright — mousedown at the handle, mousemove to +200, **mouseup at the body
+centre** — reproduces Cypress's number to the pixel:
+
+```
+PROBE ogHeight: 426
+PROBE info: {"handleY":670,"bodyRect":{"y":0,"height":800},"bodyCenterY":400}
+PROBE height after upstream-exact sequence: 264      <- matches Cypress exactly
+```
+
+Also ruled out: the card does **not** settle on its own (sampled every frame for
+6s from the moment the embed attaches — constant 426, 707 samples), so the shrink
+is not a loading transient.
+
+### Why it matters
+
+The test would pass for *any* `deltaY`, and its meaning flips with layout: if the
+body's centre were ever *below* the handle (longer document, different scroll
+position or viewport), the same code would grow the card and the test would fail
+without the app changing. It asserts nothing about resizing.
+
+The port asserts the real behaviour instead: dragging down 200px grows the card
+by 200px (`toBeCloseTo(ogHeight + 200, -1)`).
+
+**Scope caveat**: `documentDoDrag` is upstream's shared drag helper, so any other
+spec using it inherits the same coordinate-less mouseup. Only this call site was
+examined; the flex-resize test in this file passes with the port's real-mouse
+drag and was not separately audited upstream.
+
 <!-- further findings appended below as they are observed -->

@@ -64,3 +64,4 @@ onboarding/notifications.cy.spec.js
 dashboard/dashboard.cy.spec.js
 filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js
 dashboard-filters/parameters.cy.spec.js
+metrics/metrics-explorer.cy.spec.ts

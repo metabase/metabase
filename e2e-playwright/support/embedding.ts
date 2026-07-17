@@ -74,10 +74,17 @@ export async function openLegacyStaticEmbeddingModal(
   {
     resource,
     resourceId,
+    activeTab,
     unpublishBeforeOpen = true,
   }: {
     resource: "question" | "dashboard";
     resourceId: number;
+    /**
+     * Port of the upstream helper's `activeTab`. The preview-mode toggle
+     * ("Preview"/"Code") only renders on some tabs, so callers that go on to
+     * `visitIframe()` must select the tab the way upstream does.
+     */
+    activeTab?: "overview" | "parameters" | "lookAndFeel";
     unpublishBeforeOpen?: boolean;
   },
 ) {
@@ -125,6 +132,17 @@ export async function openLegacyStaticEmbeddingModal(
       .getByRole("button", { name: "Unpublish", exact: true })
       .click();
     await unpublished;
+  }
+
+  if (activeTab) {
+    const tabKeyToName = {
+      overview: "Overview",
+      parameters: "Parameters",
+      lookAndFeel: "Look and Feel",
+    } as const;
+    await modal(page)
+      .getByRole("tab", { name: tabKeyToName[activeTab], exact: true })
+      .click();
   }
 }
 

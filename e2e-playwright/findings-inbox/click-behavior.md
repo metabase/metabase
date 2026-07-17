@@ -187,3 +187,38 @@ as the guarantee that the callback runs**. Worth auditing other
 **Port decision**: the port asserts the observed-correct href rather than
 replicating an assertion that cannot fail. See `URL_WITH_FILLED_PARAMS_ACTUAL`
 in `support/click-behavior.ts`.
+
+## Fix 4 — `createDashboard` dropped `enable_embedding` (PORT BUG, new gotcha)
+
+**Symptom**: all 5 `interactive embedding` tests failed identically, each burning
+~32s on `waitForEmbedCardQuery`. Cypress passes all 5 → port drift.
+
+**Root cause**: `POST /api/dashboard` silently ignores `enable_embedding`,
+`embedding_type`, `embedding_params`, `auto_apply_filters` and `dashcards`.
+Cypress's `H.createDashboard` (`e2e/support/helpers/api/createDashboard.ts`)
+destructures those five out of the POST body and applies them with a follow-up
+`PUT /api/dashboard/:id`. The port spread the whole details object into the POST,
+so embedding was never enabled — `GET /api/embed/dashboard/:token` returned
+**400 "Embedding is not enabled for this object."**
+
+**Why it was invisible**: nothing errors. The dashboard is created, the POST is
+200, and the test proceeds until the embed page renders a bare error string.
+`page.waitForResponse` resolves on **any** status, so the `/api/embed/dashboard/*`
+wait was satisfied *by the 400* — only the downstream card-query wait timed out,
+pointing at the wrong step entirely.
+
+**Fix**: `createDashboard` in `support/click-behavior.ts` now mirrors the Cypress
+POST-then-PUT split.
+
+**Result**: interactive embedding 0/5 → 4/5 passing, and the passing ones dropped
+from ~32s timeouts to ~3s.
+
+**New gotcha for PORTING.md** (two, both generalisable):
+1. **Cypress's `create*` API helpers are not thin wrappers.** Several split a
+   create into POST + PUT because the POST endpoint ignores certain fields. Port
+   the helper's *body*, not its signature — check the helper source before
+   assuming `{...details}` into the POST is equivalent.
+2. **`waitForResponse` resolves on any status, including 4xx/5xx.** Cypress's
+   `cy.wait("@alias")` behaves the same way, but the port's failure then surfaces
+   at the *next* wait, blaming the wrong step. When a response wait is the last
+   thing that "worked" before a timeout, check the status of what it matched.

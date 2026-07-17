@@ -811,15 +811,50 @@ export async function createQuestionAndDashboard(
 }
 
 /** Port of H.createDashboard accepting arbitrary details. */
+/**
+ * Port of H.createDashboard (e2e/support/helpers/api/createDashboard.ts).
+ *
+ * POST /api/dashboard silently ignores `enable_embedding`, `embedding_type`,
+ * `embedding_params`, `auto_apply_filters` and `dashcards` — the Cypress helper
+ * holds them back and applies them with a follow-up PUT. Spreading them into the
+ * POST instead looks like it works (the dashboard is created, no request fails)
+ * but leaves embedding off, which only surfaces later as
+ * "Embedding is not enabled for this object" on the embed page.
+ */
 export async function createDashboard(
   api: MetabaseApi,
   details: Record<string, unknown> = {},
 ): Promise<{ id: number }> {
+  const {
+    enable_embedding,
+    embedding_type,
+    embedding_params,
+    auto_apply_filters,
+    dashcards,
+    ...rest
+  } = details;
+
   const response = await api.post("/api/dashboard", {
     name: "Test Dashboard",
-    ...details,
+    ...rest,
   });
-  return (await response.json()) as { id: number };
+  const dashboard = (await response.json()) as { id: number };
+
+  if (
+    enable_embedding != null ||
+    auto_apply_filters != null ||
+    Array.isArray(dashcards)
+  ) {
+    await api.put(`/api/dashboard/${dashboard.id}`, {
+      auto_apply_filters,
+      enable_embedding,
+      embedding_type,
+      embedding_params,
+      dashcards,
+    });
+  }
+
+  return dashboard;
 }
 
 export type DashboardWithTabs = {
