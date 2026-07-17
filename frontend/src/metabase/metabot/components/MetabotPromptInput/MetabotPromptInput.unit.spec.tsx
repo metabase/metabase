@@ -63,6 +63,7 @@ describe("MetabotPromptInput", () => {
   let user: ReturnType<typeof userEvent.setup>;
   beforeEach(() => {
     jest.useRealTimers();
+    // eslint-disable-next-line testing-library/no-render-in-lifecycle -- userEvent.setup is not a render call; the rule confuses it with this file's render-wrapping `setup` helper.
     user = userEvent.setup({ delay: 0 });
   });
 

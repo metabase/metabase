@@ -68,12 +68,10 @@ describe("CollectionInfoSidebar (OSS)", () => {
       expect(screen.getByRole("button", { name: /close/i })).toHaveFocus(),
     );
 
-    // Switch the editable text into edit mode. A userEvent click can be swallowed
-    // mid-transition, so dispatch the click directly.
-    const editableText = screen
-      .getByText("Test Description")
-      .closest("[data-testid='editable-text']") as HTMLElement;
-    fireEvent.click(editableText);
+    // Switch the editable text into edit mode. A userEvent click can be
+    // swallowed mid-transition, so dispatch the click directly; it bubbles
+    // from the text node to the editable-text container's handler.
+    fireEvent.click(screen.getByText("Test Description"));
 
     const input = await screen.findByDisplayValue("Test Description");
     await userEvent.clear(input);

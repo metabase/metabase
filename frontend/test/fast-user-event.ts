@@ -30,7 +30,8 @@
 import { configure } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-// eslint-disable-next-line import/no-commonjs
+// The grandfather list is CommonJS so plain node tooling can read it too.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const grandfathered: string[] = require("./real-timers-grandfather.js");
 
 const testPath = expect.getState().testPath ?? "";
@@ -55,8 +56,11 @@ if (enrolled) {
 
   type AnyFn = (...args: unknown[]) => unknown;
 
+  // Cast: we monkey-patch userEvent's typed API with generic wrappers; the
+  // wrappers forward arguments verbatim, so runtime behaviour is unchanged.
   const origSetup = userEvent.setup.bind(userEvent) as AnyFn;
 
+  // Cast: see above — reassigning a read-only typed property on purpose.
   (userEvent as Record<string, unknown>).setup = (options: object = {}) =>
     origSetup({ delay: null, ...options });
 
@@ -80,9 +84,11 @@ if (enrolled) {
   ] as const;
 
   for (const name of DIRECT_APIS) {
+    // Cast: see above — patching the direct APIs with forwarding wrappers.
     const target = userEvent as unknown as Record<string, AnyFn>;
     if (typeof target[name] === "function") {
       target[name] = (...args: unknown[]) => {
+        // Cast: the instance's methods are called with forwarded arguments.
         const instance = origSetup({ delay: null }) as Record<string, AnyFn>;
         return instance[name](...args);
       };

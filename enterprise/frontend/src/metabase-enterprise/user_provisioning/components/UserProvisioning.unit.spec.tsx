@@ -164,17 +164,14 @@ describe("SCIM User Provisioning Settings", () => {
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
     // Under the fast-test regime userEvent replaces navigator.clipboard with
     // its own stub (no jest mock); read the copied value back from whichever
-    // clipboard is in effect.
-    const clipboard = window.navigator.clipboard;
-    if (jest.isMockFunction(clipboard.writeText)) {
-      expect(clipboard.writeText).toHaveBeenCalledWith(
-        "https://example.com/api/ee/scim/v2",
-      );
-    } else {
-      expect(await clipboard.readText()).toBe(
-        "https://example.com/api/ee/scim/v2",
-      );
-    }
+    // clipboard is in effect, then assert unconditionally.
+    const getCopiedText = async () => {
+      const { writeText } = window.navigator.clipboard;
+      return jest.isMockFunction(writeText)
+        ? writeText.mock.calls.at(-1)?.[0]
+        : window.navigator.clipboard.readText();
+    };
+    expect(await getCopiedText()).toBe("https://example.com/api/ee/scim/v2");
   });
 
   it("should call the regenerate token endpoint", async () => {

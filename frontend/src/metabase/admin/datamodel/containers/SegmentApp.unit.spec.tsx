@@ -157,6 +157,7 @@ describe("SegmentApp", () => {
     // disabled and enabled buttons are distinct elements, so re-query.
     await waitFor(() =>
       expect(
+        // eslint-disable-next-line testing-library/no-node-access -- the clickable wrapper exposes no accessible name for a role query; the enabled state lives on the ancestor button element.
         screen.getByText("Add filters to narrow your answer").closest("button"),
       ).toBeEnabled(),
     );

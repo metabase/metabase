@@ -220,13 +220,11 @@ describe("AISettingsPage", () => {
 
     // areAiFeaturesEnabled defaults to true until the settings query resolves;
     // wait for the loaded (disabled) state.
-    await waitFor(() =>
-      expect(
-        screen.getByText("MCP server", {
-          selector: '[aria-disabled="true"] *',
-        }),
-      ).toBeInTheDocument(),
-    );
+    expect(
+      await screen.findByText("MCP server", {
+        selector: '[aria-disabled="true"] *',
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
   });
 

@@ -9,6 +9,7 @@
 module.exports = [
   "enterprise/frontend/src/metabase-enterprise/audit_app/containers/UnsubscribeUserModal/UnsubscribeUserModal.unit.spec.tsx",
   "enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForDatabases.unit.spec.tsx",
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- file path, not user-facing copy
   "enterprise/frontend/src/metabase-enterprise/metabot/components/MetabotAdmin/MetabaseAIProviderSetup.unit.spec.tsx",
   "frontend/src/metabase/forms/components/FormDateInput/FormDateInput.unit.spec.tsx",
   "frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.unit.spec.tsx",
