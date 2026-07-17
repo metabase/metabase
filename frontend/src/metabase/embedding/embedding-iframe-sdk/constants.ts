@@ -69,6 +69,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "collectionVisibleColumns",
     "collectionEntityTypes",
     "collectionPageSize",
+    "collectionShowDashboardQuestions",
     "dataPickerEntityTypes",
     "withNewQuestion",
     "withNewDashboard",
