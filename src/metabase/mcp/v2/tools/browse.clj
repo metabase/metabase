@@ -648,18 +648,33 @@
   "Total nodes one tree response may contain, bounding the shallow-fetch composition."
   250)
 
+(defn- pr-id
+  [id]
+  (if (number? id) id (pr-str id)))
+
 (defn- tree-marker
+  "Marker for a node re-rooting recovers: re-rooting resets the depth and node budget, so a
+   fresh `mode: \"tree\"` call at this node reveals what depth or budget cut off here."
   [more-count parent-name parent-id]
   (format "… %s under %s — browse_collection(id: %s, mode: \"tree\")"
           (if more-count (str more-count " more") "more")
           (pr-str parent-name)
-          (if (number? parent-id) parent-id (pr-str parent-id))))
+          (pr-id parent-id)))
+
+(defn- cap-marker
+  "Marker for a node the per-node child cap trimmed. Re-rooting in tree mode re-applies the same
+   cap and returns the identical page, so this steers to items-mode pagination — the only way to
+   reach the children past the cap."
+  [more parent-name parent-id offset]
+  (format "… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"
+          more (pr-str parent-name) (pr-id parent-id) offset))
 
 (defn- expand-tree-node
   "Build the output node for `node` (`{:id :name :children <expandable?>}`), expanding up to
    `depth` more levels through `fetch` while the shared node `budget` (an atom) lasts. A node
-   left unexpanded — depth or budget exhausted, or children trimmed by the per-node cap —
-   carries the truncation marker naming the re-rooting call."
+   left unexpanded carries a truncation marker: depth/budget exhaustion recovers by re-rooting
+   in tree mode, but a node trimmed by the per-node cap steers to items-mode pagination, which
+   is the only call that reaches the trimmed children."
   [fetch {:keys [id name] :as node} depth budget]
   (cond
     (not (:children node))
@@ -670,12 +685,17 @@
 
     :else
     (let [children (fetch id)
-          included (vec (take (min tree-child-cap @budget) children))
+          allowed  (min tree-child-cap @budget)
+          included (vec (take allowed children))
           _        (swap! budget - (count included))
           expanded (mapv #(expand-tree-node fetch % (dec depth) budget) included)
           more     (- (count children) (count included))]
       (cond-> {:id id :name name :children expanded}
-        (pos? more) (assoc :truncated (tree-marker more name id))))))
+        (pos? more) (assoc :truncated
+                           ;; cap-bound (budget left room) → items pagination; budget-bound → tree
+                           (if (<= tree-child-cap allowed)
+                             (cap-marker more name id (count included))
+                             (tree-marker more name id)))))))
 
 (defn- collection-tree-content
   [args {:keys [root? collection]}]
