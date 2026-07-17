@@ -173,18 +173,19 @@
   `started-run-id` is a promise the worker delivers its transform run id to once `execute!` has
   created it — at most once, since the `:already-running` retry only re-enters after a failed
   start — so [[cancel-worker!]] can target exactly that run. `ctx` is the coordinator context,
-  forwarded to [[run-transform!]]."
-  [{:keys [parent-run] :as ctx} started-run-id transform]
+  forwarded to [[run-transform!]] "
+  [{[run-type run-id] :parent-run :as ctx} started-run-id transform]
   (future
-    (try
-      (run-transform! ctx started-run-id transform)
-      {::status :succeeded ::transform transform}
-      (catch Throwable t
-        (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str (second parent-run)))
-        {::status    :failed
-         ::transform transform
-         ::message   (or (ex-message t) (str t))
-         ::throwable t}))))
+    (log/with-context {:run-type run-type, :run-id run-id, :transform-id (:id transform)}
+      (try
+        (run-transform! ctx started-run-id transform)
+        {::status :succeeded ::transform transform}
+        (catch Throwable t
+          (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
+          {::status    :failed
+           ::transform transform
+           ::message   (or (ex-message t) (str t))
+           ::throwable t})))))
 
 (defn- transform-target-key
   "A coarse identity for a transform's output table, used to keep two transforms that write the
