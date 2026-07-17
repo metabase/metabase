@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
@@ -134,29 +134,24 @@ export function getExplorationSidebarTree(
   threads.forEach((thread, index) => {
     const parentThreadId = getParentThreadId(thread);
     const isFollowUp = parentThreadId != null;
-    const isTopLevelFollowUp = isFollowUp && parentThreadId === initialThreadId;
-
     let children = getExplorationQueryTree(
       thread,
       treeItemFilter,
       sortOrder,
       interestingnessByPageKey,
     );
-    let metricName: string | undefined;
-
+    // A follow-up drill copies a single metric, so its lone metric-group
+    // heading is redundant as a row — surface its pages directly under the thread.
     if (
       isFollowUp &&
       children.length === 1 &&
       children[0].data?.type === "heading"
     ) {
-      if (isTopLevelFollowUp) {
-        metricName = children[0].name || undefined;
-      }
       children = [...(children[0].children ?? [])];
     }
     nodeByThreadId.set(thread.id, {
       id: thread.id,
-      name: getExplorationThreadName(thread, index, metricName),
+      name: getExplorationThreadName(thread, index),
       icon: "empty" as const,
       data: {
         type: "heading" as const,
@@ -448,17 +443,10 @@ function compareExplorationTreeHeadings(
 export function getExplorationThreadName(
   thread: ExplorationThread,
   index: number,
-  metricName?: string,
 ) {
-  const base =
-    thread.name || (index === 0 ? t`Initial investigation` : t`New research`);
-  // For a follow-up branch, prefix the metric it drilled into so the row reads
-  // "Revenue → State = TX" rather than just the bare drill path.
-  if (metricName) {
-    return c("{0} is a metric name, {1} is the follow-up's drill path")
-      .t`${metricName} → ${base}`;
-  }
-  return base;
+  return (
+    thread.name || (index === 0 ? t`Initial investigation` : t`New research`)
+  );
 }
 
 export function flattenTree(
