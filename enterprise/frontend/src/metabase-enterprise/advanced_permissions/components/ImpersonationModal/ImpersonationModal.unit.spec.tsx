@@ -14,12 +14,11 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { Route } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
-import type { AdvancedPermissionsStoreState } from "metabase-enterprise/advanced_permissions/types";
 import { shared } from "metabase-enterprise/shared/reducer";
 import {
   createMockDatabase,
@@ -37,6 +36,7 @@ const setup = async ({
   hasImpersonation = true,
   databaseDetails = {},
 } = {}) => {
+  const onClose = jest.fn();
   const database = createMockDatabase({
     id: databaseId,
     tables: [createMockTable()],
@@ -65,13 +65,12 @@ const setup = async ({
   const { store } = renderWithProviders(
     <>
       <Route path="/" />
-      <Route path="database/:databaseId">
-        {modalRoute(
-          "impersonated/group/:groupId",
-          // @ts-expect-error - params prop can't be inferred
-          ImpersonationModal,
+      <Route
+        path="database/:databaseId/impersonated/group/:groupId"
+        component={(props: ModalComponentProps) => (
+          <ImpersonationModal {...props} onClose={onClose} />
         )}
-      </Route>
+      />
     </>,
     {
       initialRoute: `database/${databaseId}/impersonated/group/${groupId}`,
@@ -87,7 +86,7 @@ const setup = async ({
 
   await waitForLoaderToBeRemoved();
 
-  return store;
+  return { store, onClose };
 };
 
 describe("impersonation modal", () => {
@@ -137,18 +136,15 @@ describe("impersonation modal", () => {
   });
 
   it("should not update impersonation if it has not changed", async () => {
-    const store = await setup({ userAttributes: ["foo"] });
+    const { store } = await setup({ userAttributes: ["foo"] });
 
     await userEvent.click(screen.getByText(/save/i));
 
-    expect(
-      // Unjustified type cast. FIXME
-      getImpersonations(store.getState() as AdvancedPermissionsStoreState),
-    ).toHaveLength(0);
+    expect(getImpersonations(store.getState())).toHaveLength(0);
   });
 
   it("should create impersonation", async () => {
-    const store = await setup({ hasImpersonation: false });
+    const { store, onClose } = await setup({ hasImpersonation: false });
 
     await userEvent.click(
       await screen.findByPlaceholderText("Pick a user attribute"),
@@ -159,10 +155,7 @@ describe("impersonation modal", () => {
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
-      expect(
-        // Unjustified type cast. FIXME
-        getImpersonations(store.getState() as AdvancedPermissionsStoreState),
-      ).toStrictEqual([
+      expect(getImpersonations(store.getState())).toStrictEqual([
         {
           attribute: "foo",
           db_id: 1,
@@ -170,10 +163,12 @@ describe("impersonation modal", () => {
         },
       ]);
     });
+
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("should update impersonation", async () => {
-    const store = await setup();
+    const { store, onClose } = await setup();
 
     await userEvent.click(
       await screen.findByPlaceholderText("Pick a user attribute"),
@@ -184,10 +179,7 @@ describe("impersonation modal", () => {
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
-      expect(
-        // Unjustified type cast. FIXME
-        getImpersonations(store.getState() as AdvancedPermissionsStoreState),
-      ).toStrictEqual([
+      expect(getImpersonations(store.getState())).toStrictEqual([
         {
           attribute: "bar",
           db_id: 1,
@@ -195,6 +187,8 @@ describe("impersonation modal", () => {
         },
       ]);
     });
+
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("should show only already selected attribute if attributes array is empty", async () => {
