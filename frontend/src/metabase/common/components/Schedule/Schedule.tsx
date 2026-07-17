@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { c, t } from "ttag";
+import { c } from "ttag";
 import _ from "underscore";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
@@ -211,7 +211,9 @@ export const Schedule = ({
           schedule_minute === 1
             ? c("Time unit in the schedule builder, e.g. 'every 1 minute'")
                 .t`Minute`
-            : t`Minutes`
+            : c(
+                "Plural time unit in the schedule builder, e.g. 'every 10 minutes'",
+              ).t`Minutes`
         ).toLocaleLowerCase();
         return c(
           "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
