@@ -618,6 +618,32 @@
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
 
+(deftest transform-search-is-superuser-only-test
+  (testing "GHY-4137: transforms are :visibility :superuser in search, so only superusers ever see
+            them in results. This is what makes a transform-readability post-filter unnecessary — a
+            user who cannot access transforms never has them in results to begin with."
+    (search.tu/with-temp-index-table
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Database {db-id :id} {}
+                         :model/Transform _ {:name   "zzxform target"
+                                             :source {:type "query" :query {:database db-id}}}]
+            (search-core/init-index! {:force-reset? true :in-place? true})
+            (with-redefs [perms/impersonated-user? (constantly false)
+                          perms/sandboxed-user?    (constantly false)]
+              (let [transform-types (fn []
+                                      (->> (search/search {:term-queries ["zzxform"]
+                                                           :entity-types ["transform"]
+                                                           :limit        10})
+                                           (map :type)
+                                           set))]
+                (testing "a superuser's search returns the transform"
+                  (mt/with-test-user :crowberto
+                    (is (contains? (transform-types) "transform"))))
+                (testing "a non-superuser's search returns no transforms"
+                  (mt/with-test-user :rasta
+                    (is (empty? (transform-types)))))))))))))
+
 (deftest weight-override-test
   (testing "weights can be overridden on a per-tool-call basis"
     (mt/with-test-user :crowberto
