@@ -14,4 +14,20 @@ describe("TagEditorHelp (OSS)", () => {
 
     expect(screen.getByText("Read the full documentation")).toBeInTheDocument();
   });
+
+  it("should offer 'Try it' example buttons when a sample database is available", () => {
+    setup({ sampleDatabaseId: 99 });
+
+    expect(
+      screen.getAllByRole("button", { name: "Try it" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("should hide 'Try it' example buttons when no sample database is available (metabase#78037)", () => {
+    setup({ sampleDatabaseId: null });
+
+    expect(
+      screen.queryByRole("button", { name: "Try it" }),
+    ).not.toBeInTheDocument();
+  });
 });

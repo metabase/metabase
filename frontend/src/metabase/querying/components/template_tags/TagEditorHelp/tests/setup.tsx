@@ -15,12 +15,14 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  sampleDatabaseId?: number | null;
 }
 
 export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
+  sampleDatabaseId = 99,
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({
@@ -36,7 +38,7 @@ export const setup = ({
   renderWithProviders(
     <TagEditorHelp
       database={new Database({ ...createMockDatabase(), tables: [] })}
-      sampleDatabaseId={99}
+      sampleDatabaseId={sampleDatabaseId ?? undefined}
       setDatasetQuery={jest.fn()}
       switchToSettings={jest.fn()}
     />,
