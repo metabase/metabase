@@ -1012,7 +1012,7 @@ describe("DimensionPickerSidebar", () => {
     expect(createdAtButtons[1]).toHaveAttribute("data-selected", "true");
   });
 
-  it("groups all fields by metric when multiple metrics are selected", async () => {
+  it("lists all curated fields under each metric accordion", async () => {
     setup({
       dimensions: {
         shared: [
@@ -1078,17 +1078,15 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.getByRole("button", { name: "Total Orders" }),
     ).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getAllByText("Shared dimensions")).toHaveLength(2);
     expect(
       screen.getAllByRole("button", { name: "Customer Name" }),
     ).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Placed At" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Customers")).not.toBeInTheDocument();
-    expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
-    // alongside a Shared section, the metric's own section keeps its title
-    expect(screen.getAllByText("ARR")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Order Status" }),
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Total Orders" }));
 
@@ -1102,6 +1100,9 @@ describe("DimensionPickerSidebar", () => {
     expect(
       screen.queryByRole("button", { name: "Order Status" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Customer Name" }),
+    ).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "ARR" }));
 
