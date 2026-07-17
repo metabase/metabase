@@ -295,9 +295,12 @@
                           (:use_verified_content metabot)
                           false)
         embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        collection-id   (or collection-id
-                            (when (or embedded-metabot? (= profile-id "nlq"))
-                              (:collection_id metabot)))
+        ;; Confined flows (embedded metabot, nlq profile) are pinned to the metabot's own
+        ;; collection — a caller-supplied collection-id must not widen them. Unconfined callers
+        ;; (the MCP v2 tool, agent-api) scope by their own collection-id.
+        collection-id   (if (or embedded-metabot? (= profile-id "nlq"))
+                          (:collection_id metabot)
+                          collection-id)
         limit           (or limit 50)
         ;; the engine's total match count from the last search, plus how many searches ran —
         ;; a total is only meaningful when exactly one did (no rank fusion).

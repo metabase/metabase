@@ -384,6 +384,31 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
+(deftest confined-metabot-collection-cannot-be-widened-test
+  (testing "GHY-4137: a confined flow (embedded metabot / nlq profile) is pinned to the metabot's
+            own collection — a caller-supplied collection-id must not widen it — while an
+            unconfined caller (the MCP v2 tool) scopes by its own collection-id"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (mt/with-temp [:model/Collection c {:name "Metabot Home"}
+                       :model/Metabot _ {:name "MB" :entity_id "mbEid1234567890abcdef" :collection_id (:id c)}]
+          (let [captured (atom :unset)
+                run!     (fn [search-args]
+                           (reset! captured :unset)
+                           (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx]
+                                                                            (reset! captured (:collection ctx))
+                                                                            {:data []})]
+                             (search/search (merge {:term-queries ["x"] :entity-types ["card"]} search-args)))
+                           @captured)]
+            (testing "nlq profile ignores a caller-supplied collection-id and pins to the metabot's"
+              (is (= (:id c) (run! {:profile-id "nlq" :metabot-id "mbEid1234567890abcdef" :collection-id 99999}))))
+            (testing "with no caller collection-id, the confined flow still pins to the metabot's"
+              (is (= (:id c) (run! {:profile-id "nlq" :metabot-id "mbEid1234567890abcdef"}))))
+            (testing "an unconfined caller's collection-id is honored"
+              (is (= 42 (run! {:collection-id 42}))))))))))
+
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto
