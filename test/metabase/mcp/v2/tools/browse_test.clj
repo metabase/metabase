@@ -4,12 +4,14 @@
    [clojure.test :refer :all]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.tools.browse :as browse]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -181,6 +183,101 @@
       (is (= ["field_2"] (map :name (:fields payload))))
       (is (= 3 (:total_fields payload)))
       (is (nil? message)))))
+
+;;; ------------------------------------------ Browsable-database filter -------------------------------------------
+
+(deftest list-databases-excludes-non-browsable-test
+  (testing "GHY-4138: list_databases hides databases no other listing shows — stubs (placeholders
+            for in-progress creation) and router destinations (browsed via their router), neither
+            of which `mi/can-read?` filters out"
+    (mt/with-temp [:model/Database {normal :id} {:name "Browse Normal DB"}
+                   :model/Database {stub   :id} {:name "Browse Stub DB" :is_stub true}
+                   :model/Database {router :id} {:name "Browse Router Source"}
+                   :model/Database {dest   :id} {:name "Browse Router Dest" :router_database_id router}]
+      (mt/with-test-user :crowberto
+        (let [[envelope] (call! {:action "list_databases" :limit 500})
+              ids        (set (map :id (:data envelope)))]
+          (is (contains? ids normal) "an ordinary database is listed")
+          (is (contains? ids router) "a router source database is listed")
+          (is (not (contains? ids stub)) "a stub database is hidden even from an admin")
+          (is (not (contains? ids dest)) "a router destination database is hidden even from an admin"))))))
+
+;;; ------------------------------ Router-destination isolation (P0: cross-tenant data) ---------------------------
+;;; Database routing is a multi-tenant boundary: a user browses a *router* database and their
+;;; queries are rerouted to their own *destination* database by user attribute. A destination
+;;; addressed directly — by database id or by a table id inside it — bypasses that boundary and can
+;;; return another tenant's data. The tool must refuse it. "Destination" is defined exactly as
+;;; `is-disallowed-destination-db-access?` in metabase-enterprise.database-routing.common defines
+;;; it: `router_database_id` non-null. The tool enforces this itself against the same filter
+;;; `list_databases` pages — it does NOT trust `schema-tables-list`/the metadata fetch to exclude
+;;; destinations — so these tests hold that line if those helpers ever change.
+
+(deftest browse-allows-router-blocks-destinations-test
+  (testing "GHY-4138 (P0): the router is browsable, but its destination databases are unreachable
+            directly through every action — and the caller here holds FULL data permissions, so the
+            refusal is provably the routing guard, not a permission failure"
+    (mt/with-temp [:model/Database {router :id}   {:name "Sales Router"}
+                   :model/Table    {router-t :id} {:db_id router :schema "public" :name "router_orders"}
+                   :model/Field    _              {:table_id router-t :name "id"
+                                                   :base_type :type/Integer :position 0}
+                   ;; two tenants' destinations; tenant B holds data tenant A must never see
+                   :model/Database {tenant-a :id} {:name "Tenant A DB" :router_database_id router}
+                   :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}
+                   :model/Table    {b-orders :id} {:db_id tenant-b :schema "public" :name "tenant_b_orders"}
+                   :model/Field    _              {:table_id b-orders :name "secret_amount"
+                                                   :base_type :type/Float :position 0}
+                   :model/Card     _              {:name "Tenant B Model" :type :model
+                                                   :database_id tenant-b :table_id b-orders}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (is (mi/can-read? (t2/select-one :model/Database :id tenant-b))
+              "precondition: the caller CAN read the destination — so a refusal below is the routing
+               guard collapsing it into not-found, not an ordinary permission denial")
+          (testing "happy path — the router database is fully browsable"
+            (let [[dbs]  (call! {:action "list_databases" :limit 500})
+                  db-ids (set (map :id (:data dbs)))]
+              (is (contains? db-ids router) "the router is listed")
+              (is (not (contains? db-ids tenant-a)) "tenant A's destination is not listed")
+              (is (not (contains? db-ids tenant-b)) "tenant B's destination is not listed"))
+            (let [[tables] (call! {:action "list_tables" :database_id router :schema "public"})]
+              (is (= ["router_orders"] (map :name (:data tables))) "the router's tables list"))
+            (let [[envelope] (call! {:action "get_fields" :table_ids [router-t]})]
+              (is (= ["id"] (map :name (:fields (first (:tables envelope)))))
+                  "the router's fields are served")))
+          (testing "adversarial — a directly-supplied destination id is refused across every action"
+            (are [action extra] (thrown-with-msg?
+                                 clojure.lang.ExceptionInfo
+                                 #"database \d+ not found — it may not exist, or you may not have access to it\."
+                                 (browse/browse-data (merge {:action action} extra) {}))
+              "list_schemas" {:database_id tenant-b}
+              "list_tables"  {:database_id tenant-b :schema "public"}
+              "list_models"  {:database_id tenant-b}))
+          (testing "adversarial — get_fields leaks nothing from a destination, even mixed with a
+                    legitimate router table in the same request"
+            (let [[envelope] (call! {:action "get_fields" :table_ids [router-t b-orders]})]
+              (is (= [router-t] (map :id (:tables envelope)))
+                  "only the router table is served")
+              (is (= [{:id b-orders
+                       :reason "not found — it may not exist, or you may not have access to it"}]
+                     (:omitted envelope))
+                  "the destination table is collapsed into not-found, never expanded")
+              (is (not (str/includes? (json/encode envelope) "secret_amount"))
+                  "the destination's column name never appears anywhere in the response"))))))))
+
+(deftest browse-refuses-stub-databases-test
+  (testing "GHY-4138: a stub database (a placeholder for in-progress creation) is unbrowsable the
+            same way, even if a table somehow exists under it"
+    (mt/with-temp [:model/Database {stub :id}   {:name "Stub DB" :is_stub true}
+                   :model/Table    {stub-t :id} {:db_id stub :schema "public" :name "stub_orders"}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"database \d+ not found — it may not exist, or you may not have access to it\."
+               (browse/browse-data {:action "list_tables" :database_id stub :schema "public"} {})))
+          (let [[envelope] (call! {:action "get_fields" :table_ids [stub-t]})]
+            (is (empty? (:tables envelope)))
+            (is (= [stub-t] (map :id (:omitted envelope))))))))))
 
 ;;; ------------------------------------------- Permission filtering -----------------------------------------------
 ;;; These mutate global permission rows via `with-no-data-perms-for-all-users!`, so they are not `^:parallel`.

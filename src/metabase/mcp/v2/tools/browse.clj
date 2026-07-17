@@ -97,11 +97,16 @@
                (if (next bad) "them" "it"))))))
 
 (defn- check-database!
-  "Read-check `database-id`, collapsing \"doesn't exist\" and \"not readable\" into the shared
-   not-found teaching error."
+  "Read-check `database-id` and confirm it is browsable, collapsing \"doesn't exist\", \"not
+   readable\", and \"not browsable\" (a stub, or a router-destination database — a multi-tenant
+   boundary a raw id must not cross) into the shared not-found teaching error. Selecting through
+   the same filter [[list-databases]] pages means the tool never serves a database it would not
+   list, independent of what the schema/table helpers happen to filter."
   [database-id]
   (try
-    (api/read-check (t2/select-one :model/Database :id database-id))
+    (api/read-check (t2/select-one :model/Database
+                                   :id database-id
+                                   {:where (schema.table/browsable-databases-honeysql-filter)}))
     (catch clojure.lang.ExceptionInfo e
       (if (contains? #{403 404} (:status-code (ex-data e)))
         (common/throw-not-found :database database-id)
@@ -152,7 +157,9 @@
 
 (defn- list-databases
   [args]
-  (let [dbs (->> (t2/select database-select-columns :is_audit false {:order-by [[:%lower.name :asc]]})
+  (let [dbs (->> (t2/select database-select-columns
+                            {:where    (schema.table/browsable-databases-honeysql-filter)
+                             :order-by [[:%lower.name :asc]]})
                  (filterv mi/can-read?))]
     (paged-list-content args dbs {:empty-hint no-databases-hint}
                         #(project-rows :database args %))))
@@ -441,7 +448,19 @@
     (common/throw-teaching-error
      "`offset` with get_fields pages the fields of one large table — request that table alone."))
   (let [table-ids (into [] (distinct) table_ids)
-        {:keys [rows missing]} (fetch-table-metadata-rows table-ids (true? include_hidden))
+        {fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
+        ;; A table whose database isn't browsable (a stub or router-destination database) is
+        ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
+        ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
+        browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
+                           (when (seq db-ids)
+                             (t2/select-pks-set :model/Database
+                                                {:where [:and
+                                                         [:in :id db-ids]
+                                                         (schema.table/browsable-databases-honeysql-filter)]})))
+        browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
+        rows      (filterv browsable? fetched)
+        missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
         detailed? (or (contains? args :fields)
                       (= :detailed (common/response-format args)))
         rows      (cond-> rows detailed? attach-inline-values)
