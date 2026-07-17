@@ -18,7 +18,7 @@
 }
 
 .streamedWord {
-  animation: streamed-word-fade 140ms ease-out;
+  animation: streamed-word-fade 150ms ease;
 }
 
 @keyframes streamed-word-fade {
