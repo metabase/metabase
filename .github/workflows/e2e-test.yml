@@ -123,7 +123,7 @@ jobs:
 
       - name: Get failed specs
         if: github.run_attempt != '1'
-        run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+        run: echo "specs=$(cat failed-specs)" >> "$GITHUB_ENV"
 
       # run-tests.yml compiles this in parallel with the uberjar build. downloading it is ~10x faster than compiling it here.
       # Callers without that job (stress tests, coverage shards, cross-run re-runs) fall through to compiling as before.
