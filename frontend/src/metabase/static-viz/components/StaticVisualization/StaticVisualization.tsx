@@ -3,6 +3,7 @@ import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
@@ -73,7 +74,7 @@ export const StaticVisualization = ({
       return <StaticRowChart {...props} />;
   }
 
-  if (typeof display === "string" && display.startsWith("custom:")) {
+  if (isCustomVizDisplay(display)) {
     const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
     if (customViz?.StaticVisualizationComponent) {
       const { StaticVisualizationComponent } = customViz;
