@@ -1169,15 +1169,21 @@
   [workspace]
   (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
 
+(defmethod driver/workspace-isolation-details :snowflake
+  [driver database workspace]
+  (-> ((get-method driver/workspace-isolation-details :sql-jdbc) driver database workspace)
+      (update :database_details assoc
+              :role         (isolation-role-name workspace)
+              :use-password true)))
+
 (defmethod driver/init-workspace-isolation! :snowflake
   [_driver database workspace]
   (let [details          (driver.conn/effective-details database)
-        schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        schema-name      (:schema workspace)
         db-name          (:db details)
         warehouse        (:warehouse details)
-        role-name        (isolation-role-name workspace)
-        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
-                          :password (driver.u/random-workspace-password)}
+        role-name        (-> workspace :database_details :role)
+        read-user        (select-keys (:database_details workspace) [:user :password])
         conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
       (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
@@ -1202,20 +1208,23 @@
                      (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
                      (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
                              quoted-user (:password read-user) quoted-role)
+                     ;; the user may survive a failed teardown; without this it would keep
+                     ;; its old password while the new one gets persisted
+                     (format "ALTER USER %s SET PASSWORD = '%s'"
+                             quoted-user (:password read-user))
                      (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
           (jdbc/execute! conn-spec [sql]))
         (catch Throwable t
           (throw (driver.u/scrub-exceptions t [(:password read-user)])))))
-    {:schema           schema-name
-     :database_details (assoc read-user :role role-name :use-password true)}))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :snowflake
   [_driver database workspace]
   (let [details     (driver.conn/effective-details database)
-        schema-name (or (:schema workspace) (driver.u/workspace-isolation-namespace-name workspace))
+        schema-name (:schema workspace)
         db-name     (:db details)
-        role-name   (isolation-role-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
+        role-name   (-> workspace :database_details :role)
+        username    (-> workspace :database_details :user)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
       (throw (ex-info (tru "Cannot destroy workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
