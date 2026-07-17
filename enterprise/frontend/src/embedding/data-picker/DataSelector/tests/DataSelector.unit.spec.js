@@ -403,7 +403,9 @@ describe("DataSelector", () => {
     );
 
     expect(
-      await screen.findByText("To pick some data, you'll need to add some first"),
+      await screen.findByText(
+        "To pick some data, you'll need to add some first",
+      ),
     ).toBeInTheDocument();
   });
 });

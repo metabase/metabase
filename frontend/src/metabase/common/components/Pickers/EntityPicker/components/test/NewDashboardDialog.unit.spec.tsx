@@ -96,7 +96,7 @@ describe("NewDashboardDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
-    let apiCalls;
+    let apiCalls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
       expect(apiCalls).toHaveLength(1);
@@ -119,7 +119,7 @@ describe("NewDashboardDialog", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
-    let apiCalls;
+    let apiCalls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
       expect(apiCalls).toHaveLength(1);

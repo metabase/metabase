@@ -179,9 +179,9 @@ const submit = async () => {
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
   await waitFor(() =>
-    expect(
-      fetchMock.callHistory.calls(settingEndpoint).length,
-    ).toBeGreaterThan(0),
+    expect(fetchMock.callHistory.calls(settingEndpoint).length).toBeGreaterThan(
+      0,
+    ),
   );
   return fetchMock.callHistory.lastCall(settingEndpoint);
 };

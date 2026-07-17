@@ -44,9 +44,12 @@ describe("RescanFieldButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {
@@ -68,9 +71,12 @@ describe("RescanFieldButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {
@@ -85,9 +91,12 @@ describe("RescanFieldButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(2);
     });
 
@@ -117,9 +126,12 @@ describe("RescanFieldButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/field/${field.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {

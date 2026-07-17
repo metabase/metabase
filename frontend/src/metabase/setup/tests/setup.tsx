@@ -156,9 +156,8 @@ export const expectSectionsToHaveLabelsInOrder = ({
 export const getLastSettingsPutPayload = async () => {
   // The settings PUT is dispatched by a timer-gated effect after the final
   // step; wait for the request to actually land before reading it.
-  let lastSettingsCall: ReturnType<
-    typeof fetchMock.callHistory.calls
-  >[number] = undefined!;
+  let lastSettingsCall: ReturnType<typeof fetchMock.callHistory.calls>[number] =
+    undefined!;
   await waitFor(() => {
     const settingsCalls = fetchMock.callHistory.calls("path:/api/setting", {
       method: "PUT",

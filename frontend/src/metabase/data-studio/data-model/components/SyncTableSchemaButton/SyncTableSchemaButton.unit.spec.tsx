@@ -45,7 +45,7 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/sync-schema`,
@@ -76,7 +76,7 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/sync-schema`,
@@ -138,7 +138,7 @@ describe("SyncTableSchemaButton", () => {
     expect(button).toHaveTextContent("Sync table schema");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/sync-schema`,

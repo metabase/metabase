@@ -45,7 +45,7 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/rescan-values`,
@@ -76,7 +76,7 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/rescan-values`,
@@ -138,7 +138,7 @@ describe("RescanTableFieldsButton", () => {
     expect(button).toHaveTextContent("Re-scan table");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/rescan-values`,

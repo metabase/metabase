@@ -106,9 +106,9 @@ describe("MoveDashboardStepContent", () => {
     // The move handler needs the shared collection tree to have loaded.
     await waitFor(async () => {
       const requests = await findRequests("GET");
-      expect(
-        requests.some((r) => r.url.includes("/api/collection/tree")),
-      ).toBe(true);
+      expect(requests.some((r) => r.url.includes("/api/collection/tree"))).toBe(
+        true,
+      );
     });
     await userEvent.click(moveButton);
 
@@ -152,9 +152,9 @@ describe("MoveDashboardStepContent", () => {
     // The create handler needs the shared collection tree to have loaded.
     await waitFor(async () => {
       const requests = await findRequests("GET");
-      expect(
-        requests.some((r) => r.url.includes("/api/collection/tree")),
-      ).toBe(true);
+      expect(requests.some((r) => r.url.includes("/api/collection/tree"))).toBe(
+        true,
+      );
     });
     await userEvent.click(createButton);
 

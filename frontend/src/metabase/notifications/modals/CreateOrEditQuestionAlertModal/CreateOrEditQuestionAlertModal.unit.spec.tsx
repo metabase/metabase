@@ -448,9 +448,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     // Verify the API was called with the correct cron schedule for Tuesday at 2pm
     await waitFor(() =>
       expect(
-        fetchMock.callHistory.calls(
-          `path:/api/notification/${notificationId}`,
-        ),
+        fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`),
       ).toHaveLength(1),
     );
     const calls = fetchMock.callHistory.calls(
@@ -541,9 +539,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(() =>
       expect(
-        fetchMock.callHistory.calls(
-          `path:/api/notification/${notificationId}`,
-        ),
+        fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`),
       ).toHaveLength(1),
     );
     const calls = fetchMock.callHistory.calls(

@@ -223,9 +223,7 @@ describe("TablePicker", () => {
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
       });
 
-      await waitFor(() =>
-        expect(item(PRIVATE_SCHEMA)).toBeInTheDocument(),
-      );
+      await waitFor(() => expect(item(PRIVATE_SCHEMA)).toBeInTheDocument());
       expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
       expect(item(PUBLIC_SCHEMA)).toBeInTheDocument();
 
@@ -254,9 +252,7 @@ describe("TablePicker", () => {
       await clickItem(PUBLIC_SCHEMA);
       await waitLoading();
 
-      await waitFor(() =>
-        expect(item(FOO_TABLE)).not.toBeInTheDocument(),
-      );
+      await waitFor(() => expect(item(FOO_TABLE)).not.toBeInTheDocument());
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
 
       // first select, then collapse
@@ -265,9 +261,7 @@ describe("TablePicker", () => {
       await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
       await waitLoading();
 
-      await waitFor(() =>
-        expect(item(PUBLIC_SCHEMA)).not.toBeInTheDocument(),
-      );
+      await waitFor(() => expect(item(PUBLIC_SCHEMA)).not.toBeInTheDocument());
       expect(item(PRIVATE_SCHEMA)).not.toBeInTheDocument();
     });
 

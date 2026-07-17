@@ -45,7 +45,7 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/discard-values`,
@@ -76,7 +76,7 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/discard-values`,
@@ -138,7 +138,7 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
-    let calls;
+    let calls: ReturnType<typeof fetchMock.callHistory.calls> = [];
     await waitFor(() => {
       calls = fetchMock.callHistory.calls(
         `path:/api/data-studio/table/discard-values`,

@@ -82,9 +82,7 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    expect(
-      await screen.findByLabelText("Image preview"),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText("Image preview")).toBeInTheDocument();
   });
 
   it("can remove an uploaded image", async () => {

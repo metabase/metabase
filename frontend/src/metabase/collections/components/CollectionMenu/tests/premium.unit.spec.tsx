@@ -139,9 +139,7 @@ describe("CollectionMenu", () => {
       const cleanupItem = await screen.findByRole("menuitem", {
         name: /Clear out unused items/,
       });
-      await waitFor(() =>
-        expect(cleanupItem).toHaveTextContent("Recommended"),
-      );
+      await waitFor(() => expect(cleanupItem).toHaveTextContent("Recommended"));
     });
 
     it("should not show an indicator if it has previously been dismissed, even if we recommend cleaning the collection", async () => {
@@ -164,9 +162,7 @@ describe("CollectionMenu", () => {
       const cleanupItem = await screen.findByRole("menuitem", {
         name: /Clear out unused items/,
       });
-      await waitFor(() =>
-        expect(cleanupItem).toHaveTextContent("Recommended"),
-      );
+      await waitFor(() => expect(cleanupItem).toHaveTextContent("Recommended"));
     });
 
     it("should recommend cleaning collections to non-admins with write access", async () => {
@@ -181,9 +177,7 @@ describe("CollectionMenu", () => {
       const cleanupItem = await screen.findByRole("menuitem", {
         name: /Clear out unused items/,
       });
-      await waitFor(() =>
-        expect(cleanupItem).toHaveTextContent("Recommended"),
-      );
+      await waitFor(() => expect(cleanupItem).toHaveTextContent("Recommended"));
     });
 
     it("should not show an indicator if there are no stale items in the collection", async () => {

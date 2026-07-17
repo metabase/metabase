@@ -91,9 +91,9 @@ describe("DatasetEditor", () => {
   it("tries to load a model index for a saved model", async () => {
     await renderDatasetEditor(mockSavedModel);
     await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/model-index"),
-      ).toHaveLength(1),
+      expect(fetchMock.callHistory.calls("path:/api/model-index")).toHaveLength(
+        1,
+      ),
     );
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(

@@ -162,7 +162,9 @@ describe("ChartSettingsTableFormatting", () => {
       );
 
       await userEvent.click(
-        await screen.findByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
       await expectOperators(STRING_OPERATORS);
@@ -176,7 +178,9 @@ describe("ChartSettingsTableFormatting", () => {
       );
 
       await userEvent.click(
-        await screen.findByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
       await expectOperators(STRING_OPERATORS);
@@ -190,7 +194,9 @@ describe("ChartSettingsTableFormatting", () => {
       );
 
       await userEvent.click(
-        await screen.findByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
       await expectOperators(STRING_OPERATORS);
@@ -204,7 +210,9 @@ describe("ChartSettingsTableFormatting", () => {
       );
 
       await userEvent.click(
-        await screen.findByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
       await expectOperators(NUMBER_OPERATORS);
@@ -227,7 +235,9 @@ describe("ChartSettingsTableFormatting", () => {
       );
 
       await userEvent.click(
-        await screen.findByTestId("conditional-formatting-value-operator-button"),
+        await screen.findByTestId(
+          "conditional-formatting-value-operator-button",
+        ),
       );
 
       await expectOperators(BOOLEAN_OPERATORS);

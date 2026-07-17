@@ -43,9 +43,7 @@ describe("useCreateDashboardApi", () => {
     await waitFor(() => expect(button).toBeEnabled());
     await userEvent.click(button);
 
-    await waitFor(() =>
-      expect(onDashboardCreateSpy).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(onDashboardCreateSpy).toHaveBeenCalledTimes(1));
     expect(onDashboardCreateSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         id: TEST_DASHBOARD_ID,

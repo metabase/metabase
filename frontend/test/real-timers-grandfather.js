@@ -7,7 +7,10 @@
  * verify with: bun x jest <path>
  */
 module.exports = [
+  "enterprise/frontend/src/metabase-enterprise/audit_app/containers/UnsubscribeUserModal/UnsubscribeUserModal.unit.spec.tsx",
+  "enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForDatabases.unit.spec.tsx",
   "enterprise/frontend/src/metabase-enterprise/metabot/components/MetabotAdmin/MetabaseAIProviderSetup.unit.spec.tsx",
   "frontend/src/metabase/forms/components/FormDateInput/FormDateInput.unit.spec.tsx",
+  "frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.unit.spec.tsx",
   "frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.unit.spec.ts",
 ];

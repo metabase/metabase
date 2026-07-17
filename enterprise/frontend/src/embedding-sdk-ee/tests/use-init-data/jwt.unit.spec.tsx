@@ -103,9 +103,7 @@ describe("useInitData - JWT authentication", () => {
     const { rerender } = setupJwt({ fetchRequestToken });
 
     expect(await screen.findByTestId("test-component")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(fetchRequestToken).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(fetchRequestToken).toHaveBeenCalledTimes(1));
 
     const newFetchRequestToken = jest.fn(async () => ({
       jwt: "TEST_JWT_TOKEN",
@@ -118,8 +116,6 @@ describe("useInitData - JWT authentication", () => {
     rerender(<TestComponent config={authConfig} />);
     await userEvent.click(screen.getByText("Refresh Token"));
 
-    await waitFor(() =>
-      expect(newFetchRequestToken).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(newFetchRequestToken).toHaveBeenCalledTimes(1));
   });
 });

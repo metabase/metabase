@@ -43,9 +43,12 @@ describe("RescanTableFieldsButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {
@@ -67,9 +70,12 @@ describe("RescanTableFieldsButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {
@@ -84,9 +90,12 @@ describe("RescanTableFieldsButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(2);
     });
 
@@ -116,9 +125,12 @@ describe("RescanTableFieldsButton", () => {
     await userEvent.click(button);
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls(`path:/api/table/${table.id}/rescan_values`, {
-          method: "POST",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/table/${table.id}/rescan_values`,
+          {
+            method: "POST",
+          },
+        ),
       ).toHaveLength(1);
     });
     await waitFor(() => {

@@ -150,9 +150,7 @@ describe("CloudPanel", () => {
 
     await expectProgressState(metabaseStoreLink);
 
-    await waitFor(() =>
-      expect(mockMigrationStart).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(mockMigrationStart).toHaveBeenCalledTimes(1));
   });
 
   it("should be able to start a new migration after a successful migration", async () => {

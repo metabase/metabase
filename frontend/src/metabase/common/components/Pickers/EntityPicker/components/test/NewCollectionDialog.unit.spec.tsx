@@ -99,9 +99,9 @@ describe("NewCollectionDialog", () => {
     await userEvent.click(button);
 
     await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/collection"),
-      ).toHaveLength(1),
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      ),
     );
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     const call = apiCalls[0];
@@ -123,9 +123,9 @@ describe("NewCollectionDialog", () => {
     await userEvent.click(button);
 
     await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/collection"),
-      ).toHaveLength(1),
+      expect(fetchMock.callHistory.calls("path:/api/collection")).toHaveLength(
+        1,
+      ),
     );
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     const call = apiCalls[0];

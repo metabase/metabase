@@ -157,9 +157,7 @@ describe("SegmentApp", () => {
     // disabled and enabled buttons are distinct elements, so re-query.
     await waitFor(() =>
       expect(
-        screen
-          .getByText("Add filters to narrow your answer")
-          .closest("button"),
+        screen.getByText("Add filters to narrow your answer").closest("button"),
       ).toBeEnabled(),
     );
     await userEvent.click(
