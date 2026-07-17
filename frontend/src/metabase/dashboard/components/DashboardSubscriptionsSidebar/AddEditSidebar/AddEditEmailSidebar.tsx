@@ -10,12 +10,13 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
-import { formatNotificationScheduleDescription } from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
+import { getSetting } from "metabase/selectors/settings";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -33,7 +34,7 @@ import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
-import { SubscriptionScheduleDescription } from "./SubscriptionScheduleDescription";
+import { getSubscriptionScheduleDescription } from "./utils";
 
 interface AddEditEmailSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -82,15 +83,19 @@ export const AddEditEmailSidebar = ({
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getUser);
+  const applicationName = useSelector(getApplicationName);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
+  );
 
   const renderScheduleDescription = (schedule: ScheduleSettings) => {
-    const description = formatNotificationScheduleDescription(schedule);
-    return description ? (
-      <SubscriptionScheduleDescription
-        channelSpec={channelSpec}
-        description={description}
-      />
-    ) : null;
+    const description = getSubscriptionScheduleDescription({
+      schedule,
+      channelSpec,
+      applicationName,
+      timezone,
+    });
+    return description ? <Text c="text-secondary">{description}</Text> : null;
   };
 
   // Return true if the results of all cards can be downloaded
