@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
@@ -71,6 +72,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "share",
     tooltip: "Share",
   },
+  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS_BUTTON]: {
+    icon: "subscription",
+    tooltip: "Subscriptions",
+  },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
     tooltip: "Auto-refresh",
@@ -87,6 +92,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     icon: "info",
     tooltip: "More info",
+  },
+  [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR]: {
+    icon: "clock",
+    tooltip: "Auto-refresh",
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     icon: "ellipsis",
@@ -111,6 +120,9 @@ const setup = ({
   isPublic,
   isAnalyticsDashboard,
   isAdmin = false,
+  hasEmailSetup = true,
+  hasSlackSetup = true,
+  refreshPeriod = null,
 }: Partial<{
   isEditing: boolean;
   hasModelActionsEnabled: boolean;
@@ -118,8 +130,15 @@ const setup = ({
   isPublic: boolean;
   isAnalyticsDashboard: boolean;
   isAdmin: boolean;
+  hasEmailSetup: boolean;
+  hasSlackSetup: boolean;
+  refreshPeriod: number | null;
 }>) => {
   setupBookmarksEndpoints([]);
+  setupNotificationChannelsEndpoints({
+    email: { configured: hasEmailSetup },
+    slack: { configured: hasSlackSetup },
+  });
 
   const MOCK_DATABASE = createMockDatabase({
     settings: {
@@ -154,7 +173,7 @@ const setup = ({
       path="*"
       component={() => (
         <MockDashboardContext
-          refreshPeriod={null}
+          refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={jest.fn()}
           setRefreshElapsedHook={jest.fn()}
           isFullscreen={isFullscreen}
@@ -301,7 +320,7 @@ describe("DashboardHeaderButtonRow", () => {
         expectedButtons: [
           DASHBOARD_ACTION.EDIT_DASHBOARD,
           DASHBOARD_ACTION.DASHBOARD_SHARING,
-          DASHBOARD_ACTION.REFRESH_WIDGET,
+          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS_BUTTON,
           DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
           DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
           DASHBOARD_ACTION.DASHBOARD_INFO,
@@ -334,6 +353,42 @@ describe("DashboardHeaderButtonRow", () => {
       setup({ isEditing: false, isPublic: true });
       await expectButtonsToExistInHeader({
         expectedButtons: [DASHBOARD_ACTION.FULLSCREEN_TOGGLE],
+      });
+    });
+
+    it("should not show the auto-refresh indicator when auto-refresh is off", () => {
+      setup({ isEditing: false, isAdmin: true, refreshPeriod: null });
+
+      const buttons = screen.getAllByTestId("dashboard-header-row-button");
+      const buttonKeys = buttons.map((button) =>
+        button.getAttribute("data-element-id"),
+      );
+      expect(buttonKeys).not.toContain(DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR);
+    });
+
+    it("should show the auto-refresh indicator to the left of the overflow menu when auto-refresh is on", async () => {
+      setup({ isEditing: false, isAdmin: true, refreshPeriod: 60 });
+
+      await expectButtonsToStrictMatchHeader({
+        expectedButtons: [
+          DASHBOARD_ACTION.EDIT_DASHBOARD,
+          DASHBOARD_ACTION.DASHBOARD_SHARING,
+          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS_BUTTON,
+          DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
+          DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
+          DASHBOARD_ACTION.DASHBOARD_INFO,
+          DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR,
+          DASHBOARD_ACTION.DASHBOARD_ACTION_MENU,
+        ],
+        checkLength: true,
+      });
+    });
+
+    it("should show the auto-refresh indicator in fullscreen when auto-refresh is on", async () => {
+      setup({ isEditing: false, isFullscreen: true, refreshPeriod: 60 });
+
+      await expectButtonsToExistInHeader({
+        expectedButtons: [DASHBOARD_ACTION.AUTO_REFRESH_INDICATOR],
       });
     });
   });
