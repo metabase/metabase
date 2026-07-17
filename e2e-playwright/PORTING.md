@@ -9,6 +9,37 @@ every fix made while stabilizing a port gets classified and fed back:**
 - *Migration dividend* (bug found, test strengthened, Cypress-masked issue)
   → add it to FINDINGS.md in the same PR.
 
+## The fidelity cross-check — do this before claiming anything
+
+**Never `test.fixme` a test or claim a product bug without running the
+original Cypress spec against the same backend** (`MB_JETTY_PORT=<slot port>`,
+no port-4000 contact) and comparing:
+
+- Same tests fail at the same assertions → the port is faithful and the
+  behaviour is real. This is the strongest evidence we can produce.
+- Different results → your port drifted. It's your bug, not the app's.
+
+This rule exists because we published a product-bug finding that didn't
+survive it. FINDINGS #24 claimed a card-tag rewrite "never fires"; re-checked
+against the CI uberjar, it fires fine — a *different code path* (the question
+loading dirty, so the QB runs `/api/dataset` instead of the card endpoint) had
+masked the request we were watching for. The absence of a request you expected
+is evidence about **your wait**, not about the app. Two claimed bugs, retracted.
+
+Corollaries:
+- An empty/odd field in an API response is not a bug until you can name the
+  user-visible breakage or the contract it violates.
+- Prefer instrumenting the actual code path over inferring from a missing
+  network call.
+- State what you did **not** verify. Scope caveats are part of the finding.
+
+## Write findings as you notice them
+
+Write each `findings-inbox/<spec>.md` entry the moment you spot it — never
+batch them to the end of the port. Nine agents once died on a usage limit
+mid-wave and every unbatched finding they'd seen was lost with them. The only
+lead that survived did so because the agent happened to narrate it out loud.
+
 ## Port rules (mechanical)
 
 1. `findByText`/`findByLabelText`/`findByRole(r, {name})` with **string**
