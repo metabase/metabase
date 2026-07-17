@@ -2,9 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseListEndpoint,
   setupGetTransformJobEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformJobRunsEndpoint,
+  setupListTransformJobTransformsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -22,6 +24,7 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockListTransformJobRunsResponse,
   createMockTransformJob,
   createMockTransformJobRun,
@@ -48,6 +51,8 @@ function setup({
 
   setupUserMetabotPermissionsEndpoint();
   setupGetTransformJobEndpoint(job);
+  setupDatabaseListEndpoint([createMockDatabase()]);
+  setupListTransformJobTransformsEndpoint(JOB_ID, []);
   setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
       data: currentRuns,
