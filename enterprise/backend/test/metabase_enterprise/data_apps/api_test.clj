@@ -46,7 +46,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest non-superuser-can-view-but-not-manage-test
+(deftest non-superuser-can-view-and-list-but-not-manage-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -55,14 +55,14 @@
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
         (testing "a non-superuser can view (open) a data app"
-          (is (=? {:name "demo"}
-                  (mt/user-http-request :rasta :get 200 "apps/demo")))
+          (is (= [{:name "demo" :display_name "Demo"}]
+                 (mt/user-http-request :rasta :get 200 "apps")))
+          (is (= {:name "demo" :display_name "Demo"}
+                 (mt/user-http-request :rasta :get 200 "apps/demo")))
           (is (str/includes?
                (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
                "BUNDLE")))
         (testing "but is still forbidden from managing data apps"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "apps")))
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "apps/repo-status")))
           (is (= "You don't have permissions to do that."
@@ -81,6 +81,17 @@
           (is (str/includes?
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
+
+(deftest list-available-apps-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp]
+      (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
+      (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
+                  :enabled false)
+      (t2/insert! :model/DataApp :name "failed" :display_name "Failed" :bundle_path "data_apps/failed/index.js"
+                  :sync_error "Could not read bundle")
+      (is (=? [{:name "ready" :display_name "Ready"}]
+              (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
 
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps}

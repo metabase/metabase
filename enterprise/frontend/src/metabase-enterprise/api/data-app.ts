@@ -11,12 +11,15 @@ import { idTag, invalidateTags, listTag } from "./tags";
 // when a sync changes things.
 const REPO_STATUS_TAG = idTag("data-app", "REPO-STATUS");
 
+type ListDataAppsOptions = { available?: boolean };
+
 export const dataAppApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listDataApps: builder.query<DataApp[], void>({
-      query: () => ({
+    listDataApps: builder.query<DataApp[], ListDataAppsOptions | void>({
+      query: (options) => ({
         method: "GET",
         url: "/api/apps",
+        params: options,
       }),
       providesTags: (apps = []) => [
         listTag("data-app"),

@@ -71,6 +71,11 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
+(def ^:private PublicDataAppResponse
+  [:map {:closed true}
+   [:name         ms/NonBlankString]
+   [:display_name ms/NonBlankString]])
+
 (def ^:private RepoStatusResponse
   [:map
    [:configured :boolean]
@@ -88,12 +93,24 @@
 
 ;;; ------------------------------------------------ Apps ------------------------------------------------
 
-(api.macros/defendpoint :get "/" :- [:sequential DataAppResponse]
-  "List the data apps provided by the connected repository."
-  []
-  (api/check-superuser)
-  (->> (data-app/select-non-blob {:order-by [[:display_name :asc]]})
-       (mapv api/read-check)))
+(defn- data-app-response
+  "Return full data-app metadata to superusers and only navigational fields to other users."
+  [app]
+  (if api/*is-superuser?*
+    app
+    (select-keys app [:name :display_name])))
+
+(api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
+  "List the data apps provided by the connected repository. Pass `available=true`
+   to return only enabled apps without sync errors."
+  [_route-params
+   {:keys [available]} :- [:map [:available {:optional true} [:maybe :boolean]]]]
+  (->> (data-app/select-non-blob (cond-> {:order-by [[:display_name :asc]]}
+                                   available (assoc :where [:and
+                                                            [:= :enabled true]
+                                                            [:= :sync_error nil]])))
+       (map api/read-check)
+       (mapv data-app-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -120,10 +137,10 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- DataAppResponse
+(api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (api/read-check (data-app/select-one-non-blob :name slug :enabled true)))
+  (data-app-response (api/read-check (data-app/select-one-non-blob :name slug :enabled true))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
