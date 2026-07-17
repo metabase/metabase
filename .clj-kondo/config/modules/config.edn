@@ -1304,8 +1304,7 @@
               metabase.metabot.init
               metabase.metabot.self
               metabase.metabot.settings
-              metabase.metabot.tools.entity-details
-              metabase.metabot.tools.util}
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
