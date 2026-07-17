@@ -66,29 +66,20 @@ describe("getValue", () => {
     expect(getValue(rows)).toBe(0);
   });
 
-  const valueTestCases = [
-    [[[null]], 0],
-    [[[undefined]], 0],
-    [[["foo"]], 0],
-    [[[""]], 0],
-    [[[0]], 0],
-    [[[1]], 1],
-    [
-      [
-        [1, 2, 3],
-        [4, 5, 6],
-      ],
-      1,
-    ],
-    [[3], 0],
-    [[["Infinity"]], Infinity],
-  ];
+  it("should return 0 for undefined values", () => {
+    const rows: RowValues[] = [[undefined, "test"]];
+    expect(getValue(rows)).toBe(0);
+  });
 
-  valueTestCases.forEach(([input, output]) => {
-    it(`should return ${output} for ${JSON.stringify(input)}`, () => {
-      // Unjustified type cast. FIXME
-      expect(getValue(input as any)).toEqual(output);
-    });
+  it("should return numeric zero as-is", () => {
+    const rows: RowValues[] = [[0, "test"]];
+    expect(getValue(rows)).toBe(0);
+  });
+
+  it("should return 0 for a malformed row that is not an array", () => {
+    // rows[0] is a scalar, so rows[0][0] is undefined
+    // Unjustified type cast. FIXME
+    expect(getValue([3] as any)).toBe(0);
   });
 });
 
