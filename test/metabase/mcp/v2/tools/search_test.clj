@@ -30,6 +30,12 @@
   (mt/with-current-user (mt/user->id user)
     (:collection_path (first (add-collection-paths [{:collection {:id collection-id}}])))))
 
+(deftest ^:parallel rv-model-type-maps-invert-losslessly-test
+  (testing "GHY-4137: rv-model->type is the inverse of type->rv-model — the inversion must not
+            collapse two types onto one recent-views model, so the two maps have equal counts"
+    (is (= (count @#'tools.search/type->rv-model)
+           (count @#'tools.search/rv-model->type)))))
+
 (deftest collection-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: collection_path must not name ancestors the caller can't read — the path is a
             breadcrumb and follows effective-ancestors semantics, where an unreadable middle

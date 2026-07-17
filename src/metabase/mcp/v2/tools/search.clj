@@ -5,6 +5,7 @@
    (snippets aren't in the search index). Every unsupported parameter combination is a
    teaching error; the engine's silent narrowing is never relied on."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
@@ -49,17 +50,17 @@
    "document"   :document})
 
 (def ^:private rv-model->type
-  (into {} (map (fn [[t rvm]] [rvm t])) type->rv-model))
+  (set/map-invert type->rv-model))
 
 ;;; ------------------------------------------------ Projections ---------------------------------------------------
 
 (def ^:private concise-row-keys
-  [:type :id :name :collection_path :description])
+  #{:type :id :name :collection_path :description})
 
 (projections/register-projection!
  :search-result
  {:concise  (fn [row]
-              (into {} (remove (comp nil? val)) (select-keys row concise-row-keys)))
+              (m/remove-vals nil? (select-keys row concise-row-keys)))
   :detailed identity
   :sample   {:id                     1
              :type                   "question"
@@ -242,11 +243,10 @@
 
 (defn- recents-page
   [{:keys [type]} fmt limit offset]
-  (let [models            (when (seq type)
-                            (into [] (distinct) (map type->rv-model type)))
+  (let [models            (into [] (comp (map type->rv-model) (distinct)) type)
         {:keys [recents]} (activity-feed/get-recents api/*current-user-id*
                                                      [:views :selections]
-                                                     (cond-> {} models (assoc :models models)))
+                                                     {:models models})
         page              (into [] (comp (drop offset) (take limit)) recents)]
     {:rows  (mapv #(recent-item->row fmt %) page)
      :total (count recents)}))
