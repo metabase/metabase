@@ -366,9 +366,10 @@
                                      (rf result (format-sse-event {:type "text-end" :id id})))
                                  result))
            close-reasoning-block (fn [result]
-                                   (if-let [id @current-reasoning-id]
-                                     (do (vreset! current-reasoning-id nil)
-                                         (rf result (format-sse-event {:type "reasoning-end" :id id})))
+                                   (if @current-reasoning-id
+                                     (let [wid @reasoning-wire-id]
+                                       (vreset! current-reasoning-id nil)
+                                       (rf result (format-sse-event {:type "reasoning-end" :id wid})))
                                      result))
            ensure-started    (fn [result]
                                (if @started?
@@ -429,12 +430,13 @@
                 result
                 (let [id (or (:id part) (mkid))]
                   (if (= id @current-reasoning-id)
-                    (rf result (format-sse-event {:type "reasoning-delta" :id id :delta (:text part)}))
+                    (rf result (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)}))
                     (let [result (close-reasoning-block result)]
                       (vreset! current-reasoning-id id)
+                      (vreset! reasoning-wire-id (str (vswap! reasoning-n inc)))
                       (-> result
-                          (rf (format-sse-event {:type "reasoning-start" :id id}))
-                          (rf (format-sse-event {:type "reasoning-delta" :id id :delta (:text part)})))))))
+                          (rf (format-sse-event {:type "reasoning-start" :id @reasoning-wire-id}))
+                          (rf (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)})))))))
 
               :tool-input-start
               (rf result (format-sse-event {:type       "tool-input-start"

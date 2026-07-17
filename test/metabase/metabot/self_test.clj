@@ -479,11 +479,11 @@
                               {:type :data :data-type "state" :data {:queries {}}}]))))))
 
 (deftest parts->aisdk-sse-xf-reasoning-test
-  (testing "consecutive same-id :reasoning parts share one block; completion closes it"
-    (is (= [["reasoning-start" "r1" nil]
-            ["reasoning-delta" "r1" "Think"]
-            ["reasoning-delta" "r1" "ing"]
-            ["reasoning-end" "r1" nil]
+  (testing "consecutive same-id :reasoning parts share one block with a short wire id"
+    (is (= [["reasoning-start" "1" nil]
+            ["reasoning-delta" "1" "Think"]
+            ["reasoning-delta" "1" "ing"]
+            ["reasoning-end" "1" nil]
             ["finish" nil nil]]
            (mapv (juxt :type :id :delta)
                  (sse-events [{:type :reasoning :id "r1" :text "Think"}
