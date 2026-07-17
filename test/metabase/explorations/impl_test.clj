@@ -233,6 +233,84 @@
         (testing "every referenced dimension id resolves to a dimension group (no dangling ids)"
           (is (= metric-dim-ids group-dim-ids)))))))
 
+;;; --------------------------------------- missing-dimension self-healing (UXW-4475) ---------------------------------------
+
+(defn- metric-on-card-query
+  "Metric dataset_query whose source is `card-id` (a model)."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/card mp card-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- wipe-dimensions!
+  "Simulate a metric row whose dimensions were never synced, bypassing Card transforms/hooks."
+  [metric-id]
+  (t2/update! (t2/table-name :model/Card) metric-id {:dimensions nil :dimension_mappings nil}))
+
+(deftest exploration-data-heals-missing-dimensions-test
+  (testing "a metric on an MBQL model with NULL dimensions is synced and persisted on read"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card model  {:name          "MBQL Model"
+                                         :type          :model
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query (mt/mbql-query venues)}
+                     :model/Card metric {:name          "Metric on MBQL model"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (metric-on-card-query (:id model))}]
+        (wipe-dimensions! (:id metric))
+        (let [res  (explorations.impl/exploration-data {:metric-ids [(:id metric)]})
+              mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
+          (is (seq (:dimension_ids mine))
+              "response includes the freshly synced dimensions")
+          (is (seq (:dimensions (t2/select-one :model/Card :id (:id metric))))
+              "healed dimensions are persisted"))))))
+
+(deftest exploration-data-heals-missing-dimensions-sql-model-test
+  (testing "a metric on a native-SQL model with NULL dimensions is synced and persisted on read"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card model  {:name            "SQL Model"
+                                         :type            :model
+                                         :database_id     (mt/id)
+                                         :dataset_query   (mt/native-query
+                                                           {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})
+                                         :result_metadata [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
+                                                           {:name "NAME" :display_name "Name" :base_type :type/Text}
+                                                           {:name "CATEGORY_ID" :display_name "Category ID" :base_type :type/Integer}]}
+                     :model/Card metric {:name          "Metric on SQL model"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :dataset_query (metric-on-card-query (:id model))}]
+        (wipe-dimensions! (:id metric))
+        (let [res  (explorations.impl/exploration-data {:metric-ids [(:id metric)]})
+              mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
+          (is (seq (:dimension_ids mine)))
+          (is (= #{"ID" "NAME" "CATEGORY_ID"}
+                 (into #{} (map :name) (:dimensions (t2/select-one :model/Card :id (:id metric)))))
+              "healed dimensions match the model's result_metadata columns"))))))
+
+(deftest exploration-data-uncomputable-metric-does-not-break-test
+  (testing "a metric whose model has no result_metadata computes no dimensions but doesn't break the response"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card model {:name          "SQL Model without metadata"
+                                        :type          :model
+                                        :database_id   (mt/id)
+                                        :dataset_query (mt/native-query
+                                                        {:query "SELECT ID, NAME FROM VENUES"})}]
+        (t2/update! (t2/table-name :model/Card) (:id model) {:result_metadata nil})
+        (mt/with-temp [:model/Card metric {:name          "Metric on metadata-less model"
+                                           :type          :metric
+                                           :database_id   (mt/id)
+                                           :dataset_query (metric-on-card-query (:id model))}]
+          (wipe-dimensions! (:id metric))
+          (let [res  (explorations.impl/exploration-data {:metric-ids [(:id metric)]})
+                mine (first (filter #(= (:id %) (:id metric)) (:metrics res)))]
+            (is (some? mine) "metric still appears in the response")
+            (is (empty? (:dimension_ids mine)))
+            (is (nil? (:dimensions (t2/select-one :model/Card :id (:id metric))))
+                "nothing computed -> nothing persisted, stays NULL for a later retry")))))))
+
 ;;; --------------------------------------- metric search matching ---------------------------------------
 
 (deftest metric-search-matches-displayed-names-test
