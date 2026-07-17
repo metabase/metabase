@@ -1700,7 +1700,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
     });
 
-    it("should apply a categorical filter to a metric", () => {
+    it("should apply a categorical filter to a metric (UXW-4849)", () => {
       selectBreakout("Count of orders", "Category");
       H.MetricsViewer.breakoutLegend()
         .should("contain.text", "Doohickey")
@@ -1719,7 +1719,9 @@ describe("scenarios > metrics > explorer", () => {
         .should("have.length", 1)
         .should("contain.text", "Doohickey")
         .should("contain.text", "Gadget")
-        .should("contain.text", "Category");
+        .should("contain.text", "Category is:")
+        .should("not.contain.text", "Product")
+        .should("not.contain.text", "→");
 
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_filter_added",
@@ -1842,7 +1844,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllFilterPills().should("have.length", 0);
     });
 
-    it("should allow me to apply filters to each metric individually", () => {
+    it("should allow me to apply filters to each metric individually (UXW-4849)", () => {
       addMetric("Count of products");
       selectDimensionBreakout("Category");
       H.MetricsViewer.changeVizType("line");
@@ -1853,7 +1855,14 @@ describe("scenarios > metrics > explorer", () => {
 
       H.MetricsViewer.getFilterButton().click();
       H.popover().within(() => {
-        cy.button(/count of orders/i).should("be.visible");
+        cy.button(/count of orders/i)
+          .should("be.visible")
+          .click();
+        cy.findByText("Category").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Product").should("not.exist");
+        cy.findByText("User").should("not.exist");
+        cy.button(/count of orders/i).click();
         cy.button(/count of products/i).click();
         cy.findByText("Category").click();
       });
@@ -2397,9 +2406,12 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
   };
 
   const createSeededMetric = (details: StructuredQuestionDetailsWithName) =>
-    H.createQuestion(details).then(({ body }) =>
-      seedMetricDimensions(body.id as number),
-    );
+    H.createQuestion(details).then(({ body }) => {
+      expect(body.id).to.be.a("number");
+      if (typeof body.id === "number") {
+        return seedMetricDimensions(body.id);
+      }
+    });
 
   const assertSerializedDimensionBreakout = (
     check: (
@@ -2504,7 +2516,7 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
   });
 
   beforeEach(() => {
-    H.restore(SHARED_DIMENSIONS_SNAPSHOT as any);
+    H.restore(SHARED_DIMENSIONS_SNAPSHOT);
     cy.signInAsAdmin();
     interceptDatasetQuery();
   });
