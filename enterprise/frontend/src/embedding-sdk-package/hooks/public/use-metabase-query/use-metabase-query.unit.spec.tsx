@@ -1,6 +1,7 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
+import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
@@ -1481,15 +1482,19 @@ describe("useMetabaseQueryObject", () => {
   it("does not expose stale query results after the input changes", async () => {
     const firstDeferred = createDeferred<DatasetQuery>();
     const secondDeferred = createDeferred<DatasetQuery>();
+
     const firstQuery = {
       source: TEST_SCHEMA.tables.orders,
       limit: 10,
     };
+
     const secondQuery = {
       source: TEST_SCHEMA.tables.orders,
       limit: 20,
     };
+
     const secondDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 20 }]);
+
     // Which deferred a call gets is decided by the only field that differs.
     const resolveDatasetQuery = jest.fn(
       () => (input: QueryInput) =>
@@ -1497,6 +1502,7 @@ describe("useMetabaseQueryObject", () => {
           ? firstDeferred.promise
           : secondDeferred.promise,
     );
+
     stubSdkBundle({ resolveDatasetQuery });
 
     const { result, rerender } = renderHook(
@@ -1526,6 +1532,90 @@ describe("useMetabaseQueryObject", () => {
 });
 
 describe("useMetabaseQuery", () => {
+  it("ignores a stale response after the query changes", async () => {
+    const firstQuery = {
+      source: TEST_SCHEMA.tables.orders,
+      limit: 10,
+    };
+
+    const secondQuery = {
+      source: TEST_SCHEMA.tables.orders,
+      limit: 20,
+    };
+
+    const firstDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 10 }]);
+    const secondDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 20 }]);
+
+    const firstResponse = createDeferred<QueryDatasetResult>();
+    const secondResponse = createDeferred<QueryDatasetResult>();
+
+    const runDatasetQuery = jest.fn(
+      ({ datasetQuery }: { datasetQuery: DatasetQuery }) =>
+        datasetQuery === firstDatasetQuery
+          ? firstResponse.promise
+          : secondResponse.promise,
+    );
+
+    const resolveDatasetQuery = jest.fn(
+      () => (input: QueryInput) =>
+        Promise.resolve(
+          "limit" in input && input.limit === 10
+            ? firstDatasetQuery
+            : secondDatasetQuery,
+        ),
+    );
+
+    stubSdkBundle({
+      resolveDatasetQuery,
+      queryDataset: jest.fn(() => runDatasetQuery),
+    });
+
+    const { result, rerender } = renderHook(
+      ({ currentQuery }) => useMetabaseQuery(currentQuery),
+      { initialProps: { currentQuery: firstQuery } },
+    );
+
+    await waitFor(() => expect(runDatasetQuery).toHaveBeenCalledTimes(1));
+    rerender({ currentQuery: secondQuery });
+
+    await waitFor(() => expect(runDatasetQuery).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      firstResponse.resolve({
+        rowCount: 1,
+        runningTime: 1,
+        columns: [],
+        rows: [],
+      });
+      await firstResponse.promise;
+    });
+
+    expect(result.current).toMatchObject({
+      data: null,
+      error: null,
+      isLoading: true,
+    });
+
+    await act(async () => {
+      secondResponse.resolve({
+        rowCount: 2,
+        runningTime: 2,
+        columns: [],
+        rows: [],
+      });
+
+      await secondResponse.promise;
+    });
+
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        data: expect.objectContaining({ rowCount: 2 }),
+        error: null,
+        isLoading: false,
+      }),
+    );
+  });
+
   it("waits for async query creation before querying the dataset", async () => {
     const deferred = createDeferred<DatasetQuery>();
     const queryDataset = jest.fn(() =>
