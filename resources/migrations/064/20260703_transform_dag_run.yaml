@@ -60,7 +60,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: status
-                  type: varchar(50)
+                  type: varchar(32)
                   remarks: Current status of the run (started, succeeded, failed, timeout, canceled)
                   constraints:
                     nullable: false
