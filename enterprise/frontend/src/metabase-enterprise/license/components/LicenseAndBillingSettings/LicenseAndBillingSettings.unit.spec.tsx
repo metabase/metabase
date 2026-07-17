@@ -58,7 +58,7 @@ const setup = async ({
   is_env_setting?: boolean;
   airgapEnabled?: boolean;
   features?: Partial<TokenFeatures> & { "metabase-store-managed"?: boolean };
-  billingInfo?: BillingInfo | null;
+  billingInfo?: BillingInfo;
   billingError?: boolean;
 }) => {
   const settings = createMockSettings({
