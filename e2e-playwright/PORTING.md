@@ -122,3 +122,18 @@ every fix made while stabilizing a port gets classified and fed back:**
   old schema (Cypress fails identically).
 - **Rename-collapses-navbar applies to ANY EditableText title** (dashboards
   too, not just questions) — use the toPass open+assert loop.
+
+## Continuous dispatch (supersedes the wave model)
+
+- The orchestrator dispatches from QUEUE.md (largest-first); a freed slot
+  immediately gets the next spec. Push checkpoints every ~10 landed specs.
+- Read support/INDEX.md first instead of grepping support modules; if you
+  add helpers, run `node scripts/build-helper-index.mjs`.
+- Write FINDINGS-worthy items to findings-inbox/<spec>.md (own file, no
+  shared-file contention); the orchestrator merges at checkpoints.
+- Add your source spec's path to PORTED.txt when green (relative to
+  e2e/test/scenarios/), then regenerate QUEUE.md.
+- When target/uberjar/metabase.jar exists locally, slot backends boot from
+  it automatically if you export JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar
+  in your run env — ~25s boots instead of ~90s, and behavior matches CI.
+# TODO: local jar build fails in :translations step (NPE, interactive prompt) — investigate later; slot backends stay source-mode meanwhile
