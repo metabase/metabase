@@ -40,7 +40,7 @@
 (deftest ingest-parent-metadata-test
   (mt/with-temporary-setting-values [jekyll-parent-url "http://parent.example"
                                      jekyll-parent-api-key "mb_test"]
-    (mt/with-temp [:model/Database db {:name "Demo DWH", :initial_sync_status "incomplete"}]
+    (mt/with-temp [:model/Database db {:name "Demo DWH", :initial_sync_status "incomplete", :is_stub true}]
       (with-redefs [jekyll-metadata/parent-get mock-parent-get]
         (#'jekyll-metadata/ingest-parent-metadata!))
       (testing "tables created and marked complete"
@@ -50,6 +50,8 @@
                (t2/select-fn-set :initial_sync_status :model/Table :db_id (:id db)))))
       (testing "database marked complete"
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))
+      (testing "stub graduates: ingested metadata unhides the database"
+        (is (false? (t2/select-one-fn :is_stub :model/Database :id (:id db)))))
       (let [orders-id (t2/select-one-pk :model/Table :db_id (:id db) :name "orders")
             fields (t2/select :model/Field :table_id orders-id {:order-by [:position]})]
         (testing "fields created with types"

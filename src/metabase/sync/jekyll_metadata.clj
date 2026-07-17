@@ -103,6 +103,9 @@
           (t2/update! :model/Field local-id {:fk_target_field_id local-target}))
         (sync-util/set-initial-table-sync-complete-for-db! db)
         (sync-util/set-initial-database-sync-complete! db)
+        ;; a stub with real metadata is no longer a stub: unhide it from the
+        ;; database list so the ingested tables are browsable
+        (t2/update! :model/Database (u/the-id db) {:is_stub false})
         (count new-tables)))))
 
 (defn ingest-parent-metadata!
