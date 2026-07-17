@@ -77,10 +77,16 @@ export const StaticVisualization = ({
     const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
     if (customViz?.StaticVisualizationComponent) {
       const { StaticVisualizationComponent } = customViz;
+      const customVizRenderingContext = {
+        getColor: renderingContext.getColor,
+        measureTextWidth: renderingContext.measureText,
+        measureTextHeight: renderingContext.measureTextHeight,
+        fontFamily: renderingContext.fontFamily,
+      };
       return (
         <StaticVisualizationComponent
           series={rawSeries}
-          renderingContext={renderingContext}
+          renderingContext={customVizRenderingContext}
           settings={settings}
           isStorybook={isStorybook}
           hasDevWatermark={hasDevWatermark}

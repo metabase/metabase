@@ -283,7 +283,7 @@ const StaticVisualizationComponent = ({
 | Property                         | Type                       | Description                                                                   |
 | -------------------------------- | -------------------------- | ----------------------------------------------------------------------------- |
 | `getColor(name)`                 | `(name: string) => string` | Returns a hex color for the given Metabase color name.                        |
-| `measureText(text, style)`       | `TextWidthMeasurer`        | Measures the rendered width of a text string.                                 |
+| `measureTextWidth(text, style)`  | `TextWidthMeasurer`        | Measures the rendered width of a text string.                                 |
 | `measureTextHeight(text, style)` | `TextHeightMeasurer`       | Measures the rendered height of a text string.                                |
 | `fontFamily`                     | `string`                   | The font family in use. Apply to root elements for consistent text rendering. |
 
