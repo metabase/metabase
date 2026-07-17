@@ -305,7 +305,7 @@ export function getOption(
   return { value: String(value), label: String(label ?? value) };
 }
 
-export function parseStringValue(value: any): string | null {
+export function parseStringValue(value: unknown): string | null {
   const trimmedValue = trim(value);
   if (trimmedValue === "") {
     return null;
@@ -314,6 +314,6 @@ export function parseStringValue(value: any): string | null {
   return trimmedValue;
 }
 
-function trim(value: any) {
+function trim(value: unknown) {
   return String(value || "").trim();
 }
