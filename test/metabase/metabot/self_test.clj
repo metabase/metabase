@@ -710,7 +710,7 @@
                               (reify clojure.lang.IReduceInit
                                 (reduce [_ rf init]
                                   ;; emit one chunk, then fail mid-stream with an otherwise-retryable error
-                                  (let [acc (rf init {:type :start :messageId "m1"})]
+                                  (let [_acc (rf init {:type :start :messageId "m1"})]
                                     (throw (ex-info "mid-stream boom" {:status 500}))))))]
       (mt/with-log-level [metabase.metabot.self :fatal]
         (let [seen       (atom [])
