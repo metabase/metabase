@@ -157,9 +157,11 @@ export function calculateNumRowsCols(
     ),
   );
 
-  // Most columns that still fit the widest item without truncation, at least 1.
+  // Most columns that still fit the widest item without truncation. This grid legend keeps a
+  // minimum of two columns (truncating names if needed) so it never collapses to a single tall
+  // column -- see #45149; only capped lower when there's a single item.
   const numColsThatFit = Math.floor(width / Math.ceil(maxItemWidth));
-  let numCols = Math.max(1, Math.min(items.length, numColsThatFit));
+  let numCols = Math.min(items.length, Math.max(2, numColsThatFit));
 
   const numRows = Math.ceil(items.length / numCols);
 

@@ -65,14 +65,18 @@ describe("calculateNumRowsCols", () => {
     });
   });
 
-  it("falls back to a single full-width column when even two columns don't fit", () => {
-    // A width smaller than a single item's slot, so even two columns can't fit and the legend falls
-    // back to one full-width column.
+  it("keeps a minimum of two columns even when items don't fit, truncating instead (#45149)", () => {
+    // A width smaller than a single item's slot: rather than collapse to one tall column, the grid
+    // holds two columns and lets the names truncate.
     const WIDTH_TOO_NARROW_FOR_TWO_COLUMNS = 8;
     expect(run(makeItems(5), WIDTH_TOO_NARROW_FOR_TWO_COLUMNS)).toEqual({
-      numRows: 5,
-      numCols: 1,
+      numRows: 3,
+      numCols: 2,
     });
+  });
+
+  it("uses a single column for a lone item", () => {
+    expect(run(makeItems(1), 8)).toEqual({ numRows: 1, numCols: 1 });
   });
 
   it("drops a trailing column that would be entirely empty", () => {
