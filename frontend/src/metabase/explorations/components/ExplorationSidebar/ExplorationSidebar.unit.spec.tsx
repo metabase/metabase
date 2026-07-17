@@ -1480,7 +1480,7 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
-        selectedPageId:  "1",
+        selectedPageId: "1",
       });
 
       const rows = screen.getAllByRole("treeitem");
