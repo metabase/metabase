@@ -38,6 +38,7 @@ describe("DataAppsNavbarSection", () => {
 
     const gizmoLink = await screen.findByRole("link", { name: /Gizmo/ });
     expect(gizmoLink).toHaveAttribute("href", "/apps/gizmo");
+    expect(gizmoLink).toHaveAttribute("target", "_blank");
 
     expect(
       within(gizmoLink).getByRole("img", { name: "app icon" }),
