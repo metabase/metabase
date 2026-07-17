@@ -431,10 +431,11 @@
                             :conversation-id conversation-id)
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
-    (log/info "Starting agent" {:profile  profile-id
-                                :tools    (count tools)
-                                :max-iter (:max-iterations profile)
-                                :msgs     (count messages)})
+    ;; dummy to trigger build
+    (log/info "Starting the best agent agent" {:profile  profile-id
+                                               :tools    (count tools)
+                                               :max-iter (:max-iterations profile)
+                                               :msgs     (count messages)})
     {:profile       profile
      :tools         tools
      :context       context
