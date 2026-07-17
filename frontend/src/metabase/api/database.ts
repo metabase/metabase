@@ -47,7 +47,7 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 // schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when
 // percent-encoded in a URL path, so they must be passed as a query parameter instead (#77353)
-export const schemaNameRequiresQueryParam = (schema: SchemaName) =>
+export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
   /[/\\%]/.test(schema);
 
 const toNormalizedSchemas = (dbId: DatabaseId, schemaNames: SchemaName[]) =>
@@ -174,13 +174,14 @@ export const databaseApi = Api.injectEndpoints({
       ListDatabaseSchemaTablesRequest
     >({
       query: ({ id, schema, ...params }) => {
-        const useQueryParam = schemaNameRequiresQueryParam(schema);
+        const isQueryParam = shouldSchemaBePassedAsQueryParam(schema);
+
         return {
           method: "GET",
-          url: useQueryParam
+          url: isQueryParam
             ? `/api/database/${id}/schema/`
             : `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
-          params: useQueryParam ? { ...params, schema } : params,
+          params: isQueryParam ? { ...params, schema } : params,
         };
       },
       providesTags: (tables = []) => [
@@ -196,7 +197,7 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListVirtualDatabaseTablesRequest
     >({
-      // a virtual database "schema" is a collection name, so names matching schemaNameRequiresQueryParam
+      // a virtual database "schema" is a collection name, so names matching shouldSchemaBePassedAsQueryParam
       // hit the same HTTP-layer rejection (#77353); the virtual-db endpoints have no query-param fallback yet
       query: ({ id, schema, ...params }) => ({
         method: "GET",
