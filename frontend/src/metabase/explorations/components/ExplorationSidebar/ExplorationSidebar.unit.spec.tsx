@@ -971,6 +971,7 @@ describe("ExplorationSidebar", () => {
     // A canceled thread is stamped with both timestamps by the cancel endpoint.
     const canceledThread = {
       id: 1,
+      status: "canceled" as const,
       canceled_at: "2026-04-30T00:01:00Z",
       completed_at: "2026-04-30T00:01:00Z",
     };
@@ -1064,13 +1065,13 @@ describe("ExplorationSidebar", () => {
       });
     });
 
-    it("does not offer Restart when the thread completed without being canceled", async () => {
+    it("does not offer Restart when the thread completed successfully", async () => {
       setup({
         queries: [pendingQuery],
-        thread: { completed_at: "2026-04-30T00:01:00Z" },
+        thread: { status: "completed", completed_at: "2026-04-30T00:01:00Z" },
       });
 
-      // Neither Stop (completed) nor Restart (not canceled) — only Copy link.
+      // Neither Stop (terminal) nor Restart (a successful run has nothing to re-run) — only Copy link.
       const threadHeading = findThreadMenuButton();
       await userEvent.click(within(threadHeading!).getByRole("button"));
 
@@ -1082,6 +1083,23 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole("menuitem", { name: /Copy link/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("offers Restart (and no Stop) on a terminally-failed thread", async () => {
+      setup({
+        queries: [pendingQuery],
+        thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
+      });
+
+      const threadHeading = findThreadMenuButton();
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Stop running/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Restart/ }),
       ).toBeInTheDocument();
     });
 

@@ -310,6 +310,47 @@ export function getExplorationQueryGroupStatus(
   return "done";
 }
 
+export const EXPLORATION_THREAD_STATUSES = [
+  "pending",
+  "running",
+  "canceled",
+  "empty",
+  "failed",
+  "completed",
+] as const;
+
+/**
+ * Server-derived lifecycle status for a thread. Lets the FE tell a successful run from a
+ * failed/empty/canceled one (and why) instead of guessing from timestamps + query statuses.
+ * `empty` means the planner had nothing applicable to chart — not an error.
+ */
+export type ExplorationThreadStatus =
+  (typeof EXPLORATION_THREAD_STATUSES)[number];
+
+const TERMINAL_EXPLORATION_THREAD_STATUSES: ReadonlySet<ExplorationThreadStatus> =
+  new Set(["canceled", "empty", "failed", "completed"]);
+
+/** The thread has finished — no more work will happen, so the FE can stop polling. */
+export function isTerminalExplorationThreadStatus(
+  status: ExplorationThreadStatus,
+): boolean {
+  return TERMINAL_EXPLORATION_THREAD_STATUSES.has(status);
+}
+
+const RESTARTABLE_EXPLORATION_THREAD_STATUSES: ReadonlySet<ExplorationThreadStatus> =
+  new Set(["failed", "canceled"]);
+
+/**
+ * Whether a "Restart" action makes sense: the run ended without a usable result and re-running
+ * could produce one. `empty` is excluded (the planner deterministically found nothing to chart)
+ * and `completed` is excluded (already succeeded).
+ */
+export function isRestartableExplorationThreadStatus(
+  status: ExplorationThreadStatus,
+): boolean {
+  return RESTARTABLE_EXPLORATION_THREAD_STATUSES.has(status);
+}
+
 export interface ExplorationThread {
   id: ExplorationThreadId;
   exploration_id: ExplorationId;
@@ -317,6 +358,7 @@ export interface ExplorationThread {
   prompt: string | null;
   position: number;
   source_page_id: ExplorationPageId | null;
+  status: ExplorationThreadStatus;
   started_at: string | null;
   completed_at: string | null;
   canceled_at: string | null;

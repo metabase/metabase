@@ -91,6 +91,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     isDoingScience,
     activeToolCalls,
     submitInput,
+    cancelRequest,
   } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
 
   const handleSubmit = useCallback(() => {
@@ -382,7 +383,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               value={prompt}
               onChange={setPrompt}
               onSubmit={handleSubmit}
-              onStop={() => {}}
+              onStop={cancelRequest}
               placeholder={t`Ex. What recent events might be impacting our signups?`}
               suggestionConfig={{ suggestionModels: ["metric"] }}
             />

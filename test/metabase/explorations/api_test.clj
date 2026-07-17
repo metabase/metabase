@@ -24,6 +24,30 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(deftest thread-status-test
+  (let [status  #'metabase.explorations.api/thread-status
+        q       (fn [s] {:status s})
+        base    {:started_at :t :completed_at :t}]
+    (testing "not started -> pending"
+      (is (= "pending" (status {:started_at nil :completed_at nil}))))
+    (testing "started, not done -> running"
+      (is (= "running" (status {:started_at :t :completed_at nil}))))
+    (testing "canceled wins even once the completion stamp is set"
+      (is (= "canceled" (status (assoc base :canceled_at :t)))))
+    (testing "planner had nothing applicable -> empty (not an error)"
+      (is (= "empty" (status (assoc base :query_plan_transcript {:outcome :skip-empty} :queries [])))))
+    (testing "planning failed/errored -> failed"
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :failed} :queries []))))
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :error} :queries [])))))
+    (testing "plan ok but every query errored -> failed"
+      (is (= "failed" (status (assoc base :query_plan_transcript {:outcome :ok}
+                                     :queries [(q "error") (q "error")])))))
+    (testing "at least one chart done -> completed"
+      (is (= "completed" (status (assoc base :query_plan_transcript {:outcome :ok}
+                                        :queries [(q "done") (q "error")])))))
+    (testing "terminal with no queries and no usable outcome -> failed"
+      (is (= "failed" (status (assoc base :queries [])))))))
+
 (defn- do-with-sample-metrics-archived
   "Temporarily archive any metric cards belonging to the sample database so they
    don't interfere with test assertions. Restores them after `thunk` completes."
@@ -269,6 +293,10 @@
         (is (= 1 (count (:threads resp))))
         (is (= "break down by region" (:prompt thread)))
         (is (some? (:started_at thread)))
+        (is (= "running" (:status thread))
+            "a started, not-yet-completed thread reports a derived :status")
+        (is (not (contains? thread :query_plan_transcript))
+            "the internal query-plan transcript is not exposed on the wire")
         (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))

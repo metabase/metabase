@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -61,6 +62,25 @@ function isExplorationTreePage(
   node: ITreeNodeItem<ExplorationTreeNode>,
 ): node is ITreeNodeItem<ExplorationTreePage> {
   return node.data?.type === "page";
+}
+
+/**
+ * Sidebar-heading status for a thread. The server-derived thread status is authoritative for
+ * terminal state (so a finished thread never shimmers as "running", even with zero queries);
+ * while the thread is still running we fall back to the per-query group status so the heading
+ * tracks the queries streaming in.
+ */
+function threadHeadingStatus(
+  thread: ExplorationThread,
+): ExplorationQueryStatus {
+  return match(thread.status)
+    .with("failed", () => "error" as const)
+    .with("canceled", () => "canceled" as const)
+    .with("completed", "empty", () => "done" as const)
+    .with("pending", "running", () =>
+      getExplorationQueryGroupStatus(thread.queries ?? []),
+    )
+    .exhaustive();
 }
 
 export function isHiddenTreeItem(
@@ -159,7 +179,7 @@ export function getExplorationSidebarTree(
           index === 0 ? ("root" as const) : ("sub-exploration" as const),
         explorationId: exploration.id,
         thread,
-        status: getExplorationQueryGroupStatus(thread.queries ?? []),
+        status: threadHeadingStatus(thread),
         lastActivityAt: latestTimestamp(
           (thread.queries ?? []).map((query) => query.finished_at),
         ),

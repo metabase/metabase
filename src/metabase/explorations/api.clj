@@ -160,11 +160,45 @@
                 (assoc thread :queries [] :blocks [] :name nil)))
           threads)))
 
+(defn- thread-status
+  "Derived, wire-facing lifecycle status for a hydrated thread, so the FE can tell a successful
+  run from a failed/empty/canceled one. One of:
+
+    \"pending\"   — not started yet
+    \"running\"   — started, still working
+    \"canceled\"  — the user stopped it
+    \"empty\"     — terminal, the planner had nothing applicable to chart (NOT an error)
+    \"failed\"    — terminal, planning failed or every query errored
+    \"completed\" — terminal, at least one chart is available"
+  [{:keys [started_at canceled_at completed_at queries] :as thread}]
+  (let [outcome (get-in thread [:query_plan_transcript :outcome])]
+    (cond
+      (some? canceled_at)                    "canceled"
+      (nil? started_at)                      "pending"
+      (nil? completed_at)                    "running"
+      (= :skip-empty outcome)                "empty"
+      (contains? #{:failed :error} outcome)  "failed"
+      (some #(= "done" (:status %)) queries) "completed"
+      ;; terminal, not canceled/empty/plan-failed, yet no query reached `done`
+      ;; (every query errored, or planning left none) — surface it as a failure.
+      :else                                  "failed")))
+
+(defn- attach-thread-status
+  "Add the wire-facing derived `:status` to a hydrated thread and drop the internal
+  `:query_plan_transcript` — [[thread-status]] reads it (for the failed-vs-empty distinction),
+  but the FE never does, so it shouldn't ride the wire. Runs before permission-gating, so status
+  reflects the thread's real queries."
+  [thread]
+  (-> thread
+      (assoc :status (thread-status thread))
+      (dissoc :query_plan_transcript)))
+
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
                   [:threads :queries :timelines])
-      (update :threads #(some->> % gate-threads-derived-data))))
+      (update :threads
+              #(some->> % (mapv attach-thread-status) gate-threads-derived-data))))
 
 (defn- positional-rows
   "Stamp `:exploration_thread_id` and a 0-based `:position` onto each row in `rows`."
@@ -369,6 +403,7 @@
    [:started_at                 {:optional true} [:maybe :any]]
    [:canceled_at                {:optional true} [:maybe :any]]
    [:completed_at               {:optional true} [:maybe :any]]
+   [:status                     [:enum "pending" "running" "canceled" "empty" "failed" "completed"]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
    [:blocks                     {:optional true} [:maybe [:sequential ::ExplorationBlockNode]]]
    [:timelines                  {:optional true}

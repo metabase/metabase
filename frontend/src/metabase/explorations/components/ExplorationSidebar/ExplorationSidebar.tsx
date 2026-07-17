@@ -48,7 +48,11 @@ import type {
   ExplorationQueryStatus,
   ExplorationThreadId,
 } from "metabase-types/api";
-import { isSettledExplorationQueryStatus } from "metabase-types/api";
+import {
+  isRestartableExplorationThreadStatus,
+  isSettledExplorationQueryStatus,
+  isTerminalExplorationThreadStatus,
+} from "metabase-types/api";
 
 import { useCopyLink } from "../../hooks/useCopyLink";
 import type { ExplorationSortOrder } from "../../sidebar-preferences";
@@ -595,8 +599,14 @@ function ExplorationGroupMenu({
   );
 
   const thread = item.data?.thread;
-  const canStop = canWrite && thread != null && thread.completed_at == null;
-  const canRestart = canWrite && thread != null && thread.canceled_at != null;
+  const canStop =
+    canWrite &&
+    thread != null &&
+    !isTerminalExplorationThreadStatus(thread.status);
+  const canRestart =
+    canWrite &&
+    thread != null &&
+    isRestartableExplorationThreadStatus(thread.status);
 
   return (
     <Menu>
@@ -690,6 +700,9 @@ function ExplorationTreeItem({
 
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
+  const erroredQueryMessage = pageData?.queries.find(
+    (query) => query.status === "error" && query.error_message,
+  )?.error_message;
   const isHidden = pageData?.hidden === true;
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
@@ -735,7 +748,10 @@ function ExplorationTreeItem({
       )}
       {isError && (
         <ExplorationErrorMarker
-          message={t`We couldn't generate one or more of these charts.`}
+          message={
+            erroredQueryMessage ??
+            t`We couldn't generate one or more of these charts.`
+          }
         />
       )}
     </ForwardRefLink>
