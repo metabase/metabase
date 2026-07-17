@@ -4,13 +4,10 @@ import type {
   CustomVisualizationSettingDefinition,
 } from "custom-viz";
 
-// Deep import (not the metabase/plugins barrel) so the static-viz bundle
-// doesn't pull in every plugin module.
+// Deep imports so the static-viz bundle doesn't pull in every plugin module.
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import MetabaseSettings from "metabase/utils/settings";
 import visualizations, { registerVisualization } from "metabase/visualizations";
-// Not the custom-viz-utils module: its `metabase/urls` import would drag the
-// whole urls/Question dependency tree into the static-viz bundle.
 import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
 import type { Visualization } from "metabase/visualizations/types/visualization";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -83,11 +80,6 @@ export function registerCustomVizPlugin(
   }
 }
 
-/**
- * Static-viz-bundle entry point: installs just the registry pieces the
- * GraalJS rendering path needs, without pulling the interactive plugin
- * loading machinery (custom-viz-plugins.tsx) into the static bundle.
- */
 export function applyCustomVizStaticOverride() {
   if (hasPremiumFeature("custom-viz")) {
     Object.assign(PLUGIN_CUSTOM_VIZ, {

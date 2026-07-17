@@ -1,5 +1,3 @@
-// Deep import (not the metabase/plugins barrel) so the static-viz bundle
-// doesn't pull in every plugin module.
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
