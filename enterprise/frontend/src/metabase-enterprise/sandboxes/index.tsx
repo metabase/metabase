@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -16,9 +17,15 @@ import {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
+  type PermissionOption,
 } from "metabase/plugins";
 import { push } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type {
+  GroupId,
+  PermissionEntityId,
+  TableEntityId,
+} from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 
 import sandboxingReducer from "./actions";
@@ -33,28 +40,46 @@ const OPTION_SEGMENTED = {
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
   iconColor: "brand",
-};
+} satisfies PermissionOption;
 
-const getDatabaseViewSandboxModalUrl = (entityId, groupId) => {
-  const baseUrl = getDatabaseFocusPermissionsUrl(entityId, groupId);
+const getDatabaseViewSandboxModalUrl = (
+  entityId: TableEntityId,
+  groupId: GroupId,
+) => {
+  const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
   return `${baseUrl}/segmented/group/${groupId}`;
 };
 
-const getGroupViewSandboxModalUrl = (entityId, groupId) => {
-  const baseUrl = getGroupFocusPermissionsUrl(groupId, {
-    ...entityId,
-    tableId: null,
-  });
-  return `${baseUrl}/${entityId.tableId}/segmented`;
+const getGroupViewSandboxModalUrl = (
+  entityId: TableEntityId,
+  groupId: GroupId,
+) => {
+  // the group view URL nests the table segment after the group, so the helper
+  // gets only the schema-level ids
+  const { tableId, ...schemaEntityId } = entityId;
+  const baseUrl = getGroupFocusPermissionsUrl(groupId, schemaEntityId);
+  return `${baseUrl}/${tableId}/segmented`;
 };
 
-const getEditSegementedAccessUrl = (entityId, groupId, view) =>
-  view === "database"
+const getEditSegementedAccessUrl = (
+  entityId: PermissionEntityId | undefined,
+  groupId: GroupId,
+  view: "database" | "group",
+) => {
+  if (entityId == null || !isTableEntityId(entityId)) {
+    throw new Error("Sandboxing can only be configured for tables");
+  }
+
+  return view === "database"
     ? getDatabaseViewSandboxModalUrl(entityId, groupId)
     : getGroupViewSandboxModalUrl(entityId, groupId);
+};
 
-const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
-  push(getEditSegementedAccessUrl(entityId, groupId, view));
+const getEditSegmentedAccessPostAction = (
+  entityId: PermissionEntityId,
+  groupId: GroupId,
+  view: "database" | "group",
+) => push(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
@@ -86,7 +111,9 @@ export function initializePlugin() {
 
     PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
       const sandboxes = getDraftPolicies(state);
-      const modifiedGroupIds = _.uniq(sandboxes.map((sb) => sb.group_id));
+      const modifiedGroupIds = _.uniq(
+        sandboxes.map((sb) => String(sb.group_id)),
+      );
       return [{ sandboxes }, modifiedGroupIds];
     });
 

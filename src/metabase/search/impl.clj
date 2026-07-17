@@ -442,14 +442,22 @@
              item))
          search-results)))
 
-(defn- search-results [search-ctx model-set-fn ranked-results]
+(defn search-results
+  "Paginate `ranked` per `search-ctx`, hydrate and serialize that page, and wrap it in the search
+  API response shape. `ranked` is any ranked seq of normalized index records — the output of
+  [[ranked-results]] for a single search, or a combination of several. `:total` reports the size of
+  the ranked set it was handed, so a caller that fuses rankings gets the total for the fused set.
+
+  `model-set-fn` computes `:available_models` from the context, and is only called when the context
+  asks for them."
+  [search-ctx model-set-fn ranked]
   ;; Slice the ranked window down to the requested page *before* hydration/serialization so
   ;; display-only work (including the expensive per-row `:can_write` permission check) only runs
   ;; on the rows we actually return. The pagination of search is for UI improvement, not for
   ;; performance — the ranked set is already capped by `max-filtered-results` — but doing the
   ;; slice here lets downstream steps amortize their batch hydrations over ~limit rows instead
   ;; of the full cap.
-  (let [paginated-results (cond->> ranked-results
+  (let [paginated-results (cond->> ranked
                             (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
                             (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
                             true hydrate-dashboards
@@ -469,10 +477,30 @@
              :offset      (:offset-int search-ctx)
              :table_db_id (:table-db-id search-ctx)
              :engine      (:search-engine search-ctx)
-             :total       (count ranked-results)}
+             :total       (count ranked)}
 
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
+
+(mu/defn ranked-results
+  "The scored, permission-filtered result set for `search-ctx`, ordered best-first and capped at
+  [[search.config/max-filtered-results]]. Rows are normalized index records — not yet paginated,
+  hydrated or serialized — each carrying at least `:id` and `:model`.
+
+  Exposed as its own step so a caller holding several ranked sets can combine them (e.g. fusing
+  the rankings of several queries) and paginate the combination *before* anything is hydrated.
+  Hydration is the expensive part, so it should only ever run on the rows actually returned.
+  Pass the result to [[search-results]] for the API response shape; [[search]] composes the two."
+  [search-ctx :- SearchContext]
+  (let [reducible-results (search.engine/results search-ctx)
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+        xf                (comp
+                           (take search.config/*db-max-results*)
+                           (map normalize-result)
+                           (filter (partial check-permissions-for-model search-ctx))
+                           (map (partial normalize-result-more search-ctx))
+                           (keep #(search.engine/score scoring-ctx %)))]
+    (scoring/top-results reducible-results search.config/max-filtered-results xf)))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
@@ -480,13 +508,4 @@
   (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}
-    (let [reducible-results (search.engine/results search-ctx)
-          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-          xf                (comp
-                             (take search.config/*db-max-results*)
-                             (map normalize-result)
-                             (filter (partial check-permissions-for-model search-ctx))
-                             (map (partial normalize-result-more search-ctx))
-                             (keep #(search.engine/score scoring-ctx %)))
-          ranked-results    (scoring/top-results reducible-results search.config/max-filtered-results xf)]
-      (search-results search-ctx search.engine/model-set ranked-results))))
+    (search-results search-ctx search.engine/model-set (ranked-results search-ctx))))
