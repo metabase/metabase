@@ -51,6 +51,7 @@ jobs:
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+      deps-base-jar-cache-key: ${{ steps.get-cache-keys.outputs.deps-base-jar-cache-key }}
 
   generate-caches:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -61,6 +62,7 @@ jobs:
       NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
       CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
       ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
+      DEPS_BASE_JAR_CACHE_KEY: ${{ needs.get-cache-keys.outputs.deps-base-jar-cache-key }}
     steps:
       - uses: actions/checkout@v6
 
@@ -117,6 +119,27 @@ jobs:
             ~/.m2
             ~/.gitlibs
           key: ${{ env.M2_CACHE_KEY }}
+
+      # Deps-only base jars: `b/uber` spends most of its time exploding and re-deflating the dependencies, which are
+      # ~75% of the uberjar's bytes but only change when a deps.edn does. Building them here lets the uberjar build
+      # append its own classes onto a prebuilt jar instead. Each build re-checks the resolved dependency set against
+      # the hash stored beside the jar and silently falls back to a full `b/uber` when it doesn't match, so a stale
+      # cache costs time, never correctness.
+      - name: Build deps-only base jars
+        run: |
+          set -euo pipefail
+          for edition in ee oss; do
+            echo "::group::deps base jar ($edition)"
+            clojure -X:build:build/uberjar build.uberjar/build-deps-base-jar! :edition ":$edition"
+            echo "::endgroup::"
+          done
+        shell: bash
+
+      - name: Update deps base jar cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: target/deps-base
+          key: ${{ env.DEPS_BASE_JAR_CACHE_KEY }}
 
       # Frontend preparation and caches
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.

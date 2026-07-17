@@ -1,6 +1,7 @@
 (ns build.uberjar
   (:require
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.util.zip :as build.zip]
@@ -12,7 +13,9 @@
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
    (java.io File OutputStream)
-   (java.nio.file Files OpenOption StandardOpenOption)
+   (java.nio.file CopyOption Files LinkOption OpenOption Path StandardCopyOption StandardOpenOption)
+   (java.nio.file.attribute FileAttribute)
+   (java.security MessageDigest)
    (java.util.jar Manifest)))
 
 (set! *warn-on-reflection* true)
@@ -212,6 +215,155 @@
                :exclude           dependency-ignore-patterns})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
+;;; ------------------------------------------- deps-only base jar ---------------------------------------------------
+;;;
+;;; `b/uber` explodes every dependency JAR into a temp directory and then deflates the whole tree into the uberjar.
+;;; Dependencies are ~75% of the jar's uncompressed bytes and ~84% of its entries, and they only change when a
+;;; `deps.edn` does (~2% of commits), so we pay for that work on nearly every build for nothing.
+;;;
+;;; Instead, CI's cache generator builds a "base jar" — the same `b/uber` call with an *empty* class-dir, so it holds
+;;; only the exploded, conflict-resolved dependencies — and caches it weekly. A build with a matching dependency set
+;;; copies that base jar and appends its own class-dir into it, which re-uses the dependencies' already-compressed
+;;; bytes instead of re-deflating them. When the dependency set doesn't match, we fall back to the normal `b/uber`
+;;; path, so the cache can only ever make the build faster, never wrong.
+
+(def ^:private deps-base-dir
+  "Directory holding the cached deps-only base jars. Deliberately outside `target/classes` and not touched by
+  `clean!`, since CI restores the cache into it before the build runs."
+  (u/filename u/project-root-directory "target" "deps-base"))
+
+(defn deps-base-jar-filename
+  "Path of the deps-only base jar for `edition`."
+  [edition]
+  (u/filename deps-base-dir (format "metabase-deps-%s.jar" (name edition))))
+
+(defn- deps-base-hash-filename [edition]
+  (str (deps-base-jar-filename edition) ".hash"))
+
+(defn- sha256 ^String [^String s]
+  (->> (.getBytes s "UTF-8")
+       (.digest (MessageDigest/getInstance "SHA-256"))
+       (map (partial format "%02x"))
+       (apply str)))
+
+(defn- basis-deps-hash
+  "Fingerprint of the resolved dependency set — exactly what the base jar contains. We hash the *resolved* libs rather
+  than the `deps.edn` files so that the check can't be fooled by a change that alters resolution without touching a
+  file we thought to hash (or vice versa). `:paths` are omitted because they are absolute and machine-specific."
+  [basis]
+  (->> (:libs basis)
+       (map (fn [[lib coord]]
+              (str lib " " (or (:mvn/version coord) (:git/sha coord) (:local/root coord)))))
+       sort
+       (str/join "\n")
+       sha256))
+
+(defn build-deps-base-jar!
+  "Build the deps-only base jar for `edition` plus the hash sidecar identifying which dependency set it holds. Run by
+  CI's cache generator; see .github/workflows/cache-generator.yml.
+
+    clojure -X:build:build/uberjar build.uberjar/build-deps-base-jar! :edition :ee"
+  [{:keys [edition], :or {edition :oss}}]
+  (u/step (format "Build %s deps base jar" edition)
+    (let [basis     (create-basis edition)
+          jar       (deps-base-jar-filename edition)
+          ;; an empty class-dir is what makes this deps-only: `b/uber` merges class-dir and libs into one tree, so
+          ;; giving it nothing to merge yields just the libs.
+          empty-dir (str (Files/createTempDirectory "empty-class-dir" (misc/varargs FileAttribute)))]
+      (u/delete-file-if-exists! jar)
+      (u/create-directory-unless-exists! deps-base-dir)
+      (with-duration-ms [duration-ms]
+        (b/uber {:class-dir         empty-dir
+                 :uber-file         jar
+                 :conflict-handlers conflict-handlers
+                 :basis             basis
+                 :exclude           dependency-ignore-patterns})
+        (spit (deps-base-hash-filename edition) (basis-deps-hash basis))
+        (u/announce "Built %s (%.1f MB) in %.1f seconds."
+                    jar (/ (.length (io/file jar)) 1e6) (/ duration-ms 1000.0))))))
+
+(defn- usable-deps-base-jar
+  "Path of a base jar we can build on top of, or nil. nil whenever anything is off — no cache restored, or the
+  dependency set moved since it was built — which just means the normal `b/uber` path runs."
+  [edition basis]
+  (let [jar       (deps-base-jar-filename edition)
+        hash-file (io/file (deps-base-hash-filename edition))]
+    (cond
+      (not (.exists (io/file jar)))
+      (do (u/announce "No deps base jar at %s; building the uberjar from scratch." jar) nil)
+
+      (not (.exists hash-file))
+      (do (u/announce "Deps base jar has no hash sidecar; building the uberjar from scratch.") nil)
+
+      (not= (str/trim (slurp hash-file)) (basis-deps-hash basis))
+      (do (u/announce "Deps base jar is stale (dependency set changed); building the uberjar from scratch.") nil)
+
+      :else
+      (do (u/announce "Using cached deps base jar %s." jar) jar))))
+
+(def ^:private uber-exclusions
+  "tools.build drops these from everything it writes into an uberjar — including class-dir content. Appending the app
+  layer ourselves has to drop exactly the same set or our jar would differ from a `b/uber` one. Read back out of
+  tools.build rather than copied here, so a version bump surfaces as a loud failure instead of silent drift."
+  (delay @(requiring-resolve 'clojure.tools.build.tasks.uber/uber-exclusions)))
+
+(defn- excluded-from-uber? [^String path]
+  (boolean (some #(re-matches % path) (concat @uber-exclusions dependency-ignore-patterns))))
+
+(defn- merged-data-readers
+  "Replicates tools.build's `:data-readers` conflict handler. `b/uber` explodes the class-dir *first* and then merges
+  each lib's data readers over it, so the app's entries come first and libs win any key collision — `(merge app base)`
+  reproduces both the ordering and the precedence."
+  [^String app-str ^String base-str]
+  (binding [*read-eval* false]
+    (let [read-readers #(read-string {:read-cond :preserve :features #{:clj}} %)]
+      (with-out-str
+        (pprint/pprint (merge (read-readers app-str) (read-readers base-str)))))))
+
+(defn- append-conflict!
+  "Resolve a class-dir file whose path already exists in the base jar (i.e. a lib shipped the same path)."
+  [^Path target ^File src ^String path]
+  (cond
+    (re-matches #"data_readers.clj[c]?" path)
+    (let [^String merged (merged-data-readers (slurp src) (String. (Files/readAllBytes target) "UTF-8"))]
+      (Files/write target (.getBytes merged "UTF-8")
+                   (misc/varargs OpenOption [StandardOpenOption/WRITE StandardOpenOption/TRUNCATE_EXISTING])))
+
+    ;; `b/uber` would concatenate/dedupe these rather than let one side win. Nothing under `resources/` produces them
+    ;; today, so rather than carry an untested merge, fail loudly if that ever changes.
+    (or (re-matches #"META-INF/services/.*" path)
+        (re-matches #"(?i)(META-INF/)?(COPYRIGHT|NOTICE|LICENSE)(\.(txt|md))?" path))
+    (throw (ex-info (str "Cannot append " path " onto the deps base jar: b/uber merges this path, and this code only"
+                         " knows how to merge data_readers. Teach append-conflict! how to merge it, or exclude it.")
+                    {:path path}))
+
+    ;; Everything else: `b/uber`'s default handler is `:ignore` (first writer wins) and the class-dir goes in first,
+    ;; so the app's copy wins.
+    :else
+    (Files/copy (.toPath src) target
+                (misc/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING]))))
+
+(defn- create-uberjar-from-base!
+  "Build the uberjar by copying the deps-only `base-jar` and appending the class-dir into it."
+  [base-jar]
+  (u/step "Create uberjar from cached deps base jar"
+    (with-duration-ms [duration-ms]
+      (io/copy (io/file base-jar) (io/file uberjar-filename))
+      (let [root  (.toPath (io/file class-dir))
+            files (->> (io/file class-dir) file-seq (filter #(.isFile ^File %)))]
+        (u/with-open-jar-file-system [fs uberjar-filename]
+          (doseq [^File f files
+                  :let [path (str/replace (str (.relativize root (.toPath f))) File/separatorChar \/)]
+                  :when (not (excluded-from-uber? path))]
+            (let [target (u/get-path-in-filesystem fs path)]
+              (if (Files/exists target (misc/varargs LinkOption))
+                (append-conflict! target f path)
+                (do
+                  (when-let [parent (.getParent target)]
+                    (Files/createDirectories parent (misc/varargs FileAttribute)))
+                  (Files/copy (.toPath f) target (misc/varargs CopyOption))))))))
+      (u/announce "Created uberjar from base in %.1f seconds." (/ duration-ms 1000.0)))))
+
 (def ^:private manifest-entries
   {"Manifest-Version" "1.0"
    "Multi-Release"    "true"
@@ -271,7 +423,9 @@
       (let [basis (create-basis edition)]
         (compile-sources! basis)
         (copy-resources! basis)
-        (create-uberjar! basis)
+        (if-let [base-jar (usable-deps-base-jar edition basis)]
+          (create-uberjar-from-base! base-jar)
+          (create-uberjar! basis))
         (add-non-aot-driver-sources!)
         (update-manifest!))
       (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))
