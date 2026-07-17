@@ -147,18 +147,11 @@ function CartesianChartInner(props: VisualizationProps) {
       return props.hovered;
     }
     if (props.highlighted) {
-      const hovered = getHoveredFromHighlighted(
+      return getHoveredFromHighlighted(
         props.highlighted,
         rawSeries,
         chartModel,
       );
-      if (!hovered) {
-        return null;
-      }
-      return {
-        ...hovered,
-        isFromHighlighted: true,
-      };
     }
     return null;
   }, [props.hovered, props.highlighted, rawSeries, chartModel]);

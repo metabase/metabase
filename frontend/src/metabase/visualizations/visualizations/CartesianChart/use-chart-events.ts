@@ -44,7 +44,7 @@ import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
 export interface CartesianHoveredObject extends HoveredObject {
-  isFromHighlighted?: boolean;
+  shouldShowTooltip?: boolean;
 }
 
 function getSplitPanelGrids(option: EChartsOption) {
@@ -297,8 +297,8 @@ export const useChartEvents = (
       });
 
       // a normal hover triggers the tooltip via the tooltip option's `trigger` "item"
-      // but we need to show the tooltip manually for highlighted items
-      if (hovered.isFromHighlighted) {
+      // but we may need to show the tooltip manually for highlighted items
+      if (hovered.shouldShowTooltip) {
         // setTimeout because ChartItemTooltip/reactNodeToHtmlString uses flushSync
         setTimeout(() => {
           chart.dispatchAction({
@@ -315,7 +315,7 @@ export const useChartEvents = (
           dataIndex,
           seriesIndex: hoveredEChartsSeriesIndex,
         });
-        if (hovered.isFromHighlighted) {
+        if (hovered.shouldShowTooltip) {
           chart.dispatchAction({
             type: "hideTip",
           });

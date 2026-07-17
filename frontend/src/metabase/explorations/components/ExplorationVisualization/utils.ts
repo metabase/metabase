@@ -476,8 +476,30 @@ export function canExploreFurther(
   return true;
 }
 
-export function getCommentLabel(
+export function getHighlightedWithShouldShowTooltip(
   highlighted?: HighlightedObject,
+  seriesGroup?: SeriesGroup,
+): HighlightedObject | null {
+  if (!highlighted || !seriesGroup) {
+    return null;
+  }
+  const { series } = seriesGroup;
+  const {
+    card: { display },
+    data: { cols },
+  } = series[0];
+  const hasMultipleSeries = series.length > 1;
+  const hasBreakout = cols.length > 2;
+  const shouldShowTooltip =
+    display === "line" && !hasMultipleSeries && !hasBreakout;
+  return {
+    ...highlighted,
+    shouldShowTooltip,
+  };
+}
+
+export function getCommentLabel(
+  highlighted?: HighlightedObject | null,
   seriesGroup?: SeriesGroup,
   computedSettings?: ComputedVisualizationSettings,
 ): string | null | undefined {
