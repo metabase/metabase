@@ -30,14 +30,12 @@ export function registerCustomVizPlugin(
   identifier: string,
   pluginId: CustomVizPluginId,
 ): void {
-  const factory =
-    // The plugin bundle assigns its factory to a global; globalThis carries no
-    // type information for it.
-    (
-      globalThis as {
-        __customVizPlugin__?: Parameters<typeof registerCustomVizPluginImpl>[0];
-      }
-    ).__customVizPlugin__;
+  // The plugin bundle assigns its factory to a global
+  const globals = globalThis as {
+    __customVizPlugin__?: Parameters<typeof registerCustomVizPluginImpl>[0];
+  };
+  const factory = globals.__customVizPlugin__;
+  globals.__customVizPlugin__ = undefined;
   if (typeof factory === "function") {
     registerCustomVizPluginImpl(factory, identifier, pluginId);
   }
