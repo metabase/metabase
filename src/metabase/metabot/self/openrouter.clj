@@ -56,9 +56,11 @@
                            (if (and (< 1 (count group))
                                     (= "assistant" (:role (first group))))
                              (let [text       (->> group (keep :content) (str/join ""))
-                                   tool-calls (into [] (mapcat :tool_calls) group)]
+                                   tool-calls (into [] (mapcat :tool_calls) group)
+                                   reasoning  (into [] (mapcat :reasoning_details) group)]
                                ;; :content should be always there, even if empty/nil
                                [(cond-> {:role "assistant" :content text}
+                                  (seq reasoning)  (assoc :reasoning_details reasoning)
                                   (seq tool-calls) (assoc :tool_calls tool-calls))])
                              group))))
         messages))
@@ -75,25 +77,30 @@
   Output: Chat Completions messages (user, assistant with tool_calls, tool)."
   [parts]
   (->> parts
-       (map (fn [part]
-              (case (:type part)
-                :text        {:role "assistant" :content (:text part)}
-                :tool-input  {:role       "assistant"
-                              :content    nil
-                              :tool_calls [{:id       (:id part)
-                                            :type     "function"
-                                            :function {:name      (:function part)
-                                                       :arguments (let [args (:arguments part)]
-                                                                    (if (string? args) args (json/encode (or args {}))))}}]}
-                :tool-output {:role         "tool"
-                              :tool_call_id (:id part)
-                              :content      (or (get-in part [:result :output])
-                                                (when-let [err (:error part)]
-                                                  (str "Error: " (:message err)))
-                                                (pr-str (:result part)))}
-                ;; User messages pass through
-                {:role    (name (or (:role part) "user"))
-                 :content (or (:content part) "")})))
+       (keep (fn [part]
+               (case (:type part)
+                 ;; anthropic-via-openrouter must replay reasoning_details on the
+                 ;; assistant turn (like Claude's thinking blocks); reasoning without
+                 ;; them is display-only and dropped
+                 :reasoning   (when-let [details (get-in part [:provider-metadata :openrouter :reasoningDetails])]
+                                {:role "assistant" :content nil :reasoning_details details})
+                 :text        {:role "assistant" :content (:text part)}
+                 :tool-input  {:role       "assistant"
+                               :content    nil
+                               :tool_calls [{:id       (:id part)
+                                             :type     "function"
+                                             :function {:name      (:function part)
+                                                        :arguments (let [args (:arguments part)]
+                                                                     (if (string? args) args (json/encode (or args {}))))}}]}
+                 :tool-output {:role         "tool"
+                               :tool_call_id (:id part)
+                               :content      (or (get-in part [:result :output])
+                                                 (when-let [err (:error part)]
+                                                   (str "Error: " (:message err)))
+                                                 (pr-str (:result part)))}
+                 ;; user messages pass through
+                 {:role    (name (or (:role part) "user"))
+                  :content (or (:content part) "")})))
        merge-consecutive-assistant-messages))
 
 ;;; Tool definition format
@@ -222,19 +229,26 @@
   appears the previous tool is complete."
   []
   (fn [rf]
-    (let [current-type (volatile! nil) ;; :text | :function_call | nil
+    (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
           current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
           message-id   (volatile! nil)
           model-name   (volatile! nil)
           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+          ;; accumulated so anthropic-via-openrouter turns can replay reasoning_details
+          reasoning-details (volatile! [])
           close!       (fn [result]
                          (u/prog1 (rf result (merge {:type (case @current-type
                                                              :text          :text-end
+                                                             :reasoning     :reasoning-end
                                                              :function_call :tool-input-available)}
-                                                    @payload))
+                                                    @payload
+                                                    (when (and (= @current-type :reasoning)
+                                                               (seq @reasoning-details))
+                                                      {:providerMetadata {:openrouter {:reasoningDetails @reasoning-details}}})))
                            (vreset! current-type nil)
                            (vreset! current-id nil)
-                           (vreset! payload {})))]
+                           (vreset! payload {})
+                           (vreset! reasoning-details [])))]
       (fn
         ([result]
          (cond-> result
@@ -246,16 +260,22 @@
                delta         (:delta choice)
                finish-reason (:finish_reason choice)
                tool-call     (first (:tool_calls delta))
+               ;; providers expose the reasoning summary under different keys
+               reasoning-text (or (not-empty (:reasoning delta))
+                                  (not-empty (:reasoning_content delta)))
                ;; Determine what kind of content this chunk carries.
                ;; Empty-string content (common between tool calls) is ignored
                ;; to avoid spurious text blocks that would close open tools.
                chunk-type    (cond
                                (not-empty (:content delta)) :text
+                               reasoning-text               :reasoning
                                (some? tool-call)            :function_call
                                :else                        nil)
                ;; For new tool calls, the id comes from the chunk; for deltas
                ;; on the same tool, we keep current-id.
                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+           (when (and (= chunk-type :reasoning) (seq (:reasoning_details delta)))
+             (vswap! reasoning-details into (:reasoning_details delta)))
            (cond-> result
              ;; Emit :start on first chunk
              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
@@ -282,6 +302,18 @@
                   (some? (:content delta)))                   (rf {:type  :text-delta
                                                                    :id    @current-id
                                                                    :delta (:content delta)})
+             ;; start a new reasoning block
+             (and (= chunk-type :reasoning)
+                  (not= @current-type :reasoning))            (-> (u/prog1
+                                                                    (let [rid (core/mkid)]
+                                                                      (vreset! current-type :reasoning)
+                                                                      (vreset! current-id rid)
+                                                                      (vreset! payload {:id rid})))
+                                                                  (rf (merge {:type :reasoning-start} @payload)))
+             ;; reasoning delta
+             (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+                                                                   :id    @current-id
+                                                                   :delta reasoning-text})
              ;; Start a new tool call block
              (and (= chunk-type :function_call)
                   (:id tool-call)
@@ -317,6 +349,20 @@
   "Whether an OpenRouter model id routes to Anthropic (e.g. `anthropic/claude-haiku-4.5`)."
   [model]
   (str/starts-with? (str model) "anthropic/"))
+
+(defn- model-supports-reasoning?
+  "Whether an OpenRouter model can emit reasoning we surface — the GPT-5 / o-series
+  models and thinking-capable Claude (Fable, Opus/Sonnet 4.6+). OpenRouter ids use
+  dots in Claude versions (`claude-opus-4.6`)."
+  [model]
+  (let [model (str model)]
+    (boolean
+     (or (re-find #"^openai/(gpt-5|o\d)" model)
+         (re-find #"^anthropic/claude-fable" model)
+         (when-let [[_ _family major minor] (re-find #"^anthropic/claude-(opus|sonnet)-(\d+)(?:\.(\d+))?" model)]
+           (let [major (parse-long major)
+                 minor (or (some-> minor parse-long) 0)]
+             (or (> major 4) (and (= major 4) (>= minor 6)))))))))
 
 (defn- system->cc-message
   "Build the Chat Completions system message for `system`.
@@ -359,7 +405,11 @@
                                         tool_choice tool_choice
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens))))
+      max-tokens  (assoc :max_tokens max-tokens)
+
+      ;; OpenRouter normalizes this to each upstream's reasoning/thinking option
+      (model-supports-reasoning? model)
+      (assoc :reasoning {:enabled true}))))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.

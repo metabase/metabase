@@ -100,12 +100,16 @@
                         :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
-(deftest ^:parallel openai-reasoning-items-are-ignored-test
-  (testing "reasoning output items (emitted by GPT-5 / o-series models) are skipped without breaking the stream"
+(deftest ^:parallel openai-reasoning-summaries-are-translated-test
+  (testing "reasoning summary items (GPT-5 / o-series) become reasoning chunks"
     (let [base      (fixture "openai-text"
                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
-          ;; GPT-5 reasoning models emit a reasoning output item before the text message item
+          ;; GPT-5 reasoning models emit a reasoning output item + summary deltas before the text
           reasoning [{:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+                     {:type "response.reasoning_summary_part.added" :item_id "rs_1"}
+                     {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "Keeping it "}
+                     {:type "response.reasoning_summary_text.delta" :item_id "rs_1" :delta "short"}
+                     {:type "response.reasoning_summary_text.done"  :item_id "rs_1"}
                      {:type "response.output_item.done"  :item {:type "reasoning" :id "rs_1"}}]
           ;; splice the reasoning events in right after response.created
           patched   (into [] (mapcat (fn [chunk]
@@ -113,11 +117,15 @@
                                          (cons chunk reasoning)
                                          [chunk])))
                           base)]
-      (testing "no reasoning artifacts leak into the translated chunk types"
-        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
-                (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) patched))))
-      (testing "full pipeline still produces text + usage"
+      (testing "reasoning start/delta/end surround the text"
         (is (=? [{:type :start}
+                 {:type :reasoning-start} {:type :reasoning-delta :delta "Keeping it "}
+                 {:type :reasoning-end}
+                 {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) patched))))
+      (testing "full pipeline coalesces the reasoning into one part"
+        (is (=? [{:type :start}
+                 {:type :reasoning :text "Keeping it short"}
                  {:type :text :text string?}
                  {:type  :usage
                   :usage {:promptTokens        pos-int?
@@ -300,6 +308,24 @@
               :output  #"Error:.*failed"}]
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+
+(deftest ^:parallel parts->openai-input-drops-reasoning-test
+  (testing "reasoning parts are not replayed to the Responses API"
+    (is (=? [{:type "message" :role "assistant" :content [{:type "output_text" :text "hi"}]}]
+            (openai/parts->openai-input
+             [{:type :reasoning :id "r1" :text "thinking" :provider-metadata {}}
+              {:type :text :text "hi"}])))))
+
+(deftest ^:parallel openai-request-body-reasoning-gating-test
+  (testing "reasoning models ask for a summary; others don't"
+    (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input []}))]
+      (is (= {:summary "auto"} (reasoning "gpt-5.4")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
+      (is (= {:summary "auto"} (reasoning "o3")))
+      (testing "bedrock/azure vendor prefix is stripped"
+        (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
+      (testing "non-reasoning models get no reasoning param"
+        (is (nil? (reasoning "gpt-4.1")))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models filtering tests

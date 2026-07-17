@@ -14,9 +14,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private translated-chunk-type?
-  "Output item types we translate into AI SDK chunks.
-  Other types (e.g. reasoning summaries) are ignored."
-  #{:text :function_call})
+  "Output item types we translate into AI SDK chunks."
+  #{:text :function_call :reasoning})
 
 (defn- openai-usage->aisdk-usage
   "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
@@ -61,11 +60,11 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           close!       (fn [result]
-                         ;; only emit an end marker for chunk types we translate; reasoning and other
-                         ;; output item types are ignored.
+                         ;; only emit an end marker for chunk types we translate.
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text          :text-end
                                                       :function_call :tool-input-available
+                                                      :reasoning     :reasoning-end
                                                       nil)]
                                     (rf result (merge {:type end-type} @payload))
                                     result)
@@ -92,11 +91,14 @@
                             "content_part"            :text
                             "output_text"             :text
                             "function_call_arguments" :function_call
+                            "reasoning_summary_text"  :reasoning
+                            "reasoning_summary_part"  :reasoning
                             (keyword middle))
                chunk-id   (or (case chunk-type
                                 ;; chunks that have natural id in API response go here
                                 :function_call (:call_id item)
                                 :text          (:id chunk)
+                                :reasoning     (:id item)
                                 nil)
                               @current-id
                               (core/mkid))]
@@ -110,7 +112,7 @@
                  (and @current-id
                       (not= chunk-id
                             @current-id)))      (close!)
-             ;; start of a new chunk — only for types we translate; reasoning items are ignored
+             ;; start of a new chunk — only for types we translate
              (and (= t "response.output_item.added")
                   (translated-chunk-type? chunk-type)) (-> (u/prog1
                                                              (vreset! current-type chunk-type)
@@ -121,16 +123,21 @@
                                                                         :text          {:id chunk-id}
                                                                         :function_call {:toolCallId chunk-id
                                                                                         :toolName   (:name item)}
+                                                                        :reasoning     {:id chunk-id}
                                                                         nil)))
                                                            (rf (merge (case @current-type
                                                                         :text          {:type :text-start}
                                                                         :function_call {:type :tool-input-start}
+                                                                        :reasoning     {:type :reasoning-start}
                                                                         nil)
                                                                       @payload)))
-             ;; just a middle of a chunk — ignore deltas for types we don't translate (e.g. reasoning summaries)
+             ;; just a middle of a chunk — ignore deltas for types we don't translate
              (and delta
                   (translated-chunk-type? @current-type)) (rf (case @current-type
                                                                 :text          {:type  :text-delta
+                                                                                :id    @current-id
+                                                                                :delta delta}
+                                                                :reasoning     {:type  :reasoning-delta
                                                                                 :id    @current-id
                                                                                 :delta delta}
                                                                 :function_call {:type           :tool-input-delta
@@ -162,26 +169,29 @@
   Input: flat sequence of AISDK parts and user messages.
   Output: OpenAI Responses API input array."
   [parts]
-  (mapv (fn [part]
-          (case (:type part)
-            :text        {:type    "message"
-                          :role    "assistant"
-                          :content [{:type "output_text"
-                                     :text (:text part)}]}
-            :tool-input  {:type      "function_call"
-                          :call_id   (:id part)
-                          :name      (:function part)
-                          :arguments (let [args (:arguments part)]
-                                       (if (string? args) args (json/encode args)))}
-            :tool-output {:type    "function_call_output"
-                          :call_id (:id part)
-                          :output  (or (get-in part [:result :output])
-                                       (when-let [err (:error part)]
-                                         (str "Error: " (:message err)))
-                                       (pr-str (:result part)))}
-            ;; User messages
-            {:role    (name (or (:role part) "user"))
-             :content (or (:content part) "")}))
+  (into []
+        (keep (fn [part]
+                (case (:type part)
+                  ;; display-only; the Responses API reconstructs its own reasoning context
+                  :reasoning   nil
+                  :text        {:type    "message"
+                                :role    "assistant"
+                                :content [{:type "output_text"
+                                           :text (:text part)}]}
+                  :tool-input  {:type      "function_call"
+                                :call_id   (:id part)
+                                :name      (:function part)
+                                :arguments (let [args (:arguments part)]
+                                             (if (string? args) args (json/encode args)))}
+                  :tool-output {:type    "function_call_output"
+                                :call_id (:id part)
+                                :output  (or (get-in part [:result :output])
+                                             (when-let [err (:error part)]
+                                               (str "Error: " (:message err)))
+                                             (pr-str (:result part)))}
+                  ;; user messages
+                  {:role    (name (or (:role part) "user"))
+                   :content (or (:content part) "")})))
         parts))
 
 ;;; Tool definition format
@@ -277,6 +287,12 @@
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 
+(defn- reasoning-model?
+  "Whether `model` is a reasoning model that can emit reasoning summaries — the
+  same GPT-5 / o-series set that rejects an explicit temperature."
+  [model]
+  (not (model-supports-temperature? model)))
+
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
@@ -299,6 +315,9 @@
                                         :else       "auto")
                          :tools       all-tools)
       max-tokens  (assoc :max_output_tokens max-tokens)
+
+      (reasoning-model? model)
+      (assoc :reasoning {:summary "auto"})
 
       (and temperature (model-supports-temperature? model))
       (assoc :temperature temperature))))

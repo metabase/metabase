@@ -171,6 +171,62 @@
                              (self.core/aisdk-xf))
                     raw-chunks))))))
 
+(deftest ^:parallel openrouter-reasoning-conv-test
+  (testing "reasoning deltas (inferred from the delta shape) become reasoning chunks"
+    (let [raw [{:id "gen-1" :model "anthropic/claude-sonnet-4.6"
+                :choices [{:index 0 :delta {:role "assistant"}}]}
+               {:choices [{:index 0 :delta {:reasoning "Keeping it "
+                                            :reasoning_details [{:type "reasoning.text" :text "Keeping it "}]}}]}
+               {:choices [{:index 0 :delta {:reasoning "short"}}]}
+               {:choices [{:index 0 :delta {:content "Hi"}}]}
+               {:choices [{:index 0 :delta {} :finish_reason "stop"}]}
+               {:usage {:prompt_tokens 5 :completion_tokens 3}}]]
+      (testing "reasoning start/delta/end surround the text"
+        (is (=? [{:type :start}
+                 {:type :reasoning-start} {:type :reasoning-delta :delta "Keeping it "}
+                 {:type :reasoning-end :providerMetadata {:openrouter {:reasoningDetails [{:type "reasoning.text"}]}}}
+                 {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw))))
+      (testing "full pipeline coalesces reasoning into one part carrying its details"
+        (is (=? [{:type :start}
+                 {:type :reasoning :text "Keeping it short"
+                  :provider-metadata {:openrouter {:reasoningDetails [{:type "reasoning.text"}]}}}
+                 {:type :text :text "Hi"}
+                 {:type :usage}]
+                (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (self.core/aisdk-xf)) raw))))))
+  (testing "reasoning_content is accepted as an alias"
+    (is (=? [{:type :start} {:type :reasoning-start} {:type :reasoning-delta :delta "hmm"} {:type :reasoning-end}]
+            (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type))
+                  [{:id "g" :model "openai/gpt-5.4" :choices [{:delta {:reasoning_content "hmm"}}]}
+                   {:choices [{:delta {} :finish_reason "stop"}]}])))))
+
+(deftest ^:parallel parts->cc-messages-reasoning-test
+  (testing "reasoning with reasoning_details replays as an assistant message"
+    (is (=? [{:role "assistant" :reasoning_details [{:type "reasoning.text"}]
+              :tool_calls [{:id "call-1"}]}]
+            (openrouter/parts->cc-messages
+             [{:type :reasoning :id "r1" :text "think"
+               :provider-metadata {:openrouter {:reasoningDetails [{:type "reasoning.text"}]}}}
+              {:type :tool-input :id "call-1" :function "search" :arguments {}}]))))
+  (testing "reasoning without details is dropped"
+    (is (=? [{:role "assistant" :tool_calls [{:id "call-1"}]}]
+            (openrouter/parts->cc-messages
+             [{:type :reasoning :id "r1" :text "think"}
+              {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
+
+(deftest ^:parallel openrouter-request-body-reasoning-gating-test
+  (testing "thinking-capable models request reasoning; others don't"
+    (let [reasoning #(:reasoning (openrouter/openrouter-request-body {:model % :input []}))]
+      (is (= {:enabled true} (reasoning "anthropic/claude-sonnet-5")))
+      (is (= {:enabled true} (reasoning "anthropic/claude-opus-4.6")))
+      (is (= {:enabled true} (reasoning "anthropic/claude-fable-5")))
+      (is (= {:enabled true} (reasoning "openai/gpt-5.4")))
+      (is (= {:enabled true} (reasoning "openai/o3")))
+      (testing "older / non-reasoning models are excluded"
+        (is (nil? (reasoning "anthropic/claude-haiku-4.5")))
+        (is (nil? (reasoning "anthropic/claude-sonnet-4.5")))
+        (is (nil? (reasoning "openai/gpt-4.1")))))))
+
 (deftest ^:parallel openrouter-parallel-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-parallel-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv AND convert 100 EUR to USD? Use both tools in parallel."}]

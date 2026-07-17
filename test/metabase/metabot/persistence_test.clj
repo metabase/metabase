@@ -316,6 +316,16 @@
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type :tool-output :id "c1" :result nil}])))))
 
+(deftest ^:parallel parts->storable-content-drops-reasoning-test
+  (testing "reasoning parts are dropped and don't warn as unknown"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= [{:type "text" :text "hi" :state "done"}]
+             (metabot-persistence/parts->storable-content
+              [{:type :reasoning :id "r1" :text "thinking"}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "s"}}}
+               {:type :text :text "hi"}])))
+      (is (not-any? #(re-find #"Dropping internal part" (:message %)) (logs))))))
+
 (deftest ^:parallel parts->storable-content-emits-step-start-boundaries-test
   (testing "each :start becomes a step-start boundary, in stream order"
     (is (= [{:type "step-start"}
