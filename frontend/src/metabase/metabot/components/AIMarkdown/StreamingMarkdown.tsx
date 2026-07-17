@@ -15,21 +15,17 @@ type StreamingMarkdownProps = {
   components: Record<string, any>;
 };
 
-// 'protocol' mode would turn a half-streamed link into a clickable placeholder URL.
-const REMEND_OPTIONS = { linkMode: "text-only" } as const;
-
 const repair = (source: string) => {
   try {
     // remend appends an emphasis closer after a block's trailing newline
     // (`*a\n` → `*a\n*`), which won't parse; trim so it lands against the content.
-    return remend(source.trimEnd(), REMEND_OPTIONS);
+    return remend(source.trimEnd(), { linkMode: "text-only" });
   } catch {
     return source;
   }
 };
 
-// Renders a message as memoized top-level blocks so completed blocks stay put;
-// while streaming, only the trailing block re-renders, fades in words, and repairs.
+// Repairs a possibly incomplete markdown stream to valid markdown and animates its rendering
 export const StreamingMarkdown = ({
   source,
   isStreaming,
@@ -39,7 +35,7 @@ export const StreamingMarkdown = ({
   const coalesced = useCoalescedSource(source, isStreaming);
   const blocks = useMemo(() => splitMarkdownBlocks(coalesced), [coalesced]);
 
-  // Reuse each block's plugin so its animation boundary stays frozen across renders.
+  // reuse each block's plugin so its animation boundary stays consistent across renders
   const pluginsByBlock = useRef(
     new Map<number, MarkdownProps["rehypePlugins"]>(),
   );

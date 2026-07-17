@@ -3,7 +3,6 @@ import { Lexer } from "marked";
 const FOOTNOTE_PATTERN = /\[\^[^\]\s]+\]/;
 
 // Splits markdown into top-level block sources for memoized rendering.
-// Boundaries only — react-markdown stays the authority on syntax.
 export const splitMarkdownBlocks = (source: string): string[] => {
   if (source === "") {
     return [];
