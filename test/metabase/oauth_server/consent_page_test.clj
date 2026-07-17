@@ -77,6 +77,21 @@
         (is (re-find #"http://localhost:3000/app/assets/img/custom\.png" html)
             "relative path should be resolved to absolute URL")))))
 
+(deftest consent-page-subpath-form-action-test
+  (testing "form action is absolute so it survives hosting under a subpath (GIT-10551)"
+    (let [html (mt/with-temporary-setting-values [site-url "https://example.com/metabase"]
+                 (consent-page/render-consent-page
+                  {:client-name  "Test App"
+                   :oauth-params {:response_type "code" :client_id "abc123"}
+                   :nonce        "test-nonce"
+                   :csrf-token   "test-csrf"}))]
+      (is (re-find #"action=\"https://example\.com/metabase/oauth/authorize/decision\"" html))
+      (testing "bundled fonts are also loaded from under the subpath"
+        (is (re-find #"url\('https://example\.com/metabase/app/fonts/" html)))))
+  (testing "at the domain root the action still targets /oauth/authorize/decision"
+    (let [html (render!)]
+      (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))
+
 (defn- render-with-scopes! [scopes]
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (consent-page/render-consent-page

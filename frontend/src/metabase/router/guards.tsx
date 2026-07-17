@@ -14,9 +14,11 @@ import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
 import { getSetting } from "metabase/selectors/settings";
+import { getBasename } from "metabase/utils/basename";
 import { isSameOrSiteUrlOrigin, replaceLocation } from "metabase/utils/dom";
 
 import { Navigate } from "./Navigate";
+import { Outlet } from "./Outlet";
 import type { Location } from "./types";
 import { useLocation } from "./use-location";
 
@@ -38,19 +40,50 @@ const getRedirectUrl = () => {
 };
 
 /**
+ * A redirect target arrives in one of two shapes: an absolute URL
+ * (`https://host/metabase/x`, `//host/x`) whose pathname is already what the
+ * browser sees, or a basename-relative path (`/oauth/x`, sloppily `oauth/x`) —
+ * the convention for every SPA path, including the backend's login redirect
+ * (the server sits behind the prefix-stripping proxy and never sees the
+ * subpath). Normalize to a browser-real URL.
+ */
+const toBrowserUrl = (url: string) => {
+  const hasExplicitOrigin = /^[a-z][a-z0-9+.-]*:|^\/\//i.test(url);
+  // String-join for paths, not URL resolution: a leading "/" is *root*-relative
+  // and would discard the basename from a URL base.
+  return hasExplicitOrigin
+    ? new URL(url, window.location.origin)
+    : new URL(
+        `${getBasename()}/${url.replace(/^\//, "")}`,
+        window.location.origin,
+      );
+};
+
+/** The inverse: strip the basename back off for the SPA router, which prepends
+ * it itself (and for prefix checks like `isBackendOnlyPath`). */
+const toRouterPath = ({ pathname, search, hash }: URL) => {
+  const basename = getBasename();
+  const relativePathname =
+    basename && pathname.startsWith(`${basename}/`)
+      ? pathname.slice(basename.length)
+      : pathname;
+  return `${relativePathname}${search}${hash}`;
+};
+
+/**
  * `getRedirectUrl` accepts site-url-origin targets as well as same-origin ones,
  * so it can hand back an absolute URL. The SPA router only understands in-app
  * paths, so split the target into the path to navigate to and whether the SPA
  * can serve that origin at all.
  */
 const resolveRedirectTarget = (url: string) => {
-  const target = new URL(url, window.location.origin);
+  const target = toBrowserUrl(url);
 
   return {
     // Absolute, so a full-page redirect is not re-resolved against the current
     // path (a bare `auth/sso/x` would otherwise land under `/auth/login`).
     href: target.href,
-    path: `${target.pathname}${target.search}${target.hash}`,
+    path: toRouterPath(target),
     isInAppOrigin: target.origin === window.location.origin,
   };
 };
@@ -193,51 +226,65 @@ const UserCanAccessAlertsManagement = createRedirectGuard(
   "/unauthorized",
 );
 
-export const IsAuthenticated = ({ children }: Props) => (
-  <MetabaseIsSetup>
-    <UserIsAuthenticated>{children}</UserIsAuthenticated>
-  </MetabaseIsSetup>
-);
-
-export const IsAdmin = ({ children }: Props) => (
+export const IsAuthenticated = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
-      <UserIsAdmin>{children}</UserIsAdmin>
+      <Outlet />
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const IsNotAuthenticated = ({ children }: Props) => (
-  <MetabaseIsSetup>
-    <UserIsNotAuthenticated>{children}</UserIsNotAuthenticated>
-  </MetabaseIsSetup>
-);
-
-export const CanAccessSettings = ({ children }: Props) => (
+export const IsAdmin = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
-      <UserCanAccessSettings>{children}</UserCanAccessSettings>
+      <UserIsAdmin>
+        <Outlet />
+      </UserIsAdmin>
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const CanAccessOnboarding = ({ children }: Props) => (
-  <UserCanAccessOnboarding>{children}</UserCanAccessOnboarding>
+export const IsNotAuthenticated = () => (
+  <MetabaseIsSetup>
+    <UserIsNotAuthenticated>
+      <Outlet />
+    </UserIsNotAuthenticated>
+  </MetabaseIsSetup>
+);
+
+export const CanAccessSettings = () => (
+  <MetabaseIsSetup>
+    <UserIsAuthenticated>
+      <UserCanAccessSettings>
+        <Outlet />
+      </UserCanAccessSettings>
+    </UserIsAuthenticated>
+  </MetabaseIsSetup>
+);
+
+export const CanAccessOnboarding = () => (
+  <UserCanAccessOnboarding>
+    <Outlet />
+  </UserCanAccessOnboarding>
 );
 
 // Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
-export const CanAccessDataStudio = ({ children }: Props) => (
+export const CanAccessDataStudio = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
       <UserCanAccessDataStudio>
-        <AvailableInEmbedding>{children}</AvailableInEmbedding>
+        <AvailableInEmbedding>
+          <Outlet />
+        </AvailableInEmbedding>
       </UserCanAccessDataStudio>
     </UserIsAuthenticated>
   </MetabaseIsSetup>
 );
 
-export const CanAccessDataModel = ({ children }: Props) => (
-  <UserCanAccessDataModel>{children}</UserCanAccessDataModel>
+export const CanAccessDataModel = () => (
+  <UserCanAccessDataModel>
+    <Outlet />
+  </UserCanAccessDataModel>
 );
 
 export const CanAccessMonitor = ({ children }: Props) => (

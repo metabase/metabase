@@ -1,6 +1,8 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.string :as str]
+   [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
@@ -11,8 +13,10 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.startup.core :as startup]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -93,6 +97,41 @@
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
+
+(defn check-for-removed-env-vars!
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is still set, and would have been
+  required to disable the engine, naming the exact configuration change that keeps semantic search off.
+  Otherwise just log a warning."
+  []
+  ;; An empty value is "explicitly unset" per the usual env-var semantics, so only a non-blank value trips this.
+  (when-not (str/blank? (env/env :mb-semantic-search-enabled))
+    (let [engines              (search.engine/supported-engines)
+          semantic-default?    (= :search.engine/semantic (first engines))
+          semantic-additional? (contains? (set (search.engine/additional-engines)) :search.engine/semantic)
+          fallback             (when semantic-default? (second engines))
+          ;; Each case is a complete sentence so translators can reorder it freely.
+          detail               (cond
+                                 (and semantic-default? (not fallback))
+                                 (trs "Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
+
+                                 (and fallback semantic-additional?)
+                                 (trs "To keep semantic search off, set MB_SEARCH_ENGINE={0} and remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                      (name fallback))
+
+                                 fallback
+                                 (trs "To keep semantic search off, set MB_SEARCH_ENGINE={0}, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                      (name fallback))
+
+                                 semantic-additional?
+                                 (trs "To keep semantic search off, remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."))
+          msg                  (str (trs "MB_SEMANTIC_SEARCH_ENABLED is no longer supported.") " "
+                                    (or detail (trs "Remove it from your configuration.")))]
+      (if detail
+        (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
+        (log/warn msg)))))
+
+(defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
+  (check-for-removed-env-vars!))
 
 (defn init-index!
   "Ensure there is an index ready to be populated."

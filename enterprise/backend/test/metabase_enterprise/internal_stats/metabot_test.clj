@@ -39,9 +39,7 @@
       (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                             {:message         message
                              :context         {}
-                             :conversation_id conversation-id
-                             :history         []
-                             :state           {}}))))
+                             :conversation_id conversation-id}))))
 
 (defn- backdate-messages!
   "Update created_at on all messages and usage log rows for a conversation to the given timestamp."

@@ -1,7 +1,7 @@
-import { IndexRoute } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
 export function getDataStudioDependencyRoutes() {
-  return <IndexRoute component={DependencyGraphPage} />;
+  return <Route index component={DependencyGraphPage} />;
 }

@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 
 import {
   BrokenDependencyDiagnosticsPage,
@@ -8,7 +8,7 @@ import {
 export function getDependencyDiagnosticsRoutes() {
   return (
     <>
-      <IndexRedirect to="broken" />
+      <Route index component={redirect("broken")} />
       <Route path="broken" component={BrokenDependencyDiagnosticsPage} />
       <Route
         path="unreferenced"
