@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetExplorationDataQuery } from "metabase/api";
@@ -28,9 +28,14 @@ export function AddMetricsModal({
   const { addMetric, metricBlockIds } = selection;
 
   const libraryEnabled = PLUGIN_LIBRARY.isEnabled;
-  const [tab, setTab] = useState<MetricsTab>(
-    libraryEnabled ? "library" : "all",
-  );
+  const [tab, setTab] = useState<MetricsTab | null>(null);
+
+  // The modal stays mounted across opens; forget the previous open's tab choice on reopen (resetting on close instead would flip tabs mid close-animation) so each open re-derives the default from current data.
+  useEffect(() => {
+    if (opened) {
+      setTab(null);
+    }
+  }, [opened]);
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
@@ -62,12 +67,22 @@ export function AddMetricsModal({
     [metrics],
   );
 
+  const hasLibraryMetrics = metrics.some((metric) => metric.in_library);
+
+  // Until the user picks a tab, default to Library, falling back to All when
+  // the loaded data has nothing in the library to show.
+  const defaultTab: MetricsTab =
+    libraryEnabled && (response === undefined || hasLibraryMetrics)
+      ? "library"
+      : "all";
+  const activeTab = tab ?? defaultTab;
+
   const visibleMetrics = useMemo(
     () =>
-      libraryEnabled && tab === "library"
+      libraryEnabled && activeTab === "library"
         ? metrics.filter((metric) => metric.in_library)
         : metrics,
-    [libraryEnabled, tab, metrics],
+    [libraryEnabled, activeTab, metrics],
   );
 
   const items = visibleMetrics.map((metric) => ({
@@ -88,7 +103,7 @@ export function AddMetricsModal({
 
   const tabs = libraryEnabled ? (
     <Tabs
-      value={tab}
+      value={activeTab}
       onChange={(value) => {
         if (value === "library" || value === "all") {
           setTab(value);
