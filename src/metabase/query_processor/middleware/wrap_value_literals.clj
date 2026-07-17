@@ -210,7 +210,7 @@
            (seq s))
     (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value col s)))
+    (lib/value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
