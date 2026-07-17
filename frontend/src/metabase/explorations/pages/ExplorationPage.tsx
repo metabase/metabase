@@ -60,7 +60,6 @@ import {
 } from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
-const NO_TIMELINE_PARAM = "none";
 const TIMELINE_QUERY_PARAM = "timeline";
 
 interface ExplorationPageQuery {
@@ -399,9 +398,6 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
       return null;
     }
     const param = location.query?.[TIMELINE_QUERY_PARAM];
-    if (param === NO_TIMELINE_PARAM) {
-      return null;
-    }
     if (typeof param === "string" && param !== "") {
       const num = Number(param);
       if (Number.isFinite(num) && availableTimelineIds.has(num)) {
@@ -423,15 +419,12 @@ export function ExplorationPage({ params, location }: ExplorationPageProps) {
 
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
-      // Update the `timeline` URL query param while preserving the
-      // path and any other params already on the URL. `null` becomes
-      // the `NO_TIMELINE_PARAM` sentinel so we can tell an explicit
-      // user-clear apart from "no choice yet" (auto-default).
       const search = new URLSearchParams(location.search ?? "");
-      search.set(
-        TIMELINE_QUERY_PARAM,
-        timelineId == null ? NO_TIMELINE_PARAM : String(timelineId),
-      );
+      if (timelineId == null) {
+        search.delete(TIMELINE_QUERY_PARAM);
+      } else {
+        search.set(TIMELINE_QUERY_PARAM, String(timelineId));
+      }
       const searchString = search.toString();
       dispatch(
         push(`${location.pathname}${searchString ? `?${searchString}` : ""}`),
