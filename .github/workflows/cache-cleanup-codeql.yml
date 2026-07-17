@@ -1,0 +1,101 @@
+# CodeQL's overlay analysis saves a ~400MB "base database" cache on every master run, keyed by commit SHA, and
+# nothing ever removes the old ones. They had grown to 16 entries / 6.4GB — 61% of this repo's entire 10GB Actions
+# cache budget — which pushes GitHub into evicting caches we actually want (M2, node_modules, Cypress) and makes
+# unrelated jobs slower.
+#
+# Only the newest entry is ever restored: CodeQL looks its cache up by key *prefix* and takes the most recent match,
+# so everything behind it is dead weight. This job keeps the newest few and deletes the rest, daily.
+#
+# Safe by construction:
+#   - It only ever deletes keys starting with `codeql-overlay-base-database-`; nothing else is touched.
+#   - It keeps the newest `keep` entries, so in-flight runs and the next incremental analysis still get a hit.
+#   - Worst case if it deletes too much: CodeQL builds a full database instead of an incremental one. Slower, same
+#     results. Per the cache doctrine in cache-generator.yml — caches are for speed, never for correctness.
+name: Cache Cleanup (CodeQL)
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # daily at 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: "How many of the newest CodeQL caches to keep"
+        required: false
+        default: "2"
+      dry-run:
+        description: "List what would be deleted without deleting it"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: cache-cleanup-codeql
+  cancel-in-progress: false
+
+permissions:
+  actions: write # required to delete cache entries
+  contents: read
+
+jobs:
+  cleanup:
+    # don't run the schedule on forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      KEEP: ${{ github.event.inputs.keep || '2' }}
+      DRY_RUN: ${{ github.event.inputs.dry-run || 'false' }}
+      PREFIX: codeql-overlay-base-database-
+    steps:
+      - name: Delete superseded CodeQL caches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # created_at is ISO-8601, so a reverse lexicographic sort is newest-first.
+          gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100" \
+            --jq ".actions_caches[] | select(.key | startswith(\"${PREFIX}\")) | \"\(.created_at)\t\(.id)\t\(.size_in_bytes)\t\(.key)\"" \
+            | sort -r > all.tsv || true
+
+          found=$(wc -l < all.tsv | tr -d ' ')
+          echo "Found $found cache(s) matching '${PREFIX}'; keeping the newest $KEEP."
+          if [ "$found" -eq 0 ]; then
+            echo "Nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          tail -n +$((KEEP + 1)) all.tsv > doomed.tsv || true
+          doomed=$(wc -l < doomed.tsv | tr -d ' ')
+
+          freed=0
+          while IFS=$'\t' read -r created id size key; do
+            [ -z "${id:-}" ] && continue
+            echo "  deleting $key ($((size / 1000000))MB, created $created)"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "    (dry run — not deleted)"
+            else
+              # A cache can vanish between listing and deleting (concurrent eviction); don't fail the job over it.
+              gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/caches/${id}" >/dev/null \
+                || echo "    (already gone, skipping)"
+            fi
+            freed=$((freed + size))
+          done < doomed.tsv
+
+          {
+            echo "### CodeQL cache cleanup"
+            echo ""
+            echo "- matched: **$found**"
+            echo "- kept (newest): **$KEEP**"
+            echo "- deleted: **$doomed**"
+            echo "- reclaimed: **$((freed / 1000000)) MB**${DRY_RUN:+ (dry run: $DRY_RUN)}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report remaining cache usage
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/cache/usage" \
+            --jq '"Repo cache usage now: \(.active_caches_size_in_bytes / 1000000000 | .*100 | round / 100) GB across \(.active_caches_count) entries (limit 10 GB)"' \
+            | tee -a "$GITHUB_STEP_SUMMARY"
