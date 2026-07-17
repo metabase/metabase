@@ -13,7 +13,7 @@ every fix made while stabilizing a port gets classified and fed back:**
 
 **Never `test.fixme` a test or claim a product bug without running the
 original Cypress spec against the same backend** (`MB_JETTY_PORT=<slot port>`,
-no port-4000 contact) and comparing:
+no port-4000 contact) **with `--browser chrome`**, and comparing:
 
 - Same tests fail at the same assertions → the port is faithful and the
   behaviour is real. This is the strongest evidence we can produce.
@@ -25,6 +25,14 @@ against the CI uberjar, it fires fine — a *different code path* (the question
 loading dirty, so the QB runs `/api/dataset` instead of the card endpoint) had
 masked the request we were watching for. The absence of a request you expected
 is evidence about **your wait**, not about the app. Two claimed bugs, retracted.
+
+`--browser chrome` is not optional. Nothing in the runner or config picks a
+browser, so `cypress.run()` defaults to **Electron** — comparing Electron
+against Playwright's Chromium bakes an engine mismatch into our strongest
+evidence. This repo has a documented class of bugs that reproduce only in
+Chrome headless (hit-testing on Mantine tooltips via `realHover`, CDP keyboard
+dispatch), so the engine is a live suspect whenever a cross-check disagrees
+with CI. Chrome 150 is installed locally; CI's Cypress leg runs Chrome too.
 
 Corollaries:
 - An empty/odd field in an API response is not a bug until you can name the
