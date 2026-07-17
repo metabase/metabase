@@ -35,7 +35,7 @@ If you're having trouble logging in, see our [People can't log into Metabase](..
 
 If your admin has turned on [two-factor authentication](./two-factor-authentication.md) (2FA), you'll see a **Security** tab in your account settings. 2FA adds a second step to logging in: after your password, you enter a code from an authenticator app, so your password alone won't let someone into your account.
 
-### Set up two-factor authentication
+### Set up two-factor authentication on your account
 
 1. Click the grid icon in the upper right.
 2. Click your profile.
