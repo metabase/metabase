@@ -333,7 +333,23 @@
                   wrap-value-literals
                   :stages
                   first))
-          "the `:relative-datetime` bound is left untouched"))))
+          "the `:relative-datetime` bound is left untouched"))
+    (testing "raw (unwrapped) string bound + `:relative-datetime` bound"
+      (is (=? {:filters [[:between {}
+                          [:field {} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date "2026-01-01") :default]
+                          [:relative-datetime {} 0 :day]]]}
+              (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query checkins
+                     {:filter [:between
+                               [:field (meta/id :checkins :date) nil]
+                               "2026-01-01"
+                               [:relative-datetime 0 :day]]}))
+                  wrap-value-literals
+                  :stages
+                  first))
+          "the raw string bound still gets wrapped, same as when the `:relative-datetime` bound isn't present"))))
 
 (deftest ^:parallel wrap-prewrapped-absolute-datetime-two-literals-test
   (testing (str "a comparison with a string-valued `:absolute-datetime` on *both* sides (no field to "

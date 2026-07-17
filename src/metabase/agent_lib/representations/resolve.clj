@@ -37,7 +37,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,20 +132,15 @@
   QP's `wrap-value-literals`, where the comparison field's type and the report timezone are
   available. This pass only rejects literals that can't possibly parse. Returns the query unchanged."
   [pmbql-query]
-  ;; Plain `clojure.walk`, not `lib.walk/walk-clauses`: the latter is a `mu/defn` that validates its
+  ;; `match/match-many`, not `lib.walk/walk-clauses`: the latter is a `mu/defn` that validates its
   ;; whole-query argument against `::lib.schema/query`, so under test instrumentation it would throw a
   ;; raw "Invalid input" on an otherwise-malformed query (e.g. an `:offset` in `:expressions`) here,
   ;; pre-empting the friendlier not-runnable gate downstream. We only need to inspect literals, and
   ;; matching a bare `[:absolute-datetime _ s _]` vector suffices — the same shape check the sibling
   ;; `annotate-field-types` pass uses.
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (= :absolute-datetime (nth node 0 nil))
-                (string? (nth node 2 nil)))
-       (assert-parseable-temporal-literal! (nth node 2)))
-     node)
-   pmbql-query)
+  (match/match-many pmbql-query
+    [:absolute-datetime _ (s :guard string?) _]
+    (assert-parseable-temporal-literal! s))
   pmbql-query)
 
 (defn resolve-query
