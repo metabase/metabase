@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
 import type {
@@ -20,24 +21,18 @@ import {
 import type { SearchAwareLocation } from "metabase/common/search/types";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { push, withRouter } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
-import {
-  CloseSearchButton,
-  SearchBarRoot,
-  SearchIcon,
-  SearchInput,
-  SearchInputContainer,
-  SearchResultsFloatingContainer,
-} from "./SearchBar.styled";
+import S from "./SearchBar.module.css";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -201,11 +196,25 @@ function SearchBarView({
   };
 
   return (
-    <SearchBarRoot ref={container}>
-      <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
-        <SearchIcon name="search" isActive={isActive} />
-        <SearchInput
-          isActive={isActive}
+    <Box
+      ref={container}
+      w="100%"
+      maw={{ sm: rem(232) }}
+      pos={{ sm: "relative" }}
+    >
+      <Flex
+        className={cx(S.container, { [S.active]: isActive })}
+        align="center"
+        pos="relative"
+        flex="1 1 auto"
+        onClick={onInputContainerClick}
+      >
+        <Icon
+          name="search"
+          className={cx(S.searchIcon, { [S.active]: isActive })}
+        />
+        <input
+          className={cx(S.input, { [S.active]: isActive })}
           value={searchText}
           placeholder={t`Search` + "…"}
           maxLength={200}
@@ -214,16 +223,30 @@ function SearchBarView({
           ref={searchInput}
         />
         {isSmallScreen() && isActive && (
-          <CloseSearchButton onClick={handleClickOnClose}>
+          <UnstyledButton
+            className={S.closeButton}
+            display="flex"
+            w={rem(48)}
+            h="100%"
+            aria-label={t`Close search`}
+            onClick={handleClickOnClose}
+          >
             <Icon name="close" />
-          </CloseSearchButton>
+          </UnstyledButton>
         )}
         {!isSmallScreen() && !isWithinIframe() && isActive && (
           <CommandPaletteTrigger onClick={handleCommandPaletteTriggerClick} />
         )}
-      </SearchInputContainer>
+      </Flex>
       {isActive && isTypeaheadEnabled && (
-        <SearchResultsFloatingContainer data-testid="search-results-floating-container">
+        <Box
+          pos="absolute"
+          left={0}
+          right={0}
+          top={{ base: APP_BAR_HEIGHT, sm: rem(42) }}
+          c="text-primary"
+          data-testid="search-results-floating-container"
+        >
           {hasSearchText ? (
             <SearchResultsDropdown
               searchText={searchText}
@@ -234,9 +257,9 @@ function SearchBarView({
           ) : (
             <RecentsList />
           )}
-        </SearchResultsFloatingContainer>
+        </Box>
       )}
-    </SearchBarRoot>
+    </Box>
   );
 }
 
