@@ -277,13 +277,6 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
-        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        ;; Confined flows (embedded metabot, nlq profile) are pinned to the metabot's own
-        ;; collection — a caller-supplied collection-id must not widen them. Unconfined callers
-        ;; (the MCP v2 tool, agent-api) scope by their own collection-id.
-        collection-id   (if (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot)
-                          collection-id)
         limit           (or limit 50)
         ;; Context shared by every per-query search and the final hydration. `:search-string` and
         ;; `:search-engine` vary per query; `:offset`/`:limit` are deliberately omitted here —
@@ -523,6 +516,14 @@
   (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
+(defn- confined-collection-id
+  "The collection an embedded-metabot or nlq-profile search is confined to — the metabot's own
+   collection. nil for every other flow, so those scope by whatever `collection-id` they pass."
+  [metabot-id profile-id]
+  (when (or (= metabot-id metabot.config/embedded-metabot-id) (= profile-id "nlq"))
+    (:collection_id (t2/select-one :model/Metabot :entity_id
+                                   (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id)))))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
@@ -533,6 +534,7 @@
                                     :term-queries    keyword_queries
                                     :entity-types    (or (seq entity_types) (vec allowed-types))
                                     :metabot-id      shared/*metabot-id*
+                                    :collection-id   (confined-collection-id shared/*metabot-id* (:profile-id search-opts))
                                     :limit           (min max-search-limit
                                                           (or limit default-search-limit))}
                                    search-opts))]

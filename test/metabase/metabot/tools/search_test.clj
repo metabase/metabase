@@ -383,30 +383,36 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
-(deftest confined-metabot-collection-cannot-be-widened-test
-  (testing "GHY-4137: a confined flow (embedded metabot / nlq profile) is pinned to the metabot's
-            own collection — a caller-supplied collection-id must not widen it — while an
-            unconfined caller (the MCP v2 tool) scopes by its own collection-id"
-    (mt/with-test-user :rasta
-      (with-redefs [perms/impersonated-user? (fn [] false)
-                    perms/sandboxed-user? (fn [] false)
-                    api/*current-user-id* 1]
-        (mt/with-temp [:model/Collection c {:name "Metabot Home"}
-                       :model/Metabot _ {:name "MB" :entity_id "mbEid1234567890abcdef" :collection_id (:id c)}]
-          (let [captured (atom :unset)
-                run!     (fn [search-args]
-                           (reset! captured :unset)
-                           (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [ctx]
-                                                                                    (reset! captured (:collection ctx))
-                                                                                    [])]
-                             (search/search (merge {:term-queries ["x"] :entity-types ["card"]} search-args)))
-                           @captured)]
-            (testing "nlq profile ignores a caller-supplied collection-id and pins to the metabot's"
-              (is (= (:id c) (run! {:profile-id "nlq" :metabot-id "mbEid1234567890abcdef" :collection-id 99999}))))
-            (testing "with no caller collection-id, the confined flow still pins to the metabot's"
-              (is (= (:id c) (run! {:profile-id "nlq" :metabot-id "mbEid1234567890abcdef"}))))
-            (testing "an unconfined caller's collection-id is honored"
-              (is (= 42 (run! {:collection-id 42}))))))))))
+(deftest metabot-search-collection-scoping-test
+  (testing "GHY-4137: `search` scopes by whatever collection-id it is handed and never overrides it
+            based on caller type. Confining embedded-metabot / nlq-profile flows to the metabot's
+            own collection is the caller's (do-search's) policy, expressed by confined-collection-id."
+    (mt/with-temp [:model/Collection c {:name "Metabot Home"}
+                   :model/Metabot _ {:name "MB" :entity_id "mbEid1234567890abcdef" :collection_id (:id c)}]
+      (testing "confined-collection-id resolves the confined flows to the metabot's collection"
+        (let [confined @#'search/confined-collection-id]
+          (is (= (:id c) (confined "mbEid1234567890abcdef" "nlq"))
+              "an nlq-profile search is confined to the metabot's collection")
+          (is (nil? (confined "mbEid1234567890abcdef" nil))
+              "a non-embedded, non-nlq flow is unconfined")))
+      (testing "search passes the collection-id through unchanged — no caller-type override"
+        (mt/with-test-user :rasta
+          (with-redefs [perms/impersonated-user? (fn [] false)
+                        perms/sandboxed-user?    (fn [] false)]
+            (let [captured (atom :unset)
+                  run!     (fn [search-args]
+                             (reset! captured :unset)
+                             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [ctx]
+                                                                                      (reset! captured (:collection ctx))
+                                                                                      [])]
+                               (search/search (merge {:term-queries ["x"] :entity-types ["card"]} search-args)))
+                             @captured)]
+              (is (= 42 (run! {:collection-id 42}))
+                  "the caller's collection-id is used")
+              (is (= 42 (run! {:collection-id 42 :profile-id "nlq" :metabot-id "mbEid1234567890abcdef"}))
+                  "even an nlq/metabot flow uses the passed collection-id — search does not override it")
+              (is (nil? (run! {}))
+                  "no collection-id means no scoping"))))))))
 
 (deftest multi-query-fusion-paginates-coherently-test
   (testing "GHY-4137: paging a multi-query (rank-fused) search applies offset to the *fused*
