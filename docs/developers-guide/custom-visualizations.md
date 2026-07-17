@@ -421,7 +421,7 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 
 The [Modular embedding SDK](../embedding/sdk/introduction.md) renders custom visualizations when you allowlist them with the [`allowedCustomVisualizations` prop](../embedding/sdk/config.md#custom-visualizations) on `MetabaseProvider` (this requires the `custom-viz` feature).
 
-Other embedding types don't render custom visualizations. In [modular embedding](../embedding/modular-embedding.md) with web components, [guest embeds](../embedding/introduction.md), and [public links](../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
+Other embedding types don't render custom visualizations. In [modular embedding](../embedding/modular-embedding.md) with web components and [public links](../embedding/public-links.md), any card that uses a custom visualization falls back to the default visualization for the query's results.
 
 ### Custom visualizations don't render in exports and subscriptions
 
