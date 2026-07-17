@@ -43,7 +43,7 @@ All agents died on a Fable 5 usage limit (see "Usage" below). The spec files are
 | 4 | `tests/metrics-explorer.spec.ts` (2560) | Partially verified; was re-running "Entry points" after a fresh backend rendered correctly. |
 | 5 | `tests/dashboard-filters-reproductions-1.spec.ts` (2745) | **DONE — verified and landed.** 33 pass / 7 skipped, clean under `--repeat-each=2`. Not WIP; leave alone. |
 | 6 | `tests/dashboard-core.spec.ts` (2131) | **Full file green (45 passed / 1 skipped `@skip` upstream), one flake open.** Two port defects found and fixed (one root cause: `saveDashboard` racing an unanchored card-add — now a PORTING.md gotcha). No product bug: a test-side wait fixes both, and a Cypress cross-check on :4106 passed both (⚠️ Electron, predates the `--browser chrome` rule — re-run before citing). **Open (needs a decision, not a fix):** `--repeat-each=2` (89 passed / 1 failed / 2 skipped) caught `auto-scrolling to a dashcard via a url hash param` (:1318); measured **3 fail / 2 pass over 5 runs on a quiet box**. Cause is app-side: `DashCard` scrolls once in `useMount` and clears the `scrollTo` hash immediately, so any later remount/reflow loses the scroll and nothing re-scrolls. Left unmodified and unskipped on purpose — the port's `toBeInViewport()` is *stronger* than Cypress's `should("be.visible")` (which ignores scroll position), so weakening it makes the test vacuous and a `toPass` retry would mask the very behaviour under test. Not claimed as a product bug (fidelity bar not met). See `findings-inbox/dashboard-core.md`. |
-| 7 | `tests/documents-comments.spec.ts` (2009) | Typechecks; never run. |
+| 7 | `tests/documents-comments.spec.ts` (2009) | **DONE — verified and landed.** 47 pass / 1 skipped (the original's `it.skip`), clean under `--repeat-each=2`. In PORTED.txt; findings in `findings-inbox/documents-comments.md`. Not WIP; leave alone. |
 | 8 | `tests/interactive-embedding.spec.ts` (2624) | **Spec was mid-write — likely incomplete.** Check it parses before running. |
 | 9 | `tests/documents.spec.ts` (2241) | Written; never run, never typechecked. |
 
@@ -190,3 +190,9 @@ Docker: `postgres-sample`, `mongo-sample`, `mysql-sample`, `maildev`
 (:1025 SMTP / :1080 UI), `webhook-tester`. Compose file:
 `e2e/test/scenarios/docker-compose.yml`. Premium tokens come from repo-root
 `cypress.env.json` (the values in `.env` are stale — never print token values).
+
+`snowplow-micro` (:9090) is now **also running** (`snowplow/docker-compose.yml`,
+started during the documents-comments port and left up). The ports stub
+snowplow, so they don't need it — but any **original Cypress spec whose
+`beforeEach` calls `H.resetSnowplow()`** dies in `before each hook` in ~1s
+without it, which matters for the fidelity cross-check.

@@ -150,6 +150,106 @@ specs: some may have been *stabilized against 720* and could shift. That
 re-verification is the real cost, and it argues for doing it sooner rather than
 after another 350 specs land on the wrong viewport.
 
+## PORTING GOTCHA (big one): Playwright does not route the follow-up request
+## of a redirect — Cypress's proxy does. Mocked SSO/IdP flows break silently.
+
+The 3 JWT SSO tests bounce through four redirects:
+
+```
+/dashboard/10 → /auth/sso?redirect=… → :8888/jwt-provider (mock IdP)
+              → /auth/sso?jwt=… (sets session) → /dashboard/10
+```
+
+Every hop must stay intercepted: the app-origin hops to strip
+`X-Frame-Options`, and the IdP hop because it's a **mock** — nothing listens on
+:8888. But `page.route` handlers are **not invoked for a request the browser
+reached by following a redirect**.
+
+Isolated with a control, same URL, same single route registered:
+
+| how :8888 is reached | handler runs? | result |
+|---|---|---|
+| `page.goto("http://localhost:8888/jwt-provider?control=1")` | **yes** | intercepted, mock served |
+| via a 302 `Location:` from a fulfilled response | **no** | real network → `net::ERR_CONNECTION_REFUSED` |
+
+A `page.route(() => true, …)` catch-all — which fires happily for other
+cross-origin requests (the :8080 rspack bundles) — is *also* skipped for the
+redirect follow-up. So it isn't a bad predicate; the routing layer never sees
+the request.
+
+Cypress has no equivalent problem because its proxy sits in front of **every**
+hop, so `cy.intercept` keeps applying across a redirect chain. This is a real
+behavioural gap between the two harnesses, and it will bite **any** port that
+mocks a redirect-based external flow: JWT SSO, SAML, OAuth callbacks, any
+`req.redirect()` in a `cy.intercept`.
+
+**The failure mode is nasty**, and worth calling out on its own:
+
+- The port *looked* fine and one of the three tests **passed**. It asserts only
+  that a request to the IdP was *attempted* (`waitForRequest`), which is true
+  even though the mock never ran and the request died on
+  `ERR_CONNECTION_REFUSED`. A green test was reporting a mock that had never
+  worked once.
+- The other two failed far downstream ("Orders in a dashboard" not visible)
+  with a fully rendered 382KB page. Only `fetch("/api/user/current")` from
+  inside the frame → `401 Unauthenticated`, and a cookie jar holding
+  `metabase.TIMEOUT`/`metabase.DEVICE` but **no `metabase.SESSION`**, pointed
+  back at the auth hop. Everything in between invited a wrong diagnosis — I
+  first suspected the harness's Set-Cookie splitting, which was innocent.
+
+**Fix:** `mockRedirectResponse` / `fulfillAsClientRedirect` in
+`support/interactive-embedding.ts` — fulfill a 3xx as a tiny document doing
+`location.replace(<target>)`. That makes the next hop a *fresh* navigation,
+which Playwright does route. `replace` (not `assign`) keeps history identical
+to a real redirect. Applied in two places: the harness's document proxy (any
+3xx from the app) and the spec's IdP mock (replacing
+`route.fulfill({status: 302, headers: {location}})`).
+
+Result: 3/3 JWT SSO tests pass in ~5s each.
+
+**Generalise at consolidation:** `mockRedirectResponse` belongs in a shared
+module — it is not embedding-specific. Worth a lint/codemod note too: in a
+Playwright port, `route.fulfill({ status: 3xx, headers: { location } })` is
+almost always a latent bug unless the next hop needs no interception.
+
+## PORTING GOTCHA: `should("not.be.visible")` for a scrolled-away element is
+## NOT `not.toBeVisible()` — Playwright ignores overflow clipping
+
+metabase#30645 scrolls a dashboard to the bottom and asserts a text card is no
+longer visible. After the scroll the element is measurably gone:
+
+```
+scrollTop=354 (max), textRect: top=-144.6 bottom=-119.0   // above the viewport
+```
+
+…and Playwright still reported it **visible**. `toBeVisible` checks only for a
+non-empty bounding box and `visibility != hidden`; an element scrolled out of
+an overflow container has both. Cypress's visibility rules explicitly cover
+"clipped by an ancestor's overflow" and call it not visible.
+
+Faithful port: **`not.toBeInViewport()`**. Applies to any upstream
+`should("not.be.visible")` whose mechanism is scrolling/clipping rather than
+`display:none` / `visibility:hidden` — where the two harnesses genuinely
+disagree, and the port silently asserts something weaker than the original.
+
+## PORTING GOTCHA: `cy.scrollTo(…, { duration })` is not
+## `scrollTo({ behavior: "smooth" })` under reducedMotion
+
+Same test. Cypress's `cy.scrollTo("bottom", { duration: 2 * FPS })` is jQuery
+`.animate()` assigning `scrollTop` frame by frame — plain JS, unaffected by
+`prefers-reduced-motion`. The port used
+`element.scrollTo({ top: …, behavior: "smooth" })`, and the config sets
+`contextOptions: { reducedMotion: "reduce" }`, under which Chromium **does not
+perform the programmatic smooth scroll at all** — `scrollTop` stayed `0`, so
+the test's scroll silently never happened.
+
+Nothing errors; the page just doesn't move, and the failure lands on a later
+assertion. Fix: animate `scrollTop` by hand across `requestAnimationFrame`s,
+which preserves both properties the test needs (it scrolls, and it isn't
+instant — this test's whole point is that an instant scroll masks the bug).
+Note for the suite: **any** ported `behavior: "smooth"` scroll is a no-op under
+our config. `scrollIntoViewIfNeeded()` / `mouse.wheel()` are unaffected.
+
 ## Helper duplication for the consolidation pass (do NOT edit search.ts now)
 
 `support/interactive-embedding.ts` `visitFullAppEmbeddingUrl` is a generalized

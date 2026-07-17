@@ -483,6 +483,7 @@
 - `test`
 
 ## interactive-embedding.ts
+- `mockRedirectResponse` — Mock an external redirect (e.g. a JWT/SAML IdP bouncing back to the app).
 - `visitFullAppEmbeddingUrl`
 - `embedFrame` — The Frame behind visitFullAppEmbeddingUrl, for URL assertions.
 - `recordedPostMessages` — Messages the embed posted to its parent since the last harness load /

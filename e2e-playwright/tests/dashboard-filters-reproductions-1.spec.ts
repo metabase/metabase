@@ -384,7 +384,7 @@ test.describe("issue 12720, issue 47172", () => {
   // is ruled out; whether CI (jar backend + static assets) also fails is
   // unverified from this spec. Remove fixme once the drill-through carries the
   // parameter again.
-  test.fixme("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", async ({
+  test("should show QB question on a dashboard with filter connected to card without data-permission (metabase#12720)", async ({
     page,
     mb,
   }) => {
@@ -394,7 +394,7 @@ test.describe("issue 12720, issue 47172", () => {
     await clickThrough(page, mb, "Orders");
   });
 
-  test.fixme("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", async ({
+  test("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", async ({
     page,
     mb,
   }) => {
@@ -1065,7 +1065,7 @@ test.describe("issue 21528", () => {
   // <div...Popover...> but never did"), so this is not a porting defect.
   // Cause not established (snapshot staleness ruled out — it is newer than the
   // latest migration); CI behavior unverified from this spec.
-  test.fixme("should show dashboard ID filter values when mapped to a native question with a foreign key field filter", async ({
+  test("should show dashboard ID filter values when mapped to a native question with a foreign key field filter", async ({
     page,
   }) => {
     await visitQuestion(page, questionId);
@@ -1764,7 +1764,7 @@ test.describe("issue 25374", () => {
   // on `[data-testid="table-header"]`, -3 on `[data-testid=cell-data]`. Not a
   // porting defect; cause not established (snapshot staleness ruled out), CI
   // behavior unverified from this spec.
-  test.fixme("should pass comma-separated values down to the connected question (metabase#25374-1)", async ({
+  test("should pass comma-separated values down to the connected question (metabase#25374-1)", async ({
     page,
   }) => {
     // Drill-through and go to the question
@@ -1804,7 +1804,7 @@ test.describe("issue 25374", () => {
     await expect.poll(urlSearch(page)).toBe("?equal_to=1%2C2%2C3");
   });
 
-  test.fixme("should retain comma-separated values when reverting to default (metabase#25374-3)", async ({
+  test("should retain comma-separated values when reverting to default (metabase#25374-3)", async ({
     page,
   }) => {
     await editDashboard(page);
@@ -1866,7 +1866,7 @@ test.describe("issue 25374", () => {
     await expect.poll(urlSearch(page)).toBe("?num=1%2C2%2C3");
   });
 
-  test.fixme("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", async ({
+  test("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", async ({
     page,
   }) => {
     await editDashboard(page);

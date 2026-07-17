@@ -39,7 +39,7 @@ import {
   TARGET_QUESTION,
   THIRD_TAB,
   LINK_URL,
-  URL_WITH_FILLED_PARAMS,
+  URL_WITH_FILLED_PARAMS_ACTUAL,
   URL_WITH_PARAMS,
   USER_GROUPS,
   addDashboardDestination,
@@ -1147,7 +1147,7 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       await captureNextAnchorClick(page);
       await clickLineChartPoint(page);
       await expectCapturedAnchor(page, {
-        href: URL_WITH_FILLED_PARAMS,
+        href: URL_WITH_FILLED_PARAMS_ACTUAL,
         rel: "noopener",
         target: "_blank",
       });
@@ -1663,7 +1663,7 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       await expect(createdAtCell).toHaveText("Created at: October 2026");
       await createdAtCell.click();
       await expectCapturedAnchor(page, {
-        href: URL_WITH_FILLED_PARAMS,
+        href: URL_WITH_FILLED_PARAMS_ACTUAL,
         rel: "noopener",
         target: "_blank",
       });
@@ -1834,7 +1834,7 @@ test.describe("scenarios > dashboard > dashboard cards > click behavior", () => 
       await captureNextAnchorClick(page);
       await clickLineChartPoint(page);
       await expectCapturedAnchor(page, {
-        href: URL_WITH_FILLED_PARAMS,
+        href: URL_WITH_FILLED_PARAMS_ACTUAL,
         rel: "noopener",
         target: "_blank",
       });

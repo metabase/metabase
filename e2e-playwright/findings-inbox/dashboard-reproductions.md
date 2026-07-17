@@ -161,21 +161,84 @@ exactly the per-worker-backend mode this spike is evaluating.
 so this pins the right origin and **survives `restore()`** (a value written
 into the DB would not).
 
-### Why this matters beyond this spec — please check before the next wave
+### Why this matters beyond this spec
 
-Any test that drills through / navigates via `openUrl` is affected on every
-slot backend. **This is a strong candidate root cause for RESUME.md's open
-thread 3** — `dashboard-filters-reproductions-1`'s 6 unexplained `test.fixme`s,
-whose common shape is recorded as "a dashcard **title drill-through does not
-carry the dashboard filter's value** into the question". That thread's stated
-decider was "is CI's Cypress leg green?" — CI runs its backend on :4000-ish
-with a matching site-url, which would make CI green and *look* like an
-environmental delta without ever explaining it. This is the explanation, and it
-predicts those fixmes are re-enablable once the backend boots with MB_SITE_URL.
-Worth re-running that spec on a freshly booted slot backend before landing any
-claim that they are product regressions.
+Any test navigating via `openUrl` is affected on **every** slot backend, and
+the failure is silent-ish (the URL still matches `/question`), so it surfaces
+as a confusing downstream assertion rather than an obvious error. Every port
+verified on a slot backend before this fix was running with a mis-set
+`site-url`.
 
-### Cross-check caveat worth recording (methodology)
+**Relationship to RESUME.md open thread 3 — a hypothesis, NOT a conclusion.**
+It is tempting to blame this for `dashboard-filters-reproductions-1`'s 6
+unexplained `test.fixme`s ("dashcard title drill-through does not carry the
+dashboard filter's value"), and that thread's stated decider ("is CI's Cypress
+leg green?") would be satisfied by a site-url delta without explaining it. But
+**the symptoms do not match**:
+
+- Mine: a **cross-origin** full page load to `:4000`; the URL *does* carry its
+  hash/query, and the page 404s in-app ("We're a little lost").
+- Theirs: the navigation appears same-origin and the **search string is empty**
+  (`expected '' to include '2029-01-01~'`). If site-url were the cause there,
+  the URL would have been rewritten to `:4000` *with* the search string intact
+  and their assertion would have passed, not seen `''`.
+
+Their drill is a dashcard **title** click, which I have not confirmed routes
+through `openUrl` at all (it may be a react-router `Link`, which never touches
+`getWithSiteUrl`). So: **plausible, unproven, and the observed evidence points
+away from it.** The cheap decider is one step: temporarily un-fixme one of
+those 6 and run it against a slot backend booted with `MB_SITE_URL`. I did not
+do this — the spec is landed and owned by another agent, and I did not want to
+leave debris in it. Recommended for whoever picks that thread up.
+
+---
+
+## 5. UNRESOLVED (1 `test.fixme`): issue 12926 native card shows no parameter-mapping options
+
+**Classification:** faithful port; upstream behaviour on this environment.
+**NOT claimed as a product bug** — see below.
+
+`issue 12926 › saving a dashboard that retriggers a non saved query (negative
+id) › should load the card with correct parameters after save` fails: the
+dashcard's "Select…" mapping button never renders. The card instead renders
+`DisabledNativeCardHelpText`, which only happens when
+`isNative && isDisabled && question && editingParameter` — and
+`isDisabled = mappingOptions.length === 0`
+(`DashCardParameterMapper/DashCardCardParameterMapper.tsx:85`).
+
+So `getParameterMappingOptions` returned `[]`, even though by inspection it
+should return one option:
+
+- The parameter is `number/=` (the sidebar shows type Number / operator Equal
+  to, and the help text is the `isNumberParameter` branch).
+- The template tag `F` is `type: "number"` (confirmed: the tag survives the API
+  round-trip — the card returns it under MBQL5 `stages[0].template-tags`).
+- `tagFilterForParameter` (`metabase-lib/v1/parameters/utils/filters.ts:119`)
+  maps `number` + operator `=` → `(tag) => tag.type === "number"` → true.
+
+That points at `question.legacyNativeQuery()` not surfacing variables, but I
+did not confirm it, and note the card also returns `parameters: []`.
+
+**Fidelity cross-check (the deciding step):** the ORIGINAL Cypress spec fails
+identically at the same assertion on the same backend — both at Cypress's
+default 4s timeout and with `defaultCommandTimeout=30000`. The port is
+faithful; this is not a port defect and not a timeout artifact.
+
+**Why no bug is being claimed:** "Cypress fails identically" does **not** rule
+out the environment here, because both harnesses load the *same* rspack hot
+bundle from `:8080` and hit the same source-mode backend. A frontend-side cause
+would fail both harnesses identically and look exactly like this. FINDINGS #24
+was retracted for precisely this inference, and RESUME.md flags a sibling
+`parameters: []` thread (#2/#22) still awaiting the same jar re-verification.
+
+**Next step (one concrete action):** re-run this single test against the CI
+uberjar + static assets — the procedure that retracted #24. If it fails there
+too, it is a real regression worth an issue; if it passes, the cause is local
+environment and the fixme comes off.
+
+---
+
+## 6. Methodology note: a Cypress baseline taken under load is not a baseline
 
 My first Cypress cross-check ran with Cypress's default 4s `defaultCommandTimeout`
 against a machine running three other agents' Playwright suites + JVMs: **20/41

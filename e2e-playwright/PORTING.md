@@ -297,6 +297,57 @@ lead that survived did so because the agent happened to narrate it out loud.
 - **Gate naming**: QA_DB_ENABLED leaks in from cypress.env.json (always true
   on dev machines); PW_QA_DB_ENABLED is deliberate. TODO: unify on
   PW_QA_DB_ENABLED once container specs are consolidated.
+
+## Gotchas added in wave 9 (documents-comments)
+
+- **A parked real cursor opens a tooltip that eats the next Escape.**
+  Cypress's `.click()`/`.type()` are *synthetic*: the OS cursor stays where
+  the last `realHover()` left it. Playwright's `.click()` moves the real
+  cursor and leaves it parked, so content that renders under it opens a
+  Mantine tooltip — and floating-ui's `useDismiss` calls
+  `event.stopPropagation()` on Escape while any floating element is open
+  (`escapeKeyBubbles` defaults false). The Escape dismisses the tooltip and
+  **never reaches window-level handlers**; the second Escape works, which is
+  what makes it look like an app bug. Before a keyboard Escape that must
+  reach the app, park the mouse (`parkMouseAwayFromTooltips` in
+  documents.ts). Applies to any window-level key handler, not just Escape.
+- **Pace repeated key presses.** Every `cy.realPress` is its own Cypress
+  command, so the original always had queue latency between presses;
+  `page.keyboard.press` in a loop has none. ProseMirror then drops/coalesces
+  selection updates and formatting marks land on the wrong words. Use a
+  ~25ms cadence (the same one `realType` → `keyboard.type({delay})` uses).
+- **Async-filtered suggestion lists: gate on the element the handler reads.**
+  The emoji picker's Enter handler reads
+  `[data-active] || [frimousse-row][aria-rowindex="0"] [data-emoji]` from the
+  live DOM while frimousse filters asynchronously — so `:eggplant`+Enter
+  picked a leftover match. Asserting the target is *somewhere* in the popup
+  is NOT a gate (it can be present while row 0 lags). Find what the app's
+  handler actually queries and gate on that exact element.
+- **Some widget state has no DOM signal — re-nudge instead.** The emoji
+  picker's first arrow key may be spent initialising navigation rather than
+  moving (EmojiSuggestionExtension says so in a comment); nothing in the DOM
+  distinguishes the two. Press-until-arrived in a `toPass` loop
+  (`pressArrowUntilActive`), the same re-nudge pattern used for editor
+  autocomplete.
+- **Late `replace()` with a stale location can undo a navigation.** After
+  creating a comment, `deleteNewParamFromURLIfNeeded` strips `?new=true`
+  using the location captured at submit time — so leaving the route before
+  the mutation resolves gets undone. Cypress's latency always covered the
+  window. Gate on the *state the race corrupts* (the URL), not on the POST
+  response: the dispatch lands a tick after the response.
+- **Running the original Cypress spec for a cross-check needs snowplow-micro**
+  if its `beforeEach` calls `H.resetSnowplow()` — otherwise the whole spec
+  dies in `before each hook` in ~1s and looks unrelated to your change.
+  `docker compose -f snowplow/docker-compose.yml up -d` (left running).
+  Also, concurrent Cypress runs from other slots race the shared
+  `example_custom_viz` tarball that `e2e/support/config.js` builds in
+  `setupNodeEvents`; the config throws and the log interleaves another
+  agent's spec name. Retry.
+- **Cross-check invocation** (the fidelity rule's command shape):
+  `MB_JETTY_PORT=410N GREP="<test name>" CYPRESS_RETRIES=0 bunx cypress run
+  --browser chrome --config-file e2e/support/cypress.config.js --spec
+  e2e/test/scenarios/<path>` — `@cypress/grep` is wired up, so you can run
+  the single test rather than the whole file.
 - **`have.attr` on a BOOLEAN attribute asserts presence, not value.** jQuery
   special-cases `disabled`/`checked`/`selected`/…: the getter returns the
   lowercased attribute *name* when present, so upstream's

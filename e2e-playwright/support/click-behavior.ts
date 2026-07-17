@@ -147,6 +147,29 @@ export const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
   .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
+/**
+ * What the app actually puts in the href, and what the two URL-destination
+ * tests assert instead of `URL_WITH_FILLED_PARAMS`.
+ *
+ * `URL_WITH_FILLED_PARAMS` interpolates `FILTER_VALUE` ("123"), but neither
+ * consuming test ever enters "123" — both filter by typing "Dell Adams" into a
+ * "Search the list" widget (123 isn't a name in the People list, so the widget
+ * could not accept it). The real fill is the filter value actually applied plus
+ * the clicked datum of the *filtered* series.
+ *
+ * Upstream asserts the "123" URL and passes, because its assertions live inside
+ * the `H.onNextAnchorClick` callback and so never enforce (see
+ * findings-inbox/click-behavior.md). Verified against the same backend: both
+ * tests independently produce the href below. Faithfully replicating an
+ * assertion that cannot fail would port the defect, not the coverage.
+ */
+export const URL_WITH_FILLED_PARAMS_ACTUAL = URL_WITH_PARAMS.replace(
+  `{{${COUNT_COLUMN_ID}}}`,
+  "1",
+)
+  .replace(`{{${CREATED_AT_COLUMN_ID}}}`, "2026-10")
+  .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, "Dell%20Adams");
+
 // === instance data the spike's sample-data.ts doesn't export ===
 
 /** Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */

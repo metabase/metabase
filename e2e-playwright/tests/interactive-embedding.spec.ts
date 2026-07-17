@@ -2169,19 +2169,47 @@ test.describe("scenarios > embedding > full app", () => {
       // The bug won't appear if we scroll instantly and check the position of
       // the dashboard parameter header. I suspect that happens because we
       // used to calculate the dashboard parameter header position in
-      // JavaScript, which could take some time. (Upstream scrolls over two
-      // animation frames; smooth scrolling is the closest equivalent.)
-      await frame
-        .getByRole("main")
-        .evaluate((element) =>
-          element.scrollTo({ top: element.scrollHeight, behavior: "smooth" }),
-        );
+      // JavaScript, which could take some time.
+      //
+      // Upstream is `cy.scrollTo("bottom", { duration: 2 * FPS })`, which is
+      // jQuery .animate() assigning scrollTop across frames — NOT a CSS smooth
+      // scroll. scrollTo({ behavior: "smooth" }) is not the equivalent: the
+      // config sets contextOptions.reducedMotion "reduce", under which
+      // Chromium does not perform the programmatic smooth scroll at all
+      // (scrollTop stayed 0). Animate scrollTop by hand to keep both
+      // properties the test depends on: it scrolls, and it isn't instant.
+      await frame.getByRole("main").evaluate(async (element) => {
+        const from = element.scrollTop;
+        const to = element.scrollHeight - element.clientHeight;
+        const durationMs = 2 * (1000 / 60);
+        const startedAt = performance.now();
+        await new Promise<void>((resolve) => {
+          const step = () => {
+            const progress = Math.min(
+              1,
+              (performance.now() - startedAt) / durationMs,
+            );
+            element.scrollTop = from + (to - from) * progress;
+            if (progress < 1) {
+              requestAnimationFrame(step);
+            } else {
+              resolve();
+            }
+          };
+          requestAnimationFrame(step);
+        });
+      });
 
+      // Upstream asserts `should("not.be.visible")`. Cypress treats an element
+      // clipped by an ancestor's overflow (i.e. scrolled out of view) as not
+      // visible; Playwright's toBeVisible only checks for a non-empty box and
+      // visibility != hidden, so a scrolled-away element is still "visible" to
+      // it. toBeInViewport is the assertion that carries upstream's meaning.
       await expect(
         getDashboardCard(frame).getByText("I am a very long text card", {
           exact: true,
         }),
-      ).not.toBeVisible();
+      ).not.toBeInViewport();
       await expect
         .poll(() =>
           frame
