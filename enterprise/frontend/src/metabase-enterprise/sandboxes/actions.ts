@@ -4,6 +4,7 @@ import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
+  type UpdateDataPermissionPayload,
   updateDataPermission,
 } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
@@ -13,34 +14,44 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
+import type { RawGroupTableAccessPolicyParams } from "./types";
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 
 export const UPDATE_TABLE_SANDBOXING_PERMISSION =
   "metabase-enterprise/sandboxes/UPDATE_TABLE_SANDBOXING_PERMISSION";
 export const updateTableSandboxingPermission = createThunkAction(
   UPDATE_TABLE_SANDBOXING_PERMISSION,
-  (params) => async (dispatch) => {
-    const { groupId, ...entityId } = params;
+  (params: RawGroupTableAccessPolicyParams) => async (dispatch) => {
     return dispatch(
       updateDataPermission({
-        groupId,
+        ...params,
         permission: {
           type: DataPermissionType.ACCESS,
           permission: DataPermission.VIEW_DATA,
         },
         value: DataPermissionValue.SANDBOXED,
-        entityId,
       }),
     );
   },
 );
 
 const UPDATE_POLICY = "metabase-enterprise/sandboxes/UPDATE_POLICY";
-export const updatePolicy = createAction(UPDATE_POLICY);
+export const updatePolicy = createAction<GroupTableAccessPolicy>(UPDATE_POLICY);
 
-const groupTableAccessPolicies = handleActions(
+// handleActions types the whole map with one payload generic, so handlers
+// narrow this union structurally
+type SandboxesReducerPayload =
+  | GroupTableAccessPolicy
+  | UpdateDataPermissionPayload
+  | undefined;
+
+const groupTableAccessPolicies = handleActions<
+  Record<string, GroupTableAccessPolicy>,
+  SandboxesReducerPayload
+>(
   {
     [LOAD_DATA_PERMISSIONS]: {
       next: () => ({}),
@@ -50,6 +61,11 @@ const groupTableAccessPolicies = handleActions(
     },
     [UPDATE_POLICY]: {
       next: (state, { payload }) => {
+        // never hit at runtime; narrows the map-wide payload union to this
+        // action's payload, a policy
+        if (!payload || !("table_id" in payload)) {
+          return state;
+        }
         const key = getPolicyKey(payload);
         return {
           ...state,
@@ -59,7 +75,7 @@ const groupTableAccessPolicies = handleActions(
     },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
-        if (!payload || !payload.entityId) {
+        if (!payload || !("entityId" in payload) || !payload.entityId) {
           return state;
         }
 

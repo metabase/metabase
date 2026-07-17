@@ -155,6 +155,18 @@ describe("CollectionBrowser", () => {
     expect(columnTexts).toContain("Description");
   });
 
+  it("should show dashboard questions by default", async () => {
+    await setup();
+
+    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("true");
+  });
+
+  it("should hide dashboard questions when showDashboardQuestions is false", async () => {
+    await setup({ props: { showDashboardQuestions: false } });
+
+    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("false");
+  });
+
   it("should resolve collectionId=tenant to user's tenant collection", async () => {
     const tenantCollection = createMockCollection({
       id: 999,
@@ -185,6 +197,12 @@ describe("CollectionBrowser", () => {
     expect(await screen.findByText(dashboardItem.name)).toBeInTheDocument();
   });
 });
+
+function getLastItemsRequestParam(param: string): string | null {
+  const calls = fetchMock.callHistory.calls("path:/api/collection/root/items");
+  const lastCall = calls[calls.length - 1];
+  return new URL(lastCall.url).searchParams.get(param);
+}
 
 async function setup({
   props,

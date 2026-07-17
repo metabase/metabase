@@ -1,9 +1,5 @@
 import { t } from "ttag";
 
-import {
-  getDatabaseFocusPermissionsUrl,
-  getGroupFocusPermissionsUrl,
-} from "metabase/admin/permissions/utils/urls";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -15,6 +11,7 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
+  type PermissionOption,
 } from "metabase/plugins";
 import { push } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -27,6 +24,7 @@ import {
 } from "./graph";
 import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
 import { getImpersonations } from "./selectors";
+import { getEditImpersonationUrl } from "./utils";
 
 const IMPERSONATED_PERMISSION_OPTION = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -34,7 +32,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
   iconColor: "warning",
-};
+} satisfies PermissionOption;
 
 const BLOCK_PERMISSION_OPTION = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -42,14 +40,17 @@ const BLOCK_PERMISSION_OPTION = {
   value: DataPermissionValue.BLOCKED,
   icon: "close",
   iconColor: "danger",
-};
+} satisfies PermissionOption;
 
 /**
  * Initialize advanced permissions plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
   if (hasPremiumFeature("advanced_permissions")) {
-    const addSelectedAdvancedPermission = (options, value) => {
+    const addSelectedAdvancedPermission = (
+      options: PermissionOption[],
+      value: string,
+    ) => {
       if (value === IMPERSONATED_PERMISSION_OPTION.value) {
         return [...options, IMPERSONATED_PERMISSION_OPTION];
       }
@@ -86,9 +87,6 @@ export function initializePlugin() {
       ),
     );
 
-    PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = (value) =>
-      value === BLOCK_PERMISSION_OPTION.value;
-
     PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = (
       value,
     ) => {
@@ -124,15 +122,11 @@ export function initializePlugin() {
     PLUGIN_REDUCERS.advancedPermissionsPlugin =
       advancedPermissionsSlice.reducer;
 
-    PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
-      (state, data) => {
-        const impersonations = getImpersonations(state);
-        const impersonationGroupIds = impersonations.map(
-          (i) => `${i.group_id}`,
-        );
-        return [{ impersonations }, impersonationGroupIds];
-      },
-    );
+    PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
+      const impersonations = getImpersonations(state);
+      const impersonationGroupIds = impersonations.map((i) => `${i.group_id}`);
+      return [{ impersonations }, impersonationGroupIds];
+    });
 
     PLUGIN_DATA_PERMISSIONS.hasChanges.push(
       (state) => getImpersonations(state).length > 0,
@@ -144,8 +138,13 @@ export function initializePlugin() {
       label: t`Edit Impersonated`,
       iconColor: "warning",
       icon: "database",
-      actionCreator: (entityId, groupId, view) =>
-        push(getEditImpersonationUrl(entityId, groupId, view)),
+      actionCreator: (entityId, groupId, view) => {
+        if (entityId == null) {
+          throw new Error("Impersonation can only be configured for databases");
+        }
+
+        return push(getEditImpersonationUrl(entityId, groupId, view));
+      },
     });
 
     PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =
@@ -154,19 +153,3 @@ export function initializePlugin() {
       shouldRestrictNativeQueryPermissions;
   }
 }
-
-const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {
-  const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
-  return `${baseUrl}/impersonated/group/${groupId}`;
-};
-
-const getGroupViewImpersonationModalUrl = (entityId, groupId) => {
-  const baseUrl = getGroupFocusPermissionsUrl(groupId);
-
-  return `${baseUrl}/impersonated/database/${entityId.databaseId}`;
-};
-
-const getEditImpersonationUrl = (entityId, groupId, view) =>
-  view === "database"
-    ? getDatabaseViewImpersonationModalUrl(entityId, groupId)
-    : getGroupViewImpersonationModalUrl(entityId, groupId);
