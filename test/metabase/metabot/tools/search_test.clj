@@ -309,16 +309,16 @@
                   perms/sandboxed-user? (fn [] false)
                   api/*current-user-id* 1]
       (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (true? (:search-native-query context)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (true? (:search-native-query context)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                         (is (not (contains? context :search-native-query)))
-                                                         {:data []})]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                 (is (not (contains? context :search-native-query)))
+                                                                 [])]
           (search/search {:term-queries ["test"]
                           :entity-types ["card"]
                           :search-native-query false})
@@ -334,9 +334,9 @@
                     api/*current-user-id* 1]
         (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"]}))
             (is (= #{"table" "dataset" "metric" "card"} @captured))
             (is (not (contains? @captured "dashboard")))
@@ -344,16 +344,16 @@
             (is (not (contains? @captured "database")))))
         (testing "sql-search-tool with no entity_types searches only table/model"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:models context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))))))
 
@@ -365,16 +365,18 @@
                     api/*current-user-id* 1]
         (testing "default limit is 10 when not provided"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data []})]
               (search/search-tool {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
-            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                             (reset! captured (:limit-int context))
-                                                             {:data []})]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                        search-core/search-results (fn [context _ _]
+                                                                     (reset! captured (:limit-int context))
+                                                                     {:data []})]
               (search/search-tool {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
         (testing "limit above 50 is rejected by schema validation"
@@ -397,9 +399,9 @@
           (let [captured (atom :unset)
                 run!     (fn [search-args]
                            (reset! captured :unset)
-                           (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx]
-                                                                            (reset! captured (:collection ctx))
-                                                                            {:data []})]
+                           (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [ctx]
+                                                                                    (reset! captured (:collection ctx))
+                                                                                    [])]
                              (search/search (merge {:term-queries ["x"] :entity-types ["card"]} search-args)))
                            @captured)]
             (testing "nlq profile ignores a caller-supplied collection-id and pins to the metabot's"
@@ -408,6 +410,40 @@
               (is (= (:id c) (run! {:profile-id "nlq" :metabot-id "mbEid1234567890abcdef"}))))
             (testing "an unconfined caller's collection-id is honored"
               (is (= 42 (run! {:collection-id 42}))))))))))
+
+(deftest multi-query-fusion-paginates-coherently-test
+  (testing "GHY-4137: paging a multi-query (rank-fused) search applies offset to the *fused*
+            ranking, so each match appears on exactly one page (no repeats, no gaps) and the total
+            is knowable and stable across pages — previously offset was applied per query before
+            fusion, which repeated and dropped rows and left total nil"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Card _ {:name "zzorders zzrevenue a" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue b" :database_id db-id}
+                     :model/Card _ {:name "zzorders c" :database_id db-id}
+                     :model/Card _ {:name "zzorders d" :database_id db-id}
+                     :model/Card _ {:name "zzrevenue e" :database_id db-id}
+                     :model/Card _ {:name "zzrevenue f" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue g" :database_id db-id}
+                     :model/Card _ {:name "zzorders zzrevenue h" :database_id db-id}]
+        (search-core/init-index! {:force-reset? true :in-place? true})
+        (mt/with-test-user :crowberto
+          (with-redefs [perms/impersonated-user? (fn [] false)
+                        perms/sandboxed-user? (fn [] false)]
+            (let [page    (fn [offset]
+                            (search/search {:term-queries ["zzorders" "zzrevenue"]
+                                            :entity-types ["question"] :limit 3 :offset offset}))
+                  pages   [(page 0) (page 3) (page 6)]
+                  totals  (map (comp :total meta) pages)
+                  all-ids (mapcat #(map :id %) pages)]
+              (testing "the eight seeded cards are the whole fused set"
+                (is (= 8 (first totals))))
+              (testing "total is populated (not nil) and stable across pages"
+                (is (every? #{8} totals)))
+              (testing "no card appears on more than one page"
+                (is (= (count all-ids) (count (distinct all-ids)))))
+              (testing "the pages together cover the entire fused set — no gaps"
+                (is (= 8 (count (distinct all-ids))))))))))))
 
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"

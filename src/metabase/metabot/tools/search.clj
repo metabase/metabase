@@ -263,9 +263,9 @@
   `filters-only?` makes a call with no queries run a single nil-query search — a pure listing
   over the active filters — instead of returning nothing.
 
-  When exactly one engine search ran (a single query, or a filters-only listing), the result
-  carries the engine's total match count as `:total` metadata; fused multi-query results have
-  no knowable total and carry none."
+  Each query fetches its full ranked pool, the pools are fused by rank, and the fused ranking is
+  paginated (`offset`/`limit`) once — so paging a multi-query search is coherent. The result
+  carries the size of the fused, deduped match set as `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights
            created-by archived collection-id offset filters-only?]}]
@@ -302,85 +302,80 @@
                           (:collection_id metabot)
                           collection-id)
         limit           (or limit 50)
-        ;; the engine's total match count from the last search, plus how many searches ran —
-        ;; a total is only meaningful when exactly one did (no rank fusion).
-        engine-state    (atom {:searches 0 :total nil})
-        search-fn       (fn [search-string search-engine]
+        ;; Context shared by every per-query search and the final hydration. `:search-string` and
+        ;; `:search-engine` vary per query; `:offset`/`:limit` are deliberately omitted here —
+        ;; `ranked-results` ignores them, and applying them per query before fusion would page the
+        ;; offset-N tail of each ranking, which is not the tail of the fused ranking.
+        base-opts       (cond-> {:models                              search-models
+                                 :table-db-id                         database-id
+                                 :created-at                          created-at
+                                 :last-edited-at                      last-edited-at
+                                 :current-user-id                     api/*current-user-id*
+                                 :is-impersonated-user?               (perms/impersonated-user?)
+                                 :is-sandboxed-user?                  (perms/sandboxed-user?)
+                                 :is-superuser?                       api/*is-superuser?*
+                                 :current-user-perms                  @api/*current-user-permissions-set*
+                                 :filter-items-in-personal-collection "exclude-others"
+                                 :context                             :metabot
+                                 :archived                            (boolean archived)}
+                          ;; Don't include search-native-query key if nil so that we don't
+                          ;; inadvertently filter out search models that don't support it
+                          search-native-query (assoc :search-native-query (boolean search-native-query))
+                          use-verified?       (assoc :curated true)
+                          weights             (assoc :weights weights)
+                          (seq created-by)    (assoc :created-by (set created-by))
+                          collection-id       (assoc :collection collection-id))
+        ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> {:search-string                       search-string
-                                                         :models                              search-models
-                                                         :table-db-id                         database-id
-                                                         :created-at                          created-at
-                                                         :last-edited-at                      last-edited-at
-                                                         :current-user-id                     api/*current-user-id*
-                                                         :is-impersonated-user?               (perms/impersonated-user?)
-                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                                         :is-superuser?                       api/*is-superuser?*
-                                                         :current-user-perms                  @api/*current-user-permissions-set*
-                                                         :filter-items-in-personal-collection "exclude-others"
-                                                         :context                             :metabot
-                                                         :archived                            (boolean archived)
-                                                         :limit                               limit
-                                                         :offset                              (or offset 0)}
-                                                  ;; Don't include search-native-query key if nil so that we don't
-                                                  ;; inadvertently filter out search models that don't support it
-                                                  search-native-query
-                                                  (assoc :search-native-query (boolean search-native-query))
-                                                  use-verified?
-                                                  (assoc :curated true)
-                                                  weights
-                                                  (assoc :weights weights)
-                                                  search-engine
-                                                  (assoc :search-engine (name search-engine))
-                                                  (seq created-by)
-                                                  (assoc :created-by (set created-by))
-                                                  collection-id
-                                                  (assoc :collection collection-id)))
-                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
-                                                          search-string (:models search-context))
-                                search-results (search/search search-context)
-                                data           (:data search-results)
-                                result-models  (frequencies (map :model data))]
-                            (swap! engine-state (fn [s] {:searches (inc (:searches s))
-                                                         :total    (:total search-results)}))
-                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
-                            data))
-        search-fn*      (fn [search-engine queries]
+                                                (cond-> (assoc base-opts :search-string search-string)
+                                                  search-engine (assoc :search-engine (name search-engine))))
+                                ranked         (search/ranked-results search-context)]
+                            (log/infof "[METABOT-SEARCH] Query '%s' (models %s) returned entity types: %s"
+                                       search-string (:models search-context) (frequencies (map :model ranked)))
+                            ranked))
+        ranked-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
-                            (join-results-by-rrf search-fn search-engine queries)))
+                            (join-results-by-rrf ranked-fn search-engine queries)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-results   (cond
+        fused-ranked    (cond
                           ;; A pure listing over the filters: one search with no search string.
                           (and filters-only?
                                (empty? term-queries)
                                (empty? semantic-queries))
-                          (search-fn nil nil)
+                          (ranked-fn nil nil)
 
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           semantic-engine
                           (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
+                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
                                 {semantic-engine semantic-queries
                                  fallback-engine term-queries}))
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
-                          (search-fn* nil (distinct (concat term-queries semantic-queries))))
-        results         (->> fused-results
-                             (take limit)
+                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+        ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
+        ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
+        ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
+        {:keys [data total]} (search/search-results
+                              (search/search-context (assoc base-opts
+                                                            :search-string nil
+                                                            :offset (or offset 0)
+                                                            :limit limit))
+                              search/model-set
+                              (vec fused-ranked))
+        results         (->> data
                              (map postprocess-search-result)
                              enrich-with-collection-descriptions
                              enrich-with-database-engines
                              enrich-with-portable-entity-ids
                              enrich-with-metric-base-tables
-                             remove-unreadable-transforms)
-        {:keys [searches total]} @engine-state]
-    (cond-> results
-      (and (= 1 searches) total) (vary-meta assoc :total total))))
+                             remove-unreadable-transforms)]
+    (vary-meta results assoc :total total)))
 
 (defn- table-refs->results
   [ids]
