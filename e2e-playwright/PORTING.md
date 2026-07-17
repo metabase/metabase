@@ -98,6 +98,26 @@ gh api repos/metabase/metabase/actions/runs/<run>/artifacts   # find the -uberja
 gh api <archive_download_url> > jar.zip && unzip jar.zip      # target/uberjar/metabase.jar
 ```
 
+### Jar mode is the DEFAULT verification loop — not just the tiebreak
+
+Verify every port against the jar from the start. Source mode (`--hot` rspack
+bundle) is for debugging with source maps, not for deciding whether a test
+passes.
+
+Why, in order of weight:
+
+1. **It's what CI runs.** A green source-mode run is not evidence about CI.
+2. **Source mode manufactures false failures that look exactly like product
+   bugs.** Five claims of this shape have now died — #2, #22, #24,
+   `dashboard-parameters`' field-61, `dashboard-reproductions`' 12926 — across
+   four independent specs. Each was real as an *observation* and wrong as an
+   *inference*. In every case the Cypress cross-check agreed, because both
+   harnesses share the one hot bundle.
+3. **It's faster**: 1–3s per test vs 5–10s.
+
+Consequence to accept knowingly: a handful of tests now pass in CI and fail on
+a local `--hot` run. That's the right side of the trade — CI is the contract.
+
 Jar mode boots in ~2 min and serves the jar's **static** FE assets, so it tests
 BE *and* FE free of the local dev build. Kill the slot's backend and `rm -rf
 $TMPDIR/mb-pw-slot-<slot>` first so it doesn't reuse the source-mode one.

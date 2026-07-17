@@ -213,9 +213,15 @@ a wave only when there's headroom to finish it.
 
 ```bash
 cd /Users/fraser/Documents/code/metabase/e2e-playwright
-PW_PER_WORKER_BACKEND=1 PW_KEEP_SLOT_BACKENDS=1 PW_SLOT_OFFSET=<slot> \
+JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar \
+  PW_PER_WORKER_BACKEND=1 PW_KEEP_SLOT_BACKENDS=1 PW_SLOT_OFFSET=<slot> \
   PW_ACTION_TIMEOUT=30000 bunx playwright test <spec> --trace=off
 ```
+
+**Verify against the jar, not source mode** — it's what CI runs, it's 2-3×
+faster per test, and source mode's rspack hot bundle has now manufactured five
+false product-bug claims across four specs. Source mode is for debugging with
+source maps. See PORTING.md's "Jar mode is the DEFAULT verification loop".
 
 Slot N owns port 410N. Kill that port first if a kept backend mass-fails.
 One runner at a time per backend; never touch port 4000 (the shared dev
