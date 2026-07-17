@@ -93,13 +93,9 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
-  # Compile the CLJS that e2e specs import (shadow-cljs `app` build, an npm-module
-  # consumed by the Cypress webpack preprocessor) once, in parallel with the uberjar
-  # build, and share it as an artifact. Each e2e chunk downloads it (~5s) instead of
-  # compiling it themselves (~50s). Chunks fall back to compiling if the artifact is
-  # missing (see e2e-test.yml), so this job failing or being skipped never blocks e2e.
-  # The compile is edition-independent: MB_EDITION only affects rspack bundling and
-  # the Cypress runner, not the shadow-cljs build.
+  # Compile  CLJS  in parallel with the uberjar , and share it as an artifact.
+  # build Each e2e group downloads it instead of compiling it themselves.
+  # The compile is doesn't depend on MB_EDITION
   e2e-cljs:
     name: Compile CLJS for e2e
     needs: [create-test-plan]

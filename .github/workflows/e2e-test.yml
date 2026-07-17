@@ -125,10 +125,8 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      # The `e2e-cljs` job in run-tests.yml compiles this once, in parallel with the
-      # uberjar build, and shares it as an artifact — downloading it is ~10x faster
-      # than compiling it here. Callers without that job (stress tests, coverage
-      # shards, cross-run re-runs) fall through to compiling as before.
+      # run-tests.yml compiles this in parallel with the uberjar build. downloading it is ~10x faster than compiling it here.
+      # Callers without that job (stress tests, coverage shards, cross-run re-runs) fall through to compiling as before.
       - name: Download pre-built CLJS
         id: prebuilt-cljs
         uses: actions/download-artifact@v8
