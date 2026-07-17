@@ -400,7 +400,7 @@
   "Format table for LLM consumption.
    Matches Python Table.get_llm_representation exactly, except we additionally surface
    `database_name` as a tag attribute so the LLM has the human-readable DB name available
-   without a separate `entity_details` call — it's the first slot of every portable FK in
+   without a separate `read_resource` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
            description fields related_tables related_tables_total
@@ -712,7 +712,7 @@
    Includes database_id, database_engine, and fully_qualified_name for table/model results
    to match Python AI Service search output. For saved-question and model results also
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
-   without an extra `entity_details` call, and (when available) `database_name` — the
+   without an extra `read_resource` call, and (when available) `database_name` — the
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
@@ -720,7 +720,7 @@
    `schema.table` of the table the metric aggregates). Combined with `database_name` this
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `entity_details` round-trip."
+   without a separate `read_resource` round-trip."
   [{:keys [id type name description verified official curated data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
