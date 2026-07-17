@@ -60,6 +60,38 @@ class MetabaseHarness {
 
   async restore(name = "default") {
     await this.api.restore(name);
+    // The restore triggers an async search-index rebuild. A frontend search
+    // fired inside that window renders a permanent empty state (the FE never
+    // re-queries), so block until the index answers before the test starts.
+    const adminSession = LOGIN_CACHE.admin?.sessionId;
+    if (adminSession) {
+      const adminApi = new MetabaseApi(
+        this.api.requestContext,
+        () => adminSession,
+      );
+      const deadline = Date.now() + 30_000;
+      let forcedReindex = false;
+      while (Date.now() < deadline) {
+        const response = await adminApi.get("/api/search?q=Orders&limit=1", {
+          failOnStatusCode: false,
+        });
+        if (response.ok()) {
+          const body = await response.json().catch(() => ({ data: [] }));
+          if ((body.data ?? []).length > 0) {
+            break;
+          }
+        }
+        if (!forcedReindex) {
+          // Back-to-back restores can drop the rebuild trigger entirely,
+          // leaving the index dead until something re-triggers it — do so.
+          forcedReindex = true;
+          await adminApi.post("/api/search/force-reindex", undefined, {
+            failOnStatusCode: false,
+          });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
     if (this.sampleDbUrl) {
       // Snapshots pin database 1 to the shared e2e/tmp H2 file, which only
       // one JVM can hold — re-point it at this worker's private copy. Uses

@@ -90,6 +90,28 @@ green:
 | public-question | 281 | 7 | public links, signed-out ctx | 0 port bugs (2 upstream, see below) |
 | downloads | 562 | 15 | real file downloads + xlsx | 1 (pivot export endpoint) |
 
+### Batch 3: five QB-heavy specs
+
+Shared notebook helpers (`support/notebook.ts`) were ported first, then four
+agents + one inline port:
+
+| Spec | Cy lines | Tests | Fixes needed |
+|---|---|---|---|
+| nested | 253 | 4 | 1 (strict-mode duplicate → .first()) |
+| revision-history | 217 | 12+2 skip | 1 (post-save wait: no dashboard GET fires) |
+| models-query-editor | 247 | 6 | 1 (discard refetch can use /api/dataset) |
+| joins | 362 | 7 | 2 (notebook-visit readiness; search retype) |
+| metrics-question | 238 | 9 | 2 (hover-only ellipsis; search-index wait) |
+
+**Systemic find**: `restore()`'s async search-index rebuild can be dropped
+entirely when restores come back-to-back (every test restores!), leaving a
+dead index — the FE then renders permanent empty search states (mini-picker
+"No search results", browse pages "Search Index not found"). The harness now
+polls `/api/search` after every restore and escalates to
+`POST /api/search/force-reindex` if it stalls (see `MetabaseHarness.restore`).
+Healthy restores pay ~0ms. This same mechanism plausibly explains a class of
+search-related flakes in Cypress CI.
+
 Key findings:
 
 - **~1,300 Cypress lines ported in one session** with 4 agents in parallel;
