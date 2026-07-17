@@ -37,11 +37,13 @@ If your admin has turned on [two-factor authentication](./two-factor-authenticat
 
 ### Set up two-factor authentication
 
-1. On the **Security** tab, click **Set up two-factor authentication**.
-2. Confirm your password.
-3. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
-4. Enter the six-digit code from the app.
-5. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-recovery-codes), the old codes will no longer work.
+1. Click the grid icon in the upper right.
+2. Click your profile.
+3. On the **Security** tab, click **Set up two-factor authentication**.
+4. Confirm your password.
+5. Scan the QR code with an authenticator app like Google Authenticator, 1Password, or Authy. If you can't scan it, enter the key manually in your authenticator app.
+6. Enter the six-digit code from the app.
+7. Save your recovery codes. Metabase shows these ten codes only once, so copy them and store them somewhere safe. Each recovery code only works once. If you [regenerate recovery codes](#regenerate-recovery-codes), the old codes will no longer work.
 
 ### Logging in with two-factor authentication
 
