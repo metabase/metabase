@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import {
   fireEvent,
@@ -243,6 +244,68 @@ describe("ExplorationSidebar", () => {
       expect(
         within(getRow("Revenue by source")).getByText("Revenue by source"),
       ).toHaveStyle({ fontWeight: 700 });
+    });
+
+    it("updates rows in place when readPageIds changes instead of remounting them", async () => {
+      // The tree's row component is used as a JSX element type, so if its
+      // identity changed with readPageIds (as with a useCallback-defined
+      // component), React would tear down and rebuild every row's DOM here.
+      const exploration = createExploration({ queries: [doneQuery] });
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
+      const tree = getTree();
+
+      function Harness() {
+        const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(
+          new Set(),
+        );
+        return (
+          <>
+            <button onClick={() => setReadPageIds(new Set(["2"]))}>
+              mark read
+            </button>
+            <ExplorationSidebar
+              exploration={exploration}
+              explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+              selectedSidebarTab={selectedSidebarTab}
+              getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+              tree={tree}
+              selectedPageId="2"
+              setSelectedPageId={jest.fn()}
+              getSelectedPageUrl={(pageId) => `${path}/page/${pageId}`}
+              shouldScrollSelectionRef={{ current: false }}
+              isOpen
+              readPageIds={readPageIds}
+              showHidden={false}
+              onToggleShowHidden={jest.fn()}
+              sortOrder={DEFAULT_SORT_ORDER}
+              onChangeSortOrder={jest.fn()}
+            />
+          </>
+        );
+      }
+
+      renderWithProviders(<Route path={path} component={Harness} />, {
+        withRouter: true,
+        initialRoute: path,
+      });
+
+      const row = getRow("Revenue by region");
+      expect(within(row).getByText("Revenue by region")).toHaveStyle({
+        fontWeight: 700,
+      });
+
+      await userEvent.click(screen.getByText("mark read"));
+
+      expect(getRow("Revenue by region")).toBe(row);
+      expect(within(row).getByText("Revenue by region")).toHaveStyle({
+        fontWeight: 500,
+      });
     });
   });
 
@@ -1417,7 +1480,7 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
-        selectedPageId: String(1),
+        selectedPageId:  "1",
       });
 
       const rows = screen.getAllByRole("treeitem");
