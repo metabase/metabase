@@ -238,10 +238,28 @@
 (def ^:private categorical-filter-operators
   #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
+(defn- remove-clause-presentation-metadata
+  "Remove custom display names from MBQL clauses without touching map-shaped literal values."
+  [x]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (<= 2 (count node))
+              (keyword? (first node))
+              (map? (second node)))
+       (update node 1 dissoc :name :display-name)
+       node))
+   x))
+
 (defn- canonical-signature
-  "Canonical JSON used only for deterministic candidate grouping and exact collision checks."
+  "Canonical JSON used for deterministic candidate grouping and semantic collision checks.
+
+  Custom aggregation/filter labels are evidence about how people describe a computation, not part of
+  the computation itself. Ignoring them prevents aliases such as `Count` and `Total PV` from producing
+  separate candidates for the same table and clause."
   [x]
   (-> x
+      remove-clause-presentation-metadata
       lib.schema.util/remove-lib-uuids
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)
       json/encode))
@@ -819,21 +837,28 @@
 
 (defn- eligible-measure-candidate?
   [{:keys [aggregation evidence]}]
-  (or (not (contains? conditional-aggregation-operators (:type aggregation)))
-      (pos? (:verified-source-count evidence))
-      (pos? (:official-source-count evidence))
-      (>= (:distinct-source-count evidence) 2)))
+  (and
+   ;; A bare count(*) is useful evidence that a table is commonly counted, but it does not carry enough
+   ;; reusable semantics to justify a standalone Measure candidate. Keep count(field) and the conditional
+   ;; count-where synthesized from this raw aggregation.
+   (not (and (= :count (:type aggregation))
+             (nil? (:field aggregation))))
+   (or (not (contains? conditional-aggregation-operators (:type aggregation)))
+       (pos? (:verified-source-count evidence))
+       (pos? (:official-source-count evidence))
+       (>= (:distinct-source-count evidence) 2))))
 
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Creation-ready Measure candidates mined from qualifying questions and models.
 
   A source qualifies when it is verified, directly in an official collection, or has at least
-  `:min-view-count` lifetime views. Bare row counts and primitive aggregations over one physical-table
-  field are considered. Conditional count/distinct/sum Measures are also synthesized from categorical
-  filter subsets and retained when curated or recurring. Every eligible stage is inspected until a
+  `:min-view-count` lifetime views. Primitive aggregations over one physical-table field are considered.
+  Bare row counts seed conditional count Measures but are not returned as standalone candidates.
+  Conditional count/distinct/sum Measures are synthesized from categorical filter subsets and retained
+  when curated or recurring. Every eligible stage is inspected until a
   non-projection stage forms a lineage barrier. Native queries, joined stages, expressions,
-  non-transparent model sources, and existing exact Measures are skipped. Each result includes a
-  deterministic suggested name and description derived from Lib's query display names."
+  non-transparent model sources, and existing semantically equivalent Measures are skipped. Each result
+  includes a deterministic suggested name and description derived from Lib's query display names."
   ([] (candidate-measures {}))
   ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache

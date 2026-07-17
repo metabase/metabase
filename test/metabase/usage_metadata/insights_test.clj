@@ -32,6 +32,7 @@
 (def ^:private existing-measure-signatures @#'insights/existing-measure-signatures)
 (def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
 (def ^:private segment-signature           @#'insights/segment-signature)
+(def ^:private canonical-signature         @#'insights/canonical-signature)
 (def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
 (def ^:private merge-candidates            @#'insights/merge-candidates)
 
@@ -305,6 +306,15 @@
         subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
     (lib/aggregate (orders-base-query) (lib/sum subtotal))))
 
+(defn- orders-named-measure-query []
+  (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+        subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+    (lib/aggregate (orders-base-query)
+                   (lib/with-expression-name (lib/sum subtotal) "Custom subtotal total"))))
+
+(defn- orders-count-query []
+  (lib/aggregate (orders-base-query) (lib/count)))
+
 (defn- orders-extended-measures-query []
   (let [mp       (lib-be/application-database-metadata-provider (mt/id))
         subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
@@ -438,11 +448,29 @@
                  (set (keys (:definition (first candidates))))))))
       (mt/with-temp [:model/Measure _measure {:name "Existing candidate mining measure"
                                               :creator_id (mt/user->id :crowberto)
-                                              :definition query}]
-        (testing "an exact existing Measure suppresses the candidate"
+                                              :definition (orders-named-measure-query)}]
+        (testing "an existing Measure with a different display name suppresses the equivalent candidate"
           (is (empty? (candidates-from-card
                        card-id
                        (insights/candidate-measures {:min-view-count 10 :limit 1000})))))))))
+
+(deftest candidate-measures-omit-bare-count-test
+  (mt/with-temp [:model/Card {card-id :id} {:name          "candidate mining bare count"
+                                            :type          :question
+                                            :dataset_query (orders-count-query)
+                                            :view_count    1000000}]
+    (is (empty? (candidates-from-card
+                 card-id
+                 (insights/candidate-measures {:min-view-count 10 :limit 1000}))))))
+
+(deftest candidate-signatures-ignore-clause-presentation-metadata-test
+  (is (= (canonical-signature [:count {:lib/uuid "generic-count"}])
+         (canonical-signature [:count {:lib/uuid     "named-count"
+                                       :name         "Total PV"
+                                       :display-name "Total PV"}])))
+  (testing "map-shaped literal values retain semantically meaningful name keys"
+    (is (not= (canonical-signature [:= {:lib/uuid "a"} [:field {:lib/uuid "b"} 1] {:name "A"}])
+              (canonical-signature [:= {:lib/uuid "c"} [:field {:lib/uuid "d"} 1] {:name "B"}])))))
 
 (deftest candidate-measures-support-remaining-direct-aggregations-test
   (let [query (orders-extended-measures-query)]
@@ -480,6 +508,9 @@
             by-type     (into {} (map (juxt #(get-in % [:aggregation :type]) identity)) conditional)]
         (is (= #{:count-where :distinct-where :sum-where}
                (into #{} (map #(get-in % [:aggregation :type])) conditional)))
+        (is (not-any? #(and (= :count (get-in % [:aggregation :type]))
+                            (nil? (get-in % [:aggregation :field])))
+                      candidates))
         (is (every? #(= 1 (get-in % [:aggregation :condition-atom-count])) conditional))
         (is (every? #(= [(mt/id :orders :product_id)]
                         (mapv :id (get-in % [:aggregation :condition-fields])))
