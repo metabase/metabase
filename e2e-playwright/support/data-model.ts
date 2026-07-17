@@ -367,6 +367,31 @@ export async function verifyFieldSectionEmptyState(page: Page) {
 }
 
 /**
+ * Port of the CURRENT H.startNewQuestion (e2e-ad-hoc-question-helpers.js):
+ * a deep link to /question/notebook with a blank-card hash. The shared
+ * support/notebook.ts `startNewQuestion` ports an older App-bar "New" →
+ * "Question" flow, which cannot work from admin/data-studio pages (no New
+ * button there). NOTE for the consolidation pass: this version should
+ * replace the notebook.ts one.
+ */
+export async function startNewQuestion(page: Page) {
+  const card = {
+    display: "table",
+    displayIsLocked: false,
+    type: "question",
+    creationType: "custom_question",
+    dataset_query: {
+      database: null,
+      query: { "source-table": null },
+      type: "query",
+    },
+    visualization_settings: {},
+  };
+  const hash = Buffer.from(JSON.stringify(card)).toString("base64");
+  await page.goto(`/question/notebook#${hash}`);
+}
+
+/**
  * Port of H.resetTestTable({ type: "postgres", table: "multi_schema" }) —
  * recreates the Domestic/Wild schemas the knex task builds
  * (e2e/support/test_tables.js `multi_schema`) with plain SQL against the

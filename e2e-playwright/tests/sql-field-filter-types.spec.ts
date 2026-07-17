@@ -9,15 +9,16 @@
  * - H.resetTestTable is a cy.task backed by knex; the port replays the exact
  *   knex DDL through the pg client (resetManyDataTypesTable in
  *   support/native-filters-extras.ts).
- * - H.runNativeQuery({ wait: false }) skips only the @dataset cy.wait; the
- *   shared runNativeQuery port always waits for POST /api/dataset, which is
- *   strictly stronger and removes the "assert against stale scalar" race.
+ * - H.runNativeQuery({ wait: false }) exists because a run on a SAVED
+ *   question goes through POST /api/card/:id/query, so the Cypress @dataset
+ *   intercept would never resolve. runNativeQueryEitherEndpoint waits on
+ *   whichever of the two endpoints fires — strictly stronger than no-wait,
+ *   and it removes the "assert against stale scalar" race.
  */
 import type { Page } from "@playwright/test";
 
 import { filterWidget } from "../support/dashboard";
 import { test, expect } from "../support/fixtures";
-import { runNativeQuery } from "../support/models";
 import {
   startNewNativeQuestion,
   typeInNativeEditor,
@@ -28,7 +29,10 @@ import {
   mapFieldFilterTo,
   openTypePickerFromDefaultFilterType,
 } from "../support/native-filters";
-import { resetManyDataTypesTable } from "../support/native-filters-extras";
+import {
+  resetManyDataTypesTable,
+  runNativeQueryEitherEndpoint,
+} from "../support/native-filters-extras";
 import { assertQueryBuilderRowCount } from "../support/notebook";
 import { resyncDatabase, WRITABLE_DB_ID } from "../support/schema-viewer";
 import { saveQuestion } from "../support/sharing";
@@ -79,16 +83,16 @@ test.describe(
       await saveQuestion(page, "SQL", { path: ["Our analytics"] });
 
       // field filter with true
-      await runNativeQuery(page);
+      await runNativeQueryEitherEndpoint(page);
       await assertScalarValue(page, "2");
       await filterWidget(page).click();
       await popover(page)
         .getByRole("button", { name: "Add filter", exact: true })
         .click();
-      await runNativeQuery(page);
+      await runNativeQueryEitherEndpoint(page);
       await assertScalarValue(page, "1");
       await clearFilterWidget(page);
-      await runNativeQuery(page);
+      await runNativeQueryEitherEndpoint(page);
       await assertScalarValue(page, "2");
 
       // field filter with false
@@ -98,10 +102,10 @@ test.describe(
       await dropdown
         .getByRole("button", { name: "Add filter", exact: true })
         .click();
-      await runNativeQuery(page);
+      await runNativeQueryEitherEndpoint(page);
       await assertScalarValue(page, "1");
       await clearFilterWidget(page);
-      await runNativeQuery(page);
+      await runNativeQueryEitherEndpoint(page);
       await assertScalarValue(page, "2");
     });
   },
@@ -130,7 +134,7 @@ test.describe("scenarios > filters > sql filters > variable > Boolean", () => {
     await popover(page)
       .getByRole("button", { name: "Add filter", exact: true })
       .click();
-    await runNativeQuery(page);
+    await runNativeQueryEitherEndpoint(page);
     await assertQueryBuilderRowCount(page, 53);
 
     // assert that it works for a saved query
@@ -141,7 +145,7 @@ test.describe("scenarios > filters > sql filters > variable > Boolean", () => {
     await dropdown
       .getByRole("button", { name: "Update filter", exact: true })
       .click();
-    await runNativeQuery(page);
+    await runNativeQueryEitherEndpoint(page);
     await assertQueryBuilderRowCount(page, 54);
   });
 });

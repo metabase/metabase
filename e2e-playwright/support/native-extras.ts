@@ -67,6 +67,41 @@ export async function createNativeCard(
   return card;
 }
 
+/**
+ * visitQuestion for saved native questions that may run ad-hoc.
+ *
+ * ui.ts visitQuestion assumes a saved question always runs via
+ * POST /api/card/:id/query. That is false for a native card whose
+ * card-reference tag is stored without the referenced card's slug
+ * (`{{#5}}` rather than `{{#5-a-people-question-1}}` — the shape you get when
+ * a card is created through the API with hand-written template-tags):
+ * initializeQB > updateTemplateTagNames fetches the referenced card and
+ * rewrites the tag name into the query text, so the loaded question no longer
+ * matches the stored card, `isQueryDirty` is true, and the QB runs it through
+ * POST /api/dataset instead (frontend/src/metabase/querying/run-query.ts —
+ * `canUseCardApiEndpoint = !isDirty && question.isSaved()`).
+ *
+ * The Cypress originals use a bare `cy.visit` and never wait on the query, so
+ * only the port is exposed to the endpoint choice. Waiting on either endpoint
+ * keeps the load barrier without asserting which one runs.
+ * See findings-inbox/native-subquery-ci-failure.md.
+ */
+export async function visitQuestionEitherEndpoint(page: Page, id: number) {
+  const metadataResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === `/api/card/${id}/query_metadata`,
+  );
+  const queryResponse = page.waitForResponse((response) => {
+    const { pathname } = new URL(response.url());
+    return (
+      response.request().method() === "POST" &&
+      (pathname === "/api/dataset" || pathname === `/api/card/${id}/query`)
+    );
+  });
+  await page.goto(`/question/${id}`);
+  await Promise.all([metadataResponse, queryResponse]);
+}
+
 /** Port of H.createSnippet (api/createSnippet.ts). */
 export async function createSnippet(
   api: MetabaseApi,

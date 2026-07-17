@@ -102,6 +102,10 @@ every fix made while stabilizing a port gets classified and fed back:**
   orchestrator's own runs. Concurrent playwright invocations both restore()
   and corrupt each other. Kill/finish any background run before starting
   another (the coordinator has now made this mistake twice).
+- **Porting agents must run verification in the FOREGROUND.** A backgrounded
+  run leaves the agent waiting on a notification that never arrives, so it
+  ends its turn silently and the slot stalls until the orchestrator resumes
+  it. Two agents lost ~30 minutes each this way.
 - **dnd-kit drags of elements clipped by a scroll container**: real mouse
   can't press on clipped coordinates — use the synthetic MouseEvent
   sequence (`moveDnDKitElementSynthetic` in question-settings.ts; fold into
@@ -137,3 +141,12 @@ every fix made while stabilizing a port gets classified and fed back:**
   it automatically if you export JAR_PATH=$(git rev-parse --show-toplevel)/target/uberjar/metabase.jar
   in your run env — ~25s boots instead of ~90s, and behavior matches CI.
 # TODO: local jar build fails in :translations step (NPE, interactive prompt) — investigate later; slot backends stay source-mode meanwhile
+- **Saved native questions run via /api/card/:id/query, ad-hoc via
+  /api/dataset** — after saveQuestion the dataset wait never resolves; use
+  the either-endpoint wait (native-filters-extras runNativeQueryEitherEndpoint).
+- **Stale kept slot backends**: PW_KEEP_SLOT_BACKENDS persists backends
+  across sessions; a "(reused)" line followed by mass-fails means restart
+  that slot's backend before debugging specs.
+- **Gate naming**: QA_DB_ENABLED leaks in from cypress.env.json (always true
+  on dev machines); PW_QA_DB_ENABLED is deliberate. TODO: unify on
+  PW_QA_DB_ENABLED once container specs are consolidated.

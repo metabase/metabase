@@ -111,8 +111,13 @@ export async function selectDashboardFilter(
   await dashcard.getByText("Select…").click();
   // exact: true — Cypress .contains() is case-sensitive ("Total" doesn't
   // match "Subtotal"), Playwright getByText isn't, so substring matching
-  // here would be ambiguous.
-  await popover(page).getByText(filterName, { exact: true }).click({ force: true });
+  // here would be ambiguous. .first() — Cypress .contains() is first-match,
+  // and the mapping popover can legitimately repeat a column name (e.g.
+  // "Created At" under several groupings).
+  await popover(page)
+    .getByText(filterName, { exact: true })
+    .first()
+    .click({ force: true });
 }
 
 export async function setFilterListSource(

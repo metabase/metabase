@@ -97,7 +97,10 @@ export async function openLegacyStaticEmbeddingModal(
   // button (embedding already enabled).
   const card = embedModalEnableEmbeddingCard(page);
   const staticEmbeddingButton = legacyStaticEmbeddingButton(page);
-  await expect(card.or(staticEmbeddingButton)).toBeVisible();
+  // .first(): both can be in the DOM at once (the enable-embedding card
+  // shows a "Use static embedding instead" link), which would otherwise
+  // trip the or()'s strict-mode check.
+  await expect(card.or(staticEmbeddingButton).first()).toBeVisible();
   if (await card.isVisible()) {
     await page
       .getByRole("button", { name: ENABLE_EMBEDDING_BUTTON_NAME })

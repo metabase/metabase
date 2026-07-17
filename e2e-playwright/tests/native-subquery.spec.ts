@@ -8,6 +8,11 @@
  * - The Cypress cy.wait(200)/cy.wait(1000) sleeps around autocomplete are
  *   kept: they wait out AUTOCOMPLETE_DEBOUNCE_DURATION (metabase#20970),
  *   which no response/DOM signal exposes.
+ * - The Cypress originals visit with a bare cy.visit and never wait on the
+ *   query. Most of the ports upgrade that to visitQuestion, but a card whose
+ *   `{{#id}}` tag is stored without the referenced card's slug gets rewritten
+ *   on load and therefore runs ad-hoc: the saved-card endpoint visitQuestion
+ *   waits for never fires. Those visits use visitQuestionEitherEndpoint.
  * - "autocomplete should work for columns from referenced questions" ended
  *   with `NativeEditor.completions("ANOTHER")` — completions() takes no
  *   argument, so Cypress only checked that *some* completion tooltip was
@@ -25,7 +30,10 @@
  */
 import { test, expect } from "../support/fixtures";
 import { openQuestionActions, visitModel } from "../support/models";
-import { createNativeCard } from "../support/native-extras";
+import {
+  createNativeCard,
+  visitQuestionEitherEndpoint,
+} from "../support/native-extras";
 import {
   focusNativeEditor,
   nativeEditor,
@@ -182,7 +190,10 @@ test.describe("scenarios > question > native subquery", () => {
       },
     });
 
-    await visitQuestion(page, questionId3);
+    // Not visitQuestion: this card's `{{#id}}` tag is stored without the
+    // referenced card's slug, so the QB rewrites it on load and runs the
+    // question ad-hoc via /api/dataset — the saved-card endpoint never fires.
+    await visitQuestionEitherEndpoint(page, questionId3);
     // Refresh the state, so previously created questions need to be loaded again.
     await page.reload();
     await page.getByText("Open Editor", { exact: true }).click();
@@ -221,15 +232,14 @@ test.describe("scenarios > question > native subquery", () => {
     await expect(nativeEditorCompletion(page, "ANOTHER").first()).toBeVisible();
   });
 
-  // FIXME(app bug, not a port bug): on loading a saved native question, the
-  // card-reference tag is no longer rewritten to include the referenced
-  // question's slug — the editor keeps showing `{{#5}}` instead of
-  // `{{#5-a-people-question-1}}`. initializeQB > updateTemplateTagNames should
-  // fetch the referenced card and rewrite the tag, but GET /api/card/<refId>
-  // never fires. Verified 2026-07-17 against this backend: the ORIGINAL
-  // Cypress spec fails at the same pre-rename assertion
-  // (native_subquery.cy.spec.js:192), so this is app behavior, not the port.
-  test.fixme(
+  // This was briefly FIXME'd as an app bug ("card-reference tags are no longer
+  // rewritten on load; GET /api/card/<refId> never fires"). That diagnosis does
+  // not hold: against the CI uberjar the referenced card IS fetched and the tag
+  // IS rewritten. The real cause was the port's visitQuestion — the rewrite
+  // makes the loaded question dirty, so it runs via /api/dataset and the
+  // saved-card wait hung, which read as a failed assertion.
+  // See findings-inbox/native-subquery-ci-failure.md.
+  test(
     "card reference tags should update when the name of the card changes",
     async ({ mb, page }) => {
       const { id: questionId1 } = await createNativeCard(mb.api, {
@@ -254,8 +264,9 @@ test.describe("scenarios > question > native subquery", () => {
         },
       });
 
-      // check the original name is in the query
-      await visitQuestion(page, questionId2);
+      // check the original name is in the query. Not visitQuestion: the tag is
+      // stored unslugged, so the rewrite makes this run ad-hoc (see above).
+      await visitQuestionEitherEndpoint(page, questionId2);
       await page.getByText("Open Editor", { exact: true }).click();
       await expect(nativeEditor(page)).toBeVisible();
       await expect(nativeEditor(page)).toContainText(
@@ -278,7 +289,7 @@ test.describe("scenarios > question > native subquery", () => {
       await renameResponse;
 
       // check the name has changed
-      await visitQuestion(page, questionId2);
+      await visitQuestionEitherEndpoint(page, questionId2);
       await page.getByText("Open Editor", { exact: true }).click();
       await expect(nativeEditor(page)).toBeVisible();
       await expect(nativeEditor(page)).toContainText(

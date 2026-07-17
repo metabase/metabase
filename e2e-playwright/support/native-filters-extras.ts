@@ -20,8 +20,34 @@
 import type { Locator, Page } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
+import { icon } from "./dashboard-cards";
+import { expect } from "./fixtures";
 import { SAMPLE_DB_ID } from "./sample-data";
 import { queryWritableDB } from "./schema-viewer";
+
+/**
+ * Port of H.runNativeQuery for specs that call it on SAVED questions:
+ * a clean saved question runs through POST /api/card/:id/query, a dirty or
+ * ad-hoc one through POST /api/dataset — which is why the Cypress spec used
+ * `{ wait: false }` (its "@dataset" intercept would never resolve after
+ * save). Waiting on either endpoint is strictly stronger than the Cypress
+ * no-wait + play-icon check, and covers both states with one helper.
+ */
+export async function runNativeQueryEitherEndpoint(page: Page) {
+  const queryResponse = page.waitForResponse((response) => {
+    const { pathname } = new URL(response.url());
+    return (
+      response.request().method() === "POST" &&
+      (pathname === "/api/dataset" || /^\/api\/card\/\d+\/query$/.test(pathname))
+    );
+  });
+  await icon(
+    page.getByTestId("native-query-editor-container"),
+    "play",
+  ).click();
+  await queryResponse;
+  await expect(icon(page, "play")).toHaveCount(0);
+}
 
 /**
  * Port of H.filterWidget({ name }): all parameter widgets whose text contains

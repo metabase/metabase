@@ -126,12 +126,16 @@ export async function visitDashboard(
     id: number;
     card_id: number | null;
     dashboard_tab_id: number | null;
-    card: { display?: string };
+    card: { display?: string; dataset_query?: unknown };
   }[] = body.dashcards ?? [];
 
   const firstTabId: number | null = body.tabs?.length ? body.tabs[0].id : null;
   const cardQueries = dashcards
     .filter((dashcard) => dashcard.card_id != null)
+    // Cards the current user is not allowed to see come back without a
+    // dataset_query, and the FE never fires a query for them (mirrors the
+    // dashboardHasQuestions filter in e2e-misc-helpers.js).
+    .filter((dashcard) => dashcard.card.dataset_query !== undefined)
     .filter(
       (dashcard) =>
         firstTabId == null || dashcard.dashboard_tab_id === firstTabId,
