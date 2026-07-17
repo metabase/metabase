@@ -84,13 +84,12 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   mount: CustomVisualizationMount;
 
   /**
-   * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
-   * Out of scope for the near-membrane hardening; stays as a plain component.
+   * Component that renders the visualization.
    */
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
 
   /**
-   * Component that renders the visualization.
+   * Static visualization renderer (server-side PNG/PDF path).
    */
   StaticVisualizationComponent?: ComponentType<
     CustomStaticVisualizationProps<TSettings>
