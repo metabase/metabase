@@ -6,20 +6,26 @@ dividend found during porting gets an entry here in the same PR.**
 
 ## Scoreboard — read this before quoting numbers
 
-**Product bugs: 2 standing (#1, #3), 3 retracted (#2, #22, #24).** Everything
-that rested on a `parameters: []` / load-path observation is gone: re-checked
-against the CI uberjar with Chrome cross-checks, none of it reproduced. Two of
-the three died to the same mechanism — a code path we didn't know about masked
-the difference we were measuring, and we read the gap as an app bug (#24: the
-question loads dirty so the QB uses `/api/dataset`; #22: our own per-worker H2
-repoint, which Cypress lacks, so its "identical failure" was really lock
-contention between concurrent slot backends).
+**Product bugs: 2 standing (#1, #3), 5 retracted (#2, #22, #24,
+`dashboard-parameters` field-61, `dashboard-reproductions` 12926).** Everything
+that rested on a `parameters: []` / load-path / "Cypress fails identically"
+observation is gone: re-checked against the CI uberjar with Chrome
+cross-checks, none reproduced. They died to one shared mechanism — a code path
+we didn't know about masked the difference we were measuring, and we read the
+gap as an app bug (see #31 for the full pattern and why jar-mode verification
+now prevents it).
 
-Do not quote a bug count from an un-cross-checked observation. The honest,
-defensible case for the migration does not rest on bug count anyway — see
-"Infrastructure findings" and "Framework-level simplifications", where the
-evidence is strong: the harness solves isolation problems Cypress structurally
-cannot, and #22's retraction is itself a demonstration of that.
+**Do not quote a bug count from an un-cross-checked observation.** The honest,
+defensible case for migration does not rest on bug count — it rests on
+capability differences the harness demonstrably has and Cypress structurally
+lacks (#8 per-worker isolation, #22's retraction is itself a demonstration,
+#32 a race only Playwright can see, #33 a green test whose mock never ran),
+plus a large set of strictly-stronger tests and vacuous-assertion fixes (#4–6,
+#34–38) that make the suite catch things the originals could not. The two
+standing bug candidates (#1 SearchBar Enter race, #3 restore killing the search
+index) have NOT yet been through the jar + Chrome gauntlet that killed the
+other five — treat them as unverified until they have been. That check is the
+highest-value next step for anyone making this case to colleagues.
 
 ## Product bugs found by porting
 
@@ -349,3 +355,113 @@ cannot, and #22's retraction is itself a demonstration of that.
     captured at module load with only ~4 minutes of tolerance in the
     minutes-unit tests; the Cypress spec runs ~3.5 minutes — one slow CI
     run from flaking. The port captures `now` per test.
+
+## Wave 9 additions (nine large specs: dashboards, documents, embedding, metrics)
+
+This wave landed nine of the largest specs in the corpus (~22K lines) and, more
+importantly, matured how we decide whether a finding is real. Read the
+methodology note first — it reframes several earlier entries.
+
+### Methodology: jar mode is the verification default, and it retracted five claims
+
+31. **The single most valuable lesson of the spike: verify against the CI
+    uberjar, not the local dev bundle — and the Cypress cross-check proves port
+    *fidelity*, never *causation*.** Both harnesses run against one backend and
+    one local rspack hot bundle, so a shared environmental cause fails both
+    identically while the app is fine. Over this wave, **five product-bug claims
+    of exactly this shape were retracted** after checking against the jar: #2,
+    #22, #24, `dashboard-parameters`' field-61, and `dashboard-reproductions`'
+    12926, across four independent specs. Each was a *real observation* and a
+    *wrong inference*. Jar mode is now the default loop (it's what CI runs and
+    2–3× faster); source mode is for debugging with source maps only. The
+    decider for real-vs-environmental is a different **artifact**, not a second
+    harness on the same one. This is a strength of the migration, honestly
+    stated: the discipline that caught these is repeatable and now written down.
+
+### Capability differences (things Cypress structurally cannot do)
+
+32. **A real app race only Playwright can see** (`documents-comments`):
+    `deleteNewParamFromURLIfNeeded` strips `?new=true` *after* the mutation
+    resolves, using a `location.pathname` captured at submit time, so a route
+    change inside that window is reverted by a stale `replace`. Instrumented
+    `history` and watched Escape's `push /document/1` get undone. Cypress's
+    command-queue latency always covers the window, so it passes there.
+    **Scope**: the Cypress cross-check passes → not a port defect and not
+    CI-catchable; user impact not hand-verified. A genuine candidate, precisely
+    bounded.
+
+33. **Playwright does not proxy a redirect's follow-up request** — and it
+    exposed a green test that never ran its own mock (`interactive-embedding`).
+    Cypress's proxy fronts every hop; Playwright's `route()` does not, so a JWT
+    SSO test was passing while its IdP mock had *never once executed* — it only
+    waited for the request to be attempted. Isolated with a control: a direct
+    `goto` hits the handler, the same URL via a 302 skips even a `() => true`
+    catch-all. Fixed with a client-side redirect shim.
+
+### Tests that got strictly stronger
+
+34. **A resize test that asserts the opposite of the app's behaviour and passes
+    by accident** (`documents`). Upstream drags a card's handle down 200px and
+    asserts the card gets *shorter*; it passes only because the shared
+    `documentDoDrag` helper fires `mouseup` with no coordinates, committing the
+    resize at the body centre instead of the drag destination. Measured to the
+    pixel (426→264 upstream vs the correct 426→626). The `{y:200}` delta is
+    discarded; the test would pass for any delta and flip meaning with layout.
+    The port asserts the real behaviour (drag down 200 → grow by 200).
+
+35. **A dead upstream test** (`documents`): `it("should support formatting via
+    floating menu")` is declared *inside* another test's callback body, so Mocha
+    never schedules it — an entire rich-text-format menu suite that has never
+    run, reading as coverage. The port runs it as a real sibling.
+
+36. **`should("be.disabled")` on a menu is an ANY assertion, not ALL**
+    (`documents`, `metrics-explorer`, others): chai-jquery resolves it to
+    `$els.is(":disabled")`, true if *any* element matches. Upstream "all items
+    disabled" passed with an enabled Download item (correct product behaviour).
+    Same class as #6. Ports assert per-item intent. **Cross-checked**: Cypress
+    passes where the naive port failed — confirmed as port drift, not a bug.
+
+37. **Callback-scoped assertions never enforce** (`click-behavior`): two
+    upstream tests assert an href inside `H.onNextAnchorClick`'s callback and
+    pass green while asserting an href the app never produces — corroborated
+    *within one test body* (asserts a cell reads "October 2026" while asserting
+    an href containing `2025-07`). The port asserts outside the callback.
+
+38. **A cluster of vacuous assertions surfaced across the dashboard specs**
+    (`dashboard-reproductions`): `cy.tick` misused so a negative assertion
+    passed vacuously; `realHover` silently no-ops off-viewport so a tooltip
+    check asserted nothing; `enable_embedding` spread into a POST that ignores
+    it (killed 5 tests once ported faithfully). Each became a real assertion.
+
+### Infrastructure findings
+
+39. **A harness bug corrupting every slot: `site-url` baked to :4000**
+    (found independently by two agents, `dashboard-reproductions` +
+    `interactive-embedding`). Snapshots pin `site-url: http://localhost:4000`,
+    so every drill-through/`openUrl` navigation on a :410N slot backend landed
+    the browser on a *different instance* — and failed silently, because a
+    pathname-only assertion still passed. Fixed once in `worker-backend.ts` via
+    `MB_SITE_URL`. **Known cost** (documented): env beats the app DB, so any
+    test that *writes* site-url is now silently overridden — one fixme records
+    it. Reproduces identically under Cypress, so the cross-check does not clear
+    it — a backend-setting instance of the shared-cause class in #31.
+
+40. **CSS-module class names are minified in the jar — never select on them**
+    (`documents`). A selector matching the class substring `__visible` was green
+    in source mode and red on the jar, where the production bundle minifies the
+    class to an opaque token (measured `vs_4B O6wZQ`). The textbook case for
+    verifying on the jar. Fixed by selecting on computed `opacity`, the real
+    signal in both builds.
+
+41. **Viewport drift — the whole spike runs at 1280×720, not the configured
+    1280×800** (`interactive-embedding`). `devices["Desktop Chrome"]` silently
+    overrides the top-level viewport; caught only because one test asserts the
+    height back. Cypress runs 800, so this is a real fidelity gap. **Needs an
+    owner** — landed specs may have stabilized against 720; fix + full-suite
+    revalidation at a checkpoint, not mid-wave.
+
+42. **Zero-box Mantine modal roots** (`documents`): `ConfirmModal` spreads its
+    testid onto Mantine's `Modal` *root*, which is `position: static` with
+    `fixed` children and collapses to height 0. Cypress `should("be.visible")`
+    passes (visible-child rule); Playwright `toBeVisible()` fails on an open
+    modal. Scope assertions to the dialog content. Reusable across every port.
