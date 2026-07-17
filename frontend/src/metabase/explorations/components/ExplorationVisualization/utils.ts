@@ -23,6 +23,7 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
+  ColumnSettings,
   Dataset,
   DatasetColumn,
   ExplorationBlockNodeType,
@@ -426,11 +427,28 @@ export function getHeatMapSeries({
   ];
 }
 
+export function formatColumnValue(
+  value: RowValue,
+  column: DatasetColumn,
+  columnSettings?: ColumnSettings,
+): string {
+  const settings = columnSettings ?? { column };
+  return String(formatValue(value ?? NULL_DISPLAY_VALUE, settings));
+}
+
 export function getExploreFurtherFilters(
   clicked: ClickObject,
 ): ExplorationExploreFilter[] {
   return (clicked.dimensions ?? []).flatMap(({ column, value }) =>
-    column.field_ref != null ? [{ field_ref: column.field_ref, value }] : [],
+    column.field_ref != null
+      ? [
+          {
+            field_ref: column.field_ref,
+            value,
+            display_value: formatColumnValue(value, column),
+          },
+        ]
+      : [],
   );
 }
 
@@ -486,11 +504,7 @@ export function getCommentLabel(
       continue;
     }
     const columnSettings = computedSettings?.column?.(column) ?? { column };
-    labels.push(
-      String(
-        formatValue(dimension.value ?? NULL_DISPLAY_VALUE, columnSettings),
-      ),
-    );
+    labels.push(formatColumnValue(dimension.value, column, columnSettings));
   }
 
   if (highlighted.cardId && seriesGroup.series.length > 1) {

@@ -34,6 +34,7 @@ import type {
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
+  HydratedExplorationExploreFilter,
   IconName,
   SingleSeries,
   Timeline,
@@ -56,6 +57,7 @@ interface ExplorationGroupVisualizationProps {
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
   blockType: ExplorationBlockNodeType;
+  exploreFilters?: HydratedExplorationExploreFilter[] | null;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -75,7 +77,7 @@ interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGro
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
-  const groupName = props.page.name ?? "";
+  const groupName = props.page.long_name ?? props.page.name ?? "";
 
   return (
     <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
@@ -150,6 +152,7 @@ function ExplorationGroupVisualizationChart({
   page,
   queries,
   blockType,
+  exploreFilters,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -338,6 +341,7 @@ function ExplorationGroupVisualizationChart({
       <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
+          exploreFilters={exploreFilters}
           explorationId={explorationId}
           pageId={String(page.id)}
           isCommentsSidebarOpen={isCommentsSidebarOpen}

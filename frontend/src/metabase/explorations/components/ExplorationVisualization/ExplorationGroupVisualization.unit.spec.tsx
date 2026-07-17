@@ -9,7 +9,9 @@ import type {
   Comment,
   Dataset,
   ExplorationBlockNodeType,
+  ExplorationPageNode,
   ExplorationQuery,
+  HydratedExplorationExploreFilter,
   Timeline,
   TimelineEvent,
 } from "metabase-types/api";
@@ -203,6 +205,8 @@ interface SetupOpts {
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
   blockType?: ExplorationBlockNodeType;
+  page?: ExplorationPageNode;
+  exploreFilters?: HydratedExplorationExploreFilter[] | null;
 }
 
 function setup({
@@ -216,6 +220,8 @@ function setup({
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
   blockType = "metric",
+  page: pageOverride,
+  exploreFilters,
 }: SetupOpts) {
   mockDatasetsByQueryId.clear();
   mockErrorsByQueryId.clear();
@@ -236,9 +242,13 @@ function setup({
       component={() => (
         <ExplorationGroupVisualization
           explorationId={1}
-          page={{ ...page, query_ids: queries.map((q) => q.id) }}
+          page={{
+            ...(pageOverride ?? page),
+            query_ids: queries.map((q) => q.id),
+          }}
           queries={queries}
           blockType={blockType}
+          exploreFilters={exploreFilters}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
@@ -357,6 +367,42 @@ describe("ExplorationGroupVisualization", () => {
 
     expect(screen.getByText("No charts in this group.")).toBeInTheDocument();
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
+  });
+
+  it("prefers long_name over name in the header", () => {
+    const queries = [
+      createQuery({ id: 101, name: "Revenue (US)", status: "done" }),
+    ];
+    setup({
+      queries,
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      page: createPage({
+        id: 1,
+        name: "Category",
+        long_name: "Revenue by Category",
+        query_ids: [101],
+      }),
+    });
+
+    expect(screen.getByText("Revenue by Category")).toBeInTheDocument();
+    expect(screen.queryByText("Category")).not.toBeInTheDocument();
+  });
+
+  it("renders read-only explore filter pills beneath the header", () => {
+    setup({
+      queries: [createQuery({ id: 101, name: "Revenue (US)", status: "done" })],
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      exploreFilters: [
+        {
+          field_ref: ["field", 1, null],
+          value: "TX",
+          display_value: "TX",
+          dimension_name: "State",
+        },
+      ],
+    });
+
+    expect(screen.getByTestId("filter-pill")).toHaveTextContent("State: TX");
   });
 
   it("shows the group name in the header", () => {

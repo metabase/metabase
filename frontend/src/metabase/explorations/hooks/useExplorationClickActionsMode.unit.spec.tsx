@@ -155,7 +155,13 @@ describe("useExplorationClickActionsMode", () => {
     expect(exploreFurtherMock).toHaveBeenCalledWith({
       id: 42,
       page_id: 7,
-      explore_filters: [{ field_ref: ["field", 1, null], value: "Gadget" }],
+      explore_filters: [
+        {
+          field_ref: ["field", 1, null],
+          value: "Gadget",
+          display_value: "Gadget",
+        },
+      ],
     });
     expect(closePopover).toHaveBeenCalled();
   });
