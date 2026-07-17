@@ -32,15 +32,11 @@
              (dissoc search.config/filters :id)))
 
 (defn- spec-supported-attr-keys
-  "All attr keys a spec supports, including those provided by function attrs.
+  "All attr keys a spec supports.
   Keys with value false are excluded — false means 'not present' in the spec DSL."
   [spec]
   (into #{}
-        (mapcat (fn [[k v]]
-                  (cond
-                    (search.spec/function-attr? v) (conj (search.spec/function-attr-provides v) k)
-                    v [k]
-                    :else [])))
+        (keep (fn [[k v]] (when v k)))
         (:attrs spec)))
 
 (defn search-context->applicable-models

@@ -91,19 +91,21 @@
             "Transformation functions should not be applied to embeddable text for semantic search")))))
 
 (deftest execute-all-function-attrs-test
-  (testing "function-attr returning a map merges its keys into the document"
-    (let [spec {:attrs {:temporal-info {:fn       (constantly {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"})
-                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
-      (is (= {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"}
-             (#'search.ingestion/execute-all-function-attrs spec {})))))
-  (testing "function-attr without :provides falls back to writing snake_case attr-key on non-map results"
+  (testing "function-attr result is written under the snake_case attr-key"
     (let [spec {:attrs {:native-query {:fn (constantly "SELECT 1")}}}]
       (is (= {:native_query "SELECT 1"}
              (#'search.ingestion/execute-all-function-attrs spec {})))))
-  (testing "function-attr with :provides skips writing when result is not a map"
-    (let [spec {:attrs {:temporal-info {:fn       (fn [_] (throw (ex-info "boom" {})))
-                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
-      (is (= {} (#'search.ingestion/execute-all-function-attrs spec {}))))))
+  (testing "function-attr receives only the record keys declared in :fields"
+    (let [spec {:attrs {:native-query {:fn     #(vec (sort (keys %)))
+                                       :fields [:dataset_query :query_type]}}}]
+      (is (= {:native_query [:dataset_query :query_type]}
+             (#'search.ingestion/execute-all-function-attrs
+              spec
+              {:dataset_query "{}" :query_type "native" :name "ignored"})))))
+  (testing "a throwing function-attr leaves its column nil"
+    (let [spec {:attrs {:native-query {:fn (fn [_] (throw (ex-info "boom" {})))}}}]
+      (is (= {:native_query nil}
+             (#'search.ingestion/execute-all-function-attrs spec {}))))))
 
 (deftest execute-all-function-attrs-metric-reference-cycle-test
   (testing "a card whose metric references form a cycle yields a document without temporal keys, instead of throwing (#74954)"

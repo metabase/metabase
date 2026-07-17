@@ -213,8 +213,6 @@
     :last-editor-id          {:type :list, :context-key :last-edited-by}
     :native-query            {:type :native-query, :context-key :search-native-query}
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
-    :has-temporal-dim        {:type :single-value :engine :appdb}
     :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
@@ -424,8 +422,6 @@
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
-   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]
    [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string

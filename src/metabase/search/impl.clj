@@ -279,8 +279,6 @@
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
-   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
-   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
    [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
@@ -315,8 +313,6 @@
            search-string
            table-db-id
            verified
-           non-temporal-dim-ids
-           has-temporal-dim
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
@@ -360,8 +356,6 @@
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)
-                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
-                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
                  (seq display-type)                          (assoc :display-type display-type))]
     (when (and (seq ids)
                (not= (count models) 1))
