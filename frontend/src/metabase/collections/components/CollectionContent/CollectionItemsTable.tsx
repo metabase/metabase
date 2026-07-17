@@ -76,6 +76,7 @@ export type CollectionItemsTableProps = {
   loadingPinnedItems: boolean;
   models: CollectionItemModel[];
   pageSize: number;
+  showDashboardQuestions: boolean;
   selected: CollectionItem[];
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   toggleItem: (item: CollectionItem) => void;
@@ -111,6 +112,7 @@ export const CollectionItemsTable = ({
   loadingPinnedItems,
   models = ALL_MODELS,
   pageSize = COLLECTION_PAGE_SIZE,
+  showDashboardQuestions = true,
   selected,
   selectOnlyTheseItems,
   toggleItem,
@@ -167,10 +169,7 @@ export const CollectionItemsTable = ({
         limit: pageSize,
         offset: pageSize * page,
         ...(showAllItems
-          ? {
-              show_dashboard_questions: true,
-              show_exploration_documents: true,
-            }
+          ? { show_dashboard_questions: showDashboardQuestions }
           : { pinned_state: "is_not_pinned" }),
         ...unpinnedItemsSorting,
       }}
