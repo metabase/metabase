@@ -33,7 +33,9 @@ export default defineConfig({
     testIdAttribute: "data-testid",
     // PW_ACTION_TIMEOUT override: parallel JVM boots peg the CPU during the
     // per-worker experiment, so actions need more headroom there.
-    actionTimeout: Number(process.env.PW_ACTION_TIMEOUT ?? 15_000),
+    // `||` not `??`: an empty env string must fall back too (Number("") is 0,
+    // which Playwright treats as "no timeout").
+    actionTimeout: Number(process.env.PW_ACTION_TIMEOUT) || 15_000,
     trace: "retain-on-failure",
     // Port of Cypress chromeWebSecurity: false — required so the backend's
     // CSP doesn't block hot-reload bundles served from localhost:8080.

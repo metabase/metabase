@@ -37,7 +37,14 @@ jobs:
     needs: uberjar
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
-    name: e2e-playwright-ee
+    name: e2e-playwright-ee-w${{ matrix.workers }}
+    strategy:
+      fail-fast: false
+      # Worker-count A/B on the real runner class. workers=1 is the serial
+      # baseline (shared step-backend); workers>1 boots one jar backend per
+      # worker (PW_PER_WORKER_BACKEND). Trim to [1] once numbers are in.
+      matrix:
+        workers: [1, 2, 3]
     env:
       MB_EDITION: ee
       # resolveToken() in e2e-playwright/support/api.ts reads the
@@ -100,7 +107,13 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: e2e-playwright
-        run: bunx playwright test
+        env:
+          PW_PER_WORKER_BACKEND: ${{ matrix.workers > 1 && '1' || '' }}
+          PW_ACTION_TIMEOUT: ${{ matrix.workers > 1 && '30000' || '' }}
+          # Worker backends boot from the fetched jar with capped heaps.
+          JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
+          PW_WORKER_MAX_HEAP: 1500m
+        run: bunx playwright test --workers=${{ matrix.workers }} ${{ matrix.workers > 1 && '--fully-parallel' || '' }}
 
       # Plain GitHub artifact only — deliberately NOT the upload-test-results
       # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
@@ -109,7 +122,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: playwright-timings
+          name: playwright-timings-w${{ matrix.workers }}
           path: |
             e2e-playwright/target/junit/playwright.xml
             e2e-playwright/target/playwright-results.json
@@ -119,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-w${{ matrix.workers }}
           path: |
             e2e-playwright/playwright-report
             e2e-playwright/test-results

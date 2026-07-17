@@ -72,9 +72,13 @@ class MetabaseHarness {
       const deadline = Date.now() + 30_000;
       let forcedReindex = false;
       while (Date.now() < deadline) {
-        const response = await adminApi.get("/api/search?q=Orders&limit=1", {
-          failOnStatusCode: false,
-        });
+        // Query a TABLE specifically: the rebuild indexes models in phases,
+        // and cards can be searchable while tables still aren't (which broke
+        // the join mini-picker after the card-based poll passed).
+        const response = await adminApi.get(
+          "/api/search?q=Reviews&models=table&limit=1",
+          { failOnStatusCode: false },
+        );
         if (response.ok()) {
           const body = await response.json().catch(() => ({ data: [] }));
           if ((body.data ?? []).length > 0) {

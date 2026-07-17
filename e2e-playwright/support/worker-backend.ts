@@ -157,8 +157,22 @@ export async function startWorkerBackend(
   fs.mkdirSync(scratch, { recursive: true });
   const sampleDbDir = path.join(scratch, "sample-db");
   fs.mkdirSync(sampleDbDir);
-  fs.copyFileSync(
+  // Local dev extracts the sample DB to e2e/tmp; in CI the jar-mode backend
+  // extracts it into the repo-root plugins dir.
+  const sampleDbSources = [
     path.join(REPO_ROOT, "e2e/tmp/sample-database.db.mv.db"),
+    path.join(REPO_ROOT, "plugins/sample-database.db.mv.db"),
+  ];
+  const sampleDbSource = sampleDbSources.find((candidate) =>
+    fs.existsSync(candidate),
+  );
+  if (!sampleDbSource) {
+    throw new Error(
+      `Sample database file not found; looked in:\n${sampleDbSources.join("\n")}`,
+    );
+  }
+  fs.copyFileSync(
+    sampleDbSource,
     path.join(scratch, "sample-database.db.mv.db"),
   );
 
@@ -179,6 +193,19 @@ export async function startWorkerBackend(
       // shared cwd-relative plugins/ dir — give each backend its own.
       MB_PLUGINS_DIR: path.join(scratch, "plugins"),
       NREPL_PORT: String(nreplPort),
+      // On memory-tight CI runners, cap each worker JVM's heap (deps.edn's
+      // :e2e opts set no -Xmx, so JAVA_TOOL_OPTIONS survives; JVM default
+      // would be 25% of machine RAM per backend). e.g. PW_WORKER_MAX_HEAP=1500m
+      ...(process.env.PW_WORKER_MAX_HEAP
+        ? {
+            JAVA_TOOL_OPTIONS: [
+              process.env.JAVA_TOOL_OPTIONS,
+              `-Xmx${process.env.PW_WORKER_MAX_HEAP}`,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          }
+        : {}),
     },
   });
   proc.unref();
