@@ -15,6 +15,7 @@
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
+   [metabase.explorations.queues :as explorations.queues]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -193,16 +194,17 @@
 
 (defn- reset-thread-for-rerun!
   "CAS-reset a *terminal* thread (`completed_at` set — natural completion, terminal failure, or
-  cancel) back to the freshly-created state the planning worker claims: `started_at` set, every
-  other lifecycle timestamp NULL, and zero `exploration_query` rows — exactly the shape
-  `claim-unplanned-thread!` (see `metabase.explorations.task.runner`) will pick up. Returns true
-  when the reset applied; false when the guarded UPDATE matched no row.
+  cancel) back to the freshly-started state a new plan run expects: `started_at` set, every other
+  lifecycle timestamp NULL, and zero `exploration_query` rows. On success it enqueues a fresh
+  planning message (`explorations.queues/start-thread!`) inside the same transaction, so planning
+  re-runs iff the reset committed. Returns true when the reset applied; false when the guarded
+  UPDATE matched no row.
 
   The guard refuses while the thread is still in flight: not yet terminal, or a query worker
   still holds a `running` row (possible on a canceled thread, whose in-flight queries run to
-  natural completion). A restart racing in-flight work could otherwise strand late-inserted
-  query rows on a thread whose `query_plan_started_at` we just cleared — a state the planner
-  never re-claims — or let the worker's completion CAS stamp the freshly-reset thread."
+  natural completion). A restart racing in-flight work could otherwise strand query rows a
+  still-running planner inserts after the reset, or let an in-flight query worker's completion
+  CAS stamp the freshly-reset thread."
   [thread-id]
   (t2/with-transaction [_conn]
     (when (pos? (t2/query-one
@@ -222,6 +224,9 @@
                                                   [:= :exploration_thread_id thread-id]
                                                   [:= :status "running"]]}]]}))
       (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
+      ;; Enqueue planning inside the reset transaction so the plan message publishes iff the reset
+      ;; commits (:queue/exploration-plan is :transactional :require).
+      (explorations.queues/start-thread! thread-id)
       true)))
 
 (defn- stringify-dim-types
@@ -513,10 +518,8 @@
 
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
-  and timelines, and stamp the thread as started. The background planning worker (see
-  `metabase.explorations.query-plan`) picks the thread up, calls an LLM to decide which charts
-  to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
-  with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
+  and timelines, and stamp the thread as started. Actual planning is async; this endpoint returns
+  immediately with an empty queries list. Clients should poll `GET /:id/queries` until rows appear.
 
   Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
@@ -538,12 +541,11 @@
                                                                     :description   description
                                                                     :collection_id collection_id
                                                                     :creator_id    api/*current-user-id*}))
-                ;; `started_at` is the signal to the background planning worker that this thread
-                ;; is ready to plan + execute: the worker's claim predicate matches threads with
-                ;; `started_at IS NOT NULL` and `query_plan_started_at IS NULL`. Setting it in the
-                ;; INSERT is safe — the worker reads on another connection, so it can't see (or
-                ;; claim) the thread before this whole transaction, including the dependent
-                ;; block/timeline rows below, commits atomically.
+                ;; `started_at` marks the thread as started (past the draft phase). Planning itself
+                ;; is kicked off by the `start-thread!` enqueue below — its plan message rides a
+                ;; `:transactional :require` queue, so it publishes only once this whole transaction,
+                ;; including the dependent block/timeline rows below, commits atomically.
+                ;; The plan listener therefore can never observe (or plan) a half-built thread.
                 thread      (first (t2/insert-returning-instances! :model/ExplorationThread
                                                                    {:exploration_id (:id exploration)
                                                                     :prompt         prompt
@@ -552,6 +554,7 @@
                 tid         (:id thread)]
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
+            (explorations.queues/start-thread! tid)
             (t2/select-one :model/Exploration :id (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.

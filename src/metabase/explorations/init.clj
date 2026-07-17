@@ -7,5 +7,5 @@
    [metabase.explorations.models.exploration-query-result]
    [metabase.explorations.models.exploration-thread]
    [metabase.explorations.models.exploration-thread-timeline]
-   [metabase.explorations.settings]
-   [metabase.explorations.task.runner]))
+   [metabase.explorations.queues]
+   [metabase.explorations.settings]))

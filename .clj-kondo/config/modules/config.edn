@@ -1034,6 +1034,7 @@
            metabot
            metrics
            models
+           mq
            permissions
            queries
            query-permissions
@@ -1041,7 +1042,6 @@
            request
            search
            settings
-           startup
            timeline
            types
            util}
@@ -1506,7 +1506,8 @@
 
   mq
   {:team "UX West"
-   :api  #{metabase.mq.init}
+   :api  #{metabase.mq.core
+           metabase.mq.init}
    :uses #{analytics-interface
            app-db
            classloader
