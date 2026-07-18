@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupGetWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import {
   createMockDatabase,
   createMockUserInfo,
@@ -16,7 +17,13 @@ const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 function setup({ workspace = WORKSPACE } = {}) {
   // The delete modal fetches the hydrated workspace when opened.
   setupGetWorkspaceEndpoint(workspace);
-  renderWithProviders(<WorkspaceItem workspace={workspace} />);
+  renderWithProviders(
+    <Route
+      path="*"
+      component={() => <WorkspaceItem workspace={workspace} />}
+    />,
+    { withRouter: true },
+  );
 }
 
 describe("WorkspaceItem", () => {
@@ -69,45 +76,23 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("Database 20")).toBeInTheDocument();
   });
 
-  it("warns when a database is not provisioned", () => {
+  it("links to the child instance when instance_url is set", () => {
     setup({
       workspace: createMockWorkspace({
-        id: 1,
         name: "My workspace",
-        databases: [
-          createMockWorkspaceDatabase({
-            database_id: 10,
-            status: "unprovisioned",
-            database: createMockDatabase({ id: 10, name: "Postgres" }),
-          }),
-        ],
+        instance_url: "https://child.example.com",
       }),
     });
 
     expect(
-      screen.getByText("Failed to provision the workspace."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Postgres")).toBeInTheDocument();
+      screen.getByRole("link", { name: "https://child.example.com" }),
+    ).toHaveAttribute("href", "https://child.example.com");
   });
 
-  it("does not warn when all databases are provisioned", () => {
-    setup({
-      workspace: createMockWorkspace({
-        id: 1,
-        name: "My workspace",
-        databases: [
-          createMockWorkspaceDatabase({
-            database_id: 10,
-            status: "provisioned",
-            database: createMockDatabase({ id: 10, name: "Postgres" }),
-          }),
-        ],
-      }),
-    });
+  it("does not render an instance link when instance_url is not set", () => {
+    setup();
 
-    expect(
-      screen.queryByText("Failed to provision the workspace."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("opens the rename modal from the menu", async () => {

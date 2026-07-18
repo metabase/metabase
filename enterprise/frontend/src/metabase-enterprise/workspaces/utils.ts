@@ -13,6 +13,10 @@ export function isUnprovisioned(workspaceDatabase: WorkspaceDatabase) {
   return workspaceDatabase.status === "unprovisioned";
 }
 
+export function isProvisioned(workspaceDatabase: WorkspaceDatabase) {
+  return workspaceDatabase.status === "provisioned";
+}
+
 export function isPending(workspaceDatabase: WorkspaceDatabase) {
   const { status } = workspaceDatabase;
   return status === "provisioning" || status === "deprovisioning";

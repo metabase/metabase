@@ -1,8 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { Link } from "metabase/router";
 import {
   ActionIcon,
+  Anchor,
   Box,
   Card,
   FixedSizeIcon,
@@ -14,11 +16,7 @@ import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
-import {
-  getProvisioningFailureMessage,
-  getWorkspaceDatabaseName,
-  isUnprovisioned,
-} from "../../../utils";
+import { getWorkspaceDatabaseName, isProvisioned } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
@@ -44,7 +42,9 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {databases.some(isUnprovisioned) && <WorkspaceProvisioningWarning />}
+          {workspace.instance_url != null && (
+            <WorkspaceInstanceInfo instanceUrl={workspace.instance_url} />
+          )}
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -75,20 +75,31 @@ function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
   );
 }
 
-type WorkspaceDatabaseItemProps = {
-  workspaceDatabase: WorkspaceDatabase;
+type WorkspaceInstanceInfoProps = {
+  instanceUrl: string;
 };
 
-function WorkspaceProvisioningWarning() {
+function WorkspaceInstanceInfo({ instanceUrl }: WorkspaceInstanceInfoProps) {
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name="warning" aria-hidden />
-        {getProvisioningFailureMessage()}
+        <FixedSizeIcon name="workspace" aria-hidden />
+        <Anchor
+          component={Link}
+          to={instanceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {instanceUrl}
+        </Anchor>
       </Group>
     </Box>
   );
 }
+
+type WorkspaceDatabaseItemProps = {
+  workspaceDatabase: WorkspaceDatabase;
+};
 
 function WorkspaceDatabaseItem({
   workspaceDatabase,
@@ -96,7 +107,11 @@ function WorkspaceDatabaseItem({
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name="database" aria-hidden />
+        <FixedSizeIcon
+          name="database"
+          c={isProvisioned(workspaceDatabase) ? undefined : "error"}
+          aria-hidden
+        />
         {getWorkspaceDatabaseName(workspaceDatabase)}
       </Group>
     </Box>
