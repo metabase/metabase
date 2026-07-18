@@ -22,7 +22,7 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms-python enterprise/workspaces})
+     enterprise/transforms enterprise/transforms.python enterprise/workspaces})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
