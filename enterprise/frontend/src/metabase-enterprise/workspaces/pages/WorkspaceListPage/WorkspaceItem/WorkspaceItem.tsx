@@ -56,8 +56,11 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          <WorkspaceStatusItem workspace={workspace} />
-          <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
+          {isProvisioned(workspace) ? (
+            <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
+          ) : (
+            <WorkspaceStatusItem workspace={workspace} />
+          )}
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -129,9 +132,6 @@ function SeeDetailsButton({ workspace }: WorkspaceStatusItemProps) {
 function WorkspaceStatusIcon({ workspace }: WorkspaceStatusItemProps) {
   if (isProvisioning(workspace) || isDeprovisioning(workspace)) {
     return <Loader size="xs" />;
-  }
-  if (isProvisioned(workspace)) {
-    return <FixedSizeIcon name="check_filled" c="success" aria-hidden />;
   }
   return <FixedSizeIcon name="warning" aria-hidden />;
 }

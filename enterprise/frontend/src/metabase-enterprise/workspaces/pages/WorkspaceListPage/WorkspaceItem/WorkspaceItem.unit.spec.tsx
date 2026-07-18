@@ -133,15 +133,30 @@ describe("WorkspaceItem", () => {
     setup({
       workspace: createMockWorkspace({
         name: "My workspace",
-        status: "provisioned",
+        status: "unprovisioned",
         status_details: null,
       }),
     });
 
-    expect(screen.getByText("Provisioned")).toBeInTheDocument();
+    expect(screen.getByText("Not provisioned")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "See details" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the instance link instead of the status when provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+        instance_url: "https://workspace.example.com",
+      }),
+    });
+
+    expect(
+      screen.getByRole("link", { name: "https://workspace.example.com" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Provisioned")).not.toBeInTheDocument();
   });
 
   it("renders the creator info when the creator is hydrated", () => {
