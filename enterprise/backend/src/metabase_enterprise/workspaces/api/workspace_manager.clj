@@ -153,7 +153,7 @@
   (let [ws       (api/write-check :model/Workspace id)
         _        (assert-workspace-status! ws)
         ws       (ws.provisioning/set-workspace-provisioning-status! ws)
-        response (present-workspace (api/check-404 (workspace/get-workspace id)))]
+        response (present-workspace (t2/hydrate ws :creator [:databases :database]))]
     (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws))
     response))
 
@@ -166,6 +166,6 @@
   (let [ws       (api/write-check :model/Workspace id)
         _        (assert-workspace-status! ws)
         ws       (ws.provisioning/set-workspace-deprovisioning-status! ws)
-        response (present-workspace (api/check-404 (workspace/get-workspace id)))]
+        response (present-workspace (t2/hydrate ws :creator [:databases :database]))]
     (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws))
     response))

@@ -89,6 +89,13 @@
                               (workspace/delete-workspace! id)))
         (is (= 400 (try (workspace/delete-workspace! id)
                         (catch Exception e (:status-code (ex-data e))))))
+        (is (t2/exists? :model/Workspace :id id)))))
+  (testing "delete-workspace! refuses (400) while a run is in flight, even when every row is :unprovisioned"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{id :id} (create-ws! {:name "Racing" :databases [(ws-db-attrs)]})]
+        (t2/update! :model/Workspace id {:status :database-provisioning})
+        (is (thrown-with-msg? Exception #"in flight"
+                              (workspace/delete-workspace! id)))
         (is (t2/exists? :model/Workspace :id id))))))
 
 (deftest cascade-delete-workspace-test

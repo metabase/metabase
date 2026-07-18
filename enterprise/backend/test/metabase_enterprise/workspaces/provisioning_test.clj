@@ -215,6 +215,21 @@
                 @received)
             "create! received the workspace's config map")))))
 
+(deftest start-run-guard-test
+  (testing "set-workspace-*-status! atomically refuse to start a run while one is in flight"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Busy" :status :database-provisioning}]
+      (doseq [start! [provisioning/set-workspace-provisioning-status!
+                      provisioning/set-workspace-deprovisioning-status!]]
+        (is (= 400 (try (start! (workspace-row ws-id))
+                        (catch Exception e (:status-code (ex-data e))))))
+        (is (= :database-provisioning (:status (workspace-row ws-id)))
+            "the in-flight status is untouched"))))
+  (testing "and start the run from any settled status"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Settled" :status :database-provisioning-failure}]
+      (is (=? {:status :database-provisioning}
+              (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))))
+      (is (= :database-provisioning (:status (workspace-row ws-id)))))))
+
 (deftest workspace-provisioning?-and-deprovisioning?-test
   (testing "only the active phases count as in flight; the settled statuses do not"
     (letfn [(ws-with [status] {:id 1 :name "WS" :status status})]

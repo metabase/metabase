@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
@@ -105,6 +106,17 @@
                         [:not-in :id workspace-db-ids]
                         true)]}))
 
+(defn- remote-sync-settings
+  "Remote-sync settings for the child instance's `settings:` config section, or
+   nil when remote sync is not enabled on this instance. The child instance
+   always gets `:read-write` — its whole purpose is committing changes back."
+  []
+  (when (remote-sync/remote-sync-enabled)
+    {:remote-sync-url    (remote-sync/remote-sync-url)
+     :remote-sync-branch (remote-sync/remote-sync-branch)
+     :remote-sync-token  (remote-sync/remote-sync-token)
+     :remote-sync-type   "read-write"}))
+
 (defn- sample-database-entries
   "If the instance has a Sample Database, emit a single placeholder entry the
    import side will use to recreate it. Always uses the canonical name/engine —
@@ -129,9 +141,11 @@
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`."
+  `instance-workspace` setting stores. When remote sync is enabled on this
+  instance, `:config` also carries a `:settings` section pointing the child
+  instance at the same git repo in `:read-write` mode. Returns nil when the
+  workspace does not exist. Throws a 409 `ex-info` if any of the workspace's
+  databases is not `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -149,13 +163,15 @@
                                [wsd db])
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-            sample-entries   (sample-database-entries)]
+            sample-entries   (sample-database-entries)
+            settings         (remote-sync-settings)]
         {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+         :config  (cond-> {:databases (-> ws-entries
+                                          (into stub-entries)
+                                          (into sample-entries))
+                           :workspace {:name      (:name ws)
+                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
+                    settings (assoc :settings settings))}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

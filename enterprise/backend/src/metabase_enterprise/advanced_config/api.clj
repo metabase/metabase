@@ -27,9 +27,7 @@
   [:map
    [:multipart-params
     [:map
-     ["config" [:map
-                [:filename :string]
-                [:tempfile (ms/InstanceOfClass java.io.File)]]]]]])
+     ["config" ms/File]]]])
 
 (defn apply-config-upload!
   "Apply the uploaded `config.yml` multipart param `config` to this instance and

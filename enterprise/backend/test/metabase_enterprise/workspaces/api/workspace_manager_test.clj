@@ -179,6 +179,7 @@
         (mt/with-temp [:model/Workspace {ws-id :id} {:name "Busy" :status in-flight-status}]
           (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/provision"))
           (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/deprovision"))
+          (mt/user-http-request :crowberto :delete 400 (str "ee/workspace-manager/" ws-id))
           (is (= in-flight-status (t2/select-one-fn :status :model/Workspace :id ws-id))
               "the in-flight status is untouched"))))
     (testing "the settled failure statuses stay retryable"

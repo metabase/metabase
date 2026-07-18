@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
+   [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -113,11 +114,17 @@
       (get-workspace workspace-id))))
 
 (defn delete-workspace!
-  "Delete a Workspace. Refuses with a 400 if any of its WorkspaceDatabase rows is in
-  a non-`:unprovisioned` state — those point at (or are in flight against) live
-  warehouse resources and must be deprovisioned explicitly first. Cascade-deletes
-  `:unprovisioned` children via the FK. Returns nil."
+  "Delete a Workspace. Refuses with a 400 while a provision/deprovision run is
+  in flight, or if any of its WorkspaceDatabase rows is in a non-`:unprovisioned`
+  state — those point at (or are in flight against) live warehouse resources and
+  must be deprovisioned explicitly first. Cascade-deletes `:unprovisioned`
+  children via the FK. Returns nil."
   [id]
+  (when (contains? ws.schema/in-flight-statuses
+                   (t2/select-one-fn :status :model/Workspace :id id))
+    (throw (ex-info "Cannot delete a workspace while a provision or deprovision run is in flight"
+                    {:status-code 400
+                     :workspace_id id})))
   (when (t2/exists? :model/WorkspaceDatabase
                     :workspace_id id
                     :status [:not= :unprovisioned])

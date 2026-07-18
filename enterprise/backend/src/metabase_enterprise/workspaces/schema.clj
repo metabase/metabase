@@ -37,6 +37,12 @@
    :database-deprovisioning
    :database-deprovisioning-failure])
 
+(def in-flight-statuses
+  "The workspace statuses that mark a provision or deprovision run as currently
+   executing. All other statuses are settled — a new run may start from them."
+  #{:database-provisioning :instance-provisioning
+    :instance-deprovisioning :database-deprovisioning})
+
 (mr/def ::workspace-database-status
   "Lifecycle status of a `:model/WorkspaceDatabase`. The `*-failure` statuses are
    terminal until the next provision/deprovision retry."

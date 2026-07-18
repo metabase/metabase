@@ -133,7 +133,7 @@ function WorkspaceStatusIcon({ workspace }: WorkspaceStatusItemProps) {
   if (isProvisioning(workspace) || isDeprovisioning(workspace)) {
     return <Loader size="xs" />;
   }
-  return <FixedSizeIcon name="warning" aria-hidden />;
+  return <FixedSizeIcon name="warning" c="feedback-negative" aria-hidden />;
 }
 
 type WorkspaceInstanceItemProps = {
