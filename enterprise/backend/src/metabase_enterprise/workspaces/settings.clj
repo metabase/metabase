@@ -18,6 +18,7 @@
   :type       :boolean
   :default    false
   :setter     :none
+  :feature    :workspaces
   :visibility :internal
   :export?    false
   :audit      :never
