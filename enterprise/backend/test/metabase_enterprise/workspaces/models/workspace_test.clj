@@ -28,11 +28,7 @@
         (is (some? (:id created)))
         (is (= "Solo" (:name created)))
         (is (= [] (:databases created)))
-        (is (t2/exists? :model/Workspace :id (:id created)))
-        (testing "an API key is generated and round-trips through the encrypted column"
-          (let [api-key (t2/select-one-fn :api_key :model/Workspace :id (:id created))]
-            (is (string? api-key))
-            (is (re-matches #"mb_.+" api-key))))))))
+        (is (t2/exists? :model/Workspace :id (:id created)))))))
 
 (deftest create-workspace-with-databases-test
   (testing "create-workspace! stores nested workspace_database rows"
@@ -131,9 +127,9 @@
   (testing "workspace.status_details and workspace_database.status_details round-trip transparently"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{id :id} (create-ws! {:name "Statuses" :databases [(ws-db-attrs)]})]
-        (t2/update! :model/Workspace id {:status :provisioning-failure, :status_details "boom"})
+        (t2/update! :model/Workspace id {:status :database-provisioning-failure, :status_details "boom"})
         (t2/update! :model/WorkspaceDatabase {:workspace_id id} {:status_details "db boom"})
-        (is (=? {:status :provisioning-failure, :status_details "boom"}
+        (is (=? {:status :database-provisioning-failure, :status_details "boom"}
                 (t2/select-one :model/Workspace :id id)))
         (is (= "db boom"
                (t2/select-one-fn :status_details :model/WorkspaceDatabase :workspace_id id)))))))

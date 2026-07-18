@@ -55,9 +55,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
           <WorkspaceStatusItem workspace={workspace} />
-          {workspace.instance_url != null && (
-            <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
-          )}
+          <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -101,7 +99,7 @@ function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
 }
 
 type WorkspaceInstanceItemProps = {
-  instanceUrl: string;
+  instanceUrl: string | null;
 };
 
 function WorkspaceInstanceItem({ instanceUrl }: WorkspaceInstanceItemProps) {
@@ -109,14 +107,18 @@ function WorkspaceInstanceItem({ instanceUrl }: WorkspaceInstanceItemProps) {
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="workspace" aria-hidden />
-        <Anchor
-          href={instanceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          lh="inherit"
-        >
-          {instanceUrl}
-        </Anchor>
+        {instanceUrl != null ? (
+          <Anchor
+            href={instanceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            lh="inherit"
+          >
+            {instanceUrl}
+          </Anchor>
+        ) : (
+          t`No workspace instance yet`
+        )}
       </Group>
     </Box>
   );

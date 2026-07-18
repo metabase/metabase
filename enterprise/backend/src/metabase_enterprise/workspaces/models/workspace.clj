@@ -1,11 +1,9 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
-   [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,8 +15,7 @@
 
 (t2/deftransforms :model/Workspace
   {:status         mi/transform-keyword
-   :status_details mi/transform-encrypted-text
-   :api_key        mi/transform-encrypted-text})
+   :status_details mi/transform-encrypted-text})
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
@@ -103,14 +100,13 @@
 
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
-  The param map must supply `:creator_id`. Generates the workspace's API key.
-  Returns the created Workspace with `:databases` and `:creator` hydrated."
+  The param map must supply `:creator_id`. Returns the created Workspace with
+  `:databases` and `:creator` hydrated."
   [{:keys [name creator_id databases]}]
   (t2/with-transaction [_conn]
     (let [workspace-id (t2/insert-returning-pk! :model/Workspace
                                                 {:name       name
-                                                 :creator_id creator_id
-                                                 :api_key    (u.secret/expose (api-key/generate-key))})]
+                                                 :creator_id creator_id})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % workspace-id) databases)))

@@ -186,9 +186,8 @@
                 (workspace-row ws-id)))))))
 
 (deftest provision-instance-receives-workspace-config-test
-  (testing "the instance provisioner receives the workspace's config-file map, incl. the :api-keys section"
+  (testing "the instance provisioner receives the workspace's config-file map"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "WS"
-                                                 :api_key    "mb_test_key"
                                                  :creator_id (mt/user->id :crowberto)}
                    :model/WorkspaceDatabase _ (assoc (wsd-attrs ws-id (mt/id))
                                                      :status           :provisioned
@@ -200,13 +199,9 @@
                         (delete! [_ _] nil))]
           (provisioning/provision-workspace! (workspace-row ws-id)))
         (is (=? {:version 1
-                 :config  {:api-keys  [{:name    string?
-                                        :key     "mb_test_key"
-                                        :creator (:email (mt/fetch-user :crowberto))
-                                        :group   "admin"}]
-                           :workspace {:name "WS"}}}
+                 :config  {:workspace {:name "WS"}}}
                 @received)
-            "create! received the config map with the workspace's API key registered")))))
+            "create! received the workspace's config map")))))
 
 (deftest workspace-provisioning?-and-deprovisioning?-test
   (testing "only the active phases count as in flight; the settled statuses do not"

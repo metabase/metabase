@@ -114,17 +114,3 @@ databaseChangeLog:
             defaultValue: unprovisioned
       rollback: []
 
-  - changeSet:
-      id: v64.2026-07-18T10:00:08
-      author: ranquild
-      comment: Add workspace.api_key
-      changes:
-        - addColumn:
-            tableName: workspace
-            columns:
-              - column:
-                  name: api_key
-                  type: ${text.type}
-                  remarks: Encrypted API key registered on the child instance for workspace API access
-                  constraints:
-                    nullable: true

@@ -116,19 +116,6 @@
       :details   {}
       :is_sample true}]))
 
-(defn- api-key-entries
-  "The `:api-keys` config-file section for the workspace (see
-   `metabase-enterprise.advanced-config.file.api-keys`): registers the
-   workspace's API key on the child instance, owned by an admin-group API-key
-   user, so the manager can call the child's API. Empty when the workspace has
-   no `:api_key`."
-  [ws]
-  (when-let [api-key (:api_key ws)]
-    [{:name    (format "Workspace %d API key" (:id ws))
-      :key     api-key
-      :creator (get-in ws [:creator :email])
-      :group   "admin"}]))
-
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -162,15 +149,13 @@
                                [wsd db])
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-            sample-entries   (sample-database-entries)
-            api-keys         (api-key-entries ws)]
+            sample-entries   (sample-database-entries)]
         {:version 1
-         :config  (cond-> {:databases (-> ws-entries
-                                          (into stub-entries)
-                                          (into sample-entries))
-                           :workspace {:name      (:name ws)
-                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                    (seq api-keys) (assoc :api-keys api-keys))}))))
+         :config  {:databases (-> ws-entries
+                                  (into stub-entries)
+                                  (into sample-entries))
+                   :workspace {:name      (:name ws)
+                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

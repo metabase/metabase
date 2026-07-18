@@ -56,8 +56,7 @@
    [:status         {:optional true} ::workspace-status]
    [:status_details {:optional true} [:maybe :string]]
    [:instance_id    {:optional true} [:maybe :string]]
-   [:instance_url   {:optional true} [:maybe :string]]
-   [:api_key        {:optional true} [:maybe :string]]])
+   [:instance_url   {:optional true} [:maybe :string]]])
 
 (mr/def ::workspace-database
   "A `:model/WorkspaceDatabase` row."

@@ -3790,7 +3790,6 @@
            metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
-           api-keys
            app-db
            cache
            driver
