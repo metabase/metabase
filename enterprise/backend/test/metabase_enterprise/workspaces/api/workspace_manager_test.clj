@@ -5,22 +5,21 @@
    are wired into the endpoints (one 403 spot-check is enough).
 
    A `use-fixtures`-installed `with-redefs` (hence `^:synchronous`) replaces the
-   real driver-dispatching DatabaseProvisioner with a stub and makes the
+   real DatabaseProvisioner and InstanceProvisioner with stubs and makes the
    `/provision`/`/deprovision` background execution synchronous, so responses
-   already reflect the final status; individual tests override the provisioner
+   already reflect the final status; individual tests override the provisioners
    with their own reify via an inner `with-redefs`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
+   [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
-
-(defn- stub-provisioner []
+(defn- stub-database-provisioner []
   (reify provisioning.database/DatabaseProvisioner
     (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
@@ -28,12 +27,18 @@
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
 
-(use-fixtures :each
+(defn- stub-instance-provisioner []
+  (reify provisioning.instance/InstanceProvisioner
+    (create! [_ _workspace _config]
+      {:id (str (random-uuid)) :url "https://example.com"})
+    (delete! [_ _workspace] nil)))
+
+(use-fixtures :once
+  (fixtures/initialize :db)
   (fn [thunk]
     (mt/with-premium-features #{:workspaces}
-      ;; Like the real execute-async!, swallow failures — the workspace status
-      ;; columns are the record of the outcome.
-      (with-redefs [provisioning.database/database-provisioner (stub-provisioner)
+      (with-redefs [provisioning.database/database-provisioner (stub-database-provisioner)
+                    provisioning.instance/instance-provisioner (stub-instance-provisioner)
                     ws.execute/execute-async!                  (fn [work]
                                                                  (try (work) (catch Throwable _))
                                                                  nil)]

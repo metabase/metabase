@@ -1,10 +1,10 @@
 (ns ^:synchronous metabase-enterprise.workspaces.provisioning-test
   "Tests for the workspace provisioning lifecycle: [[provisioning/provision-workspace!]]
    and [[provisioning/deprovision-workspace!]] driving the workspace and
-   workspace_database statuses. A `use-fixtures`-installed stub
-   DatabaseProvisioner replaces the real driver-dispatching one for every test
-   (hence `^:synchronous`); individual tests override it with their own reify
-   via an inner `with-redefs`."
+   workspace_database statuses. `use-fixtures`-installed stubs replace the real
+   DatabaseProvisioner and InstanceProvisioner for every test (hence
+   `^:synchronous`); individual tests override them with their own reify via an
+   inner `with-redefs`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -18,31 +18,43 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
-
-(def ^:private calls
-  "init!/destroy! calls recorded by the default stub provisioner. Reset per test."
+(def ^:private database-calls
+  "init!/destroy! calls recorded by the default stub DatabaseProvisioner. Reset per test."
   (atom []))
 
-(defn- stub-provisioner
-  "DatabaseProvisioner that records init!/destroy! calls in [[calls]] and never
+(defn- stub-database-provisioner
+  "DatabaseProvisioner that records init!/destroy! calls in [[database-calls]] and never
    touches a warehouse."
   []
   (reify provisioning.database/DatabaseProvisioner
     (details [_ _ _ workspace]
       {:schema (str "mb_iso_" (:id workspace)) :database_details {:user "stub_user"}})
-    (init! [_ _ db _] (swap! calls conj [:init! (:id db)]) nil)
+    (init! [_ _ db _] (swap! database-calls conj [:init! (:id db)]) nil)
     (grant! [_ _ _ _ _] nil)
-    (destroy! [_ _ db _] (swap! calls conj [:destroy! (:id db)]) nil)))
+    (destroy! [_ _ db _] (swap! database-calls conj [:destroy! (:id db)]) nil)))
+
+(defn- stub-instance-provisioner
+  "InstanceProvisioner that never talks to a real service."
+  []
+  (reify provisioning.instance/InstanceProvisioner
+    (create! [_ _workspace _config]
+      {:id (str (random-uuid)) :url "https://example.com"})
+    (delete! [_ _workspace] nil)))
+
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    (with-redefs [provisioning.database/database-provisioner (stub-database-provisioner)
+                  provisioning.instance/instance-provisioner (stub-instance-provisioner)]
+      (thunk))))
 
 (use-fixtures :each
   (fn [thunk]
-    (reset! calls [])
-    (with-redefs [provisioning.database/database-provisioner (stub-provisioner)]
-      (thunk))))
+    (reset! database-calls [])
+    (thunk)))
 
 (defn- failing-on
-  "Like [[stub-provisioner]] but `op` (:init! or :destroy!) throws for database
+  "Like [[stub-database-provisioner]] but `op` (:init! or :destroy!) throws for database
    `db-id`."
   [op db-id]
   (reify provisioning.database/DatabaseProvisioner
@@ -126,9 +138,9 @@
       (with-redefs [provisioning.database/database-provisioner (failing-on :init! db2-id)]
         (is (thrown-with-msg? ExceptionInfo #"boom"
                               (provisioning/provision-workspace! (workspace-row ws-id)))))
-      (reset! calls [])
+      (reset! database-calls [])
       (provisioning/provision-workspace! (workspace-row ws-id))
-      (is (= [[:init! db2-id]] @calls)
+      (is (= [[:init! db2-id]] @database-calls)
           "only the previously-failed database is re-provisioned")
       (is (=? {:status :provisioned :status_details nil} (workspace-row ws-id)))
       (is (=? {:status :provisioned :status_details nil}
@@ -155,9 +167,9 @@
               (t2/select-one :model/WorkspaceDatabase :id wsd-id))
           "the databases were provisioned before the instance phase failed")
       (testing "retry skips the already-provisioned databases and finishes the instance"
-        (reset! calls [])
+        (reset! database-calls [])
         (provisioning/provision-workspace! (workspace-row ws-id))
-        (is (= [] @calls))
+        (is (= [] @database-calls))
         (is (=? {:status :provisioned :status_details nil :instance_id string?}
                 (workspace-row ws-id)))))))
 
@@ -225,7 +237,7 @@
                                                      :status           :provisioned
                                                      :output_namespace "mb_iso_x")]
       (provisioning/provision-workspace! (workspace-row ws-id))
-      (is (= [] @calls) "no provisioner calls are made")
+      (is (= [] @database-calls) "no provisioner database-calls are made")
       (is (=? {:status :provisioned} (workspace-row ws-id))))))
 
 (deftest deprovision-workspace-success-test
@@ -235,11 +247,11 @@
                    :model/WorkspaceDatabase {wsd1-id :id} (wsd-attrs ws-id (mt/id))
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
       (provisioning/provision-workspace! (workspace-row ws-id))
-      (reset! calls [])
+      (reset! database-calls [])
       (is (=? {:status :unprovisioned :status_details nil :instance_id nil}
               (provisioning/deprovision-workspace! (workspace-row ws-id)))
           "the updated workspace copy is returned")
-      (is (= [[:destroy! (mt/id)] [:destroy! db2-id]] @calls)
+      (is (= [[:destroy! (mt/id)] [:destroy! db2-id]] @database-calls)
           "every database gets a warehouse teardown, in row order")
       (is (=? {:status         :unprovisioned
                :status_details nil
@@ -284,7 +296,7 @@
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _ (wsd-attrs ws-id (mt/id))]
       (provisioning/deprovision-workspace! (workspace-row ws-id))
-      (is (= [] @calls) "no provisioner calls are made")
+      (is (= [] @database-calls) "no provisioner database-calls are made")
       (is (=? {:status :unprovisioned} (workspace-row ws-id))))))
 
 (deftest deprovision-recomputes-identifiers-for-crashed-provisioning-row-test
