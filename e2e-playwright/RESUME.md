@@ -4,7 +4,19 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
-> **Latest (2026-07-19, wave 12):** +10 specs jar-verified (two parallel
+> **Latest (2026-07-19, wave 13):** +5 specs jar-verified — 93 ported, 321 in
+> QUEUE. All executable, all green: chart_drill, line_chart, pie_chart, models,
+> title-drill. No product bugs. Also batched in the #23076 pivot-subtotal load-
+> flake fix (wave-12 s4). 4 new PORTING gotchas (synthetic-mousemove for charts,
+> chart-click-swallowed-by-open-popover, pie-drill-on-wedge-path). **Elevated
+> consolidation priority: notebook.ts `startNewQuestion` is stale** — flagged by
+> 3 ports; reconcile to the URL-navigation form (see PORTING.md). Two more
+> vacuous upstream assertions noted (line_chart g.axis.yr).
+>
+> Prior (wave 12): +10 specs (two parallel waves, one push); QA_DB_ENABLED gate
+> unified; #25322 route-crash fixed.
+
+> **Wave 12 (2026-07-19):** +10 specs jar-verified (two parallel
 > 5-agent waves, batched into ONE push/CI run) — 88 ported, 326 in QUEUE. All
 > real executable coverage (no all-gated specs this time): dashboard-filters-
 > reset-clear, temporal-unit-parameters, table-column-settings, viz-charts-

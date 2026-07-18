@@ -714,3 +714,33 @@ give them an explicit `timeout` too — don't rely on the 30s default.
   QA-DB describes gated on it wrongly RUN (and fail) locally. Always gate on the
   deliberate `PW_QA_DB_ENABLED`. (now enforced repo-wide — the bare var was
   unified to `PW_QA_DB_ENABLED` this wave.)
+
+## Gotchas added in wave 13 (chart drill / line / pie / models / title-drill)
+
+- **Cypress `.trigger("mousemove")` on a chart → a synthetic MouseEvent
+  dispatch, NOT real `hover()`.** ECharts hit-tests the tooltip from the mouse
+  coordinate; a data point on the plot edge (e.g. first point on the y-axis)
+  resolves to nothing under a real hover, so no tooltip fires. Map
+  `.trigger("mousemove")` → synthetic dispatch, `.realHover()` → real hover.
+  (line_chart)
+- **A chart click is swallowed while a drill popover is open.** Clicking a
+  bar/point with a prior drill popover still open just dismisses it (Cypress's
+  synthetic click reached the SVG regardless). `Escape` + assert
+  `popover().toHaveCount(0)` before the next chart click. (chart_drill)
+- **Pie drill fires on the wedge `<path>`, never the label `<text>`.** In
+  zrender's SVG renderer thin-slice labels are leader labels placed off the
+  wedge over bare SVG, so clicking the label — even a full synthetic sequence —
+  never drills. Force-click the wedge path (see `pieSliceWithColor`). Also:
+  multi-ring outer slices are colored by the parent-ring value, not the
+  category, and hover emphasis mutates the fill — capture the target wedge as an
+  elementHandle before hovering. (pie_chart)
+
+## Consolidation priority: notebook.ts `startNewQuestion` is stale (flagged 3×)
+
+Three separate wave-12/13 ports (multiple-column-breakouts, chart_drill, models)
+re-implemented `startNewQuestion` because the shared `notebook.ts` version clicks
+the app-bar "New" (needs a loaded page) while current upstream `H.startNewQuestion`
+navigates to `/question/notebook#<hash>` directly. `data-model.ts` already has the
+faithful URL-navigation port. Reconcile: make `notebook.ts startNewQuestion` the
+URL-navigation form and delete the duplicates. High-value dedup — this is an
+active foot-gun, not just tidiness.

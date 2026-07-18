@@ -39,6 +39,10 @@
 ## bookmarks-extras.ts
 - `openCollectionItemMenu` — Port of H.openCollectionItemMenu: `.findAllByText(item).eq(index)` — the
 
+## chart-drill.ts
+- `pieSliceWithColor` — Port of H.pieSliceWithColor (e2e-visual-tests-helpers.js): the pie/donut
+- `brushChart` — Port of the spec's `cy.findByTestId("query-visualization-root")
+
 ## charts-extras.ts
 - `openVizTypeSidebar` — Port of H.openVizTypeSidebar. */
 - `getDraggableElements` — Port of H.getDraggableElements: findAllByTestId(/draggable-item/). */
@@ -715,6 +719,17 @@
 - `addSummaryGroupingField` — Port of H.addSummaryGroupingField (breakout). */
 - `assertJoinValid` — Port of H.assertJoinValid: the visualized table must have columns from both
 
+## line-chart.ts
+- `visitLineChartAdhoc`
+- `visitNativeLineChartAdhoc`
+- `echartsExactText` — ECharts SVG `<text>` carries leading/trailing spaces, and Playwright's
+- `openSeriesSettings` — Port of H.openSeriesSettings(field, isBreakout): open a series' settings
+- `chartSettingSelectValues` — The current values of every chart-setting-select, in DOM order. */
+- `expectFieldPickerHasGrabber` — Assert the field-picker for `value` renders a grabber (drag) icon. */
+- `getXYTransform` — Port of getXYTransform: read the {x, y} translation of an SVG element from
+- `triggerMousemove` — Port of Cypress's `.trigger("mousemove")` on a chart element: dispatch a
+- `brushChart` — Port of the spec's `cy.findByTestId("query-visualization-root").trigger(
+
 ## metrics-explorer.ts
 - `MetricsViewer`
 - `waitForMetricDataset` — The next POST /api/metric/dataset response (the "@dataset" alias).
@@ -739,6 +754,22 @@
 - `filterInNotebook` — Port of H.filter({ mode: "notebook" }) from e2e-bi-basics-helpers.js. */
 - `cartesianChartCircles`
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
+
+## models-core.ts
+- `createNativeQuestion` — Port of H.createNativeQuestion (api/createNativeQuestion.ts → question()):
+- `turnIntoModel` — Port of turnIntoModel (e2e-models-helpers.js): open the question actions,
+- `waitForCardUpdate` — Register a wait for the next PUT /api/card/:id (the `@cardUpdate` alias). */
+- `assertIsModel` — Port of assertIsModel (requires the question-actions popover to be open):
+- `assertIsQuestion` — Port of assertIsQuestion (requires the question-actions popover to be open):
+- `assertQuestionIsBasedOnModel` — Port of assertQuestionIsBasedOnModel: the QB shows the model + its
+- `saveQuestionBasedOnModel` — Port of saveQuestionBasedOnModel: open the save modal, optionally rename,
+- `selectDimensionOptionFromSidebar` — Port of selectDimensionOptionFromSidebar: click a dimension-list row by name
+- `closeQuestionActions` — Port of closeQuestionActions: click the QB header to dismiss the menu. */
+- `startNewQuestion` — Port of the current H.startNewQuestion (e2e-ad-hoc-question-helpers.js): it
+- `getCollectionItemRow` — Port of getCollectionItemRow: findByText(name).closest("tr"). */
+- `getCollectionItemCard` — Port of getCollectionItemCard: findByText(name).closest("a"). */
+- `getResults` — Port of getResults: cy.findAllByTestId("result-item"). */
+- `waitForSearch` — Register a wait for the next GET /api/search* (the `@search` alias). */
 
 ## models.ts
 - `tableInteractive` — Port of H.tableInteractive(). */
@@ -867,6 +898,14 @@
 - `signInWithCachedSession` — Sign in as any user with a cached session (e.g. "none"), mirroring the
 - `adhocQuestionHash` — Port of adhocQuestionHash (e2e/support/helpers/e2e-ad-hoc-question-helpers.js).
 - `visitQuestionAdhoc` — Port of H.visitQuestionAdhoc, minus the notebook mode and the native
+
+## pie-chart.ts
+- `ensurePieChartRendered` — Port of the spec-local ensurePieChartRendered(rows, middleRows, outerRows,
+- `checkLegendItemAriaCurrent` — Port of the spec-local checkLegendItemAriaCurrent. aria-current is an
+- `getLimitedQuery` — Port of the spec-local getLimitedQuery. */
+- `changeRowLimit` — Port of the spec-local changeRowLimit: edit the notebook limit step and
+- `renameSlice` — Port of the slice-settings rename: click the slice's settings button, then
+- `confirmSliceClickBehavior` — Port of the spec-local confirmSliceClickBehavior: click the slice (by label,
 
 ## pivot-tables.ts
 - `visitPivotAdhoc`
@@ -1075,6 +1114,12 @@
 - `ensureDashboardCardHasText` — Port of H.ensureDashboardCardHasText — note the `dashcard` testid (distinct
 - `resetFilterWidgetToDefault` — Port of H.resetFilterWidgetToDefault (the revert icon, hover-gated). */
 - `dashcardTableHeaderColumn` — Port of H.tableHeaderColumn scoped to a dashcard — the click-behavior tests
+
+## title-drill.ts
+- `checkScalarResult` — Port of the spec-local checkScalarResult:
+- `checkFilterLabelAndValue` — Port of the spec-local checkFilterLabelAndValue:
+- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
+- `waitForTitleDrillQuery` — The reusable `cy.intercept(...).as("cardQuery")` the spec waits on after each
 
 ## ui.ts
 - `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been

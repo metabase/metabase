@@ -89,3 +89,8 @@ collections/trash.cy.spec.js
 dashboard/tabs.cy.spec.js
 custom-column/custom-column-3.cy.spec.js
 dashboard/visualizer/basics.cy.spec.ts
+dashboard/title-drill.cy.spec.js
+visualizations-charts/line_chart.cy.spec.js
+visualizations-tabular/drillthroughs/chart_drill.cy.spec.js
+models/models.cy.spec.js
+visualizations-charts/pie_chart.cy.spec.js
