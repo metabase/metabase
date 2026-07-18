@@ -6,13 +6,13 @@ import {
   ActionIcon,
   Anchor,
   Box,
-  Button,
   Card,
   FixedSizeIcon,
   Group,
   Loader,
   Menu,
   Stack,
+  Tooltip,
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
@@ -28,8 +28,10 @@ import {
   getStatusMessage,
   isDeprovisioned,
   isDeprovisioning,
+  isDeprovisioningFailed,
   isProvisioned,
   isProvisioning,
+  isProvisioningFailed,
 } from "../../../utils";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 import { StatusDetailsModal } from "../StatusDetailsModal";
@@ -93,8 +95,9 @@ type WorkspaceStatusItemProps = {
 };
 
 function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
-  const [isDetailsOpen, { open: openDetails, close: closeDetails }] =
-    useDisclosure(false);
+  const showDetails = workspace.status_details != null;
+  const showRetryProvision = isProvisioningFailed(workspace);
+  const showRetryDeprovision = isDeprovisioningFailed(workspace);
 
   return (
     <Group gap="xs" wrap="nowrap">
@@ -102,17 +105,62 @@ function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
       <Box c="text-primary" lh="1rem">
         {getStatusMessage(workspace.status)}
       </Box>
-      {workspace.status_details != null && (
-        <Button variant="subtle" p={0} h="auto" onClick={openDetails}>
-          {t`See details`}
-        </Button>
-      )}
+      {showDetails && <SeeDetailsButton workspace={workspace} />}
+      {showRetryProvision && <RetryProvisionButton workspace={workspace} />}
+      {showRetryDeprovision && <RetryDeprovisionButton workspace={workspace} />}
+    </Group>
+  );
+}
+
+function SeeDetailsButton({ workspace }: WorkspaceStatusItemProps) {
+  const [isDetailsOpen, { open: openDetails, close: closeDetails }] =
+    useDisclosure(false);
+
+  return (
+    <>
+      <Tooltip label={t`See details`}>
+        <ActionIcon size="xs" aria-label={t`See details`} onClick={openDetails}>
+          <FixedSizeIcon name="info" aria-hidden />
+        </ActionIcon>
+      </Tooltip>
       <StatusDetailsModal
         workspace={workspace}
         opened={isDetailsOpen}
         onClose={closeDetails}
       />
-    </Group>
+    </>
+  );
+}
+
+function RetryProvisionButton({ workspace }: WorkspaceStatusItemProps) {
+  const [provisionWorkspace] = useProvisionWorkspaceMutation();
+
+  return (
+    <Tooltip label={t`Retry`}>
+      <ActionIcon
+        size="xs"
+        aria-label={t`Retry`}
+        onClick={() => provisionWorkspace(workspace.id)}
+      >
+        <FixedSizeIcon name="refresh" aria-hidden />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
+function RetryDeprovisionButton({ workspace }: WorkspaceStatusItemProps) {
+  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
+
+  return (
+    <Tooltip label={t`Retry`}>
+      <ActionIcon
+        size="xs"
+        aria-label={t`Retry`}
+        onClick={() => deprovisionWorkspace(workspace.id)}
+      >
+        <FixedSizeIcon name="refresh" aria-hidden />
+      </ActionIcon>
+    </Tooltip>
   );
 }
 
@@ -176,28 +224,8 @@ type WorkspaceMenuProps = {
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
-  const [provisionWorkspace] = useProvisionWorkspaceMutation();
-  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
-
-  const handleProvision = () => {
-    showConfirmation({
-      title: t`Provision this workspace?`,
-      message: t`This will set up temporary database users and schemas and a workspace instance.`,
-      confirmButtonText: t`Provision`,
-      onConfirm: () => provisionWorkspace(workspace.id),
-    });
-  };
-
-  const handleDeprovision = () => {
-    showConfirmation({
-      title: t`Deprovision this workspace?`,
-      message: t`This will delete the workspace instance and the temporary database users and schemas that were created for this workspace.`,
-      confirmButtonText: t`Deprovision`,
-      onConfirm: () => deprovisionWorkspace(workspace.id),
-    });
-  };
 
   const handleDelete = () => {
     showConfirmation({
@@ -217,24 +245,6 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {!isProvisioned(workspace) && !isDeprovisioning(workspace) && (
-            <Menu.Item
-              leftSection={<FixedSizeIcon name="play" aria-hidden />}
-              disabled={isProvisioning(workspace)}
-              onClick={handleProvision}
-            >
-              {t`Provision`}
-            </Menu.Item>
-          )}
-          {!isDeprovisioned(workspace) && !isProvisioning(workspace) && (
-            <Menu.Item
-              leftSection={<FixedSizeIcon name="revert" aria-hidden />}
-              disabled={isDeprovisioning(workspace)}
-              onClick={handleDeprovision}
-            >
-              {t`Deprovision`}
-            </Menu.Item>
-          )}
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}

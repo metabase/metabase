@@ -1,7 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupGetWorkspaceEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupDeprovisionWorkspaceEndpoint,
+  setupGetWorkspaceEndpoint,
+  setupProvisionWorkspaceEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockDatabase,
   createMockUserInfo,
@@ -23,6 +28,62 @@ describe("WorkspaceItem", () => {
   it("renders the workspace name", () => {
     setup();
     expect(screen.getByText("My workspace")).toBeInTheDocument();
+  });
+
+  it("retries provisioning from a provisioning-failure status", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "database-provisioning-failure",
+      status_details: "warehouse down",
+    });
+    setupProvisionWorkspaceEndpoint(workspace);
+    setup({ workspace });
+
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}/provision`,
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("retries deprovisioning from a deprovisioning-failure status", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "instance-deprovisioning-failure",
+      status_details: "instance stuck",
+    });
+    setupDeprovisionWorkspaceEndpoint(workspace);
+    setup({ workspace });
+
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("does not offer Retry for settled non-failure statuses", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+        status_details: null,
+      }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows status details in a modal via the See details button", async () => {
