@@ -285,6 +285,21 @@ in landed code.
    **once** and share them as an artifact, so each shard stops re-paying the
    ~13m Cypress snapshot run (each shard currently pays full setup).
 
+6. **`documents-comments` "supports basic formatting with formatting menu" is
+   `test.fixme`'d** — needs a deterministic word-select. It selects each word via
+   backward cursor arithmetic (ArrowLeft between words + Shift+ArrowLeft to
+   select); after each format wraps a word in a mark, macOS stops at mark
+   boundaries differently than Linux, so the cursor drifts and a format lands on
+   the wrong chars ("bold" → "ld i"). Deterministic macOS-fail / Linux-pass; also
+   flaked on a loaded Linux CI shard. The clean deterministic approaches all
+   regress against this ProseMirror editor (double-click fights the format
+   bubble-menu; a programmatic DOM-range set is reverted by PM; Escape closes the
+   composer) — a proper fix needs the editor's own selection API or a robust
+   word-locator. Coverage of the four marks is preserved by the passing sibling
+   "supports basic formatting with markdown" test; only the menu-interaction path
+   is unverified. This is also the clearest example of Playwright exposing a
+   cross-platform test fragility Cypress's slower synthetic input masked.
+
 ## Usage — read before dispatching agents
 
 The session died because **Fable 5 hit its usage limit** and every in-flight
