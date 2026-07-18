@@ -6,7 +6,7 @@
  */
 import { Locator, Page, expect } from "@playwright/test";
 
-import { popover } from "./ui";
+import { adhocQuestionHash } from "./native-editor";
 
 export function queryBuilderMain(page: Page): Locator {
   return page.getByTestId("query-builder-main");
@@ -62,10 +62,28 @@ export function entityPickerModalLevel(page: Page, level: number): Locator {
   return page.getByTestId(`item-picker-level-${level}`);
 }
 
-/** Port of H.startNewQuestion: New → Question. */
+/**
+ * Port of the CURRENT H.startNewQuestion (e2e-ad-hoc-question-helpers.js): a
+ * deep link to /question/notebook with a blank-card hash. This replaces an
+ * older app-bar "New" → "Question" flow that required a loaded page and could
+ * not work from admin/data-studio routes (no New button there); three ports
+ * (multiple-column-breakouts, chart-drill, models) re-implemented the URL form
+ * before this consolidation. Mirrors newCardHash: no `display` key, so
+ * adhocQuestionHash fills display:"table" with displayIsLocked:false (exactly
+ * the Cypress hash).
+ */
 export async function startNewQuestion(page: Page) {
-  await page.getByTestId("app-bar").getByText("New", { exact: true }).click();
-  await popover(page).getByText("Question", { exact: true }).click();
+  const hash = adhocQuestionHash({
+    type: "question",
+    creationType: "custom_question",
+    dataset_query: {
+      database: null,
+      query: { "source-table": null },
+      type: "query",
+    },
+    visualization_settings: {},
+  });
+  await page.goto(`/question/notebook#${hash}`);
 }
 
 /** Port of H.assertQueryBuilderRowCount. */

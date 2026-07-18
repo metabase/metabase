@@ -17,6 +17,7 @@ import { echartsContainer } from "./charts";
 import { pieSlices } from "./dashboard-card-repros";
 import { findByDisplayValue } from "./filters-repros";
 import { getNotebookStep, openNotebook, visualize } from "./notebook";
+import { caseSensitiveSubstring as caseSensitive } from "./text";
 import { main } from "./viz-tabular-repros";
 
 /**
@@ -64,11 +65,6 @@ export async function ensurePieChartRendered(
         .first(),
     ).toBeVisible();
   }
-}
-
-/** Case-sensitive substring matcher (Cypress cy.contains semantics). */
-function caseSensitive(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 }
 
 /**

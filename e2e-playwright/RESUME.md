@@ -4,7 +4,21 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
-> **Latest (2026-07-19, wave 13):** +5 specs jar-verified — 93 ported, 321 in
+> **Latest (2026-07-19, consolidation pass):** dedup of the shared helpers the
+> "no-shared-edits" rule had duplicated. New `support/factories.ts` (7 canonical
+> create* as supersets — ~30 copies across 12 modules collapsed to re-exports;
+> follow-up-PUT logic preserved; the one conflicting default [createNativeQuestion
+> "native" in filters-repros] kept as a wrapper, not guessed), `support/dnd.ts`
+> (moveDnDKitPointer + moveDnDKitElementSynthetic — kept separate, different
+> sensors), `support/text.ts` (caseSensitiveSubstring). `notebook.ts
+> startNewQuestion` reconciled to the URL-nav form; 4 copies collapsed. 30 files,
+> tsc clean, agent-verified broad sample green; full-suite CI is the validator.
+> Still owed: api.ts create* methods (broad mb.api.* blast radius),
+> documents.ts commentTextContaining (trivial). No behaviour change intended.
+>
+> Prior (wave 13): +5 chart/model/drill specs; #23076 flake fixed.
+
+> **Wave 13 (2026-07-19):** +5 specs jar-verified — 93 ported, 321 in
 > QUEUE. All executable, all green: chart_drill, line_chart, pie_chart, models,
 > title-drill. No product bugs. Also batched in the #23076 pivot-subtotal load-
 > flake fix (wave-12 s4). 4 new PORTING gotchas (synthetic-mousemove for charts,

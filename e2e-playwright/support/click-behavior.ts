@@ -19,9 +19,15 @@ import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data
 
 import type { MetabaseApi } from "./api";
 import { editDashboard, getDashboardCard, saveDashboard } from "./dashboard";
+import {
+  createDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "./factories";
 import { icon } from "./dashboard-cards";
 import { getNotebookStep } from "./notebook";
 import { tableInteractiveBody } from "./question-new";
+import { caseSensitiveSubstring as caseSensitive } from "./text";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { popover } from "./ui";
 
@@ -208,14 +214,10 @@ export function dashboardParametersPopover(page: Page): Locator {
   return page.getByTestId("parameter-value-dropdown");
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** Case-sensitive substring matcher (Cypress cy.contains semantics). */
-export function caseSensitive(text: string): RegExp {
-  return new RegExp(escapeRegExp(text));
-}
+// Case-sensitive substring matcher (Cypress cy.contains semantics) is now
+// canonical as caseSensitiveSubstring in ./text; aliased to this module's
+// historical name and re-exported so consumers keep their import unchanged.
+export { caseSensitive };
 
 /**
  * Port of the Cypress `findAllByTestId("parameter-widget").contains(label)
@@ -736,44 +738,10 @@ type QuestionDetails = {
   native?: Record<string, unknown>;
 } & Record<string, unknown>;
 
-/**
- * Port of H.createQuestion for arbitrary details (collection_id,
- * enable_embedding, embedding_params). Like upstream, POST /api/card ignores
- * enable_embedding, so a follow-up PUT applies the embedding fields.
- */
-export async function createQuestion(
-  api: MetabaseApi,
-  details: QuestionDetails,
-): Promise<{ id: number }> {
-  const {
-    name = "test question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    query,
-    native,
-    enable_embedding,
-    embedding_params,
-    ...rest
-  } = details;
-  const dataset_query = native
-    ? { type: "native", native, database }
-    : { type: "query", query, database };
-  const response = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    ...rest,
-    dataset_query,
-  });
-  const card = (await response.json()) as { id: number };
-  if (enable_embedding) {
-    await api.put(`/api/card/${card.id}`, {
-      enable_embedding,
-      embedding_params,
-    });
-  }
-  return card;
-}
+// createQuestion / createDashboard / createQuestionAndDashboard are now
+// canonical in ./factories; re-exported so this module's consumers keep their
+// imports unchanged.
+export { createQuestion, createDashboard, createQuestionAndDashboard };
 
 export type DashcardResult = {
   /** The dashcard id. */
@@ -782,88 +750,6 @@ export type DashcardResult = {
   dashboard_id: number;
 };
 
-/**
- * Port of H.createQuestionAndDashboard — unlike the spike's
- * api.createQuestionAndDashboard it returns the created dashcard (tests need
- * its id) and accepts arbitrary dashboardDetails (parameters, embedding).
- */
-export async function createQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-    cardDetails,
-  }: {
-    questionDetails: QuestionDetails;
-    dashboardDetails?: Record<string, unknown>;
-    cardDetails?: Record<string, unknown>;
-  },
-): Promise<DashcardResult> {
-  const { id: card_id } = await createQuestion(api, questionDetails);
-  const { id: dashboard_id } = await createDashboard(api, dashboardDetails);
-  const response = await api.put(`/api/dashboard/${dashboard_id}`, {
-    dashcards: [
-      {
-        id: -1,
-        card_id,
-        row: 0,
-        col: 0,
-        size_x: 11,
-        size_y: 6,
-        ...cardDetails,
-      },
-    ],
-  });
-  const body = (await response.json()) as { dashcards: { id: number }[] };
-  return { id: body.dashcards[0].id, card_id, dashboard_id };
-}
-
-/** Port of H.createDashboard accepting arbitrary details. */
-/**
- * Port of H.createDashboard (e2e/support/helpers/api/createDashboard.ts).
- *
- * POST /api/dashboard silently ignores `enable_embedding`, `embedding_type`,
- * `embedding_params`, `auto_apply_filters` and `dashcards` — the Cypress helper
- * holds them back and applies them with a follow-up PUT. Spreading them into the
- * POST instead looks like it works (the dashboard is created, no request fails)
- * but leaves embedding off, which only surfaces later as
- * "Embedding is not enabled for this object" on the embed page.
- */
-export async function createDashboard(
-  api: MetabaseApi,
-  details: Record<string, unknown> = {},
-): Promise<{ id: number }> {
-  const {
-    enable_embedding,
-    embedding_type,
-    embedding_params,
-    auto_apply_filters,
-    dashcards,
-    ...rest
-  } = details;
-
-  const response = await api.post("/api/dashboard", {
-    name: "Test Dashboard",
-    ...rest,
-  });
-  const dashboard = (await response.json()) as { id: number };
-
-  if (
-    enable_embedding != null ||
-    auto_apply_filters != null ||
-    Array.isArray(dashcards)
-  ) {
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      auto_apply_filters,
-      enable_embedding,
-      embedding_type,
-      embedding_params,
-      dashcards,
-    });
-  }
-
-  return dashboard;
-}
 
 export type DashboardWithTabs = {
   id: number;

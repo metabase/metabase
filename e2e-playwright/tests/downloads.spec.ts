@@ -33,6 +33,7 @@ import {
 } from "../support/downloads";
 import type { ExportFileType } from "../support/downloads";
 import { test, expect } from "../support/fixtures";
+import { startNewQuestion } from "../support/notebook";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -775,24 +776,6 @@ async function createDashboardWithQuestions(
     });
   }
   return { dashboard };
-}
-
-/** Port of H.startNewQuestion — the "New" > "Question" notebook URL. */
-async function startNewQuestion(page: Page) {
-  const card = {
-    display: "table",
-    displayIsLocked: false,
-    type: "question",
-    creationType: "custom_question",
-    dataset_query: {
-      database: null,
-      query: { "source-table": null },
-      type: "query",
-    },
-    visualization_settings: {},
-  };
-  const hash = Buffer.from(JSON.stringify(card)).toString("base64");
-  await page.goto(`/question/notebook#${hash}`);
 }
 
 /** Port of H.visualize — waits for the ad-hoc dataset query to complete. */

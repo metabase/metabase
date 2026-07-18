@@ -14,6 +14,7 @@ import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data
 import type { MetabaseApi } from "./api";
 import { getDashboardCard, selectDropdown } from "./dashboard";
 import { icon } from "./dashboard-cards";
+import { createDashboardWithTabs as createDashboardWithTabsFactory } from "./factories";
 import { visitQuestionAdhoc } from "./permissions";
 import { LOGIN_CACHE, SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import type { UserName } from "./sample-data";
@@ -98,31 +99,22 @@ export type DashboardWithTabs = {
 };
 
 /**
- * Port of H.createDashboardWithTabs. The command-palette.ts port of the same
- * helper only types the returned id; this spec also needs entity ids and tab
- * ids, hence the local variant (new helpers stay in this module).
+ * Port of H.createDashboardWithTabs. Delegates to the canonical factory; this
+ * spec also reads entity ids / tab ids, so it narrows the factory's generic
+ * Dashboard return to DashboardWithTabs.
  */
 export async function createDashboardWithTabs(
   api: MetabaseApi,
-  {
-    tabs,
-    dashcards = [],
-    name = "Test Dashboard",
-    ...details
-  }: {
+  options: {
     tabs: { id: number; name: string }[];
     dashcards?: Record<string, unknown>[];
     name?: string;
   } & Record<string, unknown>,
 ): Promise<DashboardWithTabs> {
-  const created = await api.post("/api/dashboard", { name, ...details });
-  const dashboard = (await created.json()) as { id: number };
-  const updated = await api.put(`/api/dashboard/${dashboard.id}`, {
-    ...dashboard,
-    dashcards,
-    tabs,
-  });
-  return (await updated.json()) as DashboardWithTabs;
+  return (await createDashboardWithTabsFactory(
+    api,
+    options,
+  )) as unknown as DashboardWithTabs;
 }
 
 /**

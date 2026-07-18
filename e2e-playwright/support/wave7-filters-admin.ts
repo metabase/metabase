@@ -111,10 +111,7 @@ function extractHiddenField(html: string, name: string): string {
   return value[1];
 }
 
-/**
- * Case-sensitive substring matcher for `filter({ hasText })` — Cypress-style
- * `textContent.includes(text)` semantics (PORTING.md rule 1).
- */
-export function caseSensitiveSubstring(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-}
+// Case-sensitive substring matcher for `filter({ hasText })` (Cypress-style
+// textContent.includes semantics, PORTING.md rule 1) is now canonical in ./text;
+// re-exported so this module's consumers keep their import unchanged.
+export { caseSensitiveSubstring } from "./text";

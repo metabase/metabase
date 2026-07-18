@@ -19,6 +19,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
+import { createQuestion, createQuestionAndDashboard } from "./factories";
 import { SAMPLE_DB_ID } from "./sample-data";
 import { popover, visitQuestion } from "./ui";
 
@@ -39,30 +40,9 @@ export type DashboardDetails = {
   embedding_params?: Record<string, string>;
 };
 
-/** Port of H.createQuestion (POST /api/card). Returns the created card id. */
-export async function createQuestion(
-  api: MetabaseApi,
-  details: QuestionDetails,
-): Promise<{ id: number }> {
-  const {
-    name = "test question",
-    type = "question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    query,
-    visualization_settings = {},
-    ...rest
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    type,
-    display,
-    visualization_settings,
-    ...rest,
-    dataset_query: { type: "query", query, database },
-  });
-  return (await response.json()) as { id: number };
-}
+// createQuestion / createQuestionAndDashboard are now canonical in ./factories;
+// re-exported so this module's consumers keep their imports unchanged.
+export { createQuestion, createQuestionAndDashboard };
 
 /** Port of H.createQuestion(details, { visitQuestion: true }). */
 export async function createAndVisitQuestion(
@@ -73,46 +53,6 @@ export async function createAndVisitQuestion(
   const card = await createQuestion(api, details);
   await visitQuestion(page, card.id);
   return card;
-}
-
-/**
- * Port of H.createQuestionAndDashboard for this spec's shape. Applies the
- * dashboard's embedding settings (POST /api/dashboard ignores them) and the
- * single dashcard in one follow-up PUT.
- */
-export async function createQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails = {},
-  }: {
-    questionDetails: QuestionDetails;
-    dashboardDetails?: DashboardDetails;
-  },
-): Promise<{ questionId: number; dashboardId: number }> {
-  const { id: questionId } = await createQuestion(api, questionDetails);
-
-  const {
-    name = "Test Dashboard",
-    enable_embedding,
-    embedding_params,
-    ...rest
-  } = dashboardDetails;
-  // parameters go through POST /api/dashboard (accepted); embedding does not.
-  const dashboardResponse = await api.post("/api/dashboard", { name, ...rest });
-  const { id: dashboardId } = (await dashboardResponse.json()) as {
-    id: number;
-  };
-
-  await api.put(`/api/dashboard/${dashboardId}`, {
-    enable_embedding,
-    embedding_params,
-    dashcards: [
-      { id: -1, card_id: questionId, row: 0, col: 0, size_x: 11, size_y: 6 },
-    ],
-  });
-
-  return { questionId, dashboardId };
 }
 
 /**

@@ -498,32 +498,9 @@ export async function addLinkClickBehavior(
   });
 }
 
-/**
- * COPY of command-palette.ts createDashboardWithTabs with tabs optional
- * (the postMessage test passes dashcards only) — TODO(consolidation).
- */
-export async function createDashboardWithTabs(
-  api: MetabaseApi,
-  {
-    tabs = [],
-    dashcards = [],
-    name = "Test Dashboard",
-    ...details
-  }: {
-    tabs?: { id: number; name: string }[];
-    dashcards?: Record<string, unknown>[];
-    name?: string;
-  } & Record<string, unknown>,
-): Promise<{ id: number }> {
-  const created = await api.post("/api/dashboard", { name, ...details });
-  const dashboard = (await created.json()) as { id: number };
-  const updated = await api.put(`/api/dashboard/${dashboard.id}`, {
-    ...dashboard,
-    dashcards,
-    tabs,
-  });
-  return (await updated.json()) as { id: number };
-}
+// createDashboardWithTabs is now canonical in ./factories (tabs optional there
+// too); re-exported so this module's consumers keep their import unchanged.
+export { createDashboardWithTabs } from "./factories";
 
 /** Port of H.updateDashboardCards (PUT the dashcards array). */
 export async function updateDashboardCards(

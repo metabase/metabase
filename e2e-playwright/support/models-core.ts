@@ -19,48 +19,15 @@ import type { Locator, Page, Response } from "@playwright/test";
 import type { MetabaseApi } from "./api";
 import { expect } from "./fixtures";
 import { openQuestionActions } from "./models";
-import { adhocQuestionHash, nativeEditor } from "./native-editor";
+import { nativeEditor } from "./native-editor";
 import { SAMPLE_DB_ID } from "./sample-data";
 import { icon, modal, popover } from "./ui";
 
-/**
- * Port of H.createNativeQuestion (api/createNativeQuestion.ts → question()):
- * POST the card (the factory omits `type` on the POST), then PUT the type for
- * model/metric cards. Returns the created card. The caller drives any visit
- * (visitQuestion / visitModel) so the query waits stay in the test body.
- */
-export async function createNativeQuestion(
-  api: MetabaseApi,
-  details: {
-    name?: string;
-    type?: string;
-    display?: string;
-    database?: number;
-    collection_id?: number | null;
-    native: Record<string, unknown>;
-  },
-): Promise<{ id: number }> {
-  const {
-    name = "test question",
-    type = "question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    collection_id,
-    native,
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    collection_id,
-    dataset_query: { type: "native", native, database },
-  });
-  const card = (await response.json()) as { id: number };
-  if (type === "model" || type === "metric") {
-    await api.put(`/api/card/${card.id}`, { type });
-  }
-  return card;
-}
+// createNativeQuestion is now canonical in ./factories (it applies the same
+// model/metric follow-up PUT the old copy did — POST omits `type`, then PUTs it
+// for model/metric cards); re-exported so this module's consumers keep their
+// import unchanged.
+export { createNativeQuestion } from "./factories";
 
 /**
  * Port of turnIntoModel (e2e-models-helpers.js): open the question actions,
@@ -198,27 +165,9 @@ export async function closeQuestionActions(page: Page) {
   await page.getByTestId("qb-header").click();
 }
 
-/**
- * Port of the current H.startNewQuestion (e2e-ad-hoc-question-helpers.js): it
- * navigates to /question/notebook#<hash> rather than clicking the app bar, so
- * the tests that never visit first (nested-queries mock, etc.) still boot the
- * app — and the mockSessionProperty route can be registered before it.
- */
-export async function startNewQuestion(page: Page) {
-  // Mirrors newCardHash: no `display` key, so adhocQuestionHash fills
-  // display:"table" with displayIsLocked:false (exactly the Cypress hash).
-  const hash = adhocQuestionHash({
-    type: "question",
-    creationType: "custom_question",
-    dataset_query: {
-      database: null,
-      query: { "source-table": null },
-      type: "query",
-    },
-    visualization_settings: {},
-  });
-  await page.goto(`/question/notebook#${hash}`);
-}
+// startNewQuestion is now canonical in notebook.ts (the URL-navigation form).
+// Re-exported here so this module's consumers keep their import unchanged.
+export { startNewQuestion } from "./notebook";
 
 /** Port of getCollectionItemRow: findByText(name).closest("tr"). */
 export function getCollectionItemRow(page: Page, name: string): Locator {

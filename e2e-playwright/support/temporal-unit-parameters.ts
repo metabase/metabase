@@ -36,6 +36,7 @@ import {
   editingDashboardParametersContainer,
   type DashboardDetails,
 } from "./dashboard-parameters";
+import { createDashboardWithQuestions } from "./factories";
 import { updateDashboardCards } from "./filters-repros";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { icon, popover } from "./ui";
@@ -292,66 +293,9 @@ type NativeDetails = {
 };
 export type QuestionDetails = StructuredDetails | NativeDetails;
 
-async function createCard(
-  api: MetabaseApi,
-  details: QuestionDetails,
-): Promise<{ id: number }> {
-  if ("native" in details) {
-    const {
-      name = "test question",
-      type = "question",
-      display = "table",
-      database = SAMPLE_DB_ID,
-      native,
-    } = details;
-    const response = await api.post("/api/card", {
-      name,
-      type,
-      display,
-      visualization_settings: {},
-      dataset_query: { type: "native", native, database },
-    });
-    return (await response.json()) as { id: number };
-  }
-  return api.createQuestion(details);
-}
-
-/**
- * Native-aware port of H.createDashboardWithQuestions: the dashboard-parameters
- * port only creates structured questions (api.createQuestion), but this spec
- * mixes native cards (SQL units/time) into the same dashboard. Each dashcard
- * is placed at row 0/col 0 like the Cypress helper — the dashboard grid resolves
- * the overlap when rendering.
- */
-export async function createDashboardWithQuestions(
-  api: MetabaseApi,
-  {
-    dashboardDetails: details,
-    questions,
-  }: {
-    dashboardDetails?: DashboardDetails;
-    questions: QuestionDetails[];
-  },
-): Promise<{ dashboard: { id: number }; questions: { id: number }[] }> {
-  const dashboard = await createDashboard(api, details);
-  const created: { id: number }[] = [];
-  for (const questionDetails of questions) {
-    created.push(await createCard(api, questionDetails));
-  }
-  await api.put(`/api/dashboard/${dashboard.id}`, {
-    dashcards: created.map((question, index) => ({
-      id: -1 - index,
-      card_id: question.id,
-      row: 0,
-      col: 0,
-      size_x: 11,
-      size_y: 8,
-      visualization_settings: {},
-      parameter_mappings: [],
-    })),
-  });
-  return { dashboard, questions: created };
-}
+// createDashboardWithQuestions (native-aware) is now canonical in ./factories;
+// re-exported so this module's consumers keep their import unchanged.
+export { createDashboardWithQuestions };
 
 /** Port of the spec-local createDashboardWithMappedQuestion. */
 export async function createDashboardWithMappedQuestion(

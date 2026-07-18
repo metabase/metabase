@@ -35,7 +35,16 @@ import {
   commandPaletteInput,
   getProfileLink,
 } from "./command-palette";
+import {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestion as createNativeQuestionFactory,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "./factories";
 import { SAMPLE_DB_ID } from "./sample-data";
+import { caseSensitiveSubstring } from "./text";
 import { popover } from "./ui";
 
 /** The mb fixture surface the embed helper needs. */
@@ -83,150 +92,29 @@ export type DashCard = {
   dashboard_id: number;
 } & Record<string, unknown>;
 
+// createDashboard / createQuestion / createQuestionAndDashboard /
+// createNativeQuestionAndDashboard / createDashboardWithQuestions are now
+// canonical in ./factories; re-exported so this module's consumers keep their
+// imports unchanged.
+export {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+};
+
 /**
- * Port of H.createDashboard — accepts arbitrary dashboard details.
- *
- * Like the Cypress helper, embedding/auto-apply settings can't ride along on
- * the POST (`/api/dashboard` ignores them); they need a follow-up PUT, without
- * which the embed page renders "Embedding is not enabled for this object".
+ * Port of H.createNativeQuestion — accepts `parameters` and `type`. Delegates to
+ * the canonical factory but preserves this module's historical default name
+ * ("native", vs the factory's "test question") so consumers that omit `name`
+ * still get the same card name.
  */
-export async function createDashboard(
-  api: MetabaseApi,
-  details: DashboardDetails = {},
-): Promise<{ id: number }> {
-  const {
-    name = "Test Dashboard",
-    auto_apply_filters,
-    enable_embedding,
-    embedding_type,
-    embedding_params,
-    ...rest
-  } = details;
-  const response = await api.post("/api/dashboard", { name, ...rest });
-  const dashboard = (await response.json()) as { id: number };
-
-  if (enable_embedding != null || auto_apply_filters != null) {
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      auto_apply_filters,
-      enable_embedding,
-      embedding_type,
-      embedding_params,
-    });
-  }
-  return dashboard;
-}
-
-/** Port of H.createQuestion (api/createQuestion.ts) returning the card id. */
-export async function createQuestion(
-  api: MetabaseApi,
-  details: StructuredQuestionDetails,
-): Promise<{ id: number }> {
-  const {
-    name = "test question",
-    type = "question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    visualization_settings = {},
-    query,
-    ...rest
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    type,
-    display,
-    visualization_settings,
-    ...rest,
-    dataset_query: { type: "query", query, database },
-  });
-  return (await response.json()) as { id: number };
-}
-
-/** Port of H.createNativeQuestion — accepts `parameters` and `type`. */
 export async function createNativeQuestion(
   api: MetabaseApi,
   details: NativeQuestionDetails,
 ): Promise<{ id: number }> {
-  const {
-    name = "native",
-    type = "question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    native,
-    ...rest
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    type,
-    display,
-    visualization_settings: {},
-    ...rest,
-    dataset_query: { type: "native", native, database },
-  });
-  return (await response.json()) as { id: number };
-}
-
-/**
- * Port of H.createQuestionAndDashboard: returns the created dashcard (whose
- * body carries `id`, `card_id` and `dashboard_id` like the Cypress version).
- */
-export async function createQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-    cardDetails,
-  }: {
-    questionDetails: StructuredQuestionDetails;
-    dashboardDetails?: DashboardDetails;
-    cardDetails?: Record<string, unknown>;
-  },
-): Promise<DashCard> {
-  const { id: card_id } = await createQuestion(api, questionDetails);
-  return await addCardToNewDashboard(
-    api,
-    card_id,
-    dashboardDetails,
-    cardDetails,
-  );
-}
-
-/** Port of H.createNativeQuestionAndDashboard. */
-export async function createNativeQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-  }: {
-    questionDetails: NativeQuestionDetails;
-    dashboardDetails?: DashboardDetails;
-  },
-): Promise<DashCard> {
-  const { id: card_id } = await createNativeQuestion(api, questionDetails);
-  return await addCardToNewDashboard(api, card_id, dashboardDetails);
-}
-
-async function addCardToNewDashboard(
-  api: MetabaseApi,
-  card_id: number,
-  dashboardDetails?: DashboardDetails,
-  cardDetails?: Record<string, unknown>,
-): Promise<DashCard> {
-  const { id: dashboard_id } = await createDashboard(api, dashboardDetails);
-  const response = await api.put(`/api/dashboard/${dashboard_id}`, {
-    dashcards: [
-      {
-        id: -1,
-        card_id,
-        row: 0,
-        col: 0,
-        size_x: 11,
-        size_y: 6,
-        ...cardDetails,
-      },
-    ],
-  });
-  const body = (await response.json()) as { dashcards: DashCard[] };
-  return body.dashcards[0];
+  return createNativeQuestionFactory(api, { name: "native", ...details });
 }
 
 /** DEFAULT_CARD from e2e/support/helpers/api/updateDashboardCards.ts. */
@@ -266,43 +154,6 @@ export async function editDashboardCard(
   await api.put(`/api/dashboard/${dashboardCard.dashboard_id}`, {
     dashcards: [{ ...cleanCard, ...updatedProperties }],
   });
-}
-
-/**
- * Port of H.createDashboardWithQuestions: create the dashboard, then create
- * each question and append it to the dashboard's dashcards (the Cypress
- * helper's createQuestionAndAddToDashboard re-reads the dashboard so earlier
- * cards survive each PUT).
- */
-export async function createDashboardWithQuestions(
-  api: MetabaseApi,
-  {
-    dashboardDetails,
-    questions,
-  }: {
-    dashboardDetails?: DashboardDetails;
-    questions: (StructuredQuestionDetails | NativeQuestionDetails)[];
-  },
-): Promise<{ dashboard: { id: number }; questions: { id: number }[] }> {
-  const dashboard = await createDashboard(api, dashboardDetails);
-  const created: { id: number }[] = [];
-  for (const questionDetails of questions) {
-    const question =
-      "native" in questionDetails
-        ? await createNativeQuestion(api, questionDetails)
-        : await createQuestion(api, questionDetails);
-    const current = (await (
-      await api.get(`/api/dashboard/${dashboard.id}`)
-    ).json()) as { dashcards: DashCard[] };
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      dashcards: [
-        ...current.dashcards,
-        { id: -1, card_id: question.id, row: 0, col: 0, size_x: 11, size_y: 8 },
-      ],
-    });
-    created.push(question);
-  }
-  return { dashboard, questions: created };
 }
 
 /** Port of H.setModelMetadata (e2e-models-metadata-helpers.js). */
@@ -352,10 +203,9 @@ export function editingFilterWidget(page: Page, name?: string): Locator {
     : widgets;
 }
 
-/** Case-sensitive substring matcher (Cypress :contains semantics). */
-export function caseSensitiveSubstring(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-}
+// caseSensitiveSubstring (Cypress :contains semantics) is now canonical in
+// ./text; re-exported so this module's consumers keep their import unchanged.
+export { caseSensitiveSubstring };
 
 /**
  * Port of cy.findByDisplayValue: the form control in `scope` whose *current*

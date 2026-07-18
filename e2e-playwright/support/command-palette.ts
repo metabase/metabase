@@ -176,32 +176,9 @@ export async function setActionsEnabledForDB(
   });
 }
 
-/**
- * Port of H.createDashboardWithTabs (e2e/support/helpers/api): create the
- * dashboard, then PUT it back with the dashcards and tabs attached.
- */
-export async function createDashboardWithTabs(
-  api: MetabaseApi,
-  {
-    tabs,
-    dashcards = [],
-    name = "Test Dashboard",
-    ...details
-  }: {
-    tabs: { id: number; name: string }[];
-    dashcards?: Record<string, unknown>[];
-    name?: string;
-  } & Record<string, unknown>,
-): Promise<{ id: number }> {
-  const created = await api.post("/api/dashboard", { name, ...details });
-  const dashboard = (await created.json()) as { id: number };
-  const updated = await api.put(`/api/dashboard/${dashboard.id}`, {
-    ...dashboard,
-    dashcards,
-    tabs,
-  });
-  return (await updated.json()) as { id: number };
-}
+// createDashboardWithTabs is now canonical in ./factories; re-exported so this
+// module's consumers keep their import unchanged.
+export { createDashboardWithTabs } from "./factories";
 
 /**
  * Local stand-in for createMockDashboardCard (metabase-types/api/mocks):

@@ -203,75 +203,10 @@ export async function moveDnDKitListElement(
   await page.mouse.up();
 }
 
-/**
- * Port of H.moveDnDKitElementByAlias for the pivot column-RESIZE handles, which
- * are thin and clipped — real mouse input lands unreliably (a run measured 80
- * then 120 for the same drag). The Cypress helper drives dnd-kit's PointerSensor
- * with synthetic pointer events at element-relative offsets; replicate that
- * exactly (pointerdown at the handle's top-left, a threshold-exceeding move, the
- * offset move, then pointerup on document), which is deterministic.
- */
-export async function moveDnDKitPointer(
-  handle: Locator,
-  { horizontal = 0, vertical = 0 }: { horizontal?: number; vertical?: number },
-) {
-  const page = handle.page();
-
-  const dispatch = (
-    type: string,
-    clientX: number,
-    clientY: number,
-    onDocument = false,
-  ) =>
-    handle.evaluate(
-      (el, args) => {
-        const target = args.onDocument ? document : el;
-        target.dispatchEvent(
-          new PointerEvent(args.type, {
-            bubbles: true,
-            cancelable: true,
-            clientX: args.clientX,
-            clientY: args.clientY,
-            button: 0,
-            buttons: args.type === "pointerup" ? 0 : 1,
-            isPrimary: true,
-            pointerId: 1,
-          }),
-        );
-      },
-      { type, clientX, clientY, onDocument },
-    );
-
-  // Re-read the box before each event, like the Cypress helper's getElement().
-  // The handle's `left` style is `initialWidth + transform.x`, so it slides as
-  // you drag: firing each offset relative to the CURRENT position compounds the
-  // move (a nominal +100 offset lands as a +120 delta after the +20 nudge). A
-  // fixed-coordinate drag loses that and comes up ~20px short.
-  const boxAt = async () => {
-    const box = await handle.boundingBox();
-    if (!box) {
-      throw new Error("moveDnDKitPointer: missing bounding box");
-    }
-    return box;
-  };
-
-  let box = await boxAt();
-  await dispatch("pointerdown", box.x, box.y);
-  await page.waitForTimeout(200);
-
-  box = await boxAt();
-  await dispatch("pointermove", box.x + 20, box.y + 20);
-  await page.waitForTimeout(200);
-
-  box = await boxAt();
-  const finalX = box.x + horizontal;
-  const finalY = box.y + vertical;
-  await dispatch("pointermove", finalX, finalY);
-  await page.waitForTimeout(200);
-
-  await dispatch("pointerup", finalX, finalY, true);
-  await page.waitForTimeout(200);
-}
+// moveDnDKitPointer is now canonical in ./dnd; re-exported so this module's
+// consumers keep their import unchanged. (Used here for the pivot column-RESIZE
+// handles, which slide mid-drag — the re-read-per-event behaviour is why.)
+export { moveDnDKitPointer } from "./dnd";
 
 /**
  * jQuery-style .width() (content-box width) of the pivot-table cell wrapping a

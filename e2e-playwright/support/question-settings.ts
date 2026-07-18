@@ -66,60 +66,9 @@ export async function findColumnAtIndex(
   return resolve();
 }
 
-/**
- * Synthetic-event port of H.moveDnDKitElementByAlias({ useMouseEvents }) for
- * drag targets that sit below the scroll container's fold: a real mouse
- * press on clipped coordinates lands on whatever covers them and the drag
- * never starts, while Cypress's trigger() dispatches straight on the
- * element. Mirrors the Cypress sequence exactly — mousedown at the
- * element's top-left, a 20,20 activation move, a move to the offset, and a
- * document-level mouseup, with 200ms pauses so dnd-kit's autoscroller gets
- * time to run.
- */
-export async function moveDnDKitElementSynthetic(
-  element: Locator,
-  { horizontal = 0, vertical = 0 }: { horizontal?: number; vertical?: number },
-) {
-  await element.evaluate(
-    async (el, { horizontal, vertical }) => {
-      const sleep = (ms: number) =>
-        new Promise((resolve) => setTimeout(resolve, ms));
-      const options = { bubbles: true, cancelable: true, button: 0 };
-      const { x, y } = el.getBoundingClientRect();
-      el.dispatchEvent(
-        new MouseEvent("mousedown", { ...options, clientX: x, clientY: y }),
-      );
-      await sleep(200);
-      // This initial move needs to be greater than the activation
-      // constraint of the sensor.
-      el.dispatchEvent(
-        new MouseEvent("mousemove", {
-          ...options,
-          clientX: x + 20,
-          clientY: y + 20,
-        }),
-      );
-      await sleep(200);
-      el.dispatchEvent(
-        new MouseEvent("mousemove", {
-          ...options,
-          clientX: x + horizontal,
-          clientY: y + vertical,
-        }),
-      );
-      await sleep(200);
-      document.dispatchEvent(
-        new MouseEvent("mouseup", {
-          ...options,
-          clientX: x + horizontal,
-          clientY: y + vertical,
-        }),
-      );
-      await sleep(200);
-    },
-    { horizontal, vertical },
-  );
-}
+// moveDnDKitElementSynthetic is now canonical in ./dnd; re-exported so this
+// module's consumers keep their import unchanged.
+export { moveDnDKitElementSynthetic } from "./dnd";
 
 /**
  * Port of the spec's hideColumn. Like the Cypress original, no force —

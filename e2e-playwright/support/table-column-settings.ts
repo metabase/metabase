@@ -132,69 +132,9 @@ export function columnHeaderDragHandle(page: Page, name: string): Locator {
     .first();
 }
 
-/**
- * Port of H.moveDnDKitElementByAlias for the interactive table's column-reorder
- * headers. dnd-kit's PointerSensor (activationConstraint distance 10, see
- * use-columns-reordering.tsx) accepts synthetic pointer events; the Cypress
- * helper drives it by firing pointerdown at the element's top-left (0,0), a
- * threshold-exceeding move at (20,20), the offset move at (horizontal, vertical)
- * — all element-relative — then pointerup on document. It re-queries the element
- * before every event (the header remounts/transforms mid-drag), so this re-reads
- * the bounding box each time and fires relative to the current top-left.
- */
-export async function moveDnDKitColumnHeader(
-  element: Locator,
-  { horizontal = 0, vertical = 0 }: { horizontal?: number; vertical?: number },
-) {
-  const page = element.page();
-
-  const dispatch = (
-    type: string,
-    clientX: number,
-    clientY: number,
-    onDocument = false,
-  ) =>
-    element.evaluate(
-      (el, args) => {
-        const target = args.onDocument ? document : el;
-        target.dispatchEvent(
-          new PointerEvent(args.type, {
-            bubbles: true,
-            cancelable: true,
-            clientX: args.clientX,
-            clientY: args.clientY,
-            button: 0,
-            buttons: args.type === "pointerup" ? 0 : 1,
-            isPrimary: true,
-            pointerId: 1,
-          }),
-        );
-      },
-      { type, clientX, clientY, onDocument },
-    );
-
-  const boxAt = async () => {
-    const box = await element.boundingBox();
-    if (!box) {
-      throw new Error("moveDnDKitColumnHeader: missing bounding box");
-    }
-    return box;
-  };
-
-  let box = await boxAt();
-  await dispatch("pointerdown", box.x, box.y);
-  await page.waitForTimeout(200);
-
-  box = await boxAt();
-  await dispatch("pointermove", box.x + 20, box.y + 20);
-  await page.waitForTimeout(200);
-
-  box = await boxAt();
-  const finalX = box.x + horizontal;
-  const finalY = box.y + vertical;
-  await dispatch("pointermove", finalX, finalY);
-  await page.waitForTimeout(200);
-
-  await dispatch("pointerup", finalX, finalY, true);
-  await page.waitForTimeout(200);
-}
+// The interactive table's column-reorder header dragger (dnd-kit PointerSensor,
+// re-reads the box before every event because the header transforms mid-drag) is
+// byte-identical to the pivot resize-handle dragger, now canonical as
+// moveDnDKitPointer in ./dnd; re-exported under this module's historical name so
+// consumers keep their import unchanged.
+export { moveDnDKitPointer as moveDnDKitColumnHeader } from "./dnd";

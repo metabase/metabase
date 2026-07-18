@@ -12,6 +12,12 @@ import type { Locator, Page, Response } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
 import { getDashboardCard, sidebar } from "./dashboard";
+import {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestionAndDashboard,
+  createQuestionAndDashboard,
+} from "./factories";
 import { icon } from "./dashboard-cards";
 import { undoToast } from "./metrics";
 import { SAMPLE_DB_ID } from "./sample-data";
@@ -152,149 +158,15 @@ export type DashboardDetails = {
   dashcards?: Record<string, unknown>[];
 } & Record<string, unknown>;
 
-/**
- * Port of H.createDashboard (api/createDashboard.ts): plain details go in
- * the POST; the embedding/auto-apply flags the POST endpoint rejects go in
- * a follow-up PUT, exactly like the Cypress helper.
- */
-export async function createDashboard(
-  api: MetabaseApi,
-  details: DashboardDetails = {},
-): Promise<{ id: number }> {
-  const {
-    name = "Test Dashboard",
-    auto_apply_filters,
-    enable_embedding,
-    embedding_type,
-    embedding_params,
-    dashcards,
-    ...rest
-  } = details;
-  const response = await api.post("/api/dashboard", { name, ...rest });
-  const dashboard = (await response.json()) as { id: number };
-  if (
-    enable_embedding != null ||
-    auto_apply_filters != null ||
-    Array.isArray(dashcards)
-  ) {
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      auto_apply_filters,
-      enable_embedding,
-      embedding_type,
-      embedding_params,
-      dashcards,
-    });
-  }
-  return dashboard;
-}
-
-/**
- * Port of H.createQuestionAndDashboard — unlike api.createQuestionAndDashboard
- * this passes dashboardDetails through (parameters, embedding flags).
- */
-export async function createQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-    cardDetails,
-  }: {
-    questionDetails: Parameters<MetabaseApi["createQuestion"]>[0];
-    dashboardDetails?: DashboardDetails;
-    cardDetails?: Record<string, unknown>;
-  },
-): Promise<{ cardId: number; dashboardId: number; dashcardId: number }> {
-  const { id: cardId } = await api.createQuestion(questionDetails);
-  const { id: dashboardId } = await createDashboard(api, dashboardDetails);
-  const response = await api.put(`/api/dashboard/${dashboardId}`, {
-    dashcards: [
-      {
-        id: -1,
-        card_id: cardId,
-        row: 0,
-        col: 0,
-        size_x: 11,
-        size_y: 6,
-        ...cardDetails,
-      },
-    ],
-  });
-  const body = (await response.json()) as { dashcards: { id: number }[] };
-  return { cardId, dashboardId, dashcardId: body.dashcards[0].id };
-}
-
-/** Port of H.createNativeQuestionAndDashboard, dashboardDetails included. */
-export async function createNativeQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-  }: {
-    questionDetails: {
-      name?: string;
-      native: { query: string; "template-tags"?: Record<string, unknown> };
-      display?: string;
-      database?: number;
-    };
-    dashboardDetails?: DashboardDetails;
-  },
-): Promise<{ cardId: number; dashboardId: number; dashcardId: number }> {
-  const {
-    name = "test question",
-    native,
-    display = "table",
-    database = SAMPLE_DB_ID,
-  } = questionDetails;
-  const created = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    dataset_query: { type: "native", native, database },
-  });
-  const { id: cardId } = (await created.json()) as { id: number };
-  const { id: dashboardId } = await createDashboard(api, dashboardDetails);
-  const response = await api.put(`/api/dashboard/${dashboardId}`, {
-    dashcards: [
-      { id: -1, card_id: cardId, row: 0, col: 0, size_x: 11, size_y: 6 },
-    ],
-  });
-  const body = (await response.json()) as { dashcards: { id: number }[] };
-  return { cardId, dashboardId, dashcardId: body.dashcards[0].id };
-}
-
-/**
- * Port of H.createDashboardWithQuestions, reduced to the single-question
- * shape this spec uses.
- */
-export async function createDashboardWithQuestions(
-  api: MetabaseApi,
-  {
-    dashboardDetails,
-    questions,
-  }: {
-    dashboardDetails?: DashboardDetails;
-    questions: Parameters<MetabaseApi["createQuestion"]>[0][];
-  },
-): Promise<{ dashboard: { id: number }; questions: { id: number }[] }> {
-  const dashboard = await createDashboard(api, dashboardDetails);
-  const created: { id: number }[] = [];
-  for (const questionDetails of questions) {
-    created.push(await api.createQuestion(questionDetails));
-  }
-  await api.put(`/api/dashboard/${dashboard.id}`, {
-    dashcards: created.map((question, index) => ({
-      id: -1 - index,
-      card_id: question.id,
-      row: 0,
-      col: 0,
-      size_x: 11,
-      size_y: 8,
-      visualization_settings: {},
-      parameter_mappings: [],
-    })),
-  });
-  return { dashboard, questions: created };
-}
+// createDashboard / createQuestionAndDashboard / createNativeQuestionAndDashboard
+// / createDashboardWithQuestions are now canonical in ./factories; re-exported
+// so this module's consumers keep their imports unchanged.
+export {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestionAndDashboard,
+  createQuestionAndDashboard,
+};
 
 // === filter widget lookups (ports of e2e-ui-elements-helpers.js) ===
 

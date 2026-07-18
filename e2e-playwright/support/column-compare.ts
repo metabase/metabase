@@ -18,6 +18,7 @@ import {
   visualize,
 } from "./notebook";
 import { rightSidebar } from "./question-saved";
+import { caseSensitiveSubstring } from "./text";
 import { popover } from "./ui";
 
 export type CheckTextOpts = {
@@ -29,15 +30,6 @@ export type CheckTextOpts = {
   presets?: string[];
   includePeriodText?: string;
 };
-
-/**
- * Case-sensitive substring matcher (Cypress `.contains()` semantics).
- * Duplicated from click-behavior.ts / filters-repros.ts — consolidation
- * candidate once these tiny matchers are unified.
- */
-function caseSensitiveSubstring(text: string): RegExp {
-  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-}
 
 export async function toggleColumnPickerItems(page: Page, names: string[]) {
   // cy.findByTestId("column-picker").parent().click()

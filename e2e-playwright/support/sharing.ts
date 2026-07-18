@@ -78,32 +78,9 @@ export async function createPublicQuestionLink(
 
 // === port of api/createNativeQuestion.ts ===
 
-export async function createNativeQuestion(
-  api: MetabaseApi,
-  details: {
-    name?: string;
-    display?: string;
-    collection_id?: number;
-    database?: number;
-    native: Record<string, unknown>;
-  },
-): Promise<{ id: number }> {
-  const {
-    name = "test question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    native,
-    ...rest
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    ...rest,
-    dataset_query: { type: "native", native, database },
-  });
-  return (await response.json()) as { id: number };
-}
+// createNativeQuestion is now canonical in ./factories; re-exported so this
+// module's consumers keep their import unchanged.
+export { createNativeQuestion } from "./factories";
 
 // === port of H.visitPublicQuestion (e2e-misc-helpers.js) ===
 

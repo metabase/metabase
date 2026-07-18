@@ -29,6 +29,13 @@ import type { Locator, Page } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
 import { getDashboardCard, sidebar } from "./dashboard";
+import {
+  createDashboard as createDashboardFactory,
+  createNativeQuestion as createNativeQuestionFactory,
+  createNativeQuestionAndDashboard,
+  createQuestion as createQuestionFactory,
+  type DashboardDetails,
+} from "./factories";
 import { showDashboardCardActions } from "./dashboard-cards";
 import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { modal } from "./ui";
@@ -186,7 +193,10 @@ export const VIEWS_COLUMN_CARD: NativeQuestionDetails = {
 
 // === api helpers ===
 
-/** Port of H.createQuestion (POST /api/card). Returns the created card id. */
+// The create* logic is now canonical in ./factories. These stay as thin
+// adapters because this module's consumers assign the raw `number` id
+// (`const questionId = await createQuestion(...)`), whereas the factories return
+// the created object — so the adapter returns `.id`.
 export async function createQuestion(
   api: MetabaseApi,
   details: StructuredQuestionDetails & {
@@ -194,56 +204,26 @@ export async function createQuestion(
     collection_id?: number;
   },
 ): Promise<number> {
-  const { name, display, query, visualization_settings, ...rest } = details;
-  const response = await api.post("/api/card", {
-    name,
-    type: "question",
-    display,
-    visualization_settings: visualization_settings ?? {},
-    ...rest,
-    dataset_query: { type: "query", query, database: SAMPLE_DB_ID },
-  });
-  return (await response.json()).id as number;
+  return (await createQuestionFactory(api, details)).id;
 }
 
-/** Port of H.createNativeQuestion (POST /api/card, native dataset_query). */
 export async function createNativeQuestion(
   api: MetabaseApi,
   details: NativeQuestionDetails,
 ): Promise<number> {
-  const { name, display, native } = details;
-  const response = await api.post("/api/card", {
-    name,
-    type: "question",
-    display,
-    visualization_settings: {},
-    dataset_query: { type: "native", native, database: SAMPLE_DB_ID },
-  });
-  return (await response.json()).id as number;
+  return (await createNativeQuestionFactory(api, details)).id;
 }
 
-/** Port of H.createDashboard (api/createDashboard.ts): enable_embedding and
- * dashcards are held back from POST and applied via a follow-up PUT (POST
- * ignores them). */
 export async function createDashboard(
   api: MetabaseApi,
-  details: {
-    name?: string;
-    enable_embedding?: boolean;
-    dashcards?: Record<string, unknown>[];
-  } = {},
+  details: DashboardDetails = {},
 ): Promise<number> {
-  const { name = "Test Dashboard", enable_embedding, dashcards } = details;
-  const response = await api.post("/api/dashboard", { name });
-  const dashboard = (await response.json()) as { id: number };
-  if (enable_embedding != null || Array.isArray(dashcards)) {
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      enable_embedding,
-      dashcards,
-    });
-  }
-  return dashboard.id;
+  return (await createDashboardFactory(api, details)).id;
 }
+
+// createNativeQuestionAndDashboard is a bare re-export from ./factories (its
+// { id, card_id, dashboard_id } return matches this module's consumers).
+export { createNativeQuestionAndDashboard };
 
 /** Port of H.addQuestionToDashboard: append a dashcard, keeping existing ones. */
 export async function addQuestionToDashboard(
@@ -258,27 +238,6 @@ export async function addQuestionToDashboard(
       { id: -1, card_id: cardId, row: 0, col: 0, size_x: 11, size_y: 8 },
     ],
   });
-}
-
-/** Port of H.createNativeQuestionAndDashboard: create the native card, a
- * dashboard, and place the card on it. Returns the dashcard/card/dashboard ids. */
-export async function createNativeQuestionAndDashboard(
-  api: MetabaseApi,
-  { questionDetails }: { questionDetails: NativeQuestionDetails },
-): Promise<{ id: number; card_id: number; dashboard_id: number }> {
-  const cardId = await createNativeQuestion(api, questionDetails);
-  const dashboardId = await createDashboard(api);
-  const response = await api.put(`/api/dashboard/${dashboardId}`, {
-    dashcards: [
-      { id: -1, card_id: cardId, row: 0, col: 0, size_x: 11, size_y: 6 },
-    ],
-  });
-  const body = await response.json();
-  return {
-    id: body.dashcards[0].id,
-    card_id: cardId,
-    dashboard_id: dashboardId,
-  };
 }
 
 /** Port of H.createPublicDashboardLink. */

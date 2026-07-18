@@ -230,44 +230,7 @@ export async function visitStaticEmbedUrl(
 
 // === port of H.createQuestion (api/createQuestion.ts) ===
 
-/**
- * Port of H.createQuestion for the details the spike's api.createQuestion
- * doesn't accept (dashboard_id, enable_embedding). Like upstream, POST
- * /api/card ignores enable_embedding, so a follow-up PUT applies it.
- * TODO(consolidation): fold into api.createQuestion alongside
- * search.ts#createQuestionWithDescription.
- */
-export async function createQuestion(
-  api: MetabaseApi,
-  details: {
-    name: string;
-    query: Record<string, unknown>;
-    dashboard_id?: number;
-    display?: string;
-    type?: string;
-    enable_embedding?: boolean;
-    database?: number;
-  },
-): Promise<{ id: number }> {
-  const {
-    name,
-    type = "question",
-    display = "table",
-    database = SAMPLE_DB_ID,
-    query,
-    enable_embedding = false,
-    ...rest
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    ...rest,
-    dataset_query: { type: "query", query, database },
-  });
-  const card = (await response.json()) as { id: number };
-  if (type === "model" || type === "metric" || enable_embedding) {
-    await api.put(`/api/card/${card.id}`, { type, enable_embedding });
-  }
-  return card;
-}
+// createQuestion is now canonical in ./factories (it applies the same
+// dashboard_id / enable_embedding / model|metric follow-up-PUT logic this copy
+// had); re-exported so this module's consumers keep their import unchanged.
+export { createQuestion } from "./factories";

@@ -36,55 +36,13 @@ type NativeQuestionDetails = {
   database?: number;
 };
 
-/** Port of H.createNativeQuestion (api/createNativeQuestion.ts). */
-export async function createNativeQuestion(
-  api: MetabaseApi,
-  details: NativeQuestionDetails,
-) {
-  const {
-    name = "test question",
-    native,
-    display = "table",
-    database = SAMPLE_DB_ID,
-  } = details;
-  const response = await api.post("/api/card", {
-    name,
-    display,
-    visualization_settings: {},
-    dataset_query: { type: "native", native, database },
-  });
-  return (await response.json()) as { id: number };
-}
-
-/** Port of H.createNativeQuestionAndDashboard (no tabs/cardDetails needed here). */
-export async function createNativeQuestionAndDashboard(
-  api: MetabaseApi,
-  {
-    questionDetails,
-    dashboardDetails,
-  }: {
-    questionDetails: NativeQuestionDetails;
-    dashboardDetails?: { name?: string };
-  },
-) {
-  const { id: questionId } = await createNativeQuestion(api, questionDetails);
-  const { id: dashboardId } = await api.createDashboard(dashboardDetails);
-  await api.put(`/api/dashboard/${dashboardId}`, {
-    tabs: [],
-    dashcards: [
-      {
-        id: -1,
-        card_id: questionId,
-        dashboard_tab_id: null,
-        row: 0,
-        col: 0,
-        size_x: 11,
-        size_y: 6,
-      },
-    ],
-  });
-  return { questionId, dashboardId };
-}
+// createNativeQuestion / createNativeQuestionAndDashboard are now canonical in
+// ./factories; re-exported so this module's consumers keep their imports
+// unchanged.
+export {
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+} from "./factories";
 
 /**
  * Port of H.createQuestion({ ..., dashboard_id }) — a "dashboard question"

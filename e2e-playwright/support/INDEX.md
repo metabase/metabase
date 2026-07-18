@@ -89,7 +89,6 @@
 - `USER_GROUPS` — Mirrors USER_GROUPS in e2e/support/cypress_data.js (fixed ids baked into
 - `aside` — The click-behavior sidebar. Cypress used bare cy.get("aside"); the only
 - `dashboardParametersPopover` — Port of H.dashboardParametersPopover ({ testId: "parameter-value-dropdown" }). */
-- `caseSensitive` — Case-sensitive substring matcher (Cypress cy.contains semantics). */
 - `filterWidgetWithLabel` — Port of the Cypress `findAllByTestId("parameter-widget").contains(label)
 - `expectFilterWidgets` — Port of the repeated `cy.findAllByTestId("parameter-widget")
 - `expectLocation` — Port of the retried `cy.location().should(...)` pathname/search checks —
@@ -125,9 +124,6 @@
 - `getLinkCardDetails`
 - `updateDashboardCards` — Port of H.updateDashboardCards: replaces all the dashboard's cards with
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph: GET the graph, merge, PUT it back. */
-- `createQuestion` — Port of H.createQuestion for arbitrary details (collection_id,
-- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard — unlike the spike's
-- `createDashboard` — Port of H.createDashboard (e2e/support/helpers/api/createDashboard.ts).
 - `createDashboardWithTabsLocal` — Port of the spec's createDashboardWithTabsLocal (also covers the one
 - `tabSlugMap` — Build the `${tabId}-${tabName}` slug map keyed by tab name. */
 - `captureNextAnchorClick` — Port of H.onNextAnchorClick: the frontend opens external URLs by creating
@@ -212,7 +208,6 @@
 - `startNewCollectionFromSidebar` — Port of H.startNewCollectionFromSidebar. */
 - `startNewAction` — Port of H.startNewAction (e2e-action-helpers.js). */
 - `setActionsEnabledForDB` — Port of H.setActionsEnabledForDB. */
-- `createDashboardWithTabs` — Port of H.createDashboardWithTabs (e2e/support/helpers/api): create the
 - `mockDashboardCard` — Local stand-in for createMockDashboardCard (metabase-types/api/mocks):
 - `createDocument` — Local stand-in for createMockDocument + cy.request("POST", "/api/document"):
 - `modifyPermission` — Port of H.modifyPermission (e2e-permissions-helpers.js): click the
@@ -267,7 +262,7 @@
 - `cachedUserName` — The harness signIn is typed to the USERS credential map, but its login
 - `updateDashboardCards` — Port of H.updateDashboardCards: replaces all the cards on a dashboard
 - `createCollection` — Port of H.createCollection (api/createCollection.ts), the subset used here. */
-- `createDashboardWithTabs` — Port of H.createDashboardWithTabs. The command-palette.ts port of the same
+- `createDashboardWithTabs` — Port of H.createDashboardWithTabs. Delegates to the canonical factory; this
 - `createDashboardWithCards` — Port of H.createDashboard({ name, dashcards }) (api/createDashboard.ts):
 - `getTextCardDetails` — Port of H.getTextCardDetails. */
 - `mockVirtualCard` — Local stand-in for createMockVirtualCard (metabase-types/api/mocks). */
@@ -328,8 +323,6 @@
 
 ## dashboard-management.ts
 - `USER_NAMES` — First/last names from e2e/support/cypress_data.js — that file is untyped
-- `createNativeQuestion` — Port of H.createNativeQuestion (api/createNativeQuestion.ts). */
-- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard (no tabs/cardDetails needed here). */
 - `createDashboardQuestion` — Port of H.createQuestion({ ..., dashboard_id }) — a "dashboard question"
 - `addOrUpdateDashboardCard` — Port of H.addOrUpdateDashboardCard. Like the original, the PUT replaces
 - `openDashboardInfoSidebar` — Port of H.openDashboardInfoSidebar. */
@@ -347,10 +340,6 @@
 - `mockHeadingDashboardCard` — Port of createMockHeadingDashboardCard. */
 - `mockTextDashboardCard` — Port of createMockTextDashboardCard. */
 - `mockQuestionDashboardCard` — Port of createMockDashboardCard (question dashcards). The command-palette
-- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts): plain details go in
-- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard — unlike api.createQuestionAndDashboard
-- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard, dashboardDetails included. */
-- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions, reduced to the single-question
 - `filterWidget` — Port of H.filterWidget({ isEditing, name }). The name filter is Cypress
 - `clearFilterWidget` — Port of H.clearFilterWidget (the close icon is hover-gated). */
 - `dashboardParametersContainer` — Port of H.dashboardParametersContainer. */
@@ -451,7 +440,6 @@
 - `replaceValue` — Replace an input's value via real keystrokes (`fill` doesn't mark these
 - `verifyAdminTableSectionEmptyState` — Port of the spec's admin table-section empty state check. */
 - `verifyFieldSectionEmptyState` — Port of the spec's admin field-section empty state check. */
-- `startNewQuestion` — Port of the CURRENT H.startNewQuestion (e2e-ad-hoc-question-helpers.js):
 - `resetTestTableMultiSchema` — Port of H.resetTestTable({ type: "postgres", table: "multi_schema" }) —
 
 ## data-reference.ts
@@ -470,6 +458,10 @@
 - `verifyDetails` — Port of DetailView.verifyDetails. */
 - `queryBuilderFiltersPanel` — Port of H.queryBuilderFiltersPanel. */
 - `remapDisplayValueToFK` — Port of H.remapDisplayValueToFK: remap a field display value to a foreign
+
+## dnd.ts
+- `moveDnDKitPointer` — Drive dnd-kit's PointerSensor with synthetic pointer events at element-relative
+- `moveDnDKitElementSynthetic` — Synthetic-event port of H.moveDnDKitElementByAlias({ useMouseEvents }) for drag
 
 ## documents-core.ts
 - `READ_ONLY_PERSONAL_COLLECTION_ID`
@@ -580,13 +572,7 @@
 - `questionDetailsWithDefaults`
 - `dashboardDetails`
 - `mapParameters` — Port of mapParameters (shared/embedding-dashboard.js). */
-- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts): POST accepts most
-- `createQuestion` — Port of H.createQuestion (api/createQuestion.ts). */
-- `createNativeQuestion` — Port of H.createNativeQuestion (api/createQuestion.ts). */
-- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard: returns the created dashcard (whose
-- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard: unlike the plain
 - `addOrUpdateDashboardCard` — Port of H.addOrUpdateDashboardCard: PUT a single dashcard, return it. */
-- `createDashboardWithTabs` — Port of H.createDashboardWithTabs: create the dashboard (holding back the
 - `getEmbeddedPageUrl` — Port of getEmbeddedPageUrl — builds the signed /embed path plus the hash
 - `visitEmbeddedPage` — Port of H.visitEmbeddedPage: sign the JWT, sign out, and navigate straight
 - `visitEmbeddedResizerHarness` — Port of the standalone e2e/test/scenarios/embedding/embedding-dashboard.html
@@ -604,7 +590,6 @@
 - `getIframeBody` — Port of H.getIframeBody: the (single) iframe on the page as a FrameLocator.
 - `tableInteractiveHeader` — Port of H.tableInteractiveHeader (`cy.findByTestId("table-header")`). */
 - `setDefaultValueForLockedFilter` — Port of the spec-local setDefaultValueForLockedFilter (issue 15860): in the
-- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
 - `createModelFromTableName` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js) returning
 - `moveCardToCollection` — Port of the spec-local moveToCollection (issue 51934): PUT the card's
 - `getFieldIdByName` — Port of H.withDatabase's field-id lookup (e2e-database-metadata-helpers.ts),
@@ -621,10 +606,18 @@
 - `visitIframe` — Port of H.visitIframe: click Preview in the static embedding modal, grab
 - `currentIframeSrc` — The src of the page's (first) preview iframe, rebased onto baseUrl: the
 - `visitStaticEmbedUrl` — Load an absolute url (a signed /embed/* or /public/* link) inside a real
-- `createQuestion` — Port of H.createQuestion for the details the spike's api.createQuestion
 
 ## env.ts
 - `BASE_URL`
+
+## factories.ts
+- `createQuestion` — Port of H.createQuestion (api/createQuestion.ts). Structured by default;
+- `createNativeQuestion` — Port of H.createNativeQuestion (api/createNativeQuestion.ts). */
+- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts). POST /api/dashboard
+- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard. */
+- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard. Threads `tabs` +
+- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
+- `createDashboardWithTabs` — Port of H.createDashboardWithTabs (api/createDashboardWithTabs.ts): create the
 
 ## filter-bulk.ts
 - `hovercard` — Port of H.hovercard: the visible Mantine HoverCard dropdown. */
@@ -639,21 +632,15 @@
 
 ## filters-repros.ts
 - `ORDERS_DASHBOARD_DASHCARD_ID` — Port of ORDERS_DASHBOARD_DASHCARD_ID (cypress_sample_instance_data.js). */
-- `createDashboard` — Port of H.createDashboard — accepts arbitrary dashboard details.
-- `createQuestion` — Port of H.createQuestion (api/createQuestion.ts) returning the card id. */
-- `createNativeQuestion` — Port of H.createNativeQuestion — accepts `parameters` and `type`. */
-- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard: returns the created dashcard (whose
-- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard. */
+- `createNativeQuestion` — Port of H.createNativeQuestion — accepts `parameters` and `type`. Delegates to
 - `updateDashboardCards` — Port of H.updateDashboardCards: replaces all dashcards with `cards`. */
 - `editDashboardCard` — Port of H.editDashboardCard (api/editDashboardCard.ts). */
-- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions: create the dashboard, then create
 - `setModelMetadata` — Port of H.setModelMetadata (e2e-models-metadata-helpers.js). */
 - `dashboardParametersPopover` — Port of H.dashboardParametersPopover (popover with a dedicated testid). */
 - `dashboardParameterSidebar` — Port of H.dashboardParameterSidebar. */
 - `dashboardParametersContainer` — Port of H.dashboardParametersContainer. */
 - `editingParametersContainer` — Port of H.editingDashboardParametersContainer. */
 - `editingFilterWidget` — Port of H.filterWidget({ isEditing: true, name }): the editing-mode widgets,
-- `caseSensitiveSubstring` — Case-sensitive substring matcher (Cypress :contains semantics). */
 - `findByDisplayValue` — Port of cy.findByDisplayValue: the form control in `scope` whose *current*
 - `isClippedByScrollContainer` — Port of Cypress's "not.be.visible" for an element scrolled out of an
 - `goToMainApp` — Port of H.goToMainApp (e2e-ui-elements-helpers.js). */
@@ -692,7 +679,6 @@
 - `exportDashcardCsv` — Port of the dashcard-menu CSV export path: H.exportFromDashcard(".csv")
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph (support/commands/permissions):
 - `addLinkClickBehavior` — Port of the spec-local addLinkClickBehavior. */
-- `createDashboardWithTabs` — COPY of command-palette.ts createDashboardWithTabs with tabs optional
 - `updateDashboardCards` — Port of H.updateDashboardCards (PUT the dashcards array). */
 - `getNextUnsavedDashboardCardId` — Port of H.getNextUnsavedDashboardCardId (e2e-dashboard-helpers.ts). */
 - `mockDashboardCard` — Local stand-in for createMockDashboardCard (metabase-types/api/mocks) —
@@ -756,7 +742,6 @@
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
 
 ## models-core.ts
-- `createNativeQuestion` — Port of H.createNativeQuestion (api/createNativeQuestion.ts → question()):
 - `turnIntoModel` — Port of turnIntoModel (e2e-models-helpers.js): open the question actions,
 - `waitForCardUpdate` — Register a wait for the next PUT /api/card/:id (the `@cardUpdate` alias). */
 - `assertIsModel` — Port of assertIsModel (requires the question-actions popover to be open):
@@ -765,7 +750,6 @@
 - `saveQuestionBasedOnModel` — Port of saveQuestionBasedOnModel: open the save modal, optionally rename,
 - `selectDimensionOptionFromSidebar` — Port of selectDimensionOptionFromSidebar: click a dimension-list row by name
 - `closeQuestionActions` — Port of closeQuestionActions: click the QB header to dismiss the menu. */
-- `startNewQuestion` — Port of the current H.startNewQuestion (e2e-ad-hoc-question-helpers.js): it
 - `getCollectionItemRow` — Port of getCollectionItemRow: findByText(name).closest("tr"). */
 - `getCollectionItemCard` — Port of getCollectionItemCard: findByText(name).closest("a"). */
 - `getResults` — Port of getResults: cy.findAllByTestId("result-item"). */
@@ -782,9 +766,7 @@
 - `createNativeModel` — Port of H.createNativeQuestion({ type: "model", ... }). Mirrors the Cypress
 
 ## multiple-column-breakouts.ts
-- `createQuestion` — Port of H.createQuestion (POST /api/card). Returns the created card id. */
 - `createAndVisitQuestion` — Port of H.createQuestion(details, { visitQuestion: true }). */
-- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard for this spec's shape. Applies the
 - `assertTableData` — Port of H.assertTableData — header cells and first body rows of the QB's
 - `summarize` — Port of H.summarize() (non-notebook mode): guard against the empty-sidebar
 - `tableHeaderClick` — Port of the spec-local tableHeaderClick: click a result-table header to open
@@ -851,7 +833,7 @@
 - `miniPicker`
 - `entityPickerModal`
 - `entityPickerModalLevel`
-- `startNewQuestion` — Port of H.startNewQuestion: New → Question. */
+- `startNewQuestion` — Port of the CURRENT H.startNewQuestion (e2e-ad-hoc-question-helpers.js): a
 - `assertQueryBuilderRowCount` — Port of H.assertQueryBuilderRowCount. */
 - `tableHeaderColumn`
 - `tableHeaderClick`
@@ -917,7 +899,6 @@
 - `sortColumnResults` — Port of the spec's sortColumnResults: open the column's settings button, pick
 - `getPivotTableBodyCell` — Port of the spec's getPivotTableBodyCell: the index-th value cell in the
 - `moveDnDKitListElement` — Port of H.moveDnDKitListElement: drag the list element at `startIndex` onto
-- `moveDnDKitPointer` — Port of H.moveDnDKitElementByAlias for the pivot column-RESIZE handles, which
 - `cellContentWidth` — jQuery-style .width() (content-box width) of the pivot-table cell wrapping a
 - `findDisplayValue` — Port of cy.findByDisplayValue: the form control in `scope` whose current
 - `updatePermissionsGraph` — Port of cy.updatePermissionsGraph: GET the graph, shallow-merge the given
@@ -963,7 +944,6 @@
 - `getSidebarColumns` — Port of the spec's getSidebarColumns: all column rows (visible and
 - `getVisibleSidebarColumns` — Port of the spec's getVisibleSidebarColumns. */
 - `findColumnAtIndex` — Port of the spec's findColumnAtIndex (negative indices count from the
-- `moveDnDKitElementSynthetic` — Synthetic-event port of H.moveDnDKitElementByAlias({ useMouseEvents }) for
 - `hideColumn` — Port of the spec's hideColumn. Like the Cypress original, no force —
 
 ## relative-datetime.ts
@@ -1037,7 +1017,6 @@
 - `openSharingMenu`
 - `openNewPublicLinkDropdown` — Port of H.openNewPublicLinkDropdown: opens the sharing menu's public-link
 - `createPublicQuestionLink`
-- `createNativeQuestion`
 - `visitPublicQuestion`
 - `signInWithCachedSession` — Port of cy.signIn for users outside the fixture's UserName union (e.g.
 - `startNewNativeQuestion` — Port of H.startNewNativeQuestion — the query generated by "New" > "SQL query". */
@@ -1083,7 +1062,6 @@
 - `openColumnOptions` — Port of H.openColumnOptions (e2e-models-metadata-helpers.js): scroll the
 - `assertRowHeight` — Port of H.assertRowHeight(index, height): the row at [data-index=index] has
 - `columnHeaderDragHandle` — The drag target for a column header reorder. H.tableHeaderColumn returns the
-- `moveDnDKitColumnHeader` — Port of H.moveDnDKitElementByAlias for the interactive table's column-reorder
 
 ## temporal-unit-parameters.ts
 - `dashboardDetails`
@@ -1102,7 +1080,6 @@
 - `questionWithoutDefaultValue` — Port of the spec-local questionWithoutDefaultValue (native tests). */
 - `parameterDetails`
 - `getParameterMapping`
-- `createDashboardWithQuestions` — Native-aware port of H.createDashboardWithQuestions: the dashboard-parameters
 - `createDashboardWithMappedQuestion` — Port of the spec-local createDashboardWithMappedQuestion. */
 - `createDashboardWithMultiSeriesCard` — Port of the spec-local createDashboardWithMultiSeriesCard. */
 - `backToDashboard` — Port of the spec-local backToDashboard. */
@@ -1115,10 +1092,13 @@
 - `resetFilterWidgetToDefault` — Port of H.resetFilterWidgetToDefault (the revert icon, hover-gated). */
 - `dashcardTableHeaderColumn` — Port of H.tableHeaderColumn scoped to a dashcard — the click-behavior tests
 
+## text.ts
+- `escapeRegExp` — Escape a string for literal use inside a RegExp. */
+- `caseSensitiveSubstring` — Case-sensitive substring matcher (Cypress `cy.contains` / `:contains`
+
 ## title-drill.ts
 - `checkScalarResult` — Port of the spec-local checkScalarResult:
 - `checkFilterLabelAndValue` — Port of the spec-local checkFilterLabelAndValue:
-- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
 - `waitForTitleDrillQuery` — The reusable `cy.intercept(...).as("cardQuery")` the spec waits on after each
 
 ## ui.ts
@@ -1148,11 +1128,10 @@
 - `SCALAR_CARD`
 - `STEP_COLUMN_CARD`
 - `VIEWS_COLUMN_CARD`
-- `createQuestion` — Port of H.createQuestion (POST /api/card). Returns the created card id. */
-- `createNativeQuestion` — Port of H.createNativeQuestion (POST /api/card, native dataset_query). */
-- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts): enable_embedding and
+- `createQuestion`
+- `createNativeQuestion`
+- `createDashboard`
 - `addQuestionToDashboard` — Port of H.addQuestionToDashboard: append a dashcard, keeping existing ones. */
-- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard: create the native card, a
 - `createPublicDashboardLink` — Port of H.createPublicDashboardLink. */
 - `createDashboardWithVisualizerDashcards` — Port of createDashboardWithVisualizerDashcards: build a dashboard of six
 - `waitForCardQueries` — Resolve after `count` POST /api/card/:id/query responses. Register BEFORE
@@ -1219,7 +1198,6 @@
 - `registerOauthClient` — Register a dynamic client via `POST /oauth/register`, creating a
 - `approveOauthClient`
 - `denyOauthClient`
-- `caseSensitiveSubstring` — Case-sensitive substring matcher for `filter({ hasText })` — Cypress-style
 
 ## worker-backend.ts
 - `startWorkerBackend`

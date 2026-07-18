@@ -74,59 +74,11 @@ export async function setDefaultValueForLockedFilter(
   await popover(page).getByRole("button", { name: "Add filter" }).click();
 }
 
-/**
- * Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
- * create the dashboard (holding back embedding fields), then create each
- * question and append it to the dashboard. Returns the dashboard plus the
- * created questions (whose ids the caller reads).
- */
-export async function createDashboardWithQuestions(
-  api: MetabaseApi,
-  {
-    dashboardName,
-    dashboardDetails,
-    questions,
-    cards,
-  }: {
-    dashboardName?: string;
-    dashboardDetails?: DashboardDetails;
-    questions: (StructuredQuestionDetails | NativeQuestionDetails)[];
-    cards?: Record<string, unknown>[];
-  },
-): Promise<{
-  dashboard: { id: number } & Record<string, unknown>;
-  questions: { id: number }[];
-}> {
-  const dashboard = await createDashboard(api, {
-    name: dashboardName,
-    ...dashboardDetails,
-  });
-
-  const created: { id: number }[] = [];
-  for (let index = 0; index < questions.length; index++) {
-    const details = questions[index] as Record<string, unknown>;
-    const dashcard = await createQuestionAndAddToDashboard(
-      api,
-      details,
-      dashboard.id,
-      cards ? cards[index] : undefined,
-    );
-    // POST /api/card ignores enable_embedding/embedding_params/type — the
-    // Cypress `question()` helper applies them with a follow-up PUT, so mirror
-    // that (8490's standalone question embed needs enable_embedding on the card).
-    if (details.enable_embedding || details.type === "model" || details.type === "metric") {
-      await api.put(`/api/card/${dashcard.card_id}`, {
-        type: details.type ?? "question",
-        enable_embedding: details.enable_embedding ?? false,
-        embedding_params: details.embedding_params ?? null,
-      });
-    }
-    // The appended dashcard's card_id is the created question's id.
-    created.push({ id: dashcard.card_id });
-  }
-
-  return { dashboard, questions: created };
-}
+// createDashboardWithQuestions is now canonical in ./factories (its createQuestion
+// / createNativeQuestion apply the same per-card enable_embedding / model|metric
+// follow-up PUT this copy did); re-exported so consumers keep their import
+// unchanged.
+export { createDashboardWithQuestions } from "./factories";
 
 /**
  * Port of H.createModelFromTableName (e2e-qa-databases-helpers.js) returning

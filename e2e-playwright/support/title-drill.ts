@@ -59,52 +59,9 @@ export async function checkFilterLabelAndValue(
   await expect(filterWidget(page).getByText(value).first()).toBeVisible();
 }
 
-/**
- * Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
- * create the dashboard, then create each question and append it to the
- * dashboard's dashcards (re-reading the dashboard each time so earlier cards
- * survive the PUT), honoring an optional per-card layout array.
- */
-export async function createDashboardWithQuestions(
-  api: MetabaseApi,
-  {
-    dashboardName,
-    questions,
-    cards,
-  }: {
-    dashboardName?: string;
-    questions: (StructuredQuestionDetails | NativeQuestionDetails)[];
-    cards?: Record<string, unknown>[];
-  },
-): Promise<{ dashboard: { id: number }; questions: { id: number }[] }> {
-  const dashboard = await createDashboard(api, { name: dashboardName });
-  const created: { id: number }[] = [];
-  for (const [index, questionDetails] of questions.entries()) {
-    const question =
-      "native" in questionDetails
-        ? await createNativeQuestion(api, questionDetails)
-        : await createQuestion(api, questionDetails);
-    const current = (await (
-      await api.get(`/api/dashboard/${dashboard.id}`)
-    ).json()) as { dashcards: DashCard[] };
-    await api.put(`/api/dashboard/${dashboard.id}`, {
-      dashcards: [
-        ...current.dashcards,
-        {
-          id: -1,
-          card_id: question.id,
-          row: 0,
-          col: 0,
-          size_x: 11,
-          size_y: 8,
-          ...(cards ? cards[index] : {}),
-        },
-      ],
-    });
-    created.push(question);
-  }
-  return { dashboard, questions: created };
-}
+// createDashboardWithQuestions is now canonical in ./factories; re-exported so
+// this module's consumers keep their import unchanged.
+export { createDashboardWithQuestions } from "./factories";
 
 /**
  * The reusable `cy.intercept(...).as("cardQuery")` the spec waits on after each

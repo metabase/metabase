@@ -5,6 +5,8 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
+import { escapeRegExp } from "./text";
+
 // Port of H.clauseStepPopover(): popover({ testId: "clause-popover" }) —
 // the Cypress helper appends the testid to the popover element selector.
 const CLAUSE_POPOVER_SELECTOR =
@@ -22,8 +24,4 @@ export function clauseStepPopover(page: Page): Locator {
  */
 export function containsText(scope: Locator, text: string): Locator {
   return scope.getByText(new RegExp(escapeRegExp(text)));
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
