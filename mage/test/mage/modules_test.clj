@@ -200,7 +200,7 @@
 
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms-python}
+                    enterprise/transforms enterprise/transforms.python}
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -303,7 +303,7 @@
         :else module))))
 
 (deftest top-level-module-test
-  (let [declared '#{lib lib.schema query-processor query-processor.driver-api workspaces enterprise/workspaces
+  (let [declared '#{lib lib.schema query-processor query-processor.driver-api workspaces
                     enterprise/sandbox}]
     (is (= 'lib (top-level-module declared 'lib.schema)))
     (is (= 'query-processor (top-level-module declared 'query-processor.driver-api)))

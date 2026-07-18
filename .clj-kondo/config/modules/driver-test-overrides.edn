@@ -45,6 +45,7 @@
    pulse
    remote-sync
    request
+   sample-data
    search
    search.entity-retrieval
    server
@@ -71,4 +72,6 @@
    enterprise/api
    enterprise/serialization
    enterprise/sso
+   enterprise/transforms
+   enterprise/transforms.inspector
    enterprise/sso.scim}}
