@@ -4,37 +4,20 @@ import fetchMock from "fetch-mock";
 import {
   setupDeleteWorkspaceEndpoint,
   setupDeleteWorkspaceEndpointError,
-  setupGetWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { WorkspaceDatabase } from "metabase-types/api";
-import {
-  createMockDatabase,
-  createMockWorkspace,
-  createMockWorkspaceDatabase,
-} from "metabase-types/api/mocks";
+import type { WorkspaceId } from "metabase-types/api";
 
 import { DeleteWorkspaceModal } from "./DeleteWorkspaceModal";
 
-function setup({
-  withError = false,
-  databases = [],
-}: {
-  withError?: boolean;
-  databases?: WorkspaceDatabase[];
-} = {}) {
-  const workspace = createMockWorkspace({
-    id: 1,
-    name: "My workspace",
-    databases,
-  });
-  setupGetWorkspaceEndpoint(workspace);
+const WORKSPACE_ID: WorkspaceId = 1;
 
+function setup({ withError = false }: { withError?: boolean } = {}) {
   if (withError) {
-    setupDeleteWorkspaceEndpointError(workspace.id);
+    setupDeleteWorkspaceEndpointError(WORKSPACE_ID);
   } else {
-    setupDeleteWorkspaceEndpoint(workspace.id);
+    setupDeleteWorkspaceEndpoint(WORKSPACE_ID);
   }
 
   const onDelete = jest.fn();
@@ -43,7 +26,7 @@ function setup({
   renderWithProviders(
     <>
       <DeleteWorkspaceModal
-        workspaceId={workspace.id}
+        workspaceId={WORKSPACE_ID}
         onDelete={onDelete}
         onClose={onClose}
       />
@@ -51,7 +34,7 @@ function setup({
     </>,
   );
 
-  return { workspace, onDelete, onClose };
+  return { onDelete, onClose };
 }
 
 async function clickDelete() {
@@ -65,34 +48,6 @@ async function clickDelete() {
 describe("DeleteWorkspaceModal", () => {
   it("should delete the workspace and call the callback when the confirm button is clicked", async () => {
     const { onDelete } = setup();
-
-    await clickDelete();
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/ee/workspace-manager/1", {
-          method: "DELETE",
-        }),
-      ).toBe(true);
-    });
-    await waitFor(() => expect(onDelete).toHaveBeenCalled());
-  });
-
-  it("should list pending databases and delete when confirmed", async () => {
-    const { onDelete } = setup({
-      databases: [
-        createMockWorkspaceDatabase({
-          database_id: 7,
-          status: "provisioning",
-          database: createMockDatabase({ id: 7, name: "Pending DB" }),
-        }),
-      ],
-    });
-
-    expect(
-      await screen.findByText(/still being set up or torn down/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Pending DB")).toBeInTheDocument();
 
     await clickDelete();
 

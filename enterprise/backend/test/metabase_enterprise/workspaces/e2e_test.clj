@@ -100,13 +100,13 @@
    (blocking). Replaces the removed production add-database! for test setup."
   [workspace-id database-id input-schemas]
   (t2/with-transaction [_conn]
-    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
-                                          {:workspace_id     workspace-id
-                                           :database_id      database-id
-                                           :input_schemas    input-schemas
-                                           :database_details {}
-                                           :output_namespace ""})]
-      (provisioning.database/provision-database! wsd-id))))
+    (let [wsd (t2/insert-returning-instance! :model/WorkspaceDatabase
+                                             {:workspace_id     workspace-id
+                                              :database_id      database-id
+                                              :input_schemas    input-schemas
+                                              :database_details {}
+                                              :output_namespace ""})]
+      (provisioning.database/provision-database! wsd))))
 
 (defn- cleanup-workspace!
   "Best-effort test cleanup: deprovision every database (destroys the warehouse
@@ -115,9 +115,9 @@
    fall back to force-clearing the rows — otherwise the `mt/with-temp Database`
    cleanup can't complete."
   [ws-id]
-  (when (t2/exists? :model/Workspace :id ws-id)
+  (when-let [ws (t2/select-one :model/Workspace :id ws-id)]
     (try
-      (provisioning/deprovision-workspace! ws-id)
+      (provisioning/deprovision-workspace! ws)
       (catch Throwable t
         (log/warnf t "deprovision-workspace! failed during cleanup for workspace %d" ws-id)))
     (try

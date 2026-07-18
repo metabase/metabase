@@ -72,7 +72,7 @@
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {wsd1-id :id} (wsd-attrs ws-id (mt/id))
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
-      (is (nil? (provisioning/provision-workspace! ws-id)))
+      (is (nil? (provisioning/provision-workspace! (workspace-row ws-id))))
       (is (=? {:status         :provisioned
                :status_details nil
                :instance_id    string?
@@ -98,7 +98,7 @@
                    :model/WorkspaceDatabase {wsd3-id :id} (wsd-attrs ws-id db3-id)]
       (with-redefs [provisioning.database/database-provisioner (failing-on :init! db2-id)]
         (is (thrown-with-msg? ExceptionInfo #"boom"
-                              (provisioning/provision-workspace! ws-id))
+                              (provisioning/provision-workspace! (workspace-row ws-id)))
             "the failure is rethrown"))
       (is (=? {:status      :database-provisioning-failure
                :status_details "boom"
@@ -123,9 +123,9 @@
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
       (with-redefs [provisioning.database/database-provisioner (failing-on :init! db2-id)]
         (is (thrown-with-msg? ExceptionInfo #"boom"
-                              (provisioning/provision-workspace! ws-id))))
+                              (provisioning/provision-workspace! (workspace-row ws-id)))))
       (reset! calls [])
-      (provisioning/provision-workspace! ws-id)
+      (provisioning/provision-workspace! (workspace-row ws-id))
       (is (= [[:init! db2-id]] @calls)
           "only the previously-failed database is re-provisioned")
       (is (=? {:status :provisioned :status_details nil} (workspace-row ws-id)))
@@ -144,7 +144,7 @@
                       (create! [_ _ _] (throw (ex-info "no capacity" {})))
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"no capacity"
-                              (provisioning/provision-workspace! ws-id))))
+                              (provisioning/provision-workspace! (workspace-row ws-id)))))
       (is (=? {:status         :instance-provisioning-failure
                :status_details "no capacity"
                :instance_id    nil}
@@ -154,7 +154,7 @@
           "the databases were provisioned before the instance phase failed")
       (testing "retry skips the already-provisioned databases and finishes the instance"
         (reset! calls [])
-        (provisioning/provision-workspace! ws-id)
+        (provisioning/provision-workspace! (workspace-row ws-id))
         (is (= [] @calls))
         (is (=? {:status :provisioned :status_details nil :instance_id string?}
                 (workspace-row ws-id)))))))
@@ -163,13 +163,13 @@
   (testing "an instance-deprovisioning failure lands in :instance-deprovisioning-failure and stops"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {wsd-id :id} (wsd-attrs ws-id (mt/id))]
-      (provisioning/provision-workspace! ws-id)
+      (provisioning/provision-workspace! (workspace-row ws-id))
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] {:id "x" :url "https://example.com"})
                       (delete! [_ _] (throw (ex-info "instance stuck" {}))))]
         (is (thrown-with-msg? ExceptionInfo #"instance stuck"
-                              (provisioning/deprovision-workspace! ws-id))))
+                              (provisioning/deprovision-workspace! (workspace-row ws-id)))))
       (is (=? {:status         :instance-deprovisioning-failure
                :status_details "instance stuck"
                :instance_id    string?}
@@ -179,7 +179,7 @@
               (t2/select-one :model/WorkspaceDatabase :id wsd-id))
           "the database phase is never reached after an instance failure")
       (testing "retry once the instance is deletable"
-        (provisioning/deprovision-workspace! ws-id)
+        (provisioning/deprovision-workspace! (workspace-row ws-id))
         (is (=? {:status :unprovisioned :instance_id nil}
                 (workspace-row ws-id)))))))
 
@@ -196,7 +196,7 @@
                       (reify provisioning.instance/InstanceProvisioner
                         (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com"})
                         (delete! [_ _] nil))]
-          (provisioning/provision-workspace! ws-id))
+          (provisioning/provision-workspace! (workspace-row ws-id)))
         (is (=? {:version 1
                  :config  {:api-keys  [{:name    string?
                                         :key     "mb_test_key"
@@ -206,13 +206,28 @@
                 @received)
             "create! received the config map with the workspace's API key registered")))))
 
+(deftest workspace-provisioning?-and-deprovisioning?-test
+  (testing "only the active phases count as in flight; the settled statuses do not"
+    (letfn [(ws-with [status] {:id 1 :name "WS" :status status})]
+      (doseq [provisioning-status [:database-provisioning :instance-provisioning]]
+        (is (true? (provisioning/workspace-provisioning? (ws-with provisioning-status))) (str provisioning-status))
+        (is (false? (provisioning/workspace-deprovisioning? (ws-with provisioning-status))) (str provisioning-status)))
+      (doseq [deprovisioning-status [:instance-deprovisioning :database-deprovisioning]]
+        (is (true? (provisioning/workspace-deprovisioning? (ws-with deprovisioning-status))) (str deprovisioning-status))
+        (is (false? (provisioning/workspace-provisioning? (ws-with deprovisioning-status))) (str deprovisioning-status)))
+      (doseq [settled-status [:unprovisioned :provisioned
+                              :database-provisioning-failure :instance-provisioning-failure
+                              :instance-deprovisioning-failure :database-deprovisioning-failure]]
+        (is (false? (provisioning/workspace-provisioning? (ws-with settled-status))) (str settled-status))
+        (is (false? (provisioning/workspace-deprovisioning? (ws-with settled-status))) (str settled-status))))))
+
 (deftest provision-workspace-noop-when-provisioned-test
   (testing "provisioning a fully-provisioned workspace is a no-op"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _ (assoc (wsd-attrs ws-id (mt/id))
                                                      :status           :provisioned
                                                      :output_namespace "mb_iso_x")]
-      (provisioning/provision-workspace! ws-id)
+      (provisioning/provision-workspace! (workspace-row ws-id))
       (is (= [] @calls) "no provisioner calls are made")
       (is (=? {:status :provisioned} (workspace-row ws-id))))))
 
@@ -222,9 +237,9 @@
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {wsd1-id :id} (wsd-attrs ws-id (mt/id))
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
-      (provisioning/provision-workspace! ws-id)
+      (provisioning/provision-workspace! (workspace-row ws-id))
       (reset! calls [])
-      (is (nil? (provisioning/deprovision-workspace! ws-id)))
+      (is (nil? (provisioning/deprovision-workspace! (workspace-row ws-id))))
       (is (= [[:destroy! (mt/id)] [:destroy! db2-id]] @calls)
           "every database gets a warehouse teardown, in row order")
       (is (=? {:status         :unprovisioned
@@ -247,10 +262,10 @@
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {wsd1-id :id} (wsd-attrs ws-id (mt/id))
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
-      (provisioning/provision-workspace! ws-id)
+      (provisioning/provision-workspace! (workspace-row ws-id))
       (with-redefs [provisioning.database/database-provisioner (failing-on :destroy! (mt/id))]
         (is (thrown-with-msg? ExceptionInfo #"warehouse down"
-                              (provisioning/deprovision-workspace! ws-id))))
+                              (provisioning/deprovision-workspace! (workspace-row ws-id)))))
       (is (=? {:status :database-deprovisioning-failure :status_details "warehouse down"}
               (workspace-row ws-id)))
       (is (=? {:status :deprovisioning-failure :status_details "warehouse down"}
@@ -259,7 +274,7 @@
               (t2/select-one :model/WorkspaceDatabase :id wsd2-id))
           "databases after the failure are not attempted")
       (testing "retry once the warehouse is reachable"
-        (provisioning/deprovision-workspace! ws-id)
+        (provisioning/deprovision-workspace! (workspace-row ws-id))
         (is (=? {:status :unprovisioned :status_details nil} (workspace-row ws-id)))
         (doseq [wsd-id [wsd1-id wsd2-id]]
           (is (=? {:status :unprovisioned :status_details nil}
@@ -269,7 +284,7 @@
   (testing "deprovisioning an :unprovisioned workspace is a no-op"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _ (wsd-attrs ws-id (mt/id))]
-      (provisioning/deprovision-workspace! ws-id)
+      (provisioning/deprovision-workspace! (workspace-row ws-id))
       (is (= [] @calls) "no provisioner calls are made")
       (is (=? {:status :unprovisioned} (workspace-row ws-id))))))
 
@@ -287,7 +302,7 @@
                         (grant! [_ _ _ _ _] nil)
                         (destroy! [_ _ _ workspace] (reset! destroyed workspace) nil))]
         (with-redefs [provisioning.database/database-provisioner recording]
-          (provisioning/deprovision-workspace! ws-id))
+          (provisioning/deprovision-workspace! (workspace-row ws-id)))
         (is (=? {:status :unprovisioned} (workspace-row ws-id)))
         (is (=? {:schema           (str "mb_iso_" wsd-id)
                  :database_details {:user "recomputed"}}

@@ -62,6 +62,7 @@
    [:name           ms/NonBlankString]
    [:status         ::ws.schema/workspace-status]
    [:status_details [:maybe :string]]
+   [:instance_id    [:maybe :string]]
    [:instance_url   [:maybe :string]]
    [:creator        [:maybe CreatorResponse]]
    [:created_at     DateTimeWithTimeZone]
@@ -84,9 +85,18 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :status :status_details :instance_url :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :status :status_details :instance_id :instance_url :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
+
+;;; ----------------------------------------------- Validation -------------------------------------------------
+
+(defn- assert-workspace-status!
+  "400 when a provision or deprovision run is already in flight for `ws` — it
+  must settle before another run starts."
+  [ws]
+  (api/check-400 (not (ws.provisioning/workspace-provisioning? ws)))
+  (api/check-400 (not (ws.provisioning/workspace-deprovisioning? ws))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -134,23 +144,23 @@
   (workspace/delete-workspace! id))
 
 (api.macros/defendpoint :post "/:id/provision" :- WorkspaceResponse
-  "Start provisioning the workspace's databases in the background and return
-  immediately. May be retried from any status — databases that are already
-  `:provisioned` are skipped. Poll `GET /:id` to follow the workspace's
-  `:status` (`:provisioned` on success, `:provisioning-failure` with the error
-  message in `:status_details` on the first database failure)."
+  "Start provisioning the workspace in the background and return immediately.
+  Retryable from any settled status; 400 while a provision or deprovision run
+  is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check :model/Workspace id)
-  (ws.execute/execute-async! #(ws.provisioning/provision-workspace! id))
+  (let [ws (api/write-check :model/Workspace id)]
+    (assert-workspace-status! ws)
+    (ws.provisioning/set-workspace-provisioning-status! ws)
+    (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws)))
   (present-workspace (api/check-404 (workspace/get-workspace id))))
 
 (api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
-  "Start deprovisioning the workspace's databases in the background and return
-  immediately. May be retried from any status — databases that are already
-  `:unprovisioned` are skipped. Poll `GET /:id` to follow the workspace's
-  `:status` (`:unprovisioned` on success, `:database-deprovisioning-failure`
-  with the error message in `:status_details` on the first database failure)."
+  "Start deprovisioning the workspace in the background and return immediately.
+  Retryable from any settled status; 400 while a provision or deprovision run
+  is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check :model/Workspace id)
-  (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! id))
+  (let [ws (api/write-check :model/Workspace id)]
+    (assert-workspace-status! ws)
+    (ws.provisioning/set-workspace-deprovisioning-status! ws)
+    (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws)))
   (present-workspace (api/check-404 (workspace/get-workspace id))))

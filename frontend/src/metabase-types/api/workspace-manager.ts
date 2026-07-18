@@ -37,6 +37,7 @@ export type Workspace = {
   name: string;
   status: WorkspaceStatus;
   status_details: string | null;
+  instance_id: string | null;
   instance_url: string | null;
   created_at: string;
   creator_id: UserId;

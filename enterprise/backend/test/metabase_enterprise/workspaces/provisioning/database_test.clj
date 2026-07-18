@@ -114,12 +114,12 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
                    :model/Workspace {ws-id :id} {:name       "tear-down"
                                                  :creator_id (mt/user->id :crowberto)}
-                   :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
-                                                          :database_id      db-id
-                                                          :input_schemas    ["public"]
-                                                          :database_details {}
-                                                          :output_namespace "ws_alice"
-                                                          :status           :deprovisioning}]
+                   :model/WorkspaceDatabase {wsd-id :id :as wsd} {:workspace_id     ws-id
+                                                                  :database_id      db-id
+                                                                  :input_schemas    ["public"]
+                                                                  :database_details {}
+                                                                  :output_namespace "ws_alice"
+                                                                  :status           :deprovisioning}]
       (ws.table-remapping/add-mapping!
        db-id {:schema "public" :table "orders"} {:schema "ws_alice" :table "orders_copy"})
       (ws.table-remapping/add-mapping!
@@ -136,7 +136,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"warehouse teardown blew up"
-             (provisioning.database/deprovision-database! wsd-id failing-provisioner))
+             (provisioning.database/deprovision-database! wsd failing-provisioner))
             "deprovision rethrows the destroy failure so the caller knows"))
       (is (zero? (count (ws.table-remapping/all-mappings-for-db db-id)))
           "remap rows must be cleared even when destroy! threw -- otherwise canonical-table queries 500")

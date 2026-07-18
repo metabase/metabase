@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { WorkspaceDatabase } from "metabase-types/api";
+import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 export function getWorkspaceDatabaseName(workspaceDatabase: WorkspaceDatabase) {
   return (
@@ -9,15 +9,24 @@ export function getWorkspaceDatabaseName(workspaceDatabase: WorkspaceDatabase) {
   );
 }
 
-export function isUnprovisioned(workspaceDatabase: WorkspaceDatabase) {
-  return workspaceDatabase.status === "unprovisioned";
+export function isProvisioning(workspace: Workspace) {
+  return (
+    workspace.status === "database-provisioning" ||
+    workspace.status === "instance-provisioning"
+  );
 }
 
-export function isPending(workspaceDatabase: WorkspaceDatabase) {
-  const { status } = workspaceDatabase;
-  return status === "provisioning" || status === "deprovisioning";
+export function isDeprovisioning(workspace: Workspace) {
+  return (
+    workspace.status === "instance-deprovisioning" ||
+    workspace.status === "database-deprovisioning"
+  );
 }
 
-export function getProvisioningFailureMessage() {
-  return t`Failed to provision the workspace.`;
+export function isProvisioned(workspace: Workspace) {
+  return workspace.status === "provisioned";
+}
+
+export function isDeprovisioned(workspace: Workspace) {
+  return workspace.status === "unprovisioned";
 }

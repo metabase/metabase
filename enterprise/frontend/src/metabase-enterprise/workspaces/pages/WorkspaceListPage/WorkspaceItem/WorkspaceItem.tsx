@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Anchor,
   Box,
   Card,
   FixedSizeIcon,
@@ -12,13 +13,19 @@ import {
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
+import {
+  useDeprovisionWorkspaceMutation,
+  useProvisionWorkspaceMutation,
+} from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import {
-  getProvisioningFailureMessage,
   getWorkspaceDatabaseName,
-  isUnprovisioned,
+  isDeprovisioned,
+  isDeprovisioning,
+  isProvisioned,
+  isProvisioning,
 } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
@@ -47,7 +54,9 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {databases.some(isUnprovisioned) && <WorkspaceProvisioningWarning />}
+          {workspace.instance_url != null && (
+            <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
+          )}
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -78,20 +87,31 @@ function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
   );
 }
 
-type WorkspaceDatabaseItemProps = {
-  workspaceDatabase: WorkspaceDatabase;
+type WorkspaceInstanceItemProps = {
+  instanceUrl: string;
 };
 
-function WorkspaceProvisioningWarning() {
+function WorkspaceInstanceItem({ instanceUrl }: WorkspaceInstanceItemProps) {
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name="warning" aria-hidden />
-        {getProvisioningFailureMessage()}
+        <FixedSizeIcon name="workspace" aria-hidden />
+        <Anchor
+          href={instanceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          lh="inherit"
+        >
+          {instanceUrl}
+        </Anchor>
       </Group>
     </Box>
   );
 }
+
+type WorkspaceDatabaseItemProps = {
+  workspaceDatabase: WorkspaceDatabase;
+};
 
 function WorkspaceDatabaseItem({
   workspaceDatabase,
@@ -115,6 +135,8 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
     useDisclosure(false);
   const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
     useDisclosure(false);
+  const [provisionWorkspace] = useProvisionWorkspaceMutation();
+  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
 
   return (
     <>
@@ -125,6 +147,24 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
+          {!isProvisioned(workspace) && !isDeprovisioning(workspace) && (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="play" aria-hidden />}
+              disabled={isProvisioning(workspace)}
+              onClick={() => provisionWorkspace(workspace.id)}
+            >
+              {t`Provision`}
+            </Menu.Item>
+          )}
+          {!isDeprovisioned(workspace) && !isProvisioning(workspace) && (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="revert" aria-hidden />}
+              disabled={isDeprovisioning(workspace)}
+              onClick={() => deprovisionWorkspace(workspace.id)}
+            >
+              {t`Deprovision`}
+            </Menu.Item>
+          )}
           <Menu.Item
             component="a"
             href={`/api/ee/workspace-manager/${workspace.id}/config`}
@@ -144,6 +184,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
+            disabled={!isDeprovisioned(workspace)}
             onClick={openDelete}
           >
             {t`Delete`}

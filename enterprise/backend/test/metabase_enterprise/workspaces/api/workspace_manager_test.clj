@@ -160,6 +160,25 @@
             (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
+(deftest provision-refused-while-in-flight-test
+  (testing "POST /:id/provision and /:id/deprovision 400 while a run is already in flight"
+    (doseq [in-flight-status [:database-provisioning :instance-provisioning
+                              :instance-deprovisioning :database-deprovisioning]]
+      (testing (str "workspace status " in-flight-status)
+        (mt/with-temp [:model/Workspace {ws-id :id} {:name "Busy" :status in-flight-status}]
+          (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/provision"))
+          (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/deprovision"))
+          (is (= in-flight-status (t2/select-one-fn :status :model/Workspace :id ws-id))
+              "the in-flight status is untouched"))))
+    (testing "the settled failure statuses stay retryable"
+      (doseq [settled-status [:database-provisioning-failure :instance-provisioning-failure
+                              :instance-deprovisioning-failure :database-deprovisioning-failure]]
+        (mt/with-temp [:model/Workspace {ws-id :id} {:name "Settled" :status settled-status}]
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
+          (is (= :provisioned (t2/select-one-fn :status :model/Workspace :id ws-id)))
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/deprovision"))
+          (is (= :unprovisioned (t2/select-one-fn :status :model/Workspace :id ws-id))))))))
+
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]

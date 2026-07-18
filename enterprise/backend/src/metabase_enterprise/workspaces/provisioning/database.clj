@@ -21,6 +21,7 @@
   (:require
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
@@ -154,15 +155,14 @@
    `:provisioning-failure` with the error message in `:status_details` on failure
    — no rollback, the error is rethrown and a later retry picks up from whatever
    state the warehouse is in."
-  ([wsd-id]
-   (provision-database! wsd-id database-provisioner))
-  ([wsd-id :- pos-int?
+  ([workspace-database]
+   (provision-database! workspace-database database-provisioner))
+  ([{wsd-id :id :as wsd} :- ::ws.schema/workspace-database
     provisioner]
-   (when-not (= :provisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
+   (when-not (= :provisioned (:status wsd))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :provisioning, :status_details nil})
      (try
-       (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
-             db         (t2/select-one :model/Database :id (:database_id wsd))
+       (let [db         (t2/select-one :model/Database :id (:database_id wsd))
              driver     (driver.u/database->driver db)
              workspace  (wsd-iso-workspace wsd-id)
              ws-details (merge workspace (details provisioner driver db workspace))]
@@ -193,15 +193,14 @@
    App-DB `TableRemapping` rows for the row's iso namespace are ALWAYS cleared,
    even when the warehouse teardown fails partway — stale remappings would
    rewrite queries to a dropped schema and 500 the QP."
-  ([wsd-id]
-   (deprovision-database! wsd-id database-provisioner))
-  ([wsd-id :- pos-int?
+  ([workspace-database]
+   (deprovision-database! workspace-database database-provisioner))
+  ([{wsd-id :id :as wsd} :- ::ws.schema/workspace-database
     provisioner]
-   (when-not (= :unprovisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
+   (when-not (= :unprovisioned (:status wsd))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :deprovisioning, :status_details nil})
      (try
-       (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
-             db         (t2/select-one :model/Database :id (:database_id wsd))
+       (let [db         (t2/select-one :model/Database :id (:database_id wsd))
              driver     (driver.u/database->driver db)
              iso-ws     (wsd-iso-workspace wsd-id)
              computed   (delay (details provisioner driver db iso-ws))

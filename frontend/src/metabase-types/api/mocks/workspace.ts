@@ -18,6 +18,7 @@ export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
     name: "Test workspace",
     status: "unprovisioned",
     status_details: null,
+    instance_id: null,
     instance_url: null,
     databases: [],
     created_at: "2026-01-01T00:00:00Z",
