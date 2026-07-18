@@ -104,7 +104,7 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-single! wsd-id))))
+      (provisioning/provision-database! wsd-id))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -354,7 +354,7 @@
                       (try
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
-                        ;; multimethods, but through `provisioning/provision-single!`, which writes
+                        ;; multimethods, but through `provisioning/provision-database!`, which writes
                         ;; the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
                         (add-database! ws-id (:id ws-db)
@@ -378,7 +378,7 @@
                                            ws.config/build-workspace-config
                                            ws.config/config->yaml)
                               ;; Read the provisioned isolation schema name back from the WSD row;
-                              ;; `provision-single!` derives it from the WSD id, not the workspace id.
+                              ;; `provision-database!` derives it from the WSD id, not the workspace id.
                               wsd      (-> (ws/get-workspace ws-id) :databases first)
                               isolation-schema (:output_namespace wsd)]
                           ;;+---------------------------+
@@ -676,7 +676,7 @@
                           ;; cleanup we don't retry: fall back to force-clearing the rows so
                           ;; `mt/with-temp Database` cleanup can complete. Real fix for the
                           ;; Redshift destroy fragility is tracked separately.
-                          (let [deleted? (try (ws/delete-workspace! ws-id)
+                          (let [deleted? (try (ws/delete-workspace! (t2/select-one :model/Workspace :id ws-id))
                                               true
                                               (catch Throwable t
                                                 (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
@@ -817,7 +817,7 @@
                   (finally
                     (ws/clear-instance-workspace!)
                     (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                    (try (ws/delete-workspace! ws-id)
+                    (try (ws/delete-workspace! (t2/select-one :model/Workspace :id ws-id))
                          (catch Throwable t
                            (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
             (finally

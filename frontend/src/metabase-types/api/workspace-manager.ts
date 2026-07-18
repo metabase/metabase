@@ -22,6 +22,7 @@ export type Workspace = {
   name: string;
   created_at: string;
   creator_id: UserId;
+  instance_url: string | null;
 
   creator?: UserInfo | null;
   databases?: WorkspaceDatabase[];

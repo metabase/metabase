@@ -108,15 +108,19 @@
   The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
   and back to kebab-keys on response.
 
+  `opts` are extra clj-http request options merged into the request as-is, e.g.
+  `{:connection-timeout 10000, :socket-timeout 60000}` (milliseconds).
+
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body]]
+   & [body opts]]
   (let [{:keys [store-api-url
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
-                            body (assoc :body (json/encode (m.util/deep-snake-keys body))))
+                            body (assoc :body (json/encode (m.util/deep-snake-keys body)))
+                            opts (merge opts))
         request-method-fn (->requestor method)
         unparsed-response (send-request request-method-fn store-api-url url request)
         response          (m.util/deep-kebab-keys (decode-response unparsed-response url request))

@@ -16,6 +16,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -300,7 +301,7 @@
               ;; The from-spec handed to the rewriter must match what the driver
               ;; actually *emits* in SQL, which is governed by qualified-name-components.
               emitted-slots    (set (driver/qualified-name-components driver))
-              input-positions  (ws/engine-namespace-positions fake-db {:schema first-input})
+              input-positions  (provisioning/engine-namespace-positions fake-db {:schema first-input})
               from-spec        {:db     (if (:db emitted-slots)     (or (:db input-positions)     "") "")
                                 :schema (if (:schema emitted-slots) (or (:schema input-positions) "") "")
                                 :table  source-table}]

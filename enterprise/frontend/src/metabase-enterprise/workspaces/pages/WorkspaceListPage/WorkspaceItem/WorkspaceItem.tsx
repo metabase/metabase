@@ -14,7 +14,6 @@ import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
-import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import {
   getProvisioningFailureMessage,
   getWorkspaceDatabaseName,
@@ -22,8 +21,6 @@ import {
 } from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
-
-const CONFIG_FILENAME = "config.yml";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
@@ -125,17 +122,6 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            component="a"
-            href={`/api/ee/workspace-manager/${workspace.id}/config`}
-            download={CONFIG_FILENAME}
-            leftSection={<FixedSizeIcon name="download" aria-hidden />}
-            onClick={() =>
-              trackWorkspaceConfigDownloaded({ workspaceId: workspace.id })
-            }
-          >
-            {t`Download ${CONFIG_FILENAME}`}
-          </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}

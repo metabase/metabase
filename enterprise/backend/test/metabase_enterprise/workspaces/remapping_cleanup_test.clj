@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.remapping-cleanup-test
   "Tests for [[metabase-enterprise.workspaces.remapping-cleanup]] — the iso-scoped
-   `TableRemapping` deletion path invoked from `provisioning/deprovision-workspace-database!`."
+   `TableRemapping` deletion path invoked from `provisioning/deprovision-database!`."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -107,13 +107,13 @@
 
 (deftest deprovision-clears-rows-even-when-destroy-throws-test
   (testing "When the driver's `destroy!` step throws (e.g. BQ dataset gone but SA delete fails),
-            `deprovision-workspace-database!` must still clear the workspace's `TableRemapping`
+            `deprovision-database!` must still clear the workspace's `TableRemapping`
             rows. Without that, future queries against canonical tables on this DB rewrite to
             an iso namespace that no longer exists on the warehouse and 500 in the QP. The
             warehouse-side leak (orphan SA / dataset) is acceptable -- app-DB state must match
             the deprovision intent so the workspace stops routing queries."
     ;; Disable the rollback-only tx wrap that `metabase.test.redefs` adds around `with-temp`.
-    ;; `deprovision-workspace-database!` rebinds `*current-connectable*` to nil for the
+    ;; `deprovision-database!` rebinds `*current-connectable*` to nil for the
     ;; `TableRemapping` cleanup so the DELETE survives a `with-cluster-lock` rollback when
     ;; `destroy!` throws. Under the rollback-only wrap, that fresh connection can't see
     ;; the fixture rows -- they live only inside the wrap's open transaction. Real
@@ -125,7 +125,7 @@
                      :model/WorkspaceDatabase {wsd-id :id} {:workspace_id     ws-id
                                                             :database_id      db-id
                                                             :input_schemas    ["public"]
-                                                            :database_details {}
+                                                            :database_details {:user "ws_alice_user"}
                                                             :output_namespace "ws_alice"
                                                             :status           :deprovisioning}]
         (ws.table-remapping/add-mapping!
@@ -136,7 +136,7 @@
             "fixture: two remap rows registered before deprovision")
         ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
         ;; (e.g. BQ dataset deleted, SA delete throws).
-        (let [failing-provisioner (reify provisioning/Provisioner
+        (let [failing-provisioner (reify provisioning/DatabaseProvisioner
                                     (details  [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (init!    [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (grant!   [_ _ _ _ _]   (throw (ex-info "not used" {})))
@@ -144,9 +144,10 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"warehouse teardown blew up"
-               (provisioning/deprovision-workspace-database! wsd-id failing-provisioner))
+               (provisioning/deprovision-database! (t2/select-one :model/WorkspaceDatabase :id wsd-id)
+                                                   failing-provisioner))
               "deprovision rethrows the destroy failure so the caller knows"))
         (is (zero? (count (ws.table-remapping/all-mappings-for-db db-id)))
             "remap rows must be cleared even when destroy! threw -- otherwise canonical-table queries 500")
-        (is (= :provisioned (:status (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
-            "current rollback semantic: failed deprovision flips status back to :provisioned")))))
+        (is (= :unprovisioned (:status (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+            "failed deprovision keeps the row, forced :unprovisioned, so it can be retried")))))

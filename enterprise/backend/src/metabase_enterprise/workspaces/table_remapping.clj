@@ -48,6 +48,7 @@
    [clojure.set :as set]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -86,10 +87,10 @@
 
 (defn db-position-value
   "Value to put in the `:db` slot for `database`. Convenience accessor over
-   [[ws/engine-namespace-positions]]. Only meaningful for drivers whose
+   [[provisioning/engine-namespace-positions]]. Only meaningful for drivers whose
    `qualified-name-components` includes `:db`."
   [database]
-  (:db (ws/engine-namespace-positions database)))
+  (:db (provisioning/engine-namespace-positions database)))
 
 (mu/defn spec-for-table :- ::table-spec
   "Return `{:db, :schema, :table}` for `table` in `database`, populating only the
@@ -111,7 +112,7 @@
   [database :- [:map [:engine :keyword]]
    table    :- [:map [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
-        positions  (ws/engine-namespace-positions database table)]
+        positions  (provisioning/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))
      :schema (normalize-level (when (:schema components) (:schema positions)))
      :table  (:name table)}))
@@ -325,8 +326,8 @@
    to derive any missing slot from the `database`, so the driver-aware match in
    `canonical->isolated` doesn't false-miss on a populated remap row."
   [database from-spec]
-  (let [positions (ws/engine-namespace-positions database {:name   (:name from-spec)
-                                                           :schema (:schema from-spec)})]
+  (let [positions (provisioning/engine-namespace-positions database {:name   (:name from-spec)
+                                                                     :schema (:schema from-spec)})]
     (cond-> from-spec
       (nil? (:db from-spec))     (assoc :db     (:db positions))
       (nil? (:schema from-spec)) (assoc :schema (:schema positions)))))

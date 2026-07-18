@@ -1,23 +1,36 @@
 (ns metabase-enterprise.workspaces.provisioning
+  "Provisioning of workspace resources: per-database warehouse isolation
+  (a [[DatabaseProvisioner]] per driver) and the workspace's child Metabase
+  instance (an [[InstanceProvisioner]]; the only real implementation today
+  talks to Harbormaster)."
   (:require
+   [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
+   [metabase.system.core :as system]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
    [potemkin.types :as p]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------- Protocol -------------------------------------------------------
 
-(p/defprotocol+ Provisioner
+(p/defprotocol+ DatabaseProvisioner
   "Wrapper around driver workspace-isolation multimethods for testability.
-   The default [[dispatching-provisioner]] delegates to the real driver multimethods.
+   The default [[dispatching-database-provisioner]] delegates to the real driver multimethods.
    Tests can reify custom implementations that fail on demand, count calls, etc."
   (details  [this driver database workspace]
     "Compute {:schema ... :database_details ...} for the workspace without touching
@@ -32,8 +45,8 @@
   (destroy! [this driver database workspace]
     "Tear down isolated schema + user. Should be idempotent."))
 
-(def dispatching-provisioner
-  "Default Provisioner that dispatches to the driver multimethods.
+(def dispatching-database-provisioner
+  "Default DatabaseProvisioner that dispatches to the driver multimethods.
 
    Each call is wrapped in [[driver.conn/with-admin-connection]] so the underlying
    driver impls acquire connections via the database's `:admin-details` overlay
@@ -42,7 +55,7 @@
    the admin overlay is how operators provide them. `details` computes no DDL but
    still binds the overlay: some drivers derive connection strings/catalogs from
    the effective details."
-  (reify Provisioner
+  (reify DatabaseProvisioner
     (details [_ driver database workspace]
       (driver.conn/with-admin-connection
         (driver/workspace-isolation-details driver database workspace)))
@@ -55,6 +68,38 @@
     (destroy! [_ driver database workspace]
       (driver.conn/with-admin-connection
         (driver/destroy-workspace-isolation! driver database workspace)))))
+
+(defn engine-namespace-positions
+  "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
+   `:schema` AST slots for a Table row in `database`. `table` is optional; pass
+   it when you want the schema position derived from the Table's `:schema`
+   column (the normal `spec-for-table` case). Pass nil for `table` when you only
+   need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
+
+   `nil` for either slot means \"this driver doesn't emit this AST level.\"
+   Empty-string sentinel coercion happens at the storage boundary, not here.
+
+   Driven by [[metabase.driver.sql/table-qualification-style]] +
+   [[metabase.driver.sql/db-slot-value]] -- third-party drivers participate by
+   implementing those rather than getting a new case branch here."
+  ([database]       (engine-namespace-positions database nil))
+  ([database table]
+   (case (driver.sql/table-qualification-style (:engine database))
+     :table-qualification-style/table
+     {:db nil
+      :schema nil}
+
+     :table-qualification-style/schema-table
+     {:db nil
+      :schema (:schema table)}
+
+     :table-qualification-style/db-table
+     {:db (driver.sql/db-slot-value (:engine database) database)
+      :schema nil}
+
+     :table-qualification-style/db-schema-table
+     {:db (driver.sql/db-slot-value (:engine database) database)
+      :schema (:schema table)})))
 
 ;;; ---------------------------------------------- Implementation ----------------------------------------------------
 
@@ -70,7 +115,7 @@
 
 (defn do-with-workspace-database-lock
   "Run `thunk` while holding the per-row cluster lock for `workspace-database-id`.
-   [[provision-single!]]/[[deprovision-single!]] take this same lock internally, so
+   [[provision-database!]]/[[deprovision-database!]] take this same lock internally, so
    the acquisition here is reentrant — it lets a caller atomically combine an app-db
    change with provisioning under a single lock, acquired *before* the row is
    mutated (the lock-before-mutate order the rest of the system relies on)."
@@ -86,8 +131,8 @@
 
 (defn- wsd-iso-workspace
   "The synthetic workspace map from which all warehouse identifiers for a
-  WorkspaceDatabase row are derived. Every provision/deprovision/teardown path
-  must build the exact same map — teardown recomputes what provision computed."
+  WorkspaceDatabase row are derived. Every provision/deprovision path must build
+  the exact same map — deprovision recomputes what provision computed."
   [workspace-database-id]
   {:id workspace-database-id :name (str "wsd-" workspace-database-id)})
 
@@ -133,112 +178,31 @@
       (throw t)))
   (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
 
-(defn deprovision-workspace-database!
-  "Reverse provisioning for a `:deprovisioning` WorkspaceDatabase.
-  State transitions: `:deprovisioning` -> `:unprovisioned` on success,
-  or back to `:provisioned` on failure."
-  [workspace-database-id provisioner]
-  (try
-    (with-workspace-database-lock workspace-database-id
-      (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
-        (when-not wsd
-          (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-        (when-not (= :deprovisioning (:status wsd))
-          (throw (ex-info "WorkspaceDatabase must be :deprovisioning to deprovision"
-                          {:id workspace-database-id :status (:status wsd)})))
-        (let [db        (t2/select-one :model/Database :id (:database_id wsd))
-              driver    (driver.u/database->driver db)
-              workspace (assoc (wsd-iso-workspace workspace-database-id)
-                               :schema           (:output_namespace wsd)
-                               :database_details (:database_details wsd))]
-          (try
-            (destroy! provisioner driver db workspace)
-            (finally
-              ;; Clear `TableRemapping` rows whose `to_*` matches this workspace's
-              ;; iso namespace. Runs in `finally` so a partial warehouse teardown
-              ;; (e.g. BQ dataset deleted, SA delete throws) still leaves app-DB
-              ;; in a "workspace no longer routes queries" state. Without this,
-              ;; future queries against canonical tables would rewrite to an iso
-              ;; namespace that no longer exists and 500 in the QP. The unique
-              ;; constraint on `(database_id, from_*)` prevents two workspaces on
-              ;; the same DB from remapping the same canonical table, so scoping
-              ;; by iso namespace alone is correct.
-              ;;
-              ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
-              ;; fresh autocommit connection outside the workspace-database lock's
-              ;; tx. Otherwise, when `destroy!` throws, the surrounding tx rolls
-              ;; back and undoes the DELETE.
-              (binding [t2.connection/*current-connectable* nil]
-                (ws.remapping-cleanup/clear-mappings-for-iso! db
-                                                              (:database_id wsd)
-                                                              (:output_namespace wsd)))))
-          (t2/update! :model/WorkspaceDatabase
-                      {:id workspace-database-id}
-                      {:output_namespace ""
-                       :database_details {}
-                       :status           :unprovisioned}))))
-    (catch Throwable t
-      (t2/update! :model/WorkspaceDatabase
-                  {:id workspace-database-id}
-                  {:status :provisioned})
-      (throw t)))
-  (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
-
 ;;; ----------------------------------- High-level entry points (blocking) --------------------------------------------
 
-(defn provision-single!
+(defn provision-database!
   "Flip a single WorkspaceDatabase to `:provisioning` and provision it synchronously.
    The row must be `:unprovisioned`. Returns the updated WorkspaceDatabase row."
   ([wsd-id]
-   (provision-single! wsd-id dispatching-provisioner))
+   (provision-database! wsd-id dispatching-database-provisioner))
   ([wsd-id provisioner]
    (t2/update! :model/WorkspaceDatabase {:id wsd-id :status :unprovisioned}
                {:status :provisioning})
    (provision-workspace-database! wsd-id provisioner)))
 
-(defn deprovision-single!
-  "Flip a single WorkspaceDatabase to `:deprovisioning` and deprovision it synchronously.
-   The row must be `:provisioned`. Returns the updated WorkspaceDatabase row."
-  ([wsd-id]
-   (deprovision-single! wsd-id dispatching-provisioner))
-  ([wsd-id provisioner]
-   (t2/update! :model/WorkspaceDatabase {:id wsd-id :status :provisioned}
-               {:status :deprovisioning})
-   (deprovision-workspace-database! wsd-id provisioner)))
-
-(defn provision-workspace!
-  "Flip every `:unprovisioned` WorkspaceDatabase under `workspace-id` to
-  `:provisioning`, then provision each one synchronously (blocking).
-  Returns the number of databases provisioned."
-  ([workspace-id]
-   (provision-workspace! workspace-id dispatching-provisioner))
-  ([workspace-id provisioner]
-   (let [triggered (t2/update! :model/WorkspaceDatabase
-                               {:workspace_id workspace-id :status :unprovisioned}
-                               {:status :provisioning})]
-     (when (pos? triggered)
-       (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
-                                       :workspace_id workspace-id
-                                       :status       :provisioning)]
-         (try
-           (provision-workspace-database! id provisioner)
-           (catch Throwable t
-             (log/warnf t "Failed to provision WorkspaceDatabase %s" id)))))
-     triggered)))
-
-(defn teardown-workspace-database!
-  "Tear down one WorkspaceDatabase's warehouse isolation and, on success, delete
+(defn deprovision-database!
+  "Destroy one WorkspaceDatabase's warehouse isolation and, on success, delete
   its row. Used by the delete path and by create-workspace cleanup. Works from ANY
   state: the per-row cluster lock is taken first, so in-flight
   provisioning/deprovisioning on another node completes before we touch anything
-  (or the lock times out and the teardown is reported as a failure), and the row
+  (or the lock times out and the deprovision is reported as a failure), and the row
   is re-read under the lock so we see whatever that work persisted. Identifiers
   are the persisted ones, or
   recomputed deterministically from the row id via the provisioner's `details`
   ([[metabase.driver/workspace-isolation-details]]) for a crashed `:provisioning`
   row that never recorded anything.
 
-  There is no partial outcome: the teardown either fully succeeds or the row
+  There is no partial outcome: the deprovision either fully succeeds or the row
   stays. The row is the durable record that warehouse resources may exist — it
   must survive instance crashes and disappear only once the warehouse footprint
   is confirmed gone. On success the WorkspaceDatabase row is DELETED and the
@@ -248,57 +212,140 @@
   Throws on failure. When the destroy itself fails, the row bookkeeping runs
   first: the row is kept, forced `:unprovisioned`, and the remapping cleanup
   still runs. Failures before the destroy — lock timeout, identifier
-  computation — throw without touching the row. Either way the teardown can be
-  retried. Returns nil."
-  [wsd provisioner]
-  (with-workspace-database-lock (:id wsd)
-    (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
-      (let [db         (t2/select-one :model/Database :id (:database_id wsd))
-            driver     (driver.u/database->driver db)
-            iso-ws     (wsd-iso-workspace (:id wsd))
-            computed   (delay (details provisioner driver db iso-ws))
-            schema     (or (not-empty (:output_namespace wsd))
-                           (:schema @computed))
-            db-details (if (seq (:database_details wsd))
-                         (:database_details wsd)
-                         (:database_details @computed))
-            workspace  (assoc iso-ws :schema schema :database_details db-details)]
-        (try
-          (destroy! provisioner driver db workspace)
-          (catch Throwable t
-            ;; The rethrow rolls back the cluster lock's wrapping transaction on
-            ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
-            ;; autocommit connection to survive it.
-            (binding [t2.connection/*current-connectable* nil]
-              (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                          {:output_namespace "" :database_details {} :status :unprovisioned}))
-            (throw t))
-          (finally
-            ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
-            ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
-            ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
-            ;; (mirrors `deprovision-workspace-database!`).
-            (binding [t2.connection/*current-connectable* nil]
-              (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
-        (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
-        nil))))
-
-(defn deprovision-workspace!
-  "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
-  `:deprovisioning`, then deprovision each one synchronously (blocking).
-  Returns the number of databases deprovisioned."
-  ([workspace-id]
-   (deprovision-workspace! workspace-id dispatching-provisioner))
-  ([workspace-id provisioner]
-   (let [triggered (t2/update! :model/WorkspaceDatabase
-                               {:workspace_id workspace-id :status :provisioned}
-                               {:status :deprovisioning})]
-     (when (pos? triggered)
-       (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
-                                       :workspace_id workspace-id
-                                       :status       :deprovisioning)]
+  computation — throw without touching the row. Either way the deprovision can
+  be retried. Returns nil."
+  ([wsd]
+   (deprovision-database! wsd dispatching-database-provisioner))
+  ([wsd provisioner]
+   (with-workspace-database-lock (:id wsd)
+     (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
+       (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+             driver     (driver.u/database->driver db)
+             iso-ws     (wsd-iso-workspace (:id wsd))
+             computed   (delay (details provisioner driver db iso-ws))
+             schema     (or (not-empty (:output_namespace wsd))
+                            (:schema @computed))
+             db-details (if (seq (:database_details wsd))
+                          (:database_details wsd)
+                          (:database_details @computed))
+             workspace  (assoc iso-ws :schema schema :database_details db-details)]
          (try
-           (deprovision-workspace-database! id provisioner)
+           (destroy! provisioner driver db workspace)
            (catch Throwable t
-             (log/warnf t "Failed to deprovision WorkspaceDatabase %s" id)))))
-     triggered)))
+             ;; The rethrow rolls back the cluster lock's wrapping transaction on
+             ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
+             ;; autocommit connection to survive it.
+             (binding [t2.connection/*current-connectable* nil]
+               (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
+                           {:output_namespace "" :database_details {} :status :unprovisioned}))
+             (throw t))
+           (finally
+             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
+             ;; remappings would otherwise rewrite queries to a dropped schema and 500 the
+             ;; QP. Fresh autocommit connection to survive any surrounding tx rollback.
+             (binding [t2.connection/*current-connectable* nil]
+               (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
+         (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
+         nil)))))
+
+;;; --------------------------------------------- Instance provisioning ----------------------------------------------
+
+(def ^:private create-timeouts {:connection-timeout 10000, :socket-timeout 60000})
+(def ^:private delete-timeouts {:connection-timeout 10000, :socket-timeout 10000})
+
+(defprotocol InstanceProvisioner
+  (create! [this workspace config]
+    "Create the workspace's child instance in the target environment.")
+  (delete! [this workspace]
+    "Delete the workspace's child instance from the target environment."))
+
+(defn- hm-status
+  "HTTP status of an HM reply. On non-2xx responses clj-http throws and the
+  client wraps the exception, so the status lives under `:ex-data`."
+  [resp]
+  (or (:status resp) (get-in resp [:ex-data :status])))
+
+(defn- hm-error
+  "502 `ex-info` for a failed HM call, carrying the HM status and body so
+  operators can see why HM refused."
+  [message workspace-id resp]
+  (ex-info message
+           {:status-code  502
+            :workspace_id workspace-id
+            :hm-status    (hm-status resp)
+            :hm-body      (or (:body resp) (get-in resp [:ex-data :body]))}))
+
+(defn- hm-provision-instance!
+  "Create the child instance for a workspace (blocking; returns once the child is
+  active with `config` applied). Returns `{:id .. :url ..}`.
+  Throws a 502 `ex-info` when HM refuses or is unreachable — the workspace and its
+  warehouse resources are left in place so the caller can retry or delete."
+  [{workspace-id :id, workspace-name :name} config]
+  (let [[ok? resp] (hm.client/make-request :post "/api/v2/mb/workspaces/instances"
+                                           {:name       workspace-name
+                                            :blocking   true
+                                            :metadata   {:parent-instance (str (system/site-uuid))
+                                                         :workspace-id    workspace-id}
+                                            :mb-version (:tag config/mb-version-info)
+                                            :config-yml (yaml/generate-string config :dumper-options {:flow-style :block})}
+                                           create-timeouts)]
+    (when-not (= ok? :ok)
+      (throw (hm-error (tru "Harbormaster failed to create the workspace instance.")
+                       workspace-id resp)))
+    (let [{:keys [id url]} (:body resp)]
+      (when-not id
+        (throw (hm-error (tru "Harbormaster returned no id for the workspace instance.")
+                         workspace-id resp)))
+      {:id (str id), :url url})))
+
+(defn- hm-deprovision-instance!
+  "Delete the child instance. Idempotent: 404 means it is already gone and counts as
+  success. Throws a 502 `ex-info` on any other failure — HM's backstop reaper
+  eventually collects the instance if the caller gives up."
+  [{workspace-id :id, instance-id :instance_id}]
+  (let [[ok? resp] (hm.client/make-request :delete (str "/api/v2/mb/workspaces/instances/" instance-id)
+                                           nil delete-timeouts)]
+    (when-not (or (= ok? :ok)
+                  (= 404 (hm-status resp)))
+      (throw (hm-error (tru "Harbormaster failed to delete the workspace instance.")
+                       workspace-id resp)))))
+
+(def hm-provisioner
+  "An [[InstanceProvisioner]] that provisions workspace child instances via
+  Harbormaster. The default for [[provision-instance!]]/[[deprovision-instance!]];
+  public so tests can `with-redefs` it."
+  (reify InstanceProvisioner
+    (create! [_this workspace config]
+      (hm-provision-instance! workspace config))
+    (delete! [_this workspace]
+      (hm-deprovision-instance! workspace))))
+
+(defn provision-instance!
+  "Provision the child instance for `workspace` (blocking; returns once the child
+  is active with `config` applied) and persist its id and url on the Workspace
+  row. Returns the updated Workspace row."
+  ([workspace config]
+   (provision-instance! workspace config hm-provisioner))
+  ([workspace config provisioner]
+   (let [{:keys [id url]} (create! provisioner workspace config)]
+     (try
+       (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
+       (catch Throwable t
+         (try
+           (delete! provisioner (assoc workspace :instance_id id))
+           (catch Throwable delete-error
+             (.addSuppressed t delete-error)))
+         (throw t)))
+     (t2/select-one :model/Workspace :id (:id workspace)))))
+
+(defn deprovision-instance!
+  "Delete the child instance of `workspace` and clear `instance_id`/`instance_url`
+  on the Workspace row. Throws when the provisioner fails to delete the instance;
+  the row is left untouched then, so the delete can be retried. Returns the
+  updated Workspace row."
+  ([workspace]
+   (deprovision-instance! workspace hm-provisioner))
+  ([workspace provisioner]
+   (delete! provisioner workspace)
+   (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil})
+   (t2/select-one :model/Workspace :id (:id workspace))))

@@ -3585,7 +3585,6 @@
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
@@ -3758,6 +3757,7 @@
    :uses #{api
            app-db
            cache
+           config
            driver
            lib
            models
@@ -3765,12 +3765,12 @@
            premium-features
            query-processor
            sample-data
-           server
            settings
            sql-tools
+           system
            util
            workspaces
-           enterprise/serialization}
+           enterprise/harbormaster}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

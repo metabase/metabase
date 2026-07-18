@@ -32,50 +32,19 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
-   [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn engine-namespace-positions
-  "Return `{:db ?, :schema ?}` — the values that should populate the `:db` and
-   `:schema` AST slots for a Table row in `database`. `table` is optional; pass
-   it when you want the schema position derived from the Table's `:schema`
-   column (the normal `spec-for-table` case). Pass nil for `table` when you only
-   need the `:db` slot (workspace `output_namespace` expansion, GRANT emission).
-
-   `nil` for either slot means \"this driver doesn't emit this AST level.\"
-   Empty-string sentinel coercion happens at the storage boundary, not here.
-
-   Driven by [[metabase.driver.sql/table-qualification-style]] +
-   [[metabase.driver.sql/db-slot-value]] -- third-party drivers participate by
-   implementing those rather than getting a new case branch here."
-  ([database]       (engine-namespace-positions database nil))
-  ([database table]
-   (case (driver.sql/table-qualification-style (:engine database))
-     :table-qualification-style/table
-     {:db nil
-      :schema nil}
-
-     :table-qualification-style/schema-table
-     {:db nil
-      :schema (:schema table)}
-
-     :table-qualification-style/db-table
-     {:db (driver.sql/db-slot-value (:engine database) database)
-      :schema nil}
-
-     :table-qualification-style/db-schema-table
-     {:db (driver.sql/db-slot-value (:engine database) database)
-      :schema (:schema table)})))
 
 (defn- coerce-database-id-key
   "JSON round-trips through the `instance-workspace` setting return integer
@@ -172,11 +141,6 @@
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
-(defn- assert-workspace-exists [workspace-id]
-  (when-not (t2/exists? :model/Workspace :id workspace-id)
-    (throw (ex-info "Workspace not found"
-                    {:status-code 404 :workspace_id workspace-id}))))
-
 (defn- assert-database-exists [database-id]
   (or (t2/select-one :model/Database :id database-id)
       (throw (ex-info "Database not found"
@@ -224,86 +188,118 @@
   (blocking), failing fast on the first error."
   [ws]
   (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-single! wsd-id)))
+    (provisioning/provision-database! wsd-id)))
 
-(defn- teardown-workspace-databases!
-  "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
+(defn- deprovision-workspace-databases!
+  "Deprovision every WorkspaceDatabase of `workspace-id` — any state, blocking.
   Mirrors [[provision-workspace-databases!]], but continues past failures so each
-  row gets its attempt: rows whose teardown succeeds are deleted immediately
+  row gets its attempt: rows whose deprovisioning succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
-  rows whose teardown fails are kept. Throws the combined failures when any
-  teardown failed."
+  rows whose deprovisioning fails are kept. Throws the combined failures when any
+  deprovisioning failed."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
                                (try
-                                 (provisioning/teardown-workspace-database! wsd provisioning/dispatching-provisioner)
+                                 (provisioning/deprovision-database! wsd)
                                  nil
                                  (catch Throwable t t))))
                        (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))]
     (when (seq failures)
       (throw (combined-exception failures)))))
 
+(defn- workspace-database-specs
+  "Validate each of `database-ids` — the database must exist (404) and be eligible
+  for workspaces (400, see [[workspace-database/database-eligible-for-workspaces?]])
+  — and return the WorkspaceDatabase specs to attach: each database with all of
+  its known schemas as `input_schemas`."
+  [database-ids]
+  (mapv (fn [db-id]
+          (let [database (assert-database-exists db-id)]
+            (assert-database-eligible-for-workspaces database)
+            {:database_id   db-id
+             :input_schemas (workspace-database/database-input-schemas database)}))
+        database-ids))
+
+(defn- provision-workspace-instance!
+  "Provision the child instance for the fully provisioned workspace `ws`
+  (blocking), when `workspace-instance-provisioning-enabled` is set. Best-effort:
+  a failure is logged and `instance_id`/`instance_url` are left unset — the
+  workspace itself is still returned as created."
+  [ws]
+  (try
+    (when (ws.settings/workspace-instance-provisioning-enabled)
+      (provisioning/provision-instance! ws (ws.config/build-workspace-config (:id ws))))
+    (catch Throwable t
+      (log/warnf t "Failed to provision an instance for workspace %s" (:id ws)))))
+
+(defn- deprovision-workspace-instance!
+  "Delete the child instance of `ws`, when it has one. The row's
+  `instance_id`/`instance_url` are cleared immediately, so if a later database
+  deprovisioning step fails and the workspace is kept, it correctly shows no
+  instance. Throws when the provisioner fails to delete the instance."
+  [ws]
+  (when (:instance_id ws)
+    (provisioning/deprovision-instance! ws)))
+
 (defn create-workspace!
-  "Create a new Workspace, attach the databases with ids `database_ids` — each must
-   exist (404) and be eligible for workspaces (400, see
-   [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
-   known schemas as `input_schemas`, and provision each database (blocking).
-   Returns the created workspace, hydrated.
+  "Create a new Workspace, attach the databases with ids `database_ids` (see
+   [[workspace-database-specs]]), provision each database (blocking), and — when
+   the workspace ends up fully provisioned — provision its child instance. Returns
+   the created workspace, hydrated.
 
    The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
    starts — deliberately NOT one big transaction. The rows are the durable record
    of warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
-   objects live on. Cleanup after a provisioning failure is therefore explicit:
-   every database is torn down; when the cleanup removes everything, the Workspace
-   row is deleted and the provisioning error is rethrown; when the cleanup itself
-   fails, the workspace is kept — and returned like a successful create — with the
-   failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
-   be retried via delete. Callers detect that case from the databases' statuses."
+   objects live on. Cleanup after a provisioning failure is therefore explicit,
+   in the `catch` below: every database is deprovisioned; when that removes
+   everything, the Workspace row is deleted and the provisioning error is
+   rethrown; when the cleanup itself fails, the workspace is kept — and returned
+   like a successful create — with the failed rows (`:unprovisioned`) so the
+   leak stays visible and deletable. An instance-provisioning failure never
+   fails the create — the workspace is returned without
+   `instance_id`/`instance_url` (see [[provision-workspace-instance!]])."
   [{:keys [name creator_id database_ids]}]
-  (let [databases (mapv (fn [db-id]
-                          (let [database (assert-database-exists db-id)]
-                            (assert-database-eligible-for-workspaces database)
-                            {:database_id   db-id
-                             :input_schemas (workspace-database/database-input-schemas database)}))
-                        database_ids)
-        ws        (workspace/create-workspace! {:name       name
-                                                :creator_id creator_id
-                                                :databases  databases})]
+  (let [ws (workspace/create-workspace! {:name       name
+                                         :creator_id creator_id
+                                         :databases  (workspace-database-specs database_ids)})]
     (try
       (provision-workspace-databases! ws)
-      (catch Throwable t
+      (provision-workspace-instance! ws)
+      (catch Throwable provisioning-error
         (let [cleaned-up? (try
-                            (teardown-workspace-databases! (:id ws))
+                            (deprovision-workspace-databases! (:id ws))
                             true
-                            ;; Cleanup failed: the workspace and the failed rows are
-                            ;; kept — and returned — so the teardown can be retried
-                            ;; via delete. Both errors are deliberately swallowed,
-                            ;; not logged (raw warehouse errors are sensitive);
-                            ;; callers see the failure in the databases' statuses,
-                            ;; and a delete retry surfaces the teardown errors.
                             (catch Throwable _ false))]
-          (when cleaned-up?
-            (try
-              (workspace/delete-workspace! (:id ws))
-              (catch Throwable delete-t
-                (.addSuppressed t delete-t)))
-            (throw (combined-exception [t]))))))
+          (if cleaned-up?
+            (do
+              (try
+                (workspace/delete-workspace! (:id ws))
+                (catch Throwable delete-error
+                  (.addSuppressed provisioning-error delete-error)))
+              (throw (combined-exception [provisioning-error])))
+            ;; cleanup failed: deliberately swallow the error — the workspace is
+            ;; kept and returned with its failed (:unprovisioned) rows visible
+            nil))))
     (workspace/get-workspace (:id ws))))
 
-(defn delete-workspace!
-  "Tear down every database's warehouse isolation (any state, blocking), then
+(mu/defn delete-workspace!
+  "Deprovision every database's warehouse isolation (any state, blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
-  either fully torn down (warehouse footprint confirmed gone, row deleted) or
-  kept. Every database gets its teardown attempt even when earlier ones fail; if
-  any of them fail, the workspace is kept alongside the failed rows and one
-  exception combining all the failures is thrown, so the delete can be retried.
-  Progress is persisted per row, so an instance crash midway loses nothing.
-  App-DB `TableRemapping` rows are always cleared, so query routing is never
-  left dangling. Returns nil."
-  [id]
-  (assert-workspace-exists id)
-  (teardown-workspace-databases! id)
+  either fully deprovisioned (warehouse footprint confirmed gone, row deleted) or
+  kept. Every database gets its deprovisioning attempt even when earlier ones
+  fail; if any of them fail, the workspace is kept alongside the failed rows and
+  one exception combining all the failures is thrown, so the delete can be
+  retried. Progress is persisted per row, so an instance crash midway loses
+  nothing. App-DB `TableRemapping` rows are always cleared, so query routing is
+  never left dangling. If the workspace has a provisioned child instance, it is
+  deleted first; a failure there keeps the workspace so the delete can be
+  retried, while a success clears `instance_id`/`instance_url` immediately — so
+  when a later database deprovisioning fails and the workspace is kept, it
+  correctly shows no instance. Returns nil."
+  [{:keys [id] :as ws} :- [:map [:id pos-int?]]]
+  (deprovision-workspace-instance! ws)
+  (deprovision-workspace-databases! id)
   (workspace/delete-workspace! id)
   nil)

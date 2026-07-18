@@ -20,7 +20,7 @@
 (use-fixtures :each with-premium-feature)
 
 (defn- stub-provisioner []
-  (reify provisioning/Provisioner
+  (reify provisioning/DatabaseProvisioner
     (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
     (init! [_ _ _ _] nil)
@@ -33,7 +33,7 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
           (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                          {:name "Smoke Test" :database_ids [db-id]})]
             (is (=? {:id        pos-int?
@@ -57,7 +57,7 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Pending" :database_ids [db-id]})
                 wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
@@ -71,20 +71,20 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+        (let [{ws-id :id} (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
                             (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Unreachable" :database_ids [db-id]}))
-              boom        (reify provisioning/Provisioner
+              boom        (reify provisioning/DatabaseProvisioner
                             (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                             (init!    [_ _ _ _]   nil)
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
-          (with-redefs [provisioning/dispatching-provisioner boom]
+          (with-redefs [provisioning/dispatching-database-provisioner boom]
             (is (=? {:message "Connection refused"}
                     (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
           (testing "the workspace survives and a retry deletes it"
             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
-            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
               (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
@@ -97,7 +97,7 @@
                    :model/Table _ {:db_id eligible-id :schema "analytics" :active true}
                    :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
           (is (=? {:databases [{:database_id   eligible-id
                                 :input_schemas ["analytics" "public"]
                                 :status        "provisioned"}]}
@@ -110,36 +110,6 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
-(deftest metadata-export-test
-  (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
-    (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
-                   :model/Table {t1-id :id} {:db_id db-id :schema "schema-1" :name "table-1" :active true}
-                   :model/Table {t2-id :id} {:db_id db-id :schema "schema-2" :name "table-2" :active true}
-                   :model/Field {f1-id :id} {:table_id t1-id :name "field-1" :active true
-                                             :base_type :type/Integer :database_type "BIGINT"}
-                   :model/Field _           {:table_id t2-id :name "field-2" :active true
-                                             :base_type :type/Text :database_type "TEXT"}
-                   :model/Workspace         {ws-id :id} {:name       "Export"
-                                                         :creator_id (mt/user->id :crowberto)}
-                   :model/WorkspaceDatabase _          {:workspace_id     ws-id
-                                                        :database_id      db-id
-                                                        :database_details {}
-                                                        :output_namespace ""
-                                                        ;; schema-2 is deliberately excluded
-                                                        :input_schemas    ["schema-1"]
-                                                        :status           :provisioned}]
-      ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
-      ;; Length mismatch in any section would fail `=?` — that's how we assert the
-      ;; schema filter is doing its job.
-      (is (=? {:databases [{:id db-id :name db-name :engine "postgres"}]
-               :tables    [{:id t1-id :db_id db-id :name "table-1" :schema "schema-1"}]
-               :fields    [{:id f1-id :table_id t1-id :name "field-1" :base_type "type/Integer"}]}
-              (mt/user-http-request :crowberto :get 202
-                                    (str "ee/workspace-manager/" ws-id "/metadata/export")
-                                    :with-databases true
-                                    :with-tables    true
-                                    :with-fields    true))))))
-
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
@@ -148,28 +118,6 @@
       (is (= "After" (t2/select-one-fn :name :model/Workspace :id ws-id)))
       (testing "404 for a missing id"
         (mt/user-http-request :crowberto :put 404 "ee/workspace-manager/13371337" {:name "X"})))))
-
-(deftest download-config-endpoint-test
-  (testing "GET /:id/config"
-    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
-                   :model/Workspace {ws-id :id} {:name "Cfg WS"}
-                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
-                                               :database_id      db-id
-                                               :database_details {}
-                                               :output_namespace ""
-                                               :input_schemas    ["public"]
-                                               :status           :provisioned}]
-      (testing "returns application/x-yaml with an attachment Content-Disposition"
-        (is (=? {:status  200
-                 :headers {"Content-Type"        "application/x-yaml"
-                           "Content-Disposition" "attachment; filename=\"config.yml\""}}
-                (mt/user-http-request-full-response
-                 :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
-      (testing "409 when a database is not :provisioned"
-        (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
-        (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
-      (testing "404 for a missing workspace"
-        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
@@ -180,10 +128,7 @@
       (with-data-analyst
         (mt/user-http-request :rasta :get 403 "ee/workspace-manager/")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id))
-        (mt/user-http-request :rasta :get 403
-                              (str "ee/workspace-manager/" ws-id "/metadata/export"))
         (mt/user-http-request :rasta :post 403 "ee/workspace-manager/"
                               {:name "Nope" :database_ids [(mt/id)]})
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
-        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
