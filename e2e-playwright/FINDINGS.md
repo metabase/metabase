@@ -6,14 +6,16 @@ dividend found during porting gets an entry here in the same PR.**
 
 ## Scoreboard — read this before quoting numbers
 
-**Product bugs: 2 standing (#1, #3), 5 retracted (#2, #22, #24,
-`dashboard-parameters` field-61, `dashboard-reproductions` 12926).** Everything
-that rested on a `parameters: []` / load-path / "Cypress fails identically"
-observation is gone: re-checked against the CI uberjar with Chrome
-cross-checks, none reproduced. They died to one shared mechanism — a code path
-we didn't know about masked the difference we were measuring, and we read the
-gap as an app bug (see #31 for the full pattern and why jar-mode verification
-now prevents it).
+**Product bugs: 1 jar-CONFIRMED (#1), 1 still unverified (#3), 5 retracted (#2,
+#22, #24, `dashboard-parameters` field-61, `dashboard-reproductions` 12926).**
+#1 was put through the jar gauntlet 2026-07-18 and **reproduces on the
+production bundle** (details in #1). #3 has not been jar-verified yet — treat as
+unverified. Everything retracted rested on a `parameters: []` / load-path /
+"Cypress fails identically" observation: re-checked against the CI uberjar with
+Chrome cross-checks, none reproduced. They died to one shared mechanism — a code
+path we didn't know about masked the difference we were measuring, and we read
+the gap as an app bug (see #31 for the full pattern and why jar-mode
+verification now prevents it).
 
 **Do not quote a bug count from an un-cross-checked observation.** The honest,
 defensible case for migration does not rest on bug count — it rests on
@@ -29,14 +31,39 @@ highest-value next step for anyone making this case to colleagues.
 
 ## Product bugs found by porting
 
-1. **Enter-key double-navigation race in SearchBar** (`search.spec.ts`).
-   `page.keyboard.press("Enter")` on a highlighted search result fires the
-   keydown navigation handler AND the `onKeyPress` fallback (`goToSearchApp`)
-   — a transient `/search` mount issues a duplicate search request.
-   Reachable by real users. Cypress never sees it because cypress-real-events
-   dispatches rawKeyDown and the char event as separate delayed CDP commands.
-   Ported with a CDP-level keydown/keyup helper; the underlying race is a
-   real FE bug candidate.
+1. **Enter on a highlighted embedded-search result navigates to `/search`
+   instead of the result** (`search.spec.ts`). **JAR-CONFIRMED 2026-07-18 —
+   reproduces on the production bundle, and is more severe than first written.**
+
+   The classic `SearchBar` wires two handlers to Enter: the results dropdown's
+   `onKeyDown` (navigate to the highlighted result) and the input's `onKeyPress`
+   → `goToSearchApp` (go to the full-page `/search` app). A real Enter press
+   emits both a keydown and a keypress, so both fire — and `goToSearchApp`
+   **wins**, so a user who arrow-keys to a result and presses Enter lands on
+   `/search`, losing their selection.
+
+   Probe against the CI uberjar (slot 13, jar mode), embedded app with
+   `top_nav=true, search=true`, one ArrowDown to highlight, then Enter:
+   - natural `page.keyboard.press("Enter")` → extra `GET /api/search?…&context=
+     search-app` fires and the frame ends on **`/search`** (wrong).
+   - `realPressEnter` (rawKeyDown+keyUp only, no char → no keypress) → no extra
+     request, frame ends on **`/dashboard/10-orders-in-a-dashboard`** (correct).
+   The only variable is whether the keypress/char event is delivered, which
+   pins the cause to the `onKeyPress` handler firing regardless of highlight
+   state.
+
+   **Scope (precise):** the classic `SearchBar` renders only in the embedding
+   iframe — `AppBarLarge`/`AppBarSmall` show `<SearchBar>` when
+   `isEmbeddingIframe`, else the command-palette `<SearchButton>`. So this hits
+   **full-app embedding with the top-nav search bar**, a shipped customer
+   config, NOT the normal Metabase app. Reachable by real users (a hardware
+   Enter emits keypress in Chromium). The port avoids it with a keydown-only
+   CDP helper (`realPressEnter`).
+
+   **Not yet done:** the Cypress cross-check that would confirm the migration-
+   dividend angle (that cypress-real-events' delayed char event masks this
+   upstream). The jar reproduction already establishes the bug is real; the
+   cross-check would only corroborate *why Cypress never caught it*.
 
 2. ~~**Dimension-template-tag cards get empty `parameters`**~~
    **RETRACTED 2026-07-18 — not a bug. Do not cite this as a migration
