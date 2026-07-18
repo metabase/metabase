@@ -131,7 +131,7 @@ function WorkspaceStatusIcon({ workspace }: WorkspaceStatusItemProps) {
     return <Loader size="xs" />;
   }
   if (isProvisioned(workspace)) {
-    return <FixedSizeIcon name="check" aria-hidden />;
+    return <FixedSizeIcon name="check_filled" c="success" aria-hidden />;
   }
   return <FixedSizeIcon name="warning" aria-hidden />;
 }
