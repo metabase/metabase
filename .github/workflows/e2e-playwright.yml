@@ -10,8 +10,16 @@ name: E2E Playwright (spike)
 on:
   workflow_dispatch:
   pull_request:
+    # Run on code changes under the spike, but NOT on docs-only edits — the
+    # doc/ledger files (FINDINGS/RESUME/PORTING/QUEUE/PORTED, findings-inbox)
+    # change constantly and shouldn't spend a full sharded suite each time.
+    # A push touching any non-.md file still triggers (the negation only
+    # excludes files whose LAST-matching pattern is the ! one).
     paths:
       - "e2e-playwright/**"
+      - "!e2e-playwright/**/*.md"
+      - "!e2e-playwright/PORTED.txt"
+      - "!e2e-playwright/findings-inbox/**"
       - ".github/workflows/e2e-playwright.yml"
 
 concurrency:
