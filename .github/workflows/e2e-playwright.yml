@@ -13,11 +13,14 @@ on:
     # Run on code changes under the spike, but NOT on docs-only edits — the
     # doc/ledger files (FINDINGS/RESUME/PORTING/QUEUE/PORTED, findings-inbox)
     # change constantly and shouldn't spend a full sharded suite each time.
-    # A push touching any non-.md file still triggers (the negation only
+    # A push touching any non-doc file still triggers (the negation only
     # excludes files whose LAST-matching pattern is the ! one).
+    # NOTE: use `**.md`, NOT `**/*.md` — the latter requires an intermediate
+    # directory and so does NOT match a .md file directly under e2e-playwright/
+    # (e.g. CASE.md), which is how the first cut of this filter leaked.
     paths:
       - "e2e-playwright/**"
-      - "!e2e-playwright/**/*.md"
+      - "!e2e-playwright/**.md"
       - "!e2e-playwright/PORTED.txt"
       - "!e2e-playwright/findings-inbox/**"
       - ".github/workflows/e2e-playwright.yml"
