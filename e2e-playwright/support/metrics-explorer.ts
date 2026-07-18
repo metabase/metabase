@@ -15,6 +15,7 @@ import { expect } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
 import { echartsContainer } from "./charts";
+import { cartesianChartCircles } from "./metrics";
 import { SAMPLE_DB_ID } from "./sample-data";
 import { queryWritableDB } from "./schema-viewer";
 
@@ -130,8 +131,7 @@ export const MetricsViewer = {
       .getByRole("button", { name: display, exact: true })
       .click(),
 
-  runButton: (page: Page): Locator =>
-    page.getByTestId("run-expression-button"),
+  runButton: (page: Page): Locator => page.getByTestId("run-expression-button"),
 };
 
 /** The next POST /api/metric/dataset response (the "@dataset" alias).
@@ -203,6 +203,34 @@ export function splitPanelAxisLines(page: Page): Locator {
  */
 export function echartsTooltip(page: Page): Locator {
   return page.getByTestId("echarts-tooltip").locator("visible=true");
+}
+
+/**
+ * Hover a cartesian chart point until the ECharts tooltip appears, and return
+ * the (visible) tooltip locator.
+ *
+ * ECharts tooltips are hover-state-dependent, and after a breakout/legend
+ * change the chart animates its points into place. A one-shot
+ * `circle.nth(i).hover()` can fire while the point is still moving, land on
+ * empty canvas, and show no tooltip — with nothing to retrigger it. This flaked
+ * only under CI load (metrics-explorer.spec.ts:1131 on the sharded run); it
+ * passed locally because the animation had settled by hover time. Retrying the
+ * hover re-aims at the point's current position until the tooltip is up. The
+ * assertion is not weakened — callers still check the exact tooltip text.
+ */
+export async function hoverChartPointForTooltip(
+  page: Page,
+  index = 4,
+): Promise<Locator> {
+  const tooltip = echartsTooltip(page);
+  await expect(async () => {
+    // Nudge the mouse off-point first so each attempt is a fresh mousemove
+    // even when the point hasn't moved (ECharts ignores zero-delta moves).
+    await page.mouse.move(0, 0);
+    await cartesianChartCircles(page).nth(index).hover({ force: true });
+    await expect(tooltip).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+  return tooltip;
 }
 
 /** Port of H.createMeasure (POST /api/measure). */
@@ -315,9 +343,10 @@ export async function getPillColors(
       pillIndex,
     );
     colors = await readColorsFromIndicator(pill);
-    expect(colors.length, "pill should have at least one color").toBeGreaterThan(
-      0,
-    );
+    expect(
+      colors.length,
+      "pill should have at least one color",
+    ).toBeGreaterThan(0);
     expect(
       colors.every((color) => color === DEFAULT_PLACEHOLDER_COLOR),
       "pill colors should not all be the default placeholder color",

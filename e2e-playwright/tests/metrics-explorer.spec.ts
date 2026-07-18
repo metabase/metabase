@@ -24,9 +24,9 @@ import {
   applyBrush,
   createMeasure,
   createMetric,
-  echartsTooltip,
   ensureChartIsActive,
   getPillColors,
+  hoverChartPointForTooltip,
   readLegendEntries,
   resetDecimalPkTable,
   splitPanelAxisLines,
@@ -37,9 +37,17 @@ import {
 import { entityPickerModal, miniPicker } from "../support/notebook";
 import { signInWithCachedSession } from "../support/permissions";
 import { entityPickerModalItem } from "../support/question-new";
-import { FIRST_COLLECTION_ID, SAMPLE_DATABASE, SAMPLE_DB_ID } from "../support/sample-data";
+import {
+  FIRST_COLLECTION_ID,
+  SAMPLE_DATABASE,
+  SAMPLE_DB_ID,
+} from "../support/sample-data";
 import { ORDERS_MODEL_ID } from "../support/organization";
-import { WRITABLE_DB_ID, getTableId, resyncDatabase } from "../support/schema-viewer";
+import {
+  WRITABLE_DB_ID,
+  getTableId,
+  resyncDatabase,
+} from "../support/schema-viewer";
 import { popover } from "../support/ui";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
@@ -243,9 +251,9 @@ async function addMetricInputSequence(
     await runFormula(page);
     if (!skipRunCompletionWait) {
       // It is expected that the elements below do not exist after the expression ran successfully
-      await expect(
-        page.getByTestId("metrics-viewer-search-input"),
-      ).toHaveCount(0);
+      await expect(page.getByTestId("metrics-viewer-search-input")).toHaveCount(
+        0,
+      );
       await expect(page.getByTestId("run-expression-button")).toHaveCount(0);
       await expect(page.getByTestId("loading-indicator")).toHaveCount(0);
     }
@@ -303,7 +311,9 @@ async function selectBreakout(
     .filter({ hasText: containsText(cardName) })
     .first()
     .click();
-  await popover(page).getByText("Add a series breakout", { exact: true }).click();
+  await popover(page)
+    .getByText("Add a series breakout", { exact: true })
+    .click();
   const breakout = popover(page)
     .getByText(dimensionName, { exact: true })
     .nth(index)
@@ -313,7 +323,9 @@ async function selectBreakout(
   if (binning) {
     await breakout.hover();
     await breakout.getByTestId("dimension-list-item-binning").click();
-    await popover(page).getByRole("menuitem", { name: binning, exact: true }).click();
+    await popover(page)
+      .getByRole("menuitem", { name: binning, exact: true })
+      .click();
   } else {
     await breakout.click();
   }
@@ -699,7 +711,9 @@ test.describe("scenarios > metrics > explorer", () => {
       await entityPickerModal(page)
         .getByPlaceholder("Search…", { exact: true })
         .pressSequentially("Test");
-      await expect(entityPickerModalItem(page, 1, "Test Measure")).toBeVisible();
+      await expect(
+        entityPickerModalItem(page, 1, "Test Measure"),
+      ).toBeVisible();
     });
 
     test("should add multiple metrics one by one using metrics dropdown", async ({
@@ -807,13 +821,17 @@ test.describe("scenarios > metrics > explorer", () => {
     test("should add a categorical breakout dimension", async ({ page }) => {
       await selectBreakout(page, "Count of orders", "Source");
       const legend = MetricsViewer.breakoutLegend(page);
-      await expect(legend.getByRole("heading", { name: /Source/ })).toBeVisible();
+      await expect(
+        legend.getByRole("heading", { name: /Source/ }),
+      ).toBeVisible();
 
       await expect(legend.getByText("Twitter", { exact: true })).toBeVisible();
       await expect(legend.getByText("Facebook", { exact: true })).toBeVisible();
       await expect(legend.getByText("Organic", { exact: true })).toBeVisible();
       await expect(legend.getByText("Google", { exact: true })).toBeVisible();
-      await expect(legend.getByText("Affiliate", { exact: true })).toBeVisible();
+      await expect(
+        legend.getByText("Affiliate", { exact: true }),
+      ).toBeVisible();
     });
 
     test("should add a numeric breakout dimension with default binning", async ({
@@ -901,7 +919,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // First pill should show multiple color indicators (breakout)
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(0)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(0),
+          ).count(),
         )
         .toBeGreaterThan(1);
 
@@ -931,12 +951,16 @@ test.describe("scenarios > metrics > explorer", () => {
       // Both pills should now have multiple color indicators
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(0)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(0),
+          ).count(),
         )
         .toBeGreaterThan(1);
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(2)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(2),
+          ).count(),
         )
         .toBeGreaterThan(1);
 
@@ -969,7 +993,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // Second pill should still have multiple colors
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(2)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(2),
+          ).count(),
         )
         .toBeGreaterThan(1);
 
@@ -998,7 +1024,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // Verify breakout is applied — first pill has multiple colors
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(0)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(0),
+          ).count(),
         )
         .toBeGreaterThan(1);
 
@@ -1022,7 +1050,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // First pill should still have breakout — multiple colors preserved
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(0)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(0),
+          ).count(),
         )
         .toBeGreaterThan(1);
 
@@ -1052,7 +1082,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // First pill should still have breakout — multiple colors preserved
       await expect
         .poll(() =>
-          pillColorIndicators(MetricsViewer.searchBarPills(page).nth(0)).count(),
+          pillColorIndicators(
+            MetricsViewer.searchBarPills(page).nth(0),
+          ).count(),
         )
         .toBeGreaterThan(1);
     });
@@ -1120,8 +1152,7 @@ test.describe("scenarios > metrics > explorer", () => {
       await expect(legend.getByText(/Test Measure/)).toHaveCount(0);
 
       // Chart tooltip should display the custom name
-      await cartesianChartCircles(page).nth(4).hover({ force: true });
-      const chartTooltip = echartsTooltip(page);
+      const chartTooltip = await hoverChartPointForTooltip(page);
       await expect(
         chartTooltip.getByText("My Custom Expression", { exact: true }),
       ).toBeVisible();
@@ -1167,16 +1198,15 @@ test.describe("scenarios > metrics > explorer", () => {
 
       // Legend should use the formula-derived name, not the old custom name
       const legend = MetricsViewer.breakoutLegend(page);
-      await expect(legend.getByText("Temporary Name", { exact: true })).toHaveCount(
-        0,
-      );
+      await expect(
+        legend.getByText("Temporary Name", { exact: true }),
+      ).toHaveCount(0);
       await expect(
         legend.getByText("Count of orders + Test Measure", { exact: true }),
       ).toHaveCount(2);
 
       // Tooltip should use the formula-derived name, not the old custom name
-      await cartesianChartCircles(page).nth(4).hover({ force: true });
-      const chartTooltip = echartsTooltip(page);
+      const chartTooltip = await hoverChartPointForTooltip(page);
       await expect(
         chartTooltip.getByText("Temporary Name", { exact: true }),
       ).toHaveCount(0);
@@ -1216,8 +1246,7 @@ test.describe("scenarios > metrics > explorer", () => {
       );
 
       // Tooltip should display the preserved custom name
-      await cartesianChartCircles(page).nth(4).hover({ force: true });
-      const chartTooltip = echartsTooltip(page);
+      const chartTooltip = await hoverChartPointForTooltip(page);
       await expect(
         chartTooltip.getByText("My Stable Name", { exact: true }),
       ).toBeVisible();
@@ -1423,8 +1452,9 @@ test.describe("scenarios > metrics > explorer", () => {
         await MetricsViewer.closeDimensionPickerSidebar(page);
         await expect(MetricsViewer.dimensionPickerSidebar(page)).toHaveCount(0);
 
-        const controlsNoBreakout = MetricsViewer.getMetricControls(page)
-          .getByRole("button", { name: "No breakout", exact: true });
+        const controlsNoBreakout = MetricsViewer.getMetricControls(
+          page,
+        ).getByRole("button", { name: "No breakout", exact: true });
         await expect(controlsNoBreakout).toBeVisible();
         await controlsNoBreakout.click();
 
@@ -1680,12 +1710,16 @@ test.describe("scenarios > metrics > explorer", () => {
         await expect(productsSection).toHaveAttribute("aria-expanded", "false");
         await productsSection.click();
         await expect(
-          sidebar.getByRole("button", { name: "Category", exact: true }).first(),
+          sidebar
+            .getByRole("button", { name: "Category", exact: true })
+            .first(),
         ).toBeVisible();
 
         // Configure the shared Time category and select a non-default
         // dimension
-        await sidebar.getByRole("button", { name: "Back", exact: true }).click();
+        await sidebar
+          .getByRole("button", { name: "Back", exact: true })
+          .click();
         await openTimeDimensionConfiguration(page);
         await sidebar
           .getByLabel("Select dimension for Count of orders", { exact: true })
@@ -1763,16 +1797,16 @@ test.describe("scenarios > metrics > explorer", () => {
 
       // line charts support multiple series, so should be unified
       await MetricsViewer.assertVizType(page, "Line");
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(1);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        1,
+      );
 
       // bar charts also support multiple series
       await selectDimensionBreakout(page, "Category");
       await MetricsViewer.assertVizType(page, "Bar");
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(1);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        1,
+      );
     });
 
     test("should stack series into panels when the stack series button is toggled", async ({
@@ -1808,18 +1842,18 @@ test.describe("scenarios > metrics > explorer", () => {
       // with a single series, map shows one visualization
       await selectDimensionBreakout(page, "State");
       await MetricsViewer.assertVizType(page, "Map");
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(1);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        1,
+      );
 
       // add a breakout to create multiple series
       await selectDimensionBreakout(page, "Time", { waitForDataset: false });
       await selectBreakout(page, "Count of orders", "Source");
 
       // line supports multiple series, so should remain unified
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(1);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        1,
+      );
 
       // map does not support multiple series, so should auto-split
       await selectDimensionBreakout(page, "State");
@@ -1916,18 +1950,18 @@ test.describe("scenarios > metrics > explorer", () => {
 
       // remove filter
       await selectDimensionBreakout(page, "State");
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(3);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        3,
+      );
 
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(1);
       await MetricsViewer.getAllFilterPills(page)
         .nth(0)
         .getByRole("button", { name: "Remove", exact: true })
         .click();
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(4);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        4,
+      );
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(0);
 
       await expectUnstructuredSnowplowEvent({
@@ -1940,9 +1974,9 @@ test.describe("scenarios > metrics > explorer", () => {
       // re-apply global filter
       await page.goBack();
 
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(3);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        3,
+      );
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(1);
 
       // navigate back to the category dimension
@@ -1986,15 +2020,15 @@ test.describe("scenarios > metrics > explorer", () => {
       await expect(MetricsViewer.getColumnPickerButton(page)).toContainText(
         "State",
       );
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(3);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        3,
+      );
 
       // remove global filter
       await page.goForward();
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(4);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        4,
+      );
       await expect(MetricsViewer.getAllFilterPills(page)).toHaveCount(0);
     });
 
@@ -2049,8 +2083,14 @@ test.describe("scenarios > metrics > explorer", () => {
         .getByRole("button", { name: /All time/i })
         .click();
 
-      await popover(page).getByText(/Fixed date/).click();
-      await replaceTextboxValue(popover(page), "Start date", "February 7, 2027");
+      await popover(page)
+        .getByText(/Fixed date/)
+        .click();
+      await replaceTextboxValue(
+        popover(page),
+        "Start date",
+        "February 7, 2027",
+      );
       await replaceTextboxValue(popover(page), "End date", "July 7, 2027");
       await popover(page)
         .getByRole("button", { name: "Add filter", exact: true })
@@ -2105,8 +2145,14 @@ test.describe("scenarios > metrics > explorer", () => {
       await MetricsViewer.getMetricControls(page)
         .getByRole("button", { name: /All time/i })
         .click();
-      await popover(page).getByText(/Fixed date/).click();
-      await replaceTextboxValue(popover(page), "Start date", "February 1, 2027");
+      await popover(page)
+        .getByText(/Fixed date/)
+        .click();
+      await replaceTextboxValue(
+        popover(page),
+        "Start date",
+        "February 1, 2027",
+      );
       await replaceTextboxValue(popover(page), "End date", "February 7, 2027");
       const dataset = waitForMetricDataset(page);
       await popover(page)
@@ -2259,7 +2305,9 @@ test.describe("scenarios > metrics > explorer", () => {
         }),
       ).toBeVisible();
       await expect
-        .poll(() => MetricsViewer.getMetricVisualizationDataPoints(page).count())
+        .poll(() =>
+          MetricsViewer.getMetricVisualizationDataPoints(page).count(),
+        )
         .toBeGreaterThanOrEqual(10);
     });
 
@@ -2507,9 +2555,9 @@ test.describe("scenarios > metrics > explorer", () => {
         ",",
         { nameOrPath: ["Our analytics", NUMERIC_METRIC_NAME] },
       ]);
-      await expect(
-        MetricsViewer.getAllMetricVisualizations(page),
-      ).toHaveCount(2);
+      await expect(MetricsViewer.getAllMetricVisualizations(page)).toHaveCount(
+        2,
+      );
 
       // Verify final pill layout
       await expect(MetricsViewer.searchBarPills(page)).toHaveCount(2);

@@ -205,15 +205,20 @@ switched from the workers `[1,2]` A/B to a **4-way spec shard** (workers=2 per
 shard). Nothing is running. The items below are open and none is a regression
 in landed code.
 
-1. **`metrics-explorer.spec.ts:1131` — CI-only failure, unresolved.** "should
-   revert to formula text when custom name is cleared." Passes locally in
-   isolation on the jar (46/0 under `--repeat-each=2`) but **fails on CI under
-   sharded multi-spec load**, reproducing across the retry (22s then 25s,
-   `toBeVisible` timeout) in run 29616824640 shard s3. Not yet root-caused —
-   candidate causes: 4vCPU/2-worker load making the test's 10s `toBeVisible`
-   marginal, or fallout from the backend instability in item 2. Start with the
-   `playwright-report-s3` artifact from that run (trace + backend.log). This is
-   the one genuine red in an otherwise-green sharded run.
+1. **`metrics-explorer.spec.ts` ECharts tooltip hover — FIXED 2026-07-18
+   (pending CI confirmation).** Run 29616824640 shard s3 failed "should revert
+   to formula text when custom name is cleared" on a `toBeVisible` timeout for
+   `echarts-tooltip`. Root cause (from the s3 trace): the test does a one-shot
+   `cartesianChartCircles.nth(4).hover()` right after a breakout, and on slower
+   CI the chart is still animating its points into place — the hover lands on
+   empty canvas, ECharts shows no tooltip, and nothing retriggers it. Passed
+   locally only because the animation had settled by hover time. Fixed with
+   `hoverChartPointForTooltip` (`support/metrics-explorer.ts`), a `toPass` retry
+   that re-aims the hover until the tooltip is up; applied to all three
+   identical hover sites (1123/1178/1219), not just the one that flaked.
+   Verified locally 18/18 under `--repeat-each=3`. The assertion is unchanged —
+   callers still check exact tooltip text. CI is the real repro (can't
+   reproduce the 4vCPU timing locally), so confirm on the next sharded run.
 
 2. **Per-worker backend died mid-run on shard s3 — infra flake.** Two
    `documents` tests failed in 2–3ms with `Worker 0/1 backend exited (code 0)`
