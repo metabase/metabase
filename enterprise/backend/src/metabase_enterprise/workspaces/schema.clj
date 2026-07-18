@@ -11,31 +11,31 @@
 
    Provisioning path (databases, then the child instance):
 
-     unprovisioned ──► provisioning ────────────► instance-provisioning ──► provisioned
-                            │                              │
-                   failure  ▼                     failure  ▼
+     unprovisioned ──► database-provisioning ──► instance-provisioning ──► provisioned
+                                │                          │
+                       failure  ▼                 failure  ▼
               database-provisioning-failure   instance-provisioning-failure
 
    Deprovisioning path (the child instance, then databases):
 
-     provisioned ──► instance-deprovisioning ──► deprovisioning ──► unprovisioned
-                              │                        │
-                     failure  ▼               failure  ▼
-             instance-deprovisioning-failure   deprovisioning-failure
+     provisioned ──► instance-deprovisioning ──► database-deprovisioning ──► unprovisioned
+                              │                            │
+                     failure  ▼                   failure  ▼
+             instance-deprovisioning-failure   database-deprovisioning-failure
 
    `/provision` and `/deprovision` may be retried from any status; at worst they
    are no-ops."
   [:enum
    :unprovisioned
-   :provisioning
+   :database-provisioning
    :database-provisioning-failure
    :instance-provisioning
    :instance-provisioning-failure
    :provisioned
    :instance-deprovisioning
    :instance-deprovisioning-failure
-   :deprovisioning
-   :deprovisioning-failure])
+   :database-deprovisioning
+   :database-deprovisioning-failure])
 
 (mr/def ::workspace-database-status
   "Lifecycle status of a `:model/WorkspaceDatabase`. The `*-failure` statuses are
@@ -56,7 +56,8 @@
    [:status         {:optional true} ::workspace-status]
    [:status_details {:optional true} [:maybe :string]]
    [:instance_id    {:optional true} [:maybe :string]]
-   [:instance_url   {:optional true} [:maybe :string]]])
+   [:instance_url   {:optional true} [:maybe :string]]
+   [:api_key        {:optional true} [:maybe :string]]])
 
 (mr/def ::workspace-database
   "A `:model/WorkspaceDatabase` row."

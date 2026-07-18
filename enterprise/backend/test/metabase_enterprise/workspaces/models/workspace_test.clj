@@ -28,7 +28,11 @@
         (is (some? (:id created)))
         (is (= "Solo" (:name created)))
         (is (= [] (:databases created)))
-        (is (t2/exists? :model/Workspace :id (:id created)))))))
+        (is (t2/exists? :model/Workspace :id (:id created)))
+        (testing "an API key is generated and round-trips through the encrypted column"
+          (let [api-key (t2/select-one-fn :api_key :model/Workspace :id (:id created))]
+            (is (string? api-key))
+            (is (re-matches #"mb_.+" api-key))))))))
 
 (deftest create-workspace-with-databases-test
   (testing "create-workspace! stores nested workspace_database rows"

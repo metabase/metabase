@@ -148,8 +148,8 @@
   "Start deprovisioning the workspace's databases in the background and return
   immediately. May be retried from any status — databases that are already
   `:unprovisioned` are skipped. Poll `GET /:id` to follow the workspace's
-  `:status` (`:unprovisioned` on success, `:deprovisioning-failure` with the
-  error message in `:status_details` on the first database failure)."
+  `:status` (`:unprovisioned` on success, `:database-deprovisioning-failure`
+  with the error message in `:status_details` on the first database failure)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! id))

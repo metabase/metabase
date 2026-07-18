@@ -141,7 +141,7 @@
                    :model/WorkspaceDatabase {wsd-id :id} (wsd-attrs ws-id (mt/id))]
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
-                      (create! [_ _] (throw (ex-info "no capacity" {})))
+                      (create! [_ _ _] (throw (ex-info "no capacity" {})))
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"no capacity"
                               (provisioning/provision-workspace! ws-id))))
@@ -166,7 +166,7 @@
       (provisioning/provision-workspace! ws-id)
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
-                      (create! [_ _] {:id "x" :url "https://example.com"})
+                      (create! [_ _ _] {:id "x" :url "https://example.com"})
                       (delete! [_ _] (throw (ex-info "instance stuck" {}))))]
         (is (thrown-with-msg? ExceptionInfo #"instance stuck"
                               (provisioning/deprovision-workspace! ws-id))))
@@ -182,6 +182,29 @@
         (provisioning/deprovision-workspace! ws-id)
         (is (=? {:status :unprovisioned :instance_id nil}
                 (workspace-row ws-id)))))))
+
+(deftest provision-instance-receives-workspace-config-test
+  (testing "the instance provisioner receives the workspace's config-file map, incl. the :api-keys section"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "WS"
+                                                 :api_key    "mb_test_key"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _ (assoc (wsd-attrs ws-id (mt/id))
+                                                     :status           :provisioned
+                                                     :output_namespace "mb_iso_x")]
+      (let [received (atom nil)]
+        (with-redefs [provisioning.instance/instance-provisioner
+                      (reify provisioning.instance/InstanceProvisioner
+                        (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com"})
+                        (delete! [_ _] nil))]
+          (provisioning/provision-workspace! ws-id))
+        (is (=? {:version 1
+                 :config  {:api-keys  [{:name    string?
+                                        :key     "mb_test_key"
+                                        :creator (:email (mt/fetch-user :crowberto))
+                                        :group   "admin"}]
+                           :workspace {:name "WS"}}}
+                @received)
+            "create! received the config map with the workspace's API key registered")))))
 
 (deftest provision-workspace-noop-when-provisioned-test
   (testing "provisioning a fully-provisioned workspace is a no-op"
@@ -228,7 +251,7 @@
       (with-redefs [provisioning.database/database-provisioner (failing-on :destroy! (mt/id))]
         (is (thrown-with-msg? ExceptionInfo #"warehouse down"
                               (provisioning/deprovision-workspace! ws-id))))
-      (is (=? {:status :deprovisioning-failure :status_details "warehouse down"}
+      (is (=? {:status :database-deprovisioning-failure :status_details "warehouse down"}
               (workspace-row ws-id)))
       (is (=? {:status :deprovisioning-failure :status_details "warehouse down"}
               (t2/select-one :model/WorkspaceDatabase :id wsd1-id)))

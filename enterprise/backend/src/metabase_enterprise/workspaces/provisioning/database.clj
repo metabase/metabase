@@ -21,14 +21,12 @@
   (:require
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.util.malli :as mu]
    [potemkin.types :as p]
-   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me
@@ -111,35 +109,6 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-;;; ------------------------------------------------ Cluster lock ----------------------------------------------------
-
-(def ^:private ^:const provisioning-lock-timeout-seconds
-  "Max wait for another node/thread to finish provisioning the same row."
-  60)
-
-(defn- wsd-lock-key
-  "Per-row cluster-lock keyword."
-  [wsd-id]
-  (keyword "metabase-enterprise.workspaces.provisioning.database"
-           (str "wsd-" wsd-id)))
-
-(defn do-with-workspace-database-lock
-  "Run `thunk` while holding the per-row cluster lock for `wsd-id`.
-   [[provision-database!]]/[[deprovision-database!]] take this same lock
-   internally, so the acquisition here is reentrant — it lets a caller atomically
-   combine an app-db change with provisioning under a single lock, acquired
-   *before* the row is mutated (the lock-before-mutate order the rest of the
-   system relies on)."
-  [wsd-id thunk]
-  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key wsd-id)
-                                   :timeout-seconds provisioning-lock-timeout-seconds}
-    (thunk)))
-
-(defmacro with-workspace-database-lock
-  "Sugar over [[do-with-workspace-database-lock]]."
-  [wsd-id & body]
-  `(do-with-workspace-database-lock ~wsd-id (fn [] ~@body)))
-
 ;;; ---------------------------------------------- Implementation ----------------------------------------------------
 
 (defn- wsd-iso-workspace
@@ -192,18 +161,17 @@
    (when-not (= :provisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :provisioning, :status_details nil})
      (try
-       (with-workspace-database-lock wsd-id
-         (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
-               db         (t2/select-one :model/Database :id (:database_id wsd))
-               driver     (driver.u/database->driver db)
-               workspace  (wsd-iso-workspace wsd-id)
-               ws-details (merge workspace (details provisioner driver db workspace))]
-           (init! provisioner driver db ws-details)
-           (grant! provisioner driver db ws-details (vec (:input_schemas wsd)))
-           (t2/update! :model/WorkspaceDatabase wsd-id
-                       {:output_namespace (:schema ws-details)
-                        :database_details (:database_details ws-details)
-                        :status           :provisioned})))
+       (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
+             db         (t2/select-one :model/Database :id (:database_id wsd))
+             driver     (driver.u/database->driver db)
+             workspace  (wsd-iso-workspace wsd-id)
+             ws-details (merge workspace (details provisioner driver db workspace))]
+         (init! provisioner driver db ws-details)
+         (grant! provisioner driver db ws-details (vec (:input_schemas wsd)))
+         (t2/update! :model/WorkspaceDatabase wsd-id
+                     {:output_namespace (:schema ws-details)
+                      :database_details (:database_details ws-details)
+                      :status           :provisioned}))
        (catch Throwable t
          (t2/update! :model/WorkspaceDatabase wsd-id
                      {:status :provisioning-failure, :status_details (ex-message t)})
@@ -232,32 +200,25 @@
    (when-not (= :unprovisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :deprovisioning, :status_details nil})
      (try
-       (with-workspace-database-lock wsd-id
-         (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
-               db         (t2/select-one :model/Database :id (:database_id wsd))
-               driver     (driver.u/database->driver db)
-               iso-ws     (wsd-iso-workspace wsd-id)
-               computed   (delay (details provisioner driver db iso-ws))
-               schema     (or (not-empty (:output_namespace wsd))
-                              (:schema @computed))
-               db-details (if (seq (:database_details wsd))
-                            (:database_details wsd)
-                            (:database_details @computed))
-               workspace  (assoc iso-ws :schema schema :database_details db-details)]
-           (try
-             (destroy! provisioner driver db workspace)
-             (finally
-               ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs.
-               ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
-               ;; fresh autocommit connection outside the cluster lock's tx —
-               ;; otherwise, when `destroy!` throws, the surrounding tx rolls
-               ;; back and undoes the DELETE.
-               (binding [t2.connection/*current-connectable* nil]
-                 (clear-mappings-for-iso! db (:database_id wsd) schema))))
-           (t2/update! :model/WorkspaceDatabase wsd-id
-                       {:output_namespace ""
-                        :database_details {}
-                        :status           :unprovisioned})))
+       (let [wsd        (t2/select-one :model/WorkspaceDatabase :id wsd-id)
+             db         (t2/select-one :model/Database :id (:database_id wsd))
+             driver     (driver.u/database->driver db)
+             iso-ws     (wsd-iso-workspace wsd-id)
+             computed   (delay (details provisioner driver db iso-ws))
+             schema     (or (not-empty (:output_namespace wsd))
+                            (:schema @computed))
+             db-details (if (seq (:database_details wsd))
+                          (:database_details wsd)
+                          (:database_details @computed))
+             workspace  (assoc iso-ws :schema schema :database_details db-details)]
+         (try
+           (destroy! provisioner driver db workspace)
+           (finally
+             (clear-mappings-for-iso! db (:database_id wsd) schema)))
+         (t2/update! :model/WorkspaceDatabase wsd-id
+                     {:output_namespace ""
+                      :database_details {}
+                      :status           :unprovisioned}))
        (catch Throwable t
          (t2/update! :model/WorkspaceDatabase wsd-id
                      {:status :deprovisioning-failure, :status_details (ex-message t)})

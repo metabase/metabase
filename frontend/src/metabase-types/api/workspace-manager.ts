@@ -13,15 +13,15 @@ export type WorkspaceDatabaseStatus =
 
 export type WorkspaceStatus =
   | "unprovisioned"
-  | "provisioning"
+  | "database-provisioning"
   | "database-provisioning-failure"
   | "instance-provisioning"
   | "instance-provisioning-failure"
   | "provisioned"
   | "instance-deprovisioning"
   | "instance-deprovisioning-failure"
-  | "deprovisioning"
-  | "deprovisioning-failure";
+  | "database-deprovisioning"
+  | "database-deprovisioning-failure";
 
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
