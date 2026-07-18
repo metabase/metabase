@@ -93,8 +93,7 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
-  # Compile  CLJS  in parallel with the uberjar , and share it as an artifact.
-  # build Each e2e group downloads it instead of compiling it themselves.
+  # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
   e2e-cljs:
     name: Compile CLJS for e2e
