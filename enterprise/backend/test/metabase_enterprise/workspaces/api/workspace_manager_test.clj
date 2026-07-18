@@ -100,14 +100,17 @@
       (mt/with-model-cleanup [:model/Workspace]
         (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                 {:name "To provision" :database_ids [db-id]})]
+          (is (=? {:status "database-provisioning"}
+                  (mt/user-http-request :crowberto :post 200
+                                        (str "ee/workspace-manager/" ws-id "/provision")))
+              "the response reflects the just-started run")
           (is (=? {:status         "provisioned"
                    :status_details nil
                    :instance_url   "https://example.com"
                    :databases      [{:status           "provisioned"
                                      :output_namespace "mb_iso_stub"}]}
-                  (mt/user-http-request :crowberto :post 200
-                                        (str "ee/workspace-manager/" ws-id "/provision")))
-              "the stub instance provisioner's url is exposed on the response")
+                  (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))
+              "the stub instance provisioner's url is exposed once the run finishes")
           (testing "404 for a missing workspace"
             (mt/user-http-request :crowberto :post 404 "ee/workspace-manager/13371337/provision")))))))
 
@@ -125,17 +128,17 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   nil))]
           (with-redefs [provisioning.database/database-provisioner boom]
+            (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
             (is (=? {:status         "database-provisioning-failure"
                      :status_details "boom"
                      :databases      [{:status         "provisioning-failure"
                                        :status_details "boom"}]}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace-manager/" ws-id "/provision")))))
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))))
           (testing "retrying with a healthy warehouse succeeds"
+            (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
             (is (=? {:status         "provisioned"
                      :status_details nil}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace-manager/" ws-id "/provision"))))))))))
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))))))))
 
 (deftest deprovision-endpoint-test
   (testing "POST /:id/deprovision tears the databases down and unblocks DELETE"
@@ -147,18 +150,51 @@
                                                 {:name "Round trip" :database_ids [db-id]})]
           (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
           (testing "DELETE refuses while a database is :provisioned"
-            (mt/user-http-request :crowberto :delete 404 (str "ee/workspace-manager/" ws-id))
+            (mt/user-http-request :crowberto :delete 400 (str "ee/workspace-manager/" ws-id))
             (is (t2/exists? :model/Workspace :id ws-id)))
+          (is (=? {:status "instance-deprovisioning"}
+                  (mt/user-http-request :crowberto :post 200
+                                        (str "ee/workspace-manager/" ws-id "/deprovision")))
+              "the response reflects the just-started run")
           (is (=? {:status         "unprovisioned"
                    :status_details nil
                    :instance_url   nil
                    :databases      [{:status           "unprovisioned"
                                      :output_namespace ""}]}
-                  (mt/user-http-request :crowberto :post 200
-                                        (str "ee/workspace-manager/" ws-id "/deprovision"))))
+                  (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
           (testing "DELETE works once everything is :unprovisioned"
             (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
+
+(deftest deprovision-with-delete-test
+  (testing "POST /:id/deprovision with delete=true deprovisions and then deletes the workspace"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                {:name "Doomed" :database_ids [db-id]})]
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
+          (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/deprovision")
+                                {:delete true})
+          (is (not (t2/exists? :model/Workspace :id ws-id))
+              "the workspace is deleted once deprovisioning succeeds"))
+        (testing "the workspace survives when the teardown fails"
+          (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Stuck" :database_ids [db-id]})
+                boom        (reify provisioning.database/DatabaseProvisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+            (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/provision"))
+            (with-redefs [provisioning.database/database-provisioner boom]
+              (mt/user-http-request :crowberto :post 200 (str "ee/workspace-manager/" ws-id "/deprovision")
+                                    {:delete true}))
+            (is (t2/exists? :model/Workspace :id ws-id)
+                "the delete is skipped when deprovisioning fails")
+            (is (=? {:status "database-deprovisioning-failure"}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))))))))
 
 (deftest provision-refused-while-in-flight-test
   (testing "POST /:id/provision and /:id/deprovision 400 while a run is already in flight"

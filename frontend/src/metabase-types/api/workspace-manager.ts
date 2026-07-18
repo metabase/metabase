@@ -55,3 +55,8 @@ export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
 };
+
+export type DeprovisionWorkspaceRequest = {
+  id: WorkspaceId;
+  delete?: boolean;
+};

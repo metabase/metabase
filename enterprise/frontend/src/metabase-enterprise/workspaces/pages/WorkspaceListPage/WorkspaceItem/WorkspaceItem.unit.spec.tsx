@@ -196,6 +196,66 @@ describe("WorkspaceItem", () => {
     ).toBeInTheDocument();
   });
 
+  it("disables Delete while a run is in flight", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "database-provisioning",
+      }),
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    ).toBeDisabled();
+  });
+
+  it("deprovisions with the delete flag for a workspace that is not fully deprovisioned", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "provisioned",
+    });
+    setupDeprovisionWorkspaceEndpoint(workspace);
+    setup({ workspace });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
+
+    expect(
+      await screen.findByText(/This will delete the workspace\./),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete workspace" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+    const lastCall = fetchMock.callHistory.lastCall(
+      `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
+    );
+    expect(JSON.parse(String(lastCall?.options.body))).toEqual({
+      delete: true,
+    });
+    expect(
+      fetchMock.callHistory.called(
+        `path:/api/ee/workspace-manager/${workspace.id}`,
+        { method: "DELETE" },
+      ),
+    ).toBe(false);
+  });
+
   it("opens the delete modal from the menu", async () => {
     setup();
     await userEvent.click(

@@ -113,7 +113,7 @@
       (get-workspace workspace-id))))
 
 (defn delete-workspace!
-  "Delete a Workspace. Refuses with a 404 if any of its WorkspaceDatabase rows is in
+  "Delete a Workspace. Refuses with a 400 if any of its WorkspaceDatabase rows is in
   a non-`:unprovisioned` state — those point at (or are in flight against) live
   warehouse resources and must be deprovisioned explicitly first. Cascade-deletes
   `:unprovisioned` children via the FK. Returns nil."
@@ -122,7 +122,7 @@
                     :workspace_id id
                     :status [:not= :unprovisioned])
     (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"
-                    {:status-code 404
+                    {:status-code 400
                      :workspace_id id})))
   (t2/delete! :model/Workspace :id id)
   nil)

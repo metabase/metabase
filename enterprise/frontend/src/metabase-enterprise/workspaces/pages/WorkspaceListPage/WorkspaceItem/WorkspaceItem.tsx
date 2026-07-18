@@ -133,13 +133,14 @@ function SeeDetailsButton({ workspace }: WorkspaceStatusItemProps) {
 }
 
 function RetryProvisionButton({ workspace }: WorkspaceStatusItemProps) {
-  const [provisionWorkspace] = useProvisionWorkspaceMutation();
+  const [provisionWorkspace, { isLoading }] = useProvisionWorkspaceMutation();
 
   return (
     <Tooltip label={t`Retry`}>
       <ActionIcon
         size="xs"
         aria-label={t`Retry`}
+        disabled={isLoading}
         onClick={() => provisionWorkspace(workspace.id)}
       >
         <FixedSizeIcon name="refresh" aria-hidden />
@@ -149,14 +150,16 @@ function RetryProvisionButton({ workspace }: WorkspaceStatusItemProps) {
 }
 
 function RetryDeprovisionButton({ workspace }: WorkspaceStatusItemProps) {
-  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
+  const [deprovisionWorkspace, { isLoading }] =
+    useDeprovisionWorkspaceMutation();
 
   return (
     <Tooltip label={t`Retry`}>
       <ActionIcon
         size="xs"
         aria-label={t`Retry`}
-        onClick={() => deprovisionWorkspace(workspace.id)}
+        disabled={isLoading}
+        onClick={() => deprovisionWorkspace({ id: workspace.id, delete: true })}
       >
         <FixedSizeIcon name="refresh" aria-hidden />
       </ActionIcon>
@@ -224,7 +227,10 @@ type WorkspaceMenuProps = {
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
-  const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const [deprovisionWorkspace, { isLoading: isDeprovisionLoading }] =
+    useDeprovisionWorkspaceMutation();
+  const [deleteWorkspace, { isLoading: isDeleteLoading }] =
+    useDeleteWorkspaceMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
 
   const handleDelete = () => {
@@ -232,7 +238,10 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
       title: t`Delete this workspace?`,
       message: t`This will delete the workspace. This can't be undone.`,
       confirmButtonText: t`Delete workspace`,
-      onConfirm: () => deleteWorkspace(workspace.id),
+      onConfirm: () =>
+        isDeprovisioned(workspace)
+          ? deleteWorkspace(workspace.id)
+          : deprovisionWorkspace({ id: workspace.id, delete: true }),
     });
   };
 
@@ -253,7 +262,12 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-            disabled={!isDeprovisioned(workspace)}
+            disabled={
+              isProvisioning(workspace) ||
+              isDeprovisioning(workspace) ||
+              isDeprovisionLoading ||
+              isDeleteLoading
+            }
             onClick={handleDelete}
           >
             {t`Delete`}

@@ -82,12 +82,12 @@
         (is (nil? (workspace/delete-workspace! id)))
         (is (not (t2/exists? :model/Workspace :id id)))
         (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id))))))
-  (testing "delete-workspace! refuses (404) when any database row is not :unprovisioned"
+  (testing "delete-workspace! refuses (400) when any database row is not :unprovisioned"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{id :id} (create-ws! {:name "Kept" :databases [(ws-db-attrs {:status :provisioned})]})]
         (is (thrown-with-msg? Exception #"not :unprovisioned"
                               (workspace/delete-workspace! id)))
-        (is (= 404 (try (workspace/delete-workspace! id)
+        (is (= 400 (try (workspace/delete-workspace! id)
                         (catch Exception e (:status-code (ex-data e))))))
         (is (t2/exists? :model/Workspace :id id))))))
 

@@ -136,8 +136,9 @@
   (present-workspace (api/check-404 (workspace/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Refuses with a 404 unless every one of its databases is
-  `:unprovisioned` — deprovision the workspace first. The workspace_database
+  "Delete a Workspace. Refuses with a 400 unless every one of its databases is
+  `:unprovisioned` — deprovision the workspace first (`POST /:id/deprovision`
+  with `delete=true` tears down and deletes in one go). The workspace_database
   rows are cascade-deleted with the workspace. 204 on success, no response body."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
@@ -146,21 +147,34 @@
 (api.macros/defendpoint :post "/:id/provision" :- WorkspaceResponse
   "Start provisioning the workspace in the background and return immediately.
   Retryable from any settled status; 400 while a provision or deprovision run
-  is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
+  is already in flight. Poll `GET /:id` to follow the workspace's `:status`;
+  the response reflects the just-started run (`:database-provisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)
-        _  (assert-workspace-status! ws)
-        ws (ws.provisioning/set-workspace-provisioning-status! ws)]
-    (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws)))
-  (present-workspace (api/check-404 (workspace/get-workspace id))))
+  (let [ws       (api/write-check :model/Workspace id)
+        _        (assert-workspace-status! ws)
+        ws       (ws.provisioning/set-workspace-provisioning-status! ws)
+        response (present-workspace (api/check-404 (workspace/get-workspace id)))]
+    (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws))
+    response))
 
 (api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
   "Start deprovisioning the workspace in the background and return immediately.
   Retryable from any settled status; 400 while a provision or deprovision run
-  is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)
-        _  (assert-workspace-status! ws)
-        ws (ws.provisioning/set-workspace-deprovisioning-status! ws)]
-    (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws)))
-  (present-workspace (api/check-404 (workspace/get-workspace id))))
+  is already in flight. Pass `delete=true` to also delete the workspace once
+  deprovisioning fully succeeds. Poll `GET /:id` to follow the workspace's
+  `:status`; the response reflects the just-started run
+  (`:instance-deprovisioning`)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- [:maybe [:map [:delete {:optional true} [:maybe :boolean]]]]]
+  (let [delete?  (boolean (:delete body))
+        ws       (api/write-check :model/Workspace id)
+        _        (assert-workspace-status! ws)
+        ws       (ws.provisioning/set-workspace-deprovisioning-status! ws)
+        response (present-workspace (api/check-404 (workspace/get-workspace id)))]
+    (ws.execute/execute-async!
+     (fn []
+       (ws.provisioning/deprovision-workspace! ws)
+       (when delete?
+         (workspace/delete-workspace! id))))
+    response))
