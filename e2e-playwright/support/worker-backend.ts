@@ -219,13 +219,6 @@ export async function startWorkerBackend(
   });
   proc.unref();
 
-  // DIAGNOSTIC (2026-07-18): the CI-only "backend exited (code 0)" flake is not
-  // yet root-caused — code 0 means start-backend.js ran its SIGTERM/SIGINT
-  // cleanup (it stays alive via its signal handlers otherwise), but nothing in
-  // the normal flow should signal a booting slot backend, and backend.log isn't
-  // uploaded. Embed the exit signal + log tail directly in the thrown error so
-  // the next failure is legible in `gh run view --log-failed`. Behaviour is
-  // otherwise unchanged; strip this back to a one-line message once diagnosed.
   const logTail = () => {
     try {
       const text = fs.readFileSync(logPath, "utf8");
@@ -234,15 +227,36 @@ export async function startWorkerBackend(
       return "(backend.log unreadable)";
     }
   };
+  // The launcher process (node start-backend.js) is NOT the backend. It spawns
+  // the JVM detached, waits until it's ready, `unref()`s it, and then returns —
+  // so on CI the launcher exits `code 0 / signal null` while the detached JVM
+  // keeps serving (confirmed from backend.log: "Backend ready on :PORT" then a
+  // clean code-0 exit, JVM still healthy). Because the reuse model relies on
+  // the JVM outliving its launcher, that exit is expected, not a death. The old
+  // check treated ANY launcher exit as fatal, which raced the health probe and
+  // produced the w2-only "backend exited (code 0)" flake for healthy backends.
+  //
+  // So: a non-zero exit or a signalled exit is a genuine launch failure and
+  // fails fast. A clean (code 0) exit is not fatal on its own — confirm via
+  // the health probe. Only if the launcher has exited AND the backend still
+  // isn't healthy within a short grace do we conclude it really didn't come up.
   const healthUrl = `http://localhost:${port}/api/health`;
   const deadline = Date.now() + 10 * 60_000;
+  let graceDeadline = Infinity;
   while (Date.now() < deadline) {
-    if (proc.exitCode != null || proc.signalCode != null) {
+    const crashed =
+      (proc.exitCode != null && proc.exitCode !== 0) || proc.signalCode != null;
+    if (crashed) {
       throw new Error(
-        `Worker ${slot} backend on :${port} exited after ${Math.round(
+        `Worker ${slot} backend on :${port} crashed after ${Math.round(
           (Date.now() - startedAt) / 1000,
         )}s (code=${proc.exitCode}, signal=${proc.signalCode}); log: ${logPath}\n--- backend.log tail ---\n${logTail()}`,
       );
+    }
+    // Launcher exited cleanly (code 0): the JVM should be up. Give the health
+    // probe a bounded window rather than the full 10-min deadline.
+    if (proc.exitCode === 0 && graceDeadline === Infinity) {
+      graceDeadline = Date.now() + 30_000;
     }
     try {
       const response = await fetch(healthUrl, {
@@ -253,6 +267,11 @@ export async function startWorkerBackend(
       }
     } catch {
       // not up yet
+    }
+    if (Date.now() > graceDeadline) {
+      throw new Error(
+        `Worker ${slot} backend on :${port} launcher exited (code 0) but the backend never became healthy; log: ${logPath}\n--- backend.log tail ---\n${logTail()}`,
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }

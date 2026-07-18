@@ -227,13 +227,29 @@ in landed code.
    Verified locally 24/24 under `--repeat-each=4`. Still can't reproduce the
    4vCPU timing locally, so CI is the validator — watch the next s3.
 
-2. **Per-worker backend died mid-run on shard s3 — infra flake.** Two
-   `documents` tests failed in 2–3ms with `Worker 0/1 backend exited (code 0)`
-   and **both passed on retry**, so Playwright's retry masked it — but a slot
-   backend exiting cleanly (code 0) mid-run is not expected and could flake any
-   spec. The `code 0` (graceful, not OOM's 137) is the puzzle. Needs the s3
-   `backend.log` to diagnose. Left alone deliberately; retry is currently
-   hiding it.
+2. **Per-worker "backend exited (code 0)" flake — ROOT-CAUSED & FIXED
+   2026-07-18 (pending CI confirmation).** It's a false positive, not a real
+   death. `startWorkerBackend` monitored the launcher process (`node
+   start-backend.js`), which spawns the JVM detached, waits until ready,
+   `unref()`s it, and returns — so on CI the launcher exits `code 0 / signal
+   null` while the detached JVM keeps serving (confirmed from the diagnostic
+   run's backend.log: "Backend ready on :4100" then a clean code-0 exit, JVM
+   still healthy). The boot loop treated *any* launcher exit as fatal, which
+   raced the health probe; under w2 load the exit-check won → healthy backends
+   reported dead. Only ever w2 (single-process uses the shared step-backend, no
+   managed launcher). This also explains the long-standing intermittent SCIM
+   failure that was written off as "teardown noise".
+   Fix (`worker-backend.ts`): a non-zero or signalled exit still fails fast; a
+   clean code-0 exit is confirmed via the health probe (30s grace), not treated
+   as death. Diagnostics kept as a permanent aid: boot-failure errors embed the
+   exit code/signal + backend.log tail, and the workflow uploads every slot's
+   backend.log. Can't reproduce the code-0 race locally (launchers stay alive
+   here — a local Node quirk), so CI validates.
+
+   Two false starts on this, recorded so they aren't re-run: (a) a first fix
+   assuming the launcher exits after `unref` was reverted when local launchers
+   looked alive — but local ≠ CI here; (b) the "SIGTERM from teardown" theory
+   was wrong (`signal=null`, and the fixture never stops backends per-worker).
 
 3. **Viewport drift — suite runs 1280×720, config says 1280×800.** FINDINGS
    #41. `devices["Desktop Chrome"]` at the project level shadows the top-level

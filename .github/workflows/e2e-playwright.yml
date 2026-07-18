@@ -149,10 +149,10 @@ jobs:
             e2e-playwright/test-results
           if-no-files-found: ignore
 
-      # DIAGNOSTIC (2026-07-18): the per-worker slot backends log to
-      # /tmp/mb-pw-slot-*/backend.log, outside the paths above, so we've never
-      # been able to see WHY a backend "exited (code 0)". Capture them every
-      # run (pass or fail) to root-cause the flake; remove once diagnosed.
+      # The per-worker slot backends log to /tmp/mb-pw-slot-*/backend.log,
+      # outside the paths above. Capturing them every run (pass or fail)
+      # root-caused the "exited (code 0)" flake and is kept as a standing aid
+      # for any future slot-backend issue.
       - name: Collect slot backend logs
         if: always()
         run: |
