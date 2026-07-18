@@ -65,10 +65,19 @@ highest-value next step for anyone making this case to colleagues.
    Enter emits keypress in Chromium). The port avoids it with a keydown-only
    CDP helper (`realPressEnter`).
 
-   **Not yet done:** the Cypress cross-check that would confirm the migration-
-   dividend angle (that cypress-real-events' delayed char event masks this
-   upstream). The jar reproduction already establishes the bug is real; the
-   cross-check would only corroborate *why Cypress never caught it*.
+   **Cross-check DONE 2026-07-18 — Cypress structurally cannot catch it.** Ran
+   the original `search.cy.spec.js` "allows to select a search result using
+   keyboard" against the SAME jar backend (:4114) with `--browser chrome`
+   (Chrome 150 headless). It **passes**: it asserts landing on
+   `/question/<id>-orders` with exactly one search request, and does — because
+   `cy.realPress("Enter")` (cypress-real-events) delivers the char event
+   delayed, so the result-navigation wins and `goToSearchApp` loses the race.
+   Only the input mechanism differs from the Playwright repro (same backend,
+   same browser, same test intent): Playwright's tight keydown→keypress→keyup
+   mirrors a real keyboard and exposes the bug; Cypress's delayed dispatch
+   hides it. So this is a real, user-reachable race that the Cypress suite is
+   **blind to by construction** — the cleanest migration dividend in the file:
+   not "a bug we found", but "a class of input-timing bug Cypress cannot see".
 
 2. ~~**Dimension-template-tag cards get empty `parameters`**~~
    **RETRACTED 2026-07-18 — not a bug. Do not cite this as a migration

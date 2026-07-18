@@ -264,8 +264,9 @@ in landed code.
    result). #3 (`restore()` killing the search index) **does not reproduce**
    (7 probe runs, index populated every time) and was test-infra not
    user-facing — retracted. Net: one confirmed product bug (#1), six retracted.
-   See FINDINGS.md #1 and #3. Remaining owed for #1: the Cypress cross-check
-   that corroborates *why Cypress masked it* (the bug itself is confirmed).
+   See FINDINGS.md #1 and #3. #1's Cypress cross-check is now DONE too: the
+   original Cypress test passes on the same jar backend + Chrome 150, so Cypress
+   is blind to the race by construction — #1 is fully closed and airtight.
 
 5. **Sharding follow-ups.** The 4-way split is count/order-based, not
    duration-balanced, so a shard drawing several huge specs can run long; bump
