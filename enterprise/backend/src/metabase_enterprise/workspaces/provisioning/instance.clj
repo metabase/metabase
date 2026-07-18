@@ -26,12 +26,6 @@
 
 ;;;; ---------------------------------------- Harbormaster ----------------------------------------
 
-;; Contract (HM tech design CLO-5715): `POST /api/v2/mb/workspaces/instances` with the
-;; full config.yml in the body, `blocking=true` so the call returns only once the child
-;; is healthy with the config hot-loaded; `DELETE .../instances/:id` is idempotent
-;; (404 = already gone). HM keeps a backstop reaper, so a missed delete leaks money,
-;; not data.
-
 (mu/defn- hm-status :- [:maybe :int]
   "HTTP status of an HM reply. On non-2xx responses clj-http throws and the
   client wraps the exception, so the status lives under `:ex-data`."
