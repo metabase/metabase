@@ -6,13 +6,24 @@ export type WorkspaceId = number;
 export type WorkspaceDatabaseStatus =
   | "unprovisioned"
   | "provisioning"
+  | "provisioning-failure"
   | "provisioned"
-  | "deprovisioning";
+  | "deprovisioning"
+  | "deprovisioning-failure";
+
+export type WorkspaceStatus =
+  | "unprovisioned"
+  | "provisioning"
+  | "provisioning-failure"
+  | "provisioned"
+  | "deprovisioning"
+  | "deprovisioning-failure";
 
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   status: WorkspaceDatabaseStatus;
+  status_details: string | null;
 
   database?: Database | null;
 };
@@ -20,6 +31,8 @@ export type WorkspaceDatabase = {
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  status: WorkspaceStatus;
+  status_details: string | null;
   created_at: string;
   creator_id: UserId;
 

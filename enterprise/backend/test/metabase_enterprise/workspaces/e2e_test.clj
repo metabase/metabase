@@ -29,8 +29,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.instance :as ws.instance]
+   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -104,7 +106,23 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-single! wsd-id))))
+      (provisioning.database/provision-database! {:id wsd-id}))))
+
+(defn- cleanup-workspace!
+  "Best-effort test cleanup: deprovision every database (destroys the warehouse
+   isolation; failures land in the statuses, no throw), then delete the
+   workspace. When the deprovision didn't fully succeed the delete refuses, so
+   fall back to force-clearing the rows — otherwise the `mt/with-temp Database`
+   cleanup can't complete."
+  [ws-id]
+  (when-let [ws (t2/select-one :model/Workspace :id ws-id)]
+    (provisioning/deprovision-workspace! ws)
+    (try
+      (workspace/delete-workspace! ws-id)
+      (catch Throwable t
+        (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD" ws-id)
+        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+        (t2/delete! :model/Workspace :id ws-id)))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -349,19 +367,19 @@
                   (mt/with-temp [:model/Database ws-db {:engine  admin-driver
                                                         :details admin-details
                                                         :name    (str "ws-e2e-" run-id)}]
-                    (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id)
-                                                             :creator_id (mt/user->id :crowberto)})]
+                    (let [{ws-id :id} (workspace/create-workspace! {:name       (str "ws-e2e-" run-id)
+                                                                    :creator_id (mt/user->id :crowberto)})]
                       (try
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
-                        ;; multimethods, but through `provisioning/provision-single!`, which writes
-                        ;; the resulting `:database_details` and `:output_namespace` back to the
+                        ;; multimethods, but through `provisioning.database/provision-database!`, which
+                        ;; writes the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
                         (add-database! ws-id (:id ws-db)
                                        [(workspace-input-schema admin-driver admin-details main-schema)])
                         ;; Sanity check: provisioning must have populated :output_namespace and flipped
                         ;; status to :provisioned. If empty, the workspace driver impl is broken.
-                        (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
+                        (let [wsd (-> (workspace/get-workspace ws-id) :databases first)]
                           (is (= :provisioned (:status wsd))
                               "WorkspaceDatabase provisioning did not reach :provisioned status")
                           (is (and (string? (:output_namespace wsd))
@@ -378,8 +396,8 @@
                                            ws.config/build-workspace-config
                                            ws.config/config->yaml)
                               ;; Read the provisioned isolation schema name back from the WSD row;
-                              ;; `provision-single!` derives it from the WSD id, not the workspace id.
-                              wsd      (-> (ws/get-workspace ws-id) :databases first)
+                              ;; `provision-database!` derives it from the WSD id, not the workspace id.
+                              wsd      (-> (workspace/get-workspace ws-id) :databases first)
                               isolation-schema (:output_namespace wsd)]
                           ;;+---------------------------+
                           ;;|       Parent above        |
@@ -399,7 +417,7 @@
                           (advanced-config.file/initialize! (yaml/parse-string yaml-str))
                           ;; Diagnostic: the loader should have written the workspace-instance
                           ;; setting and rewritten the Database row's :details to workspace-user creds.
-                          (is (ws/workspace-mode?)
+                          (is (ws.instance/workspace-mode?)
                               "loader did not put the instance into workspace-mode (atom not populated)")
                           ;; The Database row's `:details` was just rewritten by the loader. Re-read
                           ;; it so `mt/with-db` and the connection pool see the workspace-user creds.
@@ -666,25 +684,15 @@
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
                           ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
-                          ;; `delete-workspace!` then tears down every database (any state, calls
-                          ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
+                          ;; `cleanup-workspace!` then deprovisions every database (any state, calls
+                          ;; `destroy-workspace-isolation!`) before deleting the workspace, safe whether
                           ;; provision succeeded fully or partially.
-                          (ws/clear-instance-workspace!)
+                          (ws.instance/clear-instance-workspace!)
                           (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                          ;; Cleanup tries [[ws/delete-workspace!]] first. A failed warehouse
-                          ;; teardown throws and keeps the workspace + rows for retry. For test
-                          ;; cleanup we don't retry: fall back to force-clearing the rows so
-                          ;; `mt/with-temp Database` cleanup can complete. Real fix for the
+                          ;; See [[cleanup-workspace!]]: deprovision (destroys the warehouse
+                          ;; isolation), delete, force-clear on failure. Real fix for the
                           ;; Redshift destroy fragility is tracked separately.
-                          (let [deleted? (try (ws/delete-workspace! ws-id)
-                                              true
-                                              (catch Throwable t
-                                                (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
-                                                           ws-id)
-                                                false))]
-                            (when-not deleted?
-                              (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
-                              (t2/delete! :model/Workspace :id ws-id)))))))
+                          (cleanup-workspace! ws-id)))))
                   (finally
                     (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)
                          (catch Throwable _ nil))))))))))))
@@ -732,8 +740,8 @@
             (mt/with-temp [:model/Database ws-db {:engine  admin-driver
                                                   :details admin-details
                                                   :name    (str "ws-native-repro-" run-id)}]
-              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
-                                                       :creator_id (mt/user->id :crowberto)})]
+              (let [{ws-id :id} (workspace/create-workspace! {:name       (str "ws-native-repro-" run-id)
+                                                              :creator_id (mt/user->id :crowberto)})]
                 (try
                   (add-database! ws-id (:id ws-db)
                                  [(workspace-input-schema admin-driver admin-details main-schema)])
@@ -815,11 +823,9 @@
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
-                    (ws/clear-instance-workspace!)
+                    (ws.instance/clear-instance-workspace!)
                     (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                    (try (ws/delete-workspace! ws-id)
-                         (catch Throwable t
-                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
+                    (cleanup-workspace! ws-id)))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-a-name)
                    (catch Throwable _ nil))

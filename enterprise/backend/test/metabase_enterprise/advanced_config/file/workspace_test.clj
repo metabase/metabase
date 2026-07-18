@@ -5,7 +5,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.instance :as ws.instance]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml])
@@ -19,17 +19,12 @@
     ;; Several tests drive a `:workspace` section through `initialize!`, which
     ;; requires the `:workspaces` feature; default it on here. Tests that assert
     ;; the feature's *absence* override with their own `mt/with-premium-features`.
-    ;; Also save/restore the boot-lock atom so the boot-lock tests below can't
-    ;; leak a flipped lock into the rest of the suite.
     (mt/with-premium-features #{:workspaces}
       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-        (let [lock-atom @#'ws/locked-by-config?*
-              prior     @lock-atom]
-          (try
-            (thunk)
-            (finally
-              (ws/clear-instance-workspace!)
-              (reset! lock-atom prior))))))))
+        (try
+          (thunk)
+          (finally
+            (ws.instance/clear-instance-workspace!)))))))
 
 (defn- load-fixture-by-driver [driver]
   (-> (str "metabase_enterprise/workspaces/resources/workspace_config_" (name driver) ".yml")
@@ -87,7 +82,7 @@
           (is (= "New workspace" workspace-name))
           (is (= 1 database-count))
           (testing "setting holds the parsed config"
-            (let [stored (ws/instance-workspace)]
+            (let [stored (ws.instance/instance-workspace)]
               (is (= "New workspace" (:name stored)))
               (is (= ["public"]
                      (get-in stored [:databases db-id :input_schemas])))
@@ -105,12 +100,12 @@
                                :databases {:ws-test-db-2 {:input_schemas ["public"]
                                                           :output        {:schema "different_schema"}}})]
           (advanced-config.file.workspace/apply-workspace-section! section-1)
-          (is (= "New workspace" (:name (ws/instance-workspace))))
+          (is (= "New workspace" (:name (ws.instance/instance-workspace))))
           (advanced-config.file.workspace/apply-workspace-section! section-2)
-          (is (= "Renamed Workspace" (:name (ws/instance-workspace))))
-          (is (= 1 (count (:databases (ws/instance-workspace)))))
+          (is (= "Renamed Workspace" (:name (ws.instance/instance-workspace))))
+          (is (= 1 (count (:databases (ws.instance/instance-workspace)))))
           (is (= {:schema "different_schema"}
-                 (->> (ws/instance-workspace) :databases vals first :output))
+                 (->> (ws.instance/instance-workspace) :databases vals first :output))
               "setting reflects the new config, not the old one"))))))
 
 (deftest unknown-database-name-throws-test
@@ -128,7 +123,7 @@
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (advanced-config.file.workspace/apply-workspace-section!
          (workspace-section "ws-test-db"))
-        (is (= {:schema "mb__isolation_44490_1933"} (ws/db-workspace-namespace db-id)))))))
+        (is (= {:schema "mb__isolation_44490_1933"} (ws.instance/db-workspace-namespace db-id)))))))
 
 (deftest db-workspace-namespace-returns-nil-when-no-load-test
   (testing "without a config.yml load, db-workspace-namespace returns nil — manager-side rows are not consulted"
@@ -136,7 +131,7 @@
     ;; the read truly comes from the setting and not from any leftover rows.
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
-        (is (nil? (ws/db-workspace-namespace db-id)))))))
+        (is (nil? (ws.instance/db-workspace-namespace db-id)))))))
 
 (deftest oss-rejects-workspace-section-without-premium-token-test
   (testing "OSS instances need the :config-text-file token to load a :workspace section (no special bring-up carve-out)"
@@ -182,10 +177,10 @@
           (advanced-config.file/initialize!
            {:version 1
             :config {:workspace (workspace-section "ws-test-db")}})
-          (is (= "New workspace" (:name (ws/instance-workspace)))
+          (is (= "New workspace" (:name (ws.instance/instance-workspace)))
               "the workspace section should have been applied")
           (is (= {:schema "mb__isolation_44490_1933"}
-                 (ws/db-workspace-namespace db-id))))))))
+                 (ws.instance/db-workspace-namespace db-id))))))))
 
 (deftest workspaces-gate-is-scoped-to-workspace-section-test
   (testing "without :workspaces, other non-:workspace sections still load (gate is :workspace-scoped)"
@@ -195,7 +190,7 @@
          {:version 1
           :config {:users [{:first_name "X" :last_name "Y"
                             :email "x@example.com" :password "pw"}]}})
-        (is (nil? (ws/instance-workspace))
+        (is (nil? (ws.instance/instance-workspace))
             "no workspace section means no workspace state was set")))))
 
 ;;; ----------------------------------------- per-driver shapes -----------------------------------------
@@ -212,7 +207,7 @@
            {:name "ws"
             :databases {:mysql-prod {:input_schemas ["prod_db"]
                                      :output        {:db "ws_alice"}}}})
-          (is (= {:db "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+          (is (= {:db "ws_alice"} (ws.instance/db-workspace-namespace db-id))))))))
 
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project + dataset in the :output map"
@@ -222,7 +217,7 @@
          {:name "ws"
           :databases {:bq-prod {:input_schemas ["core"]
                                 :output        {:db "metabase-prod" :schema "ws_alice"}}}})
-        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
+        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws.instance/db-workspace-namespace db-id)))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
 ;;;
@@ -298,54 +293,5 @@
                                                           :engine  (:engine expectations)
                                                           :details (:details expectations)}]
                 (advanced-config.file.workspace/apply-workspace-section! section)
-                (is (= (:output expectations) (ws/db-workspace-namespace db-id))
+                (is (= (:output expectations) (ws.instance/db-workspace-namespace db-id))
                     (str driver " setting output matches fixture"))))))))))
-
-;;; ----------------------------------------- boot lock wiring ----------------------------------------
-;;;
-;;; `boot-initialize!` is the sole boot entry point. When it parses a
-;;; `config.yml` containing a `:workspace` section, it flips the in-memory
-;;; `workspace-locked-by-config?*` atom. Runtime callers of `initialize!` (the
-;;; `POST /api/ee/advanced-config` path) and direct callers of
-;;; `apply-workspace-section!` do NOT flip the lock — the boot wrapper is the
-;;; only thing that does.
-
-(defn- lock-atom [] @#'ws/locked-by-config?*)
-
-(deftest boot-initialize!-sets-the-lock-when-config-has-workspace-test
-  (testing "boot-initialize!, given a parsed config.yml with a :workspace section, flips the lock"
-    (mt/with-empty-h2-app-db!
-      (mt/with-premium-features #{:config-text-file :workspaces}
-        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
-          (reset! (lock-atom) false)
-          (with-redefs [advanced-config.file/config-from-disk
-                        (constantly {:version 1
-                                     :config  {:workspace (workspace-section "ws-test-db")}})]
-            (advanced-config.file/boot-initialize!))
-          (is (true? (ws/workspace-locked-by-config?))))))))
-
-(deftest boot-initialize!-does-not-set-the-lock-when-config-has-no-workspace-test
-  (testing "boot-initialize! with no :workspace section in the config leaves the lock false"
-    (mt/with-empty-h2-app-db!
-      (reset! (lock-atom) false)
-      (with-redefs [advanced-config.file/config-from-disk
-                    (constantly {:version 1
-                                 :config  {:settings {}}})]
-        (advanced-config.file/boot-initialize!))
-      (is (false? (ws/workspace-locked-by-config?))))))
-
-(deftest boot-initialize!-no-config-file-does-not-set-the-lock-test
-  (testing "boot-initialize! when no config.yml is present (config-from-disk returns nil) leaves the lock false"
-    (mt/with-empty-h2-app-db!
-      (reset! (lock-atom) false)
-      (with-redefs [advanced-config.file/config-from-disk (constantly nil)]
-        (advanced-config.file/boot-initialize!))
-      (is (false? (ws/workspace-locked-by-config?))))))
-
-(deftest apply-workspace-section!-direct-call-does-not-set-the-lock-test
-  (testing "calling apply-workspace-section! directly (the runtime / test path) does NOT flip the lock"
-    (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
-        (reset! (lock-atom) false)
-        (advanced-config.file.workspace/apply-workspace-section! (workspace-section "ws-test-db"))
-        (is (false? (ws/workspace-locked-by-config?)))))))

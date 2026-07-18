@@ -1,9 +1,9 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
@@ -73,7 +73,7 @@
    mapping."
   [db output-namespace]
   (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
+        positions  (provisioning.database/engine-namespace-positions db)
         schema     (when-not (str/blank? output-namespace) output-namespace)]
     (cond-> {}
       (:db components)     (assoc :db (:db positions))

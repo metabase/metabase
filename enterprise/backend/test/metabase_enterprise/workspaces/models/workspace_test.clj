@@ -75,41 +75,21 @@
         (is (= 1 (count (:databases (get by-id id-a)))))
         (is (= [] (:databases (get by-id id-b))))))))
 
-(deftest update-workspace-replaces-databases-test
-  (testing "update-workspace! replaces the set of workspace_databases"
+(deftest delete-workspace-test
+  (testing "delete-workspace! deletes when every database row is :unprovisioned"
     (mt/with-model-cleanup [:model/Workspace]
-      (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
-        (let [{id :id} (create-ws!
-                        {:name      "Before"
-                         :databases [(ws-db-attrs {:output_namespace "keep_out"
-                                                   :input_schemas        ["keep"]})
-                                     (ws-db-attrs {:database_id   db2-id
-                                                   :output_namespace "drop_out"
-                                                   :input_schemas        ["drop"]})]})
-              updated  (workspace/update-workspace!
-                        id
-                        {:name      "After"
-                         :databases [(ws-db-attrs {:output_namespace "keep_out"
-                                                   :input_schemas        ["keep"]})
-                                     (ws-db-attrs {:database_id   db2-id
-                                                   :output_namespace "new_out"
-                                                   :input_schemas        ["new"]})]})]
-          (is (= "After" (:name updated)))
-          (is (= #{"keep_out" "new_out"}
-                 (into #{} (map :output_namespace) (:databases updated))))
-          (testing "the removed workspace_database is gone from the database"
-            (is (not (t2/exists? :model/WorkspaceDatabase
-                                 :workspace_id id
-                                 :output_namespace "drop_out")))))))))
-
-(deftest update-workspace-can-clear-databases-test
-  (testing "update-workspace! with empty :databases removes all children"
+      (let [{id :id} (create-ws! {:name "Deletable" :databases [(ws-db-attrs)]})]
+        (is (nil? (workspace/delete-workspace! id)))
+        (is (not (t2/exists? :model/Workspace :id id)))
+        (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id))))))
+  (testing "delete-workspace! refuses (404) when any database row is not :unprovisioned"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws!
-                      {:name "To Clear" :databases [(ws-db-attrs)]})
-            updated  (workspace/update-workspace! id {:name "Cleared" :databases []})]
-        (is (= [] (:databases updated)))
-        (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id)))))))
+      (let [{id :id} (create-ws! {:name "Kept" :databases [(ws-db-attrs {:status :provisioned})]})]
+        (is (thrown-with-msg? Exception #"not :unprovisioned"
+                              (workspace/delete-workspace! id)))
+        (is (= 404 (try (workspace/delete-workspace! id)
+                        (catch Exception e (:status-code (ex-data e))))))
+        (is (t2/exists? :model/Workspace :id id))))))
 
 (deftest cascade-delete-workspace-test
   (testing "Deleting a Workspace cascades to its workspace_database rows"
@@ -143,77 +123,16 @@
                                          :from   [:workspace_database]
                                          :where  [:= :workspace_id (:id created)]})))))))))
 
-(deftest status-can-be-updated-test
-  (testing "update-workspace! can change the :status of a workspace_database"
+(deftest status-details-encrypted-round-trip-test
+  (testing "workspace.status_details and workspace_database.status_details round-trip transparently"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws!
-                      {:name      "Evolving"
-                       :databases [(ws-db-attrs {:status :unprovisioned})]})
-            updated  (workspace/update-workspace!
-                      id
-                      {:name      "Evolving"
-                       :databases [(ws-db-attrs {:status :provisioned})]})]
-        (is (= :provisioned (:status (first (:databases updated)))))))))
-
-(deftest update-preserves-initialized-rows-test
-  (testing "update-workspace! leaves :provisioned rows untouched when the PUT keeps their database_id + input"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
-                   :model/WorkspaceDatabase {init-id :id}
-                   {:workspace_id     ws-id
-                    :database_id      (mt/id)
-                    :database_details {:user "keep-me" :password "keep-pw"}
-                    :output_namespace    "keep_schema"
-                    :input_schemas            ["public"]
-                    :status           :provisioned}]
-      (let [updated (workspace/update-workspace!
-                     ws-id
-                     {:name      "Renamed"
-                      :databases [{:database_id (mt/id) :input_schemas ["public"]}]})
-            row     (t2/select-one :model/WorkspaceDatabase :id init-id)]
-        (testing "name update takes effect"
-          (is (= "Renamed" (:name updated))))
-        (testing "the initialized row was not deleted + reinserted (its id is the same)"
-          (is (some? row))
-          (is (= :provisioned (:status row))))
-        (testing "credentials and output_namespace are preserved verbatim"
-          (is (= {:user "keep-me" :password "keep-pw"} (:database_details row)))
-          (is (= "keep_schema" (:output_namespace row))))))))
-
-(deftest update-rejects-dropping-initialized-test
-  (testing "update-workspace! refuses to drop an :provisioned row"
-    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
-                   :model/Workspace {ws-id :id} {:name "WS"}
-                   :model/WorkspaceDatabase _
-                   {:workspace_id     ws-id
-                    :database_id      (mt/id)
-                    :database_details {:user "u"}
-                    :output_namespace    "sch"
-                    :input_schemas            ["public"]
-                    :status           :provisioned}]
-      (is (thrown-with-msg?
-           Exception
-           #"provisioned"
-           (workspace/update-workspace!
-            ws-id
-            {:name "WS" :databases [{:database_id db2-id :input_schemas ["public"]}]}))))))
-
-(deftest update-rejects-changing-initialized-input-test
-  (testing "update-workspace! refuses to change :input_schemasof an :provisioned row"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
-                   :model/WorkspaceDatabase _
-                   {:workspace_id     ws-id
-                    :database_id      (mt/id)
-                    :database_details {:user "u"}
-                    :output_namespace    "sch"
-                    :input_schemas            ["public"]
-                    :status           :provisioned}]
-      (is (thrown-with-msg?
-           Exception
-           #"provisioned"
-           (workspace/update-workspace!
-            ws-id
-            {:name      "WS"
-             :databases [{:database_id (mt/id) :input_schemas ["analytics"]}]}))))))
+      (let [{id :id} (create-ws! {:name "Statuses" :databases [(ws-db-attrs)]})]
+        (t2/update! :model/Workspace id {:status :provisioning-failure, :status_details "boom"})
+        (t2/update! :model/WorkspaceDatabase {:workspace_id id} {:status_details "db boom"})
+        (is (=? {:status :provisioning-failure, :status_details "boom"}
+                (t2/select-one :model/Workspace :id id)))
+        (is (= "db boom"
+               (t2/select-one-fn :status_details :model/WorkspaceDatabase :workspace_id id)))))))
 
 (deftest cascade-delete-database-test
   (testing "Deleting an underlying Database cascades to workspace_database rows"

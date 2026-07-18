@@ -76,34 +76,6 @@
           (when-let [db-id (t2/select-one-pk :model/Database :name db-name :engine "postgres")]
             (t2/delete! :model/Database db-id)))))))
 
-(deftest runtime-upload-via-api-does-not-set-the-lock-test
-  (testing "POST /api/ee/advanced-config with a :workspace section does NOT lock the workspace (only the boot loader does)"
-    (let [db-name   (str "advanced-config-ws-" (random-uuid))
-          payload   {:version 1
-                     :config  {:databases [{:name    db-name
-                                            :engine  "postgres"
-                                            :details {}}]
-                               :workspace {:name      "Uploaded Workspace"
-                                           :databases {(keyword db-name) {:input_schemas ["public"]
-                                                                          :output        {:schema "ws_uploaded"}}}}}}
-          lock-atom @#'ws/locked-by-config?*
-          prior     @lock-atom]
-      (try
-        (reset! lock-atom false)
-        (mt/with-premium-features #{:config-text-file :workspaces}
-          (mt/with-temporary-setting-values [config-from-file-sync-databases false]
-            (with-redefs [metabase.driver.util/can-connect-with-details? (constantly true)]
-              (mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
-                                    (first (multipart (yaml-bytes payload)))
-                                    (second (multipart (yaml-bytes payload)))))))
-        (is (false? (ws/workspace-locked-by-config?))
-            "a runtime upload must not flip the boot lock")
-        (finally
-          (reset! lock-atom prior)
-          (ws/clear-instance-workspace!)
-          (when-let [db-id (t2/select-one-pk :model/Database :name db-name :engine "postgres")]
-            (t2/delete! :model/Database db-id)))))))
-
 (deftest workspace-section-rejected-without-workspaces-feature-test
   (testing "POST /api/ee/advanced-config returns 402 when :workspace section requires :workspaces"
     (let [payload {:version 1
