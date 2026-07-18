@@ -35,12 +35,15 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
+   [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
+   [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
 
@@ -183,37 +186,37 @@
     (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
     ex))
 
-(defn- provision-workspace-databases!
+(mu/defn- provision-workspace-databases!
   "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
   (blocking), failing fast on the first error."
-  [ws]
+  [ws :- ::ws.schema/workspace]
   (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-database! wsd-id)))
+    (provisioning.database/provision-database! wsd-id)))
 
-(defn- deprovision-workspace-databases!
+(mu/defn- deprovision-workspace-databases!
   "Deprovision every WorkspaceDatabase of `workspace-id` — any state, blocking.
   Mirrors [[provision-workspace-databases!]], but continues past failures so each
   row gets its attempt: rows whose deprovisioning succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
   rows whose deprovisioning fails are kept. Throws the combined failures when any
   deprovisioning failed."
-  [workspace-id]
+  [workspace-id :- ms/PositiveInt]
   (let [failures (into []
                        (keep (fn [wsd]
                                (try
-                                 (provisioning/deprovision-database! wsd)
+                                 (provisioning.database/deprovision-database! wsd)
                                  nil
                                  (catch Throwable t t))))
                        (t2/select :model/WorkspaceDatabase :workspace_id workspace-id))]
     (when (seq failures)
       (throw (combined-exception failures)))))
 
-(defn- workspace-database-specs
+(mu/defn- workspace-database-specs
   "Validate each of `database-ids` — the database must exist (404) and be eligible
   for workspaces (400, see [[workspace-database/database-eligible-for-workspaces?]])
   — and return the WorkspaceDatabase specs to attach: each database with all of
   its known schemas as `input_schemas`."
-  [database-ids]
+  [database-ids :- [:maybe [:sequential ms/PositiveInt]]]
   (mapv (fn [db-id]
           (let [database (assert-database-exists db-id)]
             (assert-database-eligible-for-workspaces database)
@@ -221,28 +224,28 @@
              :input_schemas (workspace-database/database-input-schemas database)}))
         database-ids))
 
-(defn- provision-workspace-instance!
+(mu/defn- provision-workspace-instance!
   "Provision the child instance for the fully provisioned workspace `ws`
   (blocking), when `workspace-instance-provisioning-enabled` is set. Best-effort:
   a failure is logged and `instance_id`/`instance_url` are left unset — the
   workspace itself is still returned as created."
-  [ws]
+  [ws :- ::ws.schema/workspace]
   (try
     (when (ws.settings/workspace-instance-provisioning-enabled)
-      (provisioning/provision-instance! ws (ws.config/build-workspace-config (:id ws))))
+      (provisioning.instance/provision-instance! ws (ws.config/build-workspace-config (:id ws))))
     (catch Throwable t
       (log/warnf t "Failed to provision an instance for workspace %s" (:id ws)))))
 
-(defn- deprovision-workspace-instance!
+(mu/defn- deprovision-workspace-instance!
   "Delete the child instance of `ws`, when it has one. The row's
   `instance_id`/`instance_url` are cleared immediately, so if a later database
   deprovisioning step fails and the workspace is kept, it correctly shows no
   instance. Throws when the provisioner fails to delete the instance."
-  [ws]
+  [ws :- ::ws.schema/workspace]
   (when (:instance_id ws)
-    (provisioning/deprovision-instance! ws)))
+    (provisioning.instance/deprovision-instance! ws)))
 
-(defn create-workspace!
+(mu/defn create-workspace! :- [:maybe ::ws.schema/workspace]
   "Create a new Workspace, attach the databases with ids `database_ids` (see
    [[workspace-database-specs]]), provision each database (blocking), and — when
    the workspace ends up fully provisioned — provision its child instance. Returns
@@ -260,7 +263,10 @@
    leak stays visible and deletable. An instance-provisioning failure never
    fails the create — the workspace is returned without
    `instance_id`/`instance_url` (see [[provision-workspace-instance!]])."
-  [{:keys [name creator_id database_ids]}]
+  [{:keys [name creator_id database_ids]} :- [:map
+                                              [:name         ms/NonBlankString]
+                                              [:creator_id   ms/PositiveInt]
+                                              [:database_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [ws (workspace/create-workspace! {:name       name
                                          :creator_id creator_id
                                          :databases  (workspace-database-specs database_ids)})]
@@ -284,7 +290,7 @@
             nil))))
     (workspace/get-workspace (:id ws))))
 
-(mu/defn delete-workspace!
+(mu/defn delete-workspace! :- :nil
   "Deprovision every database's warehouse isolation (any state, blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is
   either fully deprovisioned (warehouse footprint confirmed gone, row deleted) or
@@ -298,7 +304,7 @@
   retried, while a success clears `instance_id`/`instance_url` immediately — so
   when a later database deprovisioning fails and the workspace is kept, it
   correctly shows no instance. Returns nil."
-  [{:keys [id] :as ws} :- [:map [:id pos-int?]]]
+  [{:keys [id] :as ws} :- ::ws.schema/workspace]
   (deprovision-workspace-instance! ws)
   (deprovision-workspace-databases! id)
   (workspace/delete-workspace! id)

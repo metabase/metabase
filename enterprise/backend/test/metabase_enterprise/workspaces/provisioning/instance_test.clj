@@ -1,9 +1,9 @@
-(ns metabase-enterprise.workspaces.provisioning-test
+(ns metabase-enterprise.workspaces.provisioning.instance-test
   "Tests for the instance-provisioning entry points using a stub
-   [[provisioning/InstanceProvisioner]] — no Harbormaster involved."
+   [[provisioning.instance/InstanceProvisioner]] — no Harbormaster involved."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -13,11 +13,11 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- stub-provisioner
-  "An [[provisioning/InstanceProvisioner]] whose behavior is overridable per test:
+  "An [[provisioning.instance/InstanceProvisioner]] whose behavior is overridable per test:
    `:create` replaces create! (defaults to returning a fixed id/url), `:delete`
    is called with the workspace passed to delete!."
   [& {:keys [create delete]}]
-  (reify provisioning/InstanceProvisioner
+  (reify provisioning.instance/InstanceProvisioner
     (create! [_this workspace config]
       (if create
         (create workspace config)
@@ -30,7 +30,7 @@
 (deftest provision-instance!-persists-instance-test
   (testing "a successful create! persists instance_id/instance_url and returns the updated row"
     (mt/with-temp [:model/Workspace ws {:name "Deploy me"}]
-      (let [updated (provisioning/provision-instance! ws {:version 1} (stub-provisioner))]
+      (let [updated (provisioning.instance/provision-instance! ws {:version 1} (stub-provisioner))]
         (is (= "hm-instance-1" (:instance_id updated)))
         (is (= "https://child.example.com" (:instance_url updated)))
         (is (= "hm-instance-1" (t2/select-one-fn :instance_id :model/Workspace :id (:id ws))))))))
@@ -39,7 +39,7 @@
   (testing "a failed create! propagates and leaves the row untouched"
     (mt/with-temp [:model/Workspace ws {:name "No deploy"}]
       (is (thrown-with-msg? ExceptionInfo #"HM says no"
-                            (provisioning/provision-instance!
+                            (provisioning.instance/provision-instance!
                              ws {:version 1}
                              (stub-provisioner :create (fn [_ _] (throw (ex-info "HM says no" {})))))))
       (is (nil? (t2/select-one-fn :instance_id :model/Workspace :id (:id ws)))))))
@@ -50,7 +50,7 @@
       (let [deleted (atom nil)]
         (with-redefs [t2/update! (fn [& _] (throw (ex-info "app DB down" {})))]
           (is (thrown-with-msg? ExceptionInfo #"app DB down"
-                                (provisioning/provision-instance!
+                                (provisioning.instance/provision-instance!
                                  ws {:version 1}
                                  (stub-provisioner :delete #(reset! deleted %))))))
         (is (= "hm-instance-1" (:instance_id @deleted))
@@ -63,7 +63,7 @@
                                         :instance_id  "hm-instance-9"
                                         :instance_url "https://child.example.com"}]
       (let [deleted (atom nil)
-            updated (provisioning/deprovision-instance! ws (stub-provisioner :delete #(reset! deleted %)))]
+            updated (provisioning.instance/deprovision-instance! ws (stub-provisioner :delete #(reset! deleted %)))]
         (is (= "hm-instance-9" (:instance_id @deleted))
             "delete! receives the workspace with its instance id")
         (is (nil? (:instance_id updated)))
@@ -76,6 +76,6 @@
                                         :instance_id  "hm-instance-9"
                                         :instance_url "https://child.example.com"}]
       (is (thrown-with-msg? ExceptionInfo #"HM unreachable"
-                            (provisioning/deprovision-instance!
+                            (provisioning.instance/deprovision-instance!
                              ws (stub-provisioner :delete (fn [_] (throw (ex-info "HM unreachable" {})))))))
       (is (= "hm-instance-9" (t2/select-one-fn :instance_id :model/Workspace :id (:id ws)))))))

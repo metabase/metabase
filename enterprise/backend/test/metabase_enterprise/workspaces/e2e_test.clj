@@ -30,7 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -104,7 +104,7 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-database! wsd-id))))
+      (provisioning.database/provision-database! wsd-id))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -354,7 +354,7 @@
                       (try
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
-                        ;; multimethods, but through `provisioning/provision-database!`, which writes
+                        ;; multimethods, but through `provisioning.database/provision-database!`, which writes
                         ;; the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
                         (add-database! ws-id (:id ws-db)

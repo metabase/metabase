@@ -1,9 +1,9 @@
 (ns metabase-enterprise.workspaces.remapping-cleanup-test
   "Tests for [[metabase-enterprise.workspaces.remapping-cleanup]] — the iso-scoped
-   `TableRemapping` deletion path invoked from `provisioning/deprovision-database!`."
+   `TableRemapping` deletion path invoked from `provisioning.database/deprovision-database!`."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
@@ -136,7 +136,7 @@
             "fixture: two remap rows registered before deprovision")
         ;; Provisioner that fails on destroy! to simulate partial warehouse teardown
         ;; (e.g. BQ dataset deleted, SA delete throws).
-        (let [failing-provisioner (reify provisioning/DatabaseProvisioner
+        (let [failing-provisioner (reify provisioning.database/DatabaseProvisioner
                                     (details  [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (init!    [_ _ _ _]     (throw (ex-info "not used" {})))
                                     (grant!   [_ _ _ _ _]   (throw (ex-info "not used" {})))
@@ -144,8 +144,8 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"warehouse teardown blew up"
-               (provisioning/deprovision-database! (t2/select-one :model/WorkspaceDatabase :id wsd-id)
-                                                   failing-provisioner))
+               (provisioning.database/deprovision-database! (t2/select-one :model/WorkspaceDatabase :id wsd-id)
+                                                            failing-provisioner))
               "deprovision rethrows the destroy failure so the caller knows"))
         (is (zero? (count (ws.table-remapping/all-mappings-for-db db-id)))
             "remap rows must be cleared even when destroy! threw -- otherwise canonical-table queries 500")

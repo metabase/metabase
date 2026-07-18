@@ -5,7 +5,7 @@
    are wired into the endpoints (one 403 spot-check is enough)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -20,7 +20,7 @@
 (use-fixtures :each with-premium-feature)
 
 (defn- stub-provisioner []
-  (reify provisioning/DatabaseProvisioner
+  (reify provisioning.database/DatabaseProvisioner
     (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
     (init! [_ _ _ _] nil)
@@ -33,7 +33,7 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
+        (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
           (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                          {:name "Smoke Test" :database_ids [db-id]})]
             (is (=? {:id        pos-int?
@@ -57,7 +57,7 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
+        (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Pending" :database_ids [db-id]})
                 wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
@@ -71,20 +71,20 @@
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (let [{ws-id :id} (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
+        (let [{ws-id :id} (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
                             (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Unreachable" :database_ids [db-id]}))
-              boom        (reify provisioning/DatabaseProvisioner
+              boom        (reify provisioning.database/DatabaseProvisioner
                             (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                             (init!    [_ _ _ _]   nil)
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
-          (with-redefs [provisioning/dispatching-database-provisioner boom]
+          (with-redefs [provisioning.database/dispatching-database-provisioner boom]
             (is (=? {:message "Connection refused"}
                     (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
           (testing "the workspace survives and a retry deletes it"
             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
-            (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
+            (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
               (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
@@ -97,7 +97,7 @@
                    :model/Table _ {:db_id eligible-id :schema "analytics" :active true}
                    :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
       (mt/with-model-cleanup [:model/Workspace]
-        (with-redefs [provisioning/dispatching-database-provisioner (stub-provisioner)]
+        (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
           (is (=? {:databases [{:database_id   eligible-id
                                 :input_schemas ["analytics" "public"]
                                 :status        "provisioned"}]}

@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -995,8 +995,8 @@
 (deftest engine-namespace-positions-unknown-driver-defaults-to-schema-table-test
   (testing "Unknown engine gets the default :schema-table shape -- no throw, no surprise"
     (is (= {:db nil :schema "public"}
-           (provisioning/engine-namespace-positions {:engine ::ws-test-unknown-driver :name "x"}
-                                                    {:schema "public" :name "orders"})))))
+           (provisioning.database/engine-namespace-positions {:engine ::ws-test-unknown-driver :name "x"}
+                                                             {:schema "public" :name "orders"})))))
 
 ;;; -------------------------- GHY-3553: MySQL-shape sentinel-leak regressions --------------------------
 ;;;
