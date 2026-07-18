@@ -198,6 +198,52 @@ Also unfinished: the w2-only SCIM test failure (`admin-authentication.spec.ts`
 "setup and manage scim feature", died in 20ms, passed on w1) looked like
 teardown noise. Watch whether it recurs.
 
+## Outstanding work (as of 2026-07-18, end of the wave-9 session)
+
+State: all nine wave-9 specs landed and pushed (origin `c6a1f19223d`); CI
+switched from the workers `[1,2]` A/B to a **4-way spec shard** (workers=2 per
+shard). Nothing is running. The items below are open and none is a regression
+in landed code.
+
+1. **`metrics-explorer.spec.ts:1131` — CI-only failure, unresolved.** "should
+   revert to formula text when custom name is cleared." Passes locally in
+   isolation on the jar (46/0 under `--repeat-each=2`) but **fails on CI under
+   sharded multi-spec load**, reproducing across the retry (22s then 25s,
+   `toBeVisible` timeout) in run 29616824640 shard s3. Not yet root-caused —
+   candidate causes: 4vCPU/2-worker load making the test's 10s `toBeVisible`
+   marginal, or fallout from the backend instability in item 2. Start with the
+   `playwright-report-s3` artifact from that run (trace + backend.log). This is
+   the one genuine red in an otherwise-green sharded run.
+
+2. **Per-worker backend died mid-run on shard s3 — infra flake.** Two
+   `documents` tests failed in 2–3ms with `Worker 0/1 backend exited (code 0)`
+   and **both passed on retry**, so Playwright's retry masked it — but a slot
+   backend exiting cleanly (code 0) mid-run is not expected and could flake any
+   spec. The `code 0` (graceful, not OOM's 137) is the puzzle. Needs the s3
+   `backend.log` to diagnose. Left alone deliberately; retry is currently
+   hiding it.
+
+3. **Viewport drift — suite runs 1280×720, config says 1280×800.** FINDINGS
+   #41. `devices["Desktop Chrome"]` at the project level shadows the top-level
+   viewport; Cypress runs 800, so this is a real fidelity gap. Left at 720
+   (internally consistent, matches what CI runs). Fixing it is a one-liner but
+   moves ground under ~60 landed specs, so it needs a full-suite revalidation —
+   do it as its own task, not mid-wave.
+
+4. **The two surviving product-bug candidates (#1, #3) are NOT jar-verified.**
+   Five bug claims were retracted this session; #1 (SearchBar Enter race) and #3
+   (`restore()` killing the search index) have not been through the same jar +
+   `--browser chrome` gauntlet. Until they have, they are unverified — do not
+   cite them as confirmed. **This is the highest-value next step before taking
+   the case to colleagues.**
+
+5. **Sharding follow-ups.** The 4-way split is count/order-based, not
+   duration-balanced, so a shard drawing several huge specs can run long; bump
+   `SHARD_TOTAL` + the matrix list as spec count climbs, and consider a
+   timings-balanced split. Bigger win when it's worth it: generate DB snapshots
+   **once** and share them as an artifact, so each shard stops re-paying the
+   ~13m Cypress snapshot run (each shard currently pays full setup).
+
 ## Usage — read before dispatching agents
 
 The session died because **Fable 5 hit its usage limit** and every in-flight
