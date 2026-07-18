@@ -60,6 +60,14 @@
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Segments
+(api-scope/defscope agent-segment-write "agent:segment:write"
+  (deferred-tru "Create and edit segments"))
+
+;; Measures
+(api-scope/defscope agent-measure-write "agent:measure:write"
+  (deferred-tru "Create and edit measures"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
@@ -176,7 +184,8 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"
+                                        "agent:segment:*" "agent:measure:*"}
    :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:collection:*"}})
