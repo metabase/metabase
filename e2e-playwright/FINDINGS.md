@@ -28,11 +28,10 @@ capability differences the harness demonstrably has and Cypress structurally
 lacks (#8 per-worker isolation, #22's retraction is itself a demonstration,
 #32 a race only Playwright can see, #33 a green test whose mock never ran),
 plus a large set of strictly-stronger tests and vacuous-assertion fixes (#4–6,
-#34–38) that make the suite catch things the originals could not. The two
-standing bug candidates (#1 SearchBar Enter race, #3 restore killing the search
-index) have NOT yet been through the jar + Chrome gauntlet that killed the
-other five — treat them as unverified until they have been. That check is the
-highest-value next step for anyone making this case to colleagues.
+#34–38) that make the suite catch things the originals could not. Every bug
+candidate has now been through the jar + `--browser chrome` gauntlet: #1 is
+confirmed (and cross-checked as a race Cypress cannot see); the other six are
+retracted. Lead with #1 and the capability evidence.
 
 ## Product bugs found by porting
 
@@ -518,3 +517,31 @@ methodology note first — it reframes several earlier entries.
     `fixed` children and collapses to height 0. Cypress `should("be.visible")`
     passes (visible-child rule); Playwright `toBeVisible()` fails on an open
     modal. Scope assertions to the dialog content. Reusable across every port.
+
+## Wave 10 additions (pivot_tables, embedding-dashboard, dashboard-cards/filters repros, column-compare)
+
+Five specs / ~145 tests, all green on the jar. **No product bugs** — every
+failure this wave was port drift, fixed and (where a bug was plausible)
+disproven by the `--browser chrome` cross-check. The dividends are test-quality
+and a migration caveat, not bugs:
+
+- **Engine caveat (worth knowing for the migration):** Playwright's bundled
+  Chromium differs from Chrome in pixel/text metrics — SmartScalar truncation
+  lands differently, so pixel-exact text tests are engine-sensitive. Cross-check
+  passes under Chrome while the Chromium run fails; not a bug or drift. Handled
+  with `test.fixme` + recorded cross-check (dashboard-card-reproductions).
+- **More vacuous assertions surfaced:** `column-compare`'s entire suite is
+  `@skip` (feature disabled) — verified the helper chain still exercises real
+  behaviour by temporarily un-skipping; `embedding #66742`'s `IsSticky` class
+  assertion is a no-op on the minified jar bundle (needs a `data-*` hook).
+- **Consolidation debt is now worth a pass** (flagged repeatedly this wave):
+  `caseSensitiveSubstring`/text matchers duplicated across 5+ support files
+  (→ `support/text.ts`); `findDisplayValue`/`assertIsEllipsified`/
+  `updatePermissionsGraph`/`createQuestionAndAddToDashboard` duplicated across
+  repros modules; typed wrappers (`visitPivotAdhoc`, `createPivotQuestion`) exist
+  only because shared `api.createQuestion` / `permissions.visitQuestionAdhoc`
+  param types omit `visualization_settings` (both forward it at runtime —
+  widening the types deletes the wrappers). New gotchas → PORTING.md wave-10.
+
+See `NOTES-parallelism.md` for the read-only-pool / seeding analysis done this
+session, and `findings-inbox/` for per-spec detail.

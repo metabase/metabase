@@ -128,6 +128,18 @@
 - `waitForCardQuery` — Cypress intercept `POST /api/card/(**)/query` — a pinned card's query run.
 - `dragAndDrop` — Port of H.dragAndDrop (e2e-dragndrop-helpers.js): fires the HTML5 drag
 
+## column-compare.ts
+- `toggleColumnPickerItems`
+- `verifyNoColumnCompareShortcut`
+- `verifySummarizeText`
+- `verifyColumnDrillText`
+- `verifyPlusButtonText`
+- `verifyNotebookText`
+- `verifyAggregations`
+- `verifyColumns`
+- `breakout`
+- `verifyBreakoutExistsAndIsFirst`
+
 ## command-palette.ts
 - `ORDERS_BY_YEAR_QUESTION_ID` — Ports of ORDERS_BY_YEAR_QUESTION_ID from
 - `commandPalette` — Port of H.commandPalette. Accepts a FrameLocator for embedding tests. */
@@ -154,6 +166,18 @@
 ## custom-column.ts
 - `customExpressionEditor` — Port of H.CustomExpressionEditor.value()'s target: the CodeMirror content
 - `openTableNotebookWithLimit` — Port of H.openTable({ mode: "notebook", limit, table }). */
+
+## dashboard-card-repros.ts
+- `pieSlices` — Port of H.pieSlices (e2e-visual-tests-helpers.js): the pie/donut wedge paths
+- `assertIsEllipsified` — Port of H.assertIsEllipsified (kept local so both live together). */
+- `assertIsNotEllipsified` — Port of H.assertIsNotEllipsified. */
+- `assertDescendantsNotOverflowDashcards` — Port of the spec-local assertDescendantsNotOverflowDashcards +
+- `grantClipboardPermissions` — Port of H.grantClipboardPermissions: the Cypress helper drives CDP
+- `readClipboard` — Port of H.readClipboard: read the async-clipboard text in the page. */
+- `toggleFilterWidgetValues` — Port of H.toggleFilterWidgetValues (e2e-ui-elements-helpers.js): open the
+- `showDashcardVisualizerModalSettings` — Port of H.showDashcardVisualizerModalSettings
+- `saveDashcardVisualizerModal` — Port of H.saveDashcardVisualizerModal: click Save/Add-to-dashboard and wait
+- `createQuestionAndAddToDashboard` — Port of H.createQuestionAndAddToDashboard (api/createQuestionAndAddToDashboard.ts):
 
 ## dashboard-cards.ts
 - `icon` — Port of the cy.icon command: `.Icon-<name>` selector. */
@@ -426,6 +450,31 @@
 - `addCardToNewDashboard` — Port of the spec-local addCardToNewDashboard from dash_drill.cy.spec.js. */
 - `clickScalarCardTitle` — Port of the spec-local clickScalarCardTitle from dash_drill.cy.spec.js:
 
+## embedding-dashboard.ts
+- `questionDetails`
+- `questionDetailsWithDefaults`
+- `dashboardDetails`
+- `mapParameters` — Port of mapParameters (shared/embedding-dashboard.js). */
+- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts): POST accepts most
+- `createQuestion` — Port of H.createQuestion (api/createQuestion.ts). */
+- `createNativeQuestion` — Port of H.createNativeQuestion (api/createQuestion.ts). */
+- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard: returns the created dashcard (whose
+- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard: unlike the plain
+- `addOrUpdateDashboardCard` — Port of H.addOrUpdateDashboardCard: PUT a single dashcard, return it. */
+- `createDashboardWithTabs` — Port of H.createDashboardWithTabs: create the dashboard (holding back the
+- `getEmbeddedPageUrl` — Port of getEmbeddedPageUrl — builds the signed /embed path plus the hash
+- `visitEmbeddedPage` — Port of H.visitEmbeddedPage: sign the JWT, sign out, and navigate straight
+- `visitEmbeddedResizerHarness` — Port of the standalone e2e/test/scenarios/embedding/embedding-dashboard.html
+- `embeddedPageAbsoluteUrl` — The (absolute) signed embed url for a payload — for the resize harness,
+- `openLegacyStaticEmbeddingModal` — Port of H.openLegacyStaticEmbeddingModal with `previewMode`. Delegates to
+- `closeStaticEmbeddingModal`
+- `publishChanges` — Port of H.publishChanges: click Publish and wait for the PUT that carries
+- `getParametersContainer` — Port of getParametersContainer (e2e-embedding-helpers.js). */
+- `setEmbeddingParameter` — Port of H.setEmbeddingParameter. */
+- `assertEmbeddingParameter` — Port of H.assertEmbeddingParameter. */
+- `getRequiredToggle` — Port of H.getRequiredToggle. */
+- `toggleRequiredParameter` — Port of H.toggleRequiredParameter (the real input is hidden in Mantine). */
+
 ## embedding.ts
 - `METABASE_SECRET_KEY` — Port of METABASE_SECRET_KEY (e2e/support/cypress_data.js) — the
 - `embedModalContent`
@@ -448,6 +497,10 @@
 - `createSegment` — Port of H.createSegment (POST /api/segment). */
 - `trackDatasetRequests` — Counter for POST /api/dataset responses — the wait-free side of the
 - `setupBooleanQuery` — Port of H.setupBooleanQuery: create + visit a native question with a
+
+## filters-repros-2.ts
+- `dashboardParametersDoneButton` — Port of H.dashboardParametersDoneButton: the "Done" button inside the
+- `getManyDataTypesBooleanFieldId` — Port of the issue-45670 spec-local getField(): locate the `boolean` field of
 
 ## filters-repros.ts
 - `ORDERS_DASHBOARD_DASHCARD_ID` — Port of ORDERS_DASHBOARD_DASHCARD_ID (cypress_sample_instance_data.js). */
@@ -544,6 +597,7 @@
 - `applyBrush` — Port of H.applyBrush: drag horizontally across the chart at y=100
 - `splitPanelAxisLines`
 - `echartsTooltip` — Port of H.echartsTooltip: ECharts may keep two DOM instances of the
+- `hoverChartPointForTooltip` — no tooltip appears (metrics-explorer:1131 on the first sharded run);
 - `createMeasure` — Port of H.createMeasure (POST /api/measure). */
 - `createMetric` — Port of H.createQuestion for the metric card shapes this spec uses —
 - `DEFAULT_PLACEHOLDER_COLOR` — Default color of an unassigned pill indicator (orion 100 as hex). */
@@ -674,6 +728,22 @@
 - `icon` — Port of cy.icon (e2e/support/commands/ui/icon.ts). */
 - `adhocQuestionHash` — Port of adhocQuestionHash (e2e/support/helpers/e2e-ad-hoc-question-helpers.js).
 - `visitQuestionAdhoc` — Port of H.visitQuestionAdhoc, minus the notebook mode and the native
+
+## pivot-tables.ts
+- `visitPivotAdhoc`
+- `createPivotQuestion`
+- `PIVOT_TABLE_BODY_LABEL` — Mirrors PIVOT_TABLE_BODY_LABEL from
+- `assertOnPivotSettings` — Port of the spec's assertOnPivotSettings: the three field options in the
+- `assertOnPivotFields` — Port of the spec's assertOnPivotFields: implicit assertions on the rendered
+- `openColumnSettings` — Port of the spec's openColumnSettings: the column's ellipsis (settings)
+- `sortColumnResults` — Port of the spec's sortColumnResults: open the column's settings button, pick
+- `getPivotTableBodyCell` — Port of the spec's getPivotTableBodyCell: the index-th value cell in the
+- `moveDnDKitListElement` — Port of H.moveDnDKitListElement: drag the list element at `startIndex` onto
+- `moveDnDKitPointer` — Port of H.moveDnDKitElementByAlias for the pivot column-RESIZE handles, which
+- `cellContentWidth` — jQuery-style .width() (content-box width) of the pivot-table cell wrapping a
+- `findDisplayValue` — Port of cy.findByDisplayValue: the form control in `scope` whose current
+- `updatePermissionsGraph` — Port of cy.updatePermissionsGraph: GET the graph, shallow-merge the given
+- `saveAdhocQuestion` — Port of the column-resizing test's H.saveQuestion(undefined, undefined, {
 
 ## question-new.ts
 - `SECOND_COLLECTION_ID` — Not in support/sample-data.ts, so it's looked up here the same way. */

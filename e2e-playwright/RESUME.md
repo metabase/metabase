@@ -4,6 +4,16 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
+> **Latest (2026-07-18, wave 10):** +5 specs landed & jar-verified
+> (pivot_tables, column-compare, dashboard-filters-reproductions-2,
+> embedding-dashboard, dashboard-card-reproductions) — ~73 specs ported, 341 in
+> QUEUE. No product bugs this wave. Bug candidates #1/#3 are both now
+> resolved (#1 confirmed, #3 retracted — see FINDINGS scoreboard). New:
+> `NOTES-parallelism.md` (read-only-pool/seeding analysis for the sample-DB
+> change). **Consolidation pass is now worth doing** — helper duplication
+> (text matchers, findDisplayValue, permissions/dashboard helpers) is piling up
+> across per-agent modules; see the wave-10 FINDINGS entry.
+
 ## Where the work lives
 
 - Branch `playwright-e2e-spike`, PR #77999. Spike package: `e2e-playwright/`.

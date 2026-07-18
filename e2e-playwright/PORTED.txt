@@ -69,3 +69,8 @@ metrics/metrics-explorer.cy.spec.ts
 embedding/interactive-embedding.cy.spec.js
 dashboard-cards/click-behavior.cy.spec.js
 documents/documents.cy.spec.ts
+question/column-compare.cy.spec.ts
+filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+dashboard-cards/dashboard-card-reproductions.cy.spec.js
+embedding/embedding-dashboard.cy.spec.js
+visualizations-tabular/pivot_tables.cy.spec.js

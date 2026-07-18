@@ -608,3 +608,38 @@ lead that survived did so because the agent happened to narrate it out loud.
   (shown via `opacity` alone, which Playwright's visibility ignores),
   `shownAnchorLinkMenu` resolves the `opacity === "1"` menu with `evaluateAll`
   inside an `expect.poll` — build-agnostic.
+
+## Gotchas added in wave 10 (pivot_tables, embedding-dashboard, dashboard-cards/filters reproductions, column-compare)
+
+- **Playwright refuses to click a descendant of an `aria-disabled` ancestor.**
+  An enabled `ActionIcon` (no `disabled` prop, real `onClick`) inside a
+  `Flex[aria-disabled=true]` is treated as disabled by Playwright's
+  actionability; Cypress clicks it fine. When the aria state is the app's
+  intent (verify in the component), use `click({ force: true })`. Distinct from
+  the boolean-`disabled`-attribute gotcha.
+- **Playwright's bundled Chromium ≠ Chrome for pixel/text metrics.** SmartScalar
+  truncation is a JS text-measurement that lands on opposite sides of the
+  boundary in bundled Chromium vs Chrome, so pixel-exact text/truncation
+  assertions are engine-sensitive. The `--browser chrome` cross-check will pass
+  while the Playwright (Chromium) run fails — that's an engine difference, not a
+  bug or drift. `test.fixme` with the cross-check recorded; CI's Playwright leg
+  uses the same Chromium so it can't be green there. Most tests don't care; only
+  pixel-exact text ones do.
+- **dnd-kit resize handles slide as you drag.** The handle's `left =
+  initialWidth + transform.x`, so any approach that re-reads the handle position
+  per pointer-move compounds the delta (a nominal +100 became +120). A
+  fixed-coordinate drag lands short; real-mouse was flaky. Use a pointer helper
+  that re-reads `boundingBox()` before EVERY synthetic pointer event
+  (`moveDnDKitPointer` in pivot-tables.ts). Confirmed against `PivotTableCell.tsx`.
+- **react-virtualized `ScrollSync` grids ignore a synthetic `scrollLeft`.**
+  Setting `scrollLeft` doesn't drive the synced grids; use `hover()` +
+  `mouse.wheel(dx, dy)` instead.
+- **Mantine `Select` option rows can't be clicked even with `force`** (the text
+  div isn't the click target). Open the select, then pick the `role="option"`.
+- **Native-query error/pivot states render only after the query RUNS** — a bare
+  hash `goto` of an ad-hoc native question shows nothing; use
+  `visitNativeQuestionAdhoc` (autorun + runNativeQuery) so the error surfaces.
+- **Another CSS-module vacuous assertion** (`IsSticky`, embedding #66742): the
+  class is minified on the jar bundle, so a class-substring assertion is a
+  no-op in CI — reinforces the "never assert on CSS-module class names; needs a
+  data-* hook" rule.
