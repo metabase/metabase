@@ -31,8 +31,12 @@
 (use-fixtures :each
   (fn [thunk]
     (mt/with-premium-features #{:workspaces}
+      ;; Like the real execute-async!, swallow failures — the workspace status
+      ;; columns are the record of the outcome.
       (with-redefs [provisioning.database/database-provisioner (stub-provisioner)
-                    ws.execute/execute-async!                  (fn [work] (work) nil)]
+                    ws.execute/execute-async!                  (fn [work]
+                                                                 (try (work) (catch Throwable _))
+                                                                 nil)]
         (thunk)))))
 
 (deftest crud-smoke-test
@@ -98,10 +102,12 @@
                                                 {:name "To provision" :database_ids [db-id]})]
           (is (=? {:status         "provisioned"
                    :status_details nil
+                   :instance_url   "https://example.com"
                    :databases      [{:status           "provisioned"
                                      :output_namespace "mb_iso_stub"}]}
                   (mt/user-http-request :crowberto :post 200
-                                        (str "ee/workspace-manager/" ws-id "/provision"))))
+                                        (str "ee/workspace-manager/" ws-id "/provision")))
+              "the stub instance provisioner's url is exposed on the response")
           (testing "404 for a missing workspace"
             (mt/user-http-request :crowberto :post 404 "ee/workspace-manager/13371337/provision")))))))
 
@@ -119,7 +125,7 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   nil))]
           (with-redefs [provisioning.database/database-provisioner boom]
-            (is (=? {:status         "provisioning-failure"
+            (is (=? {:status         "database-provisioning-failure"
                      :status_details "boom"
                      :databases      [{:status         "provisioning-failure"
                                        :status_details "boom"}]}
@@ -145,6 +151,7 @@
             (is (t2/exists? :model/Workspace :id ws-id)))
           (is (=? {:status         "unprovisioned"
                    :status_details nil
+                   :instance_url   nil
                    :databases      [{:status           "unprovisioned"
                                      :output_namespace ""}]}
                   (mt/user-http-request :crowberto :post 200

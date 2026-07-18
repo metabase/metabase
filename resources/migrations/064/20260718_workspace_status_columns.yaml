@@ -49,3 +49,67 @@ databaseChangeLog:
                   remarks: Encrypted details for the current status, e.g. the provisioning failure message
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v64.2026-07-18T10:00:03
+      author: ranquild
+      comment: Add workspace.instance_id
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: instance_id
+                  type: varchar(254)
+                  remarks: External identifier of the provisioned child Metabase instance
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-18T10:00:04
+      author: ranquild
+      comment: Add workspace.instance_url
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: instance_url
+                  type: ${text.type}
+                  remarks: URL of the provisioned child Metabase instance
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-18T10:00:05
+      author: ranquild
+      comment: Widen workspace_database.status for the longer failure statuses
+      changes:
+        - modifyDataType:
+            tableName: workspace_database
+            columnName: status
+            newDataType: varchar(254)
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-07-18T10:00:06
+      author: ranquild
+      comment: Preserve NOT NULL on workspace_database.status after widening
+      changes:
+        - addNotNullConstraint:
+            tableName: workspace_database
+            columnName: status
+            columnDataType: varchar(254)
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-07-18T10:00:07
+      author: ranquild
+      comment: Preserve the default on workspace_database.status after widening
+      changes:
+        - addDefaultValue:
+            tableName: workspace_database
+            columnName: status
+            columnDataType: varchar(254)
+            defaultValue: unprovisioned
+      rollback: []

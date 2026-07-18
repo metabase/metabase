@@ -14,8 +14,12 @@ export type WorkspaceDatabaseStatus =
 export type WorkspaceStatus =
   | "unprovisioned"
   | "provisioning"
-  | "provisioning-failure"
+  | "database-provisioning-failure"
+  | "instance-provisioning"
+  | "instance-provisioning-failure"
   | "provisioned"
+  | "instance-deprovisioning"
+  | "instance-deprovisioning-failure"
   | "deprovisioning"
   | "deprovisioning-failure";
 
@@ -33,6 +37,7 @@ export type Workspace = {
   name: string;
   status: WorkspaceStatus;
   status_details: string | null;
+  instance_url: string | null;
   created_at: string;
   creator_id: UserId;
 

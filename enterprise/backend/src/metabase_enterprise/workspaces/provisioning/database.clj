@@ -21,7 +21,6 @@
   (:require
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -120,26 +119,26 @@
 
 (defn- wsd-lock-key
   "Per-row cluster-lock keyword."
-  [workspace-database-id]
+  [wsd-id]
   (keyword "metabase-enterprise.workspaces.provisioning.database"
-           (str "wsd-" workspace-database-id)))
+           (str "wsd-" wsd-id)))
 
 (defn do-with-workspace-database-lock
-  "Run `thunk` while holding the per-row cluster lock for `workspace-database-id`.
+  "Run `thunk` while holding the per-row cluster lock for `wsd-id`.
    [[provision-database!]]/[[deprovision-database!]] take this same lock
    internally, so the acquisition here is reentrant — it lets a caller atomically
    combine an app-db change with provisioning under a single lock, acquired
    *before* the row is mutated (the lock-before-mutate order the rest of the
    system relies on)."
-  [workspace-database-id thunk]
-  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
+  [wsd-id thunk]
+  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key wsd-id)
                                    :timeout-seconds provisioning-lock-timeout-seconds}
     (thunk)))
 
 (defmacro with-workspace-database-lock
   "Sugar over [[do-with-workspace-database-lock]]."
-  [workspace-database-id & body]
-  `(do-with-workspace-database-lock ~workspace-database-id (fn [] ~@body)))
+  [wsd-id & body]
+  `(do-with-workspace-database-lock ~wsd-id (fn [] ~@body)))
 
 ;;; ---------------------------------------------- Implementation ----------------------------------------------------
 
@@ -147,8 +146,8 @@
   "The synthetic workspace map from which all warehouse identifiers for a
   WorkspaceDatabase row are derived. Every provision/deprovision path must build
   the exact same map — deprovision recomputes what provision computed."
-  [workspace-database-id]
-  {:id workspace-database-id :name (str "wsd-" workspace-database-id)})
+  [wsd-id]
+  {:id wsd-id :name (str "wsd-" wsd-id)})
 
 (defn- iso-db-slot
   "Value of the `:db` AST slot a `TableRemapping.to_db` carries for `database`'s
@@ -179,16 +178,16 @@
                :to_db       (iso-db-slot database)
                :to_schema   (or output-namespace ""))))
 
-(mu/defn provision-database! :- ::ws.schema/workspace-database
+(mu/defn provision-database! :- :nil
   "Provision an isolated output schema and user for one WorkspaceDatabase row
    (blocking). No-op when the row is already `:provisioned`, so retries are safe.
    State transitions: `:provisioning` -> `:provisioned` on success, or
    `:provisioning-failure` with the error message in `:status_details` on failure
    — no rollback, the error is rethrown and a later retry picks up from whatever
    state the warehouse is in."
-  ([workspace-database]
-   (provision-database! workspace-database database-provisioner))
-  ([{wsd-id :id} :- ::ws.schema/workspace-database
+  ([wsd-id]
+   (provision-database! wsd-id database-provisioner))
+  ([wsd-id :- pos-int?
     provisioner]
    (when-not (= :provisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :provisioning, :status_details nil})
@@ -209,9 +208,9 @@
          (t2/update! :model/WorkspaceDatabase wsd-id
                      {:status :provisioning-failure, :status_details (ex-message t)})
          (throw t))))
-   (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+   nil))
 
-(mu/defn deprovision-database! :- ::ws.schema/workspace-database
+(mu/defn deprovision-database! :- :nil
   "Tear down the warehouse isolation of one WorkspaceDatabase row (blocking).
    No-op when the row is already `:unprovisioned`, so retries are safe. Works
    from ANY other state: warehouse identifiers are the persisted ones, or
@@ -226,9 +225,9 @@
    App-DB `TableRemapping` rows for the row's iso namespace are ALWAYS cleared,
    even when the warehouse teardown fails partway — stale remappings would
    rewrite queries to a dropped schema and 500 the QP."
-  ([workspace-database]
-   (deprovision-database! workspace-database database-provisioner))
-  ([{wsd-id :id} :- ::ws.schema/workspace-database
+  ([wsd-id]
+   (deprovision-database! wsd-id database-provisioner))
+  ([wsd-id :- pos-int?
     provisioner]
    (when-not (= :unprovisioned (t2/select-one-fn :status :model/WorkspaceDatabase :id wsd-id))
      (t2/update! :model/WorkspaceDatabase wsd-id {:status :deprovisioning, :status_details nil})
@@ -263,4 +262,4 @@
          (t2/update! :model/WorkspaceDatabase wsd-id
                      {:status :deprovisioning-failure, :status_details (ex-message t)})
          (throw t))))
-   (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+   nil))

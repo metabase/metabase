@@ -62,6 +62,7 @@
    [:name           ms/NonBlankString]
    [:status         ::ws.schema/workspace-status]
    [:status_details [:maybe :string]]
+   [:instance_url   [:maybe :string]]
    [:creator        [:maybe CreatorResponse]]
    [:created_at     DateTimeWithTimeZone]
    [:updated_at     DateTimeWithTimeZone]
@@ -83,7 +84,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :status :status_details :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :status :status_details :instance_url :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
@@ -139,9 +140,9 @@
   `:status` (`:provisioned` on success, `:provisioning-failure` with the error
   message in `:status_details` on the first database failure)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)]
-    (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws))
-    (present-workspace (api/check-404 (workspace/get-workspace id)))))
+  (api/write-check :model/Workspace id)
+  (ws.execute/execute-async! #(ws.provisioning/provision-workspace! id))
+  (present-workspace (api/check-404 (workspace/get-workspace id))))
 
 (api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
   "Start deprovisioning the workspace's databases in the background and return
@@ -150,6 +151,6 @@
   `:status` (`:unprovisioned` on success, `:deprovisioning-failure` with the
   error message in `:status_details` on the first database failure)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)]
-    (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws))
-    (present-workspace (api/check-404 (workspace/get-workspace id)))))
+  (api/write-check :model/Workspace id)
+  (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! id))
+  (present-workspace (api/check-404 (workspace/get-workspace id))))

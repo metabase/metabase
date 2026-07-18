@@ -106,7 +106,7 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning.database/provision-database! {:id wsd-id}))))
+      (provisioning.database/provision-database! wsd-id))))
 
 (defn- cleanup-workspace!
   "Best-effort test cleanup: deprovision every database (destroys the warehouse
@@ -115,8 +115,11 @@
    fall back to force-clearing the rows — otherwise the `mt/with-temp Database`
    cleanup can't complete."
   [ws-id]
-  (when-let [ws (t2/select-one :model/Workspace :id ws-id)]
-    (provisioning/deprovision-workspace! ws)
+  (when (t2/exists? :model/Workspace :id ws-id)
+    (try
+      (provisioning/deprovision-workspace! ws-id)
+      (catch Throwable t
+        (log/warnf t "deprovision-workspace! failed during cleanup for workspace %d" ws-id)))
     (try
       (workspace/delete-workspace! ws-id)
       (catch Throwable t

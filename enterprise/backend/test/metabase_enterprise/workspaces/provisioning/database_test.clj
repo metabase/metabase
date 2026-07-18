@@ -144,7 +144,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"warehouse teardown blew up"
-               (provisioning.database/deprovision-database! {:id wsd-id} failing-provisioner))
+               (provisioning.database/deprovision-database! wsd-id failing-provisioner))
               "deprovision rethrows the destroy failure so the caller knows"))
         (is (zero? (count (ws.table-remapping/all-mappings-for-db db-id)))
             "remap rows must be cleared even when destroy! threw -- otherwise canonical-table queries 500")

@@ -13,47 +13,63 @@
    the failure message in `:status_details`."
   (:require
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
+   [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
    [metabase-enterprise.workspaces.schema :as ws.schema]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- workspace-databases [workspace-id]
-  (t2/select :model/WorkspaceDatabase :workspace_id workspace-id {:order-by [[:id :asc]]}))
+(defn- workspace-database-ids [ws-id]
+  (t2/select-pks-vec :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
 
 (mu/defn- set-workspace-status! :- :nil
-  [workspace-id :- pos-int?
+  [ws-id :- pos-int?
    status :- ::ws.schema/workspace-status
    status-details :- [:maybe :string]]
-  (t2/update! :model/Workspace workspace-id {:status status, :status_details status-details})
+  (t2/update! :model/Workspace ws-id {:status status, :status_details status-details})
   nil)
 
 (mu/defn provision-workspace! :- :nil
-  "Provision every database of `workspace` (blocking) and drive the workspace's
-   `:status` through the lifecycle. Stops on the first database failure, leaving
-   the workspace `:provisioning-failure` with the failure message in
-   `:status_details`. Safe to retry from any status."
-  [{ws-id :id} :- ::ws.schema/workspace]
+  "Provision the workspace (blocking) and drive its `:status` through the
+   lifecycle: provision every database (`:provisioning`), then the child
+   instance (`:instance-provisioning`), ending `:provisioned`. Stops on the
+   first failure, leaving the workspace in the phase's failure status with the
+   failure message in `:status_details`, and rethrows. Safe to retry from any
+   status — work that already succeeded is skipped."
+  [ws-id :- pos-int?]
   (set-workspace-status! ws-id :provisioning nil)
   (try
-    (run! provisioning.database/provision-database! (workspace-databases ws-id))
-    (set-workspace-status! ws-id :provisioned nil)
+    (run! provisioning.database/provision-database! (workspace-database-ids ws-id))
     (catch Throwable t
-      (log/warnf t "Failed to provision workspace %s" ws-id)
-      (set-workspace-status! ws-id :provisioning-failure (ex-message t)))))
+      (set-workspace-status! ws-id :database-provisioning-failure (ex-message t))
+      (throw t)))
+  (set-workspace-status! ws-id :instance-provisioning nil)
+  (try
+    (provisioning.instance/provision-instance! ws-id)
+    (catch Throwable t
+      (set-workspace-status! ws-id :instance-provisioning-failure (ex-message t))
+      (throw t)))
+  (set-workspace-status! ws-id :provisioned nil))
 
 (mu/defn deprovision-workspace! :- :nil
-  "Deprovision every database of `workspace` (blocking) and drive the workspace's
-   `:status` through the lifecycle, ending `:unprovisioned`. Stops on the first
-   database failure, leaving the workspace `:deprovisioning-failure` with the
-   failure message in `:status_details`. Safe to retry from any status."
-  [{ws-id :id} :- ::ws.schema/workspace]
+  "Deprovision the workspace (blocking) and drive its `:status` through the
+   lifecycle: delete the child instance (`:instance-deprovisioning`), then
+   deprovision every database (`:deprovisioning`), ending `:unprovisioned`.
+   Stops on the first failure, leaving the workspace in the phase's failure
+   status with the failure message in `:status_details`, and rethrows. Safe to
+   retry from any status — work that already succeeded is skipped."
+  [ws-id :- pos-int?]
+  (set-workspace-status! ws-id :instance-deprovisioning nil)
+  (try
+    (provisioning.instance/deprovision-instance! ws-id)
+    (catch Throwable t
+      (set-workspace-status! ws-id :instance-deprovisioning-failure (ex-message t))
+      (throw t)))
   (set-workspace-status! ws-id :deprovisioning nil)
   (try
-    (run! provisioning.database/deprovision-database! (workspace-databases ws-id))
-    (set-workspace-status! ws-id :unprovisioned nil)
+    (run! provisioning.database/deprovision-database! (workspace-database-ids ws-id))
     (catch Throwable t
-      (log/warnf t "Failed to deprovision workspace %s" ws-id)
-      (set-workspace-status! ws-id :deprovisioning-failure (ex-message t)))))
+      (set-workspace-status! ws-id :deprovisioning-failure (ex-message t))
+      (throw t)))
+  (set-workspace-status! ws-id :unprovisioned nil))
