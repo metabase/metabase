@@ -5,6 +5,10 @@ import { SAMPLE_DB_ID } from "./sample-data";
 type RequestOptions = {
   data?: unknown;
   failOnStatusCode?: boolean;
+  /** Per-request timeout (ms). Defaults to Playwright's APIRequestContext
+   * default (30s) — too tight for heavy ops like snapshot restore under
+   * parallel CI load, so those pass an explicit larger value. */
+  timeout?: number;
 };
 
 /**
@@ -25,12 +29,13 @@ export class MetabaseApi {
   async fetch(
     method: "GET" | "POST" | "PUT" | "DELETE",
     url: string,
-    { data, failOnStatusCode = true }: RequestOptions = {},
+    { data, failOnStatusCode = true, timeout }: RequestOptions = {},
   ) {
     const sessionId = this.getSessionId();
     const response = await this.request.fetch(url, {
       method,
       data,
+      timeout,
       headers: sessionId ? { "X-Metabase-Session": sessionId } : {},
     });
     if (failOnStatusCode) {
@@ -58,12 +63,19 @@ export class MetabaseApi {
 
   // === ports of e2e/support/helpers/e2e-setup-helpers.js ===
 
-  /** Restore an app-DB snapshot (H2 RUNSCRIPT on the backend). */
+  /** Restore an app-DB snapshot (H2 RUNSCRIPT on the backend).
+   * Restore is heavy and, on a contended w2 CI runner, can exceed Playwright's
+   * 30s default request timeout — which surfaced as a flaky beforeEach
+   * "apiRequestContext.fetch: Timeout 30000ms" on whichever spec drew the slow
+   * slot (navbar:128 on the wave-10 s4 shard). Give it a generous timeout. */
   async restore(name = "default") {
     await this.post("/api/testing/reset-throttlers", undefined, {
       failOnStatusCode: false,
+      timeout: 120_000,
     });
-    await this.post(`/api/testing/restore/${name}`);
+    await this.post(`/api/testing/restore/${name}`, undefined, {
+      timeout: 120_000,
+    });
   }
 
   async snapshot(name: string) {

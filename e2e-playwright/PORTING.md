@@ -643,3 +643,14 @@ lead that survived did so because the agent happened to narrate it out loud.
   class is minified on the jar bundle, so a class-substring assertion is a
   no-op in CI — reinforces the "never assert on CSS-module class names; needs a
   data-* hook" rule.
+
+## Gotcha: restore() can exceed the 30s default request timeout under w2 CI load
+
+A snapshot `restore()` is heavy, and on a contended 2-worker CI runner it can
+take >30s — Playwright's `APIRequestContext.fetch` default. (`actionTimeout`
+does NOT apply to API fetches.) This surfaced as a flaky `beforeEach`
+"apiRequestContext.fetch: Timeout 30000ms exceeded → POST
+/api/testing/restore/default" on whichever spec happened to draw the slow slot
+(navbar:128 on the wave-10 s4 shard — NOT a navbar bug). `api.restore()` now
+passes an explicit 120s timeout. If you add other heavy testing-API calls,
+give them an explicit `timeout` too — don't rely on the 30s default.
