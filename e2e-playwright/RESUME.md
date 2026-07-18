@@ -258,12 +258,14 @@ in landed code.
    moves ground under ~60 landed specs, so it needs a full-suite revalidation —
    do it as its own task, not mid-wave.
 
-4. **The two surviving product-bug candidates (#1, #3) are NOT jar-verified.**
-   Five bug claims were retracted this session; #1 (SearchBar Enter race) and #3
-   (`restore()` killing the search index) have not been through the same jar +
-   `--browser chrome` gauntlet. Until they have, they are unverified — do not
-   cite them as confirmed. **This is the highest-value next step before taking
-   the case to colleagues.**
+4. **Bug candidates #1 and #3 — JAR-VERIFIED 2026-07-18. Done.** #1 (embedded
+   SearchBar Enter race) **reproduces on the jar** and is a real, embedding-
+   scoped bug (sharpened: user lands on /search instead of the highlighted
+   result). #3 (`restore()` killing the search index) **does not reproduce**
+   (7 probe runs, index populated every time) and was test-infra not
+   user-facing — retracted. Net: one confirmed product bug (#1), six retracted.
+   See FINDINGS.md #1 and #3. Remaining owed for #1: the Cypress cross-check
+   that corroborates *why Cypress masked it* (the bug itself is confirmed).
 
 5. **Sharding follow-ups.** The 4-way split is count/order-based, not
    duration-balanced, so a shard drawing several huge specs can run long; bump

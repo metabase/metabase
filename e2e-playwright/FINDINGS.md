@@ -6,16 +6,21 @@ dividend found during porting gets an entry here in the same PR.**
 
 ## Scoreboard — read this before quoting numbers
 
-**Product bugs: 1 jar-CONFIRMED (#1), 1 still unverified (#3), 5 retracted (#2,
-#22, #24, `dashboard-parameters` field-61, `dashboard-reproductions` 12926).**
-#1 was put through the jar gauntlet 2026-07-18 and **reproduces on the
-production bundle** (details in #1). #3 has not been jar-verified yet — treat as
-unverified. Everything retracted rested on a `parameters: []` / load-path /
-"Cypress fails identically" observation: re-checked against the CI uberjar with
-Chrome cross-checks, none reproduced. They died to one shared mechanism — a code
-path we didn't know about masked the difference we were measuring, and we read
-the gap as an app bug (see #31 for the full pattern and why jar-mode
-verification now prevents it).
+**Product bugs: 1 jar-CONFIRMED (#1), 6 retracted (#2, #3, #22, #24,
+`dashboard-parameters` field-61, `dashboard-reproductions` 12926).** Every claim
+was put through the jar gauntlet. **#1 reproduces on the production bundle** — a
+real, precisely-scoped embedding bug (details in #1). Everything else was
+retracted after it failed to reproduce against the CI uberjar: the
+`parameters: []` / load-path / "Cypress fails identically" cluster (#2, #22,
+#24, field-61, 12926) died to one shared mechanism — a code path we didn't know
+about masked the difference we measured (see #31) — and #3 (search-index drop)
+simply doesn't reproduce and was test-infra, not user-facing, to begin with.
+
+The honest headline is **one confirmed bug**, not a count — and it's the right
+one to lead with because it's verified and scoped. The stronger case for the
+migration is the capability + test-quality evidence below (isolation, real
+iframes/downloads, strictly-stronger and de-vacuoused tests), which doesn't
+depend on bug count and survived the same scrutiny.
 
 **Do not quote a bug count from an un-cross-checked observation.** The honest,
 defensible case for migration does not rest on bug count — it rests on
@@ -108,15 +113,27 @@ highest-value next step for anyone making this case to colleagues.
 
    See `findings-inbox/findings-2-22-reverification.md` for the evidence.
 
-3. **`restore()` can silently kill the search index** (found via joins +
-   metrics ports; almost certainly explains a class of *existing Cypress CI
-   search flakes*). Back-to-back app-DB restores can drop the async
-   search-index rebuild trigger entirely; the FE then renders permanent
-   empty search states ("No search results" in pickers, "Search Index not
-   found" on browse pages) because it never re-queries. Also: the rebuild
-   indexes cards before tables, so "search works" for cards while table
-   search is still broken. Harness fix: post-restore poll +
-   `POST /api/search/force-reindex` escalation (`fixtures.ts`).
+3. ~~**`restore()` can silently kill the search index**~~ **RETRACTED as a
+   product bug 2026-07-18 — does not reproduce, and was never user-facing.**
+   Original claim: back-to-back `/api/testing/restore` calls drop the async
+   search-index rebuild, leaving table search permanently empty until a
+   force-reindex.
+
+   Probed against the CI uberjar (slot 13, jar mode): two back-to-back raw
+   restores, then poll `GET /api/search?q=Reviews&models=table` for 25s with no
+   force-reindex — **7 runs (incl. a cold path that never force-reindexes), the
+   table index was populated at t=0 every time, zero drops.** The likely reason
+   the harness once needed the mitigation no longer bites: the current
+   (regenerated) snapshots ship a persisted index, so restore repopulates it
+   immediately — there's no rebuild window to lose.
+
+   Two honest caveats: (a) `/api/testing/restore` is a **test-only** endpoint,
+   so even if it reproduced this was never a user-facing product bug — it was
+   miscategorized here; (b) I probed the backend index via the API, not the
+   exact original FE empty-state scenario (observed in the source/hot-bundle
+   era). The `fixtures.ts` poll+force-reindex mitigation is **kept** — it's
+   cheap (exits on the first iteration when the index is present, as the probe
+   confirms) and harmless defense — but this should not be cited as a bug.
 
 ## Tests that got strictly stronger in the port
 
