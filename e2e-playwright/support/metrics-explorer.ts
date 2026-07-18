@@ -206,30 +206,41 @@ export function echartsTooltip(page: Page): Locator {
 }
 
 /**
- * Hover a cartesian chart point until the ECharts tooltip appears, and return
- * the (visible) tooltip locator.
+ * Hover a cartesian chart point until the ECharts tooltip shows `expectedText`,
+ * and return the (visible) tooltip locator.
  *
- * ECharts tooltips are hover-state-dependent, and after a breakout/legend
- * change the chart animates its points into place. A one-shot
- * `circle.nth(i).hover()` can fire while the point is still moving, land on
- * empty canvas, and show no tooltip — with nothing to retrigger it. This flaked
- * only under CI load (metrics-explorer.spec.ts:1131 on the sharded run); it
- * passed locally because the animation had settled by hover time. Retrying the
- * hover re-aims at the point's current position until the tooltip is up. The
- * assertion is not weakened — callers still check the exact tooltip text.
+ * Two CI-only failure modes make a plain `circle.nth(i).hover()` +
+ * `expect(tooltip.getByText(...)).toBeVisible()` flaky, both from the chart
+ * still moving after a breakout/metric change re-renders it:
+ *   1. the hover fires while the point is animating, lands on empty canvas, and
+ *      no tooltip appears (metrics-explorer:1131 on the first sharded run);
+ *   2. the tooltip flashes up — passing a container-only check — then ECharts
+ *      hides it again before the caller asserts the text, so the DOM snapshot
+ *      at failure shows no tooltip at all (metrics-explorer:1220 on the second).
+ * Both passed locally because the animation had settled by hover time.
+ *
+ * So: wait for the chart to go interactive, then retry the *entire*
+ * hover-and-assert-text as one unit — a tooltip that vanishes is simply
+ * re-triggered on the next attempt. The assertion is not weakened: the exact
+ * text must be visible for the retry to succeed. Callers add their negative
+ * assertions (stale name absent) after, on the now-stable tooltip.
  */
 export async function hoverChartPointForTooltip(
   page: Page,
+  expectedText: string,
   index = 4,
 ): Promise<Locator> {
+  await ensureChartIsActive(page);
   const tooltip = echartsTooltip(page);
   await expect(async () => {
     // Nudge the mouse off-point first so each attempt is a fresh mousemove
     // even when the point hasn't moved (ECharts ignores zero-delta moves).
     await page.mouse.move(0, 0);
     await cartesianChartCircles(page).nth(index).hover({ force: true });
-    await expect(tooltip).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
+    await expect(tooltip.getByText(expectedText, { exact: true })).toBeVisible({
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 20_000 });
   return tooltip;
 }
 

@@ -1152,10 +1152,10 @@ test.describe("scenarios > metrics > explorer", () => {
       await expect(legend.getByText(/Test Measure/)).toHaveCount(0);
 
       // Chart tooltip should display the custom name
-      const chartTooltip = await hoverChartPointForTooltip(page);
-      await expect(
-        chartTooltip.getByText("My Custom Expression", { exact: true }),
-      ).toBeVisible();
+      const chartTooltip = await hoverChartPointForTooltip(
+        page,
+        "My Custom Expression",
+      );
       await expect(chartTooltip.getByText(/Test Measure/)).toHaveCount(0);
     });
 
@@ -1206,15 +1206,13 @@ test.describe("scenarios > metrics > explorer", () => {
       ).toHaveCount(2);
 
       // Tooltip should use the formula-derived name, not the old custom name
-      const chartTooltip = await hoverChartPointForTooltip(page);
+      const chartTooltip = await hoverChartPointForTooltip(
+        page,
+        "Count of orders + Test Measure",
+      );
       await expect(
         chartTooltip.getByText("Temporary Name", { exact: true }),
       ).toHaveCount(0);
-      await expect(
-        chartTooltip.getByText("Count of orders + Test Measure", {
-          exact: true,
-        }),
-      ).toBeVisible();
     });
 
     test("should preserve custom name when re-running with the same expression", async ({
@@ -1246,10 +1244,10 @@ test.describe("scenarios > metrics > explorer", () => {
       );
 
       // Tooltip should display the preserved custom name
-      const chartTooltip = await hoverChartPointForTooltip(page);
-      await expect(
-        chartTooltip.getByText("My Stable Name", { exact: true }),
-      ).toBeVisible();
+      const chartTooltip = await hoverChartPointForTooltip(
+        page,
+        "My Stable Name",
+      );
       await expect(chartTooltip.getByText(/Test Measure/)).toHaveCount(0);
     });
 

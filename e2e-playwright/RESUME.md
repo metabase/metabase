@@ -205,20 +205,27 @@ switched from the workers `[1,2]` A/B to a **4-way spec shard** (workers=2 per
 shard). Nothing is running. The items below are open and none is a regression
 in landed code.
 
-1. **`metrics-explorer.spec.ts` ECharts tooltip hover — FIXED 2026-07-18
-   (pending CI confirmation).** Run 29616824640 shard s3 failed "should revert
-   to formula text when custom name is cleared" on a `toBeVisible` timeout for
-   `echarts-tooltip`. Root cause (from the s3 trace): the test does a one-shot
-   `cartesianChartCircles.nth(4).hover()` right after a breakout, and on slower
-   CI the chart is still animating its points into place — the hover lands on
-   empty canvas, ECharts shows no tooltip, and nothing retriggers it. Passed
-   locally only because the animation had settled by hover time. Fixed with
-   `hoverChartPointForTooltip` (`support/metrics-explorer.ts`), a `toPass` retry
-   that re-aims the hover until the tooltip is up; applied to all three
-   identical hover sites (1123/1178/1219), not just the one that flaked.
-   Verified locally 18/18 under `--repeat-each=3`. The assertion is unchanged —
-   callers still check exact tooltip text. CI is the real repro (can't
-   reproduce the 4vCPU timing locally), so confirm on the next sharded run.
+1. **`metrics-explorer.spec.ts` ECharts tooltip hover — FIX v2 2026-07-18
+   (pending CI confirmation).** The three "Expression custom names" tooltip
+   tests (now ~1155/1209/1247) are all flaky on CI because the chart is still
+   animating after a breakout/metric change when the test hovers a point. Two
+   distinct failure modes, seen on two sharded runs:
+   - 29616824640 s3: hover lands on a moving point → no tooltip at all
+     ("should revert to formula text…", :1131).
+   - 29624367644 s3: tooltip flashes up then ECharts hides it again before the
+     text assertion → DOM snapshot shows no tooltip ("should preserve custom
+     name when re-running…", :1220).
+
+   **v1** (container-anchored `toPass` retry) fixed the first but not the
+   second — it returned as soon as the tooltip box appeared, which the transient
+   tooltip then outlived. **v2** anchors the retry on the *exact expected text*
+   and calls `ensureChartIsActive` first, so the whole hover-and-assert-text
+   re-runs as one unit (a vanished tooltip is simply re-triggered) and the chart
+   is settled before the first hover. Signature is now
+   `hoverChartPointForTooltip(page, expectedText, index=4)`; callers moved their
+   positive text assertion into the helper and keep the negative one after.
+   Verified locally 24/24 under `--repeat-each=4`. Still can't reproduce the
+   4vCPU timing locally, so CI is the validator — watch the next s3.
 
 2. **Per-worker backend died mid-run on shard s3 — infra flake.** Two
    `documents` tests failed in 2–3ms with `Worker 0/1 backend exited (code 0)`
