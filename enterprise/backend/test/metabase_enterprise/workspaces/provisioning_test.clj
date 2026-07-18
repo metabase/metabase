@@ -1,4 +1,4 @@
-(ns metabase-enterprise.workspaces.provisioning-test
+(ns ^:synchronous metabase-enterprise.workspaces.provisioning-test
   "Tests for the workspace programmatic API and lifecycle rules. Exercises the
    module surface through the [[metabase-enterprise.workspaces.core]] re-exports."
   (:require
@@ -7,7 +7,6 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
-   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -18,20 +17,29 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- with-premium-feature [f]
-  (mt/with-premium-features #{:workspaces}
-    (f)))
-
-(use-fixtures :each with-premium-feature)
-
-;;; Stub provisioner: records calls but doesn't hit real drivers.
-(defn- stub-provisioner []
+(def ^:private stub-database-provisioner
+  "Fixture default: no real warehouse DDL in tests. Tests that assert failure
+   behavior install their own provisioner via `with-redefs`."
   (reify provisioning.database/DatabaseProvisioner
     (details [_ _ _ _]
       {:schema "mb_iso_stub" :database_details {:user "stub_user" :password "stub_pass"}})
     (init! [_ _ _ _] nil)
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
+
+(def ^:private noop-instance-provisioner
+  "Fixture default: workspace creates never reach for Harbormaster in tests.
+   Tests that assert instance behavior install their own stub via `with-redefs`."
+  (reify provisioning.instance/InstanceProvisioner
+    (create! [_this _workspace _config] nil)
+    (delete! [_this _workspace] nil)))
+
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-premium-features #{:workspaces}
+      (with-redefs [provisioning.database/database-provisioner stub-database-provisioner
+                    provisioning.instance/instance-provisioner noop-instance-provisioner]
+        (thunk)))))
 
 ;;; ----------------------------------------------- CRUD -------------------------------------------------------
 
@@ -83,7 +91,7 @@
                                       (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
                                       (grant!   [_ _ _ _ _] nil)
                                       (destroy! [_ _ _ _]   nil))]
-            (with-redefs [provisioning.database/dispatching-database-provisioner failing-provisioner]
+            (with-redefs [provisioning.database/database-provisioner failing-provisioner]
               (is (thrown-with-msg? ExceptionInfo #"boom"
                                     (ws/create-workspace! {:name         "Boom"
                                                            :creator_id   (mt/user->id :crowberto)
@@ -98,7 +106,7 @@
                          (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
                          (grant!   [_ _ _ _ _] nil)
                          (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
-            (with-redefs [provisioning.database/dispatching-database-provisioner wedged]
+            (with-redefs [provisioning.database/database-provisioner wedged]
               (is (=? {:name      "Wedged"
                        :databases [{:status :unprovisioned}]}
                       (ws/create-workspace! {:name         "Wedged"
@@ -112,18 +120,16 @@
                       (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
                   "the row whose teardown failed is kept, forced :unprovisioned")
               ;; retry the teardown via delete once the warehouse is back
-              (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-                (is (nil? (ws/delete-workspace! ws))))
+              (is (nil? (ws/delete-workspace! ws)))
               (is (nil? (ws/get-workspace (:id ws)))))))
         (testing "success: the attached database comes back :provisioned"
-          (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-            (let [ws (ws/create-workspace! {:name         "Provisioned"
-                                            :creator_id   (mt/user->id :crowberto)
-                                            :database_ids [db-id]})]
-              (is (=? [{:database_id   db-id
-                        :input_schemas ["public"]
-                        :status        :provisioned}]
-                      (:databases ws))))))))))
+          (let [ws (ws/create-workspace! {:name         "Provisioned"
+                                          :creator_id   (mt/user->id :crowberto)
+                                          :database_ids [db-id]})]
+            (is (=? [{:database_id   db-id
+                      :input_schemas ["public"]
+                      :status        :provisioned}]
+                    (:databases ws)))))))))
 
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
@@ -144,10 +150,8 @@
   (testing "delete deprovisions all databases first"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-          (add-database! (:id ws) (mt/id) ["PUBLIC"]))
-        (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-          (ws/delete-workspace! ws))
+        (add-database! (:id ws) (mt/id) ["PUBLIC"])
+        (ws/delete-workspace! ws)
         (is (nil? (ws/get-workspace (:id ws)))))))
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
@@ -162,8 +166,7 @@
         (mt/with-model-cleanup [:model/Workspace]
           (let [ws     (ws/create-workspace! {:name       (str "Pending " (name pending-status))
                                               :creator_id (mt/user->id :crowberto)})
-                _      (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-                         (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                _      (add-database! (:id ws) (mt/id) ["PUBLIC"])
                 wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
             ;; force the row into the pending state. :provisioning rows that crashed
             ;; never stored their iso details, so clear them too.
@@ -177,7 +180,7 @@
                                (init!    [_ _ _ _]   nil)
                                (grant!   [_ _ _ _ _] nil)
                                (destroy! [_ _ _ _]   (reset! destroyed? true) nil))]
-              (with-redefs [provisioning.database/dispatching-database-provisioner recording]
+              (with-redefs [provisioning.database/database-provisioner recording]
                 (is (nil? (ws/delete-workspace! ws))))
               (is (true? @destroyed?)
                   "pending rows get a real warehouse teardown, not an app-DB-only removal")
@@ -188,15 +191,14 @@
   (testing "when teardown fails, nothing is deleted: the row and the workspace are kept for retry"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
-            _      (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-                     (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+            _      (add-database! (:id ws) (mt/id) ["PUBLIC"])
             wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
             boom   (reify provisioning.database/DatabaseProvisioner
                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                      (init!    [_ _ _ _]   nil)
                      (grant!   [_ _ _ _ _] nil)
                      (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
-        (with-redefs [provisioning.database/dispatching-database-provisioner boom]
+        (with-redefs [provisioning.database/database-provisioner boom]
           (is (thrown-with-msg? ExceptionInfo #"Connection refused"
                                 (ws/delete-workspace! ws))
               "the combined teardown failure is thrown, carrying what the database returned"))
@@ -206,8 +208,7 @@
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
             "the failed row is kept, forced :unprovisioned")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
-          (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-            (is (nil? (ws/delete-workspace! ws))))
+          (is (nil? (ws/delete-workspace! ws)))
           (is (nil? (ws/get-workspace (:id ws))))
           (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))
 
@@ -218,15 +219,14 @@
                                                  :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [ws   (ws/create-workspace! {:name "Multi fail" :creator_id (mt/user->id :crowberto)})
-              _    (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-                     (add-database! (:id ws) (mt/id) ["PUBLIC"])
-                     (add-database! (:id ws) db2-id ["public"]))
+              _    (do (add-database! (:id ws) (mt/id) ["PUBLIC"])
+                       (add-database! (:id ws) db2-id ["public"]))
               boom (reify provisioning.database/DatabaseProvisioner
                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                      (init!    [_ _ _ _]   nil)
                      (grant!   [_ _ _ _ _] nil)
                      (destroy! [_ _ db _]  (throw (ex-info (str "down: " (:id db)) {}))))
-              e    (with-redefs [provisioning.database/dispatching-database-provisioner boom]
+              e    (with-redefs [provisioning.database/database-provisioner boom]
                      (try
                        (ws/delete-workspace! ws)
                        nil
@@ -241,8 +241,7 @@
               "the remaining failures are suppressed")
           (is (= 2 (t2/count :model/WorkspaceDatabase :workspace_id (:id ws)))
               "both rows are kept for retry")
-          (with-redefs [provisioning.database/dispatching-database-provisioner (stub-provisioner)]
-            (is (nil? (ws/delete-workspace! ws)))))))))
+          (is (nil? (ws/delete-workspace! ws))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 
@@ -271,31 +270,19 @@
       nil)))
 
 (deftest create-workspace-deploys-instance-test
-  (testing "when workspace-deployment-enabled is set, create deploys an instance and persists its id/url"
+  (testing "create provisions a child instance and persists its id/url"
     (mt/with-model-cleanup [:model/Workspace]
       (let [calls (atom [])]
-        (with-redefs [ws.settings/workspace-instance-provisioning-enabled (constantly true)
-                      provisioning.instance/hm-provisioner                (stub-instance-provisioner calls)]
+        (with-redefs [provisioning.instance/instance-provisioner (stub-instance-provisioner calls)]
           (let [ws (ws/create-workspace! {:name "Deployed" :creator_id (mt/user->id :crowberto)})]
             (is (= [[:create! (:id ws)]] @calls))
             (is (= "hm-stub-1" (:instance_id ws)))
             (is (= "https://child.example.com" (:instance_url ws)))))))))
 
-(deftest create-workspace-deployment-disabled-test
-  (testing "with the setting off (the default), create never touches the instance provisioner"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [calls (atom [])]
-        (with-redefs [provisioning.instance/hm-provisioner (stub-instance-provisioner calls)]
-          (let [ws (ws/create-workspace! {:name "Undeployed" :creator_id (mt/user->id :crowberto)})]
-            (is (= [] @calls))
-            (is (nil? (:instance_id ws)))
-            (is (nil? (:instance_url ws)))))))))
-
 (deftest create-workspace-deployment-failure-is-best-effort-test
   (testing "a deployment failure never fails the create — the workspace comes back without an instance"
     (mt/with-model-cleanup [:model/Workspace]
-      (with-redefs [ws.settings/workspace-instance-provisioning-enabled (constantly true)
-                    provisioning.instance/hm-provisioner
+      (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_this _workspace _config] (throw (ex-info "HM down" {})))
                       (delete! [_this _workspace] nil))]
@@ -311,7 +298,7 @@
             ws    (ws/create-workspace! {:name "To undeploy" :creator_id (mt/user->id :crowberto)})]
         (t2/update! :model/Workspace (:id ws) {:instance_id  "hm-stub-9"
                                                :instance_url "https://child.example.com"})
-        (with-redefs [provisioning.instance/hm-provisioner (stub-instance-provisioner calls)]
+        (with-redefs [provisioning.instance/instance-provisioner (stub-instance-provisioner calls)]
           (is (nil? (ws/delete-workspace! (t2/select-one :model/Workspace :id (:id ws))))))
         (is (= [[:delete! (:id ws) "hm-stub-9"]] @calls))
         (is (nil? (ws/get-workspace (:id ws))))))))
@@ -322,7 +309,7 @@
       (let [ws (ws/create-workspace! {:name "Sticky" :creator_id (mt/user->id :crowberto)})]
         (t2/update! :model/Workspace (:id ws) {:instance_id  "hm-stub-9"
                                                :instance_url "https://child.example.com"})
-        (with-redefs [provisioning.instance/hm-provisioner
+        (with-redefs [provisioning.instance/instance-provisioner
                       (reify provisioning.instance/InstanceProvisioner
                         (create! [_this _workspace _config] nil)
                         (delete! [_this _workspace] (throw (ex-info "HM unreachable" {}))))]

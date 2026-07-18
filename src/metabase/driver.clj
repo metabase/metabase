@@ -2048,7 +2048,7 @@
 
    Callers are expected to bind [[metabase.driver.connection/with-admin-connection]]
    around this call so connections resolve against the database's `:admin-details`
-   overlay when configured. The default `dispatching-database-provisioner` in
+   overlay when configured. The default `database-provisioner` in
    `metabase-enterprise.workspaces.provisioning.database` does this; do not rely on
    default connection details from inside impls."
   {:added "0.59.0" :arglists '([driver database workspace])}

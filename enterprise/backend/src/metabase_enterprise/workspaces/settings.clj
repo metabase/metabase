@@ -13,17 +13,6 @@
   :export?        false
   :database-local :only)
 
-(defsetting workspace-instance-provisioning-enabled
-  (deferred-tru "Whether to provision a child Metabase instance for each workspace.")
-  :type       :boolean
-  :default    false
-  :setter     :none
-  :feature    :workspaces
-  :visibility :internal
-  :export?    false
-  :audit      :never
-  :doc        false)
-
 (defsetting instance-workspace
   (deferred-tru "The workspace loaded on this instance. Populated at boot from a config.yml `:workspace` section or at runtime via `POST /api/ee/advanced-config`. `nil` on parent and unconfigured instances. Read by the QP, transform hooks, and the EE `workspace-mode?` predicate via `metabase-enterprise.workspaces.core/instance-workspace`.")
   :type       :json

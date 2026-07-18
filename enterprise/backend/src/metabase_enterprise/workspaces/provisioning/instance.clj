@@ -80,7 +80,7 @@
       (throw (hm-error (tru "Harbormaster failed to delete the workspace instance.")
                        workspace-id response)))))
 
-(def hm-provisioner
+(def instance-provisioner
   "An [[InstanceProvisioner]] that provisions workspace child instances via
   Harbormaster. The default for [[provision-instance!]]/[[deprovision-instance!]];
   public so tests can `with-redefs` it."
@@ -98,7 +98,7 @@
   row. Returns the updated Workspace row."
   ([workspace :- ::ws.schema/workspace
     config    :- :map]
-   (provision-instance! workspace config hm-provisioner))
+   (provision-instance! workspace config instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     config    :- :map
     provisioner]
@@ -119,7 +119,7 @@
   the row is left untouched then, so the delete can be retried. Returns the
   updated Workspace row."
   ([workspace :- ::ws.schema/workspace]
-   (deprovision-instance! workspace hm-provisioner))
+   (deprovision-instance! workspace instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     provisioner]
    (delete! provisioner workspace)

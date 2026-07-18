@@ -195,13 +195,11 @@
 
 (mu/defn- provision-workspace-instance!
   "Provision the child instance for the fully provisioned workspace `ws`
-  (blocking), when `workspace-instance-provisioning-enabled` is set. Best-effort:
-  a failure is logged and `instance_id`/`instance_url` are left unset — the
-  workspace itself is still returned as created."
+  (blocking). Best-effort: a failure is logged and `instance_id`/`instance_url`
+  are left unset — the workspace itself is still returned as created."
   [ws :- ::ws.schema/workspace]
   (try
-    (when (ws.settings/workspace-instance-provisioning-enabled)
-      (provisioning.instance/provision-instance! ws (ws.config/build-workspace-config (:id ws))))
+    (provisioning.instance/provision-instance! ws (ws.config/build-workspace-config (:id ws)))
     (catch Throwable t
       (log/warnf t "Failed to provision an instance for workspace %s" (:id ws)))))
 

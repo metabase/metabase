@@ -26,7 +26,7 @@
 
 (p/defprotocol+ DatabaseProvisioner
   "Wrapper around driver workspace-isolation multimethods for testability.
-   The default [[dispatching-database-provisioner]] delegates to the real driver multimethods.
+   The default [[database-provisioner]] delegates to the real driver multimethods.
    Tests can reify custom implementations that fail on demand, count calls, etc."
   (details  [this driver database workspace]
     "Compute {:schema ... :database_details ...} for the workspace without touching
@@ -41,7 +41,7 @@
   (destroy! [this driver database workspace]
     "Tear down isolated schema + user. Should be idempotent."))
 
-(def dispatching-database-provisioner
+(def database-provisioner
   "Default DatabaseProvisioner that dispatches to the driver multimethods.
 
    Each call is wrapped in [[driver.conn/with-admin-connection]] so the underlying
@@ -184,7 +184,7 @@
   "Flip a single WorkspaceDatabase to `:provisioning` and provision it synchronously.
    The row must be `:unprovisioned`. Returns the updated WorkspaceDatabase row."
   ([wsd-id :- ms/PositiveInt]
-   (provision-database! wsd-id dispatching-database-provisioner))
+   (provision-database! wsd-id database-provisioner))
   ([wsd-id :- ms/PositiveInt
     provisioner]
    (t2/update! :model/WorkspaceDatabase {:id wsd-id :status :unprovisioned}
@@ -216,7 +216,7 @@
   computation — throw without touching the row. Either way the deprovision can
   be retried. Returns nil."
   ([wsd :- ::ws.schema/workspace-database]
-   (deprovision-database! wsd dispatching-database-provisioner))
+   (deprovision-database! wsd database-provisioner))
   ([wsd :- ::ws.schema/workspace-database
     provisioner]
    (with-workspace-database-lock (:id wsd)
