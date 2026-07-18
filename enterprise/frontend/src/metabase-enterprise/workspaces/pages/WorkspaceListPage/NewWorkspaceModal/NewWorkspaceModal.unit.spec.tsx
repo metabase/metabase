@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupCreateWorkspaceEndpoint,
   setupListWorkspacesEndpoint,
-  setupProvisionWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
@@ -31,7 +29,6 @@ function setup({
   const onClose = jest.fn();
 
   setupCreateWorkspaceEndpoint(createdWorkspace);
-  setupProvisionWorkspaceEndpoint(createdWorkspace);
   setupListWorkspacesEndpoint([createdWorkspace]);
 
   renderWithProviders(
@@ -66,12 +63,6 @@ describe("NewWorkspaceModal", () => {
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
     );
-    expect(
-      fetchMock.callHistory.called(
-        `path:/api/ee/workspace-manager/${createdWorkspace.id}/provision`,
-        { method: "POST" },
-      ),
-    ).toBe(true);
   });
 
   it("requires at least one database", async () => {

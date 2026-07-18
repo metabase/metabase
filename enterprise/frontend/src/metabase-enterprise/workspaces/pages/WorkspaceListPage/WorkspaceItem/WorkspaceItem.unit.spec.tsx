@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupDeleteWorkspaceEndpoint,
   setupDeprovisionWorkspaceEndpoint,
   setupGetWorkspaceEndpoint,
   setupProvisionWorkspaceEndpoint,
@@ -30,16 +31,25 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("My workspace")).toBeInTheDocument();
   });
 
-  it("retries provisioning from a provisioning-failure status", async () => {
+  it("provisions from the menu after confirmation", async () => {
     const workspace = createMockWorkspace({
       name: "My workspace",
-      status: "database-provisioning-failure",
-      status_details: "warehouse down",
+      status: "unprovisioned",
     });
     setupProvisionWorkspaceEndpoint(workspace);
     setup({ workspace });
 
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Provision this workspace?" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Provision" }));
 
     await waitFor(() => {
       expect(
@@ -51,16 +61,27 @@ describe("WorkspaceItem", () => {
     });
   });
 
-  it("retries deprovisioning from a deprovisioning-failure status", async () => {
+  it("deprovisions from the menu after confirmation", async () => {
     const workspace = createMockWorkspace({
       name: "My workspace",
-      status: "instance-deprovisioning-failure",
-      status_details: "instance stuck",
+      status: "provisioned",
     });
     setupDeprovisionWorkspaceEndpoint(workspace);
     setup({ workspace });
 
-    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Deprovision" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Deprovision this workspace?",
+      }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deprovision" }));
 
     await waitFor(() => {
       expect(
@@ -72,17 +93,22 @@ describe("WorkspaceItem", () => {
     });
   });
 
-  it("does not offer Retry for settled non-failure statuses", () => {
+  it("hides Provision when provisioned and Deprovision when unprovisioned", async () => {
     setup({
       workspace: createMockWorkspace({
         name: "My workspace",
         status: "provisioned",
-        status_details: null,
       }),
     });
 
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
     expect(
-      screen.queryByRole("button", { name: "Retry" }),
+      await screen.findByRole("menuitem", { name: "Deprovision" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Provision" }),
     ).not.toBeInTheDocument();
   });
 
@@ -196,11 +222,11 @@ describe("WorkspaceItem", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables Delete while a run is in flight", async () => {
+  it("disables Delete unless the workspace is fully deprovisioned", async () => {
     setup({
       workspace: createMockWorkspace({
         name: "My workspace",
-        status: "database-provisioning",
+        status: "provisioned",
       }),
     });
     await userEvent.click(
@@ -212,12 +238,12 @@ describe("WorkspaceItem", () => {
     ).toBeDisabled();
   });
 
-  it("deprovisions with the delete flag for a workspace that is not fully deprovisioned", async () => {
+  it("deletes an unprovisioned workspace from the menu after confirmation", async () => {
     const workspace = createMockWorkspace({
       name: "My workspace",
-      status: "provisioned",
+      status: "unprovisioned",
     });
-    setupDeprovisionWorkspaceEndpoint(workspace);
+    setupDeleteWorkspaceEndpoint(workspace.id);
     setup({ workspace });
 
     await userEvent.click(
@@ -228,7 +254,7 @@ describe("WorkspaceItem", () => {
     );
 
     expect(
-      await screen.findByText(/This will delete the workspace\./),
+      await screen.findByRole("heading", { name: "Delete this workspace?" }),
     ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Delete workspace" }),
@@ -237,36 +263,10 @@ describe("WorkspaceItem", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
-          { method: "POST" },
+          `path:/api/ee/workspace-manager/${workspace.id}`,
+          { method: "DELETE" },
         ),
       ).toBe(true);
     });
-    const lastCall = fetchMock.callHistory.lastCall(
-      `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
-    );
-    expect(JSON.parse(String(lastCall?.options.body))).toEqual({
-      delete: true,
-    });
-    expect(
-      fetchMock.callHistory.called(
-        `path:/api/ee/workspace-manager/${workspace.id}`,
-        { method: "DELETE" },
-      ),
-    ).toBe(false);
-  });
-
-  it("opens the delete modal from the menu", async () => {
-    setup();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Workspace actions" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Delete" }),
-    );
-
-    expect(
-      await screen.findByRole("heading", { name: "Delete this workspace?" }),
-    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,5 @@
 import type {
   CreateWorkspaceRequest,
-  DeprovisionWorkspaceRequest,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
@@ -65,16 +64,12 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    deprovisionWorkspace: builder.mutation<
-      Workspace,
-      DeprovisionWorkspaceRequest
-    >({
-      query: ({ id, ...body }) => ({
+    deprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
         method: "POST",
         url: `/api/ee/workspace-manager/${id}/deprovision`,
-        body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
   }),

@@ -14,7 +14,6 @@ import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceMutation,
   useLazyListWorkspacesQuery,
-  useProvisionWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
@@ -76,7 +75,6 @@ function NewWorkspaceForm({
   onClose,
 }: NewWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
-  const [provisionWorkspace] = useProvisionWorkspaceMutation();
   const [fetchWorkspaces] = useLazyListWorkspacesQuery();
 
   const handleSubmit = async ({
@@ -88,7 +86,6 @@ function NewWorkspaceForm({
       database_ids: database_ids.map(Number),
     }).unwrap();
     trackWorkspaceCreated({ workspaceId: workspace.id });
-    await provisionWorkspace(workspace.id);
     await fetchWorkspaces();
     onCreate(workspace);
   };
