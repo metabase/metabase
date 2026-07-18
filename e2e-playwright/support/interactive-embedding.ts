@@ -37,6 +37,9 @@ import type {
 
 import type { MetabaseApi } from "./api";
 import { SAMPLE_DB_ID } from "./sample-data";
+// popover/icon/modal/goToTab are canonical in ui.ts (its Scope type covers the
+// embedding FrameLocator); popover is imported because it's used internally too.
+import { popover } from "./ui";
 
 type Scope = Page | FrameLocator;
 
@@ -157,8 +160,7 @@ export async function visitFullAppEmbeddingUrl(
     documentRouteInstalled.add(page);
     await page.route(
       (routeUrl) =>
-        routeUrl.href.startsWith(baseUrl) &&
-        routeUrl.pathname !== HARNESS_PATH,
+        routeUrl.href.startsWith(baseUrl) && routeUrl.pathname !== HARNESS_PATH,
       async (route) => {
         if (route.request().resourceType() !== "document") {
           return route.fallback();
@@ -334,9 +336,7 @@ export class ResponseQueue {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(
         () =>
-          reject(
-            new Error(`Timed out waiting for a "${this.label}" response`),
-          ),
+          reject(new Error(`Timed out waiting for a "${this.label}" response`)),
         timeout,
       );
       this.waiters.push({ resolve, timer });
@@ -345,14 +345,6 @@ export class ResponseQueue {
 }
 
 // === scope-generic UI helpers (copies of Page-only helpers — see header) ===
-
-const POPOVER_SELECTOR =
-  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
-
-/** COPY of ui.ts popover, accepting a FrameLocator scope. */
-export function popover(scope: Scope): Locator {
-  return scope.locator(POPOVER_SELECTOR).filter({ visible: true });
-}
 
 /** COPY of ui.ts appBar, accepting a FrameLocator scope. */
 export function appBar(scope: Scope): Locator {
@@ -364,8 +356,9 @@ export function sideNav(scope: Scope): Locator {
   return scope.getByTestId("main-navbar-root");
 }
 
-/** icon/modal now live in ui.ts (canonical scope covers FrameLocator). */
-export { icon, modal } from "./ui";
+/** icon/modal/goToTab live in ui.ts; popover is imported above and re-exported. */
+export { icon, modal, goToTab } from "./ui";
+export { popover };
 
 /** COPY of notebook.ts getNotebookStep, accepting a FrameLocator scope. */
 export function getNotebookStep(
@@ -392,15 +385,15 @@ export function dashboardHeader(scope: Scope): Locator {
 }
 
 /** Port of H.goToTab (e2e-dashboard-helpers.ts). */
-export async function goToTab(scope: Scope, tabName: string) {
-  await scope.getByRole("tab", { name: tabName, exact: true }).click();
-}
 
 /**
  * COPY of native-extras.ts assertTableRowsCount, accepting any scope (the
  * spec runs it inside H.dashboardGrid().within(...)).
  */
-export async function assertTableRowsCount(scope: Scope | Locator, value: number) {
+export async function assertTableRowsCount(
+  scope: Scope | Locator,
+  value: number,
+) {
   if (value > 0) {
     await expect(
       scope.getByTestId("table-body").getByRole("row").first(),

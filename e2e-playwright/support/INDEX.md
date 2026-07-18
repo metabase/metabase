@@ -257,7 +257,6 @@
 - `moveDashboardFilter` — Port of H.moveDashboardFilter — the parameter sidebar must already be
 - `addHeadingWhileEditing` — Port of H.addHeadingWhileEditing. */
 - `moveDashCardToTab` — Port of H.moveDashCardToTab (hover the card, hover the move icon). */
-- `goToTab` — Port of H.goToTab. */
 - `undo` — Port of H.undo (click Undo inside the toast).
 - `countRequests` — Port of H.spyRequestFinished / cy.spy() interceptors: counts matching
 - `isDashcardQueryRequest` — Matcher for POST /api/dashboard/:id/dashcard/:id/card/:id/query. */
@@ -519,7 +518,6 @@
 - `caseSensitiveSubstring` — Case-sensitive substring matcher (Cypress :contains semantics). */
 - `findByDisplayValue` — Port of cy.findByDisplayValue: the form control in `scope` whose *current*
 - `isClippedByScrollContainer` — Port of Cypress's "not.be.visible" for an element scrolled out of an
-- `goToTab` — Port of H.goToTab (e2e-dashboard-helpers.ts). */
 - `goToMainApp` — Port of H.goToMainApp (e2e-ui-elements-helpers.js). */
 - `commandPaletteSearch` — Port of H.commandPaletteSearch(query, viewAll: false): open the palette,
 - `setAdHocFilter` — Port of setAdHocFilter (e2e-date-filter-helpers.js), reduced to the
@@ -545,14 +543,12 @@
 - `expectFrameHeightMessage` — Port of `cy.get("@postMessage").should("have.been.calledWith", {metabase:
 - `postMessageToEmbed` — Port of H.postMessageToIframe. The Cypress helper hand-crafts a
 - `ResponseQueue` — Port of Cypress intercept alias semantics: matching responses are recorded
-- `popover` — COPY of ui.ts popover, accepting a FrameLocator scope. */
 - `appBar` — COPY of ui.ts appBar, accepting a FrameLocator scope. */
 - `sideNav` — Port of the spec-local sideNav(). */
 - `getNotebookStep` — COPY of notebook.ts getNotebookStep, accepting a FrameLocator scope. */
 - `getDashboardCard` — COPY of dashboard.ts getDashboardCard, accepting a FrameLocator scope. */
 - `dashboardGrid` — COPY of drillthroughs.ts dashboardGrid, accepting a FrameLocator scope. */
 - `dashboardHeader` — Port of H.dashboardHeader, accepting a FrameLocator scope. */
-- `goToTab` — Port of H.goToTab (e2e-dashboard-helpers.ts). */
 - `assertTableRowsCount` — COPY of native-extras.ts assertTableRowsCount, accepting any scope (the
 - `expectInputWithValue` — Port of cy.findByDisplayValue(value): retried scan of the scope's form
 - `exportDashcardCsv` — Port of the dashcard-menu CSV export path: H.exportFromDashcard(".csv")
@@ -867,6 +863,7 @@
 - `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been
 - `modal` — The open Mantine modal dialog. Canonical home for the helper that had been
 - `popover` — Matches all visible popovers (like the Cypress helper). With a single
+- `goToTab` — Click a tab by its accessible name. Canonical home for the copy that had
 - `navigationSidebar`
 - `appBar`
 - `newButton`

@@ -36,8 +36,15 @@ const POPOVER_SELECTOR =
  * popover open, chaining works directly; when two coexist (e.g. a filter
  * widget with a typeahead dropdown) disambiguate with .first()/.last().
  */
-export function popover(page: Page): Locator {
-  return page.locator(POPOVER_SELECTOR).filter({ visible: true });
+export function popover(scope: Scope): Locator {
+  return scope.locator(POPOVER_SELECTOR).filter({ visible: true });
+}
+
+/** Click a tab by its accessible name. Canonical home for the copy that had
+ * been defined in dashboard-parameters.ts / filters-repros.ts /
+ * interactive-embedding.ts. */
+export async function goToTab(scope: Scope, tabName: string) {
+  await scope.getByRole("tab", { name: tabName, exact: true }).click();
 }
 
 export function navigationSidebar(page: Page): Locator {

@@ -30,7 +30,11 @@ import type { Locator, Page, Response } from "@playwright/test";
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
 
 import type { MetabaseApi } from "./api";
-import { commandPaletteButton, commandPaletteInput, getProfileLink } from "./command-palette";
+import {
+  commandPaletteButton,
+  commandPaletteInput,
+  getProfileLink,
+} from "./command-palette";
 import { SAMPLE_DB_ID } from "./sample-data";
 import { popover } from "./ui";
 
@@ -178,7 +182,12 @@ export async function createQuestionAndDashboard(
   },
 ): Promise<DashCard> {
   const { id: card_id } = await createQuestion(api, questionDetails);
-  return await addCardToNewDashboard(api, card_id, dashboardDetails, cardDetails);
+  return await addCardToNewDashboard(
+    api,
+    card_id,
+    dashboardDetails,
+    cardDetails,
+  );
 }
 
 /** Port of H.createNativeQuestionAndDashboard. */
@@ -391,9 +400,7 @@ export async function isClippedByScrollContainer(
 }
 
 /** Port of H.goToTab (e2e-dashboard-helpers.ts). */
-export async function goToTab(page: Page, tabName: string) {
-  await page.getByRole("tab", { name: tabName, exact: true }).click();
-}
+export { goToTab } from "./ui";
 
 // === navigation helpers ===
 

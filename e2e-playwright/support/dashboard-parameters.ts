@@ -67,7 +67,9 @@ type VirtualDashCardOpts = {
   visualization_settings?: Record<string, unknown>;
 };
 
-function mockVirtualDashCard(opts: VirtualDashCardOpts): Record<string, unknown> {
+function mockVirtualDashCard(
+  opts: VirtualDashCardOpts,
+): Record<string, unknown> {
   const card = opts.card ?? mockVirtualCard({ display: "text" });
   return {
     id: 1,
@@ -439,9 +441,7 @@ export async function moveDashboardFilter(
   destination: string | RegExp,
   { showFilter = false }: { showFilter?: boolean } = {},
 ) {
-  await dashboardParameterSidebar(page)
-    .getByPlaceholder("Move filter")
-    .click();
+  await dashboardParameterSidebar(page).getByPlaceholder("Move filter").click();
   await popover(page)
     .getByText(destination, { exact: typeof destination === "string" })
     .click();
@@ -476,9 +476,7 @@ export async function moveDashCardToTab(
 }
 
 /** Port of H.goToTab. */
-export async function goToTab(page: Page, tabName: string) {
-  await page.getByRole("tab", { name: tabName, exact: true }).click();
-}
+export { goToTab } from "./ui";
 
 /**
  * Port of H.undo (click Undo inside the toast).
