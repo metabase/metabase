@@ -137,7 +137,7 @@ type PgClient = {
  * through cy.task("connectAndQueryDB") + knex; here we talk to the writable
  * postgres container directly. `pg` is not a dependency of this package; it
  * resolves from the repo root node_modules (the same driver the Cypress db
- * tasks use), which is why this only runs behind the QA_DB_ENABLED gate.
+ * tasks use), which is why this only runs behind the PW_QA_DB_ENABLED gate.
  */
 export async function queryWritableDB(query: string): Promise<void> {
   const { Client } = require("pg") as {

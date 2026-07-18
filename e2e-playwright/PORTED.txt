@@ -79,3 +79,13 @@ question/multiple-column-breakouts.cy.spec.ts
 visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js
 embedding/embedding-reproductions.cy.spec.js
 collections/collections.cy.spec.js
+visualizations-charts/visualizations-charts-reproductions.cy.spec.ts
+visualizations-tabular/table-column-settings.cy.spec.js
+dashboard-filters/temporal-unit-parameters.cy.spec.js
+dashboard-filters/dashboard-filters-reset-clear.cy.spec.ts
+dashboard-filters/dashboard-filters-auto-wiring.cy.spec.js
+native-filters/sql-filters-reset-clear.cy.spec.ts
+collections/trash.cy.spec.js
+dashboard/tabs.cy.spec.js
+custom-column/custom-column-3.cy.spec.js
+dashboard/visualizer/basics.cy.spec.ts

@@ -83,8 +83,8 @@ test.describe("scenarios > question > native > suggestions", { tag: "@mongo" }, 
   // snapshot generation (Cypress gates these via the @mongo tag; the
   // Playwright CI workflow generates snapshots with -@external, so no QA DBs).
   test.skip(
-    !process.env.QA_DB_ENABLED,
-    "Requires the mongo QA database and its mongo-5 snapshot (set QA_DB_ENABLED)",
+    !process.env.PW_QA_DB_ENABLED,
+    "Requires the mongo QA database and its mongo-5 snapshot (set PW_QA_DB_ENABLED)",
   );
 
   test.beforeEach(async ({ mb }) => {

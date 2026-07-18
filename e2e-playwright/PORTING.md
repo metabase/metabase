@@ -674,3 +674,43 @@ give them an explicit `timeout` too — don't rely on the 30s default.
   means "correctly skipped", not "passing". Prefer specs with real executable
   coverage; only take these when the writable-DB path is being wired up.
   (actions-on-dashboards: 33/33 gated)
+
+## Gotchas added in wave 12 (filters/temporal/table/charts/visualizer/collections/custom-column/tabs)
+
+- **ECharts pie/label hovers need `hover({ force: true })`** — the wedge's own
+  `<text>` label overlays the path and intercepts the actionable hover (zrender
+  hit-tests by coordinate). (viz-charts-reproductions)
+- **`.type()` focuses the caret at position 0, not end** — so a `{backspace}`
+  after pre-filled content deletes the wrong char ("1"+"{backspace}2" → "21").
+  `press("End")` first (no-op on empty inputs). (dashboard-filters-reset-clear)
+- **`page.clock.install()` does NOT freeze time** (unlike `cy.clock()`) — it
+  ticks at real rate; `runFor` only adds jumps. Fine for wide-margin timeouts,
+  but tight timer assertions drift by the real action time between ticks. Also:
+  the app disables some test-only behaviour (e.g. toast TransitionGroup) only
+  under `"Cypress" in window`, which Playwright never sets — so clock-precise
+  toast-ordering tests can't port faithfully (fixme + cross-check). (auto-wiring)
+- **`page.goBack()` restores Chromium's bfcache — the frozen DOM at nav time.**
+  If a modal overlay was still mounted when you navigated away, the cached
+  snapshot keeps it and its fixed overlay eats clicks after going back. Assert
+  `modal` is gone (`toHaveCount(0)`) before any navigation whose history entry
+  you'll `goBack()` to. (collections-trash)
+- **Colliding negative dashcard ids across factory modules.** `getTextCardDetails`
+  (dashboard-core.ts) and `getHeadingCardDetails`/`getLinkCardDetails`
+  (click-behavior.ts) mint `-1, -2, …` from *independent* counters, so mixing
+  them yields duplicate ids → `PUT /api/dashboard` 400 "ids must be unique".
+  Reassign `id: -1 - index` when combining. (dashboard-tabs)
+- **dnd-kit reorder drag swallows the next click.** After a synthetic reorder,
+  the DOM order updates but the pointer sensor is still settling; an immediate
+  click (e.g. Save) focuses but fires no request. Park the mouse off-target and
+  wait ~1s. (dashboard-tabs, mirrors the dashboard-core tab-drag precedent)
+- **Off-screen dnd-kit drag needs synthetic mouse events** — real-mouse
+  `moveDnDKitElementOnto` silently no-ops when the destination is off-screen
+  (e.g. `horizontal:-400`); use `moveDnDKitElementSynthetic`. Misleading
+  fingerprint: the dead drag surfaces two steps later as a `visualize()`
+  dataset `waitForResponse` timeout (unchanged query → cached results → no
+  POST). When a dataset wait times out right after a reorder, suspect the drag.
+  (custom-column-3)
+- **`QA_DB_ENABLED` leaks truthy from `cypress.env.json`** on dev machines, so
+  QA-DB describes gated on it wrongly RUN (and fail) locally. Always gate on the
+  deliberate `PW_QA_DB_ENABLED`. (now enforced repo-wide — the bare var was
+  unified to `PW_QA_DB_ENABLED` this wave.)

@@ -5,7 +5,7 @@
  * Porting notes:
  * - The "@external" Boolean field-filter describe needs the writable
  *   postgres QA container (port 5404) and the postgres-writable snapshot →
- *   gated on QA_DB_ENABLED per the porting playbook.
+ *   gated on PW_QA_DB_ENABLED per the porting playbook.
  * - H.resetTestTable is a cy.task backed by knex; the port replays the exact
  *   knex DDL through the pg client (resetManyDataTypesTable in
  *   support/native-filters-extras.ts).
@@ -53,8 +53,8 @@ test.describe(
     // Needs the writable postgres QA container and the postgres-writable
     // snapshot, neither of which exist in the default Playwright CI setup.
     test.skip(
-      !process.env.QA_DB_ENABLED,
-      "Requires the writable postgres QA database and its postgres-writable snapshot (set QA_DB_ENABLED)",
+      !process.env.PW_QA_DB_ENABLED,
+      "Requires the writable postgres QA database and its postgres-writable snapshot (set PW_QA_DB_ENABLED)",
     );
 
     test.beforeEach(async ({ mb }) => {

@@ -8,7 +8,7 @@
  *   owns its backend) and restored in beforeEach, same as upstream.
  * - Never-awaited intercepts dropped: @search, @getMeasure, @breakoutValues.
  * - The BigInt describe needs the writable postgres QA container and the
- *   postgres-writable snapshot → gated on QA_DB_ENABLED per the playbook.
+ *   postgres-writable snapshot → gated on PW_QA_DB_ENABLED per the playbook.
  */
 import type { Locator, Page } from "@playwright/test";
 
@@ -2574,8 +2574,8 @@ test.describe("scenarios > metrics > explorer > BigInt filters", () => {
     // Needs the writable postgres QA container and the postgres-writable
     // snapshot.
     test.skip(
-      !process.env.QA_DB_ENABLED && !process.env.PW_QA_DB_ENABLED,
-      "Requires the writable postgres QA database and its postgres-writable snapshot (set QA_DB_ENABLED)",
+      !process.env.PW_QA_DB_ENABLED && !process.env.PW_QA_DB_ENABLED,
+      "Requires the writable postgres QA database and its postgres-writable snapshot (set PW_QA_DB_ENABLED)",
     );
 
     const DECIMAL_PK_TABLE_NAME = "decimal_pk_table";

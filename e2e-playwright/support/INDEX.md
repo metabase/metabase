@@ -152,6 +152,24 @@
 - `toggleSortingFor` — Port of the spec-local toggleSortingFor. */
 - `assertCollectionItemsOrder` — Port of the spec-local assertCollectionItemsOrder. */
 
+## collections-trash.ts
+- `archiveCollection` — Port of H.archiveCollection (api/archiveCollection.ts). */
+- `archiveQuestion` — Port of H.archiveQuestion (api/archiveQuestion.ts). */
+- `archiveDashboard` — Port of H.archiveDashboard (api/archiveDashboard.ts). */
+- `createCollection` — Port of the spec-local createCollection(collectionInfo, archive): create the
+- `createQuestion` — Port of the spec-local createQuestion(questionInfo, archive) (MBQL query). */
+- `createNativeQuestion` — Port of the spec-local createNativeQuestion(questionInfo, archive). */
+- `createDashboard` — Port of the spec-local createDashboard(dashboardInfo, archive). */
+- `toggleEllipsisMenuFor` — Port of the spec-local toggleEllipsisMenuFor: the row-level ellipsis in the
+- `archiveBanner` — Port of the spec-local archiveBanner. */
+- `ensureCanRestoreFromPage` — Port of the spec-local ensureCanRestoreFromPage: from an archived entity's
+- `selectItem` — Port of the spec-local selectItem: click the checkbox's enclosing button in
+- `assertChecked` — Port of the spec-local assertChecked. */
+- `assertTrashSelectedInNavigationSidebar` — Port of the spec-local assertTrashSelectedInNavigationSidebar: the Trash
+- `ensureBookmarkVisible` — Port of the spec-local ensureBookmarkVisible. */
+- `selectSidebarItem` — Port of H.selectSidebarItem (e2e-permissions-helpers.js):
+- `visitRootCollection` — Port of visitRootCollection (cy.visit("/collection/root")). */
+
 ## collections.ts
 - `getPinnedSection` — Port of H.getPinnedSection. */
 - `getUnpinnedSection` — Port of H.getUnpinnedSection. */
@@ -195,6 +213,25 @@
 - `createDocument` — Local stand-in for createMockDocument + cy.request("POST", "/api/document"):
 - `modifyPermission` — Port of H.modifyPermission (e2e-permissions-helpers.js): click the
 - `saveChangesToPermissions` — Port of H.saveChangesToPermissions. */
+
+## custom-column-3.ts
+- `focusCustomExpressionEditor` — Port of H.CustomExpressionEditor.focus(): click the editor, confirm
+- `clearCustomExpressionEditor` — Port of H.CustomExpressionEditor.clear(): focus, select all, backspace. */
+- `customExpressionEditorType` — Port of H.CustomExpressionEditor.type(): real keystrokes with the small set
+- `expectCustomExpressionValue` — Port of H.CustomExpressionEditor.value().should("eq"/"equal", expected):
+- `customExpressionCompletions` — Port of H.CustomExpressionEditor.completions(). */
+- `customExpressionCompletion` — Port of H.CustomExpressionEditor.completion(name):
+- `functionBrowser` — Port of H.CustomExpressionEditor.functionBrowser(). */
+- `customExpressionName` — Port of H.CustomExpressionEditor.nameInput(). */
+- `formatExpression` — Port of H.CustomExpressionEditor.format(): click the Auto-format button. */
+- `setModelMetadata` — Port of H.setModelMetadata (e2e-models-metadata-helpers.js). */
+- `summarizeInStep` — Port of H.summarize({ mode: "notebook" }) scoped to a notebook step. */
+- `filterInStep` — Port of H.filter({ mode: "notebook" }) scoped to a notebook step. */
+- `addCustomColumnInStep` — Port of H.addCustomColumn scoped to a notebook step. */
+- `joinInStep` — Port of H.join() scoped to a notebook step. */
+- `sortInStep` — Port of H.sort() scoped to a notebook step. */
+- `assertLastColumnData` — Port of the spec-local assertTableData({ title, value }) used by the path
+- `scrollTableRight` — Port of H.tableInteractiveScrollContainer().scrollTo("right"). */
 
 ## custom-column.ts
 - `customExpressionEditor` — Port of H.CustomExpressionEditor.value()'s target: the CodeMirror content
@@ -249,6 +286,41 @@
 - `assertScrollBarExists` — Port of the spec-local assertScrollBarExists. */
 - `checkOptionsForFilter` — Port of the spec-local checkOptionsForFilter. */
 - `countDashboardUpdates` — Port of the cy.spy() intercept pattern: counts PUT /api/dashboard/:id
+
+## dashboard-filters-auto-wiring.ts
+- `createDashboardWithCards` — Port of the spec-local createDashboardWithCards: create a dashboard, then
+- `addCardToDashboard` — Port of the spec-local addCardToDashboard: open the questions sidebar and
+- `goToFilterMapping` — Port of the spec-local goToFilterMapping: click a filter's editing widget to
+- `removeFilterFromDashboard` — Port of the spec-local removeFilterFromDashboard. */
+- `removeFilterFromDashCard` — Port of the spec-local removeFilterFromDashCard (the close icon on a card). */
+- `getTableCell` — Port of the spec-local getTableCell: find the column index by header text,
+- `addQuestionFromQueryBuilder` — Port of the spec-local addQuestionFromQueryBuilder: from the QB, add a
+
+## dashboard-filters-reset-clear.ts
+- `NO_DEFAULT_NON_REQUIRED`
+- `DEFAULT_NON_REQUIRED`
+- `DEFAULT_REQUIRED`
+- `typeCypress` — Interpret the Cypress key sequences this spec's callbacks type into
+- `fieldValuesTextbox` — Port of H.fieldValuesTextbox: cy.findByRole("textbox"). */
+- `filter` — Port of the spec-local filter(label): cy.findByLabelText(label) (exact). */
+- `editFilter` — Port of the spec-local editFilter(label). */
+- `clearButton` — Port of the spec-local clearButton(label). */
+- `resetButton` — Port of the spec-local resetButton(label). */
+- `checkStatusIcon` — Port of the spec-local checkStatusIcon: exactly one of the three status
+- `checkResetAllFiltersShown` — Port of the spec-local checkResetAllFiltersShown. */
+- `checkResetAllFiltersHidden` — Port of the spec-local checkResetAllFiltersHidden. */
+- `resetAllFilters` — Click the dashboard menu's "Reset all filters" item. */
+- `addDateFilter` — Port of the spec-local addDateFilter. */
+- `updateDateFilter` — Port of the spec-local updateDateFilter. */
+- `addRangeFilter` — Port of the spec-local addRangeFilter. */
+- `updateRangeFilter` — Port of the spec-local updateRangeFilter. */
+- `listItemContaining` — Case-sensitive substring listitem matcher (cy.contains semantics). */
+- `createDashboardWithParameters` — Port of the spec-local createDashboardWithParameters. */
+- `createDashboardWithParameterInEachTab` — Port of the spec-local createDashboardWithParameterInEachTab. */
+- `checkDashboardParameters` — Port of the spec-local checkDashboardParameters. */
+- `checkParameterSidebarDefaultValue` — Port of the spec-local checkParameterSidebarDefaultValue. */
+- `checkResetAllFiltersWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersWorksAcrossTabs. */
+- `checkResetAllFiltersToDefaultWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersToDefaultWorksAcrossTabs. */
 
 ## dashboard-management.ts
 - `USER_NAMES` — First/last names from e2e/support/cypress_data.js — that file is untyped
@@ -316,6 +388,25 @@
 - `waitForDashcardQuery` — Register BEFORE the triggering action; await after. */
 - `gateResponses` — Hold every matching request until release() is called (the Playwright
 - `delayResponses` — Delay every matching request by delayMs (the spec's res.setDelay(n)).
+
+## dashboard-tabs.ts
+- `ORDERS_COUNT_QUESTION_ID`
+- `ADMIN_PERSONAL_COLLECTION_ID`
+- `NORMAL_PERSONAL_COLLECTION_ID`
+- `dashboardCards` — Port of H.dashboardCards (cy.get("[data-element-id=dashboard-cards-container]")). */
+- `visitDashboardAndCreateTab` — Port of H.visitDashboardAndCreateTab: visit, enter edit mode, add a tab,
+- `createNativeQuestionAndDashboardInCollections` — Port of H.createNativeQuestionAndDashboard for the permission test, which
+- `addLinkWhileEditing` — Port of H.addLinkWhileEditing. */
+- `reorderTabToStart` — Port of the spec's tab-drag (issue #34970). Cypress fires
+- `DASHBOARD_DATE_FILTER`
+- `DASHBOARD_NUMBER_FILTER`
+- `DASHBOARD_TEXT_FILTER`
+- `DASHBOARD_LOCATION_FILTER`
+- `createTextFilterMapping`
+- `createDateFilterMapping`
+- `createNumberFilterMapping`
+- `assertFiltersVisibility` — as `cy.findByTestId`'s SECOND argument, where testing-library expects an
+- `assertFilterValues` — Port of the spec-local assertFilterValues: each filter's slug=value pair
 
 ## dashboard.ts
 - `dashboardHeader`
@@ -917,6 +1008,74 @@
 - `saveQuestion`
 - `downloadViaUi` — Drives the question download UI and resolves with the resulting Download.
 
+## sql-filters-reset-clear.ts
+- `NO_DEFAULT_NON_REQUIRED`
+- `NO_DEFAULT_REQUIRED`
+- `DEFAULT_NON_REQUIRED`
+- `DEFAULT_REQUIRED`
+- `filter` — Port of the spec-local filter(label): cy.findByLabelText(label) (exact). */
+- `filterInput` — Port of the spec-local filterInput(label): filter(label).findByRole("textbox"). */
+- `filterSection` — Port of the spec-local filterSection(id): the tag-editor variable settings block. */
+- `clearButton` — Port of clearButton(label): filter(label).parent().findByLabelText("Clear"). */
+- `resetButton` — Port of resetButton(label): the "Reset filter to default state" button. */
+- `checkStatusIcon` — Port of the spec-local checkStatusIcon: exactly one of the three status icons
+- `setInputValue` — Port of the input setValue/updateValue callbacks:
+- `setDropdownFieldValue`
+- `updateDropdownFieldValue`
+- `addDateFilter` — Port of the spec-local addDateFilter. */
+- `updateDateFilter` — Port of the spec-local updateDateFilter. */
+- `checkNativeParametersInput` — Port of checkNativeParametersInput (text/number widgets in the parameters bar). */
+- `checkNativeParametersDropdown` — Port of checkNativeParametersDropdown (date/field widgets in the parameters bar). */
+- `checkParameterSidebarDefaultValue` — Port of checkParameterSidebarDefaultValue (text/number sidebar default value). */
+- `checkParameterSidebarDefaultValueDate` — Port of checkParameterSidebarDefaultValueDate. */
+- `checkParameterSidebarDefaultValueDropdown` — Port of checkParameterSidebarDefaultValueDropdown (field widgets). */
+
+## table-column-settings.ts
+- `tableInteractiveBody` — Port of H.tableInteractiveBody() — cy.findByTestId("table-body"). */
+- `tableInteractiveHeader` — Port of H.tableInteractiveHeader() — cy.findByTestId("table-header"). */
+- `tableInteractiveScrollContainer` — Port of H.tableInteractiveScrollContainer() — the horizontal scroll box. */
+- `visibleColumns` — The spec-local visibleColumns() — cy.findByTestId("visible-columns"). */
+- `getColumn` — Port of the spec-local getColumn: `visibleColumns().contains("[role=listitem]",
+- `assertColumnEnabled` — Port of the spec-local assertColumnEnabled. */
+- `assertColumnHidden` — Port of the spec-local assertColumnHidden. */
+- `showColumn` — Port of the spec-local showColumn: click `${column}-show-button`. */
+- `hideColumn` — Port of the spec-local hideColumn: click `${column}-hide-button`. */
+- `scrollVisualizationRight` — Port of the spec-local scrollVisualization (default position "right"):
+- `openColumnOptions` — Port of H.openColumnOptions (e2e-models-metadata-helpers.js): scroll the
+- `assertRowHeight` — Port of H.assertRowHeight(index, height): the row at [data-index=index] has
+- `columnHeaderDragHandle` — The drag target for a column header reorder. H.tableHeaderColumn returns the
+- `moveDnDKitColumnHeader` — Port of H.moveDnDKitElementByAlias for the interactive table's column-reorder
+
+## temporal-unit-parameters.ts
+- `dashboardDetails`
+- `singleBreakoutQuestionDetails`
+- `multiBreakoutQuestionDetails`
+- `noBreakoutQuestionDetails`
+- `multiStageQuestionDetails`
+- `expressionBreakoutQuestionDetails`
+- `binningBreakoutQuestionDetails`
+- `nativeQuestionDetails`
+- `nativeQuestionWithTextParameterDetails`
+- `nativeQuestionWithDateParameterDetails`
+- `nativeUnitQuestionDetails`
+- `nativeTimeQuestionDetails`
+- `getNativeTimeQuestionBasedQuestionDetails`
+- `questionWithoutDefaultValue` — Port of the spec-local questionWithoutDefaultValue (native tests). */
+- `parameterDetails`
+- `getParameterMapping`
+- `createDashboardWithQuestions` — Native-aware port of H.createDashboardWithQuestions: the dashboard-parameters
+- `createDashboardWithMappedQuestion` — Port of the spec-local createDashboardWithMappedQuestion. */
+- `createDashboardWithMultiSeriesCard` — Port of the spec-local createDashboardWithMultiSeriesCard. */
+- `backToDashboard` — Port of the spec-local backToDashboard. */
+- `addTemporalUnitParameter` — Port of the spec-local addTemporalUnitParameter (H.setFilter("Time grouping")). */
+- `addQuestion` — Port of the spec-local addQuestion. */
+- `removeQuestion` — Port of the spec-local removeQuestion (the close icon is hover-gated). */
+- `selectDashboardFilter` — Faithful port of H.selectDashboardFilter (e2e-dashboard-helpers.ts): the real
+- `editParameter` — Port of the spec-local editParameter. */
+- `ensureDashboardCardHasText` — Port of H.ensureDashboardCardHasText — note the `dashcard` testid (distinct
+- `resetFilterWidgetToDefault` — Port of H.resetFilterWidgetToDefault (the revert icon, hover-gated). */
+- `dashcardTableHeaderColumn` — Port of H.tableHeaderColumn scoped to a dashcard — the click-behavior tests
+
 ## ui.ts
 - `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been
 - `modal` — The open Mantine modal dialog. Canonical home for the helper that had been
@@ -933,6 +1092,68 @@
 - `openNavigationSidebar` — Port of openNavigationSidebar's self-healing open loop: navigating to a
 - `visitQuestion` — Port of H.visitQuestion: navigate and wait for the metadata + query
 - `visitDashboard` — Port of H.visitDashboard: look up the dashboard through the API as the
+
+## visualizer-basics.ts
+- `ORDERS_COUNT_BY_CREATED_AT`
+- `ORDERS_COUNT_BY_PRODUCT_CATEGORY`
+- `PRODUCTS_COUNT_BY_CREATED_AT`
+- `PRODUCTS_AVERAGE_BY_CREATED_AT`
+- `PRODUCTS_COUNT_BY_CATEGORY`
+- `PRODUCTS_COUNT_BY_CATEGORY_PIE`
+- `SCALAR_CARD`
+- `STEP_COLUMN_CARD`
+- `VIEWS_COLUMN_CARD`
+- `createQuestion` — Port of H.createQuestion (POST /api/card). Returns the created card id. */
+- `createNativeQuestion` — Port of H.createNativeQuestion (POST /api/card, native dataset_query). */
+- `createDashboard` — Port of H.createDashboard (api/createDashboard.ts): enable_embedding and
+- `addQuestionToDashboard` — Port of H.addQuestionToDashboard: append a dashcard, keeping existing ones. */
+- `createNativeQuestionAndDashboard` — Port of H.createNativeQuestionAndDashboard: create the native card, a
+- `createPublicDashboardLink` — Port of H.createPublicDashboardLink. */
+- `createDashboardWithVisualizerDashcards` — Port of createDashboardWithVisualizerDashcards: build a dashboard of six
+- `waitForCardQueries` — Resolve after `count` POST /api/card/:id/query responses. Register BEFORE
+- `dataImporter`
+- `clickVisualizeAnotherWay` — Port of H.clickVisualizeAnotherWay: from the questions sidebar. */
+- `openQuestionsSidebar` — Port of H.openQuestionsSidebar. */
+- `verticalWell`
+- `horizontalWell`
+- `pieMetricWell`
+- `pieDimensionWell`
+- `assertWellItems` — Port of H.assertWellItems: each named well has exactly the given items. */
+- `assertWellItemsCount` — Port of H.assertWellItemsCount. */
+- `switchToAddMoreData`
+- `switchToColumnsList`
+- `selectDataset` — Port of H.selectDataset: type into the search box, click the matching
+- `assertDataSourceColumnSelected` — Port of H.assertDataSourceColumnSelected. */
+- `deselectColumnFromColumnsList` — Port of H.deselectColumnFromColumnsList. */
+- `resetDataSourceButton` — Port of H.resetDataSourceButton: open the datasource actions menu and return
+- `selectVisualization` — Port of H.selectVisualization. */
+- `assertCurrentVisualization` — Port of H.assertCurrentVisualization. */
+- `showDashcardVisualizerModal` — Port of H.showDashcardVisualizerModal. */
+- `saveDashcardVisualizerModal` — Port of H.saveDashcardVisualizerModal. */
+- `showUnderlyingQuestion` — Port of H.showUnderlyingQuestion. */
+- `clickOnCardTitle` — Port of H.clickOnCardTitle. */
+- `assertDashboardCardTitle` — Port of H.assertDashboardCardTitle. */
+- `chartGridLines` — Port of H.chartGridLines, scoped to a dashcard. */
+- `goalLine` — Port of H.goalLine (GOAL_LINE_DASH = [3, 4]). */
+- `renameEditableText` — Port of the EditableText rename dance: fill() doesn't mark it dirty, so
+
+## viz-charts-repros.ts
+- `visitAdhoc`
+- `visitNativeAdhoc`
+- `chartGridLines` — Port of H.chartGridLines (e2e-visual-tests-helpers.js). Not scoped to
+- `cartesianChartCircleWithColor` — Port of H.cartesianChartCircleWithColor: the line/area data-point markers of
+- `echartsTriggerBlur` — Port of H.echartsTriggerBlur: hover the right edge of the chart to dismiss
+- `echartsTooltip` — Port of H.echartsTooltip: the single visible tooltip DOM instance. */
+- `assertEChartsTooltip` — Port of H.assertEChartsTooltip ({ header, rows, footer, blurAfter }). The
+- `vizSettingsSidebar` — Port of H.vizSettingsSidebar (e2e-viz-settings-helpers.js). */
+- `openObjectDetail` — Port of H.openObjectDetail(rowIndex): hover the row, then click the
+- `saveSavedQuestion` — Port of H.saveSavedQuestion (e2e-misc-helpers.js): overwrite an already-saved
+- `addQuestionToDashboard` — Port of api/addQuestionToDashboard.ts: GET the dashboard, append a dashcard
+- `getChartPoints` — Port of the spec-local getChartPoints: the white line-chart point markers.
+- `getNoPointsMessage` — Port of the spec-local getNoPointsMessage. */
+- `assertNoPoints` — Port of the spec-local assertNoPoints. */
+- `assertDataVisible` — Port of the spec-local assertDataVisible. */
+- `moveDnDKitElementVertically` — Port of H.moveDnDKitElementByAlias(alias, { vertical, useMouseEvents: true }):
 
 ## viz-tabular-repros.ts
 - `ADMIN_USER_ID` — Port of ADMIN_USER_ID (cypress_sample_instance_data.js): the id of the

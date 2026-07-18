@@ -2,7 +2,7 @@
  * Playwright port of e2e/test/scenarios/question/document-title.cy.spec.js
  *
  * @external in Cypress: needs the postgres QA database and its postgres-12
- * snapshot, so it is gated on QA_DB_ENABLED like the other QA-DB ports.
+ * snapshot, so it is gated on PW_QA_DB_ENABLED like the other QA-DB ports.
  */
 import { icon } from "../support/dashboard-cards";
 import { test, expect } from "../support/fixtures";
@@ -16,8 +16,8 @@ test.describe(
   { tag: "@external" },
   () => {
     test.skip(
-      !process.env.QA_DB_ENABLED,
-      "Requires the postgres QA database and its postgres-12 snapshot (set QA_DB_ENABLED)",
+      !process.env.PW_QA_DB_ENABLED,
+      "Requires the postgres QA database and its postgres-12 snapshot (set PW_QA_DB_ENABLED)",
     );
 
     test.beforeEach(async ({ mb }) => {

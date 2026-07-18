@@ -7,7 +7,7 @@
  * - Token-gated describes skip when the bleeding-edge token env var is
  *   missing (MB_ALL_FEATURES_TOKEN / CYPRESS_MB_ALL_FEATURES_TOKEN).
  * - The writable-Postgres describe needs the QA writable postgres container
- *   AND the postgres-writable snapshot, so it is gated on QA_DB_ENABLED
+ *   AND the postgres-writable snapshot, so it is gated on PW_QA_DB_ENABLED
  *   (standard @external gate; the upstream spec has no tag but H.restore
  *   ("postgres-writable") + H.queryWritableDB imply the same requirement).
  *   Its Cypress after() hook becomes test.afterAll — the cleanup only talks
@@ -389,7 +389,7 @@ test.describe(
     // snapshot, neither of which exist in the default Playwright CI setup.
     test.skip(
       !process.env.PW_QA_DB_ENABLED,
-      "Requires the writable postgres QA database and its postgres-writable snapshot (set QA_DB_ENABLED)",
+      "Requires the writable postgres QA database and its postgres-writable snapshot (set PW_QA_DB_ENABLED)",
     );
     test.skip(
       !resolveToken("bleeding-edge"),

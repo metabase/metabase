@@ -4,7 +4,21 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
-> **Latest (2026-07-18, wave 11):** +5 specs jar-verified — 78 ported, 336 in
+> **Latest (2026-07-19, wave 12):** +10 specs jar-verified (two parallel
+> 5-agent waves, batched into ONE push/CI run) — 88 ported, 326 in QUEUE. All
+> real executable coverage (no all-gated specs this time): dashboard-filters-
+> reset-clear, temporal-unit-parameters, table-column-settings, viz-charts-
+> reproductions, dashboard-filters-auto-wiring, visualizer-basics, collections-
+> trash, custom-column-3, sql-filters-reset-clear, dashboard-tabs. No product
+> bugs; 2 fixmes (auto-wiring #35461 clock, both cross-checked). Also: unified
+> the leaky `QA_DB_ENABLED` gate → `PW_QA_DB_ENABLED` repo-wide (closes the
+> gate-naming TODO), fixed the #25322 route-teardown worker-crash (batched in),
+> and added 8 wave-12 PORTING gotchas. Two upstream test-suite defects noted
+> (dashboard-tabs `assertFiltersVisibility` dead since written).
+>
+> Prior (wave 11): +5 dashboard/embedding specs; actions-on-dashboards all-gated.
+
+> **Wave 11 (2026-07-18):** +5 specs jar-verified — 78 ported, 336 in
 > QUEUE. Real coverage: multiple-column-breakouts (14), viz-tabular-reproductions
 > (27), collections (32), embedding-reproductions (15+5 gated). **Caveat:
 > actions-on-dashboards is 33/33 all-gated** (writable QA postgres/mysql not in
