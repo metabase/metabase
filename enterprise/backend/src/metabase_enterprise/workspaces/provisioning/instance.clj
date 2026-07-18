@@ -106,8 +106,6 @@
      (try
        (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
        (catch Throwable t
-         ;; the instance exists but we could not record it — delete it, or it
-         ;; would keep running with no row pointing at it
          (try
            (delete! provisioner (assoc workspace :instance_id id))
            (catch Throwable delete-error
