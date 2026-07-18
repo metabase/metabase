@@ -12,12 +12,10 @@ import type { MetabaseApi } from "./api";
 import { icon } from "./dashboard-cards";
 import { expect } from "./fixtures";
 import { SAMPLE_DB_ID } from "./sample-data";
-import { popover } from "./ui";
+import { modal, popover } from "./ui";
 
 /** Port of H.modal(). */
-export function modal(page: Page): Locator {
-  return page.locator("[role='dialog'][aria-modal='true']");
-}
+export { modal };
 
 /** Port of H.tableInteractive(). */
 export function tableInteractive(page: Page): Locator {

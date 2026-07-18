@@ -65,9 +65,7 @@ export async function signInWithCachedSession(
 }
 
 /** Port of cy.icon (e2e/support/commands/ui/icon.ts). */
-export function icon(page: Page, name: string): Locator {
-  return page.locator(`.Icon-${name}`);
-}
+export { icon } from "./ui";
 
 type AdhocQuestion = {
   display?: string;

@@ -7,9 +7,7 @@ import { Locator, Page, expect } from "@playwright/test";
 import { getDashboardCard } from "./dashboard";
 
 /** Port of the cy.icon command: `.Icon-<name>` selector. */
-export function icon(scope: Page | Locator, name: string): Locator {
-  return scope.locator(`.Icon-${name}`);
-}
+export { icon } from "./ui";
 
 /** Port of H.showDashboardCardActions (realHover → native hover). */
 export async function showDashboardCardActions(page: Page, index = 0) {

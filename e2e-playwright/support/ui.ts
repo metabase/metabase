@@ -4,9 +4,29 @@
  * Each helper takes the Page and returns a Locator, mirroring the Cypress
  * helpers that return chainables.
  */
-import { Locator, Page, expect } from "@playwright/test";
+import { FrameLocator, Locator, Page, expect } from "@playwright/test";
 
 import type { MetabaseApi } from "./api";
+
+/** Any locator root that exposes `.locator()` — a page, an embedding iframe, or
+ * a scoped locator. Canonical scope type for the shared locator helpers. */
+type Scope = Page | FrameLocator | Locator;
+
+/**
+ * `.Icon-<name>` locator. Canonical home for the helper that had been
+ * copy-defined in dashboard-cards.ts / permissions.ts / interactive-embedding.ts.
+ */
+export function icon(scope: Scope, name: string): Locator {
+  return scope.locator(`.Icon-${name}`);
+}
+
+/**
+ * The open Mantine modal dialog. Canonical home for the helper that had been
+ * copy-defined in dashboard.ts / models.ts / interactive-embedding.ts.
+ */
+export function modal(scope: Scope): Locator {
+  return scope.locator("[role='dialog'][aria-modal='true']");
+}
 
 const POPOVER_SELECTOR =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";

@@ -10,7 +10,7 @@
  */
 import { Locator, Page, expect } from "@playwright/test";
 
-import { popover } from "./ui";
+import { modal, popover } from "./ui";
 
 export function dashboardHeader(page: Page): Locator {
   return page.getByTestId("dashboard-header");
@@ -24,9 +24,7 @@ export function sidebar(page: Page): Locator {
   return page.locator("main aside");
 }
 
-export function modal(page: Page): Locator {
-  return page.locator("[role='dialog'][aria-modal='true']");
-}
+export { modal };
 
 export function selectDropdown(page: Page): Locator {
   return popover(page).getByRole("listbox");

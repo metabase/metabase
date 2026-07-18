@@ -364,10 +364,8 @@ export function sideNav(scope: Scope): Locator {
   return scope.getByTestId("main-navbar-root");
 }
 
-/** COPY of dashboard-cards.ts icon, accepting a FrameLocator scope. */
-export function icon(scope: Scope | Locator, name: string): Locator {
-  return scope.locator(`.Icon-${name}`);
-}
+/** icon/modal now live in ui.ts (canonical scope covers FrameLocator). */
+export { icon, modal } from "./ui";
 
 /** COPY of notebook.ts getNotebookStep, accepting a FrameLocator scope. */
 export function getNotebookStep(
@@ -376,11 +374,6 @@ export function getNotebookStep(
   { stage = 0, index = 0 } = {},
 ): Locator {
   return scope.getByTestId(`step-${type}-${stage}-${index}`);
-}
-
-/** COPY of dashboard.ts modal, accepting a FrameLocator scope. */
-export function modal(scope: Scope): Locator {
-  return scope.locator("[role='dialog'][aria-modal='true']");
 }
 
 /** COPY of dashboard.ts getDashboardCard, accepting a FrameLocator scope. */

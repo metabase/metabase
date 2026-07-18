@@ -180,7 +180,6 @@
 - `createQuestionAndAddToDashboard` — Port of H.createQuestionAndAddToDashboard (api/createQuestionAndAddToDashboard.ts):
 
 ## dashboard-cards.ts
-- `icon` — Port of the cy.icon command: `.Icon-<name>` selector. */
 - `showDashboardCardActions` — Port of H.showDashboardCardActions (realHover → native hover). */
 - `getDashboardCardMenu` — Port of H.getDashboardCardMenu — waits for the card to finish loading. */
 - `inputWithValue` — Port of cy.findByDisplayValue: find the input in `scope` whose current
@@ -290,7 +289,6 @@
 - `dashboardHeader`
 - `editBar`
 - `sidebar`
-- `modal`
 - `selectDropdown`
 - `getDashboardCard`
 - `filterWidget`
@@ -550,9 +548,7 @@
 - `popover` — COPY of ui.ts popover, accepting a FrameLocator scope. */
 - `appBar` — COPY of ui.ts appBar, accepting a FrameLocator scope. */
 - `sideNav` — Port of the spec-local sideNav(). */
-- `icon` — COPY of dashboard-cards.ts icon, accepting a FrameLocator scope. */
 - `getNotebookStep` — COPY of notebook.ts getNotebookStep, accepting a FrameLocator scope. */
-- `modal` — COPY of dashboard.ts modal, accepting a FrameLocator scope. */
 - `getDashboardCard` — COPY of dashboard.ts getDashboardCard, accepting a FrameLocator scope. */
 - `dashboardGrid` — COPY of drillthroughs.ts dashboardGrid, accepting a FrameLocator scope. */
 - `dashboardHeader` — Port of H.dashboardHeader, accepting a FrameLocator scope. */
@@ -615,7 +611,6 @@
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
 
 ## models.ts
-- `modal` — Port of H.modal(). */
 - `tableInteractive` — Port of H.tableInteractive(). */
 - `openQuestionActions` — Port of H.openQuestionActions: the ellipsis menu in the QB header. */
 - `summarize` — Port of H.summarize({ mode }): the sum icon in the notebook action toolbar,
@@ -725,7 +720,6 @@
 ## permissions.ts
 - `ADMIN_PERSONAL_COLLECTION_ID` — Port of ADMIN_PERSONAL_COLLECTION_ID from
 - `signInWithCachedSession` — Sign in as any user with a cached session (e.g. "none"), mirroring the
-- `icon` — Port of cy.icon (e2e/support/commands/ui/icon.ts). */
 - `adhocQuestionHash` — Port of adhocQuestionHash (e2e/support/helpers/e2e-ad-hoc-question-helpers.js).
 - `visitQuestionAdhoc` — Port of H.visitQuestionAdhoc, minus the notebook mode and the native
 
@@ -870,6 +864,8 @@
 - `downloadViaUi` — Drives the question download UI and resolves with the resulting Download.
 
 ## ui.ts
+- `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been
+- `modal` — The open Mantine modal dialog. Canonical home for the helper that had been
 - `popover` — Matches all visible popovers (like the Cypress helper). With a single
 - `navigationSidebar`
 - `appBar`
