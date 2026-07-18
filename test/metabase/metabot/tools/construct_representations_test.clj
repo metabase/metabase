@@ -217,7 +217,7 @@
                 "`source-table: [Sample, PUBLIC, ORDERS]` against an instance whose DB is named\n"
                 "`Sample Database`, the lookup fails fast with a clear `:unknown-database`\n"
                 "`:agent-error?`. The LLM gets a useful nudge in the error message; the prompt\n"
-                "change to use the canonical name from `entity_details` is the real long-term fix.")
+                "change to use the canonical name from search / `read_resource` is the real long-term fix.")
     ;; This fixture's MP-name is "Sample Database". We DON'T stub `resolve-database-id-from-first-stage`
     ;; here - we want the actual function to run against `name = "Sample"` and observe the
     ;; not-found behaviour.
@@ -359,8 +359,8 @@
             (is (= "metabase://metric/76" (:source-table d)))
             (is (re-find #"aggregation" (ex-message e))
                 "message should point at aggregation-clause recovery")
-            (is (re-find #"base_table_portable_fk" (ex-message e))
-                "message should name the field the LLM needs to look up on the metric")))))
+            (is (re-find #"base_table_fully_qualified_name" (ex-message e))
+                "message should name the attribute the LLM needs to look up on the metric")))))
     (testing "question / model URI - hint points at `source-card:`"
       (doseq [t ["question" "model" "card"]]
         (try

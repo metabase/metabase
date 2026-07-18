@@ -105,10 +105,10 @@
   prompts the agent with a hallucinated `source-table:` would otherwise receive a list of
   schemas / tables they cannot otherwise see.
 
-  The LLM can still self-correct in one turn by calling `entity_details` on the parent
-  database; the message points it at that path."
+  The LLM can still self-correct in one turn by listing the parent database's tables with
+  `read_resource`; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0}. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
+  (ex-info (tru "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
                 (pr-str path))
            {:status-code  400
             :error        :unknown-table
@@ -126,7 +126,7 @@
   provider's cache disagree about whether a table exists (e.g. provider holds a cached row
   for a table that was just deleted, or vice versa). In that last case the provider's view
   becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
-  table the caller can plainly see via `entity_details`."
+  table the caller can plainly see via `read_resource`."
   [metadata-provider db-id schema table-name]
   (or (when (and db-id (app-db-backed-provider? metadata-provider))
         (seq (matching-tables-via-app-db db-id schema table-name)))
@@ -157,7 +157,7 @@
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `entity_details` with entity-type `database` to list available tables and retry with a more specific portable FK."
+        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
                              (pr-str path) (count candidates))
                         {:status-code  400
                          :error        :ambiguous-table
@@ -184,10 +184,10 @@
         ;; column name. The metadata provider is un-sandboxed, the `:agent-error?` flag
         ;; relays this message verbatim to the user, and a leaked FK-candidate path would
         ;; reveal table names the caller may not be permitted to see. The LLM can recover
-        ;; by calling `entity_details` on the parent table to list its columns.
+        ;; by reading the parent table's fields with `read_resource`.
         unknown-field-ex
         (fn [segment]
-          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `entity_details` on this table to list its columns."
+          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
                         (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
                    {:status-code  400
                     :error        :unknown-field
@@ -421,7 +421,7 @@
         card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
-      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` with `entity-type: question` or `entity-type: model` and the card''s numeric id first, then copy the exact `portable_entity_id` from the response into `source-card:`."
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
                            (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
@@ -457,7 +457,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? measure)
-      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` on the table that owns the measure and copy the exact `portable_entity_id` from the `<measure>` tag."
+      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
                            (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
@@ -556,7 +556,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? segment)
-      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` on the table that owns the segment and copy the exact `portable_entity_id` from the `<segment>` tag."
+      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
                            (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400

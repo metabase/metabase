@@ -632,6 +632,25 @@
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
+(deftest ^:parallel search-result->xml-uri-test
+  (testing "search results carry a numeric-id read_resource uri attribute"
+    (are [result expected-uri] (str/includes? (llm-shape/search-result->xml result)
+                                              (str "uri=\"" expected-uri "\""))
+      {:id 133 :type "model" :name "Foundation MO"} "metabase://model/133"
+      {:id 11 :type :dataset :name "D"}             "metabase://model/11"
+      {:id 5 :type "question" :name "Q"}            "metabase://question/5"
+      {:id 13 :type :card :name "C"}                "metabase://question/13"
+      {:id 7 :type :metric :name "M"}               "metabase://metric/7"
+      {:id 9 :type "table" :name "T"}               "metabase://table/9"
+      {:id 15 :type "dashboard" :name "Dash"}       "metabase://dashboard/15"
+      {:id 17 :type "measure" :name "Meas"}         "metabase://measure/17"
+      {:id 19 :type "segment" :name "Seg"}          "metabase://segment/19"))
+  (testing "types without a read_resource URI form omit the uri attribute"
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type "action" :name "A"})
+                            "uri=")))
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type nil :name "A"})
+                            "uri=")))))
+
 (deftest ^:parallel search-result->xml-test-9
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
