@@ -6,11 +6,33 @@ import type {
   WorkspaceStatus,
 } from "metabase-types/api";
 
-export function getWorkspaceDatabaseName(workspaceDatabase: WorkspaceDatabase) {
+export function getDatabaseName(workspaceDatabase: WorkspaceDatabase) {
   return (
     workspaceDatabase.database?.name ??
     t`Database ${workspaceDatabase.database_id}`
   );
+}
+
+export function isProvisioningFailed(workspace: Workspace) {
+  return (
+    workspace.status === "database-provisioning-failure" ||
+    workspace.status === "instance-provisioning-failure"
+  );
+}
+
+export function isDeprovisioningFailed(workspace: Workspace) {
+  return (
+    workspace.status === "instance-deprovisioning-failure" ||
+    workspace.status === "database-deprovisioning-failure"
+  );
+}
+
+export function isProvisioned(workspace: Workspace) {
+  return workspace.status === "provisioned";
+}
+
+export function isDeprovisioned(workspace: Workspace) {
+  return workspace.status === "unprovisioned";
 }
 
 export function isProvisioning(workspace: Workspace) {
@@ -25,14 +47,6 @@ export function isDeprovisioning(workspace: Workspace) {
     workspace.status === "instance-deprovisioning" ||
     workspace.status === "database-deprovisioning"
   );
-}
-
-export function isProvisioned(workspace: Workspace) {
-  return workspace.status === "provisioned";
-}
-
-export function isDeprovisioned(workspace: Workspace) {
-  return workspace.status === "unprovisioned";
 }
 
 export function getStatusMessage(status: WorkspaceStatus): string {

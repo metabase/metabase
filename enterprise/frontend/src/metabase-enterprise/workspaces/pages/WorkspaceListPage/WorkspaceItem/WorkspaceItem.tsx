@@ -10,6 +10,7 @@ import {
   Card,
   FixedSizeIcon,
   Group,
+  Loader,
   Menu,
   Stack,
 } from "metabase/ui";
@@ -23,8 +24,8 @@ import {
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import {
+  getDatabaseName,
   getStatusMessage,
-  getWorkspaceDatabaseName,
   isDeprovisioned,
   isDeprovisioning,
   isProvisioned,
@@ -96,22 +97,33 @@ function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
     useDisclosure(false);
 
   return (
-    <Box c="text-primary" lh="1rem">
-      <Group gap="sm" wrap="nowrap">
+    <Group gap="xs" wrap="nowrap">
+      <WorkspaceStatusIcon workspace={workspace} />
+      <Box c="text-primary" lh="1rem">
         {getStatusMessage(workspace.status)}
-        {workspace.status_details != null && (
-          <Button variant="subtle" p={0} h="auto" onClick={openDetails}>
-            {t`See details`}
-          </Button>
-        )}
-      </Group>
+      </Box>
+      {workspace.status_details != null && (
+        <Button variant="subtle" p={0} h="auto" onClick={openDetails}>
+          {t`See details`}
+        </Button>
+      )}
       <StatusDetailsModal
         workspace={workspace}
         opened={isDetailsOpen}
         onClose={closeDetails}
       />
-    </Box>
+    </Group>
   );
+}
+
+function WorkspaceStatusIcon({ workspace }: WorkspaceStatusItemProps) {
+  if (isProvisioning(workspace) || isDeprovisioning(workspace)) {
+    return <Loader size="xs" />;
+  }
+  if (isProvisioned(workspace)) {
+    return <FixedSizeIcon name="check" aria-hidden />;
+  }
+  return <FixedSizeIcon name="warning" aria-hidden />;
 }
 
 type WorkspaceInstanceItemProps = {
@@ -151,7 +163,7 @@ function WorkspaceDatabaseItem({
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
-        {getWorkspaceDatabaseName(workspaceDatabase)}
+        {getDatabaseName(workspaceDatabase)}
       </Group>
     </Box>
   );
