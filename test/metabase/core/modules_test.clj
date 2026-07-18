@@ -425,7 +425,7 @@
           deps      (dev.deps-graph/dependencies (dev.deps-graph/build-prefix->module config))
           full      (dev.deps-graph/full-dependencies deps)
           ;; mirrors the trigger set of mage.modules/driver-deps-affected?:
-          ;; default-modules-which-trigger-drivers ∪ modules-triggering-cloud-drivers.
+          ;; the union of default-modules-which-trigger-drivers and modules-triggering-cloud-drivers.
           ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
           ;; changed set before computing what is affected, so it suppresses self-triggering.
           triggers  '[driver transforms query-processor
