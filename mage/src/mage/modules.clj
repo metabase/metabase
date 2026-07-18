@@ -434,6 +434,12 @@
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
+   ;; an undeclared trigger is never in the unaffected set, which silently makes EVERY module
+   ;; "affect drivers" -- fail loudly instead (renames must update the trigger constants).
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))
