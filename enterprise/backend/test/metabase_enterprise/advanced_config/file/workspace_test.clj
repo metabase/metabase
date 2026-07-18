@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml])
@@ -23,7 +24,7 @@
     ;; leak a flipped lock into the rest of the suite.
     (mt/with-premium-features #{:workspaces}
       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-        (let [lock-atom @#'ws/locked-by-config?*
+        (let [lock-atom @#'ws.provisioning/locked-by-config?*
               prior     @lock-atom]
           (try
             (thunk)
@@ -310,7 +311,7 @@
 ;;; `apply-workspace-section!` do NOT flip the lock — the boot wrapper is the
 ;;; only thing that does.
 
-(defn- lock-atom [] @#'ws/locked-by-config?*)
+(defn- lock-atom [] @#'ws.provisioning/locked-by-config?*)
 
 (deftest boot-initialize!-sets-the-lock-when-config-has-workspace-test
   (testing "boot-initialize!, given a parsed config.yml with a :workspace section, flips the lock"

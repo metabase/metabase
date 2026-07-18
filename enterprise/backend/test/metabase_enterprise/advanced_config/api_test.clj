@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
    [metabase.driver.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -86,7 +87,7 @@
                                :workspace {:name      "Uploaded Workspace"
                                            :databases {(keyword db-name) {:input_schemas ["public"]
                                                                           :output        {:schema "ws_uploaded"}}}}}}
-          lock-atom @#'ws/locked-by-config?*
+          lock-atom @#'ws.provisioning/locked-by-config?*
           prior     @lock-atom]
       (try
         (reset! lock-atom false)
