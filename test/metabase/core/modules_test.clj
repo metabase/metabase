@@ -420,8 +420,12 @@
                 "move in both directions by design — run `./bin/mage fix-modules-config` (or\n"
                 "`modules-validate --update-ratchets`) and commit the new values; the PR diff is the\n"
                 "review signal.")
-    (is (= (select-keys (dev.deps-graph/module-boundary-stats) config-derived-stat-keys)
-           (select-keys (dev.deps-graph/committed-module-boundary-stats) config-derived-stat-keys)))))
+    (let [actual    (dev.deps-graph/module-boundary-stats)
+          committed (dev.deps-graph/committed-module-boundary-stats)]
+      (is (= (set (keys actual)) (set (keys committed)))
+          "module-stats.edn must carry the full stat shape, scan-derived keys included")
+      (is (= (select-keys actual config-derived-stat-keys)
+             (select-keys committed config-derived-stat-keys))))))
 
 (deftest ^:parallel driver-test-overrides-not-stale-test
   (testing (str "Every driver-test exemption in driver-test-overrides.edn must still be justified by the\n"
