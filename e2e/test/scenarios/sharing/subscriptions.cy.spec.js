@@ -117,8 +117,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses");
 
         // Change the schedule to "Monthly"
-        cy.findByDisplayValue("Hourly").click();
-        H.popover().findByText("Monthly").click();
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("monthly").click();
 
         H.sidebar().button("Done").should("be.disabled");
       });
@@ -137,7 +137,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses").click();
         H.popover().should("be.visible").and("contain", `${admin.first_name}`);
         cy.realPress("Escape");
-        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
         cy.findByPlaceholderText("Enter user names or email addresses").should(
           "not.have.value",
         );
@@ -402,14 +402,14 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       H.sidebar().findByText("To:").click();
 
-      cy.findByDisplayValue("Hourly").click();
-      H.popover().findByText("Monthly").click();
+      cy.findByTestId("select-frequency").click();
+      H.popover().findByText("monthly").click();
 
-      cy.findByDisplayValue("First").click();
-      H.popover().findByText("15th (Midpoint)").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("15th").click();
 
-      cy.findByDisplayValue("15th (Midpoint)").click();
-      H.popover().findByText("First").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("first").click();
 
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")

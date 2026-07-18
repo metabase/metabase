@@ -148,6 +148,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (internal-stats/metabot-stats)
+                                         (internal-stats/data-app-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count

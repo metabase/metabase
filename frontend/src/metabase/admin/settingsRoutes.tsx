@@ -9,6 +9,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
+import * as Urls from "metabase/urls";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -21,6 +22,7 @@ import {
   CustomVisualizationsFormPage,
   CustomVisualizationsManagePage,
 } from "./settings/components/SettingsPages/CustomVisualizationsSettingsPage";
+import { DataAppsManagePage } from "./settings/components/SettingsPages/DataAppsSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -99,6 +101,14 @@ export const getSettingsRoutes = (
             component={CustomVisualizationsDevelopmentPage}
           />
         )}
+      </Route>
+      <Route
+        path={
+          Urls.DATA_APP_URL_SEGMENT
+        } /* do not allow users with "Settings access" permissions to access data apps pages */
+        element={<IsAdmin />}
+      >
+        <Route index component={DataAppsManagePage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />
       <Route
