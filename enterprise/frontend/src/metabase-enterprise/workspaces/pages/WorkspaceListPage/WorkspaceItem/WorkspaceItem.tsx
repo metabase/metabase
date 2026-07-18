@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   ActionIcon,
   Anchor,
@@ -14,12 +15,12 @@ import {
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
 import {
+  useDeleteWorkspaceMutation,
   useDeprovisionWorkspaceMutation,
   useProvisionWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
-import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import {
   getWorkspaceDatabaseName,
   isDeprovisioned,
@@ -27,12 +28,9 @@ import {
   isProvisioned,
   isProvisioning,
 } from "../../../utils";
-import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
 import { getStatusMessage } from "./utils";
-
-const CONFIG_FILENAME = "config.yml";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
@@ -148,16 +146,43 @@ type WorkspaceMenuProps = {
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
-  const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
-    useDisclosure(false);
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
   const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
+  const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const { modalContent, show: showConfirmation } = useConfirmation();
+
+  const handleProvision = () => {
+    showConfirmation({
+      title: t`Provision this workspace?`,
+      message: t`This will set up temporary database users and schemas and a workspace instance.`,
+      confirmButtonText: t`Provision`,
+      onConfirm: () => provisionWorkspace(workspace.id),
+    });
+  };
+
+  const handleDeprovision = () => {
+    showConfirmation({
+      title: t`Deprovision this workspace?`,
+      message: t`This will delete the workspace instance and the temporary database users and schemas that were created for this workspace.`,
+      confirmButtonText: t`Deprovision`,
+      onConfirm: () => deprovisionWorkspace(workspace.id),
+    });
+  };
+
+  const handleDelete = () => {
+    showConfirmation({
+      title: t`Delete this workspace?`,
+      message: t`This will delete the workspace. This can't be undone.`,
+      confirmButtonText: t`Delete workspace`,
+      onConfirm: () => deleteWorkspace(workspace.id),
+    });
+  };
 
   return (
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon aria-label={t`Workspace options`}>
+          <ActionIcon aria-label={t`Workspace actions`}>
             <FixedSizeIcon name="ellipsis" aria-hidden />
           </ActionIcon>
         </Menu.Target>
@@ -166,7 +191,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
             <Menu.Item
               leftSection={<FixedSizeIcon name="play" aria-hidden />}
               disabled={isProvisioning(workspace)}
-              onClick={() => provisionWorkspace(workspace.id)}
+              onClick={handleProvision}
             >
               {t`Provision`}
             </Menu.Item>
@@ -175,22 +200,11 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
             <Menu.Item
               leftSection={<FixedSizeIcon name="revert" aria-hidden />}
               disabled={isDeprovisioning(workspace)}
-              onClick={() => deprovisionWorkspace(workspace.id)}
+              onClick={handleDeprovision}
             >
               {t`Deprovision`}
             </Menu.Item>
           )}
-          <Menu.Item
-            component="a"
-            href={`/api/ee/workspace-manager/${workspace.id}/config`}
-            download={CONFIG_FILENAME}
-            leftSection={<FixedSizeIcon name="download" aria-hidden />}
-            onClick={() =>
-              trackWorkspaceConfigDownloaded({ workspaceId: workspace.id })
-            }
-          >
-            {t`Download ${CONFIG_FILENAME}`}
-          </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}
@@ -200,7 +214,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
             disabled={!isDeprovisioned(workspace)}
-            onClick={openDelete}
+            onClick={handleDelete}
           >
             {t`Delete`}
           </Menu.Item>
@@ -212,13 +226,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         onRename={closeRename}
         onClose={closeRename}
       />
-      {isDeleteOpen && (
-        <DeleteWorkspaceModal
-          workspaceId={workspace.id}
-          onDelete={closeDelete}
-          onClose={closeDelete}
-        />
-      )}
+      {modalContent}
     </>
   );
 }

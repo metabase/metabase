@@ -55,7 +55,7 @@ describe("WorkspaceListPage", () => {
     const item = await screen.findByRole("region", { name: "Existing" });
     expect(item).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
     ).toBeInTheDocument();
   });
 });

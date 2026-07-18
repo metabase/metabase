@@ -89,26 +89,10 @@ describe("WorkspaceItem", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("offers a config download link in the menu", async () => {
-    setup();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
-    );
-
-    const downloadItem = await screen.findByRole("menuitem", {
-      name: /Download config\.yml/,
-    });
-    expect(downloadItem).toHaveAttribute(
-      "href",
-      `/api/ee/workspace-manager/${WORKSPACE.id}/config`,
-    );
-    expect(downloadItem).toHaveAttribute("download", "config.yml");
-  });
-
   it("opens the rename modal from the menu", async () => {
     setup();
     await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Rename" }),
@@ -122,7 +106,7 @@ describe("WorkspaceItem", () => {
   it("opens the delete modal from the menu", async () => {
     setup();
     await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Delete" }),

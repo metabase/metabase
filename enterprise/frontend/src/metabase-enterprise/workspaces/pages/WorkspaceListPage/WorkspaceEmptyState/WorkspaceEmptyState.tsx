@@ -18,7 +18,6 @@ import {
 } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
 import { NewWorkspaceButton } from "../NewWorkspaceButton";
 import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
@@ -39,7 +38,6 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
     useDocsUrl("installation-and-operation/remote-sync");
 
   const handleSetupClick = () => {
-    trackWorkspaceSetupButtonClicked();
     openSetup();
   };
 
@@ -55,7 +53,7 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
             {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
           <Text mb="lg">
-            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}{" "}
+            {t`If this is your production instance, create and download a workspace config here to use in a workspace instance.`}{" "}
             {t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}
           </Text>
           <Group gap="md">
