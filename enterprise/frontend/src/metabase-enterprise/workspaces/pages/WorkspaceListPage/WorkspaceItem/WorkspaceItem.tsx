@@ -30,6 +30,8 @@ import {
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
+import { getStatusMessage } from "./utils";
+
 const CONFIG_FILENAME = "config.yml";
 
 export type WorkspaceItemProps = {
@@ -54,6 +56,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
+          <WorkspaceStatusItem workspace={workspace} />
           {workspace.instance_url != null && (
             <WorkspaceInstanceItem instanceUrl={workspace.instance_url} />
           )}
@@ -83,6 +86,18 @@ function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
       {creator != null
         ? t`Created by ${getUserName(creator)} ${timeAgo}`
         : t`Created ${timeAgo}`}
+    </Box>
+  );
+}
+
+type WorkspaceStatusItemProps = {
+  workspace: Workspace;
+};
+
+function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
+  return (
+    <Box c="text-primary" lh="1rem">
+      {getStatusMessage(workspace.status)}
     </Box>
   );
 }
