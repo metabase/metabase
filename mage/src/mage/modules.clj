@@ -111,6 +111,7 @@
      eid-translation
      embedding
      enterprise/api
+     enterprise/harbormaster
      enterprise/scim
      enterprise/serialization
      enterprise/sso
