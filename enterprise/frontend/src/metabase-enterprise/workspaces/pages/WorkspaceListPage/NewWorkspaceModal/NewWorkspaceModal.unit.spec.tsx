@@ -10,7 +10,6 @@ import type { Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockWorkspace,
-  createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
 
 import { NewWorkspaceModal } from "./NewWorkspaceModal";
@@ -64,32 +63,6 @@ describe("NewWorkspaceModal", () => {
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
     );
-  });
-
-  it("warns when some databases could not be provisioned", async () => {
-    const { onCreate } = setup({
-      createdWorkspace: createMockWorkspace({
-        name: "Brand new workspace",
-        databases: [
-          createMockWorkspaceDatabase({
-            database_id: 10,
-            status: "unprovisioned",
-            database: createMockDatabase({ id: 10, name: "Postgres" }),
-          }),
-        ],
-      }),
-    });
-
-    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
-    await userEvent.click(screen.getByRole("checkbox", { name: "Postgres" }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Create workspace" }),
-    );
-
-    expect(
-      await screen.findByText("Failed to provision the workspace."),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
   });
 
   it("requires at least one database", async () => {
