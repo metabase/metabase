@@ -224,7 +224,7 @@
       (met/with-user-attributes!
         :crowberto
         {"db_name" "nonexistent_database_name"}
-        (with-routing-setup! [router-db [[destination-db "my database name"]]]
+        (with-routing-setup! [router-db [[_destination-db "my database name"]]]
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
             (testing "Anonymous access is prohibited"
