@@ -1571,9 +1571,19 @@ test.describe("issue 25322", () => {
     await page.route(
       `**/api/dashboard/${dashboardId}/params/${parameterDetails.id}/values`,
       async (route) => {
-        const response = await route.fetch();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await route.fulfill({ response });
+        // A late/retried values request can hit this handler as the test tears
+        // down; route.fetch() then throws "route.fetch: Test ended" on the
+        // closing context, and an unhandled throw in a route handler crashes the
+        // whole worker (observed on a wave-11 CI shard: 271 passed but the run
+        // failed, with the next test skipped). Swallow the teardown-race error —
+        // during the test the handler still delays + fulfils normally.
+        try {
+          const response = await route.fetch();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await route.fulfill({ response });
+        } catch {
+          // page/context gone — nothing to fulfil.
+        }
       },
     );
 
