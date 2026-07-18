@@ -408,12 +408,20 @@
                              "Reduce the new boundary debt; the updater will not bless increases.")
                         metric ratchet value))))))))
 
+(def ^:private config-derived-stat-keys
+  "The module-stats keys derivable from the committed config-dir files alone. Only these are enforced
+  exactly: PR CI checks out the merge preview with master, so scan-derived keys (SCC sizes, namespace
+  counts, test blast) legitimately differ from any branch's committed baseline whenever master moves.
+  They are still synced into module-stats.edn for PR-diff visibility."
+  [:largest-api :module-count :module-exports :ns-prefix-overrides :parent-team-mismatches :total-api])
+
 (deftest ^:parallel module-boundary-stats-match-committed-test
-  (testing (str "Module surface stats match module-stats.edn. Unlike the ratchets these move in both\n"
-                "directions by design — run `./bin/mage fix-modules-config` (or `modules-validate\n"
-                "--update-ratchets`) and commit the new values; the PR diff is the review signal.")
-    (is (= (dev.deps-graph/module-boundary-stats)
-           (dev.deps-graph/committed-module-boundary-stats)))))
+  (testing (str "Config-derived module surface stats match module-stats.edn. Unlike the ratchets these\n"
+                "move in both directions by design — run `./bin/mage fix-modules-config` (or\n"
+                "`modules-validate --update-ratchets`) and commit the new values; the PR diff is the\n"
+                "review signal.")
+    (is (= (select-keys (dev.deps-graph/module-boundary-stats) config-derived-stat-keys)
+           (select-keys (dev.deps-graph/committed-module-boundary-stats) config-derived-stat-keys)))))
 
 (deftest ^:parallel driver-test-overrides-not-stale-test
   (testing (str "Every driver-test exemption in driver-test-overrides.edn must still be justified by the\n"
