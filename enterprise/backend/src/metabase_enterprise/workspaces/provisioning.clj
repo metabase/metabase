@@ -40,7 +40,6 @@
    [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -75,36 +74,6 @@
   "Clear the `instance-workspace` setting."
   []
   (ws.settings/instance-workspace! nil)
-  nil)
-
-;;; ------------------------------- Instance-workspace lock -------------------------------
-
-(defonce ^:private locked-by-config?* (atom false))
-
-(defn workspace-locked-by-config?
-  "True iff this instance's workspace was set by out-of-band deployment config —
-  a `:workspace` section in `config.yml` at boot, or the `MB_INSTANCE_WORKSPACE`
-  env var — and so must not be mutated through the workspace-instance API. The
-  lock is per-boot and not persisted: removing the config and restarting clears it.
-
-  Read at the HTTP boundary only. Do NOT consult it from `set-instance-workspace!`
-  or `clear-instance-workspace!` — internal callers and test fixtures rely on
-  those setters staying unconditional."
-  []
-  (or @locked-by-config?*
-      ;; Checked inline rather than captured at boot like the atom: nothing reads
-      ;; this env var at startup, and the lookup is cheap.
-      (some? (setting/env-var-value :instance-workspace))))
-
-(defn mark-locked-by-config!
-  "Called by the boot loader only; runtime code paths never flip the lock."
-  []
-  (reset! locked-by-config?* true))
-
-(defn clear-all-remappings!
-  "Delete every `:model/TableRemapping` row across all databases."
-  []
-  (t2/delete! :model/TableRemapping)
   nil)
 
 (defn instance-workspace

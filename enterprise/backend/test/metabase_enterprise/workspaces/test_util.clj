@@ -1,7 +1,6 @@
 (ns metabase-enterprise.workspaces.test-util
   "Shared test helpers for the workspaces module."
   (:require
-   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.driver :as driver]))
 
 (defn driver-loadable?
@@ -14,14 +13,3 @@
   [engine]
   (try (driver/the-initialized-driver engine) true
        (catch Throwable _ false)))
-
-(defn with-workspace-locked-by-config
-  "Flip the workspace-instance lock for the duration of `thunk`, restoring the
-   prior value on exit. Reaches into the private atom via `#'` so the public
-   surface stays clean of test-only setters."
-  [thunk]
-  (let [a     @#'provisioning/locked-by-config?*
-        prior @a]
-    (reset! a true)
-    (try (thunk)
-         (finally (reset! a prior)))))

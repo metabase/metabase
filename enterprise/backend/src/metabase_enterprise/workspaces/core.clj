@@ -7,7 +7,6 @@
 
 (shared.ns/import-fns
  [metabase-enterprise.workspaces.provisioning
-  clear-all-remappings!
   clear-instance-workspace!
   create-workspace!
   db-workspace-namespace
@@ -16,7 +15,5 @@
   instance-workspace
   list-remappings
   list-workspaces
-  mark-locked-by-config!
   set-instance-workspace!
-  workspace-locked-by-config?
   workspace-mode?])

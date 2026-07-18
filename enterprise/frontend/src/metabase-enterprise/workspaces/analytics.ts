@@ -11,9 +11,3 @@ export function trackWorkspaceCreated({
     target_id: workspaceId,
   });
 }
-
-export function trackWorkspaceInstanceLeave() {
-  trackSimpleEvent({
-    event: "workspaces_instance_leave",
-  });
-}
