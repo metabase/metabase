@@ -25,6 +25,38 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("My workspace")).toBeInTheDocument();
   });
 
+  it("shows status details in a modal via the See details button", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "database-provisioning-failure",
+        status_details: "warehouse down",
+      }),
+    });
+
+    expect(screen.getByText("Failed to set up databases")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "See details" }));
+
+    const modal = await screen.findByRole("dialog");
+    expect(modal).toHaveTextContent("Failed to set up databases");
+    expect(modal).toHaveTextContent("warehouse down");
+  });
+
+  it("does not offer status details when there are none", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+        status_details: null,
+      }),
+    });
+
+    expect(screen.getByText("Provisioned")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "See details" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the creator info when the creator is hydrated", () => {
     setup({
       workspace: createMockWorkspace({

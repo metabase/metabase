@@ -6,6 +6,7 @@ import {
   ActionIcon,
   Anchor,
   Box,
+  Button,
   Card,
   FixedSizeIcon,
   Group,
@@ -22,6 +23,7 @@ import {
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import {
+  getStatusMessage,
   getWorkspaceDatabaseName,
   isDeprovisioned,
   isDeprovisioning,
@@ -29,8 +31,7 @@ import {
   isProvisioning,
 } from "../../../utils";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
-
-import { getStatusMessage } from "./utils";
+import { StatusDetailsModal } from "../StatusDetailsModal";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
@@ -91,9 +92,24 @@ type WorkspaceStatusItemProps = {
 };
 
 function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
+  const [isDetailsOpen, { open: openDetails, close: closeDetails }] =
+    useDisclosure(false);
+
   return (
     <Box c="text-primary" lh="1rem">
-      {getStatusMessage(workspace.status)}
+      <Group gap="sm" wrap="nowrap">
+        {getStatusMessage(workspace.status)}
+        {workspace.status_details != null && (
+          <Button variant="subtle" p={0} h="auto" onClick={openDetails}>
+            {t`See details`}
+          </Button>
+        )}
+      </Group>
+      <StatusDetailsModal
+        workspace={workspace}
+        opened={isDetailsOpen}
+        onClose={closeDetails}
+      />
     </Box>
   );
 }
