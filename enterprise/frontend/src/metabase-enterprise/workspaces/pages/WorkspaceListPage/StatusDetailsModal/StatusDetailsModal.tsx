@@ -1,5 +1,5 @@
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { Box, Modal } from "metabase/ui";
+import { Modal } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
 import { getStatusMessage } from "../../../utils";
@@ -25,9 +25,9 @@ export function StatusDetailsModal({
       size="lg"
       onClose={onClose}
     >
-      <Box className={S.codeContainer}>
+      <div className={S.codeContainer}>
         <CodeEditor value={workspace.status_details ?? ""} readOnly />
-      </Box>
+      </div>
     </Modal>
   );
 }

@@ -15,15 +15,38 @@
 (defn- yaml-bytes ^bytes [body]
   (.getBytes ^String (yaml/generate-string body) "UTF-8"))
 
-(defn- multipart [bs]
-  [{:request-options {:headers {"content-type" "multipart/form-data"}}}
-   {:config bs}])
+(defn- multipart
+  ([bs]
+   (multipart bs nil))
+  ([bs api-key]
+   [{:request-options {:headers (cond-> {"content-type" "multipart/form-data"}
+                                  api-key (assoc "x-metabase-apikey" api-key))}}
+    {:config bs}]))
 
 (deftest superuser-only-test
   (testing "POST /api/ee/advanced-config requires superuser"
     (is (= "You don't have permissions to do that."
            (apply mt/user-http-request :rasta :post 403 "ee/advanced-config/"
                   (multipart (yaml-bytes {:version 1 :config {}})))))))
+
+(deftest external-requires-static-api-key-test
+  (testing "POST /api/ee/advanced-config/external"
+    (let [payload (yaml-bytes {:version 1 :config {}})]
+      (testing "403 when MB_API_KEY is not set"
+        (mt/with-temporary-setting-values [api-key nil]
+          (apply mt/client :post 403 "ee/advanced-config/external"
+                 (multipart payload "anything"))))
+      (mt/with-temporary-setting-values [api-key "test-api-key"]
+        (testing "403 without the header"
+          (apply mt/client :post 403 "ee/advanced-config/external"
+                 (multipart payload)))
+        (testing "403 with a wrong key"
+          (apply mt/client :post 403 "ee/advanced-config/external"
+                 (multipart payload "wrong-key")))
+        (testing "applies the config with the correct key, no user session needed"
+          (mt/with-premium-features #{:config-text-file}
+            (apply mt/client :post 204 "ee/advanced-config/external"
+                   (multipart payload "test-api-key"))))))))
 
 (deftest does-not-expand-templates-test
   (testing "POST /api/ee/advanced-config does NOT expand `{{env VAR}}` templates"

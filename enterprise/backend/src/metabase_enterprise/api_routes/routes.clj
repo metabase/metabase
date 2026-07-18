@@ -6,8 +6,8 @@
   `enterprise/backend/README.md` for more details."
   (:require
    [metabase-enterprise.action-v2.api]
-   [metabase-enterprise.advanced-config.api]
    [metabase-enterprise.advanced-config.api.logs]
+   [metabase-enterprise.advanced-config.api.routes]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
@@ -109,7 +109,7 @@
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
-   "/advanced-config"              (api.macros/ns-handler 'metabase-enterprise.advanced-config.api)
+   "/advanced-config"              metabase-enterprise.advanced-config.api.routes/routes
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)

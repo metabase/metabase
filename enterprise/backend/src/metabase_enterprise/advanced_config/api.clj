@@ -21,6 +21,27 @@
   metabase-enterprise.advanced-config.file.users/keep-me
   metabase-enterprise.advanced-config.file.workspace/keep-me)
 
+(def ConfigUploadRequest
+  "Schema for the multipart `config.yml` upload request, shared with the
+   `/external` variant."
+  [:map
+   [:multipart-params
+    [:map
+     ["config" [:map
+                [:filename :string]
+                [:tempfile (ms/InstanceOfClass java.io.File)]]]]]])
+
+(defn apply-config-upload!
+  "Apply the uploaded `config.yml` multipart param `config` to this instance and
+   delete its tempfile. Shared by the `/` and `/external` upload endpoints."
+  [config]
+  (let [tempfile (:tempfile config)]
+    (try
+      (advanced-config.file/initialize! (yaml/from-file tempfile))
+      (finally
+        (io/delete-file tempfile :silently))))
+  nil)
+
 (api.macros/defendpoint :post "/" :- :nil
   "Apply an uploaded `config.yml` to this instance. Runs the same per-section
   initializers (`settings`, `databases`, `users`, `api-keys`, `workspace`, ...)
@@ -33,17 +54,10 @@
   [_route-params
    _query-params
    _body
-   {{config "config"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["config" [:map
-                    [:filename :string]
-                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+   {{config "config"} :multipart-params, :as _request} :- ConfigUploadRequest]
   (api/check-superuser)
-  (let [tempfile (:tempfile config)]
-    (try
-      (advanced-config.file/initialize! (yaml/from-file tempfile))
-      (finally
-        (io/delete-file tempfile :silently))))
-  nil)
+  (apply-config-upload! config))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/advanced-config` routes."
+  (api.macros/ns-handler *ns*))
