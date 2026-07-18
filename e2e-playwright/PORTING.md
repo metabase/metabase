@@ -654,3 +654,23 @@ does NOT apply to API fetches.) This surfaced as a flaky `beforeEach`
 (navbar:128 on the wave-10 s4 shard — NOT a navbar bug). `api.restore()` now
 passes an explicit 120s timeout. If you add other heavy testing-API calls,
 give them an explicit `timeout` too — don't rely on the 30s default.
+
+## Gotchas added in wave 11 (viz-tabular / multiple-column-breakouts / embedding / collections / actions)
+
+- **ECharts SVG axis `<text>` carries leading/trailing spaces** (e.g. `" 1월 2027 "`).
+  testing-library trims before matching so Cypress's `findByText(/^1월/)` worked;
+  Playwright's `getByText` does NOT trim, so `^`/`\b`-anchored regexes match
+  nothing. Drop the anchors and match as a substring (or `.trim()` in an
+  evaluate). (embedding-reproductions)
+- **`filter({ has: scope.getByText(...) })` breaks when `scope` is a Locator.**
+  The `has` sub-locator gets re-anchored to the outer scope, not matched within
+  each candidate row, so it never resolves (hover/click times out though the row
+  is clearly present). Always build the `has` text locator from `page`, never
+  from a Locator scope. (collections — openEllipsisMenuFor / checkbox select)
+- **Fully `@external`+`@actions` specs are all-skip in this setup.** They restore
+  `${dialect}-writable` snapshots and drive the writable QA postgres/mysql DBs,
+  which aren't in the jar's snapshots and aren't generated in CI (`-@external`).
+  The port is faithful-by-construction but **runtime-unverified** — a green run
+  means "correctly skipped", not "passing". Prefer specs with real executable
+  coverage; only take these when the writable-DB path is being wired up.
+  (actions-on-dashboards: 33/33 gated)

@@ -4,15 +4,20 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
-> **Latest (2026-07-18, wave 10):** +5 specs landed & jar-verified
-> (pivot_tables, column-compare, dashboard-filters-reproductions-2,
-> embedding-dashboard, dashboard-card-reproductions) — ~73 specs ported, 341 in
-> QUEUE. No product bugs this wave. Bug candidates #1/#3 are both now
-> resolved (#1 confirmed, #3 retracted — see FINDINGS scoreboard). New:
-> `NOTES-parallelism.md` (read-only-pool/seeding analysis for the sample-DB
-> change). **Consolidation pass is now worth doing** — helper duplication
-> (text matchers, findDisplayValue, permissions/dashboard helpers) is piling up
-> across per-agent modules; see the wave-10 FINDINGS entry.
+> **Latest (2026-07-18, wave 11):** +5 specs jar-verified — 78 ported, 336 in
+> QUEUE. Real coverage: multiple-column-breakouts (14), viz-tabular-reproductions
+> (27), collections (32), embedding-reproductions (15+5 gated). **Caveat:
+> actions-on-dashboards is 33/33 all-gated** (writable QA postgres/mysql not in
+> the jar snapshots / not in CI's `-@external` gen) — ported but *unexecuted*
+> everywhere; don't count it as verified coverage. No product bugs. Two new
+> PORTING gotchas (ECharts axis-text spaces; `filter({has})` Locator-scope
+> anchoring). **CI cost:** now batching a whole wave into ONE push/CI run
+> instead of per-commit. Dedup pass 1+2 done (icon/modal/popover/goToTab →
+> ui.ts); create*/text-matcher consolidation still deferred (needs a superset +
+> full-suite run). documents-comments formatting-menu test fixme'd (thread 6).
+>
+> Prior (wave 10): +5 dashboard/embedding specs; bug candidates #1 confirmed /
+> #3 retracted; NOTES-parallelism.md added.
 
 ## Where the work lives
 

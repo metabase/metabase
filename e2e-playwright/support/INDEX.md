@@ -1,5 +1,17 @@
 # Helper index (generated — do not edit; run scripts/build-helper-index.mjs)
 
+## actions-on-dashboards.ts
+- `queryWritableDB` — Port of H.queryWritableDB(sql, type) — the Cypress version runs through
+- `resetTestTable` — Port of H.resetTestTable({ type, table }) (cy.task("resetTable") →
+- `MANY_DATA_TYPES_ROWS` — Port of many_data_types_rows (e2e/support/test_tables_data.js). */
+- `createModelFromTableName` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js) — unlike
+- `createAction` — Port of H.createAction (e2e-action-helpers.js). */
+- `createImplicitAction` — Port of H.createImplicitAction (e2e-action-helpers.js). */
+- `getActionCardDetails` — Port of H.getActionCardDetails (e2e-dashboard-helpers.ts) — the shared
+- `addWidgetStringFilter` — Port of addWidgetStringFilter (native-filters/helpers/e2e-field-filter-helpers.js):
+- `moveDnDKitListElement` — Port of H.moveDnDKitListElement(dataTestId, { startIndex, dropIndex }):
+- `aside` — The click-behavior sidebar. Cypress used a bare cy.get("aside"). */
+
 ## admin-extras.ts
 - `seedSecurityAdvisories` — Nuke all existing security advisories and insert the provided ones. */
 - `deleteToken` — Port of H.deleteToken (e2e-token-helpers.ts). */
@@ -118,6 +130,27 @@
 - `expectCapturedAnchor`
 - `verifyNotebookQuery`
 - `createMultiStageQuery`
+
+## collections-core.ts
+- `FIRST_COLLECTION_ENTITY_ID` — Port of FIRST_COLLECTION_ENTITY_ID (cypress_sample_instance_data.js). */
+- `ALL_USERS_GROUP_ID` — Port of ALL_USERS_GROUP_ID (cypress_sample_instance_data.js). */
+- `DATA_GROUP` — Mirrors USER_GROUPS.DATA_GROUP (e2e/support/cypress_data.js). */
+- `displaySidebarChildOf` — Port of displaySidebarChildOf (e2e-collections-sidebar.js): click the
+- `openCollectionMenu` — Port of H.openCollectionMenu: the collection-menu ellipsis. */
+- `moveOpenedCollectionTo` — Port of H.moveOpenedCollectionTo: open the collection menu, pick Move, wait
+- `closeNavigationSidebar` — Port of H.closeNavigationSidebar. */
+- `waitForCollectionItems` — Cypress alias for the collection-items GET (any collection id) — resolve
+- `openEllipsisMenuFor` — Port of the spec-local openEllipsisMenuFor: the row ellipsis is hover-gated,
+- `getRowCheckbox` — Port of the spec-local getRowCheckbox. */
+- `selectItemUsingCheckbox` — Port of the spec-local selectItemUsingCheckbox (click the enclosing button). */
+- `assertSelectAllIsIndeterminate` — Port of the spec-local assertSelectAllIsIndeterminate. */
+- `ensureCollectionHasNoChildren` — Port of the spec-local ensureCollectionHasNoChildren: the chevron exists but
+- `ensureCollectionIsExpanded` — Port of the spec-local ensureCollectionIsExpanded. */
+- `findPickerItem` — Port of the spec-local findPickerItem: the anchor (which carries the
+- `moveItemToCollection` — Port of the spec-local moveItemToCollection. */
+- `archiveAll` — Port of the spec-local archiveAll (archive every non-collection root item). */
+- `toggleSortingFor` — Port of the spec-local toggleSortingFor. */
+- `assertCollectionItemsOrder` — Port of the spec-local assertCollectionItemsOrder. */
 
 ## collections.ts
 - `getPinnedSection` — Port of H.getPinnedSection. */
@@ -472,6 +505,16 @@
 - `getRequiredToggle` — Port of H.getRequiredToggle. */
 - `toggleRequiredParameter` — Port of H.toggleRequiredParameter (the real input is hidden in Mantine). */
 
+## embedding-repros.ts
+- `getIframeBody` — Port of H.getIframeBody: the (single) iframe on the page as a FrameLocator.
+- `tableInteractiveHeader` — Port of H.tableInteractiveHeader (`cy.findByTestId("table-header")`). */
+- `setDefaultValueForLockedFilter` — Port of the spec-local setDefaultValueForLockedFilter (issue 15860): in the
+- `createDashboardWithQuestions` — Port of H.createDashboardWithQuestions (api/createDashboardWithQuestions.ts):
+- `createModelFromTableName` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js) returning
+- `moveCardToCollection` — Port of the spec-local moveToCollection (issue 51934): PUT the card's
+- `getFieldIdByName` — Port of H.withDatabase's field-id lookup (e2e-database-metadata-helpers.ts),
+- `holdEmbedRoute` — Playwright equivalent of the spec's `cy.intercept(..., () => deferred)` /
+
 ## embedding.ts
 - `METABASE_SECRET_KEY` — Port of METABASE_SECRET_KEY (e2e/support/cypress_data.js) — the
 - `embedModalContent`
@@ -615,6 +658,21 @@
 - `visitModel` — Port of H.visitModel (hasDataAccess variant): visit the model page and wait
 - `runNativeQuery` — Port of H.runNativeQuery: click the play button in the native editor, wait
 - `createNativeModel` — Port of H.createNativeQuestion({ type: "model", ... }). Mirrors the Cypress
+
+## multiple-column-breakouts.ts
+- `createQuestion` — Port of H.createQuestion (POST /api/card). Returns the created card id. */
+- `createAndVisitQuestion` — Port of H.createQuestion(details, { visitQuestion: true }). */
+- `createQuestionAndDashboard` — Port of H.createQuestionAndDashboard for this spec's shape. Applies the
+- `assertTableData` — Port of H.assertTableData — header cells and first body rows of the QB's
+- `summarize` — Port of H.summarize() (non-notebook mode): guard against the empty-sidebar
+- `tableHeaderClick` — Port of the spec-local tableHeaderClick: click a result-table header to open
+- `addBreakoutColumn` — Port of the breakout-picker interaction in the "create a query with multiple
+- `datasetResponse` — POST /api/dataset (the "@dataset" alias). */
+- `pivotDatasetResponse` — POST /api/dataset/pivot (the "@pivotDataset" alias). */
+- `dashcardQueryResponse` — /api/dashboard/*​/dashcard/*​/card/*​/query (the "@dashcardQuery" alias). */
+- `publicDashcardQueryResponse` — /api/public/dashboard/*​/dashcard/*​/card/* (the "@publicDashcardQuery"). */
+- `embedDashcardQueryResponse` — /api/embed/dashboard/*​/dashcard/*​/card/* (the "@embedDashcardQuery"). */
+- `toggleColumn` — The "add or remove columns" checkbox toggle used by the viz-settings tests. */
 
 ## native-editor.ts
 - `adhocQuestionHash` — Port of adhocQuestionHash (the btoa'd card definition in the URL hash). */
@@ -875,6 +933,20 @@
 - `openNavigationSidebar` — Port of openNavigationSidebar's self-healing open loop: navigating to a
 - `visitQuestion` — Port of H.visitQuestion: navigate and wait for the metadata + query
 - `visitDashboard` — Port of H.visitDashboard: look up the dashboard through the API as the
+
+## viz-tabular-repros.ts
+- `ADMIN_USER_ID` — Port of ADMIN_USER_ID (cypress_sample_instance_data.js): the id of the
+- `main` — Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
+- `queryBuilderFooterDisplayToggle` — Port of H.queryBuilderFooterDisplayToggle. */
+- `createVizQuestion`
+- `createNativeVizQuestion` — Native-question creator accepting `display` and `visualization_settings` —
+- `expectDisplayValueVisible` — cy.findByDisplayValue(value).should("be.visible"). */
+- `expectNoDisplayValue` — cy.findByDisplayValue(value).should("not.exist"). */
+- `getControlByDisplayValue` — cy.findByDisplayValue(value): the (first) control with that current value. */
+- `echartsTooltip` — Port of H.echartsTooltip: ECharts may keep two DOM instances of the tooltip;
+- `hoverLineDot` — Port of H.cartesianChartCircle().eq(index).realHover(): hover the index-th
+- `assertEChartsTooltip` — Port of H.assertEChartsTooltip ({ header, rows }). Only the header/rows
+- `resizeTableColumn` — Port of H.resizeTableColumn(columnId, moveX): mousedown the column's resize
 
 ## wave7-filters-admin.ts
 - `OAUTH_REDIRECT_URI`

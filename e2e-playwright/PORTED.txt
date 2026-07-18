@@ -74,3 +74,8 @@ filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
 dashboard-cards/dashboard-card-reproductions.cy.spec.js
 embedding/embedding-dashboard.cy.spec.js
 visualizations-tabular/pivot_tables.cy.spec.js
+actions/actions-on-dashboards.cy.spec.js
+question/multiple-column-breakouts.cy.spec.ts
+visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js
+embedding/embedding-reproductions.cy.spec.js
+collections/collections.cy.spec.js
