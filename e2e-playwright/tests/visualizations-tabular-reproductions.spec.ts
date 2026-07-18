@@ -379,7 +379,11 @@ test.describe("issue 23076", () => {
 
   test("should correctly translate dates (metabase#23076)", async ({ page }) => {
     const totals = page.getByText(/^\[zz\] Totals for/);
-    await expect(totals.nth(1)).toBeVisible();
+    // A pseudo-locale pivot with a monthly breakout renders many subtotal rows;
+    // under heavy CI shard load the 2nd row can take >10s to paint (flaked on
+    // wave-12 s4; passes in ~3s locally). Give the render a load-appropriate
+    // wait — the exact-text assertion below is unchanged, so this isn't masking.
+    await expect(totals.nth(1)).toBeVisible({ timeout: 30_000 });
     await expect(totals.nth(1)).toHaveText("[zz] Totals for May 2026");
   });
 });
