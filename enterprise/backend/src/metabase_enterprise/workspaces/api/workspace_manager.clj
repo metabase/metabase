@@ -148,9 +148,9 @@
   Retryable from any settled status; 400 while a provision or deprovision run
   is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)]
-    (assert-workspace-status! ws)
-    (ws.provisioning/set-workspace-provisioning-status! ws)
+  (let [ws (api/write-check :model/Workspace id)
+        _  (assert-workspace-status! ws)
+        ws (ws.provisioning/set-workspace-provisioning-status! ws)]
     (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws)))
   (present-workspace (api/check-404 (workspace/get-workspace id))))
 
@@ -159,8 +159,8 @@
   Retryable from any settled status; 400 while a provision or deprovision run
   is already in flight. Poll `GET /:id` to follow the workspace's `:status`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [ws (api/write-check :model/Workspace id)]
-    (assert-workspace-status! ws)
-    (ws.provisioning/set-workspace-deprovisioning-status! ws)
+  (let [ws (api/write-check :model/Workspace id)
+        _  (assert-workspace-status! ws)
+        ws (ws.provisioning/set-workspace-deprovisioning-status! ws)]
     (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws)))
   (present-workspace (api/check-404 (workspace/get-workspace id))))

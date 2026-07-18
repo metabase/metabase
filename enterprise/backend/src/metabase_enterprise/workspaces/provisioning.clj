@@ -28,64 +28,71 @@
   [workspace :- ::ws.schema/workspace]
   (contains? #{:instance-deprovisioning :database-deprovisioning} (:status workspace)))
 
-(mu/defn- set-workspace-status! :- :nil
-  [ws-id :- pos-int?
+(mu/defn- set-workspace-status! :- ::ws.schema/workspace
+  "Persist `status`/`status-details` on the row and return `workspace` with them
+   assoc'ed, so callers can keep threading the updated copy."
+  [workspace :- ::ws.schema/workspace
    status :- ::ws.schema/workspace-status
    status-details :- [:maybe :string]]
-  (t2/update! :model/Workspace ws-id {:status status, :status_details status-details})
-  nil)
+  (t2/update! :model/Workspace (:id workspace) {:status status, :status_details status-details})
+  (assoc workspace :status status, :status_details status-details))
 
-(mu/defn set-workspace-provisioning-status! :- :nil
+(mu/defn set-workspace-provisioning-status! :- ::ws.schema/workspace
   "Set `:database-provisioning`, the first status of the provisioning path.
    Called before the background run starts so the run is immediately visible
-   as in flight."
-  [{ws-id :id} :- ::ws.schema/workspace]
-  (set-workspace-status! ws-id :database-provisioning nil))
+   as in flight. Returns the updated `workspace` copy."
+  [workspace :- ::ws.schema/workspace]
+  (set-workspace-status! workspace :database-provisioning nil))
 
-(mu/defn set-workspace-deprovisioning-status! :- :nil
+(mu/defn set-workspace-deprovisioning-status! :- ::ws.schema/workspace
   "Set `:instance-deprovisioning`, the first status of the deprovisioning path.
    Called before the background run starts so the run is immediately visible
-   as in flight."
-  [{ws-id :id} :- ::ws.schema/workspace]
-  (set-workspace-status! ws-id :instance-deprovisioning nil))
+   as in flight. Returns the updated `workspace` copy."
+  [workspace :- ::ws.schema/workspace]
+  (set-workspace-status! workspace :instance-deprovisioning nil))
 
-(mu/defn provision-workspace! :- :nil
+(mu/defn provision-workspace! :- ::ws.schema/workspace
   "Provision `workspace` (blocking): every database, then the child instance,
    ending `:provisioned`. Stops on the first failure — the phase's `*-failure`
    status and the error message land on the workspace — and rethrows. Retries
-   skip work that already succeeded."
-  [{ws-id :id :as workspace} :- ::ws.schema/workspace]
-  (set-workspace-provisioning-status! workspace)
-  (try
-    (run! provisioning.database/provision-database! (workspace-databases ws-id))
-    (catch Throwable t
-      (set-workspace-status! ws-id :database-provisioning-failure (ex-message t))
-      (throw t)))
-  (set-workspace-status! ws-id :instance-provisioning nil)
-  (try
-    (provisioning.instance/deprovision-instance! workspace)
-    (provisioning.instance/provision-instance! workspace)
-    (catch Throwable t
-      (set-workspace-status! ws-id :instance-provisioning-failure (ex-message t))
-      (throw t)))
-  (set-workspace-status! ws-id :provisioned nil))
+   skip work that already succeeded. Returns the updated workspace copy."
+  [workspace :- ::ws.schema/workspace]
+  (as-> workspace ws
+    (set-workspace-provisioning-status! ws)
+    (try
+      (run! provisioning.database/provision-database! (workspace-databases (:id ws)))
+      ws
+      (catch Throwable t
+        (set-workspace-status! ws :database-provisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :instance-provisioning nil)
+    (try
+      (-> ws
+          provisioning.instance/deprovision-instance!
+          provisioning.instance/provision-instance!)
+      (catch Throwable t
+        (set-workspace-status! ws :instance-provisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :provisioned nil)))
 
-(mu/defn deprovision-workspace! :- :nil
+(mu/defn deprovision-workspace! :- ::ws.schema/workspace
   "Deprovision `workspace` (blocking): the child instance, then every database,
    ending `:unprovisioned`. Stops on the first failure — the phase's `*-failure`
    status and the error message land on the workspace — and rethrows. Retries
-   skip work that already succeeded."
-  [{ws-id :id :as workspace} :- ::ws.schema/workspace]
-  (set-workspace-deprovisioning-status! workspace)
-  (try
-    (provisioning.instance/deprovision-instance! workspace)
-    (catch Throwable t
-      (set-workspace-status! ws-id :instance-deprovisioning-failure (ex-message t))
-      (throw t)))
-  (set-workspace-status! ws-id :database-deprovisioning nil)
-  (try
-    (run! provisioning.database/deprovision-database! (workspace-databases ws-id))
-    (catch Throwable t
-      (set-workspace-status! ws-id :database-deprovisioning-failure (ex-message t))
-      (throw t)))
-  (set-workspace-status! ws-id :unprovisioned nil))
+   skip work that already succeeded. Returns the updated workspace copy."
+  [workspace :- ::ws.schema/workspace]
+  (as-> workspace ws
+    (set-workspace-deprovisioning-status! ws)
+    (try
+      (provisioning.instance/deprovision-instance! ws)
+      (catch Throwable t
+        (set-workspace-status! ws :instance-deprovisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :database-deprovisioning nil)
+    (try
+      (run! provisioning.database/deprovision-database! (workspace-databases (:id ws)))
+      ws
+      (catch Throwable t
+        (set-workspace-status! ws :database-deprovisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :unprovisioned nil)))

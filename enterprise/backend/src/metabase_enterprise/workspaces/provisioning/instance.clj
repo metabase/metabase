@@ -35,31 +35,33 @@
     (delete! [_ _workspace]
       nil)))
 
-(mu/defn provision-instance! :- :nil
+(mu/defn provision-instance! :- ::ws.schema/workspace
   "Provision a child instance for `workspace` (blocking), booted from the
    workspace's config, and persist its `:instance_id`/`:instance_url` on the
    row. Always creates a fresh instance — callers deprovision any existing one
    first. Throws on failure — the caller records the failure on the workspace
-   status."
+   status. Returns `workspace` with the new instance fields assoc'ed."
   ([workspace]
    (provision-instance! workspace instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     provisioner]
    (let [config           (ws.config/build-workspace-config (:id workspace))
          {:keys [id url]} (create! provisioner workspace config)]
-     (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url}))
-   nil))
+     (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
+     (assoc workspace :instance_id id, :instance_url url))))
 
-(mu/defn deprovision-instance! :- :nil
+(mu/defn deprovision-instance! :- ::ws.schema/workspace
   "Delete `workspace`'s child instance (blocking) and clear its
    `:instance_id`/`:instance_url`. No-op when the workspace has no instance, so
    retries are safe. Throws on failure — the caller records the failure on the
-   workspace status."
+   workspace status. Returns `workspace` with the instance fields cleared."
   ([workspace]
    (deprovision-instance! workspace instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     provisioner]
-   (when (:instance_id workspace)
-     (delete! provisioner workspace)
-     (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil}))
-   nil))
+   (if-not (:instance_id workspace)
+     workspace
+     (do
+       (delete! provisioner workspace)
+       (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil})
+       (assoc workspace :instance_id nil, :instance_url nil)))))

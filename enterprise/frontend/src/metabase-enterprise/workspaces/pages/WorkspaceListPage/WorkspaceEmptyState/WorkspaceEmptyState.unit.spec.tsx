@@ -1,4 +1,3 @@
-import { setupApplyAdvancedConfigEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
@@ -6,7 +5,6 @@ import { Route } from "metabase/router";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 
 function setup() {
-  setupApplyAdvancedConfigEndpoint();
   renderWithProviders(
     <Route path="*" component={() => <WorkspaceEmptyState databases={[]} />} />,
     {
@@ -38,11 +36,11 @@ describe("WorkspaceEmptyState", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the upload-config button", () => {
+  it("does not offer a config upload", () => {
     setup();
 
     expect(
-      screen.getByRole("button", { name: "Upload a workspace config" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /upload/i }),
+    ).not.toBeInTheDocument();
   });
 });

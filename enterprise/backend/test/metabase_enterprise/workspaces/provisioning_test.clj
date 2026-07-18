@@ -72,7 +72,9 @@
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {wsd1-id :id} (wsd-attrs ws-id (mt/id))
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
-      (is (nil? (provisioning/provision-workspace! (workspace-row ws-id))))
+      (is (=? {:status :provisioned :status_details nil}
+              (provisioning/provision-workspace! (workspace-row ws-id)))
+          "the updated workspace copy is returned")
       (is (=? {:status         :provisioned
                :status_details nil
                :instance_id    string?
@@ -239,7 +241,9 @@
                    :model/WorkspaceDatabase {wsd2-id :id} (wsd-attrs ws-id db2-id)]
       (provisioning/provision-workspace! (workspace-row ws-id))
       (reset! calls [])
-      (is (nil? (provisioning/deprovision-workspace! (workspace-row ws-id))))
+      (is (=? {:status :unprovisioned :status_details nil :instance_id nil}
+              (provisioning/deprovision-workspace! (workspace-row ws-id)))
+          "the updated workspace copy is returned")
       (is (= [[:destroy! (mt/id)] [:destroy! db2-id]] @calls)
           "every database gets a warehouse teardown, in row order")
       (is (=? {:status         :unprovisioned

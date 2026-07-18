@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -7,7 +6,6 @@ import { Link } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
-  Button,
   Card,
   Divider,
   FixedSizeIcon,
@@ -19,7 +17,6 @@ import {
 import type { Database } from "metabase-types/api";
 
 import { NewWorkspaceButton } from "../NewWorkspaceButton";
-import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
 import S from "./WorkspaceEmptyState.module.css";
 
@@ -28,8 +25,6 @@ export type WorkspaceEmptyStateProps = {
 };
 
 export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
-  const [isSetupOpen, { open: openSetup, close: closeSetup }] =
-    useDisclosure(false);
   const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
@@ -37,56 +32,42 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
 
-  const handleSetupClick = () => {
-    openSetup();
-  };
-
   return (
-    <>
-      <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
-        <Box p="md">
-          <Title
-            order={3}
-            mb="sm"
-          >{t`Use Workspaces to develop your semantic layer safely`}</Title>
-          <Text mb="md">
-            {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
-          </Text>
-          <Text mb="lg">
-            {t`If this is your production instance, create and download a workspace config here to use in a workspace instance.`}{" "}
-            {t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}
-          </Text>
-          <Group gap="md">
-            <NewWorkspaceButton databases={databases} primary />
-            <Button variant="default" onClick={handleSetupClick}>
-              {t`Upload a workspace config`}
-            </Button>
-          </Group>
-          {(showFileBasedDevLink || showRemoteSyncLink) && (
-            <>
-              <Divider my="xl" />
-              <Group gap="sm" align="stretch">
-                {showFileBasedDevLink && (
-                  <DocsLink
-                    title={t`Agent-driven development`}
-                    description={t`How to use the CLI to develop content locally.`}
-                    link={fileBasedDevDocsUrl}
-                  />
-                )}
-                {showRemoteSyncLink && (
-                  <DocsLink
-                    title={t`Using remote sync`}
-                    description={t`How to sync and review ${applicationName} content with git.`}
-                    link={remoteSyncDocsUrl}
-                  />
-                )}
-              </Group>
-            </>
-          )}
-        </Box>
-      </Card>
-      <SetupWorkspaceModal opened={isSetupOpen} onClose={closeSetup} />
-    </>
+    <Card p="xl" maw="40rem" mx="auto" shadow="none" withBorder>
+      <Box p="md">
+        <Title
+          order={3}
+          mb="sm"
+        >{t`Use Workspaces to develop your semantic layer safely`}</Title>
+        <Text mb="lg">
+          {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
+        </Text>
+        <Group gap="md">
+          <NewWorkspaceButton databases={databases} primary />
+        </Group>
+        {(showFileBasedDevLink || showRemoteSyncLink) && (
+          <>
+            <Divider my="xl" />
+            <Group gap="sm" align="stretch">
+              {showFileBasedDevLink && (
+                <DocsLink
+                  title={t`Agent-driven development`}
+                  description={t`How to use the CLI to develop content locally.`}
+                  link={fileBasedDevDocsUrl}
+                />
+              )}
+              {showRemoteSyncLink && (
+                <DocsLink
+                  title={t`Using remote sync`}
+                  description={t`How to sync and review ${applicationName} content with git.`}
+                  link={remoteSyncDocsUrl}
+                />
+              )}
+            </Group>
+          </>
+        )}
+      </Box>
+    </Card>
   );
 }
 
