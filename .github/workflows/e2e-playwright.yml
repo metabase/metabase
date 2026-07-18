@@ -148,3 +148,23 @@ jobs:
             e2e-playwright/playwright-report
             e2e-playwright/test-results
           if-no-files-found: ignore
+
+      # DIAGNOSTIC (2026-07-18): the per-worker slot backends log to
+      # /tmp/mb-pw-slot-*/backend.log, outside the paths above, so we've never
+      # been able to see WHY a backend "exited (code 0)". Capture them every
+      # run (pass or fail) to root-cause the flake; remove once diagnosed.
+      - name: Collect slot backend logs
+        if: always()
+        run: |
+          mkdir -p slot-logs
+          for d in /tmp/mb-pw-slot-*; do
+            [ -e "$d/backend.log" ] && cp "$d/backend.log" "slot-logs/$(basename "$d").log" || true
+          done
+          ls -la slot-logs || true
+      - name: Upload slot backend logs
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: slot-backend-logs-s${{ matrix.shard }}
+          path: slot-logs
+          if-no-files-found: ignore

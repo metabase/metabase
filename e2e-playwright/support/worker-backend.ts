@@ -219,12 +219,29 @@ export async function startWorkerBackend(
   });
   proc.unref();
 
+  // DIAGNOSTIC (2026-07-18): the CI-only "backend exited (code 0)" flake is not
+  // yet root-caused — code 0 means start-backend.js ran its SIGTERM/SIGINT
+  // cleanup (it stays alive via its signal handlers otherwise), but nothing in
+  // the normal flow should signal a booting slot backend, and backend.log isn't
+  // uploaded. Embed the exit signal + log tail directly in the thrown error so
+  // the next failure is legible in `gh run view --log-failed`. Behaviour is
+  // otherwise unchanged; strip this back to a one-line message once diagnosed.
+  const logTail = () => {
+    try {
+      const text = fs.readFileSync(logPath, "utf8");
+      return text.split("\n").slice(-40).join("\n");
+    } catch {
+      return "(backend.log unreadable)";
+    }
+  };
   const healthUrl = `http://localhost:${port}/api/health`;
   const deadline = Date.now() + 10 * 60_000;
   while (Date.now() < deadline) {
-    if (proc.exitCode != null) {
+    if (proc.exitCode != null || proc.signalCode != null) {
       throw new Error(
-        `Worker ${slot} backend exited (code ${proc.exitCode}); log: ${logPath}`,
+        `Worker ${slot} backend on :${port} exited after ${Math.round(
+          (Date.now() - startedAt) / 1000,
+        )}s (code=${proc.exitCode}, signal=${proc.signalCode}); log: ${logPath}\n--- backend.log tail ---\n${logTail()}`,
       );
     }
     try {
@@ -241,7 +258,7 @@ export async function startWorkerBackend(
   }
   if (Date.now() >= deadline) {
     throw new Error(
-      `Worker ${slot} backend not healthy after 10min; log: ${logPath}`,
+      `Worker ${slot} backend not healthy after 10min; log: ${logPath}\n--- backend.log tail ---\n${logTail()}`,
     );
   }
 
