@@ -35,7 +35,7 @@
    ## OSS vs EE
 
    The OSS jar has no workspace mode (`workspace-mode?` returns false), so
-   the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
+   the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.provisioning`
    reads the `instance-workspace` setting."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
@@ -86,7 +86,7 @@
    AND the workspace's `:databases` map includes this database).
 
    The OSS fallback returns false."
-  metabase-enterprise.workspaces.core
+  metabase-enterprise.workspaces.provisioning
   []
   false)
 

@@ -1,9 +1,11 @@
-(ns metabase-enterprise.workspaces.core-test
-  "Tests for the workspace programmatic API and lifecycle rules."
+(ns metabase-enterprise.workspaces.provisioning-test
+  "Tests for the workspace programmatic API and lifecycle rules. Exercises the
+   module surface through the [[metabase-enterprise.workspaces.core]] re-exports."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
    [metabase-enterprise.workspaces.settings :as ws.settings]
@@ -261,7 +263,7 @@
 (defn- lock-atom
   "Reach through the private var to the lock atom."
   []
-  @#'ws/locked-by-config?*)
+  @#'provisioning/locked-by-config?*)
 
 (deftest workspace-locked-by-config?-baseline-test
   (testing "default state (no atom flip, no env-var) is unlocked"
