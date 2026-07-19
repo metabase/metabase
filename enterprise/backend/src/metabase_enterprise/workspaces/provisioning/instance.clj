@@ -111,42 +111,70 @@
   (* 10 60 1000))
 
 (mu/defn- wait-for-instance :- ::ws.schema/instance
-  "Poll `provisioner` until `instance-id` reaches a terminal status and return
-   the instance. Throws when it lands anywhere but `:active`, or when
-   [[instance-poll-timeout-ms]] elapses first."
+  "Poll `provisioner` until `instance-id` reaches a terminal status (`:active`
+   or `:error`) and return the instance. Throws only when
+   [[instance-poll-timeout-ms]] elapses first — the caller decides what a
+   terminal `:error` means."
   [provisioner instance-id :- :string]
-  (let [{:keys [status] :as instance}
-        (ws.execute/poll-until
-         {:thunk       #(fetch provisioner instance-id)
-          :done?       #(contains? #{:active :error} (:status %))
-          :interval-ms instance-poll-interval-ms
-          :timeout-ms  instance-poll-timeout-ms})]
-    (when-not (= :active status)
-      (throw (ex-info "Workspace instance failed to start"
-                      {:instance_id instance-id, :status status})))
-    instance))
+  (ws.execute/poll-until
+   {:thunk       #(fetch provisioner instance-id)
+    :done?       #(contains? #{:active :error} (:status %))
+    :interval-ms instance-poll-interval-ms
+    :timeout-ms  instance-poll-timeout-ms}))
+
+(mu/defn- create-instance! :- ::ws.schema/workspace
+  "Create a fresh child instance for `workspace` (blocking). Persists
+   `:instance_id` as soon as the provisioner accepts the creation, then polls
+   until the instance is `:active` and persists the url the active instance
+   reports. Throws when the instance lands in `:error` or the startup times
+   out. Returns `workspace` with the new instance fields assoc'ed."
+  [workspace :- ::ws.schema/workspace
+   provisioner]
+  (let [config       (-> workspace
+                         (t2/hydrate :databases)
+                         ws.config/build-workspace-config)
+        {:keys [id]} (create! provisioner workspace config)]
+    (t2/update! :model/Workspace (:id workspace) {:instance_id id})
+    (let [{:keys [status url]} (wait-for-instance provisioner id)]
+      (when-not (= :active status)
+        (throw (ex-info "Workspace instance failed to start"
+                        {:instance_id id, :status status})))
+      (t2/update! :model/Workspace (:id workspace) {:instance_url url})
+      (assoc workspace :instance_id id, :instance_url url))))
+
+(mu/defn- delete-instance! :- ::ws.schema/workspace
+  "Delete `workspace`'s child instance (blocking) and clear its
+   `:instance_id`/`:instance_url`. Throws on failure — the caller records the
+   failure on the workspace status. Returns `workspace` with the instance
+   fields cleared."
+  [workspace :- ::ws.schema/workspace
+   provisioner]
+  (delete! provisioner (:instance_id workspace))
+  (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil})
+  (assoc workspace :instance_id nil, :instance_url nil))
 
 (mu/defn provision-instance! :- ::ws.schema/workspace
-  "Provision a child instance for `workspace` (blocking), booted from the
-   workspace's config. Persists `:instance_id` as soon as the provisioner
-   accepts the creation, then polls until the instance is `:active` and
-   persists the url the active instance reports (the url is only set once the
-   instance is active). Always creates a fresh instance — callers deprovision
-   any existing one first. Throws on failure or startup timeout — the caller
-   records the failure on the workspace status. Returns `workspace` with the
-   new instance fields assoc'ed."
+  "Provision a child instance for `workspace` (blocking). When the workspace
+   already has an `:instance_id`, waits for that instance's terminal status:
+   `:active` means it is reused as is (only the url is refreshed); anything
+   else means it is deprovisioned and a fresh instance is created. Without an
+   `:instance_id` a fresh instance is created directly. Throws on failure or
+   startup timeout — the caller records the failure on the workspace status.
+   Returns `workspace` with the instance fields assoc'ed."
   ([workspace]
    (provision-instance! workspace instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     provisioner]
-   (let [config           (-> workspace
-                              (t2/hydrate :databases)
-                              ws.config/build-workspace-config)
-         {:keys [id]} (create! provisioner workspace config)]
-     (t2/update! :model/Workspace (:id workspace) {:instance_id id})
-     (let [url (:url (wait-for-instance provisioner id))]
-       (t2/update! :model/Workspace (:id workspace) {:instance_url url})
-       (assoc workspace :instance_id id, :instance_url url)))))
+   (if-let [instance-id (:instance_id workspace)]
+     (let [{:keys [status url]} (wait-for-instance provisioner instance-id)]
+       (if (= :active status)
+         (do
+           (t2/update! :model/Workspace (:id workspace) {:instance_url url})
+           (assoc workspace :instance_url url))
+         (-> workspace
+             (delete-instance! provisioner)
+             (create-instance! provisioner))))
+     (create-instance! workspace provisioner))))
 
 (mu/defn deprovision-instance! :- ::ws.schema/workspace
   "Delete `workspace`'s child instance (blocking) and clear its
@@ -159,7 +187,4 @@
     provisioner]
    (if-not (:instance_id workspace)
      workspace
-     (do
-       (delete! provisioner (:instance_id workspace))
-       (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil})
-       (assoc workspace :instance_id nil, :instance_url nil)))))
+     (delete-instance! workspace provisioner))))
