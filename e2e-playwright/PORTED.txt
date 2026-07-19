@@ -234,3 +234,10 @@ question/notebook-link-to-data-source.cy.spec.ts
 permissions/admin-permissions.cy.spec.js
 native/snippets.cy.spec.js
 question/offset.cy.spec.ts
+onboarding/home/browse.cy.spec.ts
+collections/permissions.cy.spec.js
+embedding/embedding-questions.cy.spec.js
+admin/remote-sync.cy.spec.ts
+embedding/embed-resource-downloads.cy.spec.ts
+admin/datamodel/segments.cy.spec.ts
+collections/cleanup.cy.spec.js

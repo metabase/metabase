@@ -135,6 +135,19 @@
 - `clickLeft` — Port of Cypress `.click("left")`: a real click on the left side of a box
 - `hoverChartTop` — Port of `H.echartsContainer().realHover({ position: "top" })`: move the real
 
+## browse.ts
+- `verifiedFilterToggleButton` — Port of the spec-local verifiedFilterToggleButton:
+- `recentsGrid` — Port of the EE describe's recentsGrid: findByRole("grid", { name: "Recents" }). */
+- `modelsTable` — Port of the EE describe's modelsTable: findByRole("table", { name: "Table of models" }). */
+- `modelHeading` — modelsTable().findByRole("heading", { name }). */
+- `modelRow` — modelsTable().findByRole("row", { name: /Model N/i }). */
+- `recentModel` — recentsGrid().findByText(name). */
+- `verifyModel` — Port of the spec-local verifyModel: verify the currently-open model and wait
+- `unverifyModel` — Port of the spec-local unverifyModel. */
+- `toggleVerificationFilter` — Port of the spec-local toggleVerificationFilter: flip the header switch and
+- `waitForUpdateVerification` — Port of the @updateVerification intercept: POST /api/moderation-review. */
+- `waitForUpdateFilter` — Port of the @updateFilter intercept: PUT /api/setting/browse-filter-only-verified-models. */
+
 ## card-embed-node.ts
 - `DOCUMENT_WITH_TWO_CARDS`
 - `DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS`
@@ -276,6 +289,30 @@
 - `verifyNotebookQuery`
 - `createMultiStageQuery`
 
+## collections-cleanup.ts
+- `STATIC_ORDERS_ID` — The ORDERS table's static (snapshot-stable) id — mirrors
+- `getCollectionActions` — Port of H.getCollectionActions (e2e-collection-helpers.ts). */
+- `collectionMenu` — Port of the spec-local collectionMenu: the collection-actions ellipsis. */
+- `cleanUpModal` — Port of the spec-local cleanUpModal (findAllByTestId — .first() as scope). */
+- `closeCleanUpModal` — Port of the spec-local closeCleanUpModal. */
+- `recursiveFilter` — Port of the spec-local recursiveFilter (the sub-collections switch). */
+- `dateFilter` — Port of the spec-local dateFilter. */
+- `pagination` — Port of the spec-local pagination. */
+- `emptyState` — Port of the spec-local emptyState. */
+- `errorState` — Port of the spec-local errorState. */
+- `selectCleanThingsUpCollectionAction` — Port of the spec-local selectCleanThingsUpCollectionAction. */
+- `setDateFilter` — Port of the spec-local setDateFilter. findByText is exact. */
+- `selectAllItems` — Port of the spec-local selectAllItems: click every per-row select cell.
+- `moveToTrash` — Port of the spec-local moveToTrash: the bulk-action toast's button. */
+- `assertNoPagination` — Port of the spec-local assertNoPagination. */
+- `assertStaleItemCount` — Port of the spec-local assertStaleItemCount. */
+- `bulkCreateQuestions` — Port of the spec-local bulkCreateQuestions: `amount` model-type questions
+- `bulkCreateDashboards` — Port of the spec-local bulkCreateDashboards: "Bulk dashboard N". */
+- `makeItemStale` — Port of makeItemStale: POST /api/testing/mark-stale to set an entity's
+- `makeItemsStale` — Port of makeItemsStale: mark each id stale in sequence. */
+- `seedMainTestData` — Port of the spec-local seedMainTestData. Builds a "Clean up test" collection
+- `createCollectionViaApi` — Port of H.createCollection (api/createCollection.ts), the subset used here. */
+
 ## collections-core.ts
 - `FIRST_COLLECTION_ENTITY_ID` — Port of FIRST_COLLECTION_ENTITY_ID (cypress_sample_instance_data.js). */
 - `ALL_USERS_GROUP_ID` — Port of ALL_USERS_GROUP_ID (cypress_sample_instance_data.js). */
@@ -296,6 +333,18 @@
 - `archiveAll` — Port of the spec-local archiveAll (archive every non-collection root item). */
 - `toggleSortingFor` — Port of the spec-local toggleSortingFor. */
 - `assertCollectionItemsOrder` — Port of the spec-local assertCollectionItemsOrder. */
+
+## collections-permissions.ts
+- `USER_FULL_NAMES` — First/last names from e2e/support/cypress_data.js — that file is untyped JS
+- `personalCollectionName` — `${first_name} ${last_name}'s Personal Collection` for a snapshot user. */
+- `clickButton` — Port of the spec-local clickButton: assert the button is enabled, then click.
+- `pinItem` — Port of the spec-local pinItem: open the row menu, click the pin icon. */
+- `move` — Port of the spec-local move(item): trash-free move of a root item into
+- `duplicate` — Port of the spec-local duplicate(item). */
+- `archiveUnarchive` — Port of the spec-local archiveUnarchive(item, expectedEntityName): trash a
+- `waitForCollectionGraph` — GET /api/collection/graph — the Cypress "@permissionsGraph" alias. */
+- `waitForPermissionsGroups` — GET /api/permissions/group — the Cypress "@permissionsGroups" alias. */
+- `collectionRow` — The row whose exact-text cell equals `item` (for hover/checkbox probes). */
 
 ## collections-trash.ts
 - `archiveCollection` — Port of H.archiveCollection (api/archiveCollection.ts). */
@@ -833,6 +882,18 @@
 - `dataStudioNav`
 - `visitDataStudio`
 
+## datamodel-segments.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `segmentListApp`
+- `segmentRow` — The <tr> in the segment list containing the given segment name. Cypress
+- `segmentRowMenuTrigger` — The hover-independent row ellipsis (`.Icon-ellipsis`, a stable Icon class). */
+- `openSegmentRowMenu`
+- `assertRevisionHistory` — Port of the spec-local assertRevisionHistory. `scope` is the segment-revisions
+- `trackMetadataRequests` — Attach a counter for GET /api/table/:id/query_metadata responses — the
+
 ## dependency-graph.ts
 - `DependencyGraph` — Port of H.DependencyGraph (e2e-dependency-helpers.ts) — the graph screen's
 - `waitForBackfillComplete` — Port of H.waitForBackfillComplete (e2e-dependency-helpers.ts): poll
@@ -987,6 +1048,16 @@
 - `expectNoBadSnowplowEvents`
 - `expectUnstructuredSnowplowEvent`
 
+## embed-resource-downloads.ts
+- `resetSnowplow`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `deleteDownloadsFolder` — Port of cy.deleteDownloadsFolder — a no-op here: Playwright downloads land in
+- `waitLoading` — Port of `H.main().findByText("Loading...").should("not.exist")`. */
+- `getEmbeddedDashboardCardMenu` — Port of H.getEmbeddedDashboardCardMenu (e2e-dashboard-helpers.ts): the
+- `downloadEmbedQuestion` — Drive the "Download results" popover on an embedded QUESTION and return the
+- `downloadAndAssertEmbedQuestion` — Port of the last two tests' `H.downloadAndAssert({ isEmbed: true, fileType,
+
 ## embedding-dashboard.ts
 - `questionDetails`
 - `questionDetailsWithDefaults`
@@ -1025,6 +1096,19 @@
 ## embedding-native.ts
 - `questionDetails` — Port of questionDetails (shared/embedding-native.js). */
 - `assertRequiredEnabledForName` — Port of the spec-local assertRequiredEnabledForName: inside the native
+
+## embedding-questions.ts
+- `regularQuestion`
+- `questionWithAggregation`
+- `joinedQuestion`
+- `downloadsQuestionDetails` — Port of the downloads describe's module-level `questionDetails`. */
+- `echartsContainer` — Scope-aware port of H.echartsContainer (testid "chart-container"). */
+- `cartesianChartCircles`
+- `echartsTooltip` — Scope-aware port of H.echartsTooltip (may keep two DOM instances). */
+- `assertOnXYAxisLabels` — Port of the spec-local assertOnXYAxisLabels: the ECharts SVG renders the axis
+- `assertEChartsTooltip` — Scope-aware port of H.assertEChartsTooltip ({ header, rows }) — only the
+- `triggerMousemove` — Port of Cypress `.trigger("mousemove")` on an ECharts element (wave-13:
+- `tooltip` — Scope-aware Mantine tooltip locator (port of H.tooltip against the embed
 
 ## embedding-repros.ts
 - `getIframeBody` — Port of H.getIframeBody: the (single) iframe on the page as a FrameLocator.
@@ -1314,6 +1398,8 @@
 - `shouldNotHaveBookmark` — Port of the spec-local shouldNotHaveBookmark. */
 - `verifyMetric` — Port of the spec-local verifyMetric: open the metric, verify it from the more
 - `unverifyMetric` — Port of the spec-local unverifyMetric. */
+- `waitForMetricVerified` — Poll until the metric's search-index verified status settles. */
+- `waitForMetricSearchable` — Poll until the metric is present in the search-backed browse list. */
 - `toggleVerifiedMetricsFilter` — Port of the spec-local toggleVerifiedMetricsFilter. */
 - `spyOnWindowOpen` — Port of the Cypress `cy.on("window:before:load", win => cy.stub(win, "open"))`
 - `getWindowOpenCalls` — The window.open calls recorded by spyOnWindowOpen, as [url, target, ...]. */
@@ -1724,6 +1810,41 @@
 - `setPickerValue` — Port of H.relativeDatePicker.setValue. */
 - `addPickerStartingFrom` — Port of H.relativeDatePicker.addStartingFrom. */
 - `withStartingFrom` — Port of the spec's withStartingFrom: build a Previous/Next filter with an
+
+## remote-sync.ts
+- `REMOTE_QUESTION_NAME`
+- `resetSnowplow`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `setupGitSync` — CI-robustness (support/snippets.ts's git-sync just failed CI): the branch is
+- `teardownGitSync` — Remove a repo created by setupGitSync. */
+- `copySyncedCollectionFixture` — Port of H.copySyncedCollectionFixture (cy.task copyDirectory → fs.cpSync). */
+- `copySyncedTransformsCollectionFixture` — Port of H.copySyncedTransformsCollectionFixture. */
+- `commitToRepo` — Port of H.commitToRepo: `git add . && git commit -am <message>`. */
+- `checkoutSyncedCollectionBranch` — Port of H.checkoutSyncedCollectionBranch: `git checkout -b <branch>`. */
+- `stashChanges` — Port of H.stashChanges. When Metabase pushes it writes directly to the .git,
+- `updateRemoteQuestion` — Port of H.updateRemoteQuestion: reset the working tree to the pushed HEAD,
+- `configureGit` — Port of H.configureGit: PUT the remote-sync settings pointing at the repo. */
+- `configureGitAndPullChanges` — Port of H.configureGitAndPullChanges: configure, then wait for the initial
+- `configureGitWithNewSyncedCollection` — Port of H.configureGitWithNewSyncedCollection. Returns the collection. */
+- `wrapSyncedCollection` — Port of H.wrapSyncedCollection: resolve the root-level synced collection
+- `pollForTask` — Port of H.pollForTask: actively GET current-task until the given task
+- `waitForTask` — Port of H.waitForTask: wait for a UI-triggered sync to finish by observing
+- `closeSyncResultModal` — Port of H.closeSyncResultModal: a UI-triggered sync leaves its confirmation
+- `getGitSyncControls` — Port of H.getGitSyncControls (findByTestId "git-sync-controls"). */
+- `getPullOption` — Port of H.getPullOption: open the menu, return the Pull option. */
+- `getPushOption` — Port of H.getPushOption: open the menu, return the Push option. */
+- `clickPullOption`
+- `clickPushOption`
+- `visitRemoteSyncSettings` — Port of H.visitRemoteSyncSettings. */
+- `getSettingsBranchSwitcher` — Port of H.getSettingsBranchSwitcher. */
+- `createBranchViaSettings` — Port of H.createBranchViaSettings: fork+switch to a new branch. */
+- `switchBranchViaSettings` — Port of H.switchBranchViaSettings: select an existing branch. With unsaved
+- `getSyncStatusIndicators` — Port of H.getSyncStatusIndicators. */
+- `goToSyncedCollection` — Port of H.goToSyncedCollection: click the synced-collection sidebar item. */
+- `moveCollectionItemToSyncedCollection` — Port of H.moveCollectionItemToSyncedCollection: from Our analytics, move an
+- `enableTenants` — Port of H.enableTenants. */
+- `createSharedTenantCollection` — Port of H.createSharedTenantCollection. namespace must be
 
 ## revisions.ts
 - `sidesheet`

@@ -140,7 +140,12 @@ export function setupGitSync(): string {
   execFileSync("git", ["init", repoPath], { stdio: "pipe" });
   git("config", "user.email", "toucan@metabase.com");
   git("config", "user.name", "Toucan Cam");
+  git("config", "commit.gpgsign", "false");
   git("commit", "--allow-empty", "-m", "Initial Commit");
+  // A CI runner without a global init.defaultBranch creates `master`, but the
+  // sync config targets `main` — the import then finds no ref and fails (the
+  // batch-7 s18 failure). Force `main`; `branch -M` works on all git versions.
+  git("branch", "-M", "main");
   return `file://${repoPath}/.git`;
 }
 
