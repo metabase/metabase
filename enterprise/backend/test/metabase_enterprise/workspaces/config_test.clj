@@ -275,10 +275,10 @@
   (testing "when remote sync is enabled, :config carries read-write remote-sync settings for the child instance"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "github"
                                                  :creator_id (mt/user->id :crowberto)}]
-      (mt/with-temporary-setting-values [remote-sync-url    "https://git.example.com/acme/config.git"
+      (mt/with-temporary-setting-values [remote-sync-url    "https://git.example.com/test.git"
                                          remote-sync-branch "main"
                                          remote-sync-token  "s3cr3t-token"]
-        (is (= {:remote-sync-url    "https://git.example.com/acme/config.git"
+        (is (= {:remote-sync-url    "https://git.example.com/test.git"
                 :remote-sync-branch "main"
                 :remote-sync-token  "s3cr3t-token"
                 :remote-sync-type   :read-write}
