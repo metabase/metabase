@@ -94,7 +94,7 @@
                                 {:name "Nope" :database_ids [ineligible-id]}))
         (testing "a missing database is rejected"
           (mt/user-http-request :crowberto :post 404 "ee/workspace-manager/"
-                                {:name "Nope" :database_ids [13371337]}))
+                                {:name "Nope" :database_ids [Integer/MAX_VALUE]}))
         (testing "at least one database is required"
           (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                 {:name "Nope" :database_ids []}))))))
