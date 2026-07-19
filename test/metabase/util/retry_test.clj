@@ -6,6 +6,13 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(def ^:private test-retry-configuration
+  {:max-retries 6
+   :initial-interval-millis 500
+   :multiplier 2.0
+   :jitter-factor 0.1
+   :max-interval-millis 30000})
+
 (deftest retrying-on-exception-test
   (testing "recovery possible"
     (let [f +
@@ -13,7 +20,7 @@
           works-after 3
           flaky-f (tu/works-after works-after f)]
       (is (= (apply f params)
-             (retry/with-retry (assoc (retry/retry-configuration)
+             (retry/with-retry (assoc test-retry-configuration
                                       :max-retries works-after
                                       :initial-interval-millis 1)
                (apply flaky-f params))))))
@@ -23,7 +30,7 @@
           works-after 3
           flaky-f (tu/works-after works-after f)]
       (is (thrown? ExceptionInfo
-                   (retry/with-retry (assoc (retry/retry-configuration)
+                   (retry/with-retry (assoc test-retry-configuration
                                             :max-retries (dec works-after)
                                             :initial-interval-millis 1)
                      (apply flaky-f params)))))))
@@ -32,14 +39,14 @@
   (testing "recovery possible"
     (let [a (atom 0)
           f #(swap! a inc)]
-      (is (= 2 (retry/with-retry (assoc (retry/retry-configuration)
+      (is (= 2 (retry/with-retry (assoc test-retry-configuration
                                         :max-retries 1
                                         :retry-if (fn [val _] (odd? val))
                                         :initial-interval-millis 1)
                  (f))))))
   (testing "recovery impossible"
     (let [f (constantly 1)]
-      (is (= 1 (retry/with-retry (assoc (retry/retry-configuration)
+      (is (= 1 (retry/with-retry (assoc test-retry-configuration
                                         :max-retries 1
                                         :retry-if (fn [val _] (odd? val))
                                         :initial-interval-millis 1)

@@ -28,6 +28,7 @@
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -262,7 +263,7 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
+    (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
           handler       (server/make-handler server-routes)]
       (server/start-web-server! handler))
     ;; run our initialization process
