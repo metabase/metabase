@@ -53,10 +53,11 @@
   [:enum :creating :starting :running :error])
 
 (mr/def ::instance
-  "A workspace's child instance as reported by an InstanceProvisioner."
+  "A workspace's child instance as reported by an InstanceProvisioner. The url
+   may be unknown until the instance is running."
   [:map
    [:id     :string]
-   [:url    :string]
+   [:url    [:maybe :string]]
    [:status ::instance-status]])
 
 (mr/def ::workspace-database-status

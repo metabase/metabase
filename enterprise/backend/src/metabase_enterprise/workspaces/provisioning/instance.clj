@@ -3,12 +3,16 @@
    developer Metabase instance a workspace's users work in, and persisting its
    identifiers (`instance_id`/`instance_url`) on the `:model/Workspace` row.
 
-   The default [[instance-provisioner]] is a stub — the real (Harbormaster)
-   implementation comes later."
+   The default [[instance-provisioner]] talks to Harbormaster; tests reify
+   their own [[InstanceProvisioner]]."
   (:require
+   [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.schema :as ws.schema]
+   [metabase.config.core :as config]
+   [metabase.system.core :as system]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [potemkin.types :as p]
    [toucan2.core :as t2]))
@@ -17,8 +21,8 @@
 
 (p/defprotocol+ InstanceProvisioner
   "Provisioning operations for a workspace's child Metabase instance.
-   The default [[instance-provisioner]] is a stub; tests reify custom
-   implementations that fail on demand, count calls, etc."
+   The default [[instance-provisioner]] talks to Harbormaster; tests reify
+   custom implementations that fail on demand, count calls, etc."
   (create! [this workspace config]
     "Start creating a child instance for `workspace`, booted from the
      config-file map `config` (see
@@ -31,16 +35,77 @@
   (delete! [this instance-id]
     "Delete the child instance with `instance-id`. Should be idempotent."))
 
+;;; ---------------------------------------- Harbormaster ----------------------------------------
+
+(mu/defn- hm-status :- [:maybe :int]
+  "HTTP status of an HM reply. On non-2xx responses clj-http throws and the
+   client wraps the exception, so the status lives under `:ex-data`."
+  [response :- :map]
+  (or (:status response) (get-in response [:ex-data :status])))
+
+(def ^:private hm-instance-statuses
+  "The HM instance statuses that map directly onto abstract statuses.
+   Everything else HM reports (deleting, stopped, suspended, error, ...) means
+   the instance is not coming up and counts as `:error`."
+  #{:creating :starting :running})
+
+(mu/defn- ->instance :- ::ws.schema/instance
+  "Convert an HM instance body into the abstract `::ws.schema/instance` shape."
+  [body :- :map]
+  (let [status (some-> (:status body) keyword)]
+    {:id     (str (:id body))
+     :url    (:url body)
+     :status (or (hm-instance-statuses status) :error)}))
+
+(mu/defn- hm-create-instance! :- ::ws.schema/instance
+  "Start creating the child instance for a workspace. Creation is asynchronous —
+   the returned instance is usually still `:creating`. Throws when HM refuses
+   or is unreachable."
+  [{workspace-id :id, workspace-name :name} :- ::ws.schema/workspace
+   config                                   :- :map]
+  (let [[ok? response] (hm.client/make-request :post "/api/v2/mb/workspaces/instances"
+                                               {:name       workspace-name
+                                                :metadata   {:parent-instance (str (system/site-uuid))
+                                                             :workspace-id    workspace-id}
+                                                :mb-version (:tag config/mb-version-info)
+                                                :config-yml (ws.config/config->yaml config)})]
+    (when-not (= ok? :ok)
+      (throw (ex-info (tru "Harbormaster failed to create the workspace instance.")
+                      {:workspace_id workspace-id})))
+    (->instance (:body response))))
+
+(mu/defn- hm-fetch-instance :- ::ws.schema/instance
+  "Fetch the child instance with `instance-id` from HM. Throws when HM refuses
+   or is unreachable."
+  [instance-id :- :string]
+  (let [[ok? response] (hm.client/make-request :get (str "/api/v2/mb/workspaces/instances/" instance-id))]
+    (when-not (= ok? :ok)
+      (throw (ex-info (tru "Harbormaster failed to fetch the workspace instance.")
+                      {:instance_id instance-id})))
+    (->instance (:body response))))
+
+(mu/defn- hm-delete-instance! :- :nil
+  "Delete the child instance with `instance-id`. Idempotent: 404 means it is
+   already gone and counts as success. Throws on any other failure — HM's
+   backstop reaper eventually collects the instance if the caller gives up."
+  [instance-id :- :string]
+  (let [[ok? response] (hm.client/make-request :delete (str "/api/v2/mb/workspaces/instances/" instance-id))]
+    (when-not (or (= ok? :ok)
+                  (= 404 (hm-status response)))
+      (throw (ex-info (tru "Harbormaster failed to delete the workspace instance.")
+                      {:instance_id instance-id})))
+    nil))
+
 (def instance-provisioner
-  "Default InstanceProvisioner. Stub implementation for now: pretends a child
-   instance was created by returning a random id and a placeholder url."
+  "The default InstanceProvisioner: provisions workspace child instances via
+   Harbormaster."
   (reify InstanceProvisioner
-    (create! [_ _workspace _config]
-      {:id (str (random-uuid)), :url "https://example.com", :status :running})
+    (create! [_ workspace config]
+      (hm-create-instance! workspace config))
     (fetch [_ instance-id]
-      {:id instance-id, :url "https://example.com", :status :running})
-    (delete! [_ _instance-id]
-      nil)))
+      (hm-fetch-instance instance-id))
+    (delete! [_ instance-id]
+      (hm-delete-instance! instance-id))))
 
 (def instance-poll-interval-ms
   "How often [[provision-instance!]] polls the provisioner while the child
@@ -72,8 +137,9 @@
   "Provision a child instance for `workspace` (blocking), booted from the
    workspace's config. Persists `:instance_id`/`:instance_url` as soon as the
    provisioner accepts the creation, then polls until the instance is
-   `:running`. Always creates a fresh instance — callers deprovision any
-   existing one first. Throws on failure or startup timeout — the caller
+   `:running`, refreshing the url from the running instance (it may only be
+   known once the instance is up). Always creates a fresh instance — callers
+   deprovision any existing one first. Throws on failure or startup timeout — the caller
    records the failure on the workspace status. Returns `workspace` with the
    new instance fields assoc'ed."
   ([workspace]
@@ -85,8 +151,10 @@
                               ws.config/build-workspace-config)
          {:keys [id url]} (create! provisioner workspace config)]
      (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
-     (wait-for-instance provisioner id)
-     (assoc workspace :instance_id id, :instance_url url))))
+     (let [running (wait-for-instance provisioner id)
+           url     (or (:url running) url)]
+       (t2/update! :model/Workspace (:id workspace) {:instance_url url})
+       (assoc workspace :instance_id id, :instance_url url)))))
 
 (mu/defn deprovision-instance! :- ::ws.schema/workspace
   "Delete `workspace`'s child instance (blocking) and clear its

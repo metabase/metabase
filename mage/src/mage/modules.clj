@@ -111,6 +111,7 @@
      eid-translation
      embedding
      enterprise/api
+     enterprise/harbormaster
      enterprise/remote-sync
      enterprise/scim
      enterprise/serialization
@@ -148,6 +149,7 @@
      sso
      staleness
      startup
+     store-api
      system
      task
      task-history

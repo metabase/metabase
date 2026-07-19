@@ -3792,6 +3792,7 @@
    :uses #{api
            app-db
            cache
+           config
            driver
            lib
            models
@@ -3801,8 +3802,10 @@
            sample-data
            settings
            sql-tools
+           system
            util
            workspaces
+           enterprise/harbormaster
            enterprise/remote-sync}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
