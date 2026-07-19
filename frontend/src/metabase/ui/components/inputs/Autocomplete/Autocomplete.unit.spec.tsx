@@ -110,9 +110,10 @@ describe("Autocomplete", () => {
     });
 
     it("re-highlights the first option when new data loads while open", async () => {
+      const bananaData = [{ value: "banana", label: "Banana" }];
       const { input, rerender } = setup({
         selectFirstOptionOnChange: true,
-        data: [{ value: "banana", label: "Banana" }],
+        data: bananaData,
       });
 
       await userEvent.click(input);
