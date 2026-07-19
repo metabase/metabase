@@ -64,11 +64,41 @@ export function generatingLoader(page: Page): Locator {
  * Port of the spec-local toggleInlineSQLPrompt: focus the native editor, let it
  * settle (Cypress `cy.wait(250)`), then fire the `$mod+Shift+i` tinykeys binding
  * (H.metaKey + Shift + I) that toggles the inline prompt open/closed.
+ *
+ * Only faithful for CLOSING (or re-toggling once the keymap is warm). To OPEN
+ * from a fresh page use openInlineSQLPrompt — the `$mod+Shift+i` keymap is
+ * installed lazily and a single cold press can be dropped (see that helper).
  */
 export async function toggleInlineSQLPrompt(page: Page) {
   await focusNativeEditor(page);
   await page.waitForTimeout(250);
   await page.keyboard.press("ControlOrMeta+Shift+i");
+}
+
+/**
+ * Open the inline SQL prompt, re-nudging until it appears.
+ *
+ * The `$mod+Shift+i` binding lives in a CodeMirror keymap extension that
+ * useInlineSQLPrompt only installs once `hasSqlGenerationAccess` is true — which
+ * waits on the metabot permissions query (GET
+ * /api/metabot/permissions/user-permissions) resolving. On a cold or
+ * load-contended per-worker backend that query can outlast any fixed settle, so
+ * the one-shot keypress lands before the keymap exists, is silently dropped, and
+ * the prompt never opens. It passes locally (warm backend) and fails only when
+ * this is the first/only test on a fresh backend under CI's fully-parallel
+ * shard load — a test-isolation gap, not a backend-state one (the settings the
+ * app checks are already set in beforeEach).
+ *
+ * Press until the prompt is visible (the PORTING re-nudge pattern for one-shot
+ * keypresses with no DOM readiness signal): a dropped press is a no-op that
+ * leaves editor focus intact, and once the keymap is installed a press opens it.
+ */
+export async function openInlineSQLPrompt(page: Page) {
+  await focusNativeEditor(page);
+  await expect(async () => {
+    await page.keyboard.press("ControlOrMeta+Shift+i");
+    await expect(inlinePrompt(page)).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 }
 
 /**

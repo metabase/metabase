@@ -106,6 +106,7 @@ permissions/create-queries.cy.spec.js
 visualizations-tabular/smartscalar-trend.cy.spec.js
 documents/supporting-text.cy.spec.ts
 models/reproductions-2.cy.spec.ts
+models/reproductions-1.cy.spec.ts
 visualizations-charts/maps.cy.spec.js
 organization/timelines-collection.cy.spec.js
 visualizations-tabular/drillthroughs/table_drills.cy.spec.js
@@ -221,3 +222,15 @@ custom-column/custom-column-1.cy.spec.js
 search/search-filters.cy.spec.js
 metabot/ai-controls.cy.spec.ts
 metabot/transforms-codegen.cy.spec.ts
+metabot/mcp-analytics.cy.spec.ts
+metabot/mcp-apps-settings.cy.spec.ts
+dashboard-cards/dashboard-drill.cy.spec.js
+admin/tools/tools.cy.spec.ts
+models/reproductions.cy.spec.js
+onboarding/home/homepage.cy.spec.js
+filters/filter.cy.spec.js
+admin-2/whitelabel.cy.spec.js
+question/notebook-link-to-data-source.cy.spec.ts
+permissions/admin-permissions.cy.spec.js
+native/snippets.cy.spec.js
+question/offset.cy.spec.ts

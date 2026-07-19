@@ -12,6 +12,13 @@
  * or LLM call is involved, so those tests are jar-verifiable.
  *
  * Port notes:
+ * - Opening the prompt uses openInlineSQLPrompt (re-nudge), NOT a single
+ *   toggle: the `$mod+Shift+i` keymap is installed only after the metabot
+ *   permissions query resolves, so a lone cold keypress can be dropped and the
+ *   prompt never opens. Passed locally (warm backend) and failed only as the
+ *   isolated/first test on a fresh per-worker backend under CI's fully-parallel
+ *   shard load — a test-isolation gap, not backend state (the settings the app
+ *   gates on are set in beforeEach). See openInlineSQLPrompt.
  * - Token-gated (EE). Skips without the pro-self-hosted token.
  * - cy.intercept(POST agent-streaming).as("agentReq") is DROPPED — it is never
  *   consumed; the spec waits on `@metabotAgent` (the alias created by
@@ -42,11 +49,12 @@ import {
   mockCodeEditResponse,
   mockMetabotResponseWithDelay,
   mockTextOnlyResponse,
+  openInlineSQLPrompt,
   rejectButton,
   toggleInlineSQLPrompt,
   typeInlinePrompt,
 } from "../support/native-sql-generation";
-import { focusNativeEditor, nativeEditor, startNewNativeQuestion } from "../support/native-editor";
+import { nativeEditor, startNewNativeQuestion } from "../support/native-editor";
 import { popover } from "../support/ui";
 
 /** Register the agent-streaming response wait (PORTING rule 2). */
@@ -74,7 +82,7 @@ test.describe("Native SQL generation", () => {
 
     await startNewNativeQuestion(page);
     await expect(nativeEditor(page)).toBeVisible();
-    await toggleInlineSQLPrompt(page);
+    await openInlineSQLPrompt(page);
     await expect(inlinePrompt(page)).toBeVisible();
     // jt`` splits the message around the inline <button>, so the text node lives
     // beside an element sibling — match as a substring (PORTING mixed-content).
@@ -108,7 +116,7 @@ test.describe("Native SQL generation", () => {
       await startNewNativeQuestion(page, { query: "SELECT 1" });
       await expect(nativeEditor(page)).toBeVisible();
 
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toBeVisible();
       await expect(generateButton(page)).toBeDisabled();
 
@@ -153,19 +161,19 @@ test.describe("Native SQL generation", () => {
 
       // open / close the editor via key press
       await expect(inlinePrompt(page)).toHaveCount(0);
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toBeVisible();
       await toggleInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toHaveCount(0);
 
       // cancel button should close
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toBeVisible();
       await cancelButton(page).click();
       await expect(inlinePrompt(page)).toHaveCount(0);
 
       // cancel button should cancel inflight request
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await typeInlinePrompt(page, "select all users");
       await mockMetabotResponseWithDelay(page, {
         body: mockCodeEditResponse("SELECT * FROM users"),
@@ -204,7 +212,7 @@ test.describe("Native SQL generation", () => {
       await expect(nativeEditor(page)).toBeVisible();
 
       // open input, send a prompt, get suggestion back
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await typeInlinePrompt(page, "select all users");
       await mockMetabotResponse(page, {
         body: mockCodeEditResponse("SELECT * FROM users"),
@@ -219,8 +227,7 @@ test.describe("Native SQL generation", () => {
       await expect(acceptButton(page)).toHaveCount(0);
       await expect(nativeEditor(page)).toContainText("SELECT 1");
       await expect(nativeEditor(page)).not.toContainText("SELECT * FROM users");
-      await focusNativeEditor(page);
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toBeVisible();
 
       // send another message, history should contain rejection info
@@ -239,7 +246,7 @@ test.describe("Native SQL generation", () => {
 
       // change the selected database, should keep the input open
       await rejectButton(page).click();
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await expect(inlinePrompt(page)).toBeVisible();
       await selectNativeEditorDataSource(page, "QA Postgres12");
       await expect(inlinePrompt(page)).toBeVisible();
@@ -263,7 +270,7 @@ test.describe("Native SQL generation", () => {
       await page.goto("/");
       await startNewNativeQuestion(page);
       await expect(nativeEditor(page)).toBeVisible();
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await typeInlinePrompt(page, "new prompt");
       await mockMetabotResponse(page, {
         body: mockCodeEditResponse("SELECT 456"),
@@ -286,7 +293,7 @@ test.describe("Native SQL generation", () => {
       await startNewNativeQuestion(page);
       await expect(nativeEditor(page)).toBeVisible();
 
-      await toggleInlineSQLPrompt(page);
+      await openInlineSQLPrompt(page);
       await typeInlinePrompt(page, "do something");
       await mockMetabotResponse(page, {
         body: mockTextOnlyResponse("I can help with that!"),

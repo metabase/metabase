@@ -139,11 +139,20 @@ export async function openMetabotViaShortcutKey(
     await assertChatVisibility(page, "not.visible");
   }
 
-  await page.keyboard.press("ControlOrMeta+e");
-
-  if (assertVisibility) {
-    await assertChatVisibility(page, "visible");
-  }
+  // The `$mod+e` toggle (Metabot.tsx, tinykeys) lives in MetabotAuthenticated,
+  // which only mounts once `hasMetabotAccess` is true — and that waits on the
+  // permissions query (GET /api/metabot/permissions/user-permissions)
+  // resolving. On a cold/contended per-worker backend that query can outlast
+  // any fixed settle, so a single cold press lands before the keymap exists, is
+  // silently dropped, and the chat never opens. It passes only on warm-backend
+  // state. Re-nudge the shortcut until the sidebar is visible (the PORTING
+  // re-nudge pattern, mirroring native-sql-generation.ts openInlineSQLPrompt): a
+  // dropped press is a harmless no-op, and once the keymap is installed a press
+  // opens the chat.
+  await expect(async () => {
+    await page.keyboard.press("ControlOrMeta+e");
+    await expect(metabotChatSidebar(page)).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 }
 
 export async function closeMetabotViaShortcutKey(

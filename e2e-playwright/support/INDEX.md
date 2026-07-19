@@ -27,6 +27,30 @@
 - `pressDownloadDiagnosticsShortcut` — The "Download diagnostics" shortcut is tinykeys "$mod+f1"
 - `downloadDiagnosticInfo` — Port of the error-reporting spec's getDiagnosticInfoFile: click Download in
 
+## admin-permissions.ts
+- `ADMIN_GROUP` — Mirrors USER_GROUPS (e2e/support/cypress_data.js) — fixed ids baked into
+- `COLLECTION_GROUP`
+- `DATA_GROUP`
+- `READONLY_GROUP`
+- `NOSQL_GROUP`
+- `modifyPermission` — Port of H.modifyPermission (e2e-permissions-helpers.js): open the row's
+- `assertSidebarItems` — Port of H.assertSidebarItems: the sidebar's menuitems have exactly these
+- `assertPermissionOptions` — Port of H.assertPermissionOptions: the open permission popover shows exactly
+- `mockSessionPropertiesMerging` — Port of the split-permission tests' `cy.intercept("/api/session/properties",
+
+## admin-tools.ts
+- `createMockTask` — Port of createMockTask (metabase-types/api/mocks/task.ts). */
+- `formatTimestamp` — The FE formats downloaded-log timestamps with `dayjs(ts).format()`
+- `getFilterByRun`
+- `getFilterByStartedAt`
+- `getFilterByEntity`
+- `getFilterByStatus`
+- `selectStartedAt` — Port of the spec-local selectStartedAt. */
+- `assertFilterByEntityTooltipText` — Port of the spec-local assertFilterByEntityTooltipText. The Cypress version
+- `createErroringQuestion` — Port of `H.createNativeQuestion(details, { loadMetadata: true })` for a
+- `fixQuestion` — Port of the erroring-questions describe's fixQuestion. */
+- `selectQuestion` — Port of the erroring-questions describe's selectQuestion. */
+
 ## admin.ts
 - `getSamlCertificate` — Port of getSamlCertificate() from e2e/test/scenarios/admin-2/sso/shared/helpers.js. */
 - `setupSaml` — Port of setupSaml() from e2e/test/scenarios/admin-2/sso/shared/helpers.js. */
@@ -1042,6 +1066,13 @@
 - `trackDatasetRequests` — Counter for POST /api/dataset responses — the wait-free side of the
 - `setupBooleanQuery` — Port of H.setupBooleanQuery: create + visit a native question with a
 
+## filter.ts
+- `filterSimple` — Port of H.filter() simple-mode branch (initiateAction, e2e-bi-basics-helpers.js):
+- `customExpressionType` — Port of H.CustomExpressionEditor.type() for formulas containing the `→`
+- `expectVisibleInPopover` — Port of the isVisibleInPopover custom command (metabase#14307): the element
+- `expectChartCirclesWithColors` — Port of `H.cartesianChartCircleWithColors(colors)`: each color's data-point
+- `expectFocusedRole` — Port of `cy.focused().should("have.attr", "role", role)`. */
+
 ## filters-repros-2.ts
 - `dashboardParametersDoneButton` — Port of H.dashboardParametersDoneButton: the "Done" button inside the
 - `getManyDataTypesBooleanFieldId` — Port of the issue-45670 spec-local getField(): locate the `boolean` field of
@@ -1083,6 +1114,24 @@
 
 ## funnel-title-navigation.ts
 - `createFunnelVisualizerDashboard` — Port of the UXW-2692 setup: a native funnel question, a dashboard, and one
+
+## homepage.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `waitForXrayDashboard` — Register a wait for the automagic-dashboards GET the x-ray drill fires
+- `waitForXrayCandidates` — Register a wait for the x-ray candidates GET (Cypress `@getXrayCandidates`
+- `waitForRecentItems`
+- `waitForPopularItems`
+- `waitForDashboardGet`
+- `waitForCollectionItems`
+- `waitForCardQuery`
+- `addSqliteDatabase` — Port of H.addSqliteDatabase / cy.addSQLiteDatabase: POST /api/database with
+- `getDatabaseFields` — Port of H.withDatabase: fetch a database's metadata and build the
+- `getXrayCandidatesFixture` — Port of the spec-local getXrayCandidates() fixture. */
+- `stubXrayCandidates` — Port of `cy.intercept("/api/automagic-*​/database/**", getXrayCandidates())`:
+- `pinItem` — Port of the spec-local pinItem(name): open the unpinned row's ellipsis menu
 
 ## i18n.ts
 - `selectLocale` — Port of the spec-local `selectLocale`: open the profile page, pick a locale
@@ -1188,6 +1237,10 @@
 - `visitMcpAnalyticsPage` — Port of the spec-local visitMcpAnalyticsPage: register the audit-metadata
 - `openToolCallsTab` — Click the "Tool calls" tab and wait for the events-table dataset query.
 
+## mcp-apps-settings.ts
+- `pointerReachesLink` — Faithful port of the spec's `realHover` + `mouseenter` probe: move the REAL
+- `clickLinkWithoutFollowing` — Port of the spec's "click but preventDefault so the cursor:// deeplink is not
+
 ## metabot-query-builder.ts
 - `allOrdersQuestion` — Port of the spec's module-level `allOrdersQuestion`. */
 - `AGENT_STREAMING_PATH`
@@ -1252,6 +1305,20 @@
 - `metabotErrorPart` — A streamed error message. */
 - `metabotFinishPart` — The trailing finish event; carries the finish reason and usage metadata. */
 - `mockMetabotResponse` — Port of H.mockMetabotResponse. Fulfils POST /api/metabot/agent-streaming with
+
+## metrics-browse.ts
+- `metricsTable` — Port of the spec-local metricsTable: cy.findByLabelText("Table of metrics"). */
+- `findMetric` — Port of the spec-local findMetric: metricsTable().findByText(name) (exact). */
+- `getMetricsTableItem` — Port of the spec-local getMetricsTableItem: the index-th metric-name cell. */
+- `shouldHaveBookmark` — Port of the spec-local shouldHaveBookmark. */
+- `shouldNotHaveBookmark` — Port of the spec-local shouldNotHaveBookmark. */
+- `verifyMetric` — Port of the spec-local verifyMetric: open the metric, verify it from the more
+- `unverifyMetric` — Port of the spec-local unverifyMetric. */
+- `toggleVerifiedMetricsFilter` — Port of the spec-local toggleVerifiedMetricsFilter. */
+- `spyOnWindowOpen` — Port of the Cypress `cy.on("window:before:load", win => cy.stub(win, "open"))`
+- `getWindowOpenCalls` — The window.open calls recorded by spyOnWindowOpen, as [url, target, ...]. */
+- `forceVerifiedMetricsSessionProperty` — Port of the Cypress `cy.intercept("GET", "/api/session/properties", …)` that
+- `assertMetricDescriptionEllipsified` — Assert the ellipsified markdown cell truncates (metricsTable helper). */
 
 ## metrics-editing.ts
 - `MetricEditor` — The metric query-editor surface (e2e-metric-page-helpers.ts MetricPage) not
@@ -1348,6 +1415,12 @@
 - `mapColumnTo` — Port of H.mapColumnTo: for a native-model column, map it to a real database
 - `startQuestionFromModel` — Port of startQuestionFromModel (e2e-models-helpers.js): New -> Question ->
 
+## models-reproductions-1.ts
+- `getHeaderCell` — Port of the issue-29943 spec-local getHeaderCell: assert the columnIndex-th
+- `assertColumnSelected` — Port of the issue-29943 spec-local assertColumnSelected: the header cell's
+- `expectNoDisplayValue` — Port of the issue-35840 `cy.findByDisplayValue("Category, Category")
+- `countDatasetRequests` — Port of the `cy.intercept("POST", "/api/dataset").as("dataset")` +
+
 ## models-reproductions-2.ts
 - `openQuestionActionsItem` — Open the question-actions ellipsis menu and click a menu item by accessible
 - `waitForLoaderToBeRemoved` — Port of H.waitForLoaderToBeRemoved: the loading-indicator is gone. */
@@ -1357,6 +1430,10 @@
 - `startNewModel` — Port of H.startNewModel: visit the ad-hoc URL that clicking "New" > "Model" >
 - `startNewNativeModel` — Port of H.startNewNativeModel: visit the ad-hoc URL that clicking "New" >
 - `visitModelNoDataAccess` — Port of H.visitModel(id, { hasDataAccess: false }): visit a model whose
+
+## models-reproductions.ts
+- `mapModelColumnToDatabase` — Port of the spec-local mapModelColumnToDatabase: open the "Database column
+- `selectModelColumn` — Port of the spec-local selectModelColumn: click the metadata-editor header
 
 ## models-revision-history.ts
 - `openRevisionHistory` — Port of the spec-local openRevisionHistory: open the question-info sidesheet,
@@ -1436,6 +1513,7 @@
 - `rejectButton`
 - `generatingLoader`
 - `toggleInlineSQLPrompt` — Port of the spec-local toggleInlineSQLPrompt: focus the native editor, let it
+- `openInlineSQLPrompt` — /api/metabot/permissions/user-permissions) resolving. On a cold or
 - `typeInlinePrompt` — Click the ProseMirror prompt input, assert it took focus (PORTING rule 5),
 - `mockCodeEditResponse` — Port of the spec-local mockCodeEditResponse. */
 - `mockTextOnlyResponse` — Port of the spec-local mockTextOnlyResponse. */
@@ -1458,6 +1536,13 @@
 ## new-menu.ts
 - `openNewMenu` — Port of the spec beforeEach's `cy.visit("/")` + `cy.findByText("New").click()`:
 
+## notebook-link-to-data-source.ts
+- `METAKEY` — Port of METAKEY (frontend/src/metabase/utils/browser.ts): "⌘" on macOS, else
+- `SANDBOXED_ATTR_UID` — USERS.sandboxed.login_attributes.attr_uid === "1" (cypress_data.js). The port's
+- `metaClick` — Port of H.click(H.holdMetaKey): ctrl/cmd-click. "ControlOrMeta" maps to Meta on
+- `openDataSourceInSameTab` — Port of the beforeEach window.open stub. The app opens a data source in a new
+- `assertDatasetReqIsSandboxed` — Port of H.assertDatasetReqIsSandboxed (e2e-permissions-helpers.js): the
+
 ## notebook.ts
 - `queryBuilderMain`
 - `viewFooter`
@@ -1478,6 +1563,16 @@
 ## nulls.ts
 - `findGridcell` — Port of the spec-local `findGridcell(text)`:
 - `nextCell` — Port of jQuery `.next()` on a gridcell: the immediately-following sibling
+
+## offset.ts
+- `addCustomAggregation` — Port of the spec-local addCustomAggregation. */
+- `addBreakout` — Port of the spec-local addBreakout. */
+- `saveQuestion` — Port of the spec-local saveQuestion. Registers the POST /api/card wait
+- `verifyLineChart` — Port of the spec-local verifyLineChart. */
+- `verifyTableContent` — Port of the spec-local verifyTableContent. */
+- `verifyNoQuestionError` — Port of the spec-local verifyNoQuestionError. */
+- `verifyInvalidColumnName` — Port of the spec-local verifyInvalidColumnName. */
+- `createOffsetOptions` — Port of the spec-local createOffsetOptions. */
 
 ## onboarding-extras.ts
 - `mockSessionProperties` — Fetch the real /api/session/properties response and overwrite the given
@@ -1750,6 +1845,17 @@
 - `cssColorToRgb` — Resolve a CSS color string (e.g. an `hsla(...)` theme value) to the computed
 - `ERROR_COLOR` — `colors.error` / `colors.success` from the light theme
 - `SUCCESS_COLOR`
+
+## snippets.ts
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed id. */
+- `openSnippetRow` — Expand a snippet row's detail panel (which reveals the Edit button). The row
+- `getPermissionsForUserGroup` — Port of the spec-local getPermissionsForUserGroup:
+- `createNestedSnippet` — Port of the spec-local createNestedSnippet: sign in as admin, create a
+- `createDoublyNestedSnippet` — Port of the spec-local createDoublyNestedSnippet: Folder A > Folder B >
+- `codeMirrorValue` — Port of H.codeMirrorValue (e2e-codemirror-helpers.ts): join the editor's
+- `setupGitSync` — Port of H.setupGitSync (e2e-remote-sync-helpers.ts): create a local git repo
+- `teardownGitSync` — Remove a repo created by setupGitSync. */
+- `configureGitAndPullChangesReadOnly` — Port of H.configureGitAndPullChanges (read-only branch): PUT the remote-sync
 
 ## sql-filters-reset-clear.ts
 - `NO_DEFAULT_NON_REQUIRED`
@@ -2072,6 +2178,21 @@
 - `loadHomepage` — Port of the spec-local loadHomepage: visit "/", wait for the stubbed
 - `seeWhatsNew` — The navbar "See what's new" link. findByText string → exact (rule 1). */
 - `dismissWhatsNew` — The navbar notification's dismiss (close) icon. */
+
+## whitelabel.ts
+- `LOGO_PATH`
+- `FAVICON_PATH`
+- `LOGO_BASE64` — logo.jpeg as a base64 data URI — how the spec stores the logo setting and
+- `LOGO_DATA_URI`
+- `FAVICON_BASE64` — favicon.ico as a base64 data URI (the spec uploads it with mimeType
+- `FAVICON_DATA_URI`
+- `MB`
+- `checkFavicon` — Port of the spec-local checkFavicon: GET the setting and assert the value
+- `checkLogo` — Port of the spec-local checkLogo: the logo is stored as a data URI, so an
+- `changeLoadingMessage` — Port of the spec-local changeLoadingMessage: on the whitelabel page pick a
+- `setApplicationFontTo` — Port of the spec-local setApplicationFontTo (H.updateSetting). */
+- `helpLink` — Port of the spec-local helpLink: the "Get help" item in the help submenu. */
+- `getHelpLinkCustomDestinationInput` — Port of the spec-local getHelpLinkCustomDestinationInput. */
 
 ## worker-backend.ts
 - `startWorkerBackend`
