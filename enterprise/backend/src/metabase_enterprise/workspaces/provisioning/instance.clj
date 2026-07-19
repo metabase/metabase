@@ -124,17 +124,18 @@
 
 (mu/defn- create-instance! :- ::ws.schema/workspace
   "Create a fresh child instance for `workspace` (blocking). Persists
-   `:instance_id` as soon as the provisioner accepts the creation, then polls
-   until the instance is `:active` and persists the url the active instance
-   reports. Throws when the instance lands in `:error` or the startup times
-   out. Returns `workspace` with the new instance fields assoc'ed."
+   `:instance_id` (clearing any stale url) as soon as the provisioner accepts
+   the creation, then polls until the instance is `:active` and persists the
+   url the active instance reports. Throws when the instance lands in `:error`
+   or the startup times out. Returns `workspace` with the new instance fields
+   assoc'ed."
   [workspace :- ::ws.schema/workspace
    provisioner]
   (let [config       (-> workspace
                          (t2/hydrate :databases)
                          ws.config/build-workspace-config)
         {:keys [id]} (create! provisioner workspace config)]
-    (t2/update! :model/Workspace (:id workspace) {:instance_id id})
+    (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url nil})
     (let [{:keys [status url]} (wait-for-instance provisioner id)]
       (when-not (= :active status)
         (throw (ex-info "Workspace instance failed to start"
@@ -186,5 +187,8 @@
   ([workspace :- ::ws.schema/workspace
     provisioner]
    (if-not (:instance_id workspace)
-     workspace
+     ;; nothing to delete, but never keep a url without an instance
+     (do
+       (t2/update! :model/Workspace (:id workspace) {:instance_url nil})
+       (assoc workspace :instance_url nil))
      (delete-instance! workspace provisioner))))
