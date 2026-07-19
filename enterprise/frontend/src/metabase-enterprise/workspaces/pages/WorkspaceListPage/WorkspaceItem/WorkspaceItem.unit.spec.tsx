@@ -31,7 +31,7 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("My workspace")).toBeInTheDocument();
   });
 
-  it("provisions from the menu after confirmation", async () => {
+  it("provisions from the menu without confirmation", async () => {
     const workspace = createMockWorkspace({
       name: "My workspace",
       status: "unprovisioned",
@@ -45,11 +45,6 @@ describe("WorkspaceItem", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Provision" }),
     );
-
-    expect(
-      await screen.findByRole("heading", { name: "Provision this workspace?" }),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Provision" }));
 
     await waitFor(() => {
       expect(

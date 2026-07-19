@@ -186,19 +186,13 @@ type WorkspaceMenuProps = {
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
-  const [provisionWorkspace] = useProvisionWorkspaceMutation();
-  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
-  const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const [provisionWorkspace, { isLoading: isProvisionLoading }] =
+    useProvisionWorkspaceMutation();
+  const [deprovisionWorkspace, { isLoading: isDeprovisionLoading }] =
+    useDeprovisionWorkspaceMutation();
+  const [deleteWorkspace, { isLoading: isDeleteLoading }] =
+    useDeleteWorkspaceMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
-
-  const handleProvision = () => {
-    showConfirmation({
-      title: t`Provision this workspace?`,
-      message: t`This will set up temporary database users and schemas and a workspace instance.`,
-      confirmButtonText: t`Provision`,
-      onConfirm: () => provisionWorkspace(workspace.id),
-    });
-  };
 
   const handleDeprovision = () => {
     showConfirmation({
@@ -230,8 +224,8 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           {!isProvisioned(workspace) && !isDeprovisioning(workspace) && (
             <Menu.Item
               leftSection={<FixedSizeIcon name="play" aria-hidden />}
-              disabled={isProvisioning(workspace)}
-              onClick={handleProvision}
+              disabled={isProvisioning(workspace) || isProvisionLoading}
+              onClick={() => provisionWorkspace(workspace.id)}
             >
               {t`Provision`}
             </Menu.Item>
@@ -239,7 +233,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           {!isDeprovisioned(workspace) && !isProvisioning(workspace) && (
             <Menu.Item
               leftSection={<FixedSizeIcon name="revert" aria-hidden />}
-              disabled={isDeprovisioning(workspace)}
+              disabled={isDeprovisioning(workspace) || isDeprovisionLoading}
               onClick={handleDeprovision}
             >
               {t`Deprovision`}
@@ -253,7 +247,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-            disabled={!isDeprovisioned(workspace)}
+            disabled={!isDeprovisioned(workspace) || isDeleteLoading}
             onClick={handleDelete}
           >
             {t`Delete`}
