@@ -735,12 +735,88 @@ give them an explicit `timeout` too — don't rely on the 30s default.
   category, and hover emphasis mutates the fill — capture the target wedge as an
   elementHandle before hovering. (pie_chart)
 
-## Consolidation priority: notebook.ts `startNewQuestion` is stale (flagged 3×)
+## Consolidation priority: notebook.ts `startNewQuestion` is stale (flagged 3×) — RESOLVED
 
 Three separate wave-12/13 ports (multiple-column-breakouts, chart_drill, models)
-re-implemented `startNewQuestion` because the shared `notebook.ts` version clicks
+re-implemented `startNewQuestion` because the shared `notebook.ts` version clicked
 the app-bar "New" (needs a loaded page) while current upstream `H.startNewQuestion`
-navigates to `/question/notebook#<hash>` directly. `data-model.ts` already has the
-faithful URL-navigation port. Reconcile: make `notebook.ts startNewQuestion` the
-URL-navigation form and delete the duplicates. High-value dedup — this is an
-active foot-gun, not just tidiness.
+navigates to `/question/notebook#<hash>` directly. RESOLVED in the consolidation
+pass: `notebook.ts startNewQuestion` is now the URL-navigation form and the
+duplicates were collapsed (along with the create* superset in `support/factories.ts`,
+`support/dnd.ts`, `support/text.ts`).
+
+## Gotchas & lessons added during continuous-dispatch waves (Opus, post-consolidation)
+
+**Local verify-jar drift vs CI (IMPORTANT).** The local `target/uberjar/metabase.jar`
+(COMMIT-ID 751c2a98) can carry OLDER sample data than CI's freshly-built jar.
+`smartscalar-trend`'s `maxPeriodsAgo` clamp is derived from the sample DB's month
+span → **47 on the stale local jar, 48 on CI/upstream**. A test pinning such a
+data-derived value passes locally and fails in CI. The Chrome cross-check on the
+SAME local jar confirmed 47 — proving port fidelity but blind to the skewed
+environment. Rules: (1) don't pin data-derived magic numbers — assert the
+*behaviour* (e.g. "over-max input clamps to a value in `[min, typed)`") not the
+exact number; (2) treat a value only the local jar produces with suspicion;
+(3) the cross-check validates fidelity, never the environment.
+
+**Duplicate `it`/test titles are a HARD LOAD ERROR in Playwright** (Cypress
+tolerates them). The whole spec fails to parse; the error points only at the 2nd
+declaration. Upstream has real dupes (create-queries, waterfall) — suffix the 2nd
+faithfully.
+
+**`TZ=US/Pacific` for any date-asserting test.** CI sets `TZ: US/Pacific`
+process-wide and Playwright inherits it (no `timezoneId` is set). On other host
+TZs, date-only values shift a day. Run date-asserting ports with `TZ=US/Pacific`
+locally to match CI.
+
+**EditableText: title vs description are different widgets.** Titles stay a
+`<textarea>` → assert `toHaveValue`. Description / markdown-capable fields render
+markdown *text* on blur → assert `getByText`, not `toHaveValue`/`getByPlaceholder`.
+
+**`saveQuestionToCollection` ≠ a bare `saveQuestion`.** The save-question modal now
+defaults its target to a *dashboard*, so a bare save can file the question into
+"… in a dashboard" and navigate away. Port the explicit collection pick
+(`{ path: ["Our analytics"] }`). Evil fingerprint: a later editor step times out on
+a fully-rendered dashboard-edit page.
+
+**React-Grid-Layout resize is react-draggable, NOT dnd-kit.** `dnd.ts` helpers are
+the wrong tool. Dispatch `mousedown` on `.react-resizable-handle` (React delegated
+listener), then `mousemove`/`mouseup` on `document` (react-draggable's raw
+listeners). A real Playwright mouse can't run the min-size test (drags to hugely
+negative client coords) — a synthetic MouseEvent carries them verbatim.
+
+**Precise-coordinate ProseMirror drops → synthetic event replay, not `dragTo`.**
+When a ProseMirror plugin reads the drop event's `clientX` to pick a side (20%/80%),
+replay the full mousedown→dragstart→…→drop→dragend with one shared DataTransfer in a
+single `page.evaluate`. The general "don't port the bare 3-event dnd sequence" rule
+does NOT apply here.
+
+**`getByDisplayValue` is missing from this install's Playwright types (1.61.1)**
+despite shipping at runtime. Port `cy.findByDisplayValue` via an imperative
+`inputValue()` scan (shared `filters-repros.findByDisplayValue`/`countDisplayValue`).
+
+**`toBeInViewport()` over `toBeVisible()` for scroll-clipping intent.** Playwright
+ignores overflow-scroll clipping, so an off-screen element still reads "visible".
+Tests asserting "did NOT auto-scroll into view" must use `toBeInViewport()`.
+
+**leaflet-draw box bounds come from the last `mousemove`, not `mouseup`.**
+cypress-real-events `realMouseMove(x,y)` is element-relative (not a delta). End the
+drag at the element-relative target corner.
+
+**Pivot dashcards query `/api/dashboard/pivot/:id/...` / `/api/card/pivot/:id/query`**
+— broaden `waitForResponse` regexes (`/api/card/.+/query`) to cover the pivot endpoint.
+
+### Consolidation candidates surfaced this stretch (later pass)
+- **`openTable`-with-`limit`** — re-implemented 3× (table-drills, column-shortcuts,
+  binning); shared `openTable`/`openOrdersTable`/`openReviewsTable` drop `limit`.
+- **Visualizer helper surface split across 3 files** (visualizer-basics /
+  dashboard-card-repros / visualizer-cartesian) — private `dataSource`/
+  `dataSourceColumn` forced re-implementation. Unify a scope-parameterised
+  `support/visualizer.ts`.
+- **ECharts text/tooltip any-of helpers** (`expectEchartsTextContains`/`NotContains`,
+  `assertEChartsTooltipNotContain`) → fold into `charts.ts`.
+- **`applyFilterToast`/`applyFilterButton`/`cancelFilterButton` scope-taking trio**
+  → absorb `dashboard-parameters.ts`'s Page-only `applyFilterButton`.
+- **`documentsDragAndDrop` generic** vs the card-on-card specialization in
+  `card-embed-node.ts`.
+- **A shared USERS name map** (sample-data.ts carries only email/password) for
+  `getPersonalCollectionName`.

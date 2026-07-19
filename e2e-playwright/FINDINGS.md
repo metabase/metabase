@@ -518,6 +518,22 @@ methodology note first — it reframes several earlier entries.
     passes (visible-child rule); Playwright `toBeVisible()` fails on an open
     modal. Scope assertions to the dialog content. Reusable across every port.
 
+43. **The jar+CI gauntlet catches its own blind spot — local verify-jar drift**
+    (`smartscalar-trend`). A port pinned `maxPeriodsAgo` to `47`, the value the
+    *local* verify uberjar (COMMIT-ID 751c2a98) clamps to. It passed locally
+    8/8 and the `--browser chrome` cross-check on the same jar "confirmed" 47.
+    CI's freshly-built jar clamps to **48** (matching upstream) — the max is
+    derived from the sample DB's month span, so it is jar-/sample-data-dependent,
+    and the local jar simply carried older sample data. CI caught it (1/402 on
+    shard 4). Two lessons for the case: (a) the fidelity cross-check proves the
+    port matches the original *in that environment* but is blind to a skewed
+    environment — it is not a substitute for CI on the fresh jar; (b) the fix is
+    to assert the *behaviour* (over-max input clamps to `[min, typed)`) not a
+    data-derived magic number, which makes the Playwright port strictly more
+    robust than upstream's hardcoded `48`. This is the process working as
+    intended, not a regression — worth citing as evidence the verification loop
+    is honest about its own limits.
+
 ## Wave 10 additions (pivot_tables, embedding-dashboard, dashboard-cards/filters repros, column-compare)
 
 Five specs / ~145 tests, all green on the jar. **No product bugs** — every
