@@ -196,11 +196,6 @@
           (is (not (contains? by-name "stub-test-audit")))
           (is (not (contains? by-name "stub-test-target"))))))))
 
-(deftest build-workspace-config-missing-workspace-returns-nil-test
-  (testing "A missing workspace returns nil"
-    (mt/with-model-cleanup [:model/Workspace]
-      (is (nil? (build-config Integer/MAX_VALUE))))))
-
 (deftest build-workspace-config-forces-let-user-control-scheduling-false-test
   (testing "Non-stub database entries emit :let-user-control-scheduling false even if the source
             database had it true. The YAML carries :details only — not the schedule cron columns —

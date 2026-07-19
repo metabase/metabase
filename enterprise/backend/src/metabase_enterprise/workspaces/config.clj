@@ -128,7 +128,7 @@
       :is_sample true}]))
 
 (defn build-workspace-config
-  "Return a downloadable config.yml-shaped map for `workspace-id`:
+  "Return a downloadable config.yml-shaped map for `workspace`:
 
     {:version 1
      :config  {:databases [...]
@@ -143,34 +143,33 @@
   `instance-workspace` setting stores. When remote sync is enabled on this
   instance, `:config` also carries a `:settings` section pointing the child
   instance at the same git repo in `:read-write` mode. Takes a workspace with
-  its `:databases` hydrated; returns nil when `workspace` is nil. Throws a 409
-  `ex-info` if any of the workspace's databases is not `:provisioned`."
+  its `:databases` hydrated. Throws a 409 `ex-info` if any of the workspace's
+  databases is not `:provisioned`."
   [workspace]
-  (when-let [ws workspace]
-    (let [wsds (:databases ws)]
-      (when (some #(not= :provisioned (:status %)) wsds)
-        (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
-                        {:status-code  409
-                         :workspace_id (:id ws)})))
-      (let [workspace-db-ids (mapv :database_id wsds)
-            dbs-by-id        (if-let [ids (seq workspace-db-ids)]
-                               (into {} (map (juxt :id identity))
-                                     (t2/select :model/Database :id [:in ids]))
-                               {})
-            pairs            (for [wsd wsds
-                                   :let [db (get dbs-by-id (:database_id wsd))]]
-                               [wsd db])
-            ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-            stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-            sample-entries   (sample-database-entries)
-            settings         (remote-sync-settings)]
-        {:version 1
-         :config  (cond-> {:databases (-> ws-entries
-                                          (into stub-entries)
-                                          (into sample-entries))
-                           :workspace {:name      (:name ws)
-                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                    settings (assoc :settings settings))}))))
+  (let [wsds (:databases workspace)]
+    (when (some #(not= :provisioned (:status %)) wsds)
+      (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
+                      {:status-code  409
+                       :workspace_id (:id workspace)})))
+    (let [workspace-db-ids (mapv :database_id wsds)
+          dbs-by-id        (if-let [ids (seq workspace-db-ids)]
+                             (into {} (map (juxt :id identity))
+                                   (t2/select :model/Database :id [:in ids]))
+                             {})
+          pairs            (for [wsd wsds
+                                 :let [db (get dbs-by-id (:database_id wsd))]]
+                             [wsd db])
+          ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+          stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
+          sample-entries   (sample-database-entries)
+          settings         (remote-sync-settings)]
+      {:version 1
+       :config  (cond-> {:databases (-> ws-entries
+                                        (into stub-entries)
+                                        (into sample-entries))
+                         :workspace {:name      (:name workspace)
+                                     :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
+                  settings (assoc :settings settings))})))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."
