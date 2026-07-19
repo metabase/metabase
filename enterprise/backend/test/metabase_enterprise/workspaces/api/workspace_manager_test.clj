@@ -184,6 +184,13 @@
           (mt/user-http-request :crowberto :delete 400 (str "ee/workspace-manager/" ws-id))
           (is (= in-flight-status (t2/select-one-fn :status :model/Workspace :id ws-id))
               "the in-flight status is untouched"))))
+    (testing "provision 400s when already :provisioned, deprovision when already :unprovisioned"
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "Done" :status :provisioned}]
+        (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/provision"))
+        (is (= :provisioned (t2/select-one-fn :status :model/Workspace :id ws-id))))
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "Empty" :status :unprovisioned}]
+        (mt/user-http-request :crowberto :post 400 (str "ee/workspace-manager/" ws-id "/deprovision"))
+        (is (= :unprovisioned (t2/select-one-fn :status :model/Workspace :id ws-id)))))
     (testing "the settled failure statuses stay retryable"
       (doseq [settled-status [:database-provisioning-failure :instance-provisioning-failure
                               :instance-deprovisioning-failure :database-deprovisioning-failure]]

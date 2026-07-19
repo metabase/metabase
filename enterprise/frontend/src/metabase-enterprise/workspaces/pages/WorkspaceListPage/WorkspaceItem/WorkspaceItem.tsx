@@ -193,6 +193,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [deleteWorkspace, { isLoading: isDeleteLoading }] =
     useDeleteWorkspaceMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
+  const isInFlight = isProvisioning(workspace) || isDeprovisioning(workspace);
 
   const handleProvision = () => {
     showConfirmation({
@@ -231,24 +232,24 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {!isProvisioned(workspace) && !isDeprovisioning(workspace) && (
-            <Menu.Item
-              leftSection={<FixedSizeIcon name="play" aria-hidden />}
-              disabled={isProvisioning(workspace) || isProvisionLoading}
-              onClick={handleProvision}
-            >
-              {t`Provision`}
-            </Menu.Item>
-          )}
-          {!isDeprovisioned(workspace) && !isProvisioning(workspace) && (
-            <Menu.Item
-              leftSection={<FixedSizeIcon name="revert" aria-hidden />}
-              disabled={isDeprovisioning(workspace) || isDeprovisionLoading}
-              onClick={handleDeprovision}
-            >
-              {t`Deprovision`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="play" aria-hidden />}
+            disabled={
+              isProvisioned(workspace) || isInFlight || isProvisionLoading
+            }
+            onClick={handleProvision}
+          >
+            {t`Provision`}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="revert" aria-hidden />}
+            disabled={
+              isDeprovisioned(workspace) || isInFlight || isDeprovisionLoading
+            }
+            onClick={handleDeprovision}
+          >
+            {t`Deprovision`}
+          </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}

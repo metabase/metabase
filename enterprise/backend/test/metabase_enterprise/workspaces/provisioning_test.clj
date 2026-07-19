@@ -229,11 +229,21 @@
                         (catch Exception e (:status-code (ex-data e))))))
         (is (= :database-provisioning (:status (workspace-row ws-id)))
             "the in-flight status is untouched"))))
-  (testing "and start the run from any settled status"
+  (testing "and start the run from any other settled status"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Settled" :status :database-provisioning-failure}]
       (is (=? {:status :database-provisioning}
               (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))))
-      (is (= :database-provisioning (:status (workspace-row ws-id)))))))
+      (is (= :database-provisioning (:status (workspace-row ws-id))))))
+  (testing "a provision cannot start when the workspace is already :provisioned"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Done" :status :provisioned}]
+      (is (= 400 (try (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))
+                      (catch Exception e (:status-code (ex-data e))))))
+      (is (= :provisioned (:status (workspace-row ws-id))))))
+  (testing "a deprovision cannot start when the workspace is already :unprovisioned"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Empty" :status :unprovisioned}]
+      (is (= 400 (try (provisioning/set-workspace-deprovisioning-status! (workspace-row ws-id))
+                      (catch Exception e (:status-code (ex-data e))))))
+      (is (= :unprovisioned (:status (workspace-row ws-id)))))))
 
 (deftest provision-instance-polls-until-running-test
   (testing "provision-instance! records the ids up front, then polls until the instance is :running"
