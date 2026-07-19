@@ -417,6 +417,20 @@
 - `modifyPermission` — Port of H.modifyPermission (e2e-permissions-helpers.js): click the
 - `saveChangesToPermissions` — Port of H.saveChangesToPermissions. */
 
+## content-translation-dashboards.ts
+- `waitForEmbedDashboard` — The `@dashboard` alias: GET /api/embed/dashboard/:token (top-level only). */
+- `waitForEmbedCard` — The `@cardQuery` alias: GET /api/embed/dashboard/.../card/... */
+- `waitForEmbedSearch` — The `@searchQuery` alias: GET /api/embed/dashboard/.../search/... */
+- `getCSVWithHeaderRow` — Port of getCSVWithHeaderRow (e2e-content-translation-helpers.ts). */
+- `uploadTranslationDictionaryViaAPI` — Port of H.uploadTranslationDictionaryViaAPI: sign in as admin and POST the
+- `germanFieldNames`
+- `germanFieldValues`
+- `frenchNames`
+- `frenchBooleanTranslations`
+- `getDashboardTabDetails` — Port of H.getDashboardTabDetails. */
+- `getHeadingCardDetails` — Port of H.getHeadingCardDetails (threads col + dashboard_tab_id). */
+- `getTextCardDetails` — Port of H.getTextCardDetails (threads col + dashboard_tab_id). */
+
 ## create-queries.ts
 - `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed id. */
 - `NATIVE_QUERIES_PERMISSION_INDEX` — The spec's NATIVE_QUERIES_PERMISSION_INDEX (the create-queries column). */
@@ -1143,6 +1157,11 @@
 - `getFieldIdByName` — Port of H.withDatabase's field-id lookup (e2e-database-metadata-helpers.ts),
 - `holdEmbedRoute` — Playwright equivalent of the spec's `cy.intercept(..., () => deferred)` /
 
+## embedding-theme-editor.ts
+- `createThemeViaApi` — Port of the spec-local createThemeViaApi: POST /api/embed-theme with a full
+- `visitThemeEditor` — Port of the spec-local visitThemeEditor: navigate to the editor and wait for
+- `changeColor` — Port of the spec-local changeColor. Opens a ColorSwatchCard's popover by
+
 ## embedding.ts
 - `METABASE_SECRET_KEY` — Port of METABASE_SECRET_KEY (e2e/support/cypress_data.js) — the
 - `embedModalContent`
@@ -1160,7 +1179,6 @@
 - `TENANT_NAMESPACE`
 - `createTenantCollection` — Port of the spec-local createTenantCollection: a collection in the
 - `setupTenantCollections` — Port of the spec-local setupTenantCollections: a tenant collection + sub-collection. */
-- `waitForEntityPickerSearch` — Register a wait for the entity-picker search response (GET /api/search whose
 
 ## env.ts
 - `BASE_URL`
@@ -1251,6 +1269,17 @@
 ## i18n.ts
 - `selectLocale` — Port of the spec-local `selectLocale`: open the profile page, pick a locale
 - `visitPath` — Tolerant navigation, mirroring cy.visit's resilience: the homepage fires a
+
+## instance-analytics.ts
+- `ANALYTICS_COLLECTION_NAME`
+- `CUSTOM_REPORTS_COLLECTION_NAME`
+- `PEOPLE_MODEL_NAME`
+- `METRICS_DASHBOARD_NAME`
+- `getCollectionId` — Port of the spec-local getCollectionId: GET /api/collection, match by name. */
+- `visitCollection` — Port of the spec-local visitCollection: look the collection up by name,
+- `getItemId` — Port of the spec-local getItemId: the id of the named item inside the named
+- `openQuestionInfoSidesheet` — Port of H.openQuestionInfoSidesheet (e2e-ui-elements-helpers.js): click the
+- `openCollectionEntryMenu` — Port of the spec-local `cy.findAllByTestId("collection-entry").each(...)`
 
 ## interactive-embedding.ts
 - `mockRedirectResponse` — Mock an external redirect (e.g. a JWT/SAML IdP bouncing back to the app).
@@ -1761,6 +1790,25 @@
 ## progress-bar.ts
 - `goalColumnDropdown` — The chevron dropdown toggle inside the "Goal" setting row. Cypress:
 
+## public-dashboard.ts
+- `PUBLIC_DASHBOARD_REGEX`
+- `COUNT_ALL`
+- `COUNT_DOOHICKEY`
+- `TEXT_FILTER`
+- `UNUSED_FILTER`
+- `TAB_1`
+- `TAB_2`
+- `prepareDashboard` — Port of the spec's `prepareDashboard`: enable public sharing, create the
+- `spyOnAppendedAnchor` — Port of the spec's `cy.spy(win.document.body, "appendChild")`: the "link"
+- `getCapturedAnchor` — Read the anchor captured by spyOnAppendedAnchor. */
+
+## public-documents.ts
+- `createPublicDocumentLink` — Port of H.createPublicDocumentLink: mint a public link for a document and
+- `visitPublicDocument` — Port of the spec-local visitPublicDocument: navigate to the public route. */
+- `verifyDocumentIsReadOnly` — Port of the spec-local verifyDocumentIsReadOnly: the editor textbox is
+- `verifyCommentsAreHidden` — Port of the spec-local verifyCommentsAreHidden: no per-node comment buttons,
+- `verifyErrorMessage` — Port of the spec-local verifyErrorMessage: PublicError / PublicNotFound
+
 ## public-sharing-embed-button-behavior.ts
 - `resetSnowplow`
 - `enableTracking`
@@ -2063,6 +2111,10 @@
 - `checkFilterValueNotInList` — Port of the spec-local checkFilterValueNotInList: value absent in last popover. */
 - `updateQuestion` — Port of the spec-local updateQuestion: click Save, confirm in the save modal,
 - `runQuery` — Port of SQLFilter.runQuery(xhrAlias): run the query, wait for the specific
+
+## sql-filters.ts
+- `setWidgetValue` — Port of SQLFilter.setWidgetValue: `filterWidget().type(value)` — type the
+- `setDefaultValue` — Port of SQLFilter.setDefaultValue: type into the sidebar's
 
 ## sso-google.ts
 - `CLIENT_ID_SUFFIX` — The suffix every valid Google Sign-In client id must end with. */
