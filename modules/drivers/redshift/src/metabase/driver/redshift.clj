@@ -1072,14 +1072,22 @@
   (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
 
 (defn- schemas-with-user-grants
-  "Query Redshift to find schemas where the user has been granted relation-level privileges.
-   `svv_relation_privileges` only surfaces actual GRANTs on existing relations -- it does NOT
-   list ALTER DEFAULT PRIVILEGES entries. See [[default-acl-grants-for-user]] for those."
+  "Query Redshift to find schemas where the user has been granted schema-level
+   (USAGE/CREATE) or relation-level privileges. Both views are needed:
+   `svv_relation_privileges` only surfaces GRANTs on existing relations, so a
+   granted schema with no tables (or whose tables were dropped later) only
+   shows up in `svv_schema_privileges` — missing it leaves a USAGE grant behind
+   and `DROP USER` then fails with `user ... has a privilege on some object`.
+   Neither view lists ALTER DEFAULT PRIVILEGES entries; see
+   [[default-acl-grants-for-user]] for those."
   [conn username]
   (->> (jdbc/query conn
                    ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
-           WHERE identity_name = ? AND identity_type = 'user'"
-                    username])
+                      WHERE identity_name = ? AND identity_type = 'user'
+                     UNION
+                     SELECT DISTINCT namespace_name FROM svv_schema_privileges
+                      WHERE identity_name = ? AND identity_type = 'user'"
+                    username username])
        (keep :namespace_name)))
 
 (defn- escape-like-pattern
