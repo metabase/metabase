@@ -16,16 +16,22 @@ The honest headline is **not** a bug count (see "Credibility" below). It's four
 capability differences, each of which Cypress cannot match without changing
 tools:
 
-## 1. Parallelism Cypress structurally cannot do
+## 1. In-job parallelism Cypress can't do
 
-Cypress runs specs serially within a run. Playwright runs workers in parallel,
-each with its **own isolated Metabase backend** (own port, app DB, sample-DB
-copy, site-url). We solved the hard parts — H2 file locking, plugin-extraction
-races, nREPL clashes, cold-boot query failures — and it holds up in CI. Measured
-on the standard runner: 2 workers ≈ 1.27× wall-clock / ~1.4× throughput, more
-headroom on bigger runners. And when the suite outgrew a single job's timeout,
-**sharding** brought wall-clock back down — something the serial model can't
-offer at all.
+Sharding across machines is *not* the differentiator — Cypress does that fine
+(Cypress Cloud `--parallel`, or a manual spec-split across a CI matrix, which we
+already run). The difference is **within a single job**: Cypress runs specs
+serially — one browser, one spec at a time — so you scale it only by adding more
+machines. Playwright runs multiple **worker processes in parallel inside one
+job**, each with its **own isolated Metabase backend** (own port, app DB,
+sample-DB copy, site-url). We solved the hard parts — H2 file locking,
+plugin-extraction races, nREPL clashes, cold-boot query failures — and it holds
+up in CI. Measured on the standard runner: 2 workers ≈ 1.27× wall-clock / ~1.4×
+throughput **on the same machine Cypress uses at 1×**, with more headroom on
+bigger runners. Sharding then composes on top (`--shard` × `--workers`), so total
+parallelism is machines × workers, not machines alone. Honest cap: each worker
+needs its own JVM+DB, so in-job workers are RAM-bound — the win is real but
+bounded by runner size.
 
 ## 2. A class of bug Cypress cannot see
 
