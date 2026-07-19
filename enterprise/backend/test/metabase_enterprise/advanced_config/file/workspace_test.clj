@@ -310,7 +310,7 @@
                           remote-sync/start-import! (fn [] (swap! started inc) nil)]
               (advanced-config.file/initialize!
                {:version 1
-                :config  {:settings  {:remote-sync-url    "https://git.example.com/acme/config.git"
+                :config  {:settings  {:remote-sync-url    "https://git.example.com/test.git"
                                       :remote-sync-branch "main"
                                       :remote-sync-token  "s3cr3t"}
                           :workspace (workspace-section "ws-test-db")}})
@@ -335,7 +335,7 @@
                           remote-sync/start-import! (fn [] (swap! started inc) nil)]
               (advanced-config.file/initialize!
                {:version 1
-                :config  {:settings {:remote-sync-url    "https://git.example.com/acme/config.git"
+                :config  {:settings {:remote-sync-url    "https://git.example.com/test.git"
                                      :remote-sync-branch "main"
                                      :remote-sync-token  "s3cr3t"}}})
               (is (zero? @started)))))))))
