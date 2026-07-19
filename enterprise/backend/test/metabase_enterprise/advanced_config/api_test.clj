@@ -1,10 +1,13 @@
 (ns metabase-enterprise.advanced-config.api-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util]
+   [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -111,3 +114,37 @@
          (mt/user-http-request :crowberto :post 402 "ee/advanced-config/"
                                (first (multipart (yaml-bytes payload)))
                                (second (multipart (yaml-bytes payload)))))))))
+
+(deftest config-upload-user-entry-test
+  (testing "POST /api/ee/advanced-config with a users entry creates the user"
+    (mt/with-premium-features #{:config-text-file}
+      (mt/with-model-cleanup [:model/User]
+        (let [email (u/lower-case-en (str (mt/random-name) "@config.test"))]
+          (apply mt/user-http-request :crowberto :post 204 "ee/advanced-config/"
+                 (multipart (yaml-bytes {:version 1
+                                         :config  {:users [{:first_name   "Work"
+                                                            :last_name    "Space"
+                                                            :email        email
+                                                            :password     "sUp3r-s3cret1"
+                                                            :is_superuser true}]}})))
+          (is (=? {:is_superuser true}
+                  (t2/select-one :model/User :email email))
+              "the user from the config lands as a superuser"))))))
+
+(deftest config-user-entry-completes-setup-test
+  (testing "a users entry completes the initial setup on an empty instance (has-user-setup flips)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:config-text-file}
+        (binding [advanced-config.file/*supported-versions* {:min 1 :max 1}]
+          (is (false? (setup/has-user-setup)))
+          (advanced-config.file/initialize!
+           {:version 1
+            :config  {:users [{:first_name   nil
+                               :last_name    nil
+                               :email        "boot@config.test"
+                               :password     "sUp3r-s3cret1"
+                               :is_superuser true}]}})
+          (is (true? (setup/has-user-setup)))
+          (is (=? {:is_superuser true, :first_name nil, :last_name nil}
+                  (t2/select-one :model/User :email "boot@config.test"))
+              "users without a first or last name are allowed"))))))

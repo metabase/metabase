@@ -4,6 +4,7 @@
    [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
@@ -116,6 +117,20 @@
      :remote-sync-token  (remote-sync/remote-sync-token)
      :remote-sync-type   :read-write}))
 
+(defn- user-entries
+  "config-file `users:` entries for the child instance: the workspace creator
+   as a superuser, when both the creator and the configured
+   `workspace-instance-user-password` exist."
+  [workspace]
+  (let [{:keys [creator]} (t2/hydrate workspace :creator)
+        password          (ws.settings/workspace-instance-user-password)]
+    (when (and creator (not (str/blank? password)))
+      [{:first_name   (:first_name creator)
+        :last_name    (:last_name creator)
+        :email        (:email creator)
+        :password     password
+        :is_superuser true}])))
+
 (defn- sample-database-entries
   "If the instance has a Sample Database, emit a single placeholder entry the
    import side will use to recreate it. Always uses the canonical name/engine —
@@ -142,7 +157,10 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. When remote sync is enabled on this
   instance, `:config` also carries a `:settings` section pointing the child
-  instance at the same git repo in `:read-write` mode. Takes a workspace with
+  instance at the same git repo in `:read-write` mode. When the
+  `workspace-instance-user-password` setting is set and the workspace has a
+  creator, `:config` carries a `:users` section creating that user as a
+  superuser on the child. Takes a workspace with
   its `:databases` hydrated. Throws a 409 `ex-info` if any of the workspace's
   databases is not `:provisioned`."
   [workspace]
@@ -162,14 +180,16 @@
           ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
           stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
           sample-entries   (sample-database-entries)
-          settings         (remote-sync-settings)]
+          settings         (remote-sync-settings)
+          users            (user-entries workspace)]
       {:version 1
        :config  (cond-> {:databases (-> ws-entries
                                         (into stub-entries)
                                         (into sample-entries))
                          :workspace {:name      (:name workspace)
                                      :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                  settings (assoc :settings settings))})))
+                  settings (assoc :settings settings)
+                  users    (assoc :users users))})))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."
