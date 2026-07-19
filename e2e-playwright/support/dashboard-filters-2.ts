@@ -702,11 +702,17 @@ export async function verifyNoDashcardMappingOptions(
   await expect(card.getByText("No valid fields", { exact: true })).toBeVisible();
 
   await card.getByText("No valid fields", { exact: true }).hover();
+  // A prior dashcard's tooltip can linger (fade-out) or Mantine can portal a
+  // duplicate node, so the same tooltip text matches 2+ elements under CI load
+  // → strict-mode violation. All matches carry identical text, so assert the
+  // first visible one.
   await expect(
-    tooltip(page).getByText(
-      "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
-      { exact: true },
-    ),
+    tooltip(page)
+      .getByText(
+        "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
+        { exact: true },
+      )
+      .first(),
   ).toBeVisible();
 }
 

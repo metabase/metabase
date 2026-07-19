@@ -758,6 +758,16 @@ environment. Rules: (1) don't pin data-derived magic numbers — assert the
 exact number; (2) treat a value only the local jar produces with suspicion;
 (3) the cross-check validates fidelity, never the environment.
 
+**Transient UI (toasts, tooltips) can leave a lingering duplicate → strict-mode
+violation under CI load.** A fading-out toast/tooltip, or a Mantine portal that
+renders a duplicate text node, means `getByText(exact)` on a toast/tooltip matches
+2+ elements at assertion time. It passes locally (one element) and on a lightly
+loaded shard, then fails only under CI parallelism — both batch-2 CI failures were
+this (a "Document saved" toast and a "can't map to this parameter" tooltip). All
+matches carry identical text, so assert `.first()` (or `.filter({visible:true}).first()`).
+Default to `.first()` on any toast/tooltip text assertion in a loop or after a
+repeated action.
+
 **Duplicate `it`/test titles are a HARD LOAD ERROR in Playwright** (Cypress
 tolerates them). The whole spec fails to parse; the error points only at the 2nd
 declaration. Upstream has real dupes (create-queries, waterfall) — suffix the 2nd

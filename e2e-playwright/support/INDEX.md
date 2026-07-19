@@ -25,9 +25,35 @@
 - `setupSaml` — Port of setupSaml() from e2e/test/scenarios/admin-2/sso/shared/helpers.js. */
 - `isOssBackend` — Whether the backend is an OSS build (version tags are v0.x for OSS, v1.x
 
+## api-keys.ts
+- `ADMINISTRATORS_GROUP_ID` — Fixed group ids from the `default` snapshot — mirrors USER_GROUPS
+- `ALL_USERS_GROUP_ID`
+- `READONLY_GROUP_ID`
+- `NOSQL_GROUP_ID`
+- `waitForCreateKey`
+- `waitForGetKeys`
+- `waitForGetKeyCount`
+- `waitForUpdateKey`
+- `waitForRegenerateKey`
+- `waitForDeleteKey`
+- `createApiKey` — Port of H.createApiKey: POST /api/api-key as the current (admin) user.
+- `visitApiKeySettings` — Port of the spec-local visitApiKeySettings: navigate to the API-keys admin
+- `tryToCreateApiKeyViaModal` — Port of H.tryToCreateApiKeyViaModal. Fills the create modal, picks the group
+- `apiKeyRow` — The row in the API-keys table that contains the given key name. */
+- `createQuestionForApiKey` — Port of createQuestionForApiKey. */
+- `createDashboardForApiKey` — Port of createDashboardForApiKey. */
+- `editQuestionForApiKey` — Port of editQuestionForApiKey: GET the card, then PUT it back renamed. */
+- `editDashboardForApiKey` — Port of editDashboardForApiKey: GET the dashboard, then PUT it back renamed. */
+
 ## api.ts
 - `MetabaseApi` — HTTP client mirroring cy.request semantics: requests run as the currently
 - `resolveToken`
+
+## binning-reproductions.ts
+- `createNativeQuestionWithMetadata` — Port of `H.createNativeQuestion(details, { loadMetadata: true })`: the
+- `pickSavedQuestion` — The exact "New question" flow these repros depend on: open the mini picker,
+- `clickBreakoutOptionLeft` — Port of `H.popover().findByRole("option", { name }).click({ position: "left" })`:
+- `openTemporalBucketFromGroupBy` — The temporal-bucket button revealed on hover inside the notebook group-by
 
 ## binning.ts
 - `chartPathWithFillColor` — Port of H.chartPathWithFillColor. */
@@ -69,6 +95,17 @@
 - `dashboardDetails` — Port of the spec's `dashboardDetails`. */
 - `createDashboardWithQuestion` — Port of the spec-local createDashboardWithQuestion: create the dashboard
 
+## cc-typing-suggestion.ts
+- `addCustomColumn` — Port of the spec-local addCustomColumn:
+- `typeExpression` — Escape-aware CodeMirror type() — the pieces of H.CustomExpressionEditor.type
+- `enterCustomColumnDetails` — Port of H.enterCustomColumnDetails — but escape-aware (the shared notebook.ts
+- `blurEditor` — Port of the CustomExpressionEditor.blur() from the codeMirror helper: click
+- `helpText` — Port of H.CustomExpressionEditor.helpText() (testid "expression-helper"). */
+- `helpTextHeader` — Port of H.CustomExpressionEditor.helpTextHeader()
+- `acceptCompletion` — Port of H.CustomExpressionEditor.acceptCompletion(key): the completions popup
+- `completionsListbox` — The ul[role=listbox] inside the completions popover — the target of
+- `verifyHelptextPosition` — Port of the spec-local verifyHelptextPosition: the help-text popover's left
+
 ## chart-drill.ts
 - `pieSliceWithColor` — Port of H.pieSliceWithColor (e2e-visual-tests-helpers.js): the pie/donut
 - `brushChart` — Port of the spec's `cy.findByTestId("query-visualization-root")
@@ -84,6 +121,9 @@
 - `tooltip`
 - `echartsContainer`
 - `trendLine`
+
+## click-behavior-reproductions.ts
+- `createMockActionParameter` — Port of createMockActionParameter (metabase-types/api/mocks/actions.ts),
 
 ## click-behavior.ts
 - `COUNT_COLUMN_ID`
@@ -220,6 +260,10 @@
 - `verifyColumns`
 - `breakout`
 - `verifyBreakoutExistsAndIsFirst`
+
+## column-extract-drill.ts
+- `openPeopleTable` — Port of H.openPeopleTable({ limit }) — open the People table as an ad-hoc
+- `extractColumnAndCheck` — - `H.tableHeaderClick(column)` opens the column click-actions popover.
 
 ## column-shortcuts.ts
 - `openOrdersTable` — Port of H.openOrdersTable({ limit }) — open the Orders table as an ad-hoc
@@ -406,6 +450,32 @@
 - `getTableCell` — Port of the spec-local getTableCell: find the column index by header text,
 - `addQuestionFromQueryBuilder` — Port of the spec-local addQuestionFromQueryBuilder: from the QB, add a
 
+## dashboard-filters-date.ts
+- `DASHBOARD_DATE_FILTERS` — Port of DASHBOARD_DATE_FILTERS
+- `setMonthAndYear` — Port of DateFilter.setMonthAndYear. */
+- `setQuarterAndYear` — Port of DateFilter.setQuarterAndYear. */
+- `setSingleDate` — Port of DateFilter.setSingleDate. */
+- `setTime` — Port of DateFilter.setTime.
+- `setDateRange` — Port of DateFilter.setDateRange. */
+- `setRelativeDate` — Port of DateFilter.setRelativeDate. */
+- `setAdHocFilter` — Port of DateFilter.setAdHocFilter. */
+- `dateFilterSelector` — Port of the spec-local dateFilterSelector switch: apply a filter value in the
+
+## dashboard-filters-management.ts
+- `selectFilter` — Port of the spec-local selectFilter: click a filter pill by name inside the
+- `changeFilterType` — Port of the spec-local changeFilterType: open the "Filter or parameter type"
+- `changeOperator` — Port of the spec-local changeOperator: open the "Filter operator" select and
+- `verifyOperatorValue` — Port of the spec-local verifyOperatorValue: the "Filter operator" select's
+- `expectSidebarHasDisplayValue` — Retried wrapper around findByDisplayValue for `should("exist")` — the sidebar
+- `clickSidebarDisplayValue` — Retried wrapper around findByDisplayValue that clicks the matched control
+- `createDashboardWithFilterAndQuestionMapped` — Port of the spec-local createDashboardWithFilterAndQuestionMapped: a People
+
+## dashboard-filters-remapping.ts
+- `findWidget` — Port of the spec-local findWidget: the parameter widget by exact label. */
+- `clearWidget` — Port of the spec-local clearWidget: findWidget(name).icon("close").click().
+- `testDefaultValuesRemapping` — Port of testDefaultValuesRemapping: each widget shows its remapped default. */
+- `testWidgetsRemapping` — Port of testWidgetsRemapping: clear each widget, pick a new value in its
+
 ## dashboard-filters-reset-clear.ts
 - `NO_DEFAULT_NON_REQUIRED`
 - `DEFAULT_NON_REQUIRED`
@@ -431,6 +501,22 @@
 - `checkParameterSidebarDefaultValue` — Port of the spec-local checkParameterSidebarDefaultValue. */
 - `checkResetAllFiltersWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersWorksAcrossTabs. */
 - `checkResetAllFiltersToDefaultWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersToDefaultWorksAcrossTabs. */
+
+## dashboard-filters-text-category.ts
+- `DASHBOARD_TEXT_FILTERS`
+- `dashboardSaveButton` — Port of H.dashboardSaveButton (e2e-dashboard-helpers.ts). */
+- `selectFilterValueFromList` — Port of FieldFilter.selectFilterValueFromList: pick a value from the
+- `addWidgetStringFilter` — Port of FieldFilter.addWidgetStringFilter: type the value into the first
+- `applyFilterByType` — Port of FieldFilter.applyFilterByType: list picker for Is/Is not, else text. */
+- `selectDefaultValueFromPopover` — Port of FieldFilter.selectDefaultValueFromPopover: open the "Default value"
+- `clickDefaultValueToggle` — Port of the `cy.findByText("Default value").next().click()` idiom. The
+- `waitForDashcardQuery` — Register BEFORE the triggering action; await after (PORTING rule 2). Matches
+
+## dashboard-filters-with-question-revert.ts
+- `updatedQuestionDetails` — Port of the spec's updatedQuestionDetails: rewrites the GUI question into a
+- `connectFilterToColumn` — Port of the spec-local connectFilterToColumn: inside the dashcard's filter
+- `assertFilterIsDisconnected` — Port of assertFilterIsDisconnected: the unfiltered first-two reviews are
+- `assertFilterIsApplied` — Port of assertFilterIsApplied: only the rating-3 reviews are shown. */
 
 ## dashboard-management.ts
 - `USER_NAMES` — First/last names from e2e/support/cypress_data.js — that file is untyped
@@ -528,6 +614,25 @@
 - `setFilterQuestionSource`
 - `pickEntity`
 
+## dashcard-replace-question.ts
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (cypress_sample_instance_data.js). */
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed id. */
+- `PARAMETER`
+- `DASHBOARD_CREATE_INFO`
+- `MAPPED_QUESTION_CREATE_INFO`
+- `NEXT_QUESTION_CREATE_INFO`
+- `getDashboardCards`
+- `visitDashboardAndEdit` — Port of visitDashboardAndEdit: visit the dashboard then enter edit mode.
+- `findHeadingDashcard` — Port of findHeadingDashcard: cy.findAllByTestId("dashcard").eq(0). */
+- `findTargetDashcard` — Port of findTargetDashcard: cy.findAllByTestId("dashcard").eq(2). */
+- `replaceQuestion` — Port of replaceQuestion: hover the dashcard, click its "Replace" action,
+- `assertDashCardTitle` — Port of assertDashCardTitle: the legend-caption-title has exactly `title`. */
+- `overwriteDashCardTitle` — Port of overwriteDashCardTitle: open the target dashcard's viz options and
+- `filterPanel` — Port of filterPanel: cy.findByTestId("edit-dashboard-parameters-widget-container"). */
+- `connectDashboardFilter` — Port of connectDashboardFilter: open the filter's mapping, connect it to the
+- `assertDashboardFilterMapping` — Port of assertDashboardFilterMapping: open the filter's mapping and assert
+- `updateCollectionGraph` — Port of cy.updateCollectionGraph: GET the collection graph, shallow-merge the
+
 ## data-model.ts
 - `SAMPLE_DB_SCHEMA_ID` — Mirrors e2e/support/cypress_data.js */
 - `areas`
@@ -573,6 +678,11 @@
 ## dnd.ts
 - `moveDnDKitPointer` — Drive dnd-kit's PointerSensor with synthetic pointer events at element-relative
 - `moveDnDKitElementSynthetic` — Synthetic-event port of H.moveDnDKitElementByAlias({ useMouseEvents }) for drag
+
+## document-links.ts
+- `documentMentionItem` — Port of H.documentMentionItem (findByRole name strings are exact). */
+- `openLinkSuggestionBrowseAllPicker` — Port of the spec-local openLinkSuggestionBrowseAllPicker: focus the editor,
+- `openLinkMentionMenuBrowseAllPicker` — Port of the spec-local openLinkMentionMenuBrowseAllPicker: focus the editor,
 
 ## documents-core.ts
 - `READ_ONLY_PERSONAL_COLLECTION_ID`
@@ -864,6 +974,9 @@
 - `getSettledMarkerPosition` — Port of the spec-local getSettledMarkerPosition (metabase#11211): read the
 - `pinMapSelectRegion` — Port of the spec-local pinMapSelectRegion: visit a People pin map, arm the
 
+## metrics-dashboard.ts
+- `chartLegendItem` — Port of H.chartLegendItem(name) (e2e-dashboard-visualizer-helpers.ts):
+
 ## metrics-editing.ts
 - `MetricEditor` — The metric query-editor surface (e2e-metric-page-helpers.ts MetricPage) not
 - `runButtonInOverlay` — Port of H.runButtonInOverlay: the run button inside the run-button-overlay. */
@@ -907,6 +1020,11 @@
 - `cartesianChartCircles`
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
 
+## model-indexes.ts
+- `createModelIndex` — Port of H.createModelIndex({ modelId, pkName, valueName }): field ids are
+- `waitForIndexedValueSearchable` — Wait until a freshly indexed value is searchable. Creating a model index
+- `trackCardGets` — Port of the spec's `@cardGet` intercept + `expectCardQueries` assertion:
+
 ## models-core.ts
 - `turnIntoModel` — Port of turnIntoModel (e2e-models-helpers.js): open the question actions,
 - `waitForCardUpdate` — Register a wait for the next PUT /api/card/:id (the `@cardUpdate` alias). */
@@ -920,6 +1038,13 @@
 - `getCollectionItemCard` — Port of getCollectionItemCard: findByText(name).closest("a"). */
 - `getResults` — Port of getResults: cy.findAllByTestId("result-item"). */
 - `waitForSearch` — Register a wait for the next GET /api/search* (the `@search` alias). */
+
+## models-list-view.ts
+- `ACCENT1_RGB` — The Cypress spec asserts `Color(colors["accent1"]).rgb().toString()`.
+- `tableHeaderClick` — Port of H.tableHeaderClick(/Subtotal/i): the notebook.ts tableHeaderClick
+- `saveChangesAndWaitForDataset` — Port of the spec's Save-changes flow in the model-metadata editor:
+- `dragColumnOnto` — Port of H.dragAndDropByElement(subject, target, { dragend: false }) — the
+- `expectFirstImgAriaLabel` — Port of the repeated `cy.findAllByRole("img").first().should("have.attr",
 
 ## models-metadata.ts
 - `openColumnOptions` — Port of H.openColumnOptions: click a column's header cell in the model
@@ -1093,6 +1218,15 @@
 - `updatePermissionsGraph` — Port of cy.updatePermissionsGraph: GET the graph, shallow-merge the given
 - `saveAdhocQuestion` — Port of the column-resizing test's H.saveQuestion(undefined, undefined, {
 
+## progress-bar.ts
+- `goalColumnDropdown` — The chevron dropdown toggle inside the "Goal" setting row. Cypress:
+
+## public-sharing.ts
+- `PUBLIC_SHARING_SETTINGS_URL`
+- `createPublicLink` — Port of the spec's `cy.request("POST", "/api/<type>/:id/public_link", {})`:
+- `waitForPublicListings` — The public-sharing page fires three list requests on load
+- `revokePublicLink` — Port of the spec's revoke flow: click a listing's "Revoke link" icon, confirm
+
 ## question-management.ts
 - `ORDERS_COUNT_QUESTION_ID`
 - `getPersonalCollectionName`
@@ -1183,6 +1317,13 @@
 - `waitForRevert` — Playwright equivalent of the spec's cy.intercept("POST",
 - `expectRevertSuccess` — Port of the repeated cy.wait("@revert") status/cause assertions. */
 
+## rows.ts
+- `queryVisualizationRoot` — Port of `cy.findByTestId("query-visualization-root")`. */
+- `rowChartBars` — The row-chart bars — `cy.findAllByRole("graphics-symbol")`. */
+- `visxColumns` — The plotted-bars group — `cy.get(".visx-columns")`. */
+- `visxAxisLeft` — The left (category) axis group — `cy.get(".visx-axis-left")`. */
+- `boxWidth` — jQuery `.invoke("width")` equivalent: the element's rendered box width. */
+
 ## sample-data.ts
 - `SAMPLE_DB_ID`
 - `ORDERS_QUESTION_ID`
@@ -1191,6 +1332,13 @@
 - `THIRD_COLLECTION_ID`
 - `LOGIN_CACHE` — Session ids cached at snapshot-creation time. The sessions live in the
 - `USERS` — Credentials fallback for users without a cached session. */
+
+## sankey.ts
+- `sankeyEdge` — Port of H.sankeyEdge(color): the sankey link paths, which render with the
+- `mockDevelopmentMode` — Port of the spec's `cy.intercept("/api/session/properties", ...)` that flips
+
+## scatter.ts
+- `triggerPopoverForBubble` — The Cypress original toggles data view → visualization view to work around
 
 ## schema-viewer.ts
 - `WRITABLE_DB_ID` — Mirrors e2e/support/cypress_data.js */
@@ -1222,6 +1370,12 @@
 - `isScrollableHorizontally` — Port of H.isScrollableHorizontally. */
 - `createQuestionWithDescription` — Port of H.createQuestion for details the spike's api.createQuestion doesn't
 - `createCollection` — Port of H.createCollection. */
+
+## sharing-download-reproductions.ts
+- `remapProductIdToProductTitle` — Port of the repeated
+- `saveAndOverwrite` — Port of the spec-local `saveAndOverwrite`: click the QB header Save, then
+- `openNativeEditor` — Port of `cy.contains(/open editor/i).click()` /
+- `reorderColumnAPastColumnB` — The Cypress original fired raw `.trigger("mousedown"/"mousemove"/"mouseup")`
 
 ## sharing.ts
 - `main`
@@ -1356,6 +1510,10 @@
 - `escapeRegExp` — Escape a string for literal use inside a RegExp. */
 - `caseSensitiveSubstring` — Case-sensitive substring matcher (Cypress `cy.contains` / `:contains`
 
+## time-series-chrome.ts
+- `dateFilterPicker` — The `date-filter-picker` container. Both the timeseries chrome popover
+- `updateOperator` — Port of the spec-local updateOperator(from, to): open the operator select
+
 ## timelines-collection.ts
 - `openMenu` — Port of the spec-local openMenu:
 - `setFormattingSettings` — Port of the spec-local setFormattingSettings:
@@ -1460,6 +1618,12 @@
 - `echartsTextExact` — ECharts SVG `<text>` carries leading/trailing spaces and Playwright's
 - `showDashcardVisualizerModalSettings` — Port of H.showDashcardVisualizerModalSettings: open the visualizer modal and
 - `saveDashcardVisualizerModalSettings` — Port of H.saveDashcardVisualizerModalSettings (= saveDashcardVisualizerModal). */
+
+## visualizer-drillthrough.ts
+- `cartesianChartCircleWithColor` — Port of H.cartesianChartCircleWithColor, scoped to a dashcard (the Cypress
+- `applyBrush` — Port of H.applyBrush(left, right), scoped to a dashcard. Cypress fires
+- `waitForDataset` — The @dataset intercept: POST /api/dataset. Register BEFORE the triggering
+- `trackDatasetRequests` — A running counter of POST /api/dataset requests, for the VIZ-979 assertion
 
 ## viz-charts-repros.ts
 - `visitAdhoc`

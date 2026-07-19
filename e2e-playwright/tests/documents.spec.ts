@@ -900,7 +900,9 @@ test.describe("documents", () => {
         await expect(
           page
             .getByTestId("toast-undo")
-            .getByText("Document saved", { exact: true }),
+            .getByText("Document saved", { exact: true })
+            // a prior save's toast can linger → 2 matches under CI load
+            .first(),
         ).toBeVisible();
 
         await page.keyboard.press("ControlOrMeta+z");
@@ -1613,7 +1615,9 @@ test.describe("documents", () => {
         await expect(
           page
             .getByTestId("toast-undo")
-            .getByText("Document saved", { exact: true }),
+            .getByText("Document saved", { exact: true })
+            // a prior save's toast can linger → 2 matches under CI load
+            .first(),
         ).toBeVisible();
 
         await cardQuery;
@@ -1713,7 +1717,7 @@ test.describe("documents", () => {
       await expect(saveButton).toHaveCount(0);
 
       await expect(
-        undoToast(page).getByText("Document saved", { exact: true }),
+        undoToast(page).getByText("Document saved", { exact: true }).first(),
       ).toBeAttached();
     });
 
@@ -1786,7 +1790,7 @@ test.describe("documents", () => {
       await expect(saveButton).toHaveCount(0);
 
       await expect(
-        undoToast(page).getByText("Document saved", { exact: true }),
+        undoToast(page).getByText("Document saved", { exact: true }).first(),
       ).toBeAttached();
     });
 
