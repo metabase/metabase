@@ -4,6 +4,98 @@ Written 2026-07-17 when the session ran out of model usage mid-wave. This is
 the "you've been away" doc: current state, what's half-done, what to do first.
 Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
 
+> ## ⏱ Latest (2026-07-20) — session ended on the subagent cap. Read this block first.
+>
+> **Why it stopped:** the session hit `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`
+> (200 spawns, cumulative over the whole session — it counts agents *spawned*,
+> not running, so stopping agents does NOT free spawns). The per-spec porting
+> pool can't be refilled this session. **The cap is per-session, so simply
+> starting a NEW session resets the counter to 0 — no env change needed.** Resume
+> the 5-slot pool exactly as PORTING.md describes. (Only raise
+> `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` if you want >200 spawns within one
+> session. Or port in-context on one slot — slower, no parallelism.)
+>
+> **Count: 273 in PORTED.txt.** ~117 non-SDK specs + 28 SDK-iframe specs remain.
+>
+> **Batches 10 AND 11 are both pushed.** The batch-11 push superseded batch-10's
+> CI run (cancel-in-progress). **Watch CI run 29707147953** (commit `4afc0aca530`,
+> batch-11 tip — covers all landed specs): `gh run view 29707147953`. If it goes
+> red on a shard, pull the failing spec from the log the same way batch-9 s5 was
+> diagnosed (`gh run view --job <id> --log | grep -aiE "✘|Error:|strict mode"`).
+>
+> **Batch-11** (commit `4afc0aca530`): custom-viz (52 pass / 2 skip),
+> measures-queries (29/29), segments-data-studio (19 pass / 1 skip),
+> table-editing (21/21 gated-skip, writable postgres), dependency-unreferenced-list
+> (11/11 gated-skip). All tsc clean, import-gate applied.
+>
+> **Batch-10** — commit `aac52adf001`, 18 specs:
+> admin-tools-help, collection-picker-tenants, collections-reproductions,
+> content-translation-questions, content-translation-upload-and-download,
+> data-model-permissions, document-downloads, download-permissions,
+> embedding-snippets, embedding-theme-listing,
+> entity-picker-shared-tenant-collection, official-collections,
+> performance-caching, permissions-reproductions, personal-collections,
+> public-resource-downloads, recently-viewed, summarization.
+>
+> **Batch-10 also carries the fix for the batch-9 s5 red** (this is a reusable
+> lesson, now owed to PORTING.md as a gotcha): `dashboard-drill` #15331 hit a
+> strict-mode violation because the shared `tableHeaderColumn` (support/notebook.ts)
+> scanned **page-wide** `header-cell`s and caught the sticky object-detail
+> column's duplicate "Quantity". It's now scoped to
+> `getByTestId("table-header").getByTestId("header-cell")`, matching Cypress's
+> `tableInteractiveHeader()` — provably the same single element Cypress's green
+> selector resolves to. Verified: drill #15331 2/2, summarization caller green.
+> **Takeaway: page-wide table-cell locators are a latent strict-mode flake that
+> only fires when a second table/column renders (object-detail, pivots) — scope
+> to `table-header` like Cypress does.**
+>
+> ### 🔜 First move next session: resume the pool from the queue
+> Nothing is left uncommitted — batches 10 and 11 are both pushed and the working
+> tree is clean. Start a fresh session (resets the spawn cap), confirm run
+> 29707147953 is green, then dispatch the next wave from the queue picks below.
+>
+> **The commit gate (why batch-8 broke once — keep doing this every push):**
+> 1. Stage only specs that are in `PORTED.txt` AND have a green run. Exclude any
+>    in-flight spec/support file (a half-written `.ts` fails collection on EVERY
+>    shard — that's the batch-8 0/20).
+> 2. Import-resolution gate: for each staged spec, every `../support/X` import
+>    must resolve to a tracked-or-staged file. (One-liner used this session:
+>    build an `avail` set from `git ls-files support/` + staged support files,
+>    then grep each spec's `from "../support/…"` against it — 0 misses required.)
+> 3. `git add` wholesale then `git reset` the in-flight files — and re-check,
+>    because a running agent may have just created its spec file (this session,
+>    `segments-data-studio.spec.ts` snuck into the stage this way).
+> 4. One push per batch (`cancel-in-progress:true` cancels the prior run).
+>
+> ### Consolidation dividends flagged this session (deferred — do in one pass)
+> - `savePermissionsGraph` (data-model-permissions.ts) ≡ `saveAndConfirmPermissions`
+>   (download-permissions.ts) — promote to a shared permissions helper.
+> - The snowplow no-op stub block is copy-pasted across `homepage.ts`,
+>   `datamodel-segments.ts`, `segments-data-studio.ts` — hoist to one module.
+> - `undoToast` (metrics.ts) ≡ `undoToastList` (organization.ts) — byte-identical
+>   `getByTestId("toast-undo")` — unify into `ui.ts`.
+> - `support/measures-queries.ts` `_measures_reexports` — clean up once slot-2
+>   lands (was WIP).
+> - Rule still in force from the last consolidation: **only consolidate toward a
+>   shape Cypress already has** (faithfulness > DRY). All four above qualify.
+>
+> ### Docs owed
+> `findings-inbox/` has ~20+ unmerged per-spec entries — reconcile into
+> FINDINGS.md / PORTING.md at the next checkpoint (the batch-10 gotcha above is
+> the priority one to add to PORTING.md). Regenerate `QUEUE.md`
+> (`node scripts/build-queue.mjs`) after batch-11 lands.
+>
+> ### Next queue picks (largest fully-jar-runnable, no external gate)
+> `search/search-snowplow` (674 — was the rejected 201st spawn, not started),
+> `dependencies/dependency-broken-list` (576), `data-studio/measures/measures-data-studio`
+> (569), `data-studio/table-collection-permissions` (551),
+> `data-studio/snippets` (503), `data-studio/transforms/transforms-inspect` (485).
+> Filter QUEUE.md for specs whose gates are only `token|snowplow|oss|has-skips`
+> (no `external|mongo|email|webhook`) — those run fully on the jar; the rest
+> gate-skip or need infra.
+>
+> ---
+>
 > **Latest (2026-07-19, consolidation pass):** dedup of the shared helpers the
 > "no-shared-edits" rule had duplicated. New `support/factories.ts` (7 canonical
 > create* as supersets — ~30 copies across 12 modules collapsed to re-exports;
