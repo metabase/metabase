@@ -113,4 +113,3 @@ databaseChangeLog:
             columnDataType: varchar(254)
             defaultValue: unprovisioned
       rollback: []
-
