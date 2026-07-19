@@ -32,6 +32,20 @@
 - `setupSaml` — Port of setupSaml() from e2e/test/scenarios/admin-2/sso/shared/helpers.js. */
 - `isOssBackend` — Whether the backend is an OSS build (version tags are v0.x for OSS, v1.x
 
+## ai-controls.ts
+- `TINY_PNG_BASE64`
+- `TINY_PNG_DATA_URI`
+- `MOCK_LLM_RESPONSE`
+- `DEFAULT_QUOTA_MESSAGE`
+- `ALL_USERS_GROUP_ID` — Port of ALL_USERS_GROUP / ADMIN_GROUP (e2e/support/cypress_data.js). */
+- `ADMIN_GROUP_ID`
+- `NORMAL_USER_ID` — Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */
+- `startMockLlmServer` — Start a mock server impersonating the Anthropic Messages API on an ephemeral
+- `configureMockLlm` — Point the backend at the mock server (mirrors `llmMockServerSetup`). Setting
+- `visitHomeAndWaitForXray` — Register the xray-candidates wait, navigate home, await it (PORTING rule 2). */
+- `signInViaCookie` — Sign in as an arbitrary user (not one of the cached USERS) by POSTing
+- `typeAndBlur` — Port of H.typeAndBlurUsingLabel for the admin settings text inputs: `fill`
+
 ## api-keys.ts
 - `ADMINISTRATORS_GROUP_ID` — Fixed group ids from the `default` snapshot — mirrors USER_GROUPS
 - `ALL_USERS_GROUP_ID`
@@ -55,6 +69,11 @@
 ## api.ts
 - `MetabaseApi` — HTTP client mirroring cy.request semantics: requests run as the currently
 - `resolveToken`
+
+## bar-chart.ts
+- `getValueLabels` — Port of H.getValueLabels (e2e-visual-tests-helpers.js): the ECharts data
+- `otherSeriesChartPaths` — Port of H.otherSeriesChartPaths (e2e-visual-tests-helpers.js): the grouped
+- `expectChartPathVisible` — Port of `H.chartPathWithFillColor(color).should("be.visible")`. `.should(
 
 ## binning-longitude.ts
 - `LONGITUDE_OPTIONS` — Longitude slice of shared/constants.js LONGITUDE_OPTIONS. */
@@ -100,7 +119,7 @@
 - `dragAndDropCardOnAnotherCard` — Port of H.dragAndDropCardOnAnotherCard → documentsDragAndDrop. Replays the
 - `documentUndo` — Port of H.documentUndo: focus the editor and press cmd/ctrl+z. Assert the
 - `assertFlexContainerCardsOrder` — Port of the spec-local assertFlexContainerCardsOrder. `scope` is the
-- `addNewStandaloneCard` — Port of the spec-local addNewStandaloneCard: click the empty trailing
+- `addNewStandaloneCard` — no re-render races the interaction.
 - `getCardWidths` — Port of the spec-local getCardWidths: the content-box widths of each named
 - `expectCloseTo` — Chai's `closeTo(expected, delta)`: |actual - expected| <= delta. */
 - `selectCardEmbedFromTop` — Port of `H.getDocumentCard(name).realClick({ position: "top" })`: click the
@@ -335,6 +354,13 @@
 - `assertPermissionTable` — Port of H.assertPermissionTable: assert the tbody row count, then every
 - `drillIntoDatabaseRow` — Port of cy.findByTextEnsureVisible("Sample Database").click() used to drill
 
+## custom-column-1.ts
+- `typeSnippet` — The subtlety this bridges: driving the arg text with `page.keyboard.type`
+- `addCustomColumnByLabel` — Port of the repeated `cy.findByLabelText("Custom column").click()` (the
+- `formatButton` — Port of H.CustomExpressionEditor.formatButton(): cy.findByLabelText(
+- `pressFormatShortcut` — Port of the format keyboard shortcut (Shift + $mod + f) upstream fires with
+- `removeNotebookClauseByText` — Port of `H.getNotebookStep(step).findByText(name).icon("close").click()`:
+
 ## custom-column-3.ts
 - `focusCustomExpressionEditor` — Port of H.CustomExpressionEditor.focus(): click the editor, confirm
 - `clearCustomExpressionEditor` — Port of H.CustomExpressionEditor.clear(): focus, select all, backspace. */
@@ -420,6 +446,14 @@
 - `assertScrollBarExists` — Port of the spec-local assertScrollBarExists. */
 - `checkOptionsForFilter` — Port of the spec-local checkOptionsForFilter. */
 - `countDashboardUpdates` — Port of the cy.spy() intercept pattern: counts PUT /api/dashboard/:id
+
+## dashboard-drill.ts
+- `sidebar` — Port of H.sidebar (e2e-ui-elements-helpers.js): `cy.get("main aside")`. */
+- `createDrillQuestion` — Port of the spec-local `createQuestion(options, callback)`: POST a native
+- `createDrillDashboard` — Port of the spec-local `createDashboard(...)`: create a dashboard, add a
+- `createDashboardWithQuestion` — Port of the spec-local `createDashboardWithQuestion`. */
+- `setParamValue` — Port of the spec-local `setParamValue(paramName, text)`: wait to leave edit
+- `drillThroughCardTitle` — Port of the spec-local `drillThroughCardTitle(title)`: click the card's
 
 ## dashboard-filter-data-permissions.ts
 - `filterDashboard` — The `suggests` branch mirrors the original: when a user has data access the
@@ -653,6 +687,17 @@
 - `expectFilterSelected` — Port of the spec-local isFilterSelected (checkbox state by label). */
 - `expectRenderedWithinViewport` — Port of the isRenderedWithinViewport custom command. */
 
+## dashboard-questions.ts
+- `DASHBOARD_ONE`
+- `DASHBOARD_TWO`
+- `QUESTION_ONE`
+- `QUESTION_TWO`
+- `QUESTION_THREE`
+- `seedMigrationToolData` — Port of the spec-local seedMigrationToolData: three questions in First
+- `selectCollectionItem` — Port of the spec-local selectCollectionItem:
+- `commandPaletteSearch` — Port of H.commandPaletteSearch(query, viewAll = true): open the palette,
+- `waitForCardUpdates` — Counting side of `cy.wait(new Array(count).fill("@updateCard"))` where
+
 ## dashboard-repros.ts
 - `ALL_USERS_GROUP`
 - `COLLECTION_GROUP`
@@ -764,6 +809,14 @@
 - `dataStudioNav`
 - `visitDataStudio`
 
+## dependency-graph.ts
+- `DependencyGraph` — Port of H.DependencyGraph (e2e-dependency-helpers.ts) — the graph screen's
+- `waitForBackfillComplete` — Port of H.waitForBackfillComplete (e2e-dependency-helpers.ts): poll
+- `createTransform` — Port of H.createTransform (api/createTransform.ts). */
+- `runTransformAndWaitForSuccess` — Port of H.runTransformAndWaitForSuccess (e2e-transform-helpers.ts):
+- `createMockCard` — Minimal stand-in for createMockCard (metabase-types/api/mocks/card.ts): the
+- `createDocument` — Port of H.createDocument (api/createDocument.ts) — the `cards`-carrying
+
 ## detail-view.ts
 - `visitTable` — Port of DetailView.visitTable: navigate and wait for the table
 - `visitModel` — Port of DetailView.visitModel: navigate and wait for the card
@@ -785,6 +838,11 @@
 - `documentMentionItem` — Port of H.documentMentionItem (findByRole name strings are exact). */
 - `openLinkSuggestionBrowseAllPicker` — Port of the spec-local openLinkSuggestionBrowseAllPicker: focus the editor,
 - `openLinkMentionMenuBrowseAllPicker` — Port of the spec-local openLinkMentionMenuBrowseAllPicker: focus the editor,
+
+## document-metabot.ts
+- `GENERATED_CARD_NAME` — The name the mocked tool call gives the generated chart. */
+- `buildSqlChartResponse` — Build the { draft_card, description, error } the endpoint returns for a
+- `mockDocumentGenerateContent` — Fulfil POST /api/metabot/document/generate-content with a canned JSON body.
 
 ## document-permissions.ts
 - `ALL_USERS_GROUP` — Mirrors USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed
@@ -1090,6 +1148,18 @@
 - `showSeries` — Port of the spec-local showSeries(legendItemIndex). */
 - `pieChartLegendItemPercentage` — Port of the spec-local getPieChartLegendItemPercentage(sliceName):
 
+## line-bar-tooltips.ts
+- `showTooltipForCircleInSeries` — Port of the spec-local showTooltipForCircleInSeries. `.trigger("mousemove")`
+- `showTooltipForBarInSeries` — Port of the spec-local showTooltipForBarInSeries. Upstream uses `.realHover()`
+- `testTooltipExcludesText` — Port of the spec-local testTooltipExcludesText: `cy.contains(text)` is a
+- `updateColumnTitle` — Port of the spec-local updateColumnTitle: find the chart-settings input with
+- `setup` — Port of the spec-local setup + setupDashboard: create the question (and an
+- `testSumTotalChange`
+- `testAvgTotalChange`
+- `testCumSumChange`
+- `testAvgDiscountChange`
+- `testSumDiscountChange`
+
 ## line-chart.ts
 - `visitLineChartAdhoc`
 - `visitNativeLineChartAdhoc`
@@ -1106,6 +1176,82 @@
 - `zoomIn` — Port of the spec-local zoomIn: click the leaflet zoom-in control `times`
 - `getSettledMarkerPosition` — Port of the spec-local getSettledMarkerPosition (metabase#11211): read the
 - `pinMapSelectRegion` — Port of the spec-local pinMapSelectRegion: visit a People pin map, arm the
+
+## mcp-analytics.ts
+- `MCP_ANALYTICS_PATH`
+- `SEED_TOOL_NAME`
+- `SEED_ERROR_TOOL`
+- `SEED_ERROR_CODE`
+- `SEED_ERROR_TYPE`
+- `SEED_ERROR_MESSAGE`
+- `seedMcpToolCall` — Port of the spec-local seedMcpToolCall: POST /api/testing/mcp/seed-tool-call
+- `visitMcpAnalyticsPage` — Port of the spec-local visitMcpAnalyticsPage: register the audit-metadata
+- `openToolCallsTab` — Click the "Tool calls" tab and wait for the events-table dataset query.
+
+## metabot-query-builder.ts
+- `allOrdersQuestion` — Port of the spec's module-level `allOrdersQuestion`. */
+- `AGENT_STREAMING_PATH`
+- `waitForAgentRequest` — The Cypress spec waits on the `@metabotAgent` alias set by mockMetabotResponse
+- `mockNavigateToResponse` — Port of mockNavigateToResponse. */
+- `mockTextOnlyResponse` — Port of mockTextOnlyResponse. */
+- `mockGeneratedEntityResponse` — Port of mockGeneratedEntityResponse. */
+- `mockErrorResponse` — Port of mockErrorResponse. */
+- `mockPromptSuggestions` — Port of `cy.intercept("GET", "/api/metabot/metabot/*​/prompt-suggestions*", …)`.
+
+## metabot-usage-auditing.ts
+- `ADMIN_USER_ID` — Port of ADMIN_USER_ID (cypress_sample_instance_data.js). */
+- `NORMAL_USER_ID` — Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */
+- `ADMINISTRATORS_GROUP_ID` — Port of ADMINISTRATORS_GROUP_ID (cypress_sample_instance_data.js). */
+- `METRIC_TAB_NAMES`
+- `BOBBY_TENANT`
+- `ROBERT_TENANT`
+- `TENANT_CONVERSATIONS_CHART_TITLE`
+- `CHART_RENDER_TIMEOUT`
+- `METRIC_CHART_TITLES`
+- `DATE_FILTER_CASES`
+- `MAIN_PROFILE_LABELS`
+- `seedUsageAuditingData`
+- `setupUsageAuditingTenants`
+- `visitUsageStatsPage`
+- `visitConversationsPage`
+- `getChartCard` — Port of getChartCard: the parent of the chart's title text. */
+- `assertChartRendered` — Port of assertChartRendered: the chart card mounts its container + <svg>. */
+- `assertMetricChartsRendered`
+- `assertMetricChartsRenderedForDate`
+- `selectMetricTab`
+- `selectGroupFilter`
+- `selectUserFilter`
+- `selectTenantFilter`
+- `selectDateFilter`
+- `assertConversationTableContains`
+- `assertConversationTableDoesNotContain`
+- `assertTodayConversationTable`
+- `assertLatestHourConversationTable`
+- `assertHourDateFilterInUrl`
+- `clickLastTimeseriesChartDot` — Port of clickLastTimeseriesChartDot: drill by clicking the last symbol circle
+- `clickRowChartBarForLabel` — Port of clickRowChartBarForLabel: drill by clicking the row-chart bar whose
+- `openConversationFromProfile`
+- `assertConversationDetailProfile`
+- `waitForConversationsResponse` — Register a wait for the conversations-list GET before a drill click. */
+- `waitForConversationsRequest` — Register a wait for a table-sort conversations GET before the sort click. */
+
+## metabot.ts
+- `metabotChatSidebar`
+- `assertChatVisibility`
+- `openMetabotViaShortcutKey`
+- `closeMetabotViaShortcutKey`
+- `openMetabotViaSearchButton`
+- `closeMetabotViaCloseButton`
+- `metabotChatInput`
+- `sendMetabotMessage`
+- `chatMessages`
+- `lastChatMessage`
+- `createMetabotSSEBody` — Arguments are flattened one level, so parts compose without spreading:
+- `metabotTextPart` — A streamed assistant text message, emitted as start/delta/end events. */
+- `metabotDataPart` — A `data-{subtype}` part, e.g. `metabotDataPart("state", { queries: {} })`. */
+- `metabotErrorPart` — A streamed error message. */
+- `metabotFinishPart` — The trailing finish event; carries the finish reason and usage metadata. */
+- `mockMetabotResponse` — Port of H.mockMetabotResponse. Fulfils POST /api/metabot/agent-streaming with
 
 ## metrics-editing.ts
 - `MetricEditor` — The metric query-editor surface (e2e-metric-page-helpers.ts MetricPage) not
@@ -1279,6 +1425,22 @@
 - `ensureEchartsContainerHasSvg` — Port of H.ensureEchartsContainerHasSvg (e2e-visual-tests-helpers.js): the
 - `applyBrushFilter` — Port of the spec-local applyBrushFilter: wait for the chart svg to exist,
 - `applyBoxFilter` — .realMouseDown({ x: left, y: top })
+
+## native-sql-generation.ts
+- `inlinePrompt`
+- `inlinePromptInput` — inlinePrompt().find(".ProseMirror[contenteditable=true]") */
+- `generateButton`
+- `cancelButton`
+- `errorMessage`
+- `acceptButton`
+- `rejectButton`
+- `generatingLoader`
+- `toggleInlineSQLPrompt` — Port of the spec-local toggleInlineSQLPrompt: focus the native editor, let it
+- `typeInlinePrompt` — Click the ProseMirror prompt input, assert it took focus (PORTING rule 5),
+- `mockCodeEditResponse` — Port of the spec-local mockCodeEditResponse. */
+- `mockTextOnlyResponse` — Port of the spec-local mockTextOnlyResponse. */
+- `mockMetabotResponseWithDelay` — Like support/metabot.ts mockMetabotResponse, but holds the response for
+- `isAgentStreamingRequest` — POST /api/metabot/agent-streaming — path predicate for waitForResponse. */
 
 ## native-table-tags.ts
 - `variableTypeSelect` — Port of `cy.findByTestId("variable-type-select")`. */
@@ -1521,6 +1683,18 @@
 - `getTableId` — Port of H.getTableId (e2e-qa-databases-helpers.js). */
 - `resyncDatabase` — Port of H.resyncDatabase + waitForSyncToFinish
 
+## search-filters.ts
+- `ADMIN_USER_ID`
+- `NORMAL_USER_ID`
+- `ADMIN_PERSONAL_COLLECTION_ID`
+- `NORMAL_PERSONAL_COLLECTION_ID`
+- `ORDERS_COUNT_QUESTION_ID`
+- `createModerationReview` — Port of H.createModerationReview (api/createModerationReview.ts). */
+- `expectSearchResultItemNameContent` — Port of the spec-local expectSearchResultItemNameContent: the
+- `waitForModelIndexed` — The type-filter describe seeds a model, an action, a model-index
+- `waitForLastEditors` — The last_edited_by / last_edited_at describes edit questions AFTER restore,
+- `editQuestionByAddingSummarize` — Doing it via the API (rather than the summarize sidebar) also dodges a UI
+
 ## search-pagination.ts
 - `waitForSearch` — Register a wait for the next /api/search response (PORTING rule 2 —
 - `waitForCardsIndexed` — The seeded `generated_question` cards are indexed asynchronously after a
@@ -1720,6 +1894,33 @@
 - `checkScalarResult` — Port of the spec-local checkScalarResult:
 - `checkFilterLabelAndValue` — Port of the spec-local checkFilterLabelAndValue:
 - `waitForTitleDrillQuery` — The reusable `cy.intercept(...).as("cardQuery")` the spec waits on after each
+
+## transforms-codegen.ts
+- `SOURCE_TABLE`
+- `resetManySchemasTable` — Port of H.resetTestTable({ type: "postgres", table: "many_schemas" })
+- `createSqlTransform` — Port of H.createSqlTransform (e2e-transform-helpers.ts), subset used here. */
+- `createPythonTransform` — Port of H.createPythonTransform (e2e-transform-helpers.ts). */
+- `pythonSourceTables` — Port of the spec-local pythonSourceTables. */
+- `createMockNativeTransformJSON`
+- `createMockPythonTransformJSON`
+- `createMockTransformSuggestionResponse` — Port of the spec-local createMockTransformSuggestionResponse: a streamed text
+- `visitTransformListPage` — Port of visitTransformListPage. */
+- `getMetabotButton` — Port of getMetabotButton: findByRole("button", { name: /Chat with Metabot/ }). */
+- `suggestions` — Port of suggestions(): findAllByTestId("metabot-chat-suggestion"). */
+- `lastSuggestion` — Port of lastSuggestion(): suggestions().last(). */
+- `viewLastSuggestion` — Port of viewLastSuggestion():
+- `acceptSuggestionBtn`
+- `acceptSuggestion`
+- `rejectSuggestionBtn`
+- `rejectSuggestion`
+- `queryEditor` — Port of H.DataStudio.Transforms.queryEditor(). */
+- `editorContent` — The CodeMirror content element for the given editor type. */
+- `assertSuggestionInSidebar` — Port of assertSuggestionInSidebar: the last suggestion contains the new
+- `assertEditorDiffState` — Port of assertEditorDiffState: the query editor's apply/create + reject
+- `assertEditorContent` — Port of assertEditorContent: the editor's content contains `content`. */
+- `makeManualEdit` — Port of makeManualEdit: editor.clear().paste(newContent). clear() is
+- `assertAcceptRejectUI` — Port of assertAcceptRejectUI: the accept/reject buttons are visible or absent.
+- `sendCodgenBotMessage` — Port of sendCodgenBotMessage: send the message, wait for the agent-streaming
 
 ## ui.ts
 - `icon` — `.Icon-<name>` locator. Canonical home for the helper that had been

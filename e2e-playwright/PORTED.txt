@@ -208,3 +208,16 @@ dashboard-filters-matrix/page-8.cy.spec.ts
 dashboard-filters-matrix/page-9.cy.spec.ts
 dashboard-filters-matrix/page-10.cy.spec.ts
 onboarding/setup/user_settings.cy.spec.js
+dependencies/dependency-graph.cy.spec.ts
+visualizations-charts/bar_chart.cy.spec.js
+metabot/metabot.cy.spec.ts
+visualizations-charts/line-bar-tooltips.cy.spec.js
+dashboard/dashboard-questions.cy.spec.js
+metabot/metabot-query-builder.cy.spec.ts
+documents/document-metabot.cy.spec.ts
+metabot/native-sql-generation.cy.spec.ts
+metabot/usage-auditing.cy.spec.ts
+custom-column/custom-column-1.cy.spec.js
+search/search-filters.cy.spec.js
+metabot/ai-controls.cy.spec.ts
+metabot/transforms-codegen.cy.spec.ts
