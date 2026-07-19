@@ -69,6 +69,7 @@ export { icon } from "./ui";
 
 type AdhocQuestion = {
   display?: string;
+  visualization_settings?: Record<string, unknown>;
   dataset_query: {
     type: "native" | "query";
     database: number;
