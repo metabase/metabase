@@ -13,8 +13,6 @@
  */
 import type { Page } from "@playwright/test";
 
-import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
-
 import { expect } from "./fixtures";
 import {
   expectRevertSuccess,
@@ -23,20 +21,9 @@ import {
   waitForRevert,
 } from "./revisions";
 
-function findQuestionId(name: string): number {
-  const question = SAMPLE_INSTANCE_DATA.questions.find(
-    (question) => question.name === name,
-  );
-  if (!question) {
-    throw new Error(`No question named "${name}" in sample instance data`);
-  }
-  return question.id;
-}
-
-/** Port of ORDERS_BY_YEAR_QUESTION_ID (cypress_sample_instance_data.js). */
-export const ORDERS_BY_YEAR_QUESTION_ID = findQuestionId(
-  "Orders, Count, Grouped by Created At (year)",
-);
+// ORDERS_BY_YEAR_QUESTION_ID is now canonical in ./sample-data; re-exported so
+// this module's consumers keep their import unchanged.
+export { ORDERS_BY_YEAR_QUESTION_ID } from "./sample-data";
 
 /**
  * Port of the spec-local openRevisionHistory: open the question-info sidesheet,

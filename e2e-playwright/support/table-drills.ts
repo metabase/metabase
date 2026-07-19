@@ -7,11 +7,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect } from "./fixtures";
-import { visitQuestionAdhoc } from "./permissions";
-import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { icon } from "./ui";
-
-const { REVIEWS_ID } = SAMPLE_DATABASE;
 
 /**
  * Port of the spec's `cy.intercept("/api/session/properties", ...)` that
@@ -43,31 +39,10 @@ export async function mockDevelopmentMode(page: Page, devMode: boolean) {
   );
 }
 
-/**
- * Port of H.openTable (e2e-ad-hoc-question-helpers.js) for the `limit` cases
- * this spec needs — open a table as an ad-hoc simple-mode question with a row
- * limit. The shared binning.ts openTable drops `limit`, so it's re-derived here.
- */
-export async function openTable(
-  page: Page,
-  { table, limit }: { table: number; limit?: number },
-) {
-  await visitQuestionAdhoc(page, {
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      query: { "source-table": table, ...(limit != null ? { limit } : {}) },
-      type: "query",
-    },
-  });
-}
-
-/** Port of H.openReviewsTable ({ table: REVIEWS_ID, ...}). */
-export async function openReviewsTable(
-  page: Page,
-  { limit }: { limit?: number } = {},
-) {
-  await openTable(page, { table: REVIEWS_ID, limit });
-}
+// openTable / openReviewsTable are now canonical in ./ad-hoc-question (openTable
+// as a superset supporting `limit`); re-exported so this module's consumers keep
+// their import unchanged.
+export { openTable, openReviewsTable } from "./ad-hoc-question";
 
 /**
  * `cy.icon(name).should("be.visible")` is an ANY-match (PORTING.md rule 3 /

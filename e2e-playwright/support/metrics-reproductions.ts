@@ -11,10 +11,9 @@ import type { Locator, Page, Response } from "@playwright/test";
 
 const QUERY_METADATA_RE = /\/api\/card\/\d+\/query_metadata/;
 
-/** Port of H.main(): the page's <main> region. */
-export function main(page: Page): Locator {
-  return page.getByRole("main");
-}
+// Port of H.main() — now canonical in ./ui; re-exported so this module's
+// consumers keep their import unchanged.
+export { main } from "./ui";
 
 /**
  * Port of the issue-47058 intercept: hold every GET /api/card/:id/query_metadata

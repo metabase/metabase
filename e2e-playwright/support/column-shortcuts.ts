@@ -12,11 +12,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-import { visitQuestionAdhoc } from "./permissions";
-import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { popover } from "./ui";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /** Register a wait for the next ad-hoc POST /api/dataset (the `cy.intercept(...)
  * .as(alias)` + `cy.wait("@alias")` pattern — register before the trigger). */
@@ -28,26 +24,9 @@ function waitForDataset(page: Page) {
   );
 }
 
-/**
- * Port of H.openOrdersTable({ limit }) — open the Orders table as an ad-hoc
- * question (simple mode). The shared question-settings.ts openOrdersTable takes
- * no limit, which these tests need.
- */
-export async function openOrdersTable(
-  page: Page,
-  { limit }: { limit?: number } = {},
-) {
-  await visitQuestionAdhoc(page, {
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        ...(limit != null ? { limit } : {}),
-      },
-      type: "query",
-    },
-  });
-}
+// openOrdersTable is now canonical in ./ad-hoc-question; re-exported so this
+// module's consumers keep their import unchanged.
+export { openOrdersTable } from "./ad-hoc-question";
 
 /** Port of the spec-local extractColumnAndCheck. */
 export async function extractColumnAndCheck(

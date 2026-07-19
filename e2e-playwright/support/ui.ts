@@ -47,6 +47,16 @@ export async function goToTab(scope: Scope, tabName: string) {
   await scope.getByRole("tab", { name: tabName, exact: true }).click();
 }
 
+/**
+ * Port of H.main() (e2e-ui-elements-helpers.js:25): cy.get("main"). Canonical
+ * home for the copy that had been defined in metrics-reproductions.ts /
+ * models-reproductions-2.ts / questions-entity-id.ts / sharing.ts /
+ * viz-tabular-repros.ts.
+ */
+export function main(page: Page): Locator {
+  return page.locator("main");
+}
+
 export function navigationSidebar(page: Page): Locator {
   return page.getByTestId("main-navbar-root");
 }

@@ -8,6 +8,10 @@ import type { Page, Response } from "@playwright/test";
 
 import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
 
+// Imported for local use in `CARDS`; re-exported below so consumers keep their
+// import unchanged.
+import { ORDERS_BY_YEAR_QUESTION_ID } from "./sample-data";
+
 function findQuestionId(name: string): number {
   const question = SAMPLE_INSTANCE_DATA.questions.find(
     (question) => question.name === name,
@@ -23,9 +27,8 @@ function findQuestionId(name: string): number {
 /** Ports of ORDERS_COUNT_QUESTION_ID / ORDERS_BY_YEAR_QUESTION_ID
  * (cypress_sample_instance_data.js). */
 export const ORDERS_COUNT_QUESTION_ID = findQuestionId("Orders, Count");
-export const ORDERS_BY_YEAR_QUESTION_ID = findQuestionId(
-  "Orders, Count, Grouped by Created At (year)",
-);
+// ORDERS_BY_YEAR_QUESTION_ID is now canonical in ./sample-data (imported above).
+export { ORDERS_BY_YEAR_QUESTION_ID };
 
 /** Port of the spec's module-level `cards` layout. */
 export const CARDS = [

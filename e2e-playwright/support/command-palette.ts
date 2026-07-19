@@ -9,32 +9,13 @@
 import { expect } from "@playwright/test";
 import type { FrameLocator, Locator, Page } from "@playwright/test";
 
-import SAMPLE_INSTANCE_DATA from "../../e2e/support/cypress_sample_instance_data.json";
-
 import type { MetabaseApi } from "./api";
 import { modal } from "./dashboard";
 import { navigationSidebar, popover } from "./ui";
 
-/**
- * Ports of ORDERS_BY_YEAR_QUESTION_ID from
- * e2e/support/cypress_sample_instance_data.js (not in support/sample-data.ts,
- * so it's looked up here the same way that file does it).
- */
-export const ORDERS_BY_YEAR_QUESTION_ID = findQuestionId(
-  "Orders, Count, Grouped by Created At (year)",
-);
-
-function findQuestionId(name: string): number {
-  const question = SAMPLE_INSTANCE_DATA.questions.find(
-    (question) => question.name === name,
-  );
-  if (!question) {
-    throw new Error(
-      `Question "${name}" not found in cypress_sample_instance_data`,
-    );
-  }
-  return Number(question.id);
-}
+// ORDERS_BY_YEAR_QUESTION_ID is now canonical in ./sample-data; re-exported so
+// this module's consumers keep their import unchanged.
+export { ORDERS_BY_YEAR_QUESTION_ID } from "./sample-data";
 
 /** Port of H.commandPalette. Accepts a FrameLocator for embedding tests. */
 export function commandPalette(scope: Page | FrameLocator): Locator {

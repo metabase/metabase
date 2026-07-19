@@ -10,16 +10,13 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
-import { openTable } from "./binning";
 import { sidebar } from "./dashboard";
 import { expect } from "./fixtures";
-import { SAMPLE_DATABASE } from "./sample-data";
 import { navigationSidebar } from "./ui";
 
-/** Port of H.openOrdersTable (simple mode only — all this spec needs). */
-export async function openOrdersTable(page: Page) {
-  await openTable(page, { table: SAMPLE_DATABASE.ORDERS_ID });
-}
+// openOrdersTable is now canonical in ./ad-hoc-question; re-exported so this
+// module's consumers keep their import unchanged.
+export { openOrdersTable } from "./ad-hoc-question";
 
 /** Port of H.browseDatabases. */
 export function browseDatabases(page: Page): Locator {

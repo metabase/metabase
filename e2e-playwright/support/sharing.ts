@@ -17,9 +17,9 @@ import { popover } from "./ui";
  * private to fixtures.ts). */
 type SessionHarness = { api: MetabaseApi; signOut(): Promise<void> };
 
-export function main(page: Page): Locator {
-  return page.locator("main");
-}
+// Port of H.main() — now canonical in ./ui; re-exported so this module's
+// consumers keep their import unchanged.
+export { main } from "./ui";
 
 // === ports of e2e-sharing-helpers.ts ===
 

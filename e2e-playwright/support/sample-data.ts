@@ -28,6 +28,35 @@ export const ORDERS_QUESTION_ID = findByName(
   "Orders",
 );
 
+/**
+ * Port of ORDERS_BY_YEAR_QUESTION_ID (cypress_sample_instance_data.js). Derived
+ * the same way — by question name — so the value matches the Cypress export.
+ * Canonical home for the copy that had been re-derived in card-embed-node.ts /
+ * command-palette.ts / dashboard-card-fetching.ts / models-revision-history.ts /
+ * question-saved.ts.
+ */
+export const ORDERS_BY_YEAR_QUESTION_ID = findByName(
+  SAMPLE_INSTANCE_DATA.questions,
+  "Orders, Count, Grouped by Created At (year)",
+);
+
+/**
+ * Port of ORDERS_QUESTION_ENTITY_ID (cypress_sample_instance_data.js): the
+ * "Orders" question's entity_id. Canonical home for the copy that had been
+ * re-derived in questions-entity-id.ts.
+ */
+export const ORDERS_QUESTION_ENTITY_ID: string = (() => {
+  const question = (
+    SAMPLE_INSTANCE_DATA.questions as { name: string; entity_id?: string }[]
+  ).find((entity) => entity.name === "Orders");
+  if (!question?.entity_id) {
+    throw new Error(
+      'Entity "Orders" (with entity_id) not found in cypress_sample_instance_data',
+    );
+  }
+  return question.entity_id;
+})();
+
 export const ORDERS_DASHBOARD_ID = findByName(
   SAMPLE_INSTANCE_DATA.dashboards,
   "Orders in a dashboard",

@@ -43,10 +43,9 @@ export const SECOND_COLLECTION_ID = findByName(
   "Second collection",
 );
 
-export const ORDERS_BY_YEAR_QUESTION_ID = findByName(
-  SAMPLE_INSTANCE_DATA.questions,
-  "Orders, Count, Grouped by Created At (year)",
-);
+// ORDERS_BY_YEAR_QUESTION_ID is now canonical in ./sample-data; re-exported so
+// this module's consumers keep their import unchanged.
+export { ORDERS_BY_YEAR_QUESTION_ID } from "./sample-data";
 
 // === ports of e2e-ui-elements-helpers.js ===
 

@@ -157,12 +157,14 @@ export async function assertEChartsTooltip(
           row.locator("td").first().locator("span"),
         ).toHaveClass(new RegExp(`marker-${color.replace("#", "")}`));
       }
-      if (value != null) {
+      // Cypress assertTooltipRow guards with `if (value)` / `if (secondaryValue)`
+      // (truthiness) — skip falsy (0, "") rather than over-asserting blank cells.
+      if (value) {
         await expect(
           row.getByText(String(value), { exact: true }),
         ).toBeVisible();
       }
-      if (secondaryValue != null) {
+      if (secondaryValue) {
         await expect(
           row.getByText(String(secondaryValue), { exact: true }),
         ).toBeVisible();
@@ -172,17 +174,19 @@ export async function assertEChartsTooltip(
 
   if (footer != null) {
     const footerEl = tooltip.getByTestId("echarts-tooltip-footer");
-    if (footer.name != null) {
+    // Cypress assertTooltipFooter guards with `if (name)` / `if (value)` /
+    // `if (secondaryValue)` (truthiness) — skip falsy rather than over-assert.
+    if (footer.name) {
       await expect(
         footerEl.getByText(String(footer.name), { exact: true }),
       ).toBeVisible();
     }
-    if (footer.value != null) {
+    if (footer.value) {
       await expect(
         footerEl.getByText(String(footer.value), { exact: true }),
       ).toBeVisible();
     }
-    if (footer.secondaryValue != null) {
+    if (footer.secondaryValue) {
       await expect(
         footerEl.getByText(String(footer.secondaryValue), { exact: true }),
       ).toBeVisible();

@@ -218,14 +218,33 @@ export async function findByDisplayValue(
   value: string,
 ): Promise<Locator> {
   const controls = scope.locator("input, textarea, select");
-  await expect(controls.first()).toBeVisible();
-  const count = await controls.count();
-  for (let index = 0; index < count; index++) {
-    if ((await controls.nth(index).inputValue()) === value) {
-      return controls.nth(index);
+  // cy.findByDisplayValue (testing-library) has NO visible-first guard and
+  // retries until a control with the value exists. Scan EVERY matching control
+  // (a modal's first control can be a HIDDEN input, which the old
+  // `expect(controls.first()).toBeVisible()` guard tripped on) and prefer a
+  // visible match, re-scanning until one is found.
+  let match: Locator | null = null;
+  await expect(async () => {
+    match = null;
+    let firstMatch: Locator | null = null;
+    const count = await controls.count();
+    for (let index = 0; index < count; index++) {
+      const control = controls.nth(index);
+      if ((await control.inputValue()) !== value) {
+        continue;
+      }
+      firstMatch ??= control;
+      if (await control.isVisible()) {
+        match = control;
+        return;
+      }
     }
-  }
-  throw new Error(`No form control with display value "${value}" found`);
+    match = firstMatch;
+    if (match == null) {
+      throw new Error(`No form control with display value "${value}" found`);
+    }
+  }).toPass();
+  return match!;
 }
 
 /**

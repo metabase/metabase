@@ -24,7 +24,6 @@
  * visualizer-basics.ts — dataSource / dataSourceColumn are re-implemented here
  * only because they're private there.
  */
-import { expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import { getDashboardCard } from "./dashboard";
@@ -32,9 +31,21 @@ import { SAMPLE_DATABASE } from "./sample-data";
 import { modal } from "./ui";
 import {
   type StructuredQuestionDetails,
-  dataImporter,
   saveDashcardVisualizerModal,
   showDashcardVisualizerModal,
+} from "./visualizer-basics";
+
+// The data-importer / columns-list / legend surface is now canonical in
+// ./visualizer-basics; re-exported so this module's consumers keep their import
+// unchanged.
+export {
+  chartLegend,
+  chartLegendItems,
+  dataSource,
+  dataSourceColumn,
+  ensureDisplayIsSelected,
+  removeDataSource,
+  selectColumnFromColumnsList,
 } from "./visualizer-basics";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE as {
@@ -94,68 +105,6 @@ export const PIVOT_TABLE_CARD: StructuredQuestionDetails = {
     "source-table": ORDERS_ID,
   },
 };
-
-// === data importer / columns list ===
-
-/** Port of H.dataSource (private in visualizer-basics): the data-source row in
- * the importer whose text contains `dataSourceName`. */
-export function dataSource(page: Page, dataSourceName: string): Locator {
-  return dataImporter(page)
-    .getByTestId("data-source-list-item")
-    .filter({ has: page.getByText(dataSourceName, { exact: true }) });
-}
-
-/** Port of H.dataSourceColumn (private in visualizer-basics). */
-export function dataSourceColumn(
-  page: Page,
-  dataSourceName: string,
-  columnName: string,
-): Locator {
-  return dataSource(page, dataSourceName)
-    .getByTestId("column-list-item")
-    .filter({ has: page.getByText(columnName, { exact: true }) });
-}
-
-/** Port of H.selectColumnFromColumnsList. */
-export async function selectColumnFromColumnsList(
-  page: Page,
-  dataSourceName: string,
-  columnName: string,
-) {
-  await dataSourceColumn(page, dataSourceName, columnName).click();
-}
-
-/**
- * Port of H.removeDataSource (default, non-menu path): click the first "Remove"
- * button in the data source's row.
- */
-export async function removeDataSource(page: Page, dataSourceName: string) {
-  await dataSource(page, dataSourceName)
-    .getByLabel("Remove")
-    .first()
-    .click({ force: true });
-}
-
-/**
- * Port of H.ensureDisplayIsSelected: the viz-type radio for `display` is
- * checked. Cypress uses cy.findByDisplayValue (single match); mirror the
- * modal-scoped `input[value=...]` precedent from visualizer-basics.
- */
-export async function ensureDisplayIsSelected(page: Page, display: string) {
-  await expect(modal(page).locator(`input[value="${display}"]`)).toBeChecked();
-}
-
-// === legend ===
-
-/** Port of H.chartLegend. */
-export function chartLegend(scope: Page | Locator): Locator {
-  return scope.getByLabel("Legend", { exact: true });
-}
-
-/** Port of H.chartLegendItems. */
-export function chartLegendItems(scope: Page | Locator): Locator {
-  return chartLegend(scope).getByTestId("legend-item");
-}
 
 // === scoped chart helpers ===
 

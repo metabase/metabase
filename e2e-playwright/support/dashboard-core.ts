@@ -369,16 +369,9 @@ export function dashboardParametersPopover(page: Page): Locator {
   return page.getByTestId("parameter-value-dropdown");
 }
 
-/** Port of H.openProductsTable (default simple mode, no limit). */
-export function openProductsTable(page: Page) {
-  return visitQuestionAdhoc(page, {
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      query: { "source-table": SAMPLE_DATABASE.PRODUCTS_ID },
-      type: "query",
-    },
-  });
-}
+// openProductsTable is now canonical in ./ad-hoc-question; re-exported so this
+// module's consumers keep their import unchanged.
+export { openProductsTable } from "./ad-hoc-question";
 
 /**
  * Port of the spec-local dragOnXAxis (mousedown → mousemove(clientX) →

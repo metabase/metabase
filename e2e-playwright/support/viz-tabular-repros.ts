@@ -31,10 +31,9 @@ export const ADMIN_USER_ID = (() => {
   return Number(user.id);
 })();
 
-/** Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
-export function main(page: Page): Locator {
-  return page.locator("main");
-}
+// Port of H.main() — now canonical in ./ui; re-exported so this module's
+// consumers keep their import unchanged.
+export { main } from "./ui";
 
 /** Port of H.queryBuilderFooterDisplayToggle. */
 export function queryBuilderFooterDisplayToggle(page: Page): Locator {

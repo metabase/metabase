@@ -32,7 +32,11 @@ import {
   getDocumentCard,
 } from "./documents-core";
 import { expect } from "./fixtures";
-import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  SAMPLE_DATABASE,
+  SAMPLE_DB_ID,
+} from "./sample-data";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -50,9 +54,7 @@ function findQuestionId(name: string): number {
 
 const ORDERS_QUESTION_ID = findQuestionId("Orders");
 const ORDERS_COUNT_QUESTION_ID = findQuestionId("Orders, Count");
-const ORDERS_BY_YEAR_QUESTION_ID = findQuestionId(
-  "Orders, Count, Grouped by Created At (year)",
-);
+// ORDERS_BY_YEAR_QUESTION_ID imported from ./sample-data (canonical home).
 
 // === document fixtures (e2e/support/document-initial-data.ts) ===
 

@@ -619,13 +619,19 @@ export async function selectDataset(page: Page, datasetName: string) {
   await cardQuery;
 }
 
-function dataSource(page: Page, dataSourceName: string): Locator {
+/**
+ * Port of H.dataSource: the data-source row in the importer whose text contains
+ * `dataSourceName`. Canonical home for the visualizer surface — the copies in
+ * visualizer-cartesian.ts / metrics-dashboard.ts now re-export from here.
+ */
+export function dataSource(page: Page, dataSourceName: string): Locator {
   return dataImporter(page)
     .getByTestId("data-source-list-item")
     .filter({ has: page.getByText(dataSourceName, { exact: true }) });
 }
 
-function dataSourceColumn(
+/** Port of H.dataSourceColumn. */
+export function dataSourceColumn(
   page: Page,
   dataSourceName: string,
   columnName: string,
@@ -633,6 +639,52 @@ function dataSourceColumn(
   return dataSource(page, dataSourceName)
     .getByTestId("column-list-item")
     .filter({ has: page.getByText(columnName, { exact: true }) });
+}
+
+/** Port of H.selectColumnFromColumnsList. */
+export async function selectColumnFromColumnsList(
+  page: Page,
+  dataSourceName: string,
+  columnName: string,
+) {
+  await dataSourceColumn(page, dataSourceName, columnName).click();
+}
+
+/**
+ * Port of H.removeDataSource (default, non-menu path): click the first "Remove"
+ * button in the data source's row.
+ */
+export async function removeDataSource(page: Page, dataSourceName: string) {
+  await dataSource(page, dataSourceName)
+    .getByLabel("Remove")
+    .first()
+    .click({ force: true });
+}
+
+/**
+ * Port of H.ensureDisplayIsSelected: the viz-type radio for `display` is
+ * checked. Cypress uses cy.findByDisplayValue (single match); mirror the
+ * modal-scoped `input[value=...]` precedent used elsewhere in this module.
+ */
+export async function ensureDisplayIsSelected(page: Page, display: string) {
+  await expect(modal(page).locator(`input[value="${display}"]`)).toBeChecked();
+}
+
+/** Port of H.chartLegend. `scope` mirrors the Cypress calls, which ran the bare
+ * helper both at page scope and inside `.within()` blocks. */
+export function chartLegend(scope: Page | Locator): Locator {
+  return scope.getByLabel("Legend", { exact: true });
+}
+
+/** Port of H.chartLegendItems. */
+export function chartLegendItems(scope: Page | Locator): Locator {
+  return chartLegend(scope).getByTestId("legend-item");
+}
+
+/** Port of H.chartLegendItem(name): chartLegend().findByText(name). A string
+ * findByText is an exact match (rule 1). */
+export function chartLegendItem(scope: Page | Locator, name: string): Locator {
+  return chartLegend(scope).getByText(name, { exact: true });
 }
 
 /** Port of H.assertDataSourceColumnSelected. */

@@ -18,9 +18,6 @@ import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 import { echartsContainer } from "./charts";
-import { openTableNotebook } from "./joins";
-import { visitQuestionAdhoc } from "./permissions";
-import { SAMPLE_DB_ID } from "./sample-data";
 import { popover } from "./ui";
 
 /** Port of H.chartPathWithFillColor. */
@@ -28,27 +25,9 @@ export function chartPathWithFillColor(page: Page, color: string): Locator {
   return echartsContainer(page).locator(`path[fill="${color}"]`);
 }
 
-/**
- * Port of H.openTable: open a table as an ad-hoc question in simple or
- * notebook mode (dispatches to the existing visitQuestionAdhoc /
- * openTableNotebook ports).
- */
-export async function openTable(
-  page: Page,
-  { table, mode }: { table: number; mode?: "notebook" },
-) {
-  if (mode === "notebook") {
-    await openTableNotebook(page, table);
-  } else {
-    await visitQuestionAdhoc(page, {
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: { "source-table": table },
-        type: "query",
-      },
-    });
-  }
-}
+// openTable is now canonical in ./ad-hoc-question (a superset that also supports
+// `limit`); re-exported so this module's consumers keep their import unchanged.
+export { openTable } from "./ad-hoc-question";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

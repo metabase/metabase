@@ -12,6 +12,13 @@
 - `moveDnDKitListElement` — Port of H.moveDnDKitListElement(dataTestId, { startIndex, dropIndex }):
 - `aside` — The click-behavior sidebar. Cypress used a bare cy.get("aside"). */
 
+## ad-hoc-question.ts
+- `openTable` — Port of H.openTable: open a table as an ad-hoc question in simple or notebook
+- `openProductsTable` — Port of H.openProductsTable. */
+- `openOrdersTable` — Port of H.openOrdersTable. */
+- `openPeopleTable` — Port of H.openPeopleTable. */
+- `openReviewsTable` — Port of H.openReviewsTable. */
+
 ## admin-extras.ts
 - `seedSecurityAdvisories` — Nuke all existing security advisories and insert the provided ones. */
 - `deleteToken` — Port of H.deleteToken (e2e-token-helpers.ts). */
@@ -70,7 +77,6 @@
 
 ## binning.ts
 - `chartPathWithFillColor` — Port of H.chartPathWithFillColor. */
-- `openTable` — Port of H.openTable: open a table as an ad-hoc question in simple or
 - `getDimensionByName` — Port of getDimensionByName: dimension rows filtered by (optionally)
 - `getBinningButtonForDimension` — Port of H.getBinningButtonForDimension: the binning button only renders on
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: open the dimension's binning popover
@@ -288,11 +294,9 @@
 - `verifyBreakoutExistsAndIsFirst`
 
 ## column-extract-drill.ts
-- `openPeopleTable` — Port of H.openPeopleTable({ limit }) — open the People table as an ad-hoc
 - `extractColumnAndCheck` — - `H.tableHeaderClick(column)` opens the column click-actions popover.
 
 ## column-shortcuts.ts
-- `openOrdersTable` — Port of H.openOrdersTable({ limit }) — open the Orders table as an ad-hoc
 - `extractColumnAndCheck` — Port of the spec-local extractColumnAndCheck. */
 - `combineColumns` — Port of the spec-local combineColumns. */
 
@@ -301,7 +305,6 @@
 - `openCombineColumnsFromHeader` — Open the Combine-columns editor from a table column header: click the header
 
 ## command-palette.ts
-- `ORDERS_BY_YEAR_QUESTION_ID` — Ports of ORDERS_BY_YEAR_QUESTION_ID from
 - `commandPalette` — Port of H.commandPalette. Accepts a FrameLocator for embedding tests. */
 - `commandPaletteInput` — Port of H.commandPaletteInput (findByPlaceholderText is exact). */
 - `commandPaletteButton` — Port of H.commandPaletteButton. */
@@ -357,7 +360,6 @@
 
 ## dashboard-card-fetching.ts
 - `ORDERS_COUNT_QUESTION_ID` — Ports of ORDERS_COUNT_QUESTION_ID / ORDERS_BY_YEAR_QUESTION_ID
-- `ORDERS_BY_YEAR_QUESTION_ID`
 - `CARDS` — Port of the spec's module-level `cards` layout. */
 - `collectDashcardQueryBodies` — Port of `cy.wait(["@dashcardQuery", "@dashcardQuery"])` where the test then
 
@@ -414,7 +416,6 @@
 - `assertDashboardFullWidth`
 - `mapPinIcon` — Port of H.mapPinIcon. */
 - `dashboardParametersPopover` — Port of H.dashboardParametersPopover. */
-- `openProductsTable` — Port of H.openProductsTable (default simple mode, no limit). */
 - `dragOnXAxis` — Port of the spec-local dragOnXAxis (mousedown → mousemove(clientX) →
 - `assertScrollBarExists` — Port of the spec-local assertScrollBarExists. */
 - `checkOptionsForFilter` — Port of the spec-local checkOptionsForFilter. */
@@ -1106,9 +1107,6 @@
 - `getSettledMarkerPosition` — Port of the spec-local getSettledMarkerPosition (metabase#11211): read the
 - `pinMapSelectRegion` — Port of the spec-local pinMapSelectRegion: visit a People pin map, arm the
 
-## metrics-dashboard.ts
-- `chartLegendItem` — Port of H.chartLegendItem(name) (e2e-dashboard-visualizer-helpers.ts):
-
 ## metrics-editing.ts
 - `MetricEditor` — The metric query-editor surface (e2e-metric-page-helpers.ts MetricPage) not
 - `runButtonInOverlay` — Port of H.runButtonInOverlay: the run button inside the run-button-overlay. */
@@ -1145,7 +1143,6 @@
 - `resetDecimalPkTable` — Port of H.resetTestTable({ type: "postgres", table: "decimal_pk_table" })
 
 ## metrics-reproductions.ts
-- `main` — Port of H.main(): the page's <main> region. */
 - `delayQueryMetadata` — Port of the issue-47058 intercept: hold every GET /api/card/:id/query_metadata
 - `waitForQueryMetadata` — Await the next GET /api/card/:id/query_metadata response (the delayed one). */
 
@@ -1207,7 +1204,6 @@
 
 ## models-reproductions-2.ts
 - `openQuestionActionsItem` — Open the question-actions ellipsis menu and click a menu item by accessible
-- `main` — Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
 - `waitForLoaderToBeRemoved` — Port of H.waitForLoaderToBeRemoved: the loading-indicator is gone. */
 - `datasetEditBar` — Port of H.datasetEditBar (e2e-models-metadata-helpers.js). */
 - `runButtonInOverlay` — Port of H.runButtonInOverlay: the run button inside the run-button-overlay. */
@@ -1217,7 +1213,6 @@
 - `visitModelNoDataAccess` — Port of H.visitModel(id, { hasDataAccess: false }): visit a model whose
 
 ## models-revision-history.ts
-- `ORDERS_BY_YEAR_QUESTION_ID` — Port of ORDERS_BY_YEAR_QUESTION_ID (cypress_sample_instance_data.js). */
 - `openRevisionHistory` — Port of the spec-local openRevisionHistory: open the question-info sidesheet,
 - `revertTo` — Port of the spec-local revertTo(history): find the revision-history-event
 
@@ -1436,7 +1431,6 @@
 
 ## question-saved.ts
 - `SECOND_COLLECTION_ID`
-- `ORDERS_BY_YEAR_QUESTION_ID`
 - `rightSidebar` — Port of H.rightSidebar(). */
 - `dashboardCards` — Port of H.dashboardCards(). */
 - `collectionOnTheGoModal` — Port of H.collectionOnTheGoModal(). */
@@ -1454,16 +1448,11 @@
 - `addNotificationHandlerChannel` — Port of H.addNotificationHandlerChannel. */
 
 ## question-settings.ts
-- `openOrdersTable` — Port of H.openOrdersTable (simple mode only — all this spec needs). */
 - `browseDatabases` — Port of H.browseDatabases. */
 - `getSidebarColumns` — Port of the spec's getSidebarColumns: all column rows (visible and
 - `getVisibleSidebarColumns` — Port of the spec's getVisibleSidebarColumns. */
 - `findColumnAtIndex` — Port of the spec's findColumnAtIndex (negative indices count from the
 - `hideColumn` — Port of the spec's hideColumn. Like the Cypress original, no force —
-
-## questions-entity-id.ts
-- `ORDERS_QUESTION_ENTITY_ID` — The entity id of the "Orders" saved question, read from the same generated
-- `main` — Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
 
 ## relative-datetime.ts
 - `STARTING_FROM_UNITS`
@@ -1499,6 +1488,8 @@
 ## sample-data.ts
 - `SAMPLE_DB_ID`
 - `ORDERS_QUESTION_ID`
+- `ORDERS_BY_YEAR_QUESTION_ID` — Port of ORDERS_BY_YEAR_QUESTION_ID (cypress_sample_instance_data.js). Derived
+- `ORDERS_QUESTION_ENTITY_ID` — Port of ORDERS_QUESTION_ENTITY_ID (cypress_sample_instance_data.js): the
 - `ORDERS_DASHBOARD_ID`
 - `FIRST_COLLECTION_ID`
 - `THIRD_COLLECTION_ID`
@@ -1555,7 +1546,6 @@
 - `reorderColumnAPastColumnB` — The Cypress original fired raw `.trigger("mousedown"/"mousemove"/"mouseup")`
 
 ## sharing.ts
-- `main`
 - `sharingMenuButton`
 - `sharingMenu`
 - `openSharingMenu`
@@ -1661,8 +1651,6 @@
 
 ## table-drills.ts
 - `mockDevelopmentMode` — Port of the spec's `cy.intercept("/api/session/properties", ...)` that
-- `openTable` — Port of H.openTable (e2e-ad-hoc-question-helpers.js) for the `limit` cases
-- `openReviewsTable` — Port of H.openReviewsTable ({ table: REVIEWS_ID, ...}). */
 - `expectIconVisible` — `cy.icon(name).should("be.visible")` is an ANY-match (PORTING.md rule 3 /
 
 ## temporal-unit-parameters.ts
@@ -1738,6 +1726,7 @@
 - `modal` — The open Mantine modal dialog. Canonical home for the helper that had been
 - `popover` — Matches all visible popovers (like the Cypress helper). With a single
 - `goToTab` — Click a tab by its accessible name. Canonical home for the copy that had
+- `main` — Port of H.main() (e2e-ui-elements-helpers.js:25): cy.get("main"). Canonical
 - `navigationSidebar`
 - `appBar`
 - `newButton`
@@ -1790,6 +1779,14 @@
 - `switchToAddMoreData`
 - `switchToColumnsList`
 - `selectDataset` — Port of H.selectDataset: type into the search box, click the matching
+- `dataSource` — Port of H.dataSource: the data-source row in the importer whose text contains
+- `dataSourceColumn` — Port of H.dataSourceColumn. */
+- `selectColumnFromColumnsList` — Port of H.selectColumnFromColumnsList. */
+- `removeDataSource` — Port of H.removeDataSource (default, non-menu path): click the first "Remove"
+- `ensureDisplayIsSelected` — Port of H.ensureDisplayIsSelected: the viz-type radio for `display` is
+- `chartLegend` — Port of H.chartLegend. `scope` mirrors the Cypress calls, which ran the bare
+- `chartLegendItems` — Port of H.chartLegendItems. */
+- `chartLegendItem` — Port of H.chartLegendItem(name): chartLegend().findByText(name). A string
 - `assertDataSourceColumnSelected` — Port of H.assertDataSourceColumnSelected. */
 - `deselectColumnFromColumnsList` — Port of H.deselectColumnFromColumnsList. */
 - `resetDataSourceButton` — Port of H.resetDataSourceButton: open the datasource actions menu and return
@@ -1808,13 +1805,6 @@
 - `ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY`
 - `PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY`
 - `PIVOT_TABLE_CARD`
-- `dataSource` — Port of H.dataSource (private in visualizer-basics): the data-source row in
-- `dataSourceColumn` — Port of H.dataSourceColumn (private in visualizer-basics). */
-- `selectColumnFromColumnsList` — Port of H.selectColumnFromColumnsList. */
-- `removeDataSource` — Port of H.removeDataSource (default, non-menu path): click the first "Remove"
-- `ensureDisplayIsSelected` — Port of H.ensureDisplayIsSelected: the viz-type radio for `display` is
-- `chartLegend` — Port of H.chartLegend. */
-- `chartLegendItems` — Port of H.chartLegendItems. */
 - `chartPathWithFillColor` — Port of H.chartPathWithFillColor, scoped to a chart-container ancestor
 - `trendLine` — Port of H.trendLine (TREND_LINE_DASH = [5, 5]), scoped. */
 - `echartsTextExact` — ECharts SVG `<text>` carries leading/trailing spaces and Playwright's
@@ -1852,7 +1842,6 @@
 
 ## viz-tabular-repros.ts
 - `ADMIN_USER_ID` — Port of ADMIN_USER_ID (cypress_sample_instance_data.js): the id of the
-- `main` — Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
 - `queryBuilderFooterDisplayToggle` — Port of H.queryBuilderFooterDisplayToggle. */
 - `createVizQuestion`
 - `createNativeVizQuestion` — Native-question creator accepting `display` and `visualization_settings` —

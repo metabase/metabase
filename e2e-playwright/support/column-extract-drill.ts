@@ -13,11 +13,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 import { tableHeaderClick } from "./notebook";
-import { visitQuestionAdhoc } from "./permissions";
-import { SAMPLE_DATABASE, SAMPLE_DB_ID } from "./sample-data";
 import { popover } from "./ui";
-
-const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,25 +29,9 @@ function waitForDataset(page: Page) {
   );
 }
 
-/**
- * Port of H.openPeopleTable({ limit }) — open the People table as an ad-hoc
- * question (simple mode).
- */
-export async function openPeopleTable(
-  page: Page,
-  { limit }: { limit?: number } = {},
-) {
-  await visitQuestionAdhoc(page, {
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": PEOPLE_ID,
-        ...(limit != null ? { limit } : {}),
-      },
-      type: "query",
-    },
-  });
-}
+// openPeopleTable is now canonical in ./ad-hoc-question; re-exported so this
+// module's consumers keep their import unchanged.
+export { openPeopleTable } from "./ad-hoc-question";
 
 /**
  * Port of the spec-local extractColumnAndCheck (the column-header drill flavor).
