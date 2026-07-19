@@ -2888,6 +2888,7 @@
            sync
            users
            util
+           enterprise/remote-sync
            enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 

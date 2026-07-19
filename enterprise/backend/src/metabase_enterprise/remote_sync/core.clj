@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -25,6 +26,19 @@
   remote-sync-url
   remote-sync-branch
   remote-sync-token])
+
+(defn start-import!
+  "Start an asynchronous import from the configured remote-sync source,
+   regardless of `remote-sync-type`. Returns the started RemoteSyncTask, or nil
+   when there is nothing new to import. Throws when remote sync is not
+   configured, another sync task is already running, or the source is
+   unreachable."
+  []
+  (let [branch (settings/remote-sync-branch)]
+    (impl/async-import! branch true {}
+                        :on-success (fn [task-id _result]
+                                      (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                {:branch branch :auto true} nil)))))
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
