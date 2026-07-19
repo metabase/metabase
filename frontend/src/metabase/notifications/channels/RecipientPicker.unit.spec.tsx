@@ -88,6 +88,26 @@ describe("recipient picker", () => {
       ]);
     });
 
+    it("should add a matching user by typing their name and pressing enter", async () => {
+      const onRecipientsChange = jest.fn();
+
+      renderWithProviders(
+        <RecipientPicker
+          recipients={[TEST_USERS[0]]}
+          users={TEST_USERS}
+          onRecipientsChange={onRecipientsChange}
+          invalidRecipientText={() => ""}
+        />,
+      );
+
+      await userEvent.type(await screen.findByRole("combobox"), "Nancy{enter}");
+
+      expect(onRecipientsChange).toHaveBeenCalledWith([
+        TEST_USERS[0],
+        TEST_USERS[5],
+      ]);
+    });
+
     it("should support adding emails", async () => {
       const onRecipientsChange = jest.fn();
 

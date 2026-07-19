@@ -13,6 +13,7 @@ import {
   type ClipboardEvent,
   type MouseEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -54,6 +55,7 @@ export function useMultiAutocomplete({
   data,
   dropdownOpened,
   defaultDropdownOpened,
+  selectFirstOptionOnChange,
   parseValue,
   onChange,
   onSearchChange,
@@ -262,6 +264,13 @@ export function useMultiAutocomplete({
   };
 
   useWindowEvent("keydown", handleWindowKeydownCapture, { capture: true });
+
+  useEffect(() => {
+    if (selectFirstOptionOnChange && combobox.dropdownOpened) {
+      combobox.selectFirstOption();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue, values, selectFirstOptionOnChange]);
 
   return {
     combobox,
