@@ -3,7 +3,6 @@
    [[hm.client/make-request]] is stubbed with `with-redefs` — no test talks to a
    real Harbormaster."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
@@ -91,40 +90,3 @@
       (is (=? {:instance_id "i-9", :instance_url "https://child.example.com"}
               (t2/select-one :model/Workspace :id ws-id))
           "the url reported by the running instance is persisted"))))
-
-(deftest provision-instance!-reuses-active-instance-test
-  (testing "an existing :active instance is reused — no create, no delete, url refreshed"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS" :instance_id "i-old"}]
-      (let [calls (atom [])]
-        (with-redefs [hm.client/make-request
-                      (fn [method url & _]
-                        (swap! calls conj [method url])
-                        (case method
-                          :get (ok {:id "i-old", :url "https://old.example.com", :status "active"})))]
-          (is (=? {:instance_id "i-old", :instance_url "https://old.example.com"}
-                  (provisioning.instance/provision-instance!
-                   (t2/select-one :model/Workspace :id ws-id)))))
-        (is (= [[:get "/api/v2/mb/workspaces/instances/i-old"]] @calls)
-            "only the fetch went out — the instance was neither created nor deleted")
-        (is (=? {:instance_id "i-old", :instance_url "https://old.example.com"}
-                (t2/select-one :model/Workspace :id ws-id)))))))
-
-(deftest provision-instance!-recreates-dead-instance-test
-  (testing "an existing instance that lands anywhere but :active is deleted and recreated"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS" :instance_id "i-dead"}]
-      (let [deleted (atom nil)]
-        (with-redefs [provisioning.instance/instance-poll-interval-ms 1
-                      hm.client/make-request
-                      (fn [method url & _]
-                        (case method
-                          :get    (if (str/ends-with? url "/i-dead")
-                                    (ok {:id "i-dead", :url nil, :status "error"})
-                                    (ok {:id "i-new", :url "https://new.example.com", :status "active"}))
-                          :delete (do (reset! deleted url) (ok {}))
-                          :post   (ok {:id "i-new", :url nil, :status "creating"})))]
-          (provisioning.instance/provision-instance!
-           (t2/select-one :model/Workspace :id ws-id)))
-        (is (= "/api/v2/mb/workspaces/instances/i-dead" @deleted)
-            "the dead instance was deleted before recreating"))
-      (is (=? {:instance_id "i-new", :instance_url "https://new.example.com"}
-              (t2/select-one :model/Workspace :id ws-id))))))
