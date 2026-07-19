@@ -45,7 +45,9 @@
    (provision-instance! workspace instance-provisioner))
   ([workspace :- ::ws.schema/workspace
     provisioner]
-   (let [config           (ws.config/build-workspace-config (:id workspace))
+   (let [config           (-> workspace
+                              (t2/hydrate :databases)
+                              ws.config/build-workspace-config)
          {:keys [id url]} (create! provisioner workspace config)]
      (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
      (assoc workspace :instance_id id, :instance_url url))))

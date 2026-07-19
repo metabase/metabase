@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.core :as remote-sync]
-   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase.driver :as driver]
@@ -115,7 +114,7 @@
     {:remote-sync-url    (remote-sync/remote-sync-url)
      :remote-sync-branch (remote-sync/remote-sync-branch)
      :remote-sync-token  (remote-sync/remote-sync-token)
-     :remote-sync-type   "read-write"}))
+     :remote-sync-type   :read-write}))
 
 (defn- sample-database-entries
   "If the instance has a Sample Database, emit a single placeholder entry the
@@ -143,16 +142,16 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. When remote sync is enabled on this
   instance, `:config` also carries a `:settings` section pointing the child
-  instance at the same git repo in `:read-write` mode. Returns nil when the
-  workspace does not exist. Throws a 409 `ex-info` if any of the workspace's
-  databases is not `:provisioned`."
-  [workspace-id]
-  (when-let [ws (workspace/get-workspace workspace-id)]
+  instance at the same git repo in `:read-write` mode. Takes a workspace with
+  its `:databases` hydrated; returns nil when `workspace` is nil. Throws a 409
+  `ex-info` if any of the workspace's databases is not `:provisioned`."
+  [workspace]
+  (when-let [ws workspace]
     (let [wsds (:databases ws)]
       (when (some #(not= :provisioned (:status %)) wsds)
         (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
-                         :workspace_id workspace-id})))
+                         :workspace_id (:id ws)})))
       (let [workspace-db-ids (mapv :database_id wsds)
             dbs-by-id        (if-let [ids (seq workspace-db-ids)]
                                (into {} (map (juxt :id identity))

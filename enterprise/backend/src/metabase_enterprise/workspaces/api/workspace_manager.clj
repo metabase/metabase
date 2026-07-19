@@ -89,14 +89,6 @@
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
-;;; ----------------------------------------------- Validation -------------------------------------------------
-
-(defn- assert-workspace-status!
-  "400 when a provision or deprovision run is already in flight for `ws` — it
-  must settle before another run starts."
-  [ws]
-  (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws)))))
-
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
@@ -105,13 +97,16 @@
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
-        (workspace/list-workspaces)))
+        (-> (t2/select :model/Workspace {:order-by [[:id :asc]]})
+            (t2/hydrate :creator [:databases :database]))))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/read-check :model/Workspace id)
-  (present-workspace (api/check-404 (workspace/get-workspace id))))
+  (let [ws (api/read-check :model/Workspace id)]
+    (-> ws
+        (t2/hydrate :creator [:databases :database])
+        present-workspace)))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
@@ -119,29 +114,36 @@
    start provisioning explicitly via `POST /:id/provision`."
   [_route-params _query-params {:keys [database_ids] :as params} :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (workspace/create-workspace! {:name       (:name params)
-                                 :creator_id api/*current-user-id*
-                                 :databases  (workspace/workspace-databases database_ids)})))
+  (-> (workspace/create-workspace! {:name       (:name params)
+                                    :creator_id api/*current-user-id*
+                                    :databases  (workspace/workspace-databases database_ids)})
+      (t2/hydrate :creator [:databases :database])
+      present-workspace))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
-  (api/write-check :model/Workspace id)
-  (when (:name params)
-    (t2/update! :model/Workspace :id id {:name (:name params)}))
-  (present-workspace (api/check-404 (workspace/get-workspace id))))
+  (let [ws (api/write-check :model/Workspace id)
+        ws (if-let [new-name (:name params)]
+             (do (t2/update! :model/Workspace :id id {:name new-name})
+                 (assoc ws :name new-name))
+             ws)]
+    (-> ws
+        (t2/hydrate :creator [:databases :database])
+        present-workspace)))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a Workspace. Refuses with a 400 unless every one of its databases is
-  `:unprovisioned` — deprovision the workspace first (`POST /:id/deprovision`).
-  The workspace_database rows are cascade-deleted with the workspace. 204 on
-  success, no response body."
+  "Delete a Workspace. Refuses with a 400 unless the workspace is strictly
+  `:unprovisioned` — deprovision it first (`POST /:id/deprovision`). The status
+  condition sits on the DELETE itself, closing the race with a concurrently
+  started run. The workspace_database rows are cascade-deleted with the
+  workspace. 204 on success, no response body."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (workspace/delete-workspace! id))
+  (api/check-400 (pos? (t2/delete! :model/Workspace :id id :status :unprovisioned)))
+  nil)
 
 (api.macros/defendpoint :post "/:id/provision" :- WorkspaceResponse
   "Start provisioning the workspace in the background and return immediately.
@@ -150,9 +152,11 @@
   the response reflects the just-started run (`:database-provisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        _        (assert-workspace-status! ws)
+        _        (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws))))
         ws       (ws.provisioning/set-workspace-provisioning-status! ws)
-        response (present-workspace (t2/hydrate ws :creator [:databases :database]))]
+        response (-> ws
+                     (t2/hydrate :creator [:databases :database])
+                     present-workspace)]
     (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws))
     response))
 
@@ -163,8 +167,10 @@
   the response reflects the just-started run (`:instance-deprovisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        _        (assert-workspace-status! ws)
+        _        (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws))))
         ws       (ws.provisioning/set-workspace-deprovisioning-status! ws)
-        response (present-workspace (t2/hydrate ws :creator [:databases :database]))]
+        response (-> ws
+                     (t2/hydrate :creator [:databases :database])
+                     present-workspace)]
     (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws))
     response))

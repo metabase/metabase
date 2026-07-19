@@ -17,9 +17,11 @@
           overrides)))
 
 (defn- create-ws!
-  "Test helper: supply a default :creator_id so call sites stay terse."
+  "Test helper: supply a default :creator_id so call sites stay terse, and
+   hydrate :databases the way the API does."
   [params]
-  (workspace/create-workspace! (merge {:creator_id (mt/user->id :crowberto)} params)))
+  (-> (workspace/create-workspace! (merge {:creator_id (mt/user->id :crowberto)} params))
+      (t2/hydrate :databases)))
 
 (deftest create-workspace-minimal-test
   (testing "create-workspace! creates a Workspace with no databases"
@@ -48,55 +50,6 @@
               (is (= {:user "alice" :password "s3cr3t"} (:database_details first-db)))
               (is (= ["public" "analytics"]
                      (:input_schemas first-db))))))))))
-
-(deftest get-workspace-test
-  (testing "get-workspace returns a hydrated workspace"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws!
-                      {:name "Fetch Me" :databases [(ws-db-attrs)]})
-            fetched (workspace/get-workspace id)]
-        (is (= "Fetch Me" (:name fetched)))
-        (is (= 1 (count (:databases fetched))))
-        (is (= (mt/id) (:database_id (first (:databases fetched))))))))
-  (testing "get-workspace returns nil for a missing id"
-    (is (nil? (workspace/get-workspace Integer/MAX_VALUE)))))
-
-(deftest list-workspaces-test
-  (testing "list-workspaces returns all workspaces with their databases hydrated"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [{id-a :id} (create-ws!
-                        {:name "A" :databases [(ws-db-attrs)]})
-            {id-b :id} (create-ws!
-                        {:name "B" :databases []})
-            results    (workspace/list-workspaces)
-            by-id      (into {} (map (juxt :id identity)) results)]
-        (is (contains? by-id id-a))
-        (is (contains? by-id id-b))
-        (is (= 1 (count (:databases (get by-id id-a)))))
-        (is (= [] (:databases (get by-id id-b))))))))
-
-(deftest delete-workspace-test
-  (testing "delete-workspace! deletes when every database row is :unprovisioned"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws! {:name "Deletable" :databases [(ws-db-attrs)]})]
-        (is (nil? (workspace/delete-workspace! id)))
-        (is (not (t2/exists? :model/Workspace :id id)))
-        (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id))))))
-  (testing "delete-workspace! refuses (400) when any database row is not :unprovisioned"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws! {:name "Kept" :databases [(ws-db-attrs {:status :provisioned})]})]
-        (is (thrown-with-msg? Exception #"not :unprovisioned"
-                              (workspace/delete-workspace! id)))
-        (is (= 400 (try (workspace/delete-workspace! id)
-                        (catch Exception e (:status-code (ex-data e))))))
-        (is (t2/exists? :model/Workspace :id id)))))
-  (testing "delete-workspace! refuses (400) while a run is in flight, even when every row is :unprovisioned"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (create-ws! {:name "Racing" :databases [(ws-db-attrs)]})]
-        (t2/update! :model/Workspace id {:status :database-provisioning})
-        (is (thrown-with-msg? Exception #"in flight"
-                              (workspace/delete-workspace! id)))
-        (is (t2/exists? :model/Workspace :id id))))))
 
 (deftest cascade-delete-workspace-test
   (testing "Deleting a Workspace cascades to its workspace_database rows"

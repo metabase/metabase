@@ -120,12 +120,8 @@
       (provisioning/deprovision-workspace! ws)
       (catch Throwable t
         (log/warnf t "deprovision-workspace! failed during cleanup for workspace %d" ws-id)))
-    (try
-      (workspace/delete-workspace! ws-id)
-      (catch Throwable t
-        (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD" ws-id)
-        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
-        (t2/delete! :model/Workspace :id ws-id)))))
+    (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+    (t2/delete! :model/Workspace :id ws-id)))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -382,7 +378,7 @@
                                        [(workspace-input-schema admin-driver admin-details main-schema)])
                         ;; Sanity check: provisioning must have populated :output_namespace and flipped
                         ;; status to :provisioned. If empty, the workspace driver impl is broken.
-                        (let [wsd (-> (workspace/get-workspace ws-id) :databases first)]
+                        (let [wsd (t2/select-one :model/WorkspaceDatabase :workspace_id ws-id)]
                           (is (= :provisioned (:status wsd))
                               "WorkspaceDatabase provisioning did not reach :provisioned status")
                           (is (and (string? (:output_namespace wsd))
@@ -395,12 +391,13 @@
                         ;; `:engine :postgres` (keyword), but the `:databases` section spec requires
                         ;; a string. [[yaml/parse-string]] or [[yaml/generate-string]] collapses keyword
                         ;; values to strings, matching the on-disk wire format.
-                        (let [yaml-str (-> ws-id
+                        (let [yaml-str (-> (t2/select-one :model/Workspace :id ws-id)
+                                           (t2/hydrate :databases)
                                            ws.config/build-workspace-config
                                            ws.config/config->yaml)
                               ;; Read the provisioned isolation schema name back from the WSD row;
                               ;; `provision-database!` derives it from the WSD id, not the workspace id.
-                              wsd      (-> (workspace/get-workspace ws-id) :databases first)
+                              wsd      (t2/select-one :model/WorkspaceDatabase :workspace_id ws-id)
                               isolation-schema (:output_namespace wsd)]
                           ;;+---------------------------+
                           ;;|       Parent above        |
@@ -748,7 +745,9 @@
                 (try
                   (add-database! ws-id (:id ws-db)
                                  [(workspace-input-schema admin-driver admin-details main-schema)])
-                  (let [cfg-map  (ws.config/build-workspace-config ws-id)
+                  (let [cfg-map  (-> (t2/select-one :model/Workspace :id ws-id)
+                                     (t2/hydrate :databases)
+                                     ws.config/build-workspace-config)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]
                     (advanced-config.file/initialize! reparsed)
