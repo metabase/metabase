@@ -230,21 +230,6 @@
               (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))))
       (is (= :database-provisioning (:status (workspace-row ws-id)))))))
 
-(deftest workspace-provisioning?-and-deprovisioning?-test
-  (testing "only the active phases count as in flight; the settled statuses do not"
-    (letfn [(ws-with [status] {:id 1 :name "WS" :status status})]
-      (doseq [provisioning-status [:database-provisioning :instance-provisioning]]
-        (is (true? (provisioning/workspace-provisioning? (ws-with provisioning-status))) (str provisioning-status))
-        (is (false? (provisioning/workspace-deprovisioning? (ws-with provisioning-status))) (str provisioning-status)))
-      (doseq [deprovisioning-status [:instance-deprovisioning :database-deprovisioning]]
-        (is (true? (provisioning/workspace-deprovisioning? (ws-with deprovisioning-status))) (str deprovisioning-status))
-        (is (false? (provisioning/workspace-provisioning? (ws-with deprovisioning-status))) (str deprovisioning-status)))
-      (doseq [settled-status [:unprovisioned :provisioned
-                              :database-provisioning-failure :instance-provisioning-failure
-                              :instance-deprovisioning-failure :database-deprovisioning-failure]]
-        (is (false? (provisioning/workspace-provisioning? (ws-with settled-status))) (str settled-status))
-        (is (false? (provisioning/workspace-deprovisioning? (ws-with settled-status))) (str settled-status))))))
-
 (deftest provision-workspace-noop-when-provisioned-test
   (testing "provisioning a fully-provisioned workspace is a no-op"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}

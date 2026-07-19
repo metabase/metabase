@@ -95,8 +95,7 @@
   "400 when a provision or deprovision run is already in flight for `ws` — it
   must settle before another run starts."
   [ws]
-  (api/check-400 (not (ws.provisioning/workspace-provisioning? ws)))
-  (api/check-400 (not (ws.provisioning/workspace-deprovisioning? ws))))
+  (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws)))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 

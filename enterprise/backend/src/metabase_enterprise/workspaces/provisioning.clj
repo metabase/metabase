@@ -16,12 +16,6 @@
 (defn- workspace-databases [ws-id]
   (t2/select :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
 
-(mu/defn workspace-provisioning? :- :boolean
-  "True when a provision run is in flight for `workspace` (its `:status` is
-   `:database-provisioning` or `:instance-provisioning`)."
-  [workspace :- ::ws.schema/workspace]
-  (contains? #{:database-provisioning :instance-provisioning} (:status workspace)))
-
 (mu/defn- start-workspace-run! :- ::ws.schema/workspace
   "Atomically flip `workspace` from a settled status to `status`, the first
    status of a run. The conditional UPDATE is the real mutual-exclusion guard —
@@ -38,12 +32,6 @@
       (throw (ex-info "A provision or deprovision run is already in flight for this workspace"
                       {:status-code 400, :workspace-id (:id workspace)})))
     (assoc workspace :status status, :status_details nil)))
-
-(mu/defn workspace-deprovisioning? :- :boolean
-  "True when a deprovision run is in flight for `workspace` (its `:status` is
-   `:instance-deprovisioning` or `:database-deprovisioning`)."
-  [workspace :- ::ws.schema/workspace]
-  (contains? #{:instance-deprovisioning :database-deprovisioning} (:status workspace)))
 
 (mu/defn- set-workspace-status! :- ::ws.schema/workspace
   "Persist `status`/`status-details` on the row and return `workspace` with them
