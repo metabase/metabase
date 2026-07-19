@@ -39,9 +39,9 @@
   (reify provisioning.instance/InstanceProvisioner
     (create! [_ _workspace _config]
       {:id (str (random-uuid)) :url "https://example.com" :status :running})
-    (instance [_ _workspace instance-id]
+    (fetch [_ instance-id]
       {:id instance-id :url "https://example.com" :status :running})
-    (delete! [_ _workspace] nil)))
+    (delete! [_ _instance-id] nil)))
 
 (use-fixtures :once
   (fixtures/initialize :db)
@@ -158,7 +158,7 @@
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] (throw (ex-info "no capacity" {})))
-                      (instance [_ _ id] {:id id :url "https://example.com" :status :running})
+                      (fetch [_ id] {:id id :url "https://example.com" :status :running})
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"no capacity"
                               (provisioning/provision-workspace! (workspace-row ws-id)))))
@@ -184,7 +184,7 @@
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] {:id "x" :url "https://example.com" :status :running})
-                      (instance [_ _ id] {:id id :url "https://example.com" :status :running})
+                      (fetch [_ id] {:id id :url "https://example.com" :status :running})
                       (delete! [_ _] (throw (ex-info "instance stuck" {}))))]
         (is (thrown-with-msg? ExceptionInfo #"instance stuck"
                               (provisioning/deprovision-workspace! (workspace-row ws-id)))))
@@ -212,7 +212,7 @@
         (with-redefs [provisioning.instance/instance-provisioner
                       (reify provisioning.instance/InstanceProvisioner
                         (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com" :status :running})
-                        (instance [_ _ id] {:id id :url "https://example.com" :status :running})
+                        (fetch [_ id] {:id id :url "https://example.com" :status :running})
                         (delete! [_ _] nil))]
           (provisioning/provision-workspace! (workspace-row ws-id)))
         (is (=? {:version 1
@@ -244,7 +244,7 @@
                       provisioning.instance/instance-provisioner
                       (reify provisioning.instance/InstanceProvisioner
                         (create! [_ _ _] {:id "async-1" :url "https://example.com" :status :creating})
-                        (instance [_ _ id]
+                        (fetch [_ id]
                           (swap! polls inc)
                           {:id id :url "https://example.com" :status (ffirst (swap-vals! statuses rest))})
                         (delete! [_ _] nil))]
@@ -259,7 +259,7 @@
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] {:id "doomed-1" :url "https://example.com" :status :creating})
-                      (instance [_ _ id] {:id id :url "https://example.com" :status :error})
+                      (fetch [_ id] {:id id :url "https://example.com" :status :error})
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"failed to start"
                               (provisioning/provision-workspace! (workspace-row ws-id)))))

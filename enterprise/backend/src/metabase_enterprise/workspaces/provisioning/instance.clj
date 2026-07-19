@@ -25,12 +25,11 @@
      [[metabase-enterprise.workspaces.config/build-workspace-config]]).
      Creation is asynchronous: returns `::ws.schema/instance` whose `:status`
      may still be `:creating`/`:starting` — the instance is not usable until
-     [[instance]] reports `:running`.")
-  (instance [this workspace instance-id]
-    "Fetch `workspace`'s child instance by id. Returns `::ws.schema/instance`.")
-  (delete! [this workspace]
-    "Delete `workspace`'s child instance (`:instance_id` carries its id).
-     Should be idempotent."))
+     [[fetch]] reports `:running`.")
+  (fetch [this instance-id]
+    "Fetch a child instance by id. Returns `::ws.schema/instance`.")
+  (delete! [this instance-id]
+    "Delete the child instance with `instance-id`. Should be idempotent."))
 
 (def instance-provisioner
   "Default InstanceProvisioner. Stub implementation for now: pretends a child
@@ -38,9 +37,9 @@
   (reify InstanceProvisioner
     (create! [_ _workspace _config]
       {:id (str (random-uuid)), :url "https://example.com", :status :running})
-    (instance [_ _workspace instance-id]
+    (fetch [_ instance-id]
       {:id instance-id, :url "https://example.com", :status :running})
-    (delete! [_ _workspace]
+    (delete! [_ _instance-id]
       nil)))
 
 (def instance-poll-interval-ms
@@ -57,10 +56,10 @@
   "Poll `provisioner` until `instance-id` reaches a terminal status and return
    the instance. Throws when it lands anywhere but `:running`, or when
    [[instance-poll-timeout-ms]] elapses first."
-  [provisioner workspace instance-id :- :string]
+  [provisioner instance-id :- :string]
   (let [{:keys [status] :as inst}
         (ws.execute/poll-until
-         {:thunk       #(instance provisioner workspace instance-id)
+         {:thunk       #(fetch provisioner instance-id)
           :done?       #(contains? #{:running :error} (:status %))
           :interval-ms instance-poll-interval-ms
           :timeout-ms  instance-poll-timeout-ms})]
@@ -86,7 +85,7 @@
                               ws.config/build-workspace-config)
          {:keys [id url]} (create! provisioner workspace config)]
      (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
-     (wait-for-instance provisioner workspace id)
+     (wait-for-instance provisioner id)
      (assoc workspace :instance_id id, :instance_url url))))
 
 (mu/defn deprovision-instance! :- ::ws.schema/workspace
@@ -101,6 +100,6 @@
    (if-not (:instance_id workspace)
      workspace
      (do
-       (delete! provisioner workspace)
+       (delete! provisioner (:instance_id workspace))
        (t2/update! :model/Workspace (:id workspace) {:instance_id nil, :instance_url nil})
        (assoc workspace :instance_id nil, :instance_url nil)))))
