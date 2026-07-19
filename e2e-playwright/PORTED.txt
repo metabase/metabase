@@ -241,3 +241,5 @@ admin/remote-sync.cy.spec.ts
 embedding/embed-resource-downloads.cy.spec.ts
 admin/datamodel/segments.cy.spec.ts
 collections/cleanup.cy.spec.js
+admin/database-routing/database-routing-admin.cy.spec.ts
+metrics/browse.cy.spec.ts

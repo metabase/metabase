@@ -882,6 +882,30 @@
 - `dataStudioNav`
 - `visitDataStudio`
 
+## database-routing-admin.ts
+- `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js SAMPLE_DB_ID / WRITABLE_DB_ID. */
+- `WRITABLE_DB_ID`
+- `ALL_USERS_GROUP` — Mirrors USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js). */
+- `QA_POSTGRES_PORT` — Mirrors QA_POSTGRES_PORT (e2e/support/cypress_data.js). */
+- `configureDbRoutingViaAPI` — Port of configureDbRoutingViaAPI. */
+- `createDestinationDatabasesViaAPI` — Port of createDestinationDatabasesViaAPI. */
+- `BASE_POSTGRES_DESTINATION_DB_INFO` — Port of BASE_POSTGRES_DESTINATION_DB_INFO. */
+- `dbConnectionInfoSection` — Port of the spec-local dbConnectionInfoSection. */
+- `dbRoutingSection` — Port of the spec-local dbRoutingSection. */
+- `modelsSection` — Port of the spec-local modelsSection. */
+- `tableEditingSection` — Port of the spec-local tableEditingSection. */
+- `visitDatabaseAdminPage` — Port of the spec-local visitDatabaseAdminPage. */
+- `visitUploadSettingsPage` — Port of the spec-local visitUploadSettingsPage. */
+- `expandDbRouting` — Port of the spec-local expandDbRouting: click the section chevron. */
+- `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
+- `disableModelActionsViaApi` — Port of the spec-local disableModelActionsViaApi. */
+- `enableModelActionsViaApi` — Port of the spec-local enableModelActionsViaApi. */
+- `enableUploadsViaApi` — Port of H.enableUploads("postgres") (e2e-upload-helpers.js). */
+- `setupModelPersistence` — Port of the spec-local setupModelPersistence. */
+- `enableGlobalModelPersistence` — Port of the spec-local enableGlobalModelPersistence. */
+- `assertDbRoutingNotDisabled` — Port of the spec-local assertDbRoutingNotDisabled: the toggle is enabled, and
+- `assertDbRoutingDisabled` — CAPABILITY PROBE (see the spec header + findings): upstream had to use
+
 ## datamodel-segments.ts
 - `resetSnowplow`
 - `enableTracking`
@@ -1130,6 +1154,13 @@
 - `visitIframe` — Port of H.visitIframe: click Preview in the static embedding modal, grab
 - `currentIframeSrc` — The src of the page's (first) preview iframe, rebased onto baseUrl: the
 - `visitStaticEmbedUrl` — Load an absolute url (a signed /embed/* or /public/* link) inside a real
+
+## entity-picker-shared-tenant-collection.ts
+- `TENANT_ROOT_NAME` — The virtual root under which shared-tenant-collection namespace collections live. */
+- `TENANT_NAMESPACE`
+- `createTenantCollection` — Port of the spec-local createTenantCollection: a collection in the
+- `setupTenantCollections` — Port of the spec-local setupTenantCollections: a tenant collection + sub-collection. */
+- `waitForEntityPickerSearch` — Register a wait for the entity-picker search response (GET /api/search whose
 
 ## env.ts
 - `BASE_URL`
@@ -1517,6 +1548,9 @@
 - `startNewNativeModel` — Port of H.startNewNativeModel: visit the ad-hoc URL that clicking "New" >
 - `visitModelNoDataAccess` — Port of H.visitModel(id, { hasDataAccess: false }): visit a model whose
 
+## models-reproductions-3.ts
+- `countCardRequests` — Port of the `cy.intercept("GET", "/api/card/*").as("card")` +
+
 ## models-reproductions.ts
 - `mapModelColumnToDatabase` — Port of the spec-local mapModelColumnToDatabase: open the "Database column
 - `selectModelColumn` — Port of the spec-local selectModelColumn: click the metadata-editor header
@@ -1726,6 +1760,19 @@
 
 ## progress-bar.ts
 - `goalColumnDropdown` — The chevron dropdown toggle inside the "Goal" setting row. Cypress:
+
+## public-sharing-embed-button-behavior.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `createResource` — Port of the spec-local `createResource`. Question: a native PRODUCTS query
+- `createPublicResourceLink` — Port of the spec-local `createPublicResourceLink`. */
+- `visitResource` — Port of the spec-local `visitResource`. */
+- `assertNonAdminCannotCreatePublicLink` — Port of the spec-local `assertNonAdminCannotCreatePublicLink`. */
+- `assertValidPublicLink` — Port of the spec-local `assertValidPublicLink`. */
+- `publishChanges` — Port of H.publishChanges (e2e-embedding-helpers.js). Upstream waits for TWO
+- `unpublishChanges` — Port of H.unpublishChanges: the PUT whose body flips `enable_embedding` off. */
 
 ## public-sharing.ts
 - `PUBLIC_SHARING_SETTINGS_URL`
