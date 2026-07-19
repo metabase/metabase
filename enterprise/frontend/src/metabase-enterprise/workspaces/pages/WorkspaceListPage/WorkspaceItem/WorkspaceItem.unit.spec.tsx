@@ -93,7 +93,7 @@ describe("WorkspaceItem", () => {
     });
   });
 
-  it("hides Provision when provisioned and Deprovision when unprovisioned", async () => {
+  it("disables Provision when provisioned and Deprovision when unprovisioned", async () => {
     setup({
       workspace: createMockWorkspace({
         name: "My workspace",
@@ -105,11 +105,45 @@ describe("WorkspaceItem", () => {
       screen.getByRole("button", { name: "Workspace actions" }),
     );
     expect(
-      await screen.findByRole("menuitem", { name: "Deprovision" }),
-    ).toBeInTheDocument();
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Deprovision" })).toBeEnabled();
+  });
+
+  it("disables Deprovision and enables Provision when unprovisioned", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "unprovisioned",
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
     expect(
-      screen.queryByRole("menuitem", { name: "Provision" }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("menuitem", { name: "Deprovision" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Provision" })).toBeEnabled();
+  });
+
+  it("disables Provision and Deprovision while a run is in flight", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "database-provisioning",
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("menuitem", { name: "Deprovision" }),
+    ).toBeDisabled();
   });
 
   it("shows status details in a modal via the See details button", async () => {

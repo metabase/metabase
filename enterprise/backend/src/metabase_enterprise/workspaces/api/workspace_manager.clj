@@ -147,12 +147,14 @@
 
 (api.macros/defendpoint :post "/:id/provision" :- WorkspaceResponse
   "Start provisioning the workspace in the background and return immediately.
-  Retryable from any settled status; 400 while a provision or deprovision run
-  is already in flight. Poll `GET /:id` to follow the workspace's `:status`;
-  the response reflects the just-started run (`:database-provisioning`)."
+  Retryable from any settled status except `:provisioned`; 400 when already
+  provisioned or while a provision or deprovision run is in flight. Poll
+  `GET /:id` to follow the workspace's `:status`; the response reflects the
+  just-started run (`:database-provisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        _        (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws))))
+        _        (api/check-400 (not (or (contains? ws.schema/in-flight-statuses (:status ws))
+                                         (= :provisioned (:status ws)))))
         ws       (ws.provisioning/set-workspace-provisioning-status! ws)
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
@@ -162,12 +164,14 @@
 
 (api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
   "Start deprovisioning the workspace in the background and return immediately.
-  Retryable from any settled status; 400 while a provision or deprovision run
-  is already in flight. Poll `GET /:id` to follow the workspace's `:status`;
-  the response reflects the just-started run (`:instance-deprovisioning`)."
+  Retryable from any settled status except `:unprovisioned`; 400 when already
+  unprovisioned or while a provision or deprovision run is in flight. Poll
+  `GET /:id` to follow the workspace's `:status`; the response reflects the
+  just-started run (`:instance-deprovisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        _        (api/check-400 (not (contains? ws.schema/in-flight-statuses (:status ws))))
+        _        (api/check-400 (not (or (contains? ws.schema/in-flight-statuses (:status ws))
+                                         (= :unprovisioned (:status ws)))))
         ws       (ws.provisioning/set-workspace-deprovisioning-status! ws)
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
