@@ -151,8 +151,7 @@
                               ws.config/build-workspace-config)
          {:keys [id url]} (create! provisioner workspace config)]
      (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
-     (let [running (wait-for-instance provisioner id)
-           url     (or (:url running) url)]
+     (let [url (:url (wait-for-instance provisioner id))]
        (t2/update! :model/Workspace (:id workspace) {:instance_url url})
        (assoc workspace :instance_id id, :instance_url url)))))
 
