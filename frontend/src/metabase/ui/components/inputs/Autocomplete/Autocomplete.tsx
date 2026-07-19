@@ -1,12 +1,12 @@
 import {
-  Autocomplete as MantineAutocomplete,
+  Combobox,
+  InputBase,
   type AutocompleteProps as MantineAutocompleteProps,
-  getLabelsLockup,
-  getOptionsLockup,
-  getParsedComboboxData,
+  OptionsDropdown,
+  useProps,
 } from "@mantine/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious } from "react-use";
+
+import { useAutocomplete } from "./use-autocomplete";
 
 export type AutocompleteProps = Omit<MantineAutocompleteProps, "onChange"> & {
   parseValue?: (rawValue: string) => string | null;
@@ -19,62 +19,107 @@ const defaultParseValue = (rawValue: string) => {
   return trimmedValue.length > 0 ? trimmedValue : null;
 };
 
-export const Autocomplete = ({
-  value,
-  defaultValue,
-  data,
-  parseValue = defaultParseValue,
-  onChange,
-  onSearchChange,
-  ...props
-}: AutocompleteProps) => {
-  const { valueLockup, labelLockup } = useMemo(() => {
-    const parsed = getParsedComboboxData(data);
-    return {
-      valueLockup: getOptionsLockup(parsed),
-      labelLockup: getLabelsLockup(parsed),
-    };
-  }, [data]);
+export const Autocomplete = (props: AutocompleteProps) => {
+  const {
+    unstyled,
+    size,
+    value,
+    defaultValue,
+    data,
+    parseValue = defaultParseValue,
+    selectFirstOptionOnChange,
+    readOnly,
+    disabled,
+    error,
+    rightSection,
+    filter,
+    limit,
+    withScrollArea,
+    maxDropdownHeight,
+    scrollAreaProps,
+    renderOption,
+    comboboxProps,
+    autoSelectOnBlur,
+    openOnFocus,
+    onChange,
+    onSearchChange,
+    onFocus,
+    onBlur,
+    onClick,
+    onDropdownOpen,
+    onDropdownClose,
+    onOptionSubmit,
+    ...inputProps
+  } = useProps("Autocomplete", null, props);
 
-  const formatValue = useCallback(
-    (rawValue: string) => valueLockup[rawValue]?.label ?? rawValue,
-    [valueLockup],
-  );
-
-  const resolveValue = useCallback(
-    (rawValue: string) => {
-      const match = valueLockup[rawValue] ?? labelLockup[rawValue];
-      return match?.value ?? parseValue(rawValue) ?? "";
-    },
-    [valueLockup, labelLockup, parseValue],
-  );
-
-  const [inputValue, setInputValue] = useState(() =>
-    formatValue(value ?? defaultValue ?? ""),
-  );
-  const previousValue = usePrevious(value);
-
-  useEffect(() => {
-    if (value === previousValue) {
-      return;
-    }
-    if (resolveValue(inputValue) !== value) {
-      setInputValue(formatValue(value ?? ""));
-    }
-  }, [value, previousValue, inputValue, resolveValue, formatValue]);
-
-  const handleChange = (rawValue: string) => {
-    setInputValue(rawValue);
-    onSearchChange?.(rawValue);
-    onChange?.(resolveValue(rawValue));
-  };
+  const {
+    combobox,
+    parsedData,
+    inputValue,
+    handleInputChange,
+    handleFocus,
+    handleBlur,
+    handleClick,
+    handleOptionSubmit,
+  } = useAutocomplete({
+    value,
+    defaultValue,
+    data,
+    selectFirstOptionOnChange,
+    autoSelectOnBlur,
+    openOnFocus,
+    parseValue,
+    onChange,
+    onSearchChange,
+    onFocus,
+    onBlur,
+    onClick,
+    onDropdownOpen,
+    onDropdownClose,
+    onOptionSubmit,
+  });
 
   return (
-    <MantineAutocomplete
-      value={inputValue}
-      data={data}
-      onChange={handleChange}
-      {...props}
-    />
+    <Combobox
+      store={combobox}
+      unstyled={unstyled}
+      readOnly={readOnly}
+      size={size}
+      keepMounted={autoSelectOnBlur}
+      onOptionSubmit={handleOptionSubmit}
+      {...comboboxProps}
+    >
+      <Combobox.Target>
+        <InputBase
+          {...inputProps}
+          unstyled={unstyled}
+          size={size}
+          value={inputValue}
+          error={error}
+          rightSection={rightSection}
+          readOnly={readOnly}
+          disabled={disabled}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onClick={handleClick}
+        />
+      </Combobox.Target>
+      <OptionsDropdown
+        data={parsedData}
+        hidden={readOnly || disabled}
+        filter={filter}
+        search={inputValue}
+        limit={limit}
+        hiddenWhenEmpty
+        withScrollArea={withScrollArea}
+        maxDropdownHeight={maxDropdownHeight}
+        unstyled={unstyled}
+        labelId={undefined}
+        aria-label={inputProps["aria-label"]}
+        renderOption={renderOption}
+        scrollAreaProps={scrollAreaProps}
+      />
+    </Combobox>
   );
 };

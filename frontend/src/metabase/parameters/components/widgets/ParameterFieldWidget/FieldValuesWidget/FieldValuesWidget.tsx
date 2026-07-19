@@ -1,6 +1,5 @@
 import cx from "classnames";
 import {
-  type KeyboardEvent,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -38,7 +37,6 @@ import {
   Loader,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
-  SelectItem,
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
@@ -368,18 +366,6 @@ export const FieldValuesWidgetInner = forwardRef<
   const fieldValues = value.filter(isNotNull).map(String);
   const optionsData = options.map(getOption).filter(isNotNull);
 
-  const handleSingleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") {
-      return;
-    }
-    const inputValue = event.currentTarget.value;
-    const firstOption = optionsData[0];
-    if (firstOption && firstOption.value !== inputValue) {
-      event.preventDefault();
-      commitValues([firstOption.value]);
-    }
-  };
-
   return (
     <ErrorBoundary ref={ref}>
       <div
@@ -464,11 +450,11 @@ export const FieldValuesWidgetInner = forwardRef<
               position: "bottom-start",
             }}
             data-testid="token-field"
+            selectFirstOptionOnChange
             renderOption={({ option }) => (
               <RemappedOption option={option} fields={fields} tc={tc} />
             )}
             parseValue={parseValue}
-            onKeyDown={handleSingleValueKeyDown}
             onSearchChange={onInputChange}
             onChange={(value) => commitValues(value !== "" ? [value] : [])}
           />
@@ -638,13 +624,9 @@ function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   const label = tc(option.label ?? option.value);
 
-  return (
-    <SelectItem>
-      {isRemapped ? (
-        <MultiAutocompleteOption value={option.value} label={label} />
-      ) : (
-        label
-      )}
-    </SelectItem>
-  );
+  if (!isRemapped) {
+    return label;
+  }
+
+  return <MultiAutocompleteOption value={option.value} label={label} />;
 }
