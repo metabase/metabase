@@ -12,6 +12,7 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
@@ -104,12 +105,22 @@ export const useAutocomplete = ({
     }
   }, [value, previousValue, inputValue, resolveValue, formatValue]);
 
-  useEffect(() => {
-    if (selectFirstOptionOnChange && combobox.dropdownOpened) {
-      combobox.selectFirstOption();
+  const { dropdownOpened, selectFirstOption: selectFirst } = combobox;
+
+  const selectFirstOption = useCallback(() => {
+    if (selectFirstOptionOnChange && dropdownOpened) {
+      selectFirst();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [optionsKey, selectFirstOptionOnChange]);
+  }, [selectFirstOptionOnChange, dropdownOpened, selectFirst]);
+
+  // list change (typing / backend load): select before paint to avoid flicker
+  useLayoutEffect(selectFirstOption, [
+    optionsKey,
+    inputValue,
+    selectFirstOption,
+  ]);
+  // dropdown open: after paint, since Combobox.Options registers listId in a passive effect
+  useEffect(selectFirstOption, [dropdownOpened, selectFirstOption]);
 
   const handleSearchChange = (rawValue: string) => {
     setInputValue(rawValue);
@@ -120,9 +131,6 @@ export const useAutocomplete = ({
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     handleSearchChange(event.currentTarget.value);
     combobox.openDropdown();
-    if (selectFirstOptionOnChange) {
-      combobox.selectFirstOption();
-    }
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
