@@ -54,20 +54,20 @@ jobs:
     name: e2e-playwright-ee-s${{ matrix.shard }}
     strategy:
       fail-fast: false
-      # Sharded across N jobs to keep wall-clock down as the suite grows.
-      # Each shard runs a slice of specs with workers=2 + per-worker backends
-      # (the A/B winner — see git history for the workers=1 vs 2 comparison).
-      # Playwright's --shard split is count/order-based, not duration-balanced,
-      # so a shard that draws several of the largest specs can run long; bump
-      # SHARD_TOTAL (and the matrix list) as spec count climbs, and revisit a
-      # timings-balanced split if imbalance bites. Each shard re-pays the ~13m
-      # setup (snapshot gen etc.), so this trades total CI minutes for lower
-      # wall-clock — the intended tradeoff.
+      # Sharded across N jobs to minimize critical-path wall-clock. Runners are
+      # free, so we optimize the slowest shard, not total CI minutes: shard hard
+      # until per-shard test time falls below the ~13m fixed setup floor
+      # (snapshot gen + jar download + backend boots), where wall-clock bottoms
+      # out. Each shard runs a slice with workers=2 + per-worker backends (the
+      # A/B winner — see git history). Playwright's --shard split is count/order-
+      # based, not duration-balanced, and can't split a single spec file, so the
+      # heaviest file + the ~13m setup are the floor; to go below it, generate
+      # snapshots once as a shared artifact instead of per-shard.
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     env:
       # Keep in sync with the shard matrix above.
-      SHARD_TOTAL: 4
+      SHARD_TOTAL: 20
       MB_EDITION: ee
       # resolveToken() in e2e-playwright/support/api.ts reads the
       # CYPRESS_-prefixed names first — same secrets as e2e-test.yml.
