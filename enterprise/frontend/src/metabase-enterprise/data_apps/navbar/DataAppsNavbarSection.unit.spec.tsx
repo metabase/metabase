@@ -27,7 +27,7 @@ describe("DataAppsNavbarSection", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <DataAppsNavbarSection onItemSelect={jest.fn()} />}
+        element={<DataAppsNavbarSection onItemSelect={jest.fn()} />}
       />,
       { withRouter: true },
     );
