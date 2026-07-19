@@ -1158,37 +1158,35 @@
           (catch Throwable t
             (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
                        grantor schema username)))))
-    ;; Main batch stays transactional: relation revokes, iso-schema bare REVOKE,
-    ;; DROP SCHEMA, DROP USER -- the cleanup we want atomic.
+    ;; The main cleanup stays transactional: relation revokes, iso-schema bare
+    ;; REVOKE, DROP SCHEMA, DROP USER -- the cleanup we want atomic. Statements
+    ;; run one by one (not as a JDBC batch) so a failure surfaces as the plain
+    ;; server error instead of a BatchUpdateException wrapper ("Batch entry N
+    ;; ... Call getNextException ..."); the transaction still aborts as a whole
+    ;; on the first error either way.
     (jdbc/with-db-transaction [t-conn spec]
       (let [user-exists     (user-exists? t-conn username)
             schema-exists   (schema-exists? t-conn schema-name)
             granted-schemas (when user-exists
-                              (schemas-with-user-grants t-conn username))]
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (when user-exists
-            (doseq [schema granted-schemas
-                    :let [quoted-granted-schema (quote-schema schema)]]
-              (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s"
-                                         quoted-granted-schema quoted-user))
-              (.addBatch ^Statement stmt
-                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"
-                                         quoted-granted-schema quoted-user)))
+                              (schemas-with-user-grants t-conn username))
             ;; Iso-namespace default-priv was issued by the connection user at init time, so a
             ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
             ;; erroring on a schema that was dropped manually. Coverage for foreign-grantor
             ;; default-priv rows is handled above by the per-grantor autocommit loop.
-            (when schema-exists
-              (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
-                                         quoted-schema quoted-user))))
-          ;; These are safe with IF EXISTS
-          (.addBatch ^Statement stmt
-                     ^String (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema))
-          (.addBatch ^Statement stmt
-                     ^String (format "DROP USER IF EXISTS %s" quoted-user))
-          (.executeBatch ^Statement stmt))))))
+            sqls            (concat
+                             (when user-exists
+                               (for [schema granted-schemas
+                                     revoke ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s"
+                                             "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"]]
+                                 (format revoke (quote-schema schema) quoted-user)))
+                             (when (and user-exists schema-exists)
+                               [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                        quoted-schema quoted-user)])
+                             ;; these are safe with IF EXISTS
+                             [(format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)
+                              (format "DROP USER IF EXISTS %s" quoted-user)])]
+        (doseq [sql sqls]
+          (jdbc/execute! t-conn [sql]))))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "metabot/prompts/dialects/redshift.md")
