@@ -2332,6 +2332,14 @@
 - `mockDevelopmentMode` — Port of the spec's `cy.intercept("/api/session/properties", ...)` that
 - `expectIconVisible` — `cy.icon(name).should("be.visible")` is an ANY-match (PORTING.md rule 3 /
 
+## table-editing.ts
+- `setTableEditingEnabledForDB` — Port of the spec-local setTableEditingEnabledForDB: PUT the DB's
+- `getFieldId` — Port of H.getFieldId({ tableId, name }) (e2e-qa-databases-helpers.js):
+- `openTableBrowser` — Port of the spec-local openTableBrowser: navigate to the database browser
+- `getTableEditIcon` — Port of the spec-local getTableEditIcon: the edit-table icon is revealed on
+- `openTableEdit` — Port of the spec-local openTableEdit: hover-reveal the icon and click it. */
+- `openEditRowModal` — Port of the spec-local openEditRowModal. The edit-table grid renders each
+
 ## temporal-unit-parameters.ts
 - `dashboardDetails`
 - `singleBreakoutQuestionDetails`
