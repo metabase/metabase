@@ -286,3 +286,18 @@
       (testing "and no :settings section when remote sync is disabled"
         (mt/with-temporary-setting-values [remote-sync-url nil]
           (is (not (contains? (-> (build-config ws-id) :config) :settings))))))))
+
+(deftest build-workspace-config-creator-superuser-test
+  (testing "when workspace-instance-user-password is set, :config carries the creator as a superuser"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name       "github"
+                                                 :creator_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [workspace-instance-user-password "sUp3r-s3cret"]
+        (is (= [{:first_name   "Crowberto"
+                 :last_name    "Corv"
+                 :email        "crowberto@metabase.com"
+                 :password     "sUp3r-s3cret"
+                 :is_superuser true}]
+               (-> (build-config ws-id) :config :users))))
+      (testing "and no :users section when the password is not set"
+        (mt/with-temporary-setting-values [workspace-instance-user-password nil]
+          (is (not (contains? (-> (build-config ws-id) :config) :users))))))))

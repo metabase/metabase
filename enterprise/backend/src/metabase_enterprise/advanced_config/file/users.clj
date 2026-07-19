@@ -10,10 +10,10 @@
    [toucan2.core :as t2]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
-  string?)
+  (s/nilable string?))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/last_name
-  string?)
+  (s/nilable string?))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/password
   string?)
