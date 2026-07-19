@@ -57,7 +57,7 @@
    the instance. Throws when it lands anywhere but `:running`, or when
    [[instance-poll-timeout-ms]] elapses first."
   [provisioner instance-id :- :string]
-  (let [{:keys [status] :as inst}
+  (let [{:keys [status] :as instance}
         (ws.execute/poll-until
          {:thunk       #(fetch provisioner instance-id)
           :done?       #(contains? #{:running :error} (:status %))
@@ -66,7 +66,7 @@
     (when-not (= :running status)
       (throw (ex-info "Workspace instance failed to start"
                       {:instance_id instance-id, :status status})))
-    inst))
+    instance))
 
 (mu/defn provision-instance! :- ::ws.schema/workspace
   "Provision a child instance for `workspace` (blocking), booted from the
