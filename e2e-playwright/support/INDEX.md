@@ -355,6 +355,12 @@
 - `customExpressionEditor` — Port of H.CustomExpressionEditor.value()'s target: the CodeMirror content
 - `openTableNotebookWithLimit` — Port of H.openTable({ mode: "notebook", limit, table }). */
 
+## dashboard-card-fetching.ts
+- `ORDERS_COUNT_QUESTION_ID` — Ports of ORDERS_COUNT_QUESTION_ID / ORDERS_BY_YEAR_QUESTION_ID
+- `ORDERS_BY_YEAR_QUESTION_ID`
+- `CARDS` — Port of the spec's module-level `cards` layout. */
+- `collectDashcardQueryBodies` — Port of `cy.wait(["@dashcardQuery", "@dashcardQuery"])` where the test then
+
 ## dashboard-card-repros.ts
 - `pieSlices` — Port of H.pieSlices (e2e-visual-tests-helpers.js): the pie/donut wedge paths
 - `assertIsEllipsified` — Port of H.assertIsEllipsified (kept local so both live together). */
@@ -413,6 +419,9 @@
 - `assertScrollBarExists` — Port of the spec-local assertScrollBarExists. */
 - `checkOptionsForFilter` — Port of the spec-local checkOptionsForFilter. */
 - `countDashboardUpdates` — Port of the cy.spy() intercept pattern: counts PUT /api/dashboard/:id
+
+## dashboard-filter-data-permissions.ts
+- `filterDashboard` — The `suggests` branch mirrors the original: when a user has data access the
 
 ## dashboard-filter-defaults.ts
 - `clearDefaultFilterValue` — Port of the spec-local clearDefaultFilterValue:
@@ -513,6 +522,12 @@
 - `expectSidebarHasDisplayValue` — Retried wrapper around findByDisplayValue for `should("exist")` — the sidebar
 - `clickSidebarDisplayValue` — Retried wrapper around findByDisplayValue that clicks the matched control
 - `createDashboardWithFilterAndQuestionMapped` — Port of the spec-local createDashboardWithFilterAndQuestionMapped: a People
+
+## dashboard-filters-matrix.ts
+- `runPage`
+- `page`
+- `runAll`
+- `run`
 
 ## dashboard-filters-misc.ts
 - `createPivotableQuery` — Port of the spec-local createPivotableQuery: Q1 (join + custom column) plus
@@ -1010,6 +1025,10 @@
 ## funnel-title-navigation.ts
 - `createFunnelVisualizerDashboard` — Port of the UXW-2692 setup: a native funnel question, a dashboard, and one
 
+## i18n.ts
+- `selectLocale` — Port of the spec-local `selectLocale`: open the profile page, pick a locale
+- `visitPath` — Tolerant navigation, mirroring cy.visit's resilience: the homepage fires a
+
 ## interactive-embedding.ts
 - `mockRedirectResponse` — Mock an external redirect (e.g. a JWT/SAML IdP bouncing back to the app).
 - `visitFullAppEmbeddingUrl`
@@ -1130,6 +1149,10 @@
 - `delayQueryMetadata` — Port of the issue-47058 intercept: hold every GET /api/card/:id/query_metadata
 - `waitForQueryMetadata` — Await the next GET /api/card/:id/query_metadata response (the delayed one). */
 
+## metrics-search.ts
+- `waitForSearch` — Register a wait for the next /api/search response (PORTING rule 2 —
+- `commandPaletteSearch` — Port of H.commandPaletteSearch(query, viewAll = true): open the palette,
+
 ## metrics.ts
 - `MetricPage`
 - `undoToast`
@@ -1137,6 +1160,11 @@
 - `filterInNotebook` — Port of H.filter({ mode: "notebook" }) from e2e-bi-basics-helpers.js. */
 - `cartesianChartCircles`
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
+
+## mid-stream-download-failure.ts
+- `FAILS_MID_STREAM_QUERY` — A native query that streams fine for the capped preview (the query builder
+- `triggerDownload` — Open the download popover, pick the file type, and trigger the export.
+- `expectDownloadError` — Port of the final assertion: the aborted stream surfaces as a download error,
 
 ## model-indexes.ts
 - `selectModelColumn` — Select a column in the model metadata editor. The shared
@@ -1187,6 +1215,11 @@
 - `startNewModel` — Port of H.startNewModel: visit the ad-hoc URL that clicking "New" > "Model" >
 - `startNewNativeModel` — Port of H.startNewNativeModel: visit the ad-hoc URL that clicking "New" >
 - `visitModelNoDataAccess` — Port of H.visitModel(id, { hasDataAccess: false }): visit a model whose
+
+## models-revision-history.ts
+- `ORDERS_BY_YEAR_QUESTION_ID` — Port of ORDERS_BY_YEAR_QUESTION_ID (cypress_sample_instance_data.js). */
+- `openRevisionHistory` — Port of the spec-local openRevisionHistory: open the question-info sidesheet,
+- `revertTo` — Port of the spec-local revertTo(history): find the revision-history-event
 
 ## models.ts
 - `tableInteractive` — Port of H.tableInteractive(). */
@@ -1252,6 +1285,10 @@
 - `applyBrushFilter` — Port of the spec-local applyBrushFilter: wait for the chart svg to exist,
 - `applyBoxFilter` — .realMouseDown({ x: left, y: top })
 
+## native-table-tags.ts
+- `variableTypeSelect` — Port of `cy.findByTestId("variable-type-select")`. */
+- `mapTableTag` — Assign the currently-shown template tag the "Table" variable type and map it
+
 ## nested-questions.ts
 - `waitForDataset` — Register a wait for the next POST /api/dataset response. Must be called
 - `summarize` — Port of H.summarize (default, non-notebook mode). */
@@ -1260,6 +1297,9 @@
 - `getDimensionByName` — Port of H.getDimensionByName: substring, case-sensitive (cy :contains). */
 - `selectFilterOperator`
 - `saveQuestionToCollection`
+
+## new-menu.ts
+- `openNewMenu` — Port of the spec beforeEach's `cy.visit("/")` + `cy.findByText("New").click()`:
 
 ## notebook.ts
 - `queryBuilderMain`
@@ -1420,6 +1460,10 @@
 - `getVisibleSidebarColumns` — Port of the spec's getVisibleSidebarColumns. */
 - `findColumnAtIndex` — Port of the spec's findColumnAtIndex (negative indices count from the
 - `hideColumn` — Port of the spec's hideColumn. Like the Cypress original, no force —
+
+## questions-entity-id.ts
+- `ORDERS_QUESTION_ENTITY_ID` — The entity id of the "Orders" saved question, read from the same generated
+- `main` — Port of H.main() (e2e-ui-elements-helpers.js): cy.get("main"). */
 
 ## relative-datetime.ts
 - `STARTING_FROM_UNITS`
@@ -1705,6 +1749,17 @@
 - `openNavigationSidebar` — Port of openNavigationSidebar's self-healing open loop: navigating to a
 - `visitQuestion` — Port of H.visitQuestion: navigate and wait for the metadata + query
 - `visitDashboard` — Port of H.visitDashboard: look up the dashboard through the API as the
+
+## user-settings.ts
+- `NORMAL_USER` — The `normal` user, mirroring e2e/support/cypress_data.js USERS.normal:
+- `NORMAL_USER_ID` — Port of NORMAL_USER_ID (e2e/support/cypress_sample_instance_data.js). */
+- `getFullName` — Port of H.getFullName(normal). */
+- `assertLightMode` — Port of the spec-local assertLightMode. */
+- `assertDarkMode` — Port of the spec-local assertDarkMode. */
+- `colorSchemeInput` — The color-scheme Select on /account/profile, matched by its current value. */
+- `stubCurrentUser` — Port of the spec-local stubCurrentUser: replace GET /api/user/current with
+- `goToProfile` — Port of H.goToProfile: open the profile menu and click "Account settings". */
+- `waitForGetUser` — Register a wait for the next GET /api/user/current (cy.wait("@getUser")). */
 
 ## visualizer-basics.ts
 - `ORDERS_COUNT_BY_CREATED_AT`

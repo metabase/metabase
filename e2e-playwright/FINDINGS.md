@@ -534,6 +534,21 @@ methodology note first — it reframes several earlier entries.
     intended, not a regression — worth citing as evidence the verification loop
     is honest about its own limits.
 
+44. **A keyboard shortcut Playwright fires and Cypress can't** (`user-settings`).
+    The dark-mode toggle is a tinykeys global shortcut `$mod+Shift+KeyL`. In the
+    Cypress suite this was unreliable in headless Chrome — cypress-real-events'
+    `realPress` (CDP keyboard dispatch) never reached the handler, so the
+    **original spec abandoned real input and dispatched a synthetic
+    `KeyboardEvent`** via `cy.trigger`. The port uses a real
+    `page.keyboard.press("ControlOrMeta+Shift+KeyL")` and it fires **5/5 across
+    1+2+3 runs, zero fallback**: Playwright's real input delivers a genuine
+    `KeyboardEvent` that satisfies tinykeys' `instanceof` check where CDP dispatch
+    could not. Second independently-evidenced instance of #1 (an input Playwright
+    drives that Cypress structurally can't), and it confirms the exact hypothesis
+    from the Chrome-upgrade investigation. The proof is upstream's own synthetic
+    fallback — Cypress conceded real input here; Playwright doesn't need to. This
+    is a strictly-stronger port, not a faithful one.
+
 ## Wave 10 additions (pivot_tables, embedding-dashboard, dashboard-cards/filters repros, column-compare)
 
 Five specs / ~145 tests, all green on the jar. **No product bugs** — every
