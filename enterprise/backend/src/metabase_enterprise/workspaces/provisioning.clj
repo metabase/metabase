@@ -80,9 +80,7 @@
         (throw t)))
     (set-workspace-status! ws :instance-provisioning nil)
     (try
-      (-> ws
-          provisioning.instance/deprovision-instance!
-          provisioning.instance/provision-instance!)
+      (provisioning.instance/provision-instance! ws)
       (catch Throwable t
         (set-workspace-status! ws :instance-provisioning-failure (ex-message t))
         (throw t)))
