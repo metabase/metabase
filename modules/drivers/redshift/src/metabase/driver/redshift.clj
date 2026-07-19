@@ -1191,8 +1191,6 @@
                      ^String (format "DROP USER IF EXISTS %s" quoted-user))
           (try
             (.executeBatch ^Statement stmt)
-            ;; unwrap so the failure reads as the plain server error instead of
-            ;; "Batch entry N ... Call getNextException to see other errors"
             (catch BatchUpdateException e
               (throw (or (.getNextException e) e)))))))))
 
