@@ -48,17 +48,10 @@
                               (provisioning.instance/create! provisioner ws {})))))))
 
 (deftest fetch-status-mapping-test
-  (testing "fetch maps HM statuses onto the abstract set, unknown ones onto :error"
-    (doseq [[hm-status expected] {"creating"         :creating
-                                  "starting"         :starting
-                                  "running"          :running
-                                  "error"            :error
-                                  "deleting"         :error
-                                  "stopped"          :error
-                                  "suspended"        :error
-                                  "updating-version" :error
-                                  "not-a-status"     :error
-                                  nil                :error}]
+  (testing "fetch keywordizes the HM status directly"
+    (doseq [[hm-status expected] {"creating" :creating
+                                  "active"   :active
+                                  "error"    :error}]
       (with-redefs [hm.client/make-request (fn [method url & _]
                                              (is (= :get method))
                                              (is (= "/api/v2/mb/workspaces/instances/i-1" url))
@@ -84,14 +77,14 @@
                             (provisioning.instance/delete! provisioner "i-1"))))))
 
 (deftest provision-instance!-end-to-end-test
-  (testing "provision-instance! creates via HM, polls until :running, and persists the final url"
+  (testing "provision-instance! creates via HM, polls until :active, and persists the final url"
     (mt/with-temp [:model/Workspace {ws-id :id :as ws} {:name "WS"}]
       (with-redefs [provisioning.instance/instance-poll-interval-ms 1
                     hm.client/make-request
                     (fn [method _url & _]
                       (case method
                         :post (ok {:id "i-9", :url nil, :status "creating"})
-                        :get  (ok {:id "i-9", :url "https://child.example.com", :status "running"})))]
+                        :get  (ok {:id "i-9", :url "https://child.example.com", :status "active"})))]
         (is (=? {:instance_id "i-9", :instance_url "https://child.example.com"}
                 (provisioning.instance/provision-instance! ws))))
       (is (=? {:instance_id "i-9", :instance_url "https://child.example.com"}

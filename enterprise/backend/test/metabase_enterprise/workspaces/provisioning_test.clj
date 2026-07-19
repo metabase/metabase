@@ -38,9 +38,9 @@
   []
   (reify provisioning.instance/InstanceProvisioner
     (create! [_ _workspace _config]
-      {:id (str (random-uuid)) :url "https://example.com" :status :running})
+      {:id (str (random-uuid)) :url "https://example.com" :status :active})
     (fetch [_ instance-id]
-      {:id instance-id :url "https://example.com" :status :running})
+      {:id instance-id :url "https://example.com" :status :active})
     (delete! [_ _instance-id] nil)))
 
 (use-fixtures :once
@@ -158,7 +158,7 @@
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] (throw (ex-info "no capacity" {})))
-                      (fetch [_ id] {:id id :url "https://example.com" :status :running})
+                      (fetch [_ id] {:id id :url "https://example.com" :status :active})
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"no capacity"
                               (provisioning/provision-workspace! (workspace-row ws-id)))))
@@ -183,8 +183,8 @@
       (provisioning/provision-workspace! (workspace-row ws-id))
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
-                      (create! [_ _ _] {:id "x" :url "https://example.com" :status :running})
-                      (fetch [_ id] {:id id :url "https://example.com" :status :running})
+                      (create! [_ _ _] {:id "x" :url "https://example.com" :status :active})
+                      (fetch [_ id] {:id id :url "https://example.com" :status :active})
                       (delete! [_ _] (throw (ex-info "instance stuck" {}))))]
         (is (thrown-with-msg? ExceptionInfo #"instance stuck"
                               (provisioning/deprovision-workspace! (workspace-row ws-id)))))
@@ -211,8 +211,8 @@
       (let [received (atom nil)]
         (with-redefs [provisioning.instance/instance-provisioner
                       (reify provisioning.instance/InstanceProvisioner
-                        (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com" :status :running})
-                        (fetch [_ id] {:id id :url "https://example.com" :status :running})
+                        (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com" :status :active})
+                        (fetch [_ id] {:id id :url "https://example.com" :status :active})
                         (delete! [_ _] nil))]
           (provisioning/provision-workspace! (workspace-row ws-id)))
         (is (=? {:version 1
@@ -236,9 +236,9 @@
       (is (= :database-provisioning (:status (workspace-row ws-id)))))))
 
 (deftest provision-instance-polls-until-running-test
-  (testing "provision-instance! records the ids up front, then polls until the instance is :running"
+  (testing "provision-instance! records the ids up front, then polls until the instance is :active"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}]
-      (let [statuses (atom [:starting :starting :running])
+      (let [statuses (atom [:creating :creating :active])
             polls    (atom 0)]
         (with-redefs [provisioning.instance/instance-poll-interval-ms 1
                       provisioning.instance/instance-provisioner
@@ -249,7 +249,7 @@
                           {:id id :url "https://example.com" :status (ffirst (swap-vals! statuses rest))})
                         (delete! [_ _] nil))]
           (provisioning/provision-workspace! (workspace-row ws-id)))
-        (is (= 3 @polls) "polling continues through :starting until the terminal status")
+        (is (= 3 @polls) "polling continues through :creating until the terminal status")
         (is (=? {:status :provisioned :instance_id "async-1" :instance_url "https://example.com"}
                 (workspace-row ws-id)))))))
 

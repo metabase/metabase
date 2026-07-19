@@ -28,8 +28,8 @@
      config-file map `config` (see
      [[metabase-enterprise.workspaces.config/build-workspace-config]]).
      Creation is asynchronous: returns `::ws.schema/instance` whose `:status`
-     may still be `:creating`/`:starting` — the instance is not usable until
-     [[fetch]] reports `:running`.")
+     may still be `:creating` — the instance is not usable until [[fetch]]
+     reports `:active`.")
   (fetch [this instance-id]
     "Fetch a child instance by id. Returns `::ws.schema/instance`.")
   (delete! [this instance-id]
@@ -43,19 +43,12 @@
   [response :- :map]
   (or (:status response) (get-in response [:ex-data :status])))
 
-(def ^:private hm-instance-statuses
-  "The HM instance statuses that map directly onto abstract statuses.
-   Everything else HM reports (deleting, stopped, suspended, error, ...) means
-   the instance is not coming up and counts as `:error`."
-  #{:creating :starting :running})
-
 (mu/defn- ->instance :- ::ws.schema/instance
-  "Convert an HM instance body into the abstract `::ws.schema/instance` shape."
+  "Convert an HM instance body into the `::ws.schema/instance` shape."
   [body :- :map]
-  (let [status (some-> (:status body) keyword)]
-    {:id     (str (:id body))
-     :url    (:url body)
-     :status (or (hm-instance-statuses status) :error)}))
+  {:id     (str (:id body))
+   :url    (:url body)
+   :status (some-> (:status body) keyword)})
 
 (mu/defn- hm-create-instance! :- ::ws.schema/instance
   "Start creating the child instance for a workspace. Creation is asynchronous —
@@ -119,27 +112,27 @@
 
 (mu/defn- wait-for-instance :- ::ws.schema/instance
   "Poll `provisioner` until `instance-id` reaches a terminal status and return
-   the instance. Throws when it lands anywhere but `:running`, or when
+   the instance. Throws when it lands anywhere but `:active`, or when
    [[instance-poll-timeout-ms]] elapses first."
   [provisioner instance-id :- :string]
   (let [{:keys [status] :as instance}
         (ws.execute/poll-until
          {:thunk       #(fetch provisioner instance-id)
-          :done?       #(contains? #{:running :error} (:status %))
+          :done?       #(contains? #{:active :error} (:status %))
           :interval-ms instance-poll-interval-ms
           :timeout-ms  instance-poll-timeout-ms})]
-    (when-not (= :running status)
+    (when-not (= :active status)
       (throw (ex-info "Workspace instance failed to start"
                       {:instance_id instance-id, :status status})))
     instance))
 
 (mu/defn provision-instance! :- ::ws.schema/workspace
   "Provision a child instance for `workspace` (blocking), booted from the
-   workspace's config. Persists `:instance_id`/`:instance_url` as soon as the
-   provisioner accepts the creation, then polls until the instance is
-   `:running`, refreshing the url from the running instance (it may only be
-   known once the instance is up). Always creates a fresh instance — callers
-   deprovision any existing one first. Throws on failure or startup timeout — the caller
+   workspace's config. Persists `:instance_id` as soon as the provisioner
+   accepts the creation, then polls until the instance is `:active` and
+   persists the url the active instance reports (the url is only set once the
+   instance is active). Always creates a fresh instance — callers deprovision
+   any existing one first. Throws on failure or startup timeout — the caller
    records the failure on the workspace status. Returns `workspace` with the
    new instance fields assoc'ed."
   ([workspace]
@@ -149,8 +142,8 @@
    (let [config           (-> workspace
                               (t2/hydrate :databases)
                               ws.config/build-workspace-config)
-         {:keys [id url]} (create! provisioner workspace config)]
-     (t2/update! :model/Workspace (:id workspace) {:instance_id id, :instance_url url})
+         {:keys [id]} (create! provisioner workspace config)]
+     (t2/update! :model/Workspace (:id workspace) {:instance_id id})
      (let [url (:url (wait-for-instance provisioner id))]
        (t2/update! :model/Workspace (:id workspace) {:instance_url url})
        (assoc workspace :instance_id id, :instance_url url)))))
