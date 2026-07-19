@@ -23,8 +23,10 @@
                      failure  ▼                   failure  ▼
              instance-deprovisioning-failure   database-deprovisioning-failure
 
-   `/provision` and `/deprovision` may be retried from any status; at worst they
-   are no-ops."
+   `/provision` and `/deprovision` may be retried from any settled status (they
+   400 while a run is in flight). The database phases skip rows that already
+   reached the target state; the instance phase of a provision always deletes
+   and recreates the child instance."
   [:enum
    :unprovisioned
    :database-provisioning
