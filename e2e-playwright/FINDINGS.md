@@ -7,8 +7,19 @@ dividend found during porting gets an entry here in the same PR.**
 ## Scoreboard — read this before quoting numbers
 
 **Product bugs: 1 jar-CONFIRMED (#1), 6 retracted (#2, #3, #22, #24,
-`dashboard-parameters` field-61, `dashboard-reproductions` 12926).** Every claim
-was put through the jar gauntlet. **#1 reproduces on the production bundle** — a
+`dashboard-parameters` field-61, `dashboard-reproductions` 12926), 2 open
+questions (#45, #46 — jar-observed, but neither established as a defect rather
+than intended behaviour; do NOT count these as bugs).** Every claim
+was put through the jar gauntlet.
+
+**Coverage claims need two numbers, not one.** ~273 specs are ported; a
+non-trivial share is **ported-and-gated** — faithful, typechecked, and never
+executed anywhere, because the QA-container snapshot CI would need is gitignored
+(#49, #50). Quote ported-and-verified separately from ported-and-gated.
+
+**The case has costs on the record too**, deliberately: one spec where the
+migration *reduced* coverage (#47), and one input class where Playwright's real
+CDP input is worse than Cypress's (#48). **#1 reproduces on the production bundle** — a
 real, precisely-scoped embedding bug (details in #1). Everything else was
 retracted after it failed to reproduce against the CI uberjar: the
 `parameters: []` / load-path / "Cypress fails identically" cluster (#2, #22,
@@ -576,3 +587,243 @@ and a migration caveat, not bugs:
 
 See `NOTES-parallelism.md` for the read-only-pool / seeding analysis done this
 session, and `findings-inbox/` for per-spec detail.
+
+## Batches 8–11 additions (66 inbox entries reconciled 2026-07-20)
+
+66 per-spec inbox entries merged in one pass. **No new confirmed product bugs**
+— 60 of the 66 explicitly record "no product-bug claims", which under #31 is the
+expected and healthy outcome, and worth stating plainly: sixty consecutive specs
+went through the jar loop and produced nothing to retract. Two observations rise
+to *open product questions* (#45, #46) and are labelled as such, not as bugs.
+
+The most valuable material in this batch runs **against** the migration case.
+Four findings (#47–#50) are costs, losses, or overclaims. They are recorded here
+in the same detail as the wins, because a case that only survives favourable
+evidence isn't worth making.
+
+### Two open product questions — NOT confirmed bugs
+
+45. **Tenant collections are selectable in a non-tenant collection's move picker,
+    and upstream passes only on search-index lag** (`entity-picker-shared-tenant-collection`).
+    `/api/search?context=entity-picker` returns collection hits with
+    `namespace: null` (12/12 polls against the EE jar after a full force-reindex),
+    while `/api/collection/:id/items` does carry it. `SearchResultsItemList` gates
+    selectability on `PLUGIN_TENANTS.canPlaceEntityInCollection`, whose EE impl
+    (`tenants/utils/utils.ts:44`) reads `collection.namespace` — so a tenant
+    collection reads as a regular one. Upstream's `should("not.exist")` passes
+    because a freshly-created collection isn't searchable for ~1–2s and the check
+    lands before the debounced search returns; the Chrome cross-check on the same
+    jar confirms the timing accident. **Jar status:** the namespace omission and
+    the leak were observed directly on the CI EE uberjar, so this clears the
+    environmental bar that killed #2/#22/#24. **Not established:** user-facing
+    severity, or whether anything outside the picker-move flow is affected. The
+    port stayed faithful to the racy timing rather than asserting the leak.
+
+46. **"Explain this chart" renders inside full-app embedding, and
+    `should("not.exist")` is structurally blind to it** (`metabot`). Both the
+    navbar metabot icon and `AIQuestionAnalysisButton` share one gate
+    (`useUserMetabotPermissions().hasMetabotAccess`) with no embedding-specific
+    check on the latter; the QB toolbar just mounts ~160ms after the navbar. A
+    dedicated Cypress ground-truth spec on the same jar measured
+    `{after: 0, settled: 1}`. **Jar status: jar-observed, and the fidelity
+    cross-check passes on the same jar — but nobody has established that the
+    explainer appearing in embedding is a defect rather than an intended
+    affordance.** Open product question, not a bug claim. The durable dividend is
+    the mechanism, which is new: Cypress `should("not.exist")` passes on its
+    *first* absent poll and never re-checks, so **any assertion of absence inside
+    a mount-lag window is vacuous by construction** — a distinct class from the
+    #15/#38 family.
+
+### Findings that cut against the migration case
+
+47. **The first recorded case of the migration REDUCING coverage**
+    (`document-metabot`). Upstream stubs at the Anthropic wire level via
+    `cy.task startMockLlmServer` and lets the real backend run
+    `document_construct_sql_chart` — SQL validation, query construction,
+    `draft-card-from-chart-output`. Jar mode can't reach an LLM, so the port mocks
+    the FE-facing `POST /api/metabot/document/generate-content` one hop below,
+    and the backend tool pipeline is no longer exercised **at all**. The pitch
+    rests on capability differences; the one running the other way needs stating.
+    Closeable — `ai-controls` (#51) built exactly the mock-LLM fixture this needs.
+
+48. **Real CDP input is not uniformly better than Cypress's — here it is worse**
+    (`custom-column-1`). Accepting the `coalesce` completion inserts a
+    Tab-navigable CodeMirror snippet; typing an argument's `[` fires
+    close-brackets plus the column autocomplete, and that transaction *exits the
+    active snippet*, so the next Tab indents instead of advancing. Probed
+    exhaustively: plain text advances, any `[` kills it; Enter-accept,
+    click-accept, Escape-then-Tab, ArrowRight-then-Tab and a 300ms settle all
+    fail. The Cypress original passes both tests on the *same* slot-4 jar backend
+    under `--browser chrome`, so the app is correct and this is purely
+    `realType`-vs-`page.keyboard`. The honest counterweight to #1 and #44: real
+    input is *different*, not strictly better, and here Cypress's dispatch was the
+    safer one. Port matches outcome via `keyboard.insertText` (no key events).
+
+49. **The ported-but-never-executed tier is now large enough that headline
+    numbers must separate it.** In batch 11 alone, `dependency-graph` (16 tests),
+    `dependency-unreferenced-list` (11) and `database-routing-admin` (15) are
+    faithful, tsc-clean, and comprise **42 tests that have never run a single
+    assertion** — all gate on `PW_QA_DB_ENABLED` plus a token, and a green local
+    run means "correctly skipped". The wave-11 rule says this per-spec, but the
+    port-cost section quotes ported test counts without separating tiers. Any
+    number we publish must distinguish **ported-and-verified** from
+    **ported-and-gated**, or the effort estimate silently claims coverage the
+    spike has not demonstrated.
+
+50. **A whole class of specs can never run in CI — the `postgres-writable`
+    snapshot is gitignored** (`remote-sync`, `table-editing`, `transforms-codegen`).
+    `git check-ignore e2e/snapshots/postgres_writable.sql` → IGNORED, so
+    `restore("postgres-writable")` returns 204 locally and would 404 in CI. Three
+    specs in one batch are 100% all-skip on the jar (`table-editing` 21/21,
+    `transforms-codegen` 5/5, `remote-sync` 10/26). This extends #27 with the
+    harder fact that the artifact CI needs **does not exist**, and the same gap
+    exists upstream in Cypress. `transforms-codegen` is the sharpest case: its
+    Metabot LLM is fully stubbed via canned SSE, so the *only* thing keeping it
+    off CI is the writable Postgres — provisioning that container converts an
+    all-skip spec into real coverage with no API key.
+
+### Vacuous upstream assertions — two new mechanisms
+
+51. **Intercepts and waits that cannot match what they name.** Four independent
+    instances this batch, all a step beyond #16 (which was about *ordering*):
+    here the pattern could never have matched. `admin-tools`' `/api/task` glob
+    intercepts (`?` matching a literal `?`, remainder exact with no `*`) match
+    only the fully-unfiltered request, so every filtered request falls through to
+    the real backend and `filtering should work` silently asserts against live
+    sync data. `content-translation-dashboards` waits on the app-mode card-query
+    POST inside describes that run in **static embeds**, which never call that
+    endpoint at all. `homepage`'s x-ray alias is table-only
+    (`/api/automagic-*/table/**`) while the zoom-in drill fires
+    `/api/automagic-dashboards/field/53`, so the second wait was satisfied
+    retroactively by the first click's stale response and the drill was never
+    verified. `public-resource-downloads` matches dashcard exports with
+    `…/card/*/<type>`, so the `questionId` every caller threads in never
+    constrained anything. All four ported as predicates that actually match.
+
+52. **Mocks that cannot affect what they appear to control.** `admin-tools-help`'s
+    `mockSessionPropertiesTokenFeatures` is inert for the "Helping hand"
+    visibility it appears to drive — that reads the **active token** via the
+    settings bootstrap, a path the `/api/session/properties` intercept never
+    reaches. The tests pass because of the real token, not the mock. Ported
+    faithfully with the inertness documented, so nobody later "fixes" a test by
+    editing a mock that does nothing. Related: `metrics-browse`'s
+    "should respect the user setting" forces
+    `browse-filter-only-verified-metrics = true` (already the backend default)
+    and then asserts `aria-selected="false"` — it passes only because the toggle
+    renders false before the forced setting hydrates and Cypress's retry latches
+    onto that first frame. Almost certainly a copy-paste bug; the port drives
+    `false` so the test finally exercises its stated intent.
+
+53. **#25 again, but with proof it mattered** (`line-bar-tooltips`).
+    `e2e-visual-tests-helpers.js:184`'s `tooltipHeader()` takes no parameters and
+    asserts nothing, so every `H.tooltipHeader("2025")` in the spec is a no-op.
+    Porting those strings as real `assertEChartsTooltip({ header })` assertions
+    *fails* — `testAvgTotalChange`'s index-1 tooltip actually reads "2026". The
+    ignored argument was not merely unchecked, it was **wrong**: had it ever been
+    enforced, the suite would have been red.
+
+### Tests that got strictly stronger
+
+54. **Jar speed makes sub-poll-interval UI states unobservable — so the port
+    controls the window instead of racing it** (`whitelabel`). The custom loading
+    message renders only in the QB overlay while a query runs; against the jar's
+    static assets that window is shorter than Playwright's poll interval, so
+    `toBeVisible` missed it every time where Cypress's retry-until-timeout
+    happened to catch the flicker. The port holds the response ~1.5s with
+    `page.route(…) → route.continue()`, making it a real assertion on a
+    controlled window rather than a race won by luck. Generalises to every
+    "assert the transient loading/spinner text" port.
+
+### Infrastructure
+
+55. **A real mock-LLM server, and why stubbing at the browser would have made
+    every quota test vacuous** (`ai-controls`). The obvious port
+    (`mockMetabotResponse`) fulfils `POST /api/metabot/agent-streaming` at the
+    browser — but the entire point of these tests is the backend's
+    `usage/check-usage-limits!` logic, so all 17 quota assertions would have
+    passed without exercising anything. The faithful mechanism is upstream's: a
+    Node HTTP server impersonating the Anthropic Messages API, pointed at by
+    `llm-anthropic-api-base-url`, so traffic flows through the real backend and
+    only the provider call is stubbed. The port binds an **ephemeral port**
+    (`listen(0)`) instead of Cypress's fixed 6123, so it cannot collide with a
+    sibling worker. This is the missing `cy.task("startMockLlmServer")` analogue
+    and it unblocks #47.
+
+56. **Gate audits reclaim coverage — two directions, both cheap.** `custom-viz`
+    restores the `postgres-writable` snapshot but every question queries the
+    sample H2 DB and the writable Postgres is never touched; swapping to
+    `"default"` makes the whole 54-case spec runnable on the bare jar with
+    nothing exercised changed. `homepage`'s SQLite x-ray tests need no container
+    either — they use the built-in `sqlite` driver against the repo-root
+    `resources/sqlite-fixture.db`, which resolves because slot backends run from
+    `REPO_ROOT`. Conversely `admin-permissions` tags 12 permission-table tests
+    `@OSS`, excluding them from CI's EE leg, but all 12 pass on the EE jar with
+    no token active; gating on "no token" rather than "OSS build" reclaims them.
+    Inverse of #26's tagging gap — and auditing snapshot/gate dependencies during
+    a port is nearly free.
+
+57. **Search-backed browse pages refetch exactly once, so a stale post-`restore()`
+    index is permanent** (`metrics-browse`). Browse > Metrics reads
+    `/api/search?models=metric`; after a mutation RTK invalidates the `card` list
+    tag and the page refetches **once** on remount, then caches forever.
+    `restore()`'s force-reindex is async, so a mutation issued moments after
+    restore is read against a still-settling index and the page stays wrong for
+    the rest of the test — assertion retry cannot rescue it because no second
+    fetch is ever issued. A backend probe confirmed moderation is reflected
+    synchronously, so this is a reindex-settle race, not a product bug. Applies to
+    every search-backed browse/list page.
+
+58. **Harness self-defense, second instance** (`remote-sync`, fixing
+    `support/snippets.ts` — same class as #21). `setupGitSync` runs a bare
+    `git init`; on a runner with no global `init.defaultBranch` that creates
+    `master` while the sync settings configure `remote-sync-branch: "main"`, so
+    the import finds no ref and fails. Fix: `git branch -M main` after the first
+    commit (works pre-2.28, unlike `git init -b main`) plus
+    `commit.gpgsign=false` so an inherited signing config can't break the commit
+    on a signing-less runner. **Already landed** in `support/snippets.ts:143,148`
+    (commit `8cbe3b6d915`) — the inbox entry recorded it as owed, but the
+    remote-sync port had applied it; verified in place during this reconciliation.
+    Also measured there and correcting the `snippets` inbox entry: remote-sync
+    endpoints are **premium-token-gated** (`PUT /api/ee/remote-sync/settings`
+    returns 402 without a token), not `:feature :none` — both specs pass only
+    because the jar activates `pro-self-hosted`.
+
+59. **Real git push/pull is covered and needs no external server**
+    (`remote-sync`). `setupGitSync()` builds a throwaway repo under `$TMPDIR` and
+    the backend clones `file://…/.git` in-process. The read-write describe
+    (create branch, push, switch, force-push, stash-to-branch, discard) passes
+    8/8 locally. It won't run in CI only because that describe's `beforeEach`
+    restores `postgres-writable` (#50) despite the tests never touching that DB —
+    a gating over-reach worth revisiting.
+
+60. **Consolidation debt has crossed from "worth a pass" to "costing every
+    port".** Five more independent duplications in one batch of eleven specs:
+    `createOfficialCollection` is the **4th** independent `createCollection`
+    variant (the shared ports all drop `authority_level`); `ORDERS_COUNT_QUESTION_ID`
+    is re-derived locally for the **3rd** time; `createPublicDocumentLink`
+    duplicates `createPublicLink` solely because the document endpoint uses a
+    different slug; `mockMetabotResponseWithDelay` is a strict superset of the
+    shared `mockMetabotResponse`. The driver is the "new module per agent, don't
+    edit shared files" rule interacting with parallel agents — correct during the
+    spike, but the fix list is now concrete and scheduled in PORTING.md.
+
+61. **Marginal port cost in a covered domain is now near zero**
+    (`content-translation-questions`). Third spec in that domain: 3 tests, 6/6
+    under `--repeat-each=2`, and **no support file was created at all** — the
+    existing content-translation helpers, `visitEmbeddedPage` and the shared
+    factories covered it entirely. A concrete data point for the effort estimate:
+    the third spec in a domain costs roughly the diff, not the harness.
+
+### Open item owed from this batch
+
+**The one experiment that would give a third instance of #1/#44 is blocked, and
+it is cheap** (`database-routing-admin`). `assertDbRoutingDisabled` is the exact
+test MEMORY records as a Chrome v122+ headless failure: upstream abandoned
+`realHover()` on `#database-routing-toggle` — CDP hit-testing resolves to the
+disabled `<input>` inside the Mantine Switch and swallows the boundary events —
+and fell back to a synthetic `cy.trigger("mouseenter")`. The port uses a real
+`hover({ force: true })` on `database-routing-toggle-wrapper`, but the tooltip
+path only runs after the `postgres-writable` setup (#50), so **the probe never
+executed**. To settle it: `PW_QA_DB_ENABLED=1` against a live writable QA
+postgres, `assertDbRoutingDisabled` under `--repeat-each=3`. Recorded as an owned
+open item, not as evidence.

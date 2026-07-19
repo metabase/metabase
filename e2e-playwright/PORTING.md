@@ -815,6 +815,143 @@ drag at the element-relative target corner.
 **Pivot dashcards query `/api/dashboard/pivot/:id/...` / `/api/card/pivot/:id/query`**
 — broaden `waitForResponse` regexes (`/api/card/.+/query`) to cover the pivot endpoint.
 
+**Page-wide table-cell locators are a latent strict-mode flake — scope to
+`table-header` like Cypress does.** A shared helper that scans page-wide for
+`header-cell` (or `cell`) matches *any* table on the page, including the sticky
+object-detail column and pivot sub-tables. It resolves to one element on most
+specs and silently becomes a strict-mode violation the moment a second table
+renders — which is how `dashboard-drill` #15331 went red on CI batch-9 s5 (a
+duplicate "Quantity" from the object-detail column). Cypress's
+`tableInteractiveHeader()` was always scoped; the port had widened it. Fix and
+rule: `getByTestId("table-header").getByTestId("header-cell")` — provably the
+same single element Cypress's green selector resolves to (`support/notebook.ts`
+`tableHeaderColumn`, verified drill #15331 2/2 + the `summarization` caller).
+Generalise: when a shared locator is broader than the Cypress helper it stands
+in for, the extra breadth is not harmless — it is a flake waiting for a second
+matching element.
+
+## Gotchas added in batches 8–11 (reconciled from 66 inbox entries, 2026-07-20)
+
+### Assertions and waits that don't mean what they look like
+- **`should("not.exist")` is a ONE-SHOT absence check, not a retrying one.** It
+  passes on its first absent poll and never re-checks, so any upstream assertion
+  of absence inside a mount-lag window is vacuous by construction. Porting it as
+  a retrying `toHaveCount(0)` is *stronger than the original* and may legitimately
+  go red. Match the original with a non-retrying `expect(await loc.count()).toBe(0)`
+  taken at a defined instant, and comment why.
+- **Read a Cypress helper's SIGNATURE before porting its call shape.**
+  `tooltipHeader(x)`, `completions(x)`, `assertOrdersExport(n)` all silently
+  discard their arguments. Strengthening them into real assertions can turn a
+  test red — and has, correctly (the discarded `tooltipHeader("2025")` was
+  factually wrong; the tooltip reads "2026").
+- **Port a Cypress glob intercept LITERALLY.** `?` matches a literal `?` and a
+  remainder with no `*` is exact — such an intercept matches only the fully
+  unfiltered request and lets every filtered one through to the real backend.
+  Build a URL predicate requiring the exact params *and* the absence of the
+  others, or you will over-stub tests upstream deliberately left live.
+- **Check the awaited endpoint can fire in the mode under test.** Beyond the
+  #16 ordering rule: a wait on the app-mode card-query POST inside a *static
+  embed* describe can never match (embeds GET under `/api/embed/dashboard`), and
+  a table-only x-ray alias can never match a `/field/:id` drill. Widen the
+  predicate to what the interaction actually hits — `waitForResponse` does not
+  consume past responses, so a too-narrow alias that passed retroactively in
+  Cypress will hang.
+- **`waitForResponse` on an RTK-Query-cached endpoint hangs.** Re-opening a UI
+  backed by a warm cache fires no request at all, where `cy.wait` is satisfied
+  retroactively. Drop the wait; let retrying assertions gate.
+- Port `cy.get("@alias.all").should("have.length", 0)` (assert a request never
+  fired) as a passive `page.on("request")` counter checked at the end.
+- Port `cy.wait(["@a","@a","@a"])` as one response *counter* polled to `>= n` —
+  three concurrent `waitForResponse`s on one predicate all resolve on the first hit.
+
+### Search index and async state
+- **After any mutation on a search-backed page, poll the backend until the index
+  reflects it BEFORE triggering the FE read.** These pages refetch once on
+  remount then cache forever, so assertion retry cannot rescue a stale read.
+- `mb.restore()`'s poll only guarantees a *table* is searchable. Seeding new
+  content types, editing for last-editor attribution, and archiving each need
+  their own index-readiness poll; wrap `reload()`+assert in `toPass`.
+- A test asserting "Updated … by X" needs **≥1s** between create and edit —
+  `InfoTextEditedInfo.tsx:52` renders "Updated" only when `last_edited_at`
+  differs from `created_at` at second granularity. Cypress's slow UI flow always
+  cleared the boundary; a fast API PUT does not.
+- To make a card read as edited, PUT a **fresh legacy** `dataset_query` — a
+  description-only PUT bumps `last_editor_id` without a content revision, and
+  echoing back the stored MBQL 5 query with a `query` key is rejected 400.
+
+### Sessions and auth
+- **Reorder `signIn` FIRST when porting a `beforeEach` that hits an admin API
+  before `cy.signInAs*`.** Cypress's `cy.request` rides an implicit cookie
+  session; the Playwright `api` client only sends `X-Metabase-Session` after
+  `signIn`, so the call runs session-less and silently no-ops under
+  `failOnStatusCode:false` (fingerprint: every admin-settings call 402s).
+- Cypress's command queue decides **which session a later command runs under**,
+  not just ordering. Porting two chained creates as sequential admin calls
+  silently changes creator/editor attribution.
+
+### Clicking things Mantine has hidden
+- Click the visible **label** for a `SegmentedControl` option, never
+  `getByRole("radio").click({force:true})` — the inputs are `sr-only` and
+  offscreen, and `force` still requires the point to be in the viewport. (A
+  `SegmentedControl` option *does* survive `click({force:true})` because the
+  intercepting `innerLabel` span is a child of the label — unlike `Select` rows,
+  which force-click cannot rescue.)
+- A visually-hidden input Mantine parks **outside the modal viewport** fails
+  force-click ("Element is outside of the viewport", after "done scrolling") —
+  use coordinate-free `locator.dispatchEvent("click")`.
+- A `display:none` hover-child cannot be force-clicked at all (no layout box) —
+  find the ancestor actually carrying the `onClick` and dispatch there.
+- Assert `toBeEnabled()` before toggling any admin `Switch`: `useAdminSetting`'s
+  `isLoading` keeps it disabled, and `click({force:true})` on a disabled input
+  silently no-ops, surfacing as a `waitForResponse` timeout on the *save*.
+- Reach for `hover({ force: true })` when a disabled control overlays the hover
+  target — Playwright's actionability check refuses the point for the same
+  hit-test reason CDP `realHover` failed in Cypress.
+
+### Endpoint shapes worth knowing
+- A **model** visited at `/question/:id` runs via `POST /api/dataset`, not
+  `/api/card/:id/query` — the strict shared `visitQuestion` hangs on models.
+  Branch on `type`: `visitModel` / `visitMetric`.
+- Document public links are `POST /api/document/:id/public-link` (**dash**), not
+  the `…/public_link` (underscore) used by card/dashboard/action.
+- Public question exports (`GET /public/question/<uuid>.<type>`) answer **302** —
+  capture the initial GET with `waitForRequest` and let the browser follow.
+- `GET /api/setting/:key` returns raw **`text/plain`** for string settings — use
+  `response.text()`; `.json()` throws `SyntaxError: Unexpected token 'h'`.
+- Remote-sync endpoints are **premium-token-gated** (402 without a token), not
+  `:feature :none`.
+
+### Editors and tables
+- Inside a CodeMirror **snippet**, drive bracket-bearing arguments with
+  `keyboard.insertText`, never `keyboard.type` — a typed `[` fires
+  close-brackets/autocomplete, exits the snippet, and the next Tab indents
+  instead of advancing.
+- Blur an EditableText with `page.locator("textarea:focus").blur()`, never
+  `keyboard.press("Tab")` — its root `onKeyDown` re-focuses on every non-Enter
+  key, so Tab bounces and the markdown preview never renders.
+- Filter `{ visible: true }` on TableInteractive header cells — react-virtualized
+  renders a `visibility:hidden` off-screen measurement clone at x≈-9959 — and
+  `await expect(...).toBeVisible()` before any `boundingBox()`/drag, which does
+  not auto-wait and returns null.
+- The edit-table grid renders each data row once per horizontal quadrant, so
+  `data-dataset-index` matches two `role="row"` sections: nth 0 (frozen) carries
+  the hover-revealed `row-edit-icon`, nth 1 (center) carries `cell-data`.
+
+### Harness
+- **Run with `--workers=1` when `PW_SLOT_OFFSET` is pinned** — multiple workers
+  each boot a backend on the same fixed slot and collide, surfacing as an
+  unrelated spec "failing" in a crashed worker.
+- Never press Enter to commit an entity-picker search: `SearchInput` debounces
+  300ms and Enter submits the form, unmounting the picker before the debounce
+  fires. Register the `/api/search` wait, type, await.
+- **A snowplow-stubbed describe asserts nothing snowplow-specific** — such tests
+  are smoke coverage only and can never ground a product-bug claim. Say so
+  rather than reading them as passing assertions.
+- Audit a spec's snapshot/gate dependencies while porting: `custom-viz` restored
+  `postgres-writable` and never touched it (swapping to `"default"` freed 54
+  cases onto the bare jar), and the SQLite x-ray tests need no container at all
+  (built-in driver, repo-root fixture, slot backends run from `REPO_ROOT`).
+
 ### Consolidation candidates surfaced this stretch (later pass)
 - **`openTable`-with-`limit`** — re-implemented 3× (table-drills, column-shortcuts,
   binning); shared `openTable`/`openOrdersTable`/`openReviewsTable` drop `limit`.
@@ -830,3 +967,14 @@ drag at the element-relative target corner.
   `card-embed-node.ts`.
 - **A shared USERS name map** (sample-data.ts carries only email/password) for
   `getPersonalCollectionName`.
+- **`savePermissionsGraph`** (data-model-permissions.ts) ≡ **`saveAndConfirmPermissions`**
+  (download-permissions.ts) — promote to one shared permissions helper.
+- **The snowplow no-op stub block** is copy-pasted across `homepage.ts`,
+  `datamodel-segments.ts`, `segments-data-studio.ts` — hoist to one module.
+- **`undoToast`** (metrics.ts) ≡ **`undoToastList`** (organization.ts) —
+  byte-identical `getByTestId("toast-undo")`; unify into `ui.ts`.
+- **`support/measures-queries.ts` `_measures_reexports`** — WIP scaffolding left
+  behind when batch-11 landed; clean up.
+
+Rule still in force for all of the above: **only consolidate toward a shape
+Cypress already has** (faithfulness > DRY). All four qualify.
