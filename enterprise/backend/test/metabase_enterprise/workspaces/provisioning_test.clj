@@ -220,11 +220,11 @@
                 @received)
             "create! received the workspace's config map")))))
 
-(deftest start-run-guard-test
-  (testing "set-workspace-*-status! atomically refuse to start a run while one is in flight"
+(deftest mark-workspace-guard-test
+  (testing "mark-workspace-*! atomically refuse to start a run while one is in flight"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Busy" :status :database-provisioning}]
-      (doseq [start! [provisioning/set-workspace-provisioning-status!
-                      provisioning/set-workspace-deprovisioning-status!]]
+      (doseq [start! [provisioning/mark-workspace-provisioning!
+                      provisioning/mark-workspace-deprovisioning!]]
         (is (= 400 (try (start! (workspace-row ws-id))
                         (catch Exception e (:status-code (ex-data e))))))
         (is (= :database-provisioning (:status (workspace-row ws-id)))
@@ -232,16 +232,16 @@
   (testing "and start the run from any other settled status"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Settled" :status :database-provisioning-failure}]
       (is (=? {:status :database-provisioning}
-              (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))))
+              (provisioning/mark-workspace-provisioning! (workspace-row ws-id))))
       (is (= :database-provisioning (:status (workspace-row ws-id))))))
   (testing "a provision cannot start when the workspace is already :provisioned"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Done" :status :provisioned}]
-      (is (= 400 (try (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))
+      (is (= 400 (try (provisioning/mark-workspace-provisioning! (workspace-row ws-id))
                       (catch Exception e (:status-code (ex-data e))))))
       (is (= :provisioned (:status (workspace-row ws-id))))))
   (testing "a deprovision cannot start when the workspace is already :unprovisioned"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Empty" :status :unprovisioned}]
-      (is (= 400 (try (provisioning/set-workspace-deprovisioning-status! (workspace-row ws-id))
+      (is (= 400 (try (provisioning/mark-workspace-deprovisioning! (workspace-row ws-id))
                       (catch Exception e (:status-code (ex-data e))))))
       (is (= :unprovisioned (:status (workspace-row ws-id)))))))
 
