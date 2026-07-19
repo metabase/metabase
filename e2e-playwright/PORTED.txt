@@ -274,3 +274,8 @@ data-studio/data-model/segments-data-studio.cy.spec.ts
 table-editing/table-editing.cy.spec.ts
 data-studio/measures/measures-queries.cy.spec.ts
 visualizations-charts/custom-viz.cy.spec.ts
+search/search-snowplow.cy.spec.js
+dependencies/dependency-broken-list.cy.spec.ts
+data-studio/measures/measures-data-studio.cy.spec.ts
+data-studio/table-collection-permissions.cy.spec.ts
+data-studio/data-studio-library.cy.spec.ts

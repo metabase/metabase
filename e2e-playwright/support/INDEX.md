@@ -966,6 +966,34 @@
 - `dataStudioNav`
 - `visitDataStudio`
 
+## data-studio-library.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `TRUSTED_ORDERS_METRIC` — Port of TRUSTED_ORDERS_METRIC (e2e/support/test-library-data.ts). */
+- `dataStudioNav` — Port of H.DataStudio.nav(). */
+- `dataStudioBreadcrumbs` — Port of H.DataStudio.breadcrumbs(). */
+- `tableOverviewPage` — Port of H.DataStudio.Tables.overviewPage(). */
+- `tableHeader` — Port of H.DataStudio.Tables.header(). */
+- `metricMoreMenu` — Port of H.DataStudio.Metrics.moreMenu(): findByLabelText("More options"). */
+- `libraryPage` — Port of H.DataStudio.Library.libraryPage(). */
+- `collectionItem` — Port of H.DataStudio.Library.collectionItem(name):
+- `tableItem` — Port of H.DataStudio.Library.tableItem(name):
+- `libraryResult` — Port of H.DataStudio.Library.result(name):
+- `libraryNewButton` — Port of H.DataStudio.Library.newButton(). */
+- `emptyStateRow` — Port of H.DataStudio.Library.emptyStateRow(description):
+- `librarySearchInput` — The library page's search box (placeholder "Search..."). */
+- `visitLibrary` — Port of H.DataStudio.Library.visit(): navigate and assert the three root
+- `openCollectionOptions` — Port of the spec-local openCollectionOptions. */
+- `openTableOptions` — Port of the spec-local openTableOptions. */
+- `expandLibraryCollection` — Port of the spec-local expandLibraryCollection. */
+- `getLibraryRootCollections` — Port of the spec-local getLibraryRootCollections: GET /api/ee/library and
+- `createLibraryCollection` — Port of the spec-local createLibraryCollection. */
+- `createCollection` — Port of H.createCollection({ name }) — the subset this spec uses. */
+- `createLibraryWithItems` — Port of createLibraryWithItems (e2e/support/test-library-data.ts): create the
+- `createLibraryWithTable` — Port of createLibraryWithTable (e2e/support/test-library-data.ts). */
+
 ## database-routing-admin.ts
 - `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js SAMPLE_DB_ID / WRITABLE_DB_ID. */
 - `WRITABLE_DB_ID`
@@ -1001,6 +1029,14 @@
 - `openSegmentRowMenu`
 - `assertRevisionHistory` — Port of the spec-local assertRevisionHistory. `scope` is the segment-revisions
 - `trackMetadataRequests` — Attach a counter for GET /api/table/:id/query_metadata responses — the
+
+## dependency-broken-list.ts
+- `visitBrokenDependencies` — Port of H.DependencyDiagnostics.visitBrokenDependencies
+- `BrokenSidebar` — Port of the two H.DependencyDiagnostics.Sidebar regions the unreferenced-list
+- `waitForBreakingDependencies` — Port of H.waitForBreakingDependencies (e2e-dependency-helpers.ts): poll
+- `runTransform` — Port of H.runTransform (e2e-transform-helpers.ts). */
+- `waitForTransformRuns` — Port of H.waitForTransformRuns (e2e-transform-helpers.ts): poll
+- `deleteTransformTable` — Port of the spec-local dropTransformTable: DELETE /api/transform/:id/table. */
 
 ## dependency-graph.ts
 - `DependencyGraph` — Port of H.DependencyGraph (e2e-dependency-helpers.ts) — the graph screen's
@@ -1482,6 +1518,23 @@
 ## mcp-apps-settings.ts
 - `pointerReachesLink` — Faithful port of the spec's `realHover` + `mouseenter` probe: move the REAL
 - `clickLinkWithoutFollowing` — Port of the spec's "click but preventDefault so the cursor:// deeplink is not
+
+## measures-data-studio.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `getMeasuresBaseUrl`
+- `waitForMetadata` — GET /api/table/:id/query_metadata — the `@metadata` alias predicate. */
+- `waitForCreateMeasure` — POST /api/measure — the `@createMeasure` alias predicate. */
+- `waitForUpdateMeasure` — PUT /api/measure/:id — the `@updateMeasure` alias predicate. */
+- `visitDataStudioMeasures` — Port of H.DataModel.visitDataStudioMeasures — navigate to a table's measures
+- `visitDataStudioTable` — Port of the spec-local visitDataStudioTable → H.DataModel.visitDataStudio
+- `visitDataModelMeasure` — Port of the spec-local visitDataModelMeasure: navigate straight to a
+- `MeasureList`
+- `MeasureEditor`
+- `MeasureRevisionHistory`
+- `createMeasure` — Port of H.createMeasure (e2e-table-metadata-helpers.js): POST /api/measure. */
 
 ## measures-queries.ts
 - `MeasureEditor`
@@ -2170,6 +2223,15 @@
 - `waitForCardsIndexed` — The seeded `generated_question` cards are indexed asynchronously after a
 - `commandPaletteSearch` — Port of H.commandPaletteSearch(query) with its default viewAll = true:
 
+## search-snowplow.ts
+- `SnowplowCapture`
+- `installSnowplowCapture` — Install the capture on a page. Must run before the first navigation, since
+- `isDeepMatch` — with ONE deliberate deviation: arrays must match in length as well as
+- `expectUnstructuredSnowplowEvent` — Port of H.expectUnstructuredSnowplowEvent(eventData, count). Upstream polls
+- `assertNoUnstructuredSnowplowEvent` — Port of H.assertNoUnstructuredSnowplowEvent. */
+- `expectNoBadSnowplowEvents` — Structural stand-in for H.expectNoBadSnowplowEvents. Upstream asks
+- `commandPaletteSearch` — Port of H.commandPaletteSearch(query, viewAll). The shared ports of this
+
 ## search.ts
 - `getSearchBar` — Port of H.getSearchBar. */
 - `visitFullAppEmbeddingUrl`
@@ -2312,6 +2374,12 @@
 - `documentsDragAndDrop` — Port of H.documentsDragAndDrop. Replays the Cypress helper's synthetic event
 - `assertHorizontalLayout` — Port of the spec-local assertHorizontalLayout (c2 is to the right of c1). */
 - `assertVerticalLayout` — Port of the spec-local assertVerticalLayout (c2 is below c1). */
+
+## table-collection-permissions.ts
+- `blockUserGroupPermissions` — Port of H.blockUserGroupPermissions (e2e-permissions-helpers.js): block
+- `sandboxProductsOnCategory` — Port of the spec-local sandboxProductsOnCategory. */
+- `popoverByIndex` — Port of the spec-local popoverByIndex:
+- `assertQueryPermissionError` — Port of the spec-local assertQueryPermissionError. */
 
 ## table-column-settings.ts
 - `tableInteractiveBody` — Port of H.tableInteractiveBody() — cy.findByTestId("table-body"). */

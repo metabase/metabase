@@ -220,8 +220,11 @@ lead that survived did so because the agent happened to narrate it out loud.
    the mount, the first keystrokes go to `<body>`, and the damage surfaces far
    from the cause — a dropped `+` became "2 pills, expected 1" and an
    unrelated mini-picker timeout.
-6. Snowplow helpers → no-op stubs with a TODO block. `@external`-tagged
-   content (QA DBs) → `test.skip` gated on `QA_DB_ENABLED`.
+6. Snowplow helpers → no-op stubs with a TODO block — **but ONLY where snowplow
+   is incidental to the spec. If the events ARE the subject, capture them at the
+   browser boundary instead (see "Capturing snowplow without micro" below);
+   stubbing there makes every test a no-op.** `@external`-tagged content (QA DBs)
+   → `test.skip` gated on `QA_DB_ENABLED`.
 7. EE/token: `mb.api.activateToken("pro-self-hosted")`;
    `test.skip(!resolveToken("pro-self-hosted"), ...)` for gated describes.
 8. Full-app embedding (`visitFullAppEmbeddingUrl` in Cypress) → the iframe
@@ -952,6 +955,84 @@ matching element.
   cases onto the bare jar), and the SQLite x-ray tests need no container at all
   (built-in driver, repo-root fixture, slot backends run from `REPO_ROOT`).
 
+## Capturing snowplow without micro (batch-12, search-snowplow)
+
+**Rule 6's no-op stub is wrong when snowplow events are the spec's subject** — it
+would have made `search-snowplow` 26 no-op tests. Events can be captured entirely
+at the browser boundary: no container, no shared-file edit, and no cross-slot
+contention (a shared snowplow-micro on :9090 has exactly that problem — five
+parallel agents share one global store that `resetSnowplow` wipes).
+
+`support/search-snowplow.ts installSnowplowCapture(page, mb.baseUrl)`:
+1. `page.addInitScript` installs a setter on `window.MetabaseBootstrap` (the
+   inline settings blob the backend embeds in index.html) forcing
+   `snowplow-enabled`/`anon-tracking-enabled` true and `snowplow-url` to the
+   app's **own origin**. Route and patch `/api/session/properties` the same way —
+   `trackSchemaEvent` re-reads `Settings.snowplowEnabled()` per event, so a later
+   site-settings refresh would restore the backend value.
+2. `page.route` catches the tracker's POST to
+   `/com.snowplowanalytics.snowplow/tp2`, base64url-decodes `ue_px` (or reads
+   `ue_pr`), and records `data.data` — byte-identical to micro's
+   `event.unstruct_event.data.data`, which is what
+   `H.expectUnstructuredSnowplowEvent` matches on.
+
+**Why the app's own origin is load-bearing (generalisable):** the tracker POSTs
+`application/json` **plus an `SP-Anonymous` header**, so any cross-origin
+collector triggers a CORS **preflight** — and **Playwright does not intercept
+preflight `OPTIONS`**. The preflight fails against a dead collector, the real
+POST is never sent, and `page.on("request")` never sees a body. Pointing the
+collector at the app origin removes CORS entirely. **Any port that wants to
+observe a POST body sent to a third-party origin has this problem**; re-pointing
+the client at the app origin is the cheap fix.
+
+**Artifact-dependent defaults — know these before debugging.** `snowplow-available`
+defaults to `config/is-prod?` → **true on the jar**, false in source mode;
+`snowplow-url` defaults to **`https://sp.metabase.com` on the jar**, localhost:9090
+in dev. Without the client-side override, a jar-mode port fires real analytics at
+Metabase's production collector. Also: if a slot backend has
+`MB_SNOWPLOW_URL`/`MB_SNOWPLOW_AVAILABLE` in its process env from an earlier
+session, env beats the app DB and the settings API silently refuses to change
+them (`is_env_setting: true` in `GET /api/setting`) — reboot the slot.
+
+**The gap, stated:** this cannot reproduce `expectNoBadSnowplowEvents`, which asks
+micro for **Iglu schema validation failures**. The port degrades it to a
+structural check, so it does NOT catch "the FE emits a field the schema rejects".
+Closing that means running `snowplow/iglu-client-embedded/schemas` through a
+JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-up.
+
+## Gotchas added in batch 12
+
+- **`pressSequentially` focuses but never CLICKS.** `SearchBar` opens on the
+  container's `onClick`, so typing yields a populated input and **zero**
+  `/api/search` requests. Click first. (Fingerprint: failure surfaces 15s later
+  at an unrelated event assertion.)
+- **`locator.count()` does not retry.** A still-loading popover returns 0, a
+  `for`-loop over that count ticks zero times, and the subsequent Apply is a
+  silent no-op. Await a first-element visibility assertion before counting.
+- **Read the modal component before picking the endpoint to anchor on.** Metric
+  "Duplicate" goes through `POST /api/card` (`CardCopyModal` uses
+  `useCreateCardMutation`) even though `metabase/api/card.ts` defines a
+  `copyCard` mutation against `/api/card/:id/copy`. Anchoring on the obvious copy
+  endpoint burns 30s while the page has already navigated to the new card.
+- **`*/` inside a JSDoc block silently terminates the comment** — the house-style
+  `create*/getTableId` phrasing reports as four syntax errors on the import list
+  below it. Write `create\*/…` or reword.
+- **`MetabaseApi` has no `delete` shorthand** — port `cy.request("DELETE", …)`
+  via `api.fetch("DELETE", …)`.
+- **Submitting a form while a `MultiAutocomplete`/`PillsInput` holds focus
+  silently does nothing.** A real Playwright mousedown on the submit button blurs
+  the focused `PillsInput`, whose blur handler re-renders the form — mouseup then
+  lands on a *replaced node*, so **no `click` event is ever delivered**. Nothing
+  errors; the filter is simply never applied. `force: true` fails identically
+  (actionability was never the issue). Cypress never hit this because its
+  `.click()` dispatches the whole sequence at the already-resolved element.
+  Fix: `blur()` the input first, then click normally (`dispatchEvent("click")`
+  and `focus()+Enter` also work). **Latent across a whole spec, not a one-off** —
+  in table-collection-permissions one instance failed on run 1, a second only
+  under `--repeat-each=2`, and a third with identical construction has never
+  failed. Generalise to any port that submits a form while an autocomplete has
+  focus.
+
 ### Consolidation candidates surfaced this stretch (later pass)
 - **`openTable`-with-`limit`** — re-implemented 3× (table-drills, column-shortcuts,
   binning); shared `openTable`/`openOrdersTable`/`openReviewsTable` drop `limit`.
@@ -973,8 +1054,20 @@ matching element.
   `datamodel-segments.ts`, `segments-data-studio.ts` — hoist to one module.
 - **`undoToast`** (metrics.ts) ≡ **`undoToastList`** (organization.ts) —
   byte-identical `getByTestId("toast-undo")`; unify into `ui.ts`.
-- **`support/measures-queries.ts` `_measures_reexports`** — WIP scaffolding left
-  behind when batch-11 landed; clean up.
+- **Two `MeasureEditor` helper objects** — `measures-queries.ts` (library route)
+  and `measures-data-studio.ts` (data-model route) both port the same single
+  Cypress `H.DataModel.MeasureEditor`. Clean consolidation target.
+  (The `_measures_reexports` scaffolding previously flagged here is gone —
+  verified absent 2026-07-20.)
+
+Batch-12 additions (all cases where Cypress has exactly ONE copy, so
+consolidating stays faithful):
+- **`commandPaletteSearch` — re-implemented 5×.** All copies identical except
+  prior ports hardcoded `viewAll = true`, which is the only reason
+  `search-snowplow` needed its own. Parameterise it.
+- **`dataStudioNav` ×4**, **`createCollection(api, name)` ×5**.
+- **The `e2e-dependency-helpers.ts` surface is smeared across three port
+  modules** — proposes `support/dependencies.ts` + `support/transforms.ts`.
 
 Rule still in force for all of the above: **only consolidate toward a shape
-Cypress already has** (faithfulness > DRY). All four qualify.
+Cypress already has** (faithfulness > DRY). All qualify.
