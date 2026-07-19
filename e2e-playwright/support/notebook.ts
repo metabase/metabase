@@ -95,7 +95,12 @@ export async function assertQueryBuilderRowCount(page: Page, count: number) {
 }
 
 export function tableHeaderColumn(page: Page, name: string): Locator {
+  // Scope to the interactive table header (H.tableInteractiveHeader =
+  // getByTestId("table-header")), matching the Cypress helper. Page-wide
+  // header-cell matching caught a second "Quantity" from the sticky
+  // object-detail column on the drill dashboard (CI batch-9 s5).
   return page
+    .getByTestId("table-header")
     .getByTestId("header-cell")
     .filter({ hasText: new RegExp(`^${escapeRegExp(name)}$`) });
 }

@@ -38,6 +38,10 @@
 - `assertPermissionOptions` — Port of H.assertPermissionOptions: the open permission popover shows exactly
 - `mockSessionPropertiesMerging` — Port of the split-permission tests' `cy.intercept("/api/session/properties",
 
+## admin-tools-help.ts
+- `mockSessionPropertiesTokenFeatures` — Port of H.mockSessionPropertiesTokenFeatures: intercept GET
+- `executeCreateGrantAccessFlow` — Port of the spec-local executeCreateGrantAccessFlow: open the grant-access
+
 ## admin-tools.ts
 - `createMockTask` — Port of createMockTask (metabase-types/api/mocks/task.ts). */
 - `formatTimestamp` — The FE formats downloaded-log timestamps with `dayjs(ts).format()`
@@ -289,6 +293,10 @@
 - `verifyNotebookQuery`
 - `createMultiStageQuery`
 
+## collection-picker-tenants.ts
+- `createNewCollectionFromHeader` — Port of the repeated
+- `selectSharedCollectionInPicker` — Navigate the open entity picker into the tenant root ("Shared collections"),
+
 ## collections-cleanup.ts
 - `STATIC_ORDERS_ID` — The ORDERS table's static (snapshot-stable) id — mirrors
 - `getCollectionActions` — Port of H.getCollectionActions (e2e-collection-helpers.ts). */
@@ -345,6 +353,9 @@
 - `waitForCollectionGraph` — GET /api/collection/graph — the Cypress "@permissionsGraph" alias. */
 - `waitForPermissionsGroups` — GET /api/permissions/group — the Cypress "@permissionsGroups" alias. */
 - `collectionRow` — The row whose exact-text cell equals `item` (for hover/checkbox probes). */
+
+## collections-reproductions.ts
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (cypress_sample_instance_data.js). */
 
 ## collections-trash.ts
 - `archiveCollection` — Port of H.archiveCollection (api/archiveCollection.ts). */
@@ -431,6 +442,17 @@
 - `getHeadingCardDetails` — Port of H.getHeadingCardDetails (threads col + dashboard_tab_id). */
 - `getTextCardDetails` — Port of H.getTextCardDetails (threads col + dashboard_tab_id). */
 
+## content-translation-upload-and-download.ts
+- `nonAsciiFieldNames`
+- `portugueseFieldNames`
+- `invalidLocaleXX`
+- `multipleInvalidLocales`
+- `stringTranslatedTwice`
+- `selectDictionaryFile` — Drive the hidden CSV file input and confirm the replace-dictionary dialog,
+- `uploadTranslationDictionary` — Port of the spec-local uploadTranslationDictionary: sign in as admin (the
+- `assertOnlyTheseTranslationsAreStored` — Port of the spec-local assertOnlyTheseTranslationsAreStored: sign a guest JWT
+- `generateLargeCSV` — Port of the spec-local generateLargeCSV. */
+
 ## create-queries.ts
 - `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed id. */
 - `NATIVE_QUERIES_PERMISSION_INDEX` — The spec's NATIVE_QUERIES_PERMISSION_INDEX (the create-queries column). */
@@ -470,6 +492,50 @@
 ## custom-column.ts
 - `customExpressionEditor` — Port of H.CustomExpressionEditor.value()'s target: the CodeMirror content
 - `openTableNotebookWithLimit` — Port of H.openTable({ mode: "notebook", limit, table }). */
+
+## custom-viz.ts
+- `STATIC_ORDERS_ID` — SAMPLE_DB_TABLES.STATIC_ORDERS_ID (e2e/support/cypress_data.js). */
+- `ALL_USERS_GROUP` — USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js). */
+- `AGGREGATED_VALUE`
+- `AGGREGATED_VALUE_FORMATTED`
+- `mainAppLinkText` — "Main app" / "Admin" nav labels (e2e-ui-elements-helpers.js). */
+- `adminAppLinkText`
+- `CUSTOM_VIZ_FIXTURE_TGZ`
+- `CUSTOM_VIZ_FIXTURE_TGZ_2`
+- `CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY`
+- `CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT`
+- `CUSTOM_VIZ_IDENTIFIER`
+- `CUSTOM_VIZ_IDENTIFIER_2`
+- `CUSTOM_VIZ_IDENTIFIER_3_SECURITY`
+- `CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT`
+- `CUSTOM_VIZ_DISPLAY` — Frontend display type: "custom:{identifier}". */
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `addCustomVizPlugin` — Port of H.addCustomVizPlugin: upload a packaged .tgz bundle and register it
+- `getCustomVizFixtureHash` — Port of H.getCustomVizFixtureHash: the SHA-256 of a .tgz on disk. The chip
+- `visitCustomVizSettings`
+- `visitCustomVizNewForm`
+- `visitCustomVizDevelopment`
+- `visitCustomVizEditForm`
+- `getAddVisualizationLink` — Port of H.getAddVisualizationLink. */
+- `getCustomVizPluginIcon` — Port of H.getCustomVizPluginIcon: EntityIcon renders as role="img". */
+- `vizTypeSidebar` — Port of H.vizTypeSidebar (e2e-viz-settings-helpers.js). */
+- `dropCustomVizBundle` — Port of H.dropCustomVizBundle: drive the hidden file input. Accepts a path
+- `waitForPluginBundle` — GET /api/ee/custom-viz-plugin/:id/bundle — the "@pluginBundle" alias. */
+- `waitForPluginCreate` — POST /api/ee/custom-viz-plugin — the "@pluginCreate" alias. */
+- `waitForPluginBundleReplace` — PUT /api/ee/custom-viz-plugin/:id/bundle — the bundle-replace aliases. */
+- `drillThroughDemoVizClick`
+- `buildDocumentWithCustomVizCard`
+- `updateAdvancedPermissionsGraph`
+- `interceptInjectedBundle` — Register a route that rewrites the plugin bundle response body via
+- `interceptFailingBundle` — Register a route that fails the bundle with the given status/body (the
+- `collectConsole` — Wire a collector to `page.on("console")`. Each message's args are resolved in
+- `expectConsoleErrorMatch` — Port of `should("have.been.calledWithMatch", sinon.match.has("message", regex))`. */
+- `expectConsoleMatch` — Like the above but matches any console channel (some membrane logs use warn). */
+- `expectConsoleCalledWith` — Port of `should("have.been.calledWith", ...args)` — exact joined text. */
+- `countCanaryRequests` — Count requests to the sandbox canary URL. Port of
 
 ## dashboard-card-fetching.ts
 - `ORDERS_COUNT_QUESTION_ID` — Ports of ORDERS_COUNT_QUESTION_ID / ORDERS_BY_YEAR_QUESTION_ID
@@ -867,6 +933,10 @@
 - `assertDashboardFilterMapping` — Port of assertDashboardFilterMapping: open the filter's mapping and assert
 - `updateCollectionGraph` — Port of cy.updateCollectionGraph: GET the collection graph, shallow-merge the
 
+## data-model-permissions.ts
+- `savePermissionsGraph` — Port of the spec-local savePermissionsGraph. */
+- `waitForTableMetadata` — GET /api/table/:id/query_metadata — the Cypress @tableMetadataFetch alias. */
+
 ## data-model.ts
 - `SAMPLE_DB_SCHEMA_ID` — Mirrors e2e/support/cypress_data.js */
 - `areas`
@@ -939,6 +1009,11 @@
 - `runTransformAndWaitForSuccess` — Port of H.runTransformAndWaitForSuccess (e2e-transform-helpers.ts):
 - `createMockCard` — Minimal stand-in for createMockCard (metabase-types/api/mocks/card.ts): the
 - `createDocument` — Port of H.createDocument (api/createDocument.ts) — the `cards`-carrying
+
+## dependency-unreferenced-list.ts
+- `DependencyDiagnostics` — Port of H.DependencyDiagnostics (e2e-dependency-helpers.ts) — the
+- `getNodeName` — Port of getNodeName (spec-local): tables report display_name, everything
+- `waitForUnreferencedEntities` — Port of H.waitForUnreferencedEntities (e2e-dependency-helpers.ts): poll
 
 ## detail-view.ts
 - `visitTable` — Port of DetailView.visitTable: navigate and wait for the table
@@ -1062,6 +1137,13 @@
 - `lastVisibleNodeButtonHref` — The href of the LAST visible node button in DOM order — the Playwright
 - `getInboxWithRetry` — Port of H.getInbox(emailsCount): polls until the inbox holds exactly
 
+## download-permissions.ts
+- `DATA_ACCESS_PERMISSION_INDEX`
+- `DOWNLOAD_PERMISSION_INDEX`
+- `sidebar` — Port of H.sidebar (e2e-ui-elements-helpers.js): cy.get("main aside"). */
+- `assertPermissionForItem` — Port of H.assertPermissionForItem (e2e-permissions-helpers.js): the row's
+- `setDownloadPermissionsForProductsTable` — Port of the spec-local setDownloadPermissionsForProductsTable: grant All
+
 ## downloads.ts
 - `readSheetRows` — Parse an exported file (xlsx or csv — the lib handles both) into rows. */
 - `downloadAndAssert` — Port of H.downloadAndAssert: drives the download popover, asserts the
@@ -1157,10 +1239,25 @@
 - `getFieldIdByName` — Port of H.withDatabase's field-id lookup (e2e-database-metadata-helpers.ts),
 - `holdEmbedRoute` — Playwright equivalent of the spec's `cy.intercept(..., () => deferred)` /
 
+## embedding-snippets.ts
+- `getEmbeddingJsCode` — Port of getEmbeddingJsCode: the server-side signed-URL snippet, as a
+- `IFRAME_CODE` — Port of IFRAME_CODE: the frontend (Pug / Jade) iframe snippet, newlines
+- `codeBlock` — Port of the spec-local codeBlock(): cy.get(".cm-content"). Scoped to the
+- `highlightedTexts` — Port of the spec-local highlightedTexts(): findAllByTestId("highlighted-text"). */
+- `backendSelectButton` — The language <select> input for the server-side snippet. */
+- `frontendSelectButton` — The language <select> input for the client-side snippet. */
+- `toggleAppearanceControl` — The static-embedding appearance controls (background / download Switches)
+
 ## embedding-theme-editor.ts
 - `createThemeViaApi` — Port of the spec-local createThemeViaApi: POST /api/embed-theme with a full
 - `visitThemeEditor` — Port of the spec-local visitThemeEditor: navigate to the editor and wait for
 - `changeColor` — Port of the spec-local changeColor. Opens a ColorSwatchCard's popover by
+
+## embedding-theme-listing.ts
+- `getThemeCard` — Port of the spec-local getThemeCard: the theme card is the parent element of
+- `openThemeActionMenu` — Port of the spec-local openThemeActionMenu: open a theme card's
+- `clickThemeMenuItem` — Port of the spec-local clickThemeMenuItem: open the card's action menu, then
+- `deleteAllThemes` — Port of the spec-local deleteAllThemes: GET every theme and DELETE it.
 
 ## embedding.ts
 - `METABASE_SECRET_KEY` — Port of METABASE_SECRET_KEY (e2e/support/cypress_data.js) — the
@@ -1177,8 +1274,9 @@
 ## entity-picker-shared-tenant-collection.ts
 - `TENANT_ROOT_NAME` — The virtual root under which shared-tenant-collection namespace collections live. */
 - `TENANT_NAMESPACE`
+- `selectTenantSubCollectionInPicker` — Navigate the open entity picker into the tenant root, then into
 - `createTenantCollection` — Port of the spec-local createTenantCollection: a collection in the
-- `setupTenantCollections` — Port of the spec-local setupTenantCollections: a tenant collection + sub-collection. */
+- `setupTenantCollections` — Port of the spec-local setupTenantCollections: a tenant collection + sub-collection.
 
 ## env.ts
 - `BASE_URL`
@@ -1384,6 +1482,22 @@
 ## mcp-apps-settings.ts
 - `pointerReachesLink` — Faithful port of the spec's `realHover` + `mouseenter` probe: move the REAL
 - `clickLinkWithoutFollowing` — Port of the spec's "click but preventDefault so the cursor:// deeplink is not
+
+## measures-queries.ts
+- `MeasureEditor`
+- `visitNewMeasurePage` — Port of H.DataStudio.Tables.visitNewMeasurePage(tableId):
+- `clearCustomExpression` — Port of H.CustomExpressionEditor.clear(): focus, select all, backspace. */
+- `typeCustomExpression` — Port of H.CustomExpressionEditor.type(): real keystrokes. `focus:false`
+- `blurCustomExpression` — Port of H.CustomExpressionEditor.blur(): the upstream clicks the widget's
+- `customExpressionName` — Port of H.CustomExpressionEditor.nameInput(): testid "expression-name". */
+- `updateMeasure` — Port of H.updateMeasure: PUT /api/measure/:id. */
+- `startNewMeasure` — Port of the spec's startNewMeasure. */
+- `saveMeasure` — Port of the spec's saveMeasure: click Save, wait for POST /api/measure, and
+- `expectUndoToast` — Assert an undo toast containing `text` is visible. Toasts stack and a
+- `useMeasureInAdhocQuestion` — Port of the spec's useMeasureInAdhocQuestion. */
+- `breakout` — Port of the spec's breakout(columnName). */
+- `verifyScalarValue` — Port of the spec's verifyScalarValue. */
+- `verifyRowValues` — Port of the spec's verifyRowValues (a custom H.assertTableData that allows
 
 ## metabot-query-builder.ts
 - `allOrdersQuestion` — Port of the spec's module-level `allOrdersQuestion`. */
@@ -1713,6 +1827,24 @@
 - `findGridcell` — Port of the spec-local `findGridcell(text)`:
 - `nextCell` — Port of jQuery `.next()` on a gridcell: the immediately-following sibling
 
+## official-collections.ts
+- `COLLECTION_NAME`
+- `TEST_QUESTION_QUERY`
+- `getPartialPremiumFeatureError` — Port of H.getPartialPremiumFeatureError (e2e-enterprise-helpers.js): the
+- `createOfficialCollection` — Port of H.createCollection({ authority_level }): POST /api/collection. */
+- `openCollection` — Port of the spec-local openCollection. findByText is exact. */
+- `createAndOpenOfficialCollection` — Port of the spec-local createAndOpenOfficialCollection: create an official
+- `changeCollectionTypeTo` — Port of the spec-local changeCollectionTypeTo. */
+- `assertNoCollectionTypeInput` — Port of the spec-local assertNoCollectionTypeInput. */
+- `assertHasCollectionTypeInput` — Port of the spec-local assertHasCollectionTypeInput. */
+- `assertNoCollectionTypeOption` — Port of the spec-local assertNoCollectionTypeOption. `scope` mirrors the two
+- `assertSidebarIcon` — Port of the spec-local assertSidebarIcon: the collection's sidebar row (the
+- `assertSearchResultBadge` — Port of the spec-local assertSearchResultBadge: within the search-app, the
+- `assertHasCollectionBadgeInNavbar` — Port of the spec-local assertHasCollectionBadgeInNavbar. */
+- `testOfficialBadgeInSearch` — Port of testOfficialBadgeInSearch: one search query, then assert the badge
+- `testOfficialBadgePresence` — Port of the module-level testOfficialBadgePresence. */
+- `testOfficialQuestionBadgeInRegularDashboard` — Port of the module-level testOfficialQuestionBadgeInRegularDashboard. */
+
 ## offset.ts
 - `addCustomAggregation` — Port of the spec-local addCustomAggregation. */
 - `addBreakout` — Port of the spec-local addBreakout. */
@@ -1758,11 +1890,30 @@
 - `undoToastList` — Port of H.undoToastList: findAllByTestId("toast-undo"). */
 - `openDashboardMenu` — Port of H.openDashboardMenu (e2e-dashboard-helpers.ts). */
 
+## performance-caching.ts
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (cypress_sample_instance_data.js). Derived
+- `cacheStrategySidesheet` — Port of H.cacheStrategySidesheet: the caching-settings dialog. Returned as a
+- `cacheStrategySelect` — Port of H.cacheStrategySelect: the strategy dropdown inside the invalidation
+- `cacheStrategyForm` — The strategy invalidation form. findByRole name string → exact (rule 1). */
+- `selectCacheStrategy` — Port of H.selectCacheStrategy: open the strategy dropdown and pick an option
+- `saveCacheStrategyForm` — Port of the spec-local saveCacheStrategyForm: click Save in the invalidation
+- `openSidebarCacheStrategyForm` — Port of the spec-local openSidebarCacheStrategyForm: open the settings
+- `cancelConfirmationModal` — Port of the spec-local cancelConfirmationModal. The confirm-modal test id is
+- `preemptiveCachingSwitch` — Port of the spec-local preemptiveCachingSwitch. */
+- `preemptiveCachingSwitchInput` — The role="switch" input inside the preemptive-caching switch. Toggled by
+
 ## permissions.ts
 - `ADMIN_PERSONAL_COLLECTION_ID` — Port of ADMIN_PERSONAL_COLLECTION_ID from
 - `signInWithCachedSession` — Sign in as any user with a cached session (e.g. "none"), mirroring the
 - `adhocQuestionHash` — Port of adhocQuestionHash (e2e/support/helpers/e2e-ad-hoc-question-helpers.js).
 - `visitQuestionAdhoc` — Port of H.visitQuestionAdhoc, minus the notebook mode and the native
+
+## personal-collections.ts
+- `NO_DATA_PERSONAL_COLLECTION_ID` — Port of NO_DATA_PERSONAL_COLLECTION_ID (cypress_sample_instance_data.js). */
+- `NORMAL_USER_ID` — Port of NORMAL_USER_ID (cypress_sample_instance_data.js). */
+- `ALL_TEST_USERS` — Mirrors USERS (e2e/support/cypress_data.js) — the map the spec iterates with
+- `addNewCollection` — Port of the spec-local addNewCollection(name): open the new-collection modal
+- `appendToPlaceholderField` — Port of `cy.findByPlaceholderText(placeholder).type(text).blur()` on the
 
 ## pie-chart.ts
 - `ensurePieChartRendered` — Port of the spec-local ensurePieChartRendered(rows, middleRows, outerRows,
@@ -1808,6 +1959,10 @@
 - `verifyDocumentIsReadOnly` — Port of the spec-local verifyDocumentIsReadOnly: the editor textbox is
 - `verifyCommentsAreHidden` — Port of the spec-local verifyCommentsAreHidden: no per-node comment buttons,
 - `verifyErrorMessage` — Port of the spec-local verifyErrorMessage: PublicError / PublicNotFound
+
+## public-resource-downloads.ts
+- `downloadPublicDashcardCsv` — Port of `H.downloadAndAssert({ publicUuid, isDashboard: true, isEmbed: true,
+- `downloadPublicQuestionCsv` — Port of `H.downloadAndAssert({ publicUuid, isDashboard: false, isEmbed: true,
 
 ## public-sharing-embed-button-behavior.ts
 - `resetSnowplow`
@@ -1891,6 +2046,10 @@
 - `getVisibleSidebarColumns` — Port of the spec's getVisibleSidebarColumns. */
 - `findColumnAtIndex` — Port of the spec's findColumnAtIndex (negative indices count from the
 - `hideColumn` — Port of the spec's hideColumn. Like the Cypress original, no force —
+
+## recently-viewed.ts
+- `advanceServerClockBy` — Port of the spec-local advanceServerClockBy: POST /api/testing/set-time
+- `assertRecentlyViewedItem` — Port of the spec-local assertRecentlyViewedItem: the index-th
 
 ## relative-datetime.ts
 - `STARTING_FROM_UNITS`
@@ -2024,6 +2183,19 @@
 - `createQuestionWithDescription` — Port of H.createQuestion for details the spike's api.createQuestion doesn't
 - `createCollection` — Port of H.createCollection. */
 
+## segments-data-studio.ts
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
+- `getSegmentsBaseUrl`
+- `visitDataStudioSegments` — Port of H.DataModel.visitDataStudioSegments — navigate to a table's segments
+- `visitDataStudioTable` — Port of the spec-local visitDataStudioTable → H.DataModel.visitDataStudio
+- `visitDataModelSegment` — Port of the spec-local visitDataModelSegment: navigate straight to a
+- `SegmentList`
+- `SegmentEditor`
+- `SegmentRevisionHistory`
+
 ## sharing-download-reproductions.ts
 - `remapProductIdToProductTitle` — Port of the repeated
 - `saveAndOverwrite` — Port of the spec-local `saveAndOverwrite`: click the QB header Save, then
@@ -2121,6 +2293,13 @@
 - `getGoogleCard` — Port of the spec-local getGoogleCard: cy.findByTestId("google-setting"). */
 - `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
 - `setupGoogleAuth` — Port of the spec-local setupGoogleAuth: PUT /api/google/settings with the
+
+## summarization.ts
+- `createTestQuery` — Port of H.createTestQuery (api/createTestQuery.ts): POST the MBQL5 test-query
+- `createCard` — Port of H.createCard (api/createCard.ts): POST /api/card with a raw
+- `getRemoveDimensionButton` — Port of H.getRemoveDimensionButton: the "Remove dimension" button only
+- `clickDimensionLeft` — Port of the spec-local `.click({ position: "left" })` on a dimension row —
+- `removeMetricFromSidebar` — Port of the spec-local removeMetricFromSidebar: click the close icon on a
 
 ## supporting-text.ts
 - `DOCUMENT_WITH_SUPPORTING_TEXT`
