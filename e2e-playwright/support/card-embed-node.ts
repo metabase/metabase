@@ -296,11 +296,54 @@ export async function assertFlexContainerCardsOrder(
  *
  * `.node-paragraph` and `.is-empty` are `:global` classes (Editor.module.css),
  * not CSS-module tokens, so they survive the production jar bundle.
+ *
+ * Opening the "/" command dialog is a race that only bites under CI load (the
+ * documented ProseMirror focus/caret gotcha). Two mechanisms:
+ *
+ * 1. Existing card embeds load their queries asynchronously; when a card
+ *    transitions loading -> loaded the editor re-renders and RESETS the
+ *    ProseMirror selection. If that re-render lands between our click on the
+ *    empty paragraph and the "/" keystroke, the caret is clobbered off the
+ *    empty paragraph (observed: onto the end of the intro paragraph), where
+ *    "/" is not a suggestion trigger — so the Command Dialog never opens and
+ *    the "/" sticks as literal text. Wait for every embed to settle first so
+ *    no re-render races the interaction.
+ * 2. `page.keyboard` types at `document.activeElement` with no retry, so if the
+ *    click didn't land focus the "/" goes to `<body>` and nothing is inserted.
+ *
+ * The Command extension is tiptap's `@tiptap/suggestion` with `char: "/"`, so
+ * the dialog opens deterministically once "/" lands in an empty block. So:
+ * settle the cards, assert the editor is focused before typing, then wrap
+ * open-slash-menu + assert-dialog in a toPass loop — a dropped "/" inserts
+ * nothing, leaving the empty paragraph in place to click again, so a missed
+ * trigger self-heals (the re-nudge pattern PORTING.md prescribes for the editor
+ * autocomplete).
  */
 export async function addNewStandaloneCard(page: Page, cardName: string) {
-  await page.locator(".node-paragraph.is-empty").first().click();
-  await addToDocument(page, "/", false);
-  await commandSuggestionItem(page, "Chart").click();
+  const editor = documentContent(page)
+    .locator('[contenteditable="true"]')
+    .first();
+  const chartOption = commandSuggestionItem(page, "Chart");
+
+  // No embed is mid-load (a loading card renders "Loading question..." and no
+  // title): once none remain, the caret-clobbering re-renders are done.
+  await expect(
+    documentContent(page).getByText("Loading question...", { exact: true }),
+  ).toHaveCount(0);
+
+  await expect(async () => {
+    // A prior attempt's "/" may have opened the dialog after we'd already
+    // thrown — don't re-trigger on top of an open dialog.
+    if (await chartOption.isVisible()) {
+      return;
+    }
+    await page.locator(".node-paragraph.is-empty").first().click();
+    await expect(editor).toBeFocused({ timeout: 5_000 });
+    await addToDocument(page, "/", false);
+    await expect(chartOption).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
+  await chartOption.click();
   await commandSuggestionItem(page, /Browse all/).click();
   await pickEntity(page, { path: ["Our analytics", cardName], select: true });
 }

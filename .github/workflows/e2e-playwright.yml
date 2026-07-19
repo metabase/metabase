@@ -47,7 +47,10 @@ jobs:
   e2e-playwright:
     needs: uberjar
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 45
+    # Raised 45->60: at ~207 specs the 4-way shards run ~41-45 min (s4 hit the
+    # 45 ceiling and was cancelled). 60 gives margin without adding runners; if
+    # per-shard time climbs again, bump SHARD_TOTAL + the matrix list instead.
+    timeout-minutes: 60
     name: e2e-playwright-ee-s${{ matrix.shard }}
     strategy:
       fail-fast: false
