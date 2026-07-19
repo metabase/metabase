@@ -32,6 +32,7 @@
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql
+    BatchUpdateException
     Connection
     PreparedStatement
     ResultSet
@@ -1188,7 +1189,12 @@
                      ^String (format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema))
           (.addBatch ^Statement stmt
                      ^String (format "DROP USER IF EXISTS %s" quoted-user))
-          (.executeBatch ^Statement stmt))))))
+          (try
+            (.executeBatch ^Statement stmt)
+            ;; unwrap so the failure reads as the plain server error instead of
+            ;; "Batch entry N ... Call getNextException to see other errors"
+            (catch BatchUpdateException e
+              (throw (or (.getNextException e) e)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "metabot/prompts/dialects/redshift.md")
