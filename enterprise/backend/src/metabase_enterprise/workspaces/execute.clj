@@ -20,3 +20,11 @@
      (catch Throwable t
        (log/error t "Async workspace task failed"))))
   nil)
+
+(defn poll-until
+  "Call `thunk` every `interval-ms` until `(done? result)` is truthy and return
+   that result. Throws when `timeout-ms` elapses without a truthy `done?`."
+  [{:keys [timeout-ms] :as opts}]
+  (or (u.jvm/poll opts)
+      (throw (ex-info "Timed out waiting for an async task to finish"
+                      {:timeout-ms timeout-ms}))))

@@ -34,11 +34,13 @@
     (destroy! [_ _ db _] (swap! database-calls conj [:destroy! (:id db)]) nil)))
 
 (defn- stub-instance-provisioner
-  "InstanceProvisioner that never talks to a real service."
+  "InstanceProvisioner that never talks to a real service and starts instantly."
   []
   (reify provisioning.instance/InstanceProvisioner
     (create! [_ _workspace _config]
-      {:id (str (random-uuid)) :url "https://example.com"})
+      {:id (str (random-uuid)) :url "https://example.com" :status :running})
+    (instance [_ _workspace instance-id]
+      {:id instance-id :url "https://example.com" :status :running})
     (delete! [_ _workspace] nil)))
 
 (use-fixtures :once
@@ -156,6 +158,7 @@
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
                       (create! [_ _ _] (throw (ex-info "no capacity" {})))
+                      (instance [_ _ id] {:id id :url "https://example.com" :status :running})
                       (delete! [_ _] nil))]
         (is (thrown-with-msg? ExceptionInfo #"no capacity"
                               (provisioning/provision-workspace! (workspace-row ws-id)))))
@@ -180,7 +183,8 @@
       (provisioning/provision-workspace! (workspace-row ws-id))
       (with-redefs [provisioning.instance/instance-provisioner
                     (reify provisioning.instance/InstanceProvisioner
-                      (create! [_ _ _] {:id "x" :url "https://example.com"})
+                      (create! [_ _ _] {:id "x" :url "https://example.com" :status :running})
+                      (instance [_ _ id] {:id id :url "https://example.com" :status :running})
                       (delete! [_ _] (throw (ex-info "instance stuck" {}))))]
         (is (thrown-with-msg? ExceptionInfo #"instance stuck"
                               (provisioning/deprovision-workspace! (workspace-row ws-id)))))
@@ -207,7 +211,8 @@
       (let [received (atom nil)]
         (with-redefs [provisioning.instance/instance-provisioner
                       (reify provisioning.instance/InstanceProvisioner
-                        (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com"})
+                        (create! [_ _ config] (reset! received config) {:id "i" :url "https://example.com" :status :running})
+                        (instance [_ _ id] {:id id :url "https://example.com" :status :running})
                         (delete! [_ _] nil))]
           (provisioning/provision-workspace! (workspace-row ws-id)))
         (is (=? {:version 1
@@ -229,6 +234,40 @@
       (is (=? {:status :database-provisioning}
               (provisioning/set-workspace-provisioning-status! (workspace-row ws-id))))
       (is (= :database-provisioning (:status (workspace-row ws-id)))))))
+
+(deftest provision-instance-polls-until-running-test
+  (testing "provision-instance! records the ids up front, then polls until the instance is :running"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}]
+      (let [statuses (atom [:starting :starting :running])
+            polls    (atom 0)]
+        (with-redefs [provisioning.instance/instance-poll-interval-ms 1
+                      provisioning.instance/instance-provisioner
+                      (reify provisioning.instance/InstanceProvisioner
+                        (create! [_ _ _] {:id "async-1" :url "https://example.com" :status :creating})
+                        (instance [_ _ id]
+                          (swap! polls inc)
+                          {:id id :url "https://example.com" :status (ffirst (swap-vals! statuses rest))})
+                        (delete! [_ _] nil))]
+          (provisioning/provision-workspace! (workspace-row ws-id)))
+        (is (= 3 @polls) "polling continues through :starting until the terminal status")
+        (is (=? {:status :provisioned :instance_id "async-1" :instance_url "https://example.com"}
+                (workspace-row ws-id)))))))
+
+(deftest provision-instance-error-status-test
+  (testing "an instance that lands in :error fails the run but keeps the recorded ids"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}]
+      (with-redefs [provisioning.instance/instance-provisioner
+                    (reify provisioning.instance/InstanceProvisioner
+                      (create! [_ _ _] {:id "doomed-1" :url "https://example.com" :status :creating})
+                      (instance [_ _ id] {:id id :url "https://example.com" :status :error})
+                      (delete! [_ _] nil))]
+        (is (thrown-with-msg? ExceptionInfo #"failed to start"
+                              (provisioning/provision-workspace! (workspace-row ws-id)))))
+      (is (=? {:status         :instance-provisioning-failure
+               :status_details "Workspace instance failed to start"
+               :instance_id    "doomed-1"}
+              (workspace-row ws-id))
+          "the instance identifiers stay recorded for the retry's cleanup"))))
 
 (deftest provision-workspace-noop-when-provisioned-test
   (testing "provisioning a fully-provisioned workspace is a no-op"
