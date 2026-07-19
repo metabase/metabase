@@ -139,12 +139,26 @@
           (is (false? (setup/has-user-setup)))
           (advanced-config.file/initialize!
            {:version 1
-            :config  {:users [{:first_name   nil
-                               :last_name    nil
+            :config  {:users [{:first_name   "First"
+                               :last_name    "Last"
                                :email        "boot@config.test"
                                :password     "sUp3r-s3cret1"
                                :is_superuser true}]}})
           (is (true? (setup/has-user-setup)))
-          (is (=? {:is_superuser true, :first_name nil, :last_name nil}
-                  (t2/select-one :model/User :email "boot@config.test"))
-              "users without a first or last name are allowed"))))))
+          (is (=? {:is_superuser true}
+                  (t2/select-one :model/User :email "boot@config.test"))))))))
+
+(deftest config-user-entry-allows-nil-names-test
+  (testing "users entries without a first or last name are allowed"
+    (mt/with-premium-features #{:config-text-file}
+      (mt/with-model-cleanup [:model/User]
+        (let [email (u/lower-case-en (str (mt/random-name) "@config.test"))]
+          (binding [advanced-config.file/*supported-versions* {:min 1 :max 1}]
+            (advanced-config.file/initialize!
+             {:version 1
+              :config  {:users [{:first_name nil
+                                 :last_name  nil
+                                 :email      email
+                                 :password   "sUp3r-s3cret1"}]}}))
+          (is (=? {:first_name nil, :last_name nil}
+                  (t2/select-one :model/User :email email))))))))
