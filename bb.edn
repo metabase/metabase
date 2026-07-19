@@ -258,6 +258,30 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
+  modules-validate
+  {:doc "Validate module config, ownership, visibility, API, and model boundaries"
+   :examples [["./bin/mage modules-validate" "Run every module-config validation"]
+              ["./bin/mage modules-validate --update-ratchets" "Commit any lower module-debt ratchets, then validate"]]
+   :options [["-u" "--update-ratchets" "Lower module-debt ratchets to current values; refuses increases"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-validate-config! parsed))}
+
+  modules-expanded-config
+  {:doc "Print module config with inherited values, defaults, and wildcards expanded"
+   :examples [["./bin/mage modules-expanded-config" "Print effective module config as EDN"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-print-expanded-config! parsed))}
+
+  modules-tree
+  {:doc "Print the module hierarchy as a tree (enterprise extensions nested under the module they extend)"
+   :examples [["./bin/mage modules-tree" "Print the full module tree; * marks modules kept in place via :ns-prefix"]
+              ["./bin/mage modules-tree --nested-only" "Only print modules that have nested children"]
+              ["./bin/mage modules-tree --prefixes" "Print the :ns-prefix instead of the star"]]
+   :options [["-n" "--nested-only" "Only print modules that have nested children"]
+             ["-p" "--prefixes" "Print the :ns-prefix instead of the star"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-print-module-tree parsed))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]

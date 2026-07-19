@@ -1,0 +1,76 @@
+;; Modules that do NOT trigger driver tests in CI when changed, even though the dependency graph says
+;; `driver`/`transforms` transitively depend on them (see `mage.modules/driver-affecting-overrides`).
+;;
+;; Every entry is an unverified bet that the coupling is not real enough to break a driver test. The
+;; set should only shrink: its size is a module-boundary ratchet (`:driver-test-exempt-modules`), and
+;; `metabase.core.modules-test` fails any entry the graph no longer justifies (not a declared module,
+;; or no longer upstream of a driver-triggering module).
+{:exempt-modules
+ #{analytics
+   analytics-interface
+   api
+   api-scope
+   api-keys
+   appearance
+   audit-app
+   auth-identity
+   auth-provider
+   batch-processing
+   channel
+   classloader
+   collections
+   config
+   content-verification
+   dashboards
+   documents
+   eid-translation
+   embedding
+   enterprise/api
+   enterprise/scim
+   enterprise/serialization
+   enterprise/sso
+   enterprise/transforms
+   enterprise/transforms-inspector
+   entity-retrieval
+   events
+   formatter
+   geojson
+   initialization-status
+   interestingness
+   internal-stats
+   llm
+   login-history
+   mcp
+   metabot
+   notification
+   oauth-server
+   permissions
+   premium-features
+   public-sharing
+   pulse
+   remote-sync
+   request
+   sample-data
+   search
+   secrets
+   server
+   session
+   settings
+   setup
+   slackbot
+   sso
+   staleness
+   startup
+   system
+   task
+   task-history
+   tiles
+   timeline
+   tracing
+   types
+   users
+   util
+   version
+   view-log
+   warehouse-schema
+   workspaces}}

@@ -4,9 +4,9 @@
   The heavy lifting already lives in [[dev.deps-graph]] (which computes the correct `:api` and `:uses`
   for every module) and [[dev.model-boundary-config]] (which computes `:model-exports`/`:model-imports`).
   This namespace ties them together into a single writer that rewrites the four *generated* keys in place,
-  sorted, while preserving everything a human owns: `:team`, `:friends`, header/footer comments, inline
-  `;;` annotations on set elements, the `:ignored-namespace-patterns` key, and the sentinel values
-  `:any`/`:bypass`.
+  sorted, while preserving everything a human owns: `:team`, `:friends`, `:ns-prefix`, `:module-exports`,
+  header/footer comments, inline `;;` annotations on set elements, the `:ignored-namespace-patterns` key,
+  and the sentinel values `:any`/`:bypass`.
 
   Usage:
 
@@ -18,8 +18,9 @@
 
   Scope: this auto-fixes the *content and ordering* of `:api`, `:uses`, `:model-exports`, and
   `:model-imports` for modules that already exist in the config. Structural changes — adding a brand new
-  module (which needs a human-assigned `:team`), removing a stale one, or reordering modules — are only
-  *reported* as warnings, never performed, since they require judgement this tool doesn't have."
+  module (whose namespace prefix and ownership may need human input), removing a stale one, or reordering
+  modules — are only *reported* as warnings, never performed, since they require judgement this tool
+  doesn't have."
   (:require
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
@@ -209,7 +210,8 @@
   seconds."
   ([]
    (let [config (deps-graph/kondo-config)
-         f-deps (future (deps-graph/dependencies))
+         prefix->module (deps-graph/build-prefix->module config)
+         f-deps (future (deps-graph/dependencies prefix->module))
          f-own  (future (deps-graph/model-ownership))
          f-refs (future (deps-graph/model-references-by-module))]
      (compute-desired config @f-deps @f-own @f-refs)))
@@ -242,7 +244,8 @@
         sorted?     (= file-modules (sort-module-names file-modules))]
     (cond-> []
       (seq to-add)
-      (conj (str "New module(s) not in config — add them by hand (they need a :team): "
+      (conj (str "New module(s) not in config — add them by hand (choose their namespace prefix and "
+                 "ownership; nested modules may inherit :team): "
                  (str/join ", " to-add)))
 
       (not sorted?)
@@ -282,23 +285,37 @@
     {:text     (n/string edited)
      :warnings (structural-warnings file-modules desired)}))
 
+(defn- sync-stats!
+  "Sync `module-stats.edn` to the (possibly just-rewritten) config. Stats move in both directions by
+  design; keeping them exact here means a `fix-modules-config` run leaves the tree test-clean without a
+  separate updater step. Ratchet violations still fail the test — those need a real fix or a hand edit."
+  []
+  (let [stats (deps-graph/module-boundary-stats)]
+    (when-not (= (deps-graph/committed-module-boundary-stats) stats)
+      (deps-graph/write-module-boundary-stats! stats)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Synced module-stats.edn"))))
+
 (defn update-config!
-  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted.
-  Idempotent: a clean config is left byte-for-byte unchanged. Returns `:updated` or `:unchanged`."
+  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted, then
+  sync `module-stats.edn`. Idempotent: a clean config is left byte-for-byte unchanged. Returns
+  `:updated` or `:unchanged` (for the config file; the stats file may sync on either result)."
   []
   (let [original                (slurp config-path)
         {:keys [text warnings]} (rewrite-config original (compute-desired))]
     #_{:clj-kondo/ignore [:discouraged-var]}
     (doseq [w warnings]
       (println (str "WARNING: " w)))
-    (if (= text original)
-      (do #_{:clj-kondo/ignore [:discouraged-var]}
-       (println "config.edn already up to date.")
-          :unchanged)
-      (do (spit config-path text)
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "Updated" config-path)
-          :updated))))
+    (let [result (if (= text original)
+                   (do #_{:clj-kondo/ignore [:discouraged-var]}
+                    (println "config.edn already up to date.")
+                       :unchanged)
+                   (do (spit config-path text)
+                       #_{:clj-kondo/ignore [:discouraged-var]}
+                       (println "Updated" config-path)
+                       :updated))]
+      (sync-stats!)
+      result)))
 
 (defn fix-config!
   "Cold-JVM entry point for `clojure -X:dev dev.modules-config/fix-config!`. Takes (and ignores) the
