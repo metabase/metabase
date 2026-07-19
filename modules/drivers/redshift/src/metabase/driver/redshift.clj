@@ -1025,7 +1025,7 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
+              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift

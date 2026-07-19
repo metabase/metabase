@@ -1348,7 +1348,7 @@
            (try
              (.executeBatch ^Statement stmt)
              (catch Throwable t
-               (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))))))
+               (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
