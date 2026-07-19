@@ -1693,7 +1693,7 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
@@ -1709,7 +1709,10 @@
                       (into [(format "DROP OWNED BY %s" quoted-user)
                              (format "DROP USER IF EXISTS %s" quoted-user)]))]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every
@@ -1752,7 +1755,10 @@
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")

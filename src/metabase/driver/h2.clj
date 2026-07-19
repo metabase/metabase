@@ -780,7 +780,7 @@
          (try
            (.executeBatch ^Statement stmt)
            (catch Throwable t
-             (throw (driver.u/scrub-exceptions t [password])))))))
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password])))))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :h2
@@ -795,7 +795,10 @@
                       (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
                       (format "DROP USER IF EXISTS \"%s\"" username)]]
            (.addBatch ^Statement stmt ^String sql))
-         (.executeBatch ^Statement stmt))))))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/grant-workspace-read-access! :h2
   [driver database workspace schemas]
@@ -813,7 +816,10 @@
            (.addBatch ^Statement stmt
                       ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
                                       (sql.u/quote-name :h2 :schema schema) qu)))
-         (.executeBatch ^Statement stmt))))))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

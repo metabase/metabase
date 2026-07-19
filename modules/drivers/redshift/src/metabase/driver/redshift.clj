@@ -32,7 +32,6 @@
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql
-    BatchUpdateException
     Connection
     PreparedStatement
     ResultSet
@@ -1026,7 +1025,7 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
@@ -1191,8 +1190,8 @@
                      ^String (format "DROP USER IF EXISTS %s" quoted-user))
           (try
             (.executeBatch ^Statement stmt)
-            (catch BatchUpdateException e
-              (throw (or (.getNextException e) e)))))))))
+            (catch Throwable t
+              (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "metabot/prompts/dialects/redshift.md")

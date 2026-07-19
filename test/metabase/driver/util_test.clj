@@ -654,3 +654,16 @@
           trace    (.getStackTrace original)
           e        (driver.u/scrub-exceptions original ["s3cret"])]
       (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
+
+(deftest batch-exception-test
+  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
+    (let [inner (java.sql.SQLException. "user cannot be dropped")
+          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
+                  (.setNextException inner))]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "a BatchUpdateException without a next exception passes through"
+    (let [batch (java.sql.BatchUpdateException. "alone" (int-array 0))]
+      (is (identical? batch (driver.u/batch-exception batch)))))
+  (testing "non-batch throwables pass through"
+    (let [e (ex-info "boom" {})]
+      (is (identical? e (driver.u/batch-exception e))))))

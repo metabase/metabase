@@ -851,6 +851,17 @@
   [msg secrets]
   (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
 
+(defn batch-exception
+  "The per-statement exception hiding inside a `java.sql.BatchUpdateException`
+   (via `.getNextException`), or `t` itself for any other throwable. Rethrow
+   this instead of the raw batch exception so failures read as the plain server
+   error rather than `Batch entry N ... was aborted: ... Call getNextException
+   to see other errors in the batch.`"
+  ^Throwable [^Throwable t]
+  (if (instance? java.sql.BatchUpdateException t)
+    (or (.getNextException ^java.sql.BatchUpdateException t) t)
+    t))
+
 (defn scrub-exceptions
   "Scrub `secrets` from the exception message and cause chain of `t`. Returns a new
    exception with every occurrence of each secret replaced by `****`. Use this to prevent

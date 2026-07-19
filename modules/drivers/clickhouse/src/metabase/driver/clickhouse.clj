@@ -584,7 +584,7 @@
          (try
            (.executeBatch ^Statement stmt)
            (catch Throwable t
-             (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
@@ -610,7 +610,10 @@
          (with-open [stmt (.createStatement conn)]
            (doseq [sql sqls]
              (.addBatch ^Statement stmt ^String sql))
-           (.executeBatch ^Statement stmt)))))))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [driver database workspace]
@@ -626,7 +629,10 @@
                       (format "DROP DATABASE IF EXISTS %s" quoted-db)
                       (format "DROP USER IF EXISTS %s" quoted-user)]]
            (.addBatch ^Statement stmt ^String sql))
-         (.executeBatch ^Statement stmt))))))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/batch-exception t)))))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")
