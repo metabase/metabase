@@ -49,11 +49,24 @@
 - `MetabaseApi` — HTTP client mirroring cy.request semantics: requests run as the currently
 - `resolveToken`
 
+## binning-longitude.ts
+- `LONGITUDE_OPTIONS` — Longitude slice of shared/constants.js LONGITUDE_OPTIONS. */
+- `openPopoverFromDefaultBucketSize` — Port of openPopoverFromDefaultBucketSize (e2e-notebook-helpers.ts). The
+- `assertAxisLabels` — Port of assertOnXYAxisLabels: the ECharts container renders `<text>` nodes
+- `assertXAxisTicks` — Port of assertOnXAxisTicks: each representative value appears as an axis tick.
+
 ## binning-reproductions.ts
 - `createNativeQuestionWithMetadata` — Port of `H.createNativeQuestion(details, { loadMetadata: true })`: the
 - `pickSavedQuestion` — The exact "New question" flow these repros depend on: open the mini picker,
 - `clickBreakoutOptionLeft` — Port of `H.popover().findByRole("option", { name }).click({ position: "left" })`:
 - `openTemporalBucketFromGroupBy` — The temporal-bucket button revealed on hover inside the notebook group-by
+
+## binning-time-series.ts
+- `TIME_OPTIONS` — Port of TIME_OPTIONS (binning/correctness/shared/constants.js). */
+- `openPopoverFromDefaultBucketSize` — Port of the spec-local openPopoverFromDefaultBucketSize: assert the
+- `assertOnHeaderCells` — Port of the spec-local assertOnHeaderCells: the first two header cells are
+- `assertOnTableValues` — Port of the spec-local assertOnTableValues: each representative value appears
+- `assertOnTimeSeriesFooter` — Port of the spec-local assertOnTimeSeriesFooter: the footer filter button is
 
 ## binning.ts
 - `chartPathWithFillColor` — Port of H.chartPathWithFillColor. */
@@ -94,6 +107,19 @@
 - `parameterDetails` — Port of the spec's `parameterDetails`. */
 - `dashboardDetails` — Port of the spec's `dashboardDetails`. */
 - `createDashboardWithQuestion` — Port of the spec-local createDashboardWithQuestion: create the dashboard
+
+## cc-fields.ts
+- `addCustomColumn` — Port of H.addCustomColumn (e2e-bi-basics-helpers.js → initiateAction):
+
+## cc-literals.ts
+- `addCustomColumns` — Port of the spec's module-level addCustomColumns: add each custom column
+- `removeTableFields` — Port of the "literals in custom columns" test's local removeTableFields:
+- `testFilterLiteral` — Port of the "literals in filters" test's local testFilterLiteral: add a
+
+## cc-shortcuts-combine.ts
+- `selectCombineColumns` — Port of the spec-local selectCombineColumns. findByText string is exact. */
+- `selectColumn` — Port of the spec-local selectColumn(index, table, name?): click the index-th
+- `addColumn` — Port of the spec-local addColumn. findByText string is exact. */
 
 ## cc-typing-suggestion.ts
 - `addCustomColumn` — Port of the spec-local addCustomColumn:
@@ -270,6 +296,10 @@
 - `extractColumnAndCheck` — Port of the spec-local extractColumnAndCheck. */
 - `combineColumns` — Port of the spec-local combineColumns. */
 
+## combine-column-drill.ts
+- `peopleIdEmailQuestionDetails` — The shared question both tests visit: PEOPLE limited to ID + Email, so the
+- `openCombineColumnsFromHeader` — Open the Combine-columns editor from a table column header: click the header
+
 ## command-palette.ts
 - `ORDERS_BY_YEAR_QUESTION_ID` — Ports of ORDERS_BY_YEAR_QUESTION_ID from
 - `commandPalette` — Port of H.commandPalette. Accepts a FrameLocator for embedding tests. */
@@ -384,6 +414,10 @@
 - `checkOptionsForFilter` — Port of the spec-local checkOptionsForFilter. */
 - `countDashboardUpdates` — Port of the cy.spy() intercept pattern: counts PUT /api/dashboard/:id
 
+## dashboard-filter-defaults.ts
+- `clearDefaultFilterValue` — Port of the spec-local clearDefaultFilterValue:
+- `setDefaultFilterValue` — Port of the spec-local setDefaultFilterValue: open the default-value picker
+
 ## dashboard-filters-2.ts
 - `ORDERS_DATE_COLUMNS`
 - `ORDERS_NUMBER_COLUMNS`
@@ -450,6 +484,13 @@
 - `getTableCell` — Port of the spec-local getTableCell: find the column index by header text,
 - `addQuestionFromQueryBuilder` — Port of the spec-local addQuestionFromQueryBuilder: from the QB, add a
 
+## dashboard-filters-clear-and-restore.ts
+- `mapFilterToQuestion` — Port of the spec-local mapFilterToQuestion. findByText strings are exact. */
+- `editFilter` — Port of the spec-local editFilter: click a filter pill by name in the
+- `editFilterType` — Port of the spec-local editFilterType: change the "Filter or parameter type"
+- `setFilterSourceFromConnectedFields` — Port of the spec-local setFilterSourceFromConnectedFields. */
+- `checkFilterListSourceHasValue` — Port of H.checkFilterListSourceHasValue (e2e-filter-helpers.js): open the
+
 ## dashboard-filters-date.ts
 - `DASHBOARD_DATE_FILTERS` — Port of DASHBOARD_DATE_FILTERS
 - `setMonthAndYear` — Port of DateFilter.setMonthAndYear. */
@@ -461,6 +502,9 @@
 - `setAdHocFilter` — Port of DateFilter.setAdHocFilter. */
 - `dateFilterSelector` — Port of the spec-local dateFilterSelector switch: apply a filter value in the
 
+## dashboard-filters-location.ts
+- `DASHBOARD_LOCATION_FILTERS`
+
 ## dashboard-filters-management.ts
 - `selectFilter` — Port of the spec-local selectFilter: click a filter pill by name inside the
 - `changeFilterType` — Port of the spec-local changeFilterType: open the "Filter or parameter type"
@@ -469,6 +513,16 @@
 - `expectSidebarHasDisplayValue` — Retried wrapper around findByDisplayValue for `should("exist")` — the sidebar
 - `clickSidebarDisplayValue` — Retried wrapper around findByDisplayValue that clicks the matched control
 - `createDashboardWithFilterAndQuestionMapped` — Port of the spec-local createDashboardWithFilterAndQuestionMapped: a People
+
+## dashboard-filters-misc.ts
+- `createPivotableQuery` — Port of the spec-local createPivotableQuery: Q1 (join + custom column) plus
+- `createAndVisitPivotDashboard` — Port of the spec-local createAndVisitDashboard, specialised to a single
+- `createPivotQuestion` — Port of the spec-local createPivotQuestion. */
+
+## dashboard-filters-number.ts
+- `DASHBOARD_NUMBER_FILTERS`
+- `addWidgetNumberFilter` — Port of addWidgetNumberFilter (native-filters/helpers/e2e-field-filter-helpers.js):
+- `setFilterWidgetValue` — Port of H.setFilterWidgetValue (e2e-ui-elements-helpers.js): open the first
 
 ## dashboard-filters-remapping.ts
 - `findWidget` — Port of the spec-local findWidget: the parameter widget by exact label. */
@@ -501,6 +555,30 @@
 - `checkParameterSidebarDefaultValue` — Port of the spec-local checkParameterSidebarDefaultValue. */
 - `checkResetAllFiltersWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersWorksAcrossTabs. */
 - `checkResetAllFiltersToDefaultWorksAcrossTabs` — Port of the spec-local checkResetAllFiltersToDefaultWorksAcrossTabs. */
+
+## dashboard-filters-sql-management.ts
+- `questionDetails`
+- `setupSqlManagementDashboard` — Port of the number-filter describe's beforeEach: create the native question +
+
+## dashboard-filters-sql-number.ts
+- `questionDetails`
+- `filterDetails`
+- `parameterMapping`
+- `dashboardDetails`
+- `setupSqlNumberDashboard` — Port of the Cypress beforeEach body: create the native question + dashboard,
+
+## dashboard-filters-sql-required-field-filter.ts
+- `questionDetailsWithRequiredFilter` — The required variant of the Cypress `questionDetails` (immer `produce`
+- `filter`
+- `dashboardDetails`
+- `setupRequiredFieldFilterDashboard` — Port of the Cypress `it` setup: create the native question + dashboard, then
+
+## dashboard-filters-sql-required-simple-filter.ts
+- `questionDetails`
+- `filter`
+- `dashboardDetails`
+- `setupRequiredSimpleFilterDashboard` — Port of the Cypress beforeEach body: create the native question + dashboard,
+- `removeDefaultFilterValue` — Port of the spec-local removeDefaultFilterValue:
 
 ## dashboard-filters-text-category.ts
 - `DASHBOARD_TEXT_FILTERS`
@@ -578,6 +656,14 @@
 - `waitForDashcardQuery` — Register BEFORE the triggering action; await after. */
 - `gateResponses` — Hold every matching request until release() is called (the Playwright
 - `delayResponses` — Delay every matching request by delayMs (the spec's res.setDelay(n)).
+
+## dashboard-sections.ts
+- `filterPanel` — Port of the spec-local filterPanel. */
+- `addSection` — Port of the spec-local addSection. findByLabelText strings are exact
+- `selectQuestion` — Port of the spec-local selectQuestion: click the first "Select question"
+- `overwriteDashCardTitle` — Port of the spec-local overwriteDashCardTitle: open the dashcard's visualizer
+- `mapDashCardToFilter` — Port of the spec-local mapDashCardToFilter. */
+- `assertPlaceholderCardCanBeDragged` — Port of the spec-local assertPlaceholderCardCanBeDragged (metabase#UXW-3387):
 
 ## dashboard-tabs.ts
 - `ORDERS_COUNT_QUESTION_ID`
@@ -684,6 +770,10 @@
 - `openLinkSuggestionBrowseAllPicker` — Port of the spec-local openLinkSuggestionBrowseAllPicker: focus the editor,
 - `openLinkMentionMenuBrowseAllPicker` — Port of the spec-local openLinkMentionMenuBrowseAllPicker: focus the editor,
 
+## document-permissions.ts
+- `ALL_USERS_GROUP` — Mirrors USER_GROUPS.ALL_USERS_GROUP (e2e/support/cypress_data.js) — a fixed
+- `newDocumentFromNewMenu` — Port of H.newButton("Document").click(): open the app-bar "New" menu and
+
 ## documents-core.ts
 - `READ_ONLY_PERSONAL_COLLECTION_ID`
 - `NO_SQL_PERSONAL_COLLECTION_ID`
@@ -787,6 +877,17 @@
 - `createDashboardWithDetails` — Like api.createDashboard but accepting arbitrary dashboard fields
 - `addCardToNewDashboard` — Port of the spec-local addCardToNewDashboard from dash_drill.cy.spec.js. */
 - `clickScalarCardTitle` — Port of the spec-local clickScalarCardTitle from dash_drill.cy.spec.js:
+
+## duplicate-dashcards-tabs.ts
+- `PARAMETER`
+- `DASHBOARD_CREATE_INFO`
+- `MAPPED_QUESTION_CREATE_INFO`
+- `createMappedDashcard` — Port of the spec-local createMappedDashcard: a Products dashcard mapped to
+- `EVENTS`
+- `resetSnowplow`
+- `enableTracking`
+- `expectNoBadSnowplowEvents`
+- `expectUnstructuredSnowplowEvent`
 
 ## embedding-dashboard.ts
 - `questionDetails`
@@ -893,12 +994,21 @@
 - `visitDashboardWithParams` — Port of H.visitDashboard's `params` option: same dashcard-query waits as
 - `visitEmbeddedDashboard` — Port of H.visitEmbeddedPage for dashboards, with the `setFilters` option
 
+## filters-view.ts
+- `grantRootCollectionViewAccess` — Port of the describe's beforeEach permission grant: upgrade All Users to
+- `applyVendorSearchFilter` — Apply the VENDOR field filter by searching for a single value. Mirrors the
+- `applyCategoryWidgetFilter` — Apply the CATEGORY field filter by picking a value from the widget list.
+- `expectWrittenInSql` — Assert the QB reflects a saved native (SQL) question. */
+
 ## filters.ts
 - `clauseStepPopover`
 - `containsText` — Port of cy.contains(text) inside a scope: case-sensitive substring match
 
 ## fixtures.ts
 - `test`
+
+## funnel-title-navigation.ts
+- `createFunnelVisualizerDashboard` — Port of the UXW-2692 setup: a native funnel question, a dashboard, and one
 
 ## interactive-embedding.ts
 - `mockRedirectResponse` — Mock an external redirect (e.g. a JWT/SAML IdP bouncing back to the app).
@@ -930,6 +1040,9 @@
 - `createModelFromTableName` — Port of H.createModelFromTableName (e2e-qa-databases-helpers.js). */
 - `signJwt` — Port of cy.task("signJwt") (e2e/support/commands/embedding/signJwt or the
 - `ALL_USERS_GROUP` — Mirrors ALL_USERS_GROUP in e2e/support/cypress_data.js (fixed id baked
+
+## joins-custom-expressions.ts
+- `addJoinConditionCustomExpression` — Add one side of a join condition through the Custom Expression editor: the
 
 ## joins.ts
 - `visitQuestionAdhocNotebook` — Port of H.visitQuestionAdhoc's notebook-mode branch: no results render in
@@ -1012,6 +1125,11 @@
 - `readLegendEntries` — The breakout legend's { label, color(hex) } entries, in DOM order. */
 - `resetDecimalPkTable` — Port of H.resetTestTable({ type: "postgres", table: "decimal_pk_table" })
 
+## metrics-reproductions.ts
+- `main` — Port of H.main(): the page's <main> region. */
+- `delayQueryMetadata` — Port of the issue-47058 intercept: hold every GET /api/card/:id/query_metadata
+- `waitForQueryMetadata` — Await the next GET /api/card/:id/query_metadata response (the delayed one). */
+
 ## metrics.ts
 - `MetricPage`
 - `undoToast`
@@ -1021,6 +1139,7 @@
 - `changeBinningForDimension` — Port of H.changeBinningForDimension: hover the dimension row, click its
 
 ## model-indexes.ts
+- `selectModelColumn` — Select a column in the model metadata editor. The shared
 - `createModelIndex` — Port of H.createModelIndex({ modelId, pkName, valueName }): field ids are
 - `waitForIndexedValueSearchable` — Wait until a freshly indexed value is searchable. Creating a model index
 - `trackCardGets` — Port of the spec's `@cardGet` intercept + `expectCardQueries` assertion:
@@ -1038,6 +1157,11 @@
 - `getCollectionItemCard` — Port of getCollectionItemCard: findByText(name).closest("a"). */
 - `getResults` — Port of getResults: cy.findAllByTestId("result-item"). */
 - `waitForSearch` — Register a wait for the next GET /api/search* (the `@search` alias). */
+
+## models-create.ts
+- `navigateToNewModelPage` — Port of the spec-local navigateToNewModelPage(queryType): visit /model/new
+- `waitForCreateModel` — Register the wait behind the spec's `cy.intercept("POST", "/api/card")`
+- `checkIfPinned` — Port of the spec-local checkIfPinned(modelName): navigate to the root
 
 ## models-list-view.ts
 - `ACCENT1_RGB` — The Cypress spec asserts `Color(colors["accent1"]).rgb().toString()`.
@@ -1153,6 +1277,10 @@
 - `tableHeaderClick`
 - `expressionEditorWidget`
 - `enterCustomColumnDetails` — Minimal port of H.enterCustomColumnDetails: CodeMirror expression input via
+
+## nulls.ts
+- `findGridcell` — Port of the spec-local `findGridcell(text)`:
+- `nextCell` — Port of jQuery `.next()` on a gridcell: the immediately-following sibling
 
 ## onboarding-extras.ts
 - `mockSessionProperties` — Fetch the real /api/session/properties response and overwrite the given
@@ -1358,6 +1486,11 @@
 - `getTableId` — Port of H.getTableId (e2e-qa-databases-helpers.js). */
 - `resyncDatabase` — Port of H.resyncDatabase + waitForSyncToFinish
 
+## search-pagination.ts
+- `waitForSearch` — Register a wait for the next /api/search response (PORTING rule 2 —
+- `waitForCardsIndexed` — The seeded `generated_question` cards are indexed asynchronously after a
+- `commandPaletteSearch` — Port of H.commandPaletteSearch(query) with its default viewAll = true:
+
 ## search.ts
 - `getSearchBar` — Port of H.getSearchBar. */
 - `visitFullAppEmbeddingUrl`
@@ -1392,6 +1525,14 @@
 - `typeInNativeEditor` — Port of H.NativeEditor.type. Only the escape sequences this spec needs are
 - `saveQuestion`
 - `downloadViaUi` — Drives the question download UI and resolves with the resulting Download.
+
+## signin.ts
+- `emailInput` — The email field. `findByLabelText("Email address")` → exact (PORTING rule 1). */
+- `passwordInput` — The password field. `findByLabelText("Password")` → exact. */
+- `signInButton` — Port of `cy.button("Sign in")` — findByRole button, exact name. */
+- `rememberMeCheckbox` — The "Remember me" checkbox (`cy.findByRole("checkbox")`). */
+- `submitLoginForm` — Fill the real login form and submit. */
+- `clickAuthLinkExpectUrl` — Click an auth-page link (by exact name) and wait for the URL to match.
 
 ## smartscalar-trend.ts
 - `menu` — Port of H.menu() (e2e-ui-elements-helpers.js): the open Mantine menu. */
@@ -1440,6 +1581,12 @@
 - `checkFilterValueNotInList` — Port of the spec-local checkFilterValueNotInList: value absent in last popover. */
 - `updateQuestion` — Port of the spec-local updateQuestion: click Save, confirm in the save modal,
 - `runQuery` — Port of SQLFilter.runQuery(xhrAlias): run the query, wait for the specific
+
+## sso-google.ts
+- `CLIENT_ID_SUFFIX` — The suffix every valid Google Sign-In client id must end with. */
+- `getGoogleCard` — Port of the spec-local getGoogleCard: cy.findByTestId("google-setting"). */
+- `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
+- `setupGoogleAuth` — Port of the spec-local setupGoogleAuth: PUT /api/google/settings with the
 
 ## supporting-text.ts
 - `DOCUMENT_WITH_SUPPORTING_TEXT`
@@ -1619,6 +1766,11 @@
 - `showDashcardVisualizerModalSettings` — Port of H.showDashcardVisualizerModalSettings: open the visualizer modal and
 - `saveDashcardVisualizerModalSettings` — Port of H.saveDashcardVisualizerModalSettings (= saveDashcardVisualizerModal). */
 
+## visualizer-columns-mapping.ts
+- `COUNTRY_CODES`
+- `ACCOUNTS_COUNT_BY_COUNTRY`
+- `clickUndoButton` — Port of H.clickUndoButton (cy.findByLabelText("Undo") is exact — rule 1;
+
 ## visualizer-drillthrough.ts
 - `cartesianChartCircleWithColor` — Port of H.cartesianChartCircleWithColor, scoped to a dashcard (the Cypress
 - `applyBrush` — Port of H.applyBrush(left, right), scoped to a dashcard. Cypress fires
@@ -1669,6 +1821,12 @@
 - `registerOauthClient` — Register a dynamic client via `POST /oauth/register`, creating a
 - `approveOauthClient`
 - `denyOauthClient`
+
+## whats-new.ts
+- `mockVersions` — Port of the spec-local mockVersions: stub /api/setting/version-info with the
+- `loadHomepage` — Port of the spec-local loadHomepage: visit "/", wait for the stubbed
+- `seeWhatsNew` — The navbar "See what's new" link. findByText string → exact (rule 1). */
+- `dismissWhatsNew` — The navbar notification's dismiss (close) icon. */
 
 ## worker-backend.ts
 - `startWorkerBackend`
