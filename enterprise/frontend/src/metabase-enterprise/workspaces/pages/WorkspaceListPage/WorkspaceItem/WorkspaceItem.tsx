@@ -194,6 +194,16 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
     useDeleteWorkspaceMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
 
+  const handleProvision = () => {
+    showConfirmation({
+      title: t`Provision this workspace?`,
+      message: t`This will set up temporary database users and schemas and a workspace instance.`,
+      confirmButtonText: t`Provision`,
+      confirmButtonProps: { color: "core-brand" },
+      onConfirm: () => provisionWorkspace(workspace.id),
+    });
+  };
+
   const handleDeprovision = () => {
     showConfirmation({
       title: t`Deprovision this workspace?`,
@@ -225,7 +235,7 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
             <Menu.Item
               leftSection={<FixedSizeIcon name="play" aria-hidden />}
               disabled={isProvisioning(workspace) || isProvisionLoading}
-              onClick={() => provisionWorkspace(workspace.id)}
+              onClick={handleProvision}
             >
               {t`Provision`}
             </Menu.Item>
