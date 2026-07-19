@@ -5,9 +5,11 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.instance :as ws.instance]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.quick-task :as quick-task]
    [metabase.util.yaml :as yaml])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -295,3 +297,45 @@
                 (advanced-config.file.workspace/apply-workspace-section! section)
                 (is (= (:output expectations) (ws.instance/db-workspace-namespace db-id))
                     (str driver " setting output matches fixture"))))))))))
+
+(deftest workspace-with-remote-settings-starts-import-test
+  (testing "a config with both a :workspace section and remote-sync settings starts the initial import"
+    (mt/with-premium-features #{:workspaces :config-text-file}
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-branch nil
+                                           remote-sync-token  nil]
+          (let [started (atom 0)]
+            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+                          remote-sync/start-import! (fn [] (swap! started inc) nil)]
+              (advanced-config.file/initialize!
+               {:version 1
+                :config  {:settings  {:remote-sync-url    "https://github.com/acme/config.git"
+                                      :remote-sync-branch "main"
+                                      :remote-sync-token  "s3cr3t"}
+                          :workspace (workspace-section "ws-test-db")}})
+              (is (= 1 @started)))))))
+    (testing "but not without remote-sync settings"
+      (mt/with-premium-features #{:workspaces :config-text-file}
+        (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+          (let [started (atom 0)]
+            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+                          remote-sync/start-import! (fn [] (swap! started inc) nil)]
+              (advanced-config.file/initialize!
+               {:version 1
+                :config  {:workspace (workspace-section "ws-test-db")}})
+              (is (zero? @started)))))))
+    (testing "and not without a :workspace section"
+      (mt/with-premium-features #{:workspaces :config-text-file}
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-branch nil
+                                           remote-sync-token  nil]
+          (let [started (atom 0)]
+            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+                          remote-sync/start-import! (fn [] (swap! started inc) nil)]
+              (advanced-config.file/initialize!
+               {:version 1
+                :config  {:settings {:remote-sync-url    "https://github.com/acme/config.git"
+                                     :remote-sync-branch "main"
+                                     :remote-sync-token  "s3cr3t"}}})
+              (is (zero? @started)))))))))

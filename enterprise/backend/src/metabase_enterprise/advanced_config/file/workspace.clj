@@ -15,8 +15,10 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -116,4 +118,7 @@
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]
-  (apply-workspace-section! section-config))
+  (apply-workspace-section! section-config)
+  (when (remote-sync/remote-sync-enabled)
+    (log/info "Workspace instance with remote sync configured; starting the initial import")
+    (quick-task/submit-task! (fn [] (remote-sync/start-import!)))))
