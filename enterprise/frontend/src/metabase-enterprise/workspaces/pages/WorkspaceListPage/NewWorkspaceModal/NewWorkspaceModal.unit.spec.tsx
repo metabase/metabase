@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { Workspace } from "metabase-types/api";
+import type { Database, Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockWorkspace,
@@ -20,12 +20,15 @@ const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 type SetupOpts = {
   createdWorkspace?: Workspace;
+  databases?: Database[];
 };
 
 const DATABASE = createMockDatabase({ id: 10, name: "Postgres" });
+const DATABASE_2 = createMockDatabase({ id: 20, name: "MySQL" });
 
 function setup({
   createdWorkspace = createMockWorkspace({ name: "Brand new workspace" }),
+  databases = [DATABASE, DATABASE_2],
 }: SetupOpts = {}) {
   const onCreate = jest.fn();
   const onClose = jest.fn();
@@ -37,7 +40,7 @@ function setup({
   renderWithProviders(
     <>
       <NewWorkspaceModal
-        databases={[DATABASE]}
+        databases={databases}
         opened
         onCreate={onCreate}
         onClose={onClose}
@@ -72,6 +75,29 @@ describe("NewWorkspaceModal", () => {
         { method: "POST" },
       ),
     ).toBe(true);
+  });
+
+  it("preselects the database when it is the only one available", async () => {
+    const { onCreate, createdWorkspace } = setup({ databases: [DATABASE] });
+
+    expect(screen.getByRole("checkbox", { name: "Postgres" })).toBeChecked();
+    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
+
+    await waitFor(() =>
+      expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
+    );
+  });
+
+  it("preselects nothing when several databases are available", () => {
+    setup();
+
+    expect(
+      screen.getByRole("checkbox", { name: "Postgres" }),
+    ).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "MySQL" })).not.toBeChecked();
   });
 
   it("requires at least one database", async () => {

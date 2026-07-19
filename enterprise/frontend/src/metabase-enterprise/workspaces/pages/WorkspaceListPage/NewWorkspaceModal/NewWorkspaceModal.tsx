@@ -59,10 +59,12 @@ const NEW_WORKSPACE_SCHEMA = Yup.object({
   database_ids: Yup.array().of(Yup.string()).min(1, Errors.required),
 });
 
-const INITIAL_VALUES: NewWorkspaceFormValues = {
-  name: "",
-  database_ids: [],
-};
+function getInitialValues(databases: Database[]): NewWorkspaceFormValues {
+  return {
+    name: "",
+    database_ids: databases.length === 1 ? [String(databases[0].id)] : [],
+  };
+}
 
 type NewWorkspaceFormProps = {
   databases: Database[];
@@ -95,7 +97,7 @@ function NewWorkspaceForm({
 
   return (
     <FormProvider
-      initialValues={INITIAL_VALUES}
+      initialValues={getInitialValues(databases)}
       validationSchema={NEW_WORKSPACE_SCHEMA}
       onSubmit={handleSubmit}
     >
