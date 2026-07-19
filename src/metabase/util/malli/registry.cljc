@@ -57,13 +57,17 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (let [schema-key (schema-cache-key schema)]
-    (or (some-> (get (get @cache k) schema-key) (deref-entry value-thunk)) ; get-in is terribly inefficient
-        (let [v (value-thunk)]
-          (when *cache-miss-hook*
-            (*cache-miss-hook* k schema v))
-          (swap! cache assoc-in [k schema-key] (cache-entry v))
-          v))))
+  (let [cache-map (get @cache k)]
+    ;; First, try looking up schema in the cache as is.
+    (or (some-> (get cache-map schema) (deref-entry value-thunk))
+        ;; If that fails, ensure that schema doesn't contain non-= elements and try again.
+        (let [schema-key (schema-cache-key schema)]
+          (or (some-> (get cache-map schema-key) (deref-entry value-thunk))
+              (let [v (value-thunk)]
+                (when *cache-miss-hook*
+                  (*cache-miss-hook* k schema v))
+                (swap! cache assoc-in [k schema-key] (cache-entry v))
+                v))))))
 
 (defn- cached-schema [schema]
   (if (mc/-reference? schema)
