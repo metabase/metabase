@@ -127,6 +127,7 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; deprecated, but third-party drivers may still defmethod it; removal breaks them at load
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmulti honey-sql-version
   "DEPRECATED: Prior to between 0.46.0 and 0.49.0, drivers could use either Honey SQL 1 or Honey SQL 2. In 0.49.0+, all
