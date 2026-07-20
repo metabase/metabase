@@ -118,7 +118,8 @@
 (def ^:private DuplicatedFinding
   "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed
   `details`. `duplicate_count` is the peer count (cluster size minus 1) and is never null on duplicated
-  findings. `details.normalized_name` is the normalized name the cluster collided on;
+  findings. `details.view_count` is the flagged entity's own live usage counter (present for every type
+  but transform). `details.normalized_name` is the normalized name the cluster collided on;
   `details.duplicate_entities` are the hydrated peers the caller can see - permission and
   personal-collection filtering can leave it shorter than `duplicate_count` (down to empty, but the key
   is always present)."
@@ -139,6 +140,7 @@
      [:description        [:maybe :string]]
      [:owner              NormalizedUser]
      [:creator            Creator]
+     [:view_count         {:optional true} :int]
      [:normalized_name    :string]
      [:duplicate_entities [:sequential DuplicatedEntity]]]]])
 

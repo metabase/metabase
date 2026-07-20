@@ -244,7 +244,7 @@
           (mt/with-temp
             [:model/Collection {coll-id :id} {:name "Analytics"}
              :model/Card {card-a :id} {:collection_id coll-id :name nm :type :model
-                                       :creator_id (mt/user->id :rasta)}
+                                       :creator_id (mt/user->id :rasta) :view_count 4}
              :model/Card {card-b :id} {:collection_id coll-id :name nm :type :model :view_count 7}]
             (scan/scan!)
             (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
@@ -259,6 +259,8 @@
                 (testing "top-level duplicate_count + normalized_name in details"
                   (is (= 1 (:duplicate_count f)))
                   (is (= (u/lower-case-en nm) (get-in f [:details :normalized_name]))))
+                (testing "the flagged entity's own live view_count is hydrated into details"
+                  (is (= 4 (get-in f [:details :view_count]))))
                 (testing "the peer hydrates with its card sub-kind and live view_count"
                   (is (= [{:id card-b :name nm :entity_type "card" :card_type "model" :view_count 7}]
                          (get-in f [:details :duplicate_entities]))))
@@ -268,6 +270,45 @@
                 (testing "shared display hydration: collection breadcrumb + denormalized creator"
                   (is (= coll-id (get-in f [:details :collection :id])))
                   (is (= (mt/user->id :rasta) (get-in f [:details :creator :id]))))))))))))
+
+(deftest duplicated-api-subject-view-count-test
+  (testing "GET /duplicated hydrates each finding's own live view_count into details; a transform omits it"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp
+          [:model/Collection {coll-id :id}  {}
+           :model/Collection {tcoll-id :id} {:namespace "transforms"}
+           :model/Card       {card-id :id}  {:collection_id coll-id :view_count 7}
+           :model/Dashboard  {dash-id :id}  {:collection_id coll-id :view_count 12}
+           :model/Document   {doc-id :id}   {:collection_id coll-id :view_count 3}
+           :model/Transform  {xform-id :id} {:collection_id tcoll-id}]
+          (let [prefix (scope-prefix)]
+            (doseq [[etype eid] [[:card card-id] [:dashboard dash-id] [:document doc-id] [:transform xform-id]]]
+              (t2/insert! :model/ContentDiagnosticsFinding
+                          {:scan_id         "vc"
+                           :entity_type     etype
+                           :entity_id       eid
+                           :entity_name     (str prefix "-" (name etype))
+                           :finding_type    :duplicated
+                           :duplicate_count 1
+                           :details         {:normalized_name      "x"
+                                             :duplicate_entity_ids []}}))
+            (let [by-type (into {} (map (juxt :entity_type identity))
+                                (:data (mt/user-http-request :crowberto :get 200
+                                                             "ee/content-diagnostics/duplicated" :query prefix)))]
+              (testing "card/dashboard/document each carry their own live view_count in details"
+                (is (= 7  (get-in by-type ["card" :details :view_count])))
+                (is (= 12 (get-in by-type ["dashboard" :details :view_count])))
+                (is (= 3  (get-in by-type ["document" :details :view_count]))))
+              (testing "a transform (no view_count column) omits the key entirely from details"
+                (is (contains? by-type "transform"))
+                (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
+              (testing "view_count is hydrated live at read time, not frozen at scan time"
+                (t2/update! :model/Card card-id {:view_count 99})
+                (let [card-f (some #(when (= "card" (:entity_type %)) %)
+                                   (:data (mt/user-http-request :crowberto :get 200
+                                                                "ee/content-diagnostics/duplicated" :query prefix)))]
+                  (is (= 99 (get-in card-f [:details :view_count]))))))))))))
 
 (deftest duplicated-api-filter-and-sort-test
   (testing "GET /duplicated filters by entity-types/min-duplicate-count and sorts by duplicate-count/name"
