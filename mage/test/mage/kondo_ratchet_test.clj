@@ -18,18 +18,7 @@
            (#'kondo-ratchet/insert-ignore-lines "(a)\n(b)\n" {1 [:x], 2 [:y :x :y]}))))
   (testing "a file without a trailing newline doesn't gain one"
     (is (= "#_{:clj-kondo/ignore [:x]}\n(a)"
-           (#'kondo-ratchet/insert-ignore-lines "(a)" {1 [:x]}))))
-  (testing "a row in row->comment gets its comment above the ignore, at the same indentation"
-    (is (= (str "(defn f [x]\n"
-                "  ;; why\n"
-                "  #_{:clj-kondo/ignore [:equals-true]}\n"
-                "  (= true x))\n")
-           (#'kondo-ratchet/insert-ignore-lines "(defn f [x]\n  (= true x))\n"
-                                                {2 [:equals-true]}
-                                                {2 ";; why"}))))
-  (testing "rows absent from row->comment get no comment"
-    (is (= "#_{:clj-kondo/ignore [:x]}\n(a)\n;; why\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
-           (#'kondo-ratchet/insert-ignore-lines "(a)\n(b)\n" {1 [:x], 2 [:y]} {2 ";; why"})))))
+           (#'kondo-ratchet/insert-ignore-lines "(a)" {1 [:x]})))))
 
 (deftest insert-inline-ignores-test
   (testing "splices directly before the flagged token, wherever it sits on the line"
@@ -48,27 +37,31 @@
            (#'kondo-ratchet/insert-inline-ignores "(a)" {[1 1] [:x]} {})))))
 
 (deftest strip-orphan-keep-comments-test
-  (let [keep-line (str ";; " kondo-ratchet/keep-marker " suppresses a warning")]
-    (testing "a whole-line marker comment with no ignore below it is dropped"
+  (let [stamp-line @#'kondo-ratchet/keep-comment
+        hand-line  (str ";; real explanation. " kondo-ratchet/keep-marker)]
+    (testing "a stamped whole-line marker comment with no ignore below it is dropped"
       (is (= "(a)\n(b)\n"
-             (#'kondo-ratchet/strip-orphan-keep-comments (str "(a)\n" keep-line "\n(b)\n")))))
+             (#'kondo-ratchet/strip-orphan-keep-comments (str "(a)\n" stamp-line "\n(b)\n")))))
+    (testing "an orphaned hand-written comment keeps its prose and loses only the token"
+      (is (= "(a)\n;; real explanation.\n(b)\n"
+             (#'kondo-ratchet/strip-orphan-keep-comments (str "(a)\n" hand-line "\n(b)\n")))))
     (testing "a marker comment still above an ignore survives"
-      (let [text (str keep-line "\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
+      (let [text (str stamp-line "\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))
     (testing "comments without the marker survive, orphaned or not"
       (let [text ";; plain comment\n(a)\n"]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))
     (testing "a trailing marker on a code line is left for a hand fix"
-      (let [text (str "(foo) " keep-line "\n")]
+      (let [text (str "(foo) " stamp-line "\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))
-    (testing "a marker orphaned at the last line of the file is dropped"
+    (testing "a stamped marker orphaned at the last line of the file is dropped"
       (is (= "(a)\n"
-             (#'kondo-ratchet/strip-orphan-keep-comments (str "(a)\n" keep-line "\n")))))
+             (#'kondo-ratchet/strip-orphan-keep-comments (str "(a)\n" stamp-line "\n")))))
     (testing "a marker above an ignore whose linter vector wraps to the next line survives"
-      (let [text (str keep-line "\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(a)\n")]
+      (let [text (str stamp-line "\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(a)\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))
     (testing "a marker separated from its ignore by another comment line survives"
-      (let [text (str keep-line "\n;; more context\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
+      (let [text (str stamp-line "\n;; more context\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))))
 
 (deftest beyond-baseline-test
@@ -79,9 +72,11 @@
     (testing "a group matching its baseline count is fully absorbed"
       (is (= []
              (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1} [(f "a.clj" 3 :x 1)]))))
-    (testing "a group over its baseline count returns ALL its findings -- an exposed finding can't be
-              told apart from a pre-existing same-row one, so restore conservatively"
-      (is (= [(f "a.clj" 3 :x 1) (f "a.clj" 3 :x 20)]
+    (testing "a group over its baseline count returns ALL its findings tagged :collision? -- an exposed
+              finding can't be told apart from a pre-existing same-row one, so restore conservatively
+              but say so"
+      (is (= [(assoc (f "a.clj" 3 :x 1) :collision? true)
+              (assoc (f "a.clj" 3 :x 20) :collision? true)]
              (sort-by :col
                       (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1}
                                                        [(f "a.clj" 3 :x 20) (f "a.clj" 3 :x 1)])))))))
@@ -94,11 +89,17 @@
     (is (= 5 (#'kondo-ratchet/shift-past-inserts 5 [6 7])))))
 
 (deftest marker-on-line-test
-  (testing "the marker counts only after a semicolon, so a string literal containing it doesn't mark"
+  (testing "the marker counts only inside the line's comment, not in string literals"
     (is (true? (#'kondo-ratchet/marker-on-line? (str ";; " kondo-ratchet/keep-marker " because"))))
     (is (true? (#'kondo-ratchet/marker-on-line? (str "(foo) ;; " kondo-ratchet/keep-marker))))
     (is (false? (#'kondo-ratchet/marker-on-line? (str "(def marker \"" kondo-ratchet/keep-marker "\")"))))
-    (is (false? (#'kondo-ratchet/marker-on-line? nil)))))
+    (is (false? (#'kondo-ratchet/marker-on-line? nil))))
+  (testing "a semicolon inside a string doesn't open a comment"
+    (is (false? (#'kondo-ratchet/marker-on-line? (str "(def s \"a;b " kondo-ratchet/keep-marker "\")"))))
+    (is (true? (#'kondo-ratchet/marker-on-line? (str "(def s \"a;b\") ;; " kondo-ratchet/keep-marker)))))
+  (testing "char-literal semicolons and string escapes don't open or close early"
+    (is (false? (#'kondo-ratchet/marker-on-line? (str "(= c \\;) (def s \"" kondo-ratchet/keep-marker "\")"))))
+    (is (false? (#'kondo-ratchet/marker-on-line? (str "(def s \"a\\\";b " kondo-ratchet/keep-marker "\")"))))))
 
 (deftest remove-ignores-at-test
   (testing "a standalone ignore line disappears entirely; :sites points at the uncovered form"
