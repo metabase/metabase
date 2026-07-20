@@ -152,7 +152,7 @@ export interface UpdateExplorationRequest {
   collection_position?: number | null;
 }
 
-export interface RestartExplorationRequest {
+export interface RestartExplorationThreadRequest {
   explorationId: ExplorationId;
   threadId: ExplorationThreadId;
 }
@@ -218,22 +218,17 @@ export type ExplorationQueryType =
   | "top-n-other"
   | "temporal-pattern-day"
   | "temporal-pattern-hour"
-  | "time-facet"
-  | "filtered-subset"
-  | "per-value-time-series";
+  | "time-facet";
 
 /**
  * Per-query plan params. Variant-specific — the BE attaches these to each
  * exploration query row (see `metabase.explorations.query-plan.variants`):
  *
  * - `top-n-other` carries `k` (Top-K size) and per-bar `value_index`.
- * - `per-value-time-series` carries `k` and `value_index`.
- * - `filtered-subset` carries `filter_values`.
  */
 export interface ExplorationQueryParams {
   k?: number;
   value_index?: number;
-  filter_values?: unknown[];
 }
 
 export interface ExplorationQuery {
