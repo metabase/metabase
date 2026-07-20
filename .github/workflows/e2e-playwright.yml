@@ -9,6 +9,17 @@ name: E2E Playwright (spike)
 
 on:
   workflow_dispatch:
+    inputs:
+      workers:
+        description: >-
+          Playwright workers per shard. Default 2. Dispatch with 1 to measure
+          how much of our per-spec time is CPU contention between the two
+          worker browsers + their two backend JVMs on one runner, versus our
+          own wait/retry patterns. Compare per-test durations in the
+          playwright-timings-s* artifacts against a workers=2 run of the same
+          commit (scripts/compare-timings.mjs).
+        required: false
+        default: "2"
   pull_request:
     # Run on code changes under the spike, but NOT on docs-only edits — the
     # doc/ledger files (FINDINGS/RESUME/PORTING/QUEUE/PORTED, findings-inbox)
@@ -179,7 +190,7 @@ jobs:
           # Worker backends boot from the fetched jar with capped heaps.
           JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
           PW_WORKER_MAX_HEAP: 1500m
-        run: bunx playwright test --workers=2 --fully-parallel --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
+        run: bunx playwright test --workers=${{ inputs.workers || '2' }} --fully-parallel --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
 
       # Plain GitHub artifact only — deliberately NOT the upload-test-results
       # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
