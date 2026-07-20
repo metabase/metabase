@@ -15,7 +15,8 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.projections :as projections]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (org.apache.commons.text.similarity LevenshteinDistance)))
 
@@ -76,38 +77,56 @@
 (defn- status-code->error-code
   [status-code]
   (cond
-    (contains? #{401 403} status-code) error-code-invalid-request
-    (contains? #{400 404} status-code) error-code-invalid-params
-    :else                              error-code-internal))
+    (contains? #{401 402 403 409} status-code) error-code-invalid-request
+    (contains? #{400 404} status-code)         error-code-invalid-params
+    :else                                      error-code-internal))
+
+(def ^:private client-error-status-codes
+  "Status codes that mark an exception as deliberately caller-facing — its message is safe to
+   return. Everything else is an internal failure whose message may embed SQL, schema, or
+   connection detail. 402 (missing premium feature) and 409 (conflict) are included because their
+   messages name the missing feature or clashing state — information the agent needs to recover."
+  #{400 401 402 403 404 409})
 
 (defn ->mcp-error-content
-  "Convert a caught exception into MCP error content. `ex-info`s surface their message (the
-   teaching-error channel); anything else becomes a generic internal error. An explicit
-   `::error-code` in `ex-data` wins over the `:status-code` mapping."
+  "Convert a caught exception into MCP error content, and the single point where an exception
+   message is judged safe to return. Only deliberately caller-facing errors surface their
+   message: an explicit `::error-code` (other than internal) or a client (4xx) `:status-code`
+   in `ex-data` — teaching errors, not-found, scope denials. Every other exception — incidental
+   `ex-info`s from libraries (whose messages may embed SQL or connection detail), 5xx
+   invariants, and non-`ex-info` failures like JDBC or NPE — becomes a generic internal error;
+   the real exception is logged server-side for debugging but never returned to the client."
   [e]
-  (let [{::keys [error-code] :keys [status-code]} (ex-data e)]
-    (error-content (or (ex-message e) "Internal error")
-                   (or error-code
-                       (status-code->error-code status-code)))))
+  (let [{::keys [error-code] :keys [status-code]} (ex-data e)
+        code (or (when (and error-code (not= error-code error-code-internal)) error-code)
+                 (when (contains? client-error-status-codes status-code)
+                   (status-code->error-code status-code)))]
+    (if code
+      (error-content (or (ex-message e) "Internal error") code)
+      (do
+        (log/error e "Unhandled error dispatching MCP v2 tool call")
+        (error-content "Internal error" error-code-internal)))))
 
 ;;; ------------------------------------------------ List envelope -------------------------------------------------
 
 (defn truncation-line
   "The steering sentence appended to a truncated list response: names the narrowing `param` when
    one narrows this list, and always the next offset. Returns nil when the page isn't truncated
-   (or `total` is unknown)."
+   (or `total` is unknown). `:total-floor?` marks `total` as a lower bound rather than an exact
+   count — e.g. a search total capped at the ranking limit — so the sentence reads \"at least N\"."
   ;; A list with nothing to narrow by still has to say more exists — without a line the caller
   ;; reads a truncated page as the whole set.
-  [{:keys [param offset limit total]}]
+  [{:keys [param offset limit total total-floor?]}]
   (let [offset (or offset 0)]
     (when (and total limit (< (+ offset limit) total))
-      (let [returned (min limit (- total offset))
-            next     (+ offset limit)]
+      (let [returned  (min limit (- total offset))
+            total-str (str (when total-floor? "at least ") total)
+            next      (+ offset limit)]
         (if param
-          (format "Returned %d of %d — narrow with `%s`, or continue with `offset: %d`."
-                  returned total (name param) next)
-          (format "Returned %d of %d — continue with `offset: %d`."
-                  returned total next))))))
+          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
+                  returned total-str (name param) next)
+          (format "Returned %d of %s — continue with `offset: %d`."
+                  returned total-str next))))))
 
 (defn list-envelope
   "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included

@@ -1,0 +1,251 @@
+(ns metabase.mcp.v2.tools.search-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.mcp.v2.tools.search :as tools.search]
+   [metabase.metabot.tools.search :as metabot.search]
+   [metabase.permissions.core :as perms]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private add-collection-paths
+  #'tools.search/add-collection-paths)
+
+(def ^:private validate-filters!
+  #'tools.search/validate-filters!)
+
+(def ^:private validate-modes!
+  #'tools.search/validate-modes!)
+
+(def ^:private resolve-collection-filter
+  #'tools.search/resolve-collection-filter)
+
+(def ^:private engine-results
+  #'tools.search/engine-results)
+
+(defn- path-for
+  "`:collection_path` that `user` sees for a row contained in `collection-id`."
+  [user collection-id]
+  (mt/with-current-user (mt/user->id user)
+    (:collection_path (first (add-collection-paths [{:collection {:id collection-id}}])))))
+
+(deftest ^:parallel rv-model-type-maps-invert-losslessly-test
+  (testing "GHY-4137: rv-model->type is the inverse of type->rv-model — the inversion must not
+            collapse two types onto one recent-views model, so the two maps have equal counts"
+    (is (= (count @#'tools.search/type->rv-model)
+           (count @#'tools.search/rv-model->type)))))
+
+(deftest collection-path-omits-unreadable-ancestors-test
+  (testing "GHY-4137: collection_path must not name ancestors the caller can't read — the path is a
+            breadcrumb and follows effective-ancestors semantics, where an unreadable middle
+            collection is dropped rather than hiding the whole path"
+    (mt/with-temp [:model/Collection a {:name "Alpha"}
+                   :model/Collection b {:name "Bravo"   :location (format "/%d/" (:id a))}
+                   :model/Collection c {:name "Charlie" :location (format "/%d/%d/" (:id a) (:id b))}]
+      (let [all-users (perms/all-users-group)]
+        (perms/grant-collection-read-permissions! all-users a)
+        (perms/revoke-collection-permissions! all-users b)
+        (perms/grant-collection-read-permissions! all-users c)
+        (testing "an admin, who can read every ancestor, sees the full path"
+          (is (= "Alpha/Bravo/Charlie" (path-for :crowberto (:id c)))))
+        (testing "a user who cannot read Bravo never sees its name"
+          (is (= "Alpha/Charlie" (path-for :rasta (:id c)))))))))
+
+;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `validate-filters!` as
+;; destructive, though it only validates and throws
+(deftest snippet-type-is-exclusive-test
+  (testing "GHY-4137: snippets are served by a separate listing and paged separately, so mixing
+            them with engine-backed types silently dropped snippets on a full page and repeated
+            them on an underfilled one. The combination is a teaching error instead."
+    (testing "snippet alone is fine"
+      (is (some? (validate-filters! {:type ["snippet"]}))))
+    (testing "engine types alone are fine"
+      (is (some? (validate-filters! {:type ["question" "dashboard"]}))))
+    (testing "no type at all is fine"
+      (is (some? (validate-filters! {}))))
+    (testing "snippet alongside another type names the offending types and how to split the call"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"cannot be combined with other types"
+                                    (validate-filters! {:type ["question" "snippet"]})))]
+        (is (re-find #"question" (ex-message e))
+            "the error should name what to move to the other call"))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"cannot be combined with other types"
+                            (validate-filters! {:type ["snippet" "dashboard" "table"]}))))
+    (testing "the teaching error is a 400, not a server error"
+      (is (= 400 (:status-code (ex-data (try (validate-filters! {:type ["question" "snippet"]})
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
+
+;; not ^:parallel: the kondo deftest lint treats the `!` suffix of `validate-filters!` as
+;; destructive, though it only validates and throws
+(deftest collection-id-root-is-inert-test
+  (testing "GHY-4137: collection_id \"root\" is documented as \"no scoping\" and resolves to nil, so
+            it must not trip the collection teaching errors the way a real collection id does"
+    (testing "\"root\" passes every check a real collection id would fail"
+      (is (some? (validate-filters! {:type ["database"] :collection_id "root"}))
+          "collectionless type + root: no error")
+      (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
+          "table + root (no Library feature): no error")
+      (is (some? (validate-filters! {:type ["snippet"] :collection_id "root"}))
+          "snippet + root: no error")
+      (is (some? (validate-filters! {:recent true :collection_id "root"}))
+          "recents + root: no error"))
+    (testing "a real collection id still errors where it genuinely can't apply"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"don't live in collections"
+                            (validate-filters! {:type ["database"] :collection_id "someEntityId01234567_"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot filter snippets"
+                            (validate-filters! {:type ["snippet"] :collection_id "someEntityId01234567_"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"recent: true supports only the type filter"
+                            (validate-filters! {:recent true :collection_id "someEntityId01234567_"}))))))
+
+;; not ^:parallel: with-premium-features rebinds a global, and the `!` in validate-filters! trips
+;; the kondo deftest lint
+(deftest table-collection-id-requires-library-feature-test
+  (testing "GHY-4137: filtering tables by a real collection_id requires the Library feature; on an
+            instance without it the combination is a teaching error, but \"root\" stays inert"
+    (mt/with-premium-features #{}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires the Library feature"
+                            (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
+          "no Library feature + real collection id: error")
+      (is (some? (validate-filters! {:type ["table"] :collection_id "root"}))
+          "\"root\" is inert even without the Library feature"))
+    (mt/with-premium-features #{:library}
+      (is (some? (validate-filters! {:type ["table"] :collection_id "someEntityId01234567_"}))
+          "with the Library feature, table + collection id is allowed"))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest collection-scoping-accepts-numeric-id-test
+  (testing "GHY-4137: collection_id may be a numeric id, not only a string entity_id — a numeric id
+            counts as scoping"
+    (testing "validate-filters! trips the collectionless error for a numeric id on a collectionless type"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"don't live in collections"
+                            (validate-filters! {:type ["database"] :collection_id 5}))))
+    (testing "resolve-collection-filter resolves a real numeric collection id behind the read check"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= coll-id (resolve-collection-filter coll-id))))))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest transform-collection-id-is-teaching-error-test
+  (testing "GHY-4137: the search index doesn't record a transform's collection, so type:[transform]
+            with a collection_id can only ever return an empty page — a teaching error instead of a
+            silent empty result the agent would read as \"no transforms here\""
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"collection_id cannot filter transforms"
+                          (validate-filters! {:type ["transform"] :collection_id "someEntityId01234567_"})))
+    (testing "transform without a collection_id is fine"
+      (is (some? (validate-filters! {:type ["transform"]}))))
+    (testing "\"root\" collection_id stays inert for transforms"
+      (is (some? (validate-filters! {:type ["transform"] :collection_id "root"}))))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest archived-non-archivable-type-is-teaching-error-test
+  (testing "GHY-4137: table, database, and transform have no archived state, so archived: true with
+            any of them guarantees an empty page — the engine silently drops the type. Teach instead."
+    (doseq [t ["table" "database" "transform"]]
+      (testing t
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no archived state"
+                              (validate-filters! {:type [t] :archived true})))))
+    (testing "archivable types are unaffected"
+      (is (some? (validate-filters! {:type ["question" "dashboard"] :archived true}))))
+    (testing "archived: false is fine even for the non-archivable types"
+      (is (some? (validate-filters! {:type ["table"] :archived false}))))
+    (testing "no archived filter at all is fine"
+      (is (some? (validate-filters! {:type ["table"]}))))))
+
+(deftest snippet-rows-does-not-load-content-test
+  (testing "GHY-4137: snippet-rows must not pull the SQL body (:content) into the heap — it needs
+            only id/name/description for output and :collection_id for the can-read? check"
+    (let [captured (atom nil)]
+      (with-redefs [t2/select (fn [model & _] (reset! captured model) [])]
+        (#'tools.search/snippet-rows [] false))
+      (is (vector? @captured)
+          "the select is column-scoped (a [model & cols] vector), not the bare model keyword")
+      (let [cols (set (rest @captured))]
+        (is (contains? cols :collection_id) "collection_id is selected — can-read? consults it")
+        (is (not (contains? cols :content)) "the SQL body column is not selected")))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest blank-query-is-rejected-test
+  (testing "GHY-4137: a whitespace-only query passes the {:min 1} schema, but Postgres treats a
+            blank search string as match-all — so a blank query silently becomes an unscoped
+            listing. It is a teaching error instead."
+    (testing "a whitespace-only term query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries [" "]} true false))))
+    (testing "a whitespace-only semantic query is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:semantic_queries ["\t"]} true false))))
+    (testing "a blank query mixed with a real one is still rejected — it would broaden the whole call"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"blank|empty"
+                            (validate-modes! {:term_queries ["sales" "  "]} true false))))
+    (testing "a real query with incidental surrounding whitespace is fine"
+      (is (some? (validate-modes! {:term_queries [" sales "]} true false))))
+    (testing "the teaching error is a 400"
+      (is (= 400 (:status-code (ex-data (try (validate-modes! {:term_queries [" "]} true false)
+                                             (catch clojure.lang.ExceptionInfo e e)))))))))
+
+(deftest resolve-collection-filter-delegates-sentinels-test
+  (testing "GHY-4137: resolve-collection-filter delegates sentinel handling to
+            common/resolve-collection-id instead of a local set — so \"trash\" gets its specific
+            teaching error rather than a generic invalid-id, and nil/\"root\" still mean no scoping"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "\"trash\" is the specific teaching error"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not a valid collection here"
+                              (resolve-collection-filter "trash"))))
+      (testing "nil and \"root\" resolve to nil (no scoping)"
+        (is (nil? (resolve-collection-filter nil)))
+        (is (nil? (resolve-collection-filter "root")))))))
+
+(defn- nothing-to-search?
+  "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
+   A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
+  [args]
+  (try
+    (tools.search/search-tool args {:token-scopes #{"agent:search"}})
+    false
+    (catch clojure.lang.ExceptionInfo e
+      (boolean (re-find #"Nothing to search for" (ex-message e))))))
+
+(deftest ^:parallel collection-id-root-alone-is-empty-request-test
+  (testing "GHY-4137: \"root\" is inert everywhere — as the *only* argument it scopes nothing, so
+            the request has no query and no real filter and is rejected as empty rather than
+            listing the entire instance"
+    (is (nothing-to-search? {:collection_id "root"}))
+    (is (nothing-to-search? {}) "sanity: a truly empty request is also rejected"))
+  (testing "\"root\" combined with a real query or filter is a valid search — it passes validation"
+    (is (not (nothing-to-search? {:collection_id "root" :type ["dashboard"]})))
+    (is (not (nothing-to-search? {:collection_id "root" :term_queries ["sales"]})))))
+
+(deftest engine-results-reports-total-test
+  (testing "GHY-4137: engine-results reports the engine's total for every search, including a
+            superuser transform search — transforms are no longer dropped by a post-filter, so
+            the total is accurate and is not suppressed"
+    (with-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
+      (mt/with-test-user :crowberto
+        (is (= 30 (:total (engine-results {} ["question" "transform"] nil 20 0))))
+        (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0))))))))
+
+(deftest collection-row-path-omits-unreadable-ancestors-test
+  (testing "GHY-4137: a collection row builds its path from its own :location — that path must
+            also omit unreadable ancestors"
+    (mt/with-temp [:model/Collection a {:name "Alpha"}
+                   :model/Collection b {:name "Bravo"   :location (format "/%d/" (:id a))}
+                   :model/Collection c {:name "Charlie" :location (format "/%d/%d/" (:id a) (:id b))}]
+      (let [all-users (perms/all-users-group)
+            path-of   (fn [user coll]
+                        (mt/with-current-user (mt/user->id user)
+                          (:collection_path (first (add-collection-paths [(select-keys coll [:id :location])])))))]
+        (perms/grant-collection-read-permissions! all-users a)
+        (perms/revoke-collection-permissions! all-users b)
+        (perms/grant-collection-read-permissions! all-users c)
+        (is (= "Alpha/Bravo" (path-of :crowberto c)))
+        (is (= "Alpha" (path-of :rasta c)))))))
+
+(deftest collection-path-for-readable-ancestors-test
+  (testing "a fully readable chain is unaffected by the permission filter"
+    (mt/with-temp [:model/Collection a {:name "Alpha"}
+                   :model/Collection b {:name "Bravo" :location (format "/%d/" (:id a))}]
+      (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) b)
+      (is (= "Alpha/Bravo" (path-for :rasta (:id b)))))))

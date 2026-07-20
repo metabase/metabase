@@ -5,6 +5,7 @@
    (snippets aren't in the search index). Every unsupported parameter combination is a
    teaching error; the engine's silent narrowing is never relied on."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
@@ -37,6 +38,13 @@
   "Types the collection filter can never serve — they don't live in collections."
   #{"measure" "segment" "database"})
 
+(def ^:private non-archivable-types
+  "Types whose search model has no archived state (`:archived false` in their spec). `archived: true`
+   with any of them can only ever return nothing, so the engine silently drops the type — a teaching
+   error instead. Note transforms *do* live in collections, so this is distinct from
+   `collectionless-types`."
+  #{"table" "database" "transform"})
+
 (def ^:private type->rv-model
   "v2 type → the recent-views model keyword; the domain of this map is exactly the set of
    types recents tracks."
@@ -49,17 +57,17 @@
    "document"   :document})
 
 (def ^:private rv-model->type
-  (into {} (map (fn [[t rvm]] [rvm t])) type->rv-model))
+  (set/map-invert type->rv-model))
 
 ;;; ------------------------------------------------ Projections ---------------------------------------------------
 
 (def ^:private concise-row-keys
-  [:type :id :name :collection_path :description])
+  #{:type :id :name :collection_path :description})
 
 (projections/register-projection!
  :search-result
  {:concise  (fn [row]
-              (into {} (remove (comp nil? val)) (select-keys row concise-row-keys)))
+              (m/remove-vals nil? (select-keys row concise-row-keys)))
   :detailed identity
   :sample   {:id                     1
              :type                   "question"
@@ -97,11 +105,25 @@
   (when location
     (mapv parse-long (re-seq #"\d+" location))))
 
+(defn- readable-id->name
+  "Map of collection id -> name for the given ids, omitting collections the current user cannot
+   read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
+  [ids]
+  (when (seq ids)
+    (into {}
+          (comp (filter mi/can-read?)
+                (map (juxt :id :name)))
+          (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))))
+
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
    containing collection's own name — to every row that has a `:collection`. Collection rows
    use their own `:location` (path of their ancestors). Two batched lookups total; rows with
-   no collection context (root items, snippets, tables, databases) get no path."
+   no collection context (root items, snippets, tables, databases) get no path.
+
+   Ancestors the current user cannot read are omitted from the path, matching the breadcrumb
+   semantics of [[metabase.collections.models.collection/effective-ancestors]]: for A > B > C
+   where B is unreadable, the path reads \"A/C\"."
   [rows]
   (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
         parents        (when (seq parent-ids)
@@ -113,9 +135,8 @@
                                    (remove parent-ids))
                              (concat (map second (vals parents))
                                      (keep :location rows)))
-        ancestor-names (when (seq ancestor-ids)
-                         (t2/select-pk->fn :name :model/Collection :id [:in ancestor-ids]))
-        id->name       (merge ancestor-names (update-vals parents first))
+        id->name       (merge (readable-id->name ancestor-ids)
+                              (update-vals parents first))
         location-path  (fn [location]
                          (when-let [segments (seq (keep id->name (location->ids location)))]
                            (str/join "/" segments)))]
@@ -132,7 +153,11 @@
 ;;; ------------------------------------------------ Validation ----------------------------------------------------
 
 (defn- validate-modes!
-  [{:keys [recent] :as args} queries? filters?]
+  [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
+  (when (some str/blank? (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
+          "be non-empty. Drop the blank entry, or use a filters-only listing to browse.")))
   (when (and (true? recent) queries?)
     (common/throw-teaching-error
      (str "recent: true returns your recently viewed items and cannot be combined with "
@@ -144,16 +169,30 @@
           "or recent: true for your recently viewed items.")))
   args)
 
+(defn- collection-scoping?
+  "True when `collection_id` scopes the search to a specific collection: present and not the inert
+   \"root\" sentinel (nil is stripped before the handler, so a present value is non-nil). A missing
+   or \"root\" filter does nothing, so it must not trip the collection checks. \"trash\" counts as
+   scoping and surfaces its teaching error when [[resolve-collection-filter]] resolves it."
+  [{:keys [collection_id] :as args}]
+  (and (contains? args :collection_id)
+       (not= "root" collection_id)))
+
 (defn- validate-filters!
   [{:keys [type created_by archived] :as args}]
   (let [types (set type)]
+    (when (and (contains? types "snippet") (next types))
+      (common/throw-teaching-error
+       (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
+                    "search index and are paged separately. List them in their own call, and search %s in another.")
+               (str/join ", " (sort (disj types "snippet"))))))
     (when created_by
       (when-let [bad (seq (sort (remove created-by-types types)))]
         (common/throw-teaching-error
          (format "created_by only applies to types that index a creator: %s. Remove %s from type or drop created_by."
                  (str/join ", " (sort created-by-types))
                  (str/join ", " bad)))))
-    (when (contains? args :collection_id)
+    (when (collection-scoping? args)
       (when-let [bad (seq (sort (filter collectionless-types types)))]
         (common/throw-teaching-error
          (format "collection_id cannot filter %s — these types don't live in collections. Remove them from type or drop collection_id."
@@ -161,17 +200,25 @@
       (when (contains? types "snippet")
         (common/throw-teaching-error
          "collection_id cannot filter snippets — list them with type: [\"snippet\"] and no collection_id."))
+      (when (contains? types "transform")
+        (common/throw-teaching-error
+         "collection_id cannot filter transforms — the search index doesn't record their collection. Remove transform from type or drop collection_id."))
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
          "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id.")))
+    (when (true? archived)
+      (when-let [bad (seq (sort (filter non-archivable-types types)))]
+        (common/throw-teaching-error
+         (format "archived: true cannot filter %s — these types have no archived state. Remove them from type or drop archived."
+                 (str/join ", " bad)))))
     (when (true? (:recent args))
       (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]
         (common/throw-teaching-error
          (format "Recents only track %s — remove %s from type or drop recent: true."
                  (str/join ", " (sort (keys type->rv-model)))
                  (str/join ", " bad))))
-      (when (or created_by (contains? args :collection_id) (true? archived))
+      (when (or created_by (collection-scoping? args) (true? archived))
         (common/throw-teaching-error
          "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
     args))
@@ -186,12 +233,14 @@
      {:status-code 403})))
 
 (defn- resolve-collection-filter
-  "Resolve the `collection_id` argument to a numeric collection id behind the collection's
-   read check, or nil when it names the root (no scoping). The search context takes numeric
+  "Resolve the `collection_id` argument to a numeric collection id behind the collection's read
+   check, or nil when it means the root (no scoping). Sentinel handling is delegated to
+   [[common/resolve-collection-id]] — nil/\"root\" resolve to nil, \"trash\" is a teaching error —
+   and a real id still gets the read check the REST endpoint runs. The search context takes numeric
    ids only, so entity_ids are translated here."
   [collection-id]
-  (when-not (contains? #{nil "root"} collection-id)
-    (:id (common/resolve-and-read :model/Collection collection-id
+  (when-let [id (common/resolve-collection-id collection-id)]
+    (:id (common/resolve-and-read :model/Collection id
                                   (fn [id]
                                     (when-let [collection (t2/select-one :model/Collection :id id)]
                                       (when (mi/can-read? collection)
@@ -211,11 +260,10 @@
 
 (defn- recents-page
   [{:keys [type]} fmt limit offset]
-  (let [models            (when (seq type)
-                            (into [] (distinct) (map type->rv-model type)))
+  (let [models            (into [] (comp (map type->rv-model) (distinct)) type)
         {:keys [recents]} (activity-feed/get-recents api/*current-user-id*
                                                      [:views :selections]
-                                                     (cond-> {} models (assoc :models models)))
+                                                     {:models models})
         page              (into [] (comp (drop offset) (take limit)) recents)]
     {:rows  (mapv #(recent-item->row fmt %) page)
      :total (count recents)}))
@@ -229,7 +277,9 @@
    case-insensitive substring."
   [queries archived]
   (let [readable (filter mi/can-read?
-                         (t2/select :model/NativeQuerySnippet
+                         ;; Select only what we return (id/name/description) plus :collection_id,
+                         ;; which can-read? consults — never :content, which holds the SQL body.
+                         (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
                                     :archived (boolean archived)
                                     {:order-by [[:%lower.name :asc]]}))
         matches  (if (seq queries)
@@ -247,10 +297,9 @@
 ;;; ------------------------------------------------ Search mode ---------------------------------------------------
 
 (defn- engine-results
-  "Run the shared metabot search pipeline and return `{:rows [...] :total <int-or-nil>}`.
-   Rows are the postprocessed+enriched results with `:collection_path` attached; `total` is
-   the engine's match count when exactly one search ran (single query or filters-only
-   listing) and nil for rank-fused multi-query results."
+  "Run the shared metabot search pipeline and return `{:rows [...] :total <int>}`. Rows are the
+   postprocessed+enriched results with `:collection_path` attached; `total` is the engine's match
+   count for the (fused) result set."
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
   (let [results (metabot.search/search
                  (cond-> {:term-queries     (vec term_queries)
@@ -269,8 +318,9 @@
 
 (def ^:private type-desc
   (str "Restrict results to these entity types. \"snippet\" is served by a separate listing "
-       "(snippets aren't in the search index) and requires the " metabot.scope/agent-snippets-read
-       " scope. Omit to search every type this tool supports."))
+       "(snippets aren't in the search index), requires the " metabot.scope/agent-snippets-read
+       " scope, and must be requested on its own — combining it with other types is an error. "
+       "Omit to search every type this tool supports except snippets."))
 
 (def ^:private search-args-schema
   [:map {:closed true}
@@ -310,16 +360,23 @@
       (mapv #(projections/project :search-result fmt %) rows))))
 
 (registry/deftool search-tool
-  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type, collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you can read; queries narrow snippets by name substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace: \"transforms\"). Returns {data, returned, total?}; total is omitted when multi-query rank fusion makes it unknowable."
-  {:name        "search"
-   :scope       metabot.scope/agent-search
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        search-args-schema}
+  "Find content across the Metabase instance. Three modes: (1) ranked search — term_queries (keywords) and/or
+  semantic_queries (natural language), optionally narrowed by filters; (2) filters-only listing — any of type,
+  collection_id (scopes to the collection subtree), created_by: \"me\", archived: true with no queries, e.g. all
+  dashboards you created; (3) recent: true — your recently viewed items. type: [\"snippet\"] lists SQL snippets you
+  can read and must be requested on its own, not alongside other types; queries narrow snippets by name
+  substring. Transforms are searchable by admins only — other users list them with browse_collection(namespace:
+  \"transforms\"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking
+  limit — so a large total is a floor (the response says \"at least N\")."  {:name "search"
+                                                                             :scope        metabot.scope/agent-search
+                                                                             :extra-scopes #{metabot.scope/agent-snippets-read}
+                                                                             :annotations  {:readOnlyHint true :idempotentHint true}
+                                                                             :args         search-args-schema}
   [{:keys [term_queries semantic_queries recent type collection_id archived] :as args}
    {:keys [token-scopes]}]
   (let [queries?  (boolean (or (seq term_queries) (seq semantic_queries)))
         filters?  (boolean (or (seq type)
-                               (contains? args :collection_id)
+                               (collection-scoping? args)
                                (:created_by args)
                                (true? archived)))
         limit     (or (:limit args) 20)
@@ -334,25 +391,21 @@
                   (common/response-format args))
             {:keys [rows total]} (recents-page args fmt limit offset)]
         (common/list-content rows total {:param :type :offset offset :limit limit}))
-      (let [types         (into [] (distinct) type)
-            snippet?      (contains? (set types) "snippet")
-            engine-types  (if (seq types)
-                            (into [] (remove #{"snippet"}) types)
-                            (into [] (remove #{"snippet"}) all-types))
-            snippet-only? (and snippet? (empty? engine-types))
-            collection-id (when (contains? args :collection_id)
-                            (resolve-collection-filter collection_id))
-            engine        (when (seq engine-types)
-                            (engine-results args engine-types collection-id limit offset))
-            snippets      (when snippet?
-                            (snippet-rows (concat term_queries semantic_queries) archived))
-            snippets-page (if snippet-only?
-                            (into [] (comp (drop offset) (take limit)) snippets)
-                            snippets)
-            rows          (vec (take limit (concat (:rows engine) snippets-page)))
-            total         (cond
-                            snippet-only?         (count snippets)
-                            (and (not snippet?)
-                                 (:total engine)) (:total engine))]
+      ;; `validate-filters!` has already rejected snippet alongside any other type, so these
+      ;; two listings are mutually exclusive and each pages on its own terms.
+      (let [types              (into [] (distinct) type)
+            {:keys [rows total total-floor?]}
+            (if (contains? (set types) "snippet")
+              (let [snippets (snippet-rows (concat term_queries semantic_queries) archived)]
+                {:rows         (into [] (comp (drop offset) (take limit)) snippets)
+                 :total        (count snippets)
+                 :total-floor? false})
+              (let [engine-types  (into [] (remove #{"snippet"}) (if (seq types) types all-types))
+                    collection-id (when (contains? args :collection_id)
+                                    (resolve-collection-filter collection_id))
+                    engine        (engine-results args engine-types collection-id limit offset)]
+                ;; The engine total is the size of the ranked pool, capped at the search ranking
+                ;; limit — so it is a floor, not an exact count, when the cap is hit.
+                {:rows (vec (:rows engine)) :total (:total engine) :total-floor? true}))]
         (common/list-content (project-rows args rows) total
-                             {:param :type :offset offset :limit limit})))))
+                             {:param :type :offset offset :limit limit :total-floor? total-floor?})))))
