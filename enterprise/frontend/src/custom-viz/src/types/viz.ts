@@ -83,10 +83,16 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   mount: CustomVisualizationMount;
 
   /**
-   * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
-   * Out of scope for the near-membrane hardening; stays as a plain component.
+   * Component that renders the visualization.
    */
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
+
+  /**
+   * Static visualization renderer (server-side PNG/PDF path).
+   */
+  StaticVisualizationComponent?: ComponentType<
+    CustomStaticVisualizationProps<TSettings>
+  >;
 };
 
 export type VisualizationGridSize = {
@@ -152,6 +158,14 @@ export type CustomVisualizationMount = <P extends object>(
   container: Element,
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
+
+export type CustomStaticVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
+  series: Series;
+  settings: CustomVisualizationSettings<TSettings>;
+  renderingContext: RenderingContext;
+};
 
 export type ClickObject = {
   /** The raw value of the clicked cell. */
