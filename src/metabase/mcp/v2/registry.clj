@@ -76,8 +76,9 @@
    `:request-context`) and registers the tool. Optional keys: `:update-scope` (the scope
    [[metabase.mcp.v2.common/dispatch-write]] re-checks on `method: \"update\"`; also advertised
    to OAuth via [[registered-scopes]]), `:extra-scopes` (scopes the handler gates individual
-   modes on — not required to call the tool, but advertised via [[registered-scopes]] so a
-   token can carry them), `:feature` (a premium-features keyword; the tool is hidden when the
+   modes on — not required to call the tool, and opt-in: advertised via
+   [[registered-opt-in-scopes]] so a token can request them, but kept out of the default DCR
+   grant), `:feature` (a premium-features keyword; the tool is hidden when the
    instance lacks it), `:annotations` (merged over the always-present MCP annotation defaults).
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a
    teaching error."
@@ -89,16 +90,27 @@
      (register-tool! (assoc ~opts :description ~description :handler (var ~handler-sym)))))
 
 (defn registered-scopes
-  "The distinct scope strings the v2 surface relies on: every registered tool's `:scope`,
-   `:update-scope` and `:extra-scopes`. Folded into [[metabase.mcp.core/all-scopes]] so net-new
-   leaf scopes flow into the DCR default grant and RFC 9728 `scopes_supported` as their tools
-   land. A net-new leaf must also be declared with `defscope` (and, for in-app metabot users,
-   covered by a `perm-type->scopes` bucket) in [[metabase.metabot.scope]] alongside the tool
-   that carries it."
+  "The default-grant scope strings the v2 surface relies on: every registered tool's `:scope` and
+   `:update-scope`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow into
+   the DCR default grant (and thus `scopes_supported`) as their tools land. `:extra-scopes` are
+   *not* here — they are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be
+   declared with `defscope` (and, for in-app metabot users, covered by a `perm-type->scopes`
+   bucket) in [[metabase.metabot.scope]] alongside the tool that carries it."
   []
   (into #{}
-        (comp (mapcat (fn [tool]
-                        (into [(:scope tool) (:update-scope tool)] (:extra-scopes tool))))
+        (comp (mapcat (juxt :scope :update-scope))
+              (filter some?))
+        (vals @tools*)))
+
+(defn registered-opt-in-scopes
+  "The opt-in scope strings: every registered tool's `:extra-scopes`. A handler gates an optional
+   mode on these (e.g. listing snippets), so they are advertised in `scopes_supported` for a token
+   to request — but kept out of the default DCR grant, or the gate would be dead: every
+   dynamically-registered client would already hold them. Advertised via
+   [[metabase.mcp.core/opt-in-scopes]]; the same `defscope`/`perm-type->scopes` rule applies."
+  []
+  (into #{}
+        (comp (mapcat :extra-scopes)
               (filter some?))
         (vals @tools*)))
 

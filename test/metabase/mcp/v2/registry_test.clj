@@ -88,11 +88,15 @@
         (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))
 
 (deftest ^:parallel registered-scopes-test
-  (testing "every registered tool's scope flows through registered-scopes into the OAuth surface"
+  (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
     (is (set/subset? #{"agent:search"} (set (registry/registered-scopes)))))
-  (testing "GHY-4137: :extra-scopes — scopes a handler gates a mode on, rather than the tool's
-            own :scope — must reach the OAuth surface too, or no token can ever carry them"
-    (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-scopes))))))
+  (testing "GHY-4137: :extra-scopes are opt-in — a handler gates a mode on them, so they must be
+            advertised for a token to request them, but they must NOT be in the default grant, or
+            the gate is dead (every dynamically-registered client would hold them already)"
+    (testing "the opt-in scope is kept out of the default grant"
+      (is (not (contains? (set (registry/registered-scopes)) "agent:snippets:read"))))
+    (testing "the opt-in scope is advertised via registered-opt-in-scopes"
+      (is (set/subset? #{"agent:snippets:read"} (set (registry/registered-opt-in-scopes)))))))
 
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is a stable 8-char hex string that reflects scope-visible tools"
