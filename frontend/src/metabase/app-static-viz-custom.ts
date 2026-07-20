@@ -7,11 +7,6 @@ import {
 } from "metabase/static-viz/index-custom";
 import type { CustomVizPluginId } from "metabase-types/api";
 
-// Entry for the slim custom-viz-only static-viz bundle loaded into the untrusted
-// plugin isolate. Like ./app-static-viz.ts it exposes a JSON-string API on the
-// `MetabaseStaticViz` global - each isolate loads exactly one of the two bundles -
-// minus the calls only the trusted pool makes (legacy funnel/gauge, cell colors).
-
 export function renderChartJSON(inputJSON: string): string {
   return JSON.stringify(renderChart(JSON.parse(inputJSON)));
 }
