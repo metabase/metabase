@@ -1,11 +1,20 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import { Route } from "metabase/router";
+import type { Database } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
 
@@ -32,6 +41,81 @@ describe("BrowseDatabases", () => {
     for (let i = 0; i < 10; i++) {
       expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
     }
+  });
+
+  describe("opening a database through the UI", () => {
+    const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
+      setupDatabasesEndpoints(databases);
+      return renderWithProviders(
+        <>
+          <Route path="/browse/databases" component={BrowseDatabases} />
+          <Route path="/browse/databases/:slug" component={BrowseSchemas} />
+        </>,
+        {
+          storeInitialState: createMockState({ currentUser: createMockUser() }),
+          withRouter: true,
+          initialRoute: "/browse/databases",
+        },
+      );
+    };
+
+    const databaseWithSchemas = (
+      id: number,
+      name: string,
+      schemas: [string, string],
+    ) =>
+      createMockDatabase({
+        id,
+        name,
+        tables: schemas.map((schema, index) =>
+          createMockTable({ id: id * 10 + index, db_id: id, schema }),
+        ),
+      });
+
+    it("opens the database under its name url when the name is unique", async () => {
+      const { history } = renderBrowseDatabasesWithRouter([
+        databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"]),
+      ]);
+
+      await userEvent.click(await screen.findByText("Sales"));
+
+      expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/browse/databases/Sales",
+      );
+    });
+
+    it.each([
+      [0, "ALPHA"],
+      [1, "GAMMA"],
+    ])(
+      "opens the right database when two share a name (card %i)",
+      async (index, expectedSchema) => {
+        renderBrowseDatabasesWithRouter([
+          databaseWithSchemas(4, "Prod", ["ALPHA", "BETA"]),
+          databaseWithSchemas(9, "Prod", ["GAMMA", "DELTA"]),
+        ]);
+
+        const cards = await screen.findAllByText("Prod");
+        await userEvent.click(cards[index]);
+
+        expect(await screen.findByText(expectedSchema)).toBeInTheDocument();
+      },
+    );
+
+    it("opens a database whose name starts with a digit", async () => {
+      // "7-sales" as a url segment would be read back as database 7
+      const { history } = renderBrowseDatabasesWithRouter([
+        databaseWithSchemas(3, "7-sales", ["ONE", "TWO"]),
+      ]);
+
+      await userEvent.click(await screen.findByText("7-sales"));
+
+      expect(await screen.findByText("ONE")).toBeInTheDocument();
+      expect(history?.getCurrentLocation().pathname).not.toBe(
+        "/browse/databases/7-sales",
+      );
+    });
   });
 
   it("displays a 'no databases' message in the Databases tab when no databases exist", async () => {

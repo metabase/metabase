@@ -179,7 +179,6 @@
   ([workspace :- ::ws.schema/workspace
     provisioner]
    (if-not (:instance_id workspace)
-     ;; nothing to delete, but never keep a url without an instance
      (do
        (t2/update! :model/Workspace (:id workspace) {:instance_url nil})
        (assoc workspace :instance_url nil))

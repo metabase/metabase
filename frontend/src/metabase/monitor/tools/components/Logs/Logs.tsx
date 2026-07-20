@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import * as React from "react";
 import { useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
@@ -10,7 +9,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Link, Outlet, withRouter } from "metabase/router";
+import { Link, Outlet, useRouter } from "metabase/router";
 import {
   Button,
   DefaultSelectItem,
@@ -31,7 +30,6 @@ import {
 } from "./utils";
 
 interface LogsProps {
-  location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
@@ -40,10 +38,10 @@ interface LogsProps {
 
 export const DEFAULT_POLLING_DURATION_MS = 1000;
 
-const LogsBase = ({
-  location,
+export const Logs = ({
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
+  const { location } = useRouter();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -182,5 +180,3 @@ const LogsBase = ({
     </>
   );
 };
-
-export const Logs = withRouter(LogsBase);

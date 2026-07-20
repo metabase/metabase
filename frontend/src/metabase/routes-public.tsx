@@ -23,7 +23,7 @@ export const getRoutes = () => {
           element={<RoutedPublicOrEmbeddedQuestion />}
         />
         <Route
-          path="dashboard/:uuid(/:tabSlug)"
+          path="dashboard/:uuid/:tabSlug?"
           element={<RoutedPublicOrEmbeddedDashboardPage />}
         />
         <Route path="document/:uuid" element={<RoutedPublicDocument />} />
