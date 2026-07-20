@@ -1211,11 +1211,11 @@
                           (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
                           (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
                           (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
-                                  quoted-user (:password read-user) quoted-role)
+                                  quoted-user escaped-password quoted-role)
                           ;; the user may survive a failed teardown; without this it would keep
                           ;; its old password while the new one gets persisted
                           (format "ALTER USER %s SET PASSWORD = '%s'"
-                                  quoted-user (:password read-user))
+                                  quoted-user escaped-password)
                           (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
                (.addBatch ^Statement stmt ^String sql))
              (.executeBatch ^Statement stmt))))
