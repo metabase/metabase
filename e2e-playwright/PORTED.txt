@@ -403,3 +403,4 @@ sharing/alert/alert.cy.spec.js
 data-studio/transforms/reproductions.cy.spec.ts
 admin-2/sso/ldap.cy.spec.js
 sharing/alert/email-alert.cy.spec.js
+data-studio/transforms/transforms-indexes.cy.spec.ts

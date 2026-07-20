@@ -3243,3 +3243,62 @@ open item, not as evidence.
     read the delivered message off :1080, with **no toast to be fooled by**),
     while webhook-tester is **never contacted** (the saved alert is Slack, and
     Slack is mocked).
+
+### ⚠️ UNRESOLVED: `pro-self-hosted` feature count — 42 or 52?
+
+180. **Two agents have now reported 52 features where my briefs say 42, and a
+    direct measurement says 42.** Recording the conflict rather than picking a
+    side.
+    - `transforms-reproductions` saw a **transient 52** pre-control, with 42
+      before and after, and left it explicitly unexplained (#175).
+    - `transforms-indexes` reports **52 consistently**, and corrects my brief on
+      that basis — its slot ended at "valid=true, 52 features, identical to
+      baseline".
+    - **My own measurement, taken just now across four live slot backends:
+      `:4101` → 42, `:4104` → 42** (`:4102` and `:4105` were at 0, correctly
+      cleaned by their agents).
+
+    So the direct evidence says 42 on the slots I can see, while two agents saw
+    52 on theirs. **I cannot reconcile these and am not going to guess** — the
+    candidates (a second token being picked up, a partially-applied activation, a
+    counting difference between `true` and merely-present keys) are all
+    untested. The qualitative point everyone agrees on is unaffected:
+    **`transforms-basic: false` on this token.**
+
+    **Owed: settle it with one measurement of `cypress.env.json`'s
+    `pro-self-hosted` token against a freshly started backend.** Until then,
+    briefs should say *"~42–52 features, `transforms-basic` absent"* rather than
+    a precise number nobody has pinned.
+
+### A probe that assumed `.env` and wiped a slot's token
+
+181. **A probe written against `.env` PUT an undefined token and cleared slot 4**
+    (`transforms-indexes`). The agent detected it within one command,
+    re-activated, hardened the probe to throw on an undefined value, and
+    **disclosed it in full**.
+
+    This is the retracted-#107 trap biting from the other side: the file to read
+    is **`cypress.env.json` via `support/env.ts`**, not `.env`. My briefs say
+    that now, but the wrong assumption is evidently still easy to make, and its
+    failure mode is silent — an undefined token PUTs successfully and leaves the
+    slot at zero features, which then looks like "this tier is gated".
+
+### `runTransform` invalidates the index cache — the test depends on that, not navigation
+
+182. **Upstream's `toHaveCount(2)` silently depends on cache invalidation**
+    (`transforms-indexes`). The agent's M8 died at the wrong assertion; rather
+    than invent a mechanism it **probed the API directly**, which returned both
+    rows and exonerated the backend. The real cause is `transform.ts:71`:
+    `runTransform` invalidates `listTag("table-index")`.
+
+    Also from that spec: **M3 survived exactly as predicted, exposing a genuine
+    upstream defect** — row-0's `contain "name"` is vacuous because the Name cell
+    already reads `idx_animal_name`. Presence-probed to confirm "data cannot
+    discriminate" rather than "never ran", and kept **verbatim with analysis
+    inline**.
+
+    And a **declared non-upstream fix** that is a direct consequence of #157:
+    without `resetIndexesTargetTables()` the *second* run 403s on "table already
+    exists", because Cypress's `restore` calls `resetWritableDb` and ours does
+    not. It drops two exact names in one schema — no `LIKE`, no foreign schemas —
+    and the `--repeat-each=3` green is the proof.
