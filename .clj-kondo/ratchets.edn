@@ -73,7 +73,6 @@
                    :discouraged-java-method
                    :discouraged-namespace
                    :discouraged-var
-                   :metabase/defsetting-namespace
                    :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
                    :metabase/test-helpers-use-non-thread-safe-functions

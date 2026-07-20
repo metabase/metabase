@@ -31,24 +31,28 @@
              0
              6))
 
+;; interim home until this ns moves out of util; see Cam's note above
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds.")
   :type :integer
   :default 500)
 
+;; interim home until this ns moves out of util; see Cam's note above
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-multiplier
   (deferred-tru "The delay multiplier between attempts.")
   :type :double
   :default 2.0)
 
+;; interim home until this ns moves out of util; see Cam's note above
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-jitter-factor
   (deferred-tru "The jitter factor of the retry delay.")
   :type :double
   :default 0.1)
 
+;; interim home until this ns moves out of util; see Cam's note above
 #_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting retry-max-interval-millis
   (deferred-tru "The maximum delay between attempts.")
