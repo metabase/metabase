@@ -938,14 +938,18 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
+
+      // The backend fetches the remote git baseline asynchronously after configuring sync, and until it
+      // settles `/dirty` reports a clean state. Wait for it to see the local transform as unsynced so the
+      // "Pull changes" click deterministically takes the conflict-preflight path (isDirty === true)
+      // rather than a plain import.
+      H.pollForDirtyState();
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
-      // The conflict modal only renders after two async requests settle, so assert on them rather
-      // than racing the default 4s command timeout: the dirty-changes query flips the control into
-      // its "has unsynced local changes" state, and the pull it triggers issues an export-preflight
-      // whose response is what dispatches the modal.
-      cy.intercept("GET", "/api/ee/remote-sync/dirty").as("dirtyChanges");
+      // The dirty state is already settled (see beforeEach), so the pull runs the export-preflight
+      // whose response is what dispatches the conflict modal. Wait on that preflight rather than racing
+      // the default 4s command timeout for the modal to appear.
       cy.intercept("GET", "/api/ee/remote-sync/export-preflight*").as(
         "exportPreflight",
       );
@@ -955,10 +959,6 @@ describe("Remote Sync", () => {
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
-
-      // Wait until the control knows there are unsynced changes before pulling, so the pull takes
-      // the conflict-preflight path deterministically instead of a plain import.
-      cy.wait("@dirtyChanges");
 
       H.clickPullOption();
 
@@ -982,6 +982,10 @@ describe("Remote Sync", () => {
         .click();
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
+
+      // Deleting unsynced changes force-imports from the remote; wait for that import task to finish (and
+      // dismiss its result modal) before asserting the list, so we don't race the treegrid refresh.
+      H.waitForTask({ taskName: "import" });
 
       cy.findByRole("treegrid").within(() => {
         cy.log(
