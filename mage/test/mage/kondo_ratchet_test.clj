@@ -56,6 +56,13 @@
             "(do (f) (g))\n"
             [{:row 1, :comment nil, :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+  (testing "a same-row restore with a comment splices first, so the comment can't displace the splice target"
+    (is (= {:text          ";; why\n(do #_{:clj-kondo/ignore [:x]} (f) #_{:clj-kondo/ignore [:y]} (g))\n"
+            :inserted-rows [1]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(do (f) (g))\n"
+            [{:row 1, :comment ";; why", :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
+             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
   (testing "multiple sites in one file restore bottom-up"
     (is (= {:text          "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             :inserted-rows [2 1]}
@@ -63,6 +70,14 @@
             "(a)\n(b)\n"
             [{:row 1, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 2, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:y]}"}}])))))
+
+(deftest surviving-slots-test
+  (testing "slots shrink by the attributed findings that must have been pre-existing, floored at zero"
+    (is (= 0 (#'kondo-ratchet/surviving-slots 1 2 2)))
+    (is (= 1 (#'kondo-ratchet/surviving-slots 1 2 1)))
+    (is (= 2 (#'kondo-ratchet/surviving-slots 2 3 1)))
+    (is (= 0 (#'kondo-ratchet/surviving-slots 2 3 3)))
+    (is (= 1 (#'kondo-ratchet/surviving-slots 2 3 2)))))
 
 (deftest strip-orphan-keep-comments-test
   (let [stamp-line @#'kondo-ratchet/keep-comment

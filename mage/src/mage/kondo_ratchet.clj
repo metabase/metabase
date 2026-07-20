@@ -86,39 +86,40 @@
   spliced back at its original column. Returns `{:text _, :inserted-rows [...]}` with one entry per
   physical line added, for shifting other row bookkeeping past the inserts."
   [text sites]
-  (let [ending (if (str/ends-with? text "\n") "\n" "")
-        ;; bottom-up so earlier rows stay valid
-        result (reduce
-                (fn [{:keys [lines] :as acc} {:keys [row original comment]}]
-                  (let [{:keys [whole-line? col]} original
-                        original-lines (str/split-lines (:text original))
-                        indent         (if whole-line?
-                                         (re-find #"^\s*" (or (first original-lines) ""))
-                                         (re-find #"^\s*" (get lines (dec row) "")))
-                        comment-lines  (when comment [(str indent comment)])
-                        added          (if whole-line?
-                                         (concat comment-lines original-lines)
-                                         comment-lines)
-                        lines          (cond-> lines
-                                         (not whole-line?)
-                                         (update (dec row)
-                                                 (fn [line]
-                                                   (str (subs line 0 (dec col))
-                                                        (:text original) " "
-                                                        (subs line (dec col))))))
-                        ;; an inline splice adds span-internal newlines as extra physical lines
-                        n-added        (+ (count added)
-                                          (if whole-line? 0 (dec (count original-lines))))]
-                    {:lines    (into (into (subvec lines 0 (dec row)) added)
-                                     (subvec lines (dec row)))
-                     :inserted (into (:inserted acc) (repeat n-added row))}))
-                {:lines (vec (str/split-lines text)), :inserted []}
-                ;; bottom-up; within a row, inline splices right-to-left so earlier columns stay
-                ;; valid, and any whole-line insert last so it can't displace the line being spliced
-                (sort-by (fn [{:keys [row original]}]
-                           [row (if (:whole-line? original) -1 (:col original))])
-                         #(compare %2 %1)
-                         sites))]
+  (let [ending  (if (str/ends-with? text "\n") "\n" "")
+        ;; phase 1: all inline splices, right-to-left within a row so earlier columns stay valid;
+        ;; nothing is added or removed as a line, so every :row still indexes the original vector
+        spliced (reduce (fn [lines {:keys [row original]}]
+                          (if (:whole-line? original)
+                            lines
+                            (update lines (dec row)
+                                    (fn [line]
+                                      (str (subs line 0 (dec (:col original)))
+                                           (:text original) " "
+                                           (subs line (dec (:col original))))))))
+                        (vec (str/split-lines text))
+                        (sort-by (fn [{:keys [row original]}] [row (:col original -1)])
+                                 #(compare %2 %1)
+                                 sites))
+        ;; phase 2: line insertions (comments, whole-line originals), bottom-up; splicing first means
+        ;; a comment inserted above a row can no longer displace a same-row splice target
+        result  (reduce
+                 (fn [{:keys [lines] :as acc} {:keys [row original comment]}]
+                   (let [original-lines (str/split-lines (:text original))
+                         whole-line?    (:whole-line? original)
+                         indent         (if whole-line?
+                                          (re-find #"^\s*" (or (first original-lines) ""))
+                                          (re-find #"^\s*" (get lines (dec row) "")))
+                         added          (concat (when comment [(str indent comment)])
+                                                (when whole-line? original-lines))
+                         ;; an inline splice added its span-internal newlines in phase 1
+                         n-added        (+ (count added)
+                                           (if whole-line? 0 (dec (count original-lines))))]
+                     {:lines    (into (into (subvec lines 0 (dec row)) added)
+                                      (subvec lines (dec row)))
+                      :inserted (into (:inserted acc) (repeat n-added row))}))
+                 {:lines spliced, :inserted []}
+                 (sort-by :row > sites))]
     {:text          (str (str/join "\n" (:lines result)) ending)
      :inserted-rows (:inserted result)}))
 
@@ -142,6 +143,14 @@
   pre-insertion coordinates as `row`."
   [row inserted-rows]
   (+ row (count (filter #(<= % row) inserted-rows))))
+
+(defn- surviving-slots
+  "New baseline slot count for a collision key after a restore round: of the `a` attributed findings,
+  `c - n` were genuinely new (`c` observed against `n` slots), so the rest must have been pre-existing
+  findings the restore suppressed -- their slots go. Slots for findings left unattributed stay, so a
+  pre-existing warning outside the restored ignore's scope isn't misread as new next round."
+  [n c a]
+  (max 0 (- n (max 0 (- a (- c n))))))
 
 (defn- strip-orphan-keep-comments
   "`text` minus [[keep-marker]] markers no longer attached to an ignore form -- what an `--audit`
@@ -317,10 +326,15 @@
                                    (for [[file sites] (sort-by key file->sites)]
                                      (let [text  (slurp file)
                                            lines (vec (str/split-lines text))
-                                           sites (for [s sites]
-                                                   (assoc s :comment
-                                                          (when-not (marked-row? lines (:row s))
-                                                            (if (collision-site? s) collision-comment keep-comment))))
+                                           ;; one comment per row, however many sites restore onto it
+                                           sites (mapcat (fn [[row row-sites]]
+                                                           (let [comment (when-not (marked-row? lines row)
+                                                                           (if (some collision-site? row-sites)
+                                                                             collision-comment
+                                                                             keep-comment))]
+                                                             (cons (assoc (first row-sites) :comment comment)
+                                                                   (map #(assoc % :comment nil) (rest row-sites)))))
+                                                         (group-by :row sites))
                                            {:keys [text inserted-rows]} (reinsert-ignores text sites)]
                                        (spit file text)
                                        [file inserted-rows]))))
@@ -379,9 +393,9 @@
                                         (for [[file fps] (group-by (comp :filename first) attributable)]
                                           [file (vec (distinct (map second fps)))]))
                       collisions  (into #{} (map second) (filter (comp :collision? first) attributable))
-                      collision-keys (into #{}
-                                           (map (fn [{:keys [filename row type]}] [filename row type]))
-                                           (filter :collision? (map first attributable)))
+                      key-of      (fn [{:keys [filename row type]}] [filename row type])
+                      observed    (frequencies (map key-of (filter :collision? exposed)))
+                      attributed  (frequencies (map key-of (filter :collision? (map first attributable))))
                       inserted    (restore-sites! file->sites collisions)
                       shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
                   (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
@@ -394,10 +408,14 @@
                                      :let [gone (set (get file->sites file))]]
                                  [file (vec (for [s sites :when (not (gone s))]
                                               (shift-site file s)))]))
-                         ;; a collision restore also suppresses the pre-existing finding its baseline
-                         ;; slot counted, so drop those slots before shifting the rest
+                         ;; a collision restore suppresses pre-existing findings too, so shrink those
+                         ;; keys' slots ([[surviving-slots]]) before shifting the rest
                          (into {}
-                               (comp (remove (fn [[key _]] (contains? collision-keys key)))
+                               (comp (keep (fn [[key n]]
+                                             (let [n' (if (contains? observed key)
+                                                        (surviving-slots n (observed key) (get attributed key 0))
+                                                        n)]
+                                               (when (pos? n') [key n']))))
                                      (map (fn [[[file row type] n]]
                                             [[file (shift-past-inserts row (get inserted file [])) type] n])))
                                baseline-freq)
