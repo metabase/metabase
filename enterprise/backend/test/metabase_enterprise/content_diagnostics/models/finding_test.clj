@@ -39,3 +39,23 @@
     (is (= 15 (cd.settings/content-diagnostics-slow-card-threshold-seconds))))
   (testing "the slow-transform run-time threshold defaults to 60 seconds"
     (is (= 60 (cd.settings/content-diagnostics-slow-transform-threshold-seconds)))))
+
+;; `duplicated` has no settings-defaults test: a duplicate is definitionally a cluster of >= 2, so there
+;; is no threshold to configure.
+
+(deftest duplicated-details-round-trip-test
+  (testing "the duplicated details envelope - a nested matches vector - survives the JSON round-trip"
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (let [details {:matches              [{:match_type "name" :entity_ids [10 11]}]
+                     :matched_name         "orders by month"
+                     :duplicate_entity_ids [10 11]}
+            fid     (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                     {:scan_id         "dup-round-trip"
+                                                      :entity_type     :card
+                                                      :entity_id       1
+                                                      :finding_type    :duplicated
+                                                      :duplicate_count 2
+                                                      :details         details}))
+            row     (t2/select-one :model/ContentDiagnosticsFinding :id fid)]
+        (is (= details (:details row)))
+        (is (= 2 (:duplicate_count row)))))))
