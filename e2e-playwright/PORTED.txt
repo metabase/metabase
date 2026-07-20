@@ -387,3 +387,4 @@ collections/uploads.cy.spec.js
 permissions/transforms-permissions.cy.spec.ts
 metrics/metric-page.cy.spec.ts
 data-studio/data-model/data-studio-bulk-table.cy.spec.ts
+data-studio/transforms/transforms-incremental.cy.spec.ts

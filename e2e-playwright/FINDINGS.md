@@ -2408,3 +2408,51 @@ open item, not as evidence.
     test's loop covered **8 of 8** rows (server-side `database_ids`, unbounded),
     so **no virtualization gap**, and the un-checking-neighbours failure mode was
     checked for and **not observed**.
+
+### The transforms token predicate splits per SOURCE TYPE
+
+136. **`check-feature-enabled!` routes MBQL/SQL and python to different
+    predicates** (`transforms-incremental`), so #106's conclusion does not
+    transfer wholesale. MBQL/SQL → `query-transforms-enabled?`, which
+    short-circuits on `is-hosted? = false`, so the missing `transforms-basic`
+    never matters. Python → `python-transforms-enabled?`, which requires
+    `transforms-basic` **with no short-circuit**.
+
+    Probed live rather than inferred: incremental MBQL create/run returns
+    **200/202** with `checkpoint_hi_value: 30`; python create returns a genuine
+    **402**. (localstack :4566 is also down, so python was doubly blocked.) There
+    is no incremental-specific flag. 2 of 3 tests execute; python is `test.fixme`.
+
+    Third distinct answer from the same method — short-circuit (#106), hard gate
+    (#124), and now **split by argument**. "Does feature X gate this?" has no
+    file-level answer.
+
+### A survivor that is data coincidence, with the discriminator identified
+
+137. **Stubbing `reset-checkpoint` leaves the tests green**
+    (`transforms-incremental`). A presence probe proved the assertion is live, so
+    this is coincidence, not vacuity — and the API probe shows exactly why:
+    `checkpoint_hi_value` is **30 before the reset, after a no-reset re-run, and
+    after the reset**. Only `checkpoint_lo_value` discriminates, and the UI
+    renders its "Checkpoint from" row only when non-null.
+
+    Recorded inline with a concrete follow-up rather than strengthened. This is
+    the same shape as #119 (a boolean filter where both branches return
+    `"1 row"`): **the assertion is sound; the data cannot distinguish the states.**
+
+### Three port-drift mechanisms worth propagating
+
+138. From `transforms-incremental`, all three fixed and all three port drift:
+    - **The transform target defaults to the `Domestic` schema**, not the source
+      schema.
+    - 🔴 **`pressSequentially` after `fill()` PREPENDS** — the caret sits at index
+      0, and the failure surfaced **two assertions later**.
+    - **The DB popover auto-resolves within 200ms**, so upstream's click cannot be
+      ported literally. Recorded as environment-dependent rather than a product
+      claim, since the Cypress cross-check is barred.
+
+    Also a **cross-slot hazard**: `transforms.spec.ts`'s cleanup drops any
+    `%transform%` table in Schema A/B, which would have deleted upstream's
+    `transform_table` mid-run. Avoided by a declared rename to
+    `incr_target_table`. **A spec's cleanup can reach into another spec's
+    fixtures** — a fourth mechanism behind the #85 family.
