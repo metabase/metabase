@@ -625,6 +625,7 @@
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (or (:count result) 0)))
 
+;; REPL debugging helper, never called from tests; the thread-safe-name rule targets test helpers
 #_:clj-kondo/ignore
 (defn full-index
   "Query the full index table and return all documents with decoded embeddings.

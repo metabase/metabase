@@ -79,6 +79,7 @@
     (let [out (backend/nrepl-eval the-ns the-cmd)
           elapsed (u/since-ms start)]
       (println)
+      ;; CLI tool; raw nREPL output belongs on stdout
       (try (u/pp (edn/read-string out)) (catch Exception _ #_:clj-kondo/ignore (prn out)))
       (println (c/green (str "Tests completed in " elapsed " ms.\n")))
       (when (u/env "MAGE_DEBUG" (constantly nil))
@@ -97,6 +98,7 @@
       (let [out-data (try (edn/read-string out)
                           (catch Exception _
                             (println (c/red "Problem parsing output, raw output follows:"))
+                            ;; CLI tool; raw nREPL output belongs on stdout
                             #_:clj-kondo/ignore
                             (prn out)))
             exit-code (if (zero? (+ (:fail out-data) (:error out-data))) 0 1)]

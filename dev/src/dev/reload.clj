@@ -9,6 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; internal dev-reload state, not an API
 #_:clj-kondo/ignore
 (defonce *reload-timestamps (atom {}))
 

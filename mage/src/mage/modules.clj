@@ -1,5 +1,6 @@
 (ns mage.modules
   (:require
+   ;; bb classpath has no metabase.util.json; cheshire is what mage has
    ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]

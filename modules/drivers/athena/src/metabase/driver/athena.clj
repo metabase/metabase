@@ -500,6 +500,7 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
+;; one-off REPL script kept for reference; leans on test namespaces drivers can't require
 #_:clj-kondo/ignore
 (comment
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.

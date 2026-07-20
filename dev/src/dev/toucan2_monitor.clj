@@ -150,5 +150,6 @@
   (summary)
   (to-csv!)
   (doseq [q (querles)]
+    ;; REPL scratch; stdout is the point
     #_:clj-kondo/ignore
     (println q)))

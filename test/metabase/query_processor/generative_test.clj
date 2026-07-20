@@ -16,6 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
+  ;; REPL setup snippet; environ.core isn't in this ns's requires
   #_:clj-kondo/ignore
   (alter-var-root #'environ.core/env assoc
                   :mb-gentest-run "true"

@@ -189,6 +189,7 @@
       ;; these trigger Kondo warnings because the function expects a string or nil, but we should probably test behavior
       ;; anyway for cases where you're passing in a local and Kondo can't infer the type
       #_:clj-kondo/ignore {}
+      ;; the rows below feed intentionally wrong types to exercise runtime validation
       #_:clj-kondo/ignore []
       #_:clj-kondo/ignore true
       #_:clj-kondo/ignore false
