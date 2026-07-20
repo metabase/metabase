@@ -248,6 +248,8 @@ function TypeFixtures() {
 
 void TypeFixtures;
 
+// The declarations above are compile-time contract checks. This runtime test
+// verifies that the data-app entrypoint exposes only the intended query API.
 describe("public query API", () => {
   it("exports the table query DSL from the data-app entrypoint", () => {
     expect(DataApp).toMatchObject({

@@ -115,6 +115,7 @@ export const LOADED_SDK_STATE: ReturnType<typeof useSdkLoadingState> = {
 export function createDeferred<TValue>() {
   let resolve!: (value: TValue) => void;
   let reject!: (error: unknown) => void;
+
   const promise = new Promise<TValue>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
     reject = rejectPromise;
@@ -126,10 +127,12 @@ export function createDeferred<TValue>() {
 export const resetTestState = (): void => {
   jest.clearAllMocks();
   mockRunRtkEndpoint.mockResolvedValue(undefined);
+
   mockGetMetadataUnfiltered.mockReturnValue(
     // `Metadata` is a class; the fixture is the plain shape read out of it.
     TEST_METADATA as unknown as ReturnType<typeof getMetadataUnfiltered>,
   );
+
   mockUseLazySelector.mockReturnValue({ status: "success" });
   mockUseSdkLoadingState.mockReturnValue(LOADED_SDK_STATE);
   mockPropsStore(createMockStore());

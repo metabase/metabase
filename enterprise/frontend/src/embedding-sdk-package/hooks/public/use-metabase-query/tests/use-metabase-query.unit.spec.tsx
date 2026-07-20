@@ -55,6 +55,7 @@ describe("useMetabaseQueryObject", () => {
     const resolveDatasetQuery = jest.fn(() =>
       jest.fn(() => Promise.reject(error)),
     );
+
     stubSdkBundle({ resolveDatasetQuery });
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
@@ -72,6 +73,7 @@ describe("useMetabaseQueryObject", () => {
     const resolveDatasetQuery = jest.fn(() =>
       jest.fn(() => Promise.resolve(TEST_DATASET_QUERY)),
     );
+
     stubSdkBundle({ resolveDatasetQuery });
     mockUseLazySelector.mockReturnValue({ status: "loading" });
 
@@ -91,6 +93,7 @@ describe("useMetabaseQueryObject", () => {
 
     await waitFor(() => {
       expect(resolveDatasetQuery).toHaveBeenCalled();
+
       expect(result.current).toEqual({
         query: TEST_DATASET_QUERY,
         error: null,
@@ -168,6 +171,7 @@ describe("useMetabaseQuery", () => {
     const firstDatasetQuery = createMockDatasetQuery([
       { "source-table": 1, limit: 10 },
     ]);
+
     const secondDatasetQuery = createMockDatasetQuery([
       { "source-table": 1, limit: 20 },
     ]);
@@ -244,6 +248,7 @@ describe("useMetabaseQuery", () => {
 
   it("waits for async query creation before querying the dataset", async () => {
     const deferred = createDeferred<DatasetQuery>();
+
     const queryDataset = jest.fn(() =>
       Promise.resolve({
         rowCount: 1,
@@ -252,6 +257,7 @@ describe("useMetabaseQuery", () => {
         rows: [],
       }),
     );
+
     stubSdkBundle({
       resolveDatasetQuery: jest.fn(() => jest.fn(() => deferred.promise)),
       queryDataset: jest.fn(() => queryDataset),
