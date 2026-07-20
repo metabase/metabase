@@ -161,6 +161,7 @@
         tree
         parsed-collapsed-subtotals))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord TreeNode [value children value->child-pos isCollapsed])
 
@@ -590,6 +591,7 @@
       #?(:cljs (perf/clj->js result)
          :clj result))))
 
+;; defrecord has no docstring slot for the vars it interns
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn depth offset
                        hasChildren path span maxDepthBelow])
