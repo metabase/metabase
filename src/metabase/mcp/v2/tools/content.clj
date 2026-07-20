@@ -169,18 +169,20 @@
 ;;; -------------------------------------------------- dimensions --------------------------------------------------
 
 (defn- dimensions-section
-  "The `dimensions` include for metrics and measures: the same synced, permission-filtered
+  "The `dimensions` include for metrics and measures: the same permission-filtered
    `dimensions`/`dimension_mappings` pair `GET /api/metric/:id` and `GET /api/measure/:id`
-   return."
+   return — computed on read but, unlike those endpoints, never persisted, so this stays within
+   the tool's `readOnlyHint` contract."
   [type row]
   (let [[metadata-type model] (case type
                                 "metric"  [:metadata/metric :model/Card]
                                 "measure" [:metadata/measure :model/Measure])]
-    (metrics/sync-dimensions! metadata-type (:id row))
-    (let [fresh (-> (t2/select-one model :id (:id row))
-                    metrics/filter-dimensions-for-user)]
-      (compact {:dimensions         (vec (:dimensions fresh))
-                :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))}))))
+    (when-let [computed (metrics/compute-dimensions metadata-type (:id row))]
+      (let [fresh (-> (t2/select-one model :id (:id row))
+                      (merge computed)
+                      metrics/filter-dimensions-for-user)]
+        (compact {:dimensions         (vec (:dimensions fresh))
+                  :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))})))))
 
 ;;; -------------------------------------------------- collection --------------------------------------------------
 

@@ -339,3 +339,19 @@
         (let [error (content-error {:items [{:type "question" :id card-id}] :include ["layout"]})]
           (is (re-find #"does not apply to type question" error))
           (is (re-find #"available for: dashboard, document" error)))))))
+
+(deftest get-content-dimensions-include-does-not-write-test
+  (testing "GHY-4140: the dimensions include computes on read but never persists, so the tool's
+            readOnlyHint holds — unlike GET /api/metric/:id, which syncs to the DB"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/with-test-user :crowberto
+        (let [dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id)
+              row         (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
+          (is (nil? (:error row)))
+          (is (contains? row :dimensions)
+              "the dimensions section is present")
+          (is (seq (:dimensions row))
+              "a count metric over venues yields at least one groupable dimension")
+          (is (= dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id))
+              "the read persisted nothing to the metric's dimensions column"))))))
