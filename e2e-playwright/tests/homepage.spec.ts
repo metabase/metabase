@@ -478,7 +478,7 @@ test.describe("scenarios > home > custom homepage", () => {
         .click();
 
       await expect(
-        undoToast(page).getByText("Changes saved", { exact: true }),
+        undoToast(page).getByText("Changes saved", { exact: true }).first(),
       ).toBeVisible();
       await expect(
         page.getByTestId("custom-homepage-dashboard-setting"),
@@ -498,7 +498,7 @@ test.describe("scenarios > home > custom homepage", () => {
       await putSettings;
 
       await expect(
-        undoToast(page).getByText("Changes saved", { exact: true }),
+        undoToast(page).getByText("Changes saved", { exact: true }).first(),
       ).toBeVisible();
       await expect(
         page.getByTestId("custom-homepage-dashboard-setting"),
@@ -841,7 +841,7 @@ test.describe("scenarios > setup", () => {
       .click();
 
     await expect(
-      undoToast(page).getByText("Changes saved", { exact: true }),
+      undoToast(page).getByText("Changes saved", { exact: true }).first(),
     ).toBeVisible();
 
     await expectUnstructuredSnowplowEvent({
