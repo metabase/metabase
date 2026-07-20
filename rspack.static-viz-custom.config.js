@@ -5,7 +5,7 @@ const {
 
 const BUNDLE_NAME = "lib-static-viz-custom";
 
-const MAX_ASSET_SIZE = 1.5 * 1024 * 1024;
+const MAX_ASSET_SIZE = 2.1 * 1024 * 1024;
 
 module.exports = () =>
   createStaticVizConfig({
