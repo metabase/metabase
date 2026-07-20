@@ -7,7 +7,7 @@ export const getMetabotRoutes = () => {
   return (
     <>
       {getMetabotQuickLinks()}
-      <Route path="slack-connect-success" component={SlackConnectSuccess} />
+      <Route path="slack-connect-success" element={<SlackConnectSuccess />} />
     </>
   );
 };
