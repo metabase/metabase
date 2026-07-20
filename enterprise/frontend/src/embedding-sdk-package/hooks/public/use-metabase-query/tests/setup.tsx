@@ -72,7 +72,7 @@ export const createMockStore = (): SdkStore =>
 type MbqlStage = Record<string, unknown>;
 
 export const createMockDatasetQuery = (stages: MbqlStage[]): DatasetQuery =>
-  // `DatasetQuery` is opaque, so a test cannot construct it as a literal.
+  // `DatasetQuery` is opaque, so a test cannot construct it without type casts.
   ({
     "lib/type": "mbql/query",
     database: 1,
@@ -94,11 +94,11 @@ export const mockPropsStore = (reduxStore: SdkStore) =>
   });
 
 export const stubSdkBundle = (
-  exports: Partial<MetabaseEmbeddingSdkBundleExports>,
+  bundleExports: Partial<MetabaseEmbeddingSdkBundleExports>,
 ): void => {
   window.METABASE_EMBEDDING_SDK_BUNDLE =
     // The global is typed as the whole bundle; tests install only needed functions.
-    exports as MetabaseEmbeddingSdkBundleExports;
+    bundleExports as MetabaseEmbeddingSdkBundleExports;
 };
 
 export const LOADED_SDK_STATE: ReturnType<typeof useSdkLoadingState> = {
