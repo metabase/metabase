@@ -136,8 +136,6 @@ export const ErrorOverview = () => {
         <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
-          {/* Keep the search mounted even on error so the user can change the
-              query to recover; RTK only clears the error on an arg change. */}
           <ErroringQuestionsSearch
             hasLoader={isFetching && !isLoading}
             onFiltersChange={handleFiltersChange}

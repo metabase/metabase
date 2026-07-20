@@ -163,7 +163,6 @@ describe("ErrorOverview", () => {
     await setup({ error: true });
 
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
-    // the search stays mounted so the user has a recovery path
     expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.queryByTestId("erroring-questions-table"),

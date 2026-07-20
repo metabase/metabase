@@ -49,8 +49,6 @@ function setup({
         <TreeTableRow
           row={row}
           rowIndex={0}
-          // Pinned position renders without the virtualizer, which does not
-          // measure in jsdom.
           virtualItemOrPinnedPosition="top"
           table={instance.table}
           columnWidths={instance.columnWidths}
@@ -76,8 +74,7 @@ function setup({
 }
 
 function getCheckboxWrapper() {
-  // The checkbox column wrapper (padding around the checkbox) is the first
-  // child of the row. Clicking it must behave like clicking the checkbox.
+  // Cast to avoid additional checks in tests.
   return screen.getByRole("row").firstElementChild as HTMLElement;
 }
 
@@ -122,8 +119,6 @@ describe("TreeTableRow checkbox wrapper", () => {
 
   it("does not fire onCheckboxClick when the row cannot be selected", async () => {
     const onCheckboxClick = jest.fn();
-    // enableRowSelection false makes row.getCanSelect() return false; without a
-    // getSelectionState override the checkbox (and wrapper) must be disabled.
     setup({ enableRowSelection: false, onCheckboxClick });
 
     await userEvent.click(getCheckboxWrapper());

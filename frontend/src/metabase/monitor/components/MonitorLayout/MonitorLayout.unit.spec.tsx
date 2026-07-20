@@ -29,10 +29,9 @@ jest.mock("metabase/common/monitor/analytics", () => ({
   trackMonitorSectionClicked: jest.fn(),
 }));
 
-// Jest's requireMock API is untyped, so define the mock module boundary.
 const { trackMonitorSectionClicked } = jest.requireMock(
   "metabase/common/monitor/analytics",
-) as { trackMonitorSectionClicked: jest.Mock };
+);
 
 interface SetupOpts {
   isNavbarOpened?: boolean;

@@ -48,7 +48,6 @@ describe("TaskRunEntityPicker", () => {
   it("does not request entities when the run type is missing", async () => {
     setup({ runType: null });
 
-    // Give any erroneously scheduled request a chance to fire.
     await Promise.resolve();
     expect(getEntityCalls()).toHaveLength(0);
     expect(screen.getByPlaceholderText("Filter by entity")).toBeDisabled();

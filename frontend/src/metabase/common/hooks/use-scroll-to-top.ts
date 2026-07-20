@@ -11,10 +11,7 @@ type UseScrollToTopProps = {
  * Scrolls the element back to the top when `keys` change, e.g. after
  * paginating or sorting.
  *
- * The scroll is deferred until `skip` is false, so callers can bind `skip`
- * to `isFetching` and have the reset land once the new page is in view.
- * When `keys` change while not skipped (e.g. a cache hit where `isFetching`
- * never toggles), the reset fires immediately. Never fires on mount.
+ * The scroll is deferred until `skip` is false.
  */
 export function useScrollToTop({
   ref,

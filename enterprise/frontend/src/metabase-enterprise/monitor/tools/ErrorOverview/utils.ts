@@ -65,8 +65,6 @@ export function getErroringQuestions(dataset: Dataset): ErroringCard[] {
   return rows.flatMap((row) => {
     const value = (name: string) => row[indexByName[name]];
     const id = asCount(value("card_id"));
-    // A row without a valid card id can't link to a question and would collide
-    // on the table's row id; drop it rather than fabricate an id.
     if (id == null) {
       return [];
     }

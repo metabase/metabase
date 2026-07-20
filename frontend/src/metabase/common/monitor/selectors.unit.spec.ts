@@ -12,10 +12,7 @@ jest.mock("metabase/selectors/embed", () => ({
   getIsEmbeddingIframe: jest.fn(() => false),
 }));
 
-// Jest's requireMock API is untyped, so define the mock module boundary.
-const { getIsEmbeddingIframe } = jest.requireMock(
-  "metabase/selectors/embed",
-) as { getIsEmbeddingIframe: jest.Mock };
+const { getIsEmbeddingIframe } = jest.requireMock("metabase/selectors/embed");
 
 describe("canAccessMonitor", () => {
   beforeEach(() => {

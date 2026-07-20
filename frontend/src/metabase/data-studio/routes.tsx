@@ -43,6 +43,13 @@ export function getDataStudioRoutes(
 ) {
   return (
     <>
+      {/* These redirects sit
+       * OUTSIDE the CanAccessDataStudio guard — users without Data Studio access must
+       * still be forwarded —
+       * and are declared BEFORE the guarded subtree so they win over its `path="*"`
+       * catch-all
+       */}
+
       {getDataStudioDependencyDiagnosticsRedirects()}
       <Route element={<CanAccessDataStudio />}>
         <Route path="data-studio" element={<DataStudioLayout />}>
@@ -89,13 +96,7 @@ export function getDataStudioRoutes(
 }
 
 /**
- * Dependency Diagnostics moved from Data Studio to Monitor. These redirects sit
- * OUTSIDE the CanAccessDataStudio guard — users without Data Studio access must
- * still be forwarded (the guard would otherwise bounce them to /unauthorized) —
- * and are declared BEFORE the guarded subtree so they win over its `path="*"`
- * catch-all (first full match in declaration order wins), which would otherwise
- * shadow them with a NotFound inside the Data Studio layout.
- */
+ * Dependency Diagnostics moved from Data Studio to Monitor.  */
 export function getDataStudioDependencyDiagnosticsRedirects() {
   return (
     <>

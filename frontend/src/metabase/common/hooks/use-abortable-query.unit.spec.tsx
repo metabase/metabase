@@ -384,7 +384,6 @@ describe("useAbortableQuery", () => {
       result.current.refetch();
     });
 
-    // Give any (erroneously scheduled) request a chance to fire.
     await Promise.resolve();
     expect(getTaskCalls()).toHaveLength(0);
   });

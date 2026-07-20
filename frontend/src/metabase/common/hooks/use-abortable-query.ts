@@ -30,13 +30,11 @@ type UseAbortableQueryOptions = {
  *
  * Caching mirrors `useQuery`: cache-first by default.
  *
- * Skipping: pass `skipToken` as the arg, or set `{ skip: true }`. While skipped
- * no request is issued and `refetch` is a no-op. Passing `skipToken` avoids
- * having to fabricate a placeholder arg for the skipped state.
- *
  * Each hook instance gets its own RTK cache entry, so aborting is safe.
  * The trade-off is that instances don't share cached responses and
  * identical concurrent requests aren't deduplicated.
+ *
+ * Skipping: pass `skipToken` as the arg, or set `{ skip: true }`.
  */
 export function useAbortableQuery<
   Arg extends object,
@@ -59,8 +57,6 @@ export function useAbortableQuery<
 
   const skip = skipOption || arg === skipToken;
 
-  // Keep the last concrete arg; a `skipToken` arg never overwrites it, so
-  // `stableArg` only equals `skipToken` before any real arg has arrived.
   const argRef = useRef(arg);
   if (arg !== skipToken && !_.isEqual(argRef.current, arg)) {
     argRef.current = arg;
