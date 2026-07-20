@@ -22,13 +22,14 @@ jobs:
         run: |
           NAMED_MODULES=$(node --input-type=module -e "
             import { elements } from './frontend/lint/module-boundaries.mjs';
-            const named = elements.filter(e => !['shared/other', 'app/misc', 'other'].includes(e.type));
-            console.log(named.length);
+            const named = new Set(elements.filter(e => !['shared/other', 'app/misc', 'other'].includes(e.type)).map(e => e.type));
+            console.log(named.size);
           ")
 
           ENFORCED_MODULES=$(node --input-type=module -e "
             import { elements } from './frontend/lint/module-boundaries.mjs';
-            const enforced = new Set(elements.filter(e => e.enforceOutgoing).map(e => e.type));
+            const excluded = ['shared/other', 'app/misc', 'other'];
+            const enforced = new Set(elements.filter(e => e.enforceOutgoing && !excluded.includes(e.type)).map(e => e.type));
             console.log(enforced.size);
           ")
 
