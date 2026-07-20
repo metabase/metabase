@@ -29,6 +29,7 @@ import {
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
+import { DelayedSkeleton } from "../LoadingSpinner";
 
 export const SearchResults = ({
   searchResults,
@@ -46,10 +47,18 @@ export const SearchResults = ({
   const selectedItem = path?.[path.length - 1];
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
-  if (isLoading || error) {
+  if (error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
+      </Box>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Box h="100%" w="40rem" p="md">
+        <DelayedSkeleton />
       </Box>
     );
   }
