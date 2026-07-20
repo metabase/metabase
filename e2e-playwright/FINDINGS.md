@@ -2001,3 +2001,54 @@ open item, not as evidence.
     on Linux CI**, where scrollbars can take layout width. **Owed: settle #92 on
     a Linux runner.** Until then, treat every `isScrollable*` call site as
     unproven — there are 5 known.
+
+### The shared `openTable` drops arguments on its notebook branch — twice now
+
+116. **`ad-hoc-question.ts`'s `openTable` silently drops `limit` on the notebook
+    branch** (`notebook-native-preview-sidebar`), and its comment claims no
+    caller needs it. This spec does: without the limit there is no
+    `step-limit-0-0` to delete and the smoke test collapses.
+
+    This is the **second** argument the same helper is known to drop — it also
+    discards `database` on that branch (`joins.openTableNotebook` hardcodes
+    `SAMPLE_DB_ID`). So the pattern is not a one-off bug but a shape: **the
+    notebook branch of `openTable` honours fewer options than its signature
+    advertises, and its comments assert otherwise.** Reproduced locally rather
+    than editing shared code. **Consolidation candidate — and any caller relying
+    on `openTable`'s notebook branch should be audited, not trusted.**
+
+### A brief claim that did not survive contact
+
+117. **My "generated-SQL whitespace" warning did not apply here, and the agent
+    said so** (`notebook-native-preview-sidebar`). The brief called the
+    `toHaveText` normalization trap "the single most likely way this port goes
+    green while asserting nothing", since the spec renders generated SQL.
+
+    On inspection all nine SQL assertions are **single-token substring
+    containment**, where normalization is a **no-op**. The agent used raw
+    `textContent` anyway but correctly reported it as *the safer equivalent, not
+    a strengthening*, and stated that none was ever at risk of the `\tSELECT`
+    vacuity.
+
+    Recorded because the alternative — quietly accepting the coordinator's
+    framing and claiming a dividend — is exactly the failure mode this spike
+    keeps guarding against. **A warning being inapplicable is a result.**
+
+### A virtualization accommodation, correctly bounded
+
+118. **The mongo `"Small Marble Shoes"` assertion failed on document order, not
+    on the port** (`notebook-native-preview-sidebar`). The generated pipeline has
+    **no `$sort`**, so rows come back in MongoDB natural order; on this box the
+    target row sits at position **20 of 200** while the 196px results grid
+    virtualizes **10**.
+
+    Port drift was ruled out by measurement first — same query, same testid, 90
+    cells present, same viewport. Fixed with `scrollResultsToCell`, which is a
+    virtualization accommodation rather than a semantic change: the assertion
+    still reads "some *rendered* cell contains X".
+
+    **Explicitly left undetermined:** whether CI's mongo container orders those
+    documents the same way. The Cypress cross-check is barred on a shared box, so
+    this is recorded as environment-bounded rather than as a product claim.
+    Third instance of the virtualization-window class today, after the ~18-row
+    results grid and the ~20-row schema picker.
