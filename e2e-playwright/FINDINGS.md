@@ -3077,3 +3077,53 @@ open item, not as evidence.
     handler already satisfies `icon("webhook")`. A presence probe showed both
     hook names render exactly once, so **the data can discriminate** — making it
     a genuine **upstream assertion gap**, recorded not strengthened.
+
+### A Mantine Modal root measures zero-height — Playwright needs a box, Cypress doesn't
+
+173. **`leaveConfirmationModal().should("be.visible")` cannot be ported
+    literally** (`transforms-reproductions`). The `data-testid` sits on Mantine's
+    Modal **root**, measured at `{w:1280, h:0}` while the content is
+    `{w:620, h:190}`. **Playwright requires a bounding box on the element
+    itself; Cypress does not.** Harness semantics, not an app failure.
+
+    The agent's first reading was wrong — it took the URL change on back-nav for
+    a failed blocker — and it **corrected itself rather than shipping the first
+    explanation**. This refines the earlier "a Mantine Modal reports `hidden`
+    while open" note with the actual measurement.
+
+### Inheriting a sibling's conclusion would have been wrong
+
+174. **`findByText("Writable Postgres12").click()` can't be ported literally, but
+    not for the reason a sibling recorded** (`transforms-reproductions`). The
+    agent probed instead of inheriting: **only one DB is transform-eligible, so
+    the app auto-selects and the popover is gone by t+200ms**. That is the
+    **auto-select** mechanism (the #64406 family), *not* the "two popovers"
+    mechanism the sibling's comment leads with.
+
+    Worth recording as method: the findings file is now large enough that
+    **inheriting a neighbouring explanation is a real failure mode**. The
+    symptom matched; the mechanism didn't.
+
+### A verifier that caught a six-site anchor
+
+175. **The mutation verifier aborted on a 6-occurrence anchor** that would
+    otherwise have mutated six sites at once and mis-attributed the death
+    (`transforms-reproductions`) — the same class the `dashboard-chained-filters`
+    verifier caught at two sites. Sanity-checked against 0-occurrence and
+    multi-occurrence inputs **before** use.
+
+    The agent also flagged its own weak mutation: **M2 was an assertion
+    inversion**, so it added M2b (removing the 1000-item mock) as an input
+    inversion — which **survived**, honestly read as *"the data cannot
+    discriminate on a fixed build"* rather than vacuity, since M2 had already
+    established non-vacuity.
+
+    **Unexplained and left so:** a pre-control reading of **52 token features**
+    where 42 is the count both before and after. The agent could not account for
+    it and did not invent a mechanism; the decisive control ran at 0 features, so
+    no conclusion depends on it. (Noting for the record that 52 is suspiciously
+    near `bleeding-edge`'s 53 — but that is my speculation, not a finding.)
+
+    Two upstream weaknesses ported verbatim: **#68378 ends on a Save click with
+    no assertion at all**, and **GDGT-1776 checks `loading-indicator` absence
+    *before* its positive anchor**.
