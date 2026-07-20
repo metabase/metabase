@@ -9,7 +9,8 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:missing-docstring]}
+;; internal dev-reload state, not an API
+#_:clj-kondo/ignore
 (defonce *reload-timestamps (atom {}))
 
 (defn system-classpath
