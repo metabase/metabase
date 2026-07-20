@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -135,16 +135,35 @@ function DashCardInner({
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
-
-    if (autoScroll) {
-      // Use `block: "center"` (rather than `"nearest"`) so the target dashcard
-      // lands comfortably inside the scroll container instead of flush against
-      // its edge, where the content would otherwise be clipped by the
-      // container's overflow.
-      cardRootRef?.current?.scrollIntoView({ block: "center" });
-      reportAutoScrolledToDashcard?.();
-    }
   });
+
+  useEffect(() => {
+    if (!autoScroll) {
+      return;
+    }
+
+    // Defer the scroll until after the browser has laid out the dashboard
+    // grid. The grid measures its container width and re-renders (react-grid
+    // WidthProvider), which shifts each dashcard's final position; scrolling
+    // synchronously on mount targets the pre-measure position, so the target
+    // can settle clipped by the scroll container's overflow. A double
+    // requestAnimationFrame runs the scroll after that layout pass, and only
+    // then do we clear the `scrollTo` hash. `block: "center"` lands the card
+    // comfortably inside the viewport rather than flush against the edge.
+    let secondFrame: number;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        cardRootRef.current?.scrollIntoView({ block: "center" });
+        reportAutoScrolledToDashcard?.();
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []);
 
   useUpdateEffect(() => {
     if (!isEditing) {
