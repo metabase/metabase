@@ -79,7 +79,6 @@
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
                    :metabase/validate-defendpoint-route-uses-kebab-case
-                   :metabase/validate-deftest
                    :missing-protocol-method
                    :unused-excluded-var
                    :unused-private-var}}
