@@ -18,6 +18,7 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
+   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -98,7 +99,12 @@
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
-        (a/>!! purge-chan ::purge)))))
+        (a/>!! purge-chan ::purge))
+
+      (delete-entry! [this query-hash]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
+          (swap! store dissoc hex-hash)
+          (log/tracef "Delete entry for %s --> store: %s" hex-hash (pretty/pretty this)))))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
@@ -209,6 +215,46 @@
       (Thread/sleep 200)
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
+
+(deftest delete-entry-test
+  (testing "delete-entry! (the db backend) removes the cache entry"
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                               :results    (byte-array [0])
+                                                               :updated_at (t/offset-date-time)}]
+      (backend.db/delete-entry! query-hash)
+      (is (nil? (t2/select-one :model/QueryCache :query_hash query-hash))))))
+
+(deftest failed-refresh-deletes-outdated-entry-test
+  (testing "a refresh that fails to save (e.g. results exceed query-caching-max-kb) deletes the outdated entry
+            instead of leaving it to be served to later requests"
+    (with-mock-cache! [save-chan]
+      (run-query)
+      (mt/wait-for-result save-chan)
+      (is (= :cached
+             (run-query)))
+      (mt/with-temporary-setting-values [query-caching-max-kb 0]
+        (run-query :middleware {:ignore-cached-results? true})
+        (mt/wait-for-result save-chan))
+      (testing "the still-fresh-but-outdated entry is gone, so a normal load recomputes"
+        (is (= :not-cached
+               (run-query)))))))
+
+(deftest not-eligible-refresh-deletes-outdated-entry-test
+  (testing "when a rerun is no longer cache-eligible (ran under min-duration-ms), the outdated entry is deleted
+            instead of being left to be served to later requests"
+    (with-mock-cache! [save-chan]
+      (run-query)
+      (mt/wait-for-result save-chan)
+      (is (= :cached
+             (run-query)))
+      (binding [*query-caching-min-ttl* 1000]
+        (testing "this run recomputes and doesn't save (query is now too fast)"
+          (is (= :not-cached
+                 (run-query :middleware {:ignore-cached-results? true})))))
+      (testing "the still-fresh-but-outdated entry is gone, so a normal load recomputes"
+        (is (= :not-cached
+               (run-query)))))))
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
@@ -697,20 +743,28 @@
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
 
+(def stub-no-op-cache-backend
+  (reify i/CacheBackend
+    (cached-results [_ _ _ respond] (respond nil))
+    (save-results! [_ _ _])
+    (purge-old-entries! [_ _])
+    (delete-entry! [_ _])))
+
 (deftest ^:parallel caching-big-resultsets
-  (testing "Make sure we can save large result sets without tripping over internal async buffers"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we don't block somewhere if we decide not to save results"
-    (is (= 10000 (count (transduce identity
-                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
-                                   (repeat 10000 [1]))))))
-  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-    (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
-      (is (= max-bytes (count (transduce identity
-                                         (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
-                                         (repeat max-bytes [1]))))))))
+  (binding [cache/*backend* stub-no-op-cache-backend]
+    (testing "Make sure we can save large result sets without tripping over internal async buffers"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we don't block somewhere if we decide not to save results"
+      (is (= 10000 (count (transduce identity
+                                     (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
+                                     (repeat 10000 [1]))))))
+    (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+      (let [max-bytes (* (metabase.cache.core/query-caching-max-kb) 1024)]
+        (is (= max-bytes (count (transduce identity
+                                           (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
+                                           (repeat max-bytes [1])))))))))
 
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"
