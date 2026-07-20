@@ -4,13 +4,17 @@ import type { Workspace } from "metabase-types/api";
 import { getStatusMessage } from "../../../utils";
 import { StatusDetails } from "../StatusDetails";
 
-export type ErrorModalProps = {
+export type StatusDetailsModalProps = {
   workspace: Workspace;
   opened: boolean;
   onClose: () => void;
 };
 
-export function ErrorModal({ workspace, opened, onClose }: ErrorModalProps) {
+export function StatusDetailsModal({
+  workspace,
+  opened,
+  onClose,
+}: StatusDetailsModalProps) {
   return (
     <Modal
       title={getStatusMessage(workspace.status)}
@@ -19,7 +23,9 @@ export function ErrorModal({ workspace, opened, onClose }: ErrorModalProps) {
       size="lg"
       onClose={onClose}
     >
-      <StatusDetails details={workspace.status_details ?? ""} />
+      {workspace.status_details != null && (
+        <StatusDetails details={workspace.status_details} />
+      )}
     </Modal>
   );
 }
