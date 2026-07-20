@@ -136,15 +136,14 @@ describe("useMetabaseQueryObject", () => {
     );
 
     rerender({ currentQuery: secondQuery });
-    firstDeferred.resolve(TEST_DATASET_QUERY);
 
-    expect(result.current).toEqual({
-      query: null,
-      error: null,
-      isLoading: true,
+    await waitFor(() => expect(resolveDatasetQuery).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      secondDeferred.resolve(secondDatasetQuery);
+
+      await secondDeferred.promise;
     });
-
-    secondDeferred.resolve(secondDatasetQuery);
 
     await waitFor(() =>
       expect(result.current).toEqual({
@@ -153,6 +152,18 @@ describe("useMetabaseQueryObject", () => {
         isLoading: false,
       }),
     );
+
+    await act(async () => {
+      firstDeferred.resolve(TEST_DATASET_QUERY);
+
+      await firstDeferred.promise;
+    });
+
+    expect(result.current).toEqual({
+      query: secondDatasetQuery,
+      error: null,
+      isLoading: false,
+    });
   });
 });
 
