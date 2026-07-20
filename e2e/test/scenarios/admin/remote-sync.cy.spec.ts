@@ -938,21 +938,15 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
-
-      // The backend fetches the remote git baseline asynchronously after configuring sync, and until it
-      // settles `/dirty` reports a clean state. Wait for it to see the local transform as unsynced so the
-      // "Pull changes" click deterministically takes the conflict-preflight path (isDirty === true)
-      // rather than a plain import.
-      H.pollForDirtyState();
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
-      // The dirty state is already settled (see beforeEach), so the pull runs the export-preflight
-      // whose response is what dispatches the conflict modal. Wait on that preflight rather than racing
-      // the default 4s command timeout for the modal to appear.
-      cy.intercept("GET", "/api/ee/remote-sync/export-preflight*").as(
-        "exportPreflight",
-      );
+      // Transform sync is still off at click time, so the local transform isn't tracked as an unsynced
+      // change (isDirty === false). The pull therefore posts to /import; the backend rejects it with a
+      // conflict and it's that response that dispatches the modal. Wait on the import request rather than
+      // racing the default 4s command timeout for the modal to appear (the network round-trip — a full
+      // git fetch + conflict check — is what runs long under load).
+      cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
 
       H.DataStudio.Transforms.visit();
 
@@ -962,8 +956,8 @@ describe("Remote Sync", () => {
 
       H.clickPullOption();
 
-      // The conflict modal is only dispatched once the export-preflight resolves.
-      cy.wait("@exportPreflight");
+      // The conflict modal is dispatched once the import request comes back with a conflict.
+      cy.wait("@pullImport");
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {

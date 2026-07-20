@@ -398,23 +398,3 @@ export const pollForTask = (
       return cy.wrap(body);
     });
 };
-
-// Poll the dirty-changes endpoint until the backend reports unsynced local changes.
-// After enabling read-write sync the backend fetches the remote git baseline asynchronously; until that
-// settles `/dirty` returns an empty set, so the app's mount-time query can observe a clean state and the
-// "Pull changes" click takes the plain-import path instead of the conflict-preflight path. Poll here
-// before cy.visit so the app's first `/dirty` read reflects the dirty state (mirrors pollForTask).
-export const pollForDirtyState = (retries = 0): Cypress.Chainable => {
-  if (retries > 30) {
-    throw Error("Local changes never became dirty");
-  }
-
-  return cy.request("GET", "/api/ee/remote-sync/dirty").then(({ body }) => {
-    if (body?.dirty?.length > 0) {
-      return cy.wrap(body);
-    }
-
-    cy.wait(500);
-    return pollForDirtyState(retries + 1);
-  });
-};
