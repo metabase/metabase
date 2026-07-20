@@ -73,6 +73,7 @@
 
   (privatize-symbol! symb+analysis))
 
+;; entry point for the privacy-reporter.yml GitHub action, not referenced from code
 #_{:clj-kondo/ignore [:unused-private-var]}
 (defn- privacy-report
   "Writes privacy report into a file, which is used by the privacy-reporter.yml github action."
