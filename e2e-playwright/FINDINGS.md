@@ -3614,3 +3614,48 @@ open item, not as evidence.
     accessible-name-is-state Switch trap does not apply, since the name comes
     from a static `<label for>`; what actually bit was plain pointer
     interception, which is why upstream forces the click.
+
+### `openTable` drops `database` — THIRD confirmation, and now with the failure it would have caused
+
+197. **`support/ad-hoc-question.ts::openTable` routes `mode:"notebook"` through
+    `joins.openTableNotebook`, which hardcodes `SAMPLE_DB_ID` and drops the
+    `database` argument** — while **upstream honours `database` in both modes**
+    (`query-external`). Third independent confirmation, after the `database` and
+    `limit` cases (#116).
+
+    What makes this one decisive is the failure it *would* have produced here:
+    the spec queries a **foreign table id** against a QA database, so using
+    `openTable` would have **silently queried the Sample Database with that
+    foreign id** — the exact port-drift shape these briefs warn about, arriving
+    with no error.
+
+    Worked around via the existing read-only `openTableNotebookInDb`. Note a
+    **near-duplicate `openTableNotebookInDatabase` also exists** in
+    `question-reproductions-1.ts`. **Both should be retired once `openTable`
+    threads `database` through** — that is now a well-evidenced shared-module fix
+    with three independent motivations.
+
+### `WRITABLE_DB_ID` proven a pure misnomer here, by probing rather than reasoning
+
+198. **`query-external` restores `mongo-5` and `mysql-8`, and probed the live API
+    after each**: db 2 is **"QA Mongo"** and **"QA MySQL8"** (`details.dbname =
+    "sample"`, port 3304). **Never `writable_db`.** So `WRITABLE_DB_ID` is a pure
+    misnomer on this spec, and it touches no shared writable state at all.
+
+    The `schemas[0] == Domestic` hazard was reported **inapplicable by
+    mechanism** — the endpoint is `/api/database/:id/schema/` with an *empty*
+    schema name, and no index into `schemas` exists anywhere in the port.
+
+    **The fast green was probed rather than banked** (fifth agent to do so):
+    1.1–1.7s looked implausible, so M1 asserted an impossible value and pushed
+    runtime to **11.8s** — the ~10s assertion timeout — proving the assertion is
+    live and polling, and that the fast green is first-poll resolution on a warm
+    backend. M3 (swapping the two snapshots) dies in **0.2s** with
+    `Expected "QA Mongo", Received "QA MySQL8"` — the direct runtime proof of the
+    db-2 identity claim.
+
+    It flagged **M2 as partially over-determined** (same death line as M1) and
+    **rejected a bad mutation before running it** — retargeting to db 1 would
+    survive for an uninteresting reason, since the Sample Database holds the same
+    data. One **declared strengthening**: an added `expect(db.name).toBe(dbName)`
+    identity check the source doesn't perform, which is what M3 kills on.
