@@ -100,6 +100,7 @@
 (deftest site-restore-plan-test
   (let [stamp @#'kondo-ratchet/keep-comment
         wl    (fn [row] {:row row, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}})
+        inl   (fn [row] {:row row, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}})
         plan  (fn [text sites] (#'kondo-ratchet/site-restore-plan (vec (str/split-lines text)) sites))]
     (testing "a whole-line restore onto an unmarked row gets its own marker"
       (is (= [[1 stamp]]
@@ -117,6 +118,35 @@
              (map (juxt :row :comment)
                   (plan (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")
                         [(assoc (wl 2) :was-marked? true)])))))
+    (testing "same-round marked whole-line and inline restores each get their own marker"
+      (let [sites [(assoc (wl 2) :was-marked? true) (inl 2)]
+            text  (str stamp "\n(do (f))\n")]
+        (is (= {:text          (str stamp "\n"
+                                    "#_{:clj-kondo/ignore [:x]}\n"
+                                    stamp "\n"
+                                    "(do #_{:clj-kondo/ignore [:y]} (f))\n")
+                :inserted-rows [2 2]}
+               (#'kondo-ratchet/reinsert-ignores text (plan text sites))))))
+    (testing "an inline restore preserves a pending whole-line site's marker for the next round"
+      (let [owner    (assoc (wl 2) :was-marked? true)
+            inline   (inl 2)
+            pending  [owner inline]
+            text     (str stamp "\n(do (f))\n")
+            round1   (#'kondo-ratchet/reinsert-ignores
+                      text
+                      (#'kondo-ratchet/site-restore-plan
+                       (vec (str/split-lines text)) [inline] pending))
+            owner'   (#'kondo-ratchet/shift-site-past-inserts owner (:inserted-rows round1))
+            round2   (#'kondo-ratchet/reinsert-ignores
+                      (:text round1)
+                      (#'kondo-ratchet/site-restore-plan
+                       (vec (str/split-lines (:text round1))) [owner'] [owner']))]
+        (is (= 2 (:row owner')))
+        (is (= (str stamp "\n"
+                    "#_{:clj-kondo/ignore [:x]}\n"
+                    stamp "\n"
+                    "(do #_{:clj-kondo/ignore [:y]} (f))\n")
+               (:text round2)))))
     (testing "cross-round end to end: the round-two whole-line block lands above the round-one marker"
       (let [round1 (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")]
         (is (= {:text          (str stamp "\n#_{:clj-kondo/ignore [:x]}\n" round1)
@@ -157,6 +187,14 @@
     (is (= 6 (#'kondo-ratchet/shift-past-inserts 5 [5 6])))
     (is (= 9 (#'kondo-ratchet/shift-past-inserts 7 [5 6])))
     (is (= 5 (#'kondo-ratchet/shift-past-inserts 5 [6 7])))))
+
+(deftest shift-site-past-inserts-test
+  (testing "a marked whole-line owner stays beneath its marker when a same-row stamp is inserted"
+    (let [site {:row 5, :was-marked? true, :original {:whole-line? true}}]
+      (is (= 6 (:row (#'kondo-ratchet/shift-site-past-inserts site [4 5]))))))
+  (testing "ordinary pending sites shift past same-row inserts"
+    (let [site {:row 5, :original {:whole-line? false}}]
+      (is (= 7 (:row (#'kondo-ratchet/shift-site-past-inserts site [4 5])))))))
 
 (deftest marker-on-line-test
   (testing "the marker counts only inside the line's comment, not in string literals"

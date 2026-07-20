@@ -131,6 +131,15 @@
   [row inserted-rows]
   (+ row (count (filter #(<= % row) inserted-rows))))
 
+(defn- shift-site-past-inserts
+  "Move a pending site's restore anchor past inserted lines. A marked whole-line site's anchor stays
+  immediately below its reserved marker when another restore inserts at that same anchor; inserts
+  strictly above it still move the marker and anchor together."
+  [site inserted-rows]
+  (if (and (:was-marked? site) (get-in site [:original :whole-line?]))
+    (update site :row (fn [row] (+ row (count (filter #(< % row) inserted-rows)))))
+    (update site :row shift-past-inserts inserted-rows)))
+
 (defn- site-restore-plan
   "Restore sites annotated with `:comment` (and sometimes an adjusted `:row`), so every restored
   ignore ends up with its own marker adjacent and no insert splits an existing marker from the line
@@ -138,22 +147,31 @@
   re-restore) returns beneath its still-present marker, unstamped; any other marker above the row
   marks that row's own ignore, so an unmarked whole-line site moves above it with its own stamp.
   A row's inline restores share one marker, directly above the code line, unless the row already
-  carries one."
-  [lines sites]
-  (mapcat (fn [[row row-sites]]
-            (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)
-                  above-marker? (marker-on-line? (get lines (- row 2)))]
-              (concat (for [s wl]
-                        (cond
-                          (and above-marker? (:was-marked? s)) (assoc s :comment nil)
-                          above-marker?                        (assoc s :row (dec row), :comment keep-comment)
-                          :else                                (assoc s :comment keep-comment)))
-                      (when (seq inl)
-                        (if (marked-row? lines row)
-                          (map #(assoc % :comment nil) inl)
-                          (cons (assoc (first inl) :comment keep-comment)
-                                (map #(assoc % :comment nil) (rest inl))))))))
-          (group-by :row sites)))
+  carries one. `pending-sites` preserves ownership of markers belonging to marked whole-line sites
+  that may restore in a later round; an inline restore at such a row gets a separate marker."
+  ([lines sites]
+   (site-restore-plan lines sites sites))
+  ([lines sites pending-sites]
+   (let [reserved-rows (into #{}
+                             (comp (filter :was-marked?)
+                                   (filter #(get-in % [:original :whole-line?]))
+                                   (map :row))
+                             pending-sites)]
+     (mapcat (fn [[row row-sites]]
+               (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)
+                     above-marker? (marker-on-line? (get lines (- row 2)))
+                     reserved?     (and above-marker? (contains? reserved-rows row))]
+                 (concat (for [s wl]
+                           (cond
+                             (and above-marker? (:was-marked? s)) (assoc s :comment nil)
+                             above-marker?                        (assoc s :row (dec row), :comment keep-comment)
+                             :else                                (assoc s :comment keep-comment)))
+                         (when (seq inl)
+                           (if (and (marked-row? lines row) (not reserved?))
+                             (map #(assoc % :comment nil) inl)
+                             (cons (assoc (first inl) :comment keep-comment)
+                                   (map #(assoc % :comment nil) (rest inl))))))))
+             (group-by :row sites)))))
 
 (defn- strip-orphan-keep-comments
   "`text` minus [[keep-marker]] markers no longer attached to an ignore form -- what an `--audit`
@@ -334,7 +352,7 @@
                                                        (contains? (get marked-rows file #{}) (:removed-line %)))
                                                sites)])))
                 named    (fn [file] (into #{} (mapcat :linters) (removals file)))
-                restore-sites! (fn [file->sites]
+                restore-sites! (fn [file->sites pending]
                                  ;; puts each removed ignore back exactly as it was; returns
                                  ;; {file [inserted-anchor-rows...]} for shifting row bookkeeping
                                  (into {}
@@ -342,7 +360,7 @@
                                          (let [text  (slurp file)
                                                lines (vec (str/split-lines text))
                                                {:keys [text inserted-rows]}
-                                               (reinsert-ignores text (site-restore-plan lines sites))]
+                                               (reinsert-ignores text (site-restore-plan lines sites (get pending file)))]
                                            (spit file text)
                                            [file inserted-rows]))))
                 finish!  (fn [exposed mismatched restored covered rounds-run]
@@ -392,8 +410,8 @@
                   (let [file->sites (into {}
                                           (for [[file fps] (group-by (comp :filename first) attributable)]
                                             [file (vec (distinct (map second fps)))]))
-                        inserted    (restore-sites! file->sites)
-                        shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
+                        inserted    (restore-sites! file->sites pending)
+                        shift-site  (fn [file s] (shift-site-past-inserts s (get inserted file [])))]
                     (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
                                      round
                                      (reduce + (map count (vals file->sites)))
