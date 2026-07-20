@@ -3017,3 +3017,63 @@ open item, not as evidence.
     with). **Nuance worth keeping: the Library nav item renders in BOTH arms,
     merely `isGated`** — so a presence-only assertion there would be a false
     negative.
+
+### 🔴 Playwright's non-exact `getByText` is CASE-INSENSITIVE
+
+170. **A bare `getByText` used for a `not.exist` check matched the wrong element
+    because Playwright's non-exact matching is case-insensitive**
+    (`alert`). The agent had reached for the bare form thinking it was "safely
+    broader"; it matched a paragraph the same modal is asserted to *contain*.
+
+    This completes the `getByText` picture, and the two halves pull in opposite
+    directions:
+    - **`{exact: true}`** is *narrower* than Cypress (Playwright reads full
+      `textContent`, testing-library reads direct child text nodes) — #98.
+    - **`{exact: false}`** is *broader* than expected, because it **also ignores
+      case** — this entry.
+
+    So neither form is a safe default for an absence assertion. The fix used was
+    to assert two ways. **Worth checking any ported `not.exist` that dropped
+    `exact`.**
+
+### `@external` wrong in BOTH directions within one spec
+
+171. **`alert` has an over-broad tag, a missing tag, and one genuine
+    dependency — all measured, not inferred.**
+    - **maildev genuinely engages**: `PUT /api/email` live-connects before
+      saving. Measured on :4104 — dead port 1026 → `400 "Wrong host or port"`,
+      live 1025 → `200`.
+    - **webhook-tester is never contacted**: `POST /api/channel` only inserts the
+      row (the connection test is the separate `POST /api/channel/test`), and the
+      alert is created then deleted without firing. The container's request count
+      was **1 before and 1 after every run**, including `--repeat-each=3` — **zero
+      delta**. That describe's `@external` is over-broad.
+    - **A missing tag**: the untagged *"can set up an alert for a question saved
+      in a dashboard"* calls `setupSMTP()` and needs maildev exactly as much as
+      the EE describe.
+
+    `maildev-ssl` was ruled inapplicable **by mechanism, not absence** —
+    `setupSMTP` sends `email-smtp-security: "none"`.
+
+    A request-count delta is the cleanest probe yet for "did this service
+    actually get used", and it is cheap. Worth reusing on every webhook tier.
+
+### A verifier that wrote before validating
+
+172. **The agent's mutation verifier had a real flaw — it wrote the file before
+    validating, and false-aborted on wrapping mutants** (`alert`). It found this
+    itself, patched it, re-sanity-checked (aborts on 0, on ambiguity, on no-op;
+    md5 unchanged), and confirmed **no run was compromised**.
+
+    That is the third verifier defect found today (#128 clobbered a line, #146
+    false-aborted after writing), and the second where the agent caught it before
+    drawing a wrong conclusion. **The practice now paying for itself: sanity-check
+    the verifier against known-bad inputs before trusting a single result.**
+
+    It also flagged **M1 as its own bad mutation** — it died in a helper rather
+    than an assertion because "Foo Hook" is already the default handler — and
+    resolved a survivor honestly: deleting an explicit
+    `addNotificationHandlerChannel("Bar Hook")` survives because the default
+    handler already satisfies `icon("webhook")`. A presence probe showed both
+    hook names render exactly once, so **the data can discriminate** — making it
+    a genuine **upstream assertion gap**, recorded not strengthened.
