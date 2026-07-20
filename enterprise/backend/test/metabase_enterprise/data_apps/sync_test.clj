@@ -79,7 +79,7 @@
               (data-app.sync/import-from-snapshot! (snapshot {}))))
       (is (empty? (t2/select-fn-set :name :model/DataApp))))))
 
-(deftest a-broken-config-keeps-the-existing-app-not-prunes-it-test
+(deftest a-broken-config-does-not-prune-the-existing-app-test
   (testing "a directory that still exists but whose data_app.yaml is now broken keeps the app (as a sync_error), it is not pruned"
     (mt/with-model-cleanup [:model/DataApp]
       (data-app.sync/import-from-snapshot!

@@ -109,7 +109,7 @@ describe("scenarios > data apps > repo sync", () => {
 
     // Delete the good app's directory from the repo and sync again. The connected
     // repo is the source of truth, so the app must be pruned — not left serving.
-    cy.exec(`rm -rf ${H.LOCAL_GIT_PATH}/data_apps/good`);
+    cy.exec(`rm -rf -- "${H.LOCAL_GIT_PATH}/data_apps/good"`);
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 

@@ -58,3 +58,19 @@
           "the app absent from the later import is pruned")
       (is (some? (t2/select-one :model/DataApp :name "kept"))
           "the still-present app is kept"))))
+
+(deftest deletion-only-pull-counts-the-removal-test
+  (testing "a pull whose only change is removing an app still reports as a pull — the removal is counted, not a no-op"
+    (mt/with-model-cleanup [:model/DataApp]
+      ;; No serdes content, so the outcome's count comes purely from data apps.
+      (import! {"main" {"README.md"                    "x"
+                        "data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
+                        "data_apps/gone/i.js"          "X"}})
+      (is (= #{"gone"} (t2/select-fn-set :name :model/DataApp)))
+      ;; Same repo minus the app dir: nothing is upserted (`:changed` 0), one app removed.
+      (let [result (import! {"main" {"README.md" "x"}})]
+        (is (= :success (:status result)))
+        (is (empty? (t2/select-fn-set :name :model/DataApp))
+            "the app is pruned")
+        (is (pos? (:count (:outcome result)))
+            "the removal is folded into the pull outcome, so it isn't reported as pull-skipped/0")))))
