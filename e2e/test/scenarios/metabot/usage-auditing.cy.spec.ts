@@ -784,13 +784,17 @@ describe("scenarios > metabot > usage auditing", () => {
   it("shows token usage stats charts", () => {
     visitUsageStatsPage();
 
-    // Anchor on the tab bar being mounted with its default selection settled
-    // before switching. Without this, realClick can fire before the Tabs
-    // onClick handler is wired up, so navigation never happens and
-    // `metric=tokens` never lands in the URL (the observed flake).
-    H.main()
-      .findByRole("tab", { name: "Conversations" })
-      .should("have.attr", "aria-selected", "true");
+    // `visitUsageStatsPage` only waits for the audit metadata, so the default
+    // Conversations tab's dataset queries can still be in flight — and its
+    // charts still rendering — when we switch tabs. Clicking Tokens mid-load
+    // fires the native realClick while the tab bar is still shifting under the
+    // charts laying out, so the click lands off-target, the Tabs `onChange`
+    // never fires, and `metric=tokens` never lands in the URL (the observed
+    // flake: the page stayed on Conversations with its datasets resolving after
+    // the click). A bare `aria-selected` check on Conversations is too weak — it
+    // is true on mount, before any data loads. Anchor on the Conversations
+    // charts being fully rendered so the layout is settled before switching.
+    assertMetricChartsRendered("conversations");
 
     H.main().findByRole("tab", { name: "Tokens" }).realClick();
 
