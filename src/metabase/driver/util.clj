@@ -867,7 +867,7 @@
     (let [^java.sql.BatchUpdateException bue t]
       (or (.getNextException bue)
           (.getCause bue)
-          (doto (java.sql.SQLException. (ex-message bue) (.getSQLState bue) (.getErrorCode bue))
+          (doto (java.sql.SQLException. ^String (ex-message bue) (.getSQLState bue) (.getErrorCode bue))
             (.setStackTrace (.getStackTrace bue)))))
     t))
 
