@@ -172,7 +172,7 @@ export const commonSetup = ({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
+    <Route path="/" element={<TestComponent q={query} isLoggedIn />} />,
     {
       withKBar: true,
       withRouter: true,
