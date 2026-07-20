@@ -1150,23 +1150,12 @@
         quoted-user   (quote-field username)
         quoted-schema (quote-schema schema-name)
         spec          (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Foreign-grantor default-priv REVOKEs run first, each in its own autocommit
-    ;; statement. Redshift has no SAVEPOINT and aborts the entire transaction on
-    ;; the first error, so these cannot share a transaction with the main cleanup
-    ;; batch: one stale row (schema dropped between discovery and execution) would
-    ;; otherwise poison DROP USER. Autocommit + per-statement catch is what
-    ;; actually lets the rest proceed.
-    (when (user-exists? spec username)
-      (doseq [{:keys [grantor schema]} (default-acl-grants-for-user spec username)
-              :let [sql (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
-                                (quote-field grantor) (quote-schema schema) quoted-user)]]
-        (try
-          (jdbc/execute! spec [sql])
-          (catch Throwable t
-            (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
-                       grantor schema username)))))
-    ;; Main batch stays transactional: relation revokes, iso-schema bare REVOKE,
-    ;; DROP SCHEMA, DROP USER -- the cleanup we want atomic.
+    ;; One transactional batch: foreign-grantor default-priv revokes, relation
+    ;; revokes, iso-schema bare REVOKE, DROP SCHEMA, DROP USER. Redshift has no
+    ;; SAVEPOINT and aborts the whole transaction on the first error, so a
+    ;; stale row (e.g. a schema dropped between discovery and execution) fails
+    ;; the entire destroy — that's fine: the workspace layer records the
+    ;; failure and the deprovision is retried, re-discovering fresh state.
     (jdbc/with-db-transaction [t-conn spec]
       (let [user-exists     (user-exists? t-conn username)
             schema-exists   (schema-exists? t-conn schema-name)
@@ -1174,6 +1163,12 @@
                               (schemas-with-user-grants t-conn username))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (when user-exists
+            ;; Foreign-grantor default-priv rows must be revoked FOR USER their
+            ;; grantor before DROP USER (GHY-3709); Redshift has no DROP OWNED BY.
+            (doseq [{:keys [grantor schema]} (default-acl-grants-for-user t-conn username)]
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                         (quote-field grantor) (quote-schema schema) quoted-user)))
             (doseq [schema granted-schemas
                     :let [quoted-granted-schema (quote-schema schema)]]
               (.addBatch ^Statement stmt
@@ -1184,8 +1179,7 @@
                                          quoted-granted-schema quoted-user)))
             ;; Iso-namespace default-priv was issued by the connection user at init time, so a
             ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
-            ;; erroring on a schema that was dropped manually. Coverage for foreign-grantor
-            ;; default-priv rows is handled above by the per-grantor autocommit loop.
+            ;; erroring on a schema that was dropped manually.
             (when schema-exists
               (.addBatch ^Statement stmt
                          ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
