@@ -142,26 +142,46 @@ function DashCardInner({
       return;
     }
 
-    // Defer the scroll until after the browser has laid out the dashboard
-    // grid. The grid measures its container width and re-renders (react-grid
-    // WidthProvider), which shifts each dashcard's final position; scrolling
-    // synchronously on mount targets the pre-measure position, so the target
-    // can settle clipped by the scroll container's overflow. A double
-    // requestAnimationFrame runs the scroll after that layout pass, and only
-    // then do we clear the `scrollTo` hash. `block: "center"` lands the card
-    // comfortably inside the viewport rather than flush against the edge.
-    let secondFrame: number;
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        cardRootRef.current?.scrollIntoView({ block: "center" });
-        reportAutoScrolledToDashcard?.();
-      });
-    });
+    // The dashboard grid measures its container width and re-lays-out its
+    // cards over several frames after mount (react-grid WidthProvider), which
+    // shifts each dashcard's final vertical position. Scrolling after a fixed
+    // number of frames can still land before that settles, leaving the target
+    // scrolled out of view and clipped by the scroll container's overflow —
+    // and once the `scrollTo` hash is cleared, nothing re-scrolls to recover.
+    //
+    // Re-center the target on each animation frame until its position stops
+    // changing (the grid has settled), then do a final center and clear the
+    // hash. `block: "center"` lands the card comfortably inside the viewport
+    // rather than flush against the clipped edge.
+    let frame: number;
+    let previousTop: number | null = null;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // ~1s at 60fps — a safety cap
 
-    return () => {
-      cancelAnimationFrame(firstFrame);
-      cancelAnimationFrame(secondFrame);
+    const centerWhenSettled = () => {
+      const el = cardRootRef.current;
+      if (!el) {
+        return;
+      }
+
+      el.scrollIntoView({ block: "center" });
+      const { top } = el.getBoundingClientRect();
+      attempts += 1;
+
+      const hasSettled =
+        previousTop !== null && Math.abs(top - previousTop) < 1;
+      if (hasSettled || attempts >= MAX_ATTEMPTS) {
+        reportAutoScrolledToDashcard?.();
+        return;
+      }
+
+      previousTop = top;
+      frame = requestAnimationFrame(centerWhenSettled);
     };
+
+    frame = requestAnimationFrame(centerWhenSettled);
+
+    return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
