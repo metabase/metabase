@@ -119,13 +119,37 @@ jobs:
           # replace it rather than fail on a re-run.
           overwrite: true
 
+  static-viz-files-changed:
+    name: Check whether static-viz files changed
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build static-viz frontend
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Check for static viz changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
+
   backend-tests:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
-    needs: [create-test-plan]
+    needs: [create-test-plan, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
 
   semantic-search-tests:
     needs: create-test-plan
