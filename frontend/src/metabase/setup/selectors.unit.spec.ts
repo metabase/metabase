@@ -36,17 +36,8 @@ describe("getSteps", () => {
     ]);
   });
 
-  it("should omit the AI config step when an AI provider is already configured", () => {
+  it("should keep the AI config step when an AI provider is already configured", () => {
     const stepKeys = getStepKeys({
-      settings: { "llm-metabot-configured?": true },
-    });
-
-    expect(stepKeys).not.toContain("ai_config");
-  });
-
-  it("should keep the AI config step when a provider gets configured after entering the step", () => {
-    const stepKeys = getStepKeys({
-      setup: { step: "ai_config", hasVisitedAiConfigStep: true },
       settings: { "llm-metabot-configured?": true },
     });
 
