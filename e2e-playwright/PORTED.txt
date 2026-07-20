@@ -412,3 +412,4 @@ workspaces/workspace-manager.cy.spec.ts
 admin/admin-reproductions.cy.spec.js
 question/query-external.cy.spec.js
 data-studio/transforms/python-library.cy.spec.ts
+permissions/impersonated.cy.spec.js

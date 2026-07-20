@@ -3706,3 +3706,53 @@ open item, not as evidence.
     `resetTransformTargetTables()` with no upstream counterpart because the
     long-lived warehouse carries `"Schema A"."table_a"` residue that CI avoids by
     provisioning fresh.
+
+### 🔴 A third route to the false "feature is off" conclusion: underscore vs hyphen
+
+200. **The `token-features` JSON key is `advanced_permissions` (underscore) while
+    the backend keyword is `:advanced-permissions` (hyphenated)**
+    (`impersonated`). The agent's first probe checked the hyphen form, got
+    `undefined`, **and that reads exactly like "feature off"**.
+
+    This is the **third** independent route to the same false conclusion, after
+    the retracted `.env` trailing comma (#107/#129) and the probe that PUT an
+    undefined token (#181). All three produce a confident, wrong "this tier is
+    gated" — which has already cost this spike two sessions.
+
+    **The general rule: before concluding a feature is absent, confirm you are
+    reading the key that exists.** `undefined` and `false` are not the same
+    answer, and a probe that cannot tell them apart is not a probe.
+
+### The `USER_GROUPS` hazard confirmed at source, plus fixture-label drift
+
+201. **`USER_GROUPS` = `{ALL_USERS:1, ADMIN:2, COLLECTION:5, DATA:6, …}` — ids 3
+    and 4 are simply absent**, because they live in a separate
+    `MAGIC_USER_GROUPS` (`DATA_ANALYSTS_GROUP: 4`) (`impersonated`). That is the
+    structural reason a sequential guess lands on the wrong group, and it is now
+    read from the fixture *and* re-derived from the live instance at run time.
+
+    **New drift found alongside it:** the checked-in
+    `cypress_sample_instance_data.json` calls group 1 **"All internal users"**,
+    but this jar serves **"All Users"**. Ids agree; only the label moved. The
+    agent's first guard matched on name and failed, and it corrected to match on
+    the stable `magic_group_type`. **That JSON is not safe for name-based
+    lookups** — a caution worth propagating, since matching a fixture by label is
+    the obvious thing to do.
+
+    It also ruled `signInWithCredentials` **inapplicable by mechanism** rather
+    than by absence: `impersonated` *is* in `LOGIN_CACHE` so `signIn` takes the
+    cached branch and never POSTs `/api/session`, and the `mb` fixture uses
+    Playwright's top-level `request` fixture rather than `context.request`, so
+    the cookie jars are separate either way. Proven with four
+    `GET /api/user/current` checks at each transition.
+
+    **One bad mutation, correctly diagnosed:** MUT-A (ALL_USERS
+    `impersonated`→`unrestricted`) **survived**, and reading
+    `enforce-impersonations?` shows why — it inspects only groups *other than*
+    the policy-holding group, so ALL_USERS' own value is excluded and the mutant
+    is a **semantic no-op**. MUT-C (unblocking COLLECTION_GROUP — the historical
+    defect) killed both tests at their real security assertions, with runtime
+    rising 4–5s → 11–15s as the tell. **One declared strengthening**:
+    `select current_user` → `orders_products_access`, a *positive* proxy, since a
+    denial alone is a shape many failures produce (the token-less arm denies too)
+    while the role name appears only if the role was actually assumed.
