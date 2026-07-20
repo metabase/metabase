@@ -13,28 +13,18 @@ import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
+  DATA_APP_READY_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
 } from "../../constants";
 import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
 import { isCrossOriginError } from "../../lib/is-cross-origin-error";
+import { isDataAppMessage } from "../../lib/is-data-app-message";
 
 import S from "./DataAppView.module.css";
 
 interface AppViewProps {
   params: { name: string };
-}
-
-/** The iframe can post anything; only trust objects tagged with our error type. */
-function isBundleErrorMessage(
-  data: unknown,
-): data is Partial<DataAppBundleErrorMessage> {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "type" in data &&
-    data.type === DATA_APP_ERROR_MESSAGE_TYPE
-  );
 }
 
 /**
@@ -62,21 +52,17 @@ export function DataAppView({ params }: AppViewProps) {
   // run before the iframe exists and silently skip.
   const [iframeEl, setIframeEl] = useState<HTMLIFrameElement | null>(null);
 
-  // The iframe is blank until its document + bundles finish downloading (the
-  // in-iframe `BundleHost` loader only appears once its React app mounts), so we
-  // cover it with a loader here until its `load` event fires.
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-
-  // Errors that happen *inside* the iframe (bundle fetch failed, or the bundle
-  // crashed at runtime) are reported up to here via `postMessage` so we can
-  // render the failure screen in the host realm — where it matches the rest of
-  // the app's theme exactly, instead of fighting the SDK theme inside the frame.
+  const [appReady, setAppReady] = useState(false);
   const [bundleError, setBundleError] =
     useState<DataAppBundleErrorMessage | null>(null);
 
-  // Reset whenever we navigate to a different app so a stale error doesn't stick.
+  // Reset whenever we navigate to a different app so a stale error/ready state
+  // doesn't stick (the next app must re-earn the overlay being dropped).
   // Note: this currently is not possible, but may happen if we show apps in the left nav menu
-  useEffect(() => setBundleError(null), [name]);
+  useEffect(() => {
+    setBundleError(null);
+    setAppReady(false);
+  }, [name]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const src = useMemo(
@@ -99,8 +85,6 @@ export function DataAppView({ params }: AppViewProps) {
     let detach: (() => void) | null = null;
 
     const onLoad = () => {
-      setIframeLoaded(true);
-
       // The iframe can navigate cross-origin — a form submitting to an allowed
       // external host, or the chrome-error page from a blocked navigation — and a
       // cross-origin `contentWindow` throws on access. Mirroring only works
@@ -150,13 +134,18 @@ export function DataAppView({ params }: AppViewProps) {
 
       const data: unknown = event.data;
 
-      if (isBundleErrorMessage(data)) {
+      if (isDataAppMessage(data, DATA_APP_ERROR_MESSAGE_TYPE)) {
         setBundleError({
           type: DATA_APP_ERROR_MESSAGE_TYPE,
           notReady: Boolean(data.notReady),
           message: typeof data.message === "string" ? data.message : undefined,
           stack: typeof data.stack === "string" ? data.stack : undefined,
         });
+        return;
+      }
+
+      if (isDataAppMessage(data, DATA_APP_READY_MESSAGE_TYPE)) {
+        setAppReady(true);
       }
     };
 
@@ -249,9 +238,13 @@ export function DataAppView({ params }: AppViewProps) {
 
   return (
     <Box pos="relative" h="100%">
-      {!iframeLoaded && (
-        <Box pos="absolute" style={{ inset: 0, zIndex: 1 }}>
-          <LoadingAndErrorWrapper loading />
+      {!appReady && (
+        <Box
+          pos="absolute"
+          bg="background-primary"
+          style={{ inset: 0, zIndex: 1 }}
+        >
+          <LoadingAndErrorWrapper loading data-testid="data-app-loading" />
         </Box>
       )}
 
