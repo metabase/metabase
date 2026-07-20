@@ -681,12 +681,26 @@ give them an explicit `timeout` too — don't rely on the 30s default.
   each candidate row, so it never resolves (hover/click times out though the row
   is clearly present). Always build the `has` text locator from `page`, never
   from a Locator scope. (collections — openEllipsisMenuFor / checkbox select)
-- **Fully `@external`+`@actions` specs are all-skip in this setup.** They restore
-  `${dialect}-writable` snapshots and drive the writable QA postgres/mysql DBs,
-  which aren't in the jar's snapshots and aren't generated in CI (`-@external`).
-  The port is faithful-by-construction but **runtime-unverified** — a green run
-  means "correctly skipped", not "passing". Prefer specs with real executable
-  coverage; only take these when the writable-DB path is being wired up.
+- ~~**Fully `@external`+`@actions` specs are all-skip in this setup.**~~
+  ⚠️ **RETRACTED 2026-07-20.** This said such specs can never execute here,
+  because the `${dialect}-writable` snapshots "aren't in the jar's snapshots and
+  aren't generated in CI". Both halves are wrong. The writable QA postgres/mysql
+  containers *are* available locally (`writable_db` on :5404/:3304), and
+  `model-actions` runs **17 of 18 tests green** against them — the one skip is a
+  correct `cy.onlyOn(dialect === "postgres")`. CI likewise provisions the
+  containers and does not exclude `@external`; the snapshots are gitignored and
+  generated **at CI time**, which is what the original claim misread.
+  Run these with `PW_QA_DB_ENABLED=1`. The tier is real coverage, not
+  faithful-by-construction — but see the shared-container hazards (#85) before
+  touching it, and **always run a gate-OFF control** so you can quote executed
+  vs skipped honestly rather than reading "correctly skipped" as "passing".
+- ⚠️ **`toHaveText` NORMALIZES WHITESPACE.** `"\tSELECT\tFOO"` compares equal to
+  `"SELECT FOO"`, so any assertion whose *subject* is indentation or formatting
+  is silently vacuous — green while testing nothing. Use raw `textContent()`
+  when whitespace is what's under test. Measured on the native editor's
+  indentation tests, where `Tab`→`Space` mutants produced strings that are equal
+  under normalization; both went red only because the port compared raw text.
+  **Worth sweeping landed CodeMirror ports.** (native)
   (actions-on-dashboards: 33/33 gated)
 
 ## Gotchas added in wave 12 (filters/temporal/table/charts/visualizer/collections/custom-column/tabs)
@@ -1261,6 +1275,43 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   `findAllByTestId(X).get("[data-parameter-slug=…]")` the `findAllByTestId` half
   is dead code and the real selector is the attribute alone. Same family as #15;
   port what actually executes, scoped as the test intended.
+- **🔴 `cy.wait("@alias")` is a QUEUE that pops PAST responses — so "drop the
+  wait" is NOT always the right port.** Measured in `model-actions`:
+  `openActionEditorFor` fires a `GET /api/action/:id` that nothing waits on, and
+  the later run-modal open is RTK-cached and fires **no** request — so upstream's
+  in-test `cy.wait` was being satisfied *retroactively* by the earlier response.
+  A naive `waitForResponse` deadlocked 2 tests × 30s, fingerprinted inside a
+  shared helper. But **the first call genuinely needs the gate**, so dropping it
+  would weaken the test. Port the **queue** itself (record responses, pop one per
+  wait) rather than either extreme.
+- **🔴 A `WRITABLE_DB_ID` reference does NOT mean the spec touches the writable
+  container.** It is the literal `2`, and **under the `postgres-12` snapshot
+  database 2 is the read-only "QA Postgres12" sample** — verified from the
+  snapshot SQL and at runtime. So a spec can reference `WRITABLE_DB_ID` and be
+  entirely unaffected by #85 contamination. Check which snapshot is restored
+  before concluding either way; this is a red herring that will otherwise send
+  you container-hunting.
+- **🔴 The shared `openTable` silently DISCARDS its `database` argument on the
+  notebook branch** — `joins.openTableNotebook` hardcodes `SAMPLE_DB_ID`, so a
+  QA-DB table opens against database 1. The fingerprint is a
+  "data-step-cell not found" that points at the *picker*, not at the dropped
+  argument. Currently harmless (all present callers open sample tables — checked)
+  but latent; consolidation candidate.
+- **🔴 NEVER guess a fixture id.** A guessed `USER_GROUPS` id didn't fail — it
+  silently tested something else: blocking group 4 (`DATA_ANALYSTS_GROUP`)
+  instead of 5/6 meant impersonation was never enforced, the write succeeded, and
+  it read as *"impersonation is broken in the app."* `click-behavior.ts` exports
+  only a **partial** mirror, which invites exactly this. Look the constant up.
+- **🔴 The general answer to intercept-early/wait-late: a `ResponseRecorder`
+  registered where Cypress registers its intercept.** Many `cy.wait`s are
+  satisfied *retroactively* by a request that already fired — e.g. `usage_info`
+  is an RTK-Query read whose only request fires at **page mount** (because
+  `DeleteDatabaseModal` renders eagerly with an `opened` prop), so a literal
+  `waitForResponse` after the Remove click burns 30s. Same shape for a
+  post-`goToMainApp` `@loadDatabases` and for `waitForDbSync` (which loops on one
+  alias). **Record responses from the point Cypress would have intercepted, then
+  assert against the recording** — this is preferable to creating the
+  `waitForResponse` promise early, which risks unhandled rejections.
 - **Key a retroactive-`cy.wait` recorder on WHICH response, never on a COUNT.**
   When you port a retroactive `cy.wait("@alias")` as a passive `page.on`
   recorder, it is tempting to model it as "≥N responses" because an earlier
