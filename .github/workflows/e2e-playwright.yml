@@ -93,6 +93,23 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+
+      # The QA-database tier is a large fraction of the suite (actions,
+      # data-model-shared-*, sandboxing, transforms, workspaces,
+      # native-database-source). Without these it silently SKIPS — 831 tests on
+      # the 2026-07-20 run. snowplow-micro is deliberately omitted: the suite
+      # uses its own per-slot collector (support/snowplow-collector.ts).
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          webhook: true
+          postgres: true
+          mysql: true
+          mongo: true
       # Only needed because snapshot generation is still a Cypress run.
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -109,9 +126,11 @@ jobs:
       - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        # -@external skips the QA-database snapshots (mongo/postgres/mysql
-        # containers) — nothing in the Playwright suite needs them yet.
-        run: node e2e/runner/run_cypress_ci.js snapshot --expose grepTags="-@external"
+        # Generates the QA-database snapshots too (postgres-writable,
+        # mysql-writable, postgres-12, mongo-5, …). The previous `-@external`
+        # filter was carried over from when nothing needed them; it now costs
+        # ~16% of the suite in silent skips.
+        run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Install Playwright dependencies
         working-directory: e2e-playwright
@@ -135,6 +154,9 @@ jobs:
           # workers=2 + per-worker backends on every shard (the A/B winner).
           PW_PER_WORKER_BACKEND: "1"
           PW_ACTION_TIMEOUT: "30000"
+          # Opens the QA-database tier. Without it every @external-gated test
+          # reports as skipped rather than failing, so its absence is invisible.
+          PW_QA_DB_ENABLED: "1"
           # Worker backends boot from the fetched jar with capped heaps.
           JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
           PW_WORKER_MAX_HEAP: 1500m
