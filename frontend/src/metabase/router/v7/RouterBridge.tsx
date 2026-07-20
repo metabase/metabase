@@ -92,8 +92,8 @@ export function RouterBridge({
  * The v3 `InjectedRouter` (`router.push/replace/go/...`) reimplemented over v7's
  * `navigate`. The facade's `useNavigate` has already resolved relative targets to
  * absolute paths before calling `push`/`replace`, so these pass straight through.
- * `setRouteLeaveHook` is a no-op: navigation blocking is data-router-only and is
- * restored per-route in Phase 3b.
+ * `setRouteLeaveHook` is a no-op for now: navigation blocking is data-router-only,
+ * restored on the declarative engine via a blocking history in DEV-2374.
  */
 function makeRouterShim(navigate: V7NavigateFunction): InjectedRouter {
   const href = (location: LocationDescriptor) =>
