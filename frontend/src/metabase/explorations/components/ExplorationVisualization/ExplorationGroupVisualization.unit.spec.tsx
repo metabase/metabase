@@ -629,6 +629,7 @@ describe("ExplorationGroupVisualization", () => {
           cardId: 101,
           columnName: "count",
           dimensions: [{ columnName: "ts", value: "2025-01-01" }],
+          shouldShowTooltip: true,
         }),
       );
 
