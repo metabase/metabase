@@ -213,7 +213,7 @@
   `bundles` (untrusted third-party JS) into it."
   [input bundles]
   (do-with-untrusted-context
-   (fn [^Context context]
+   (^:once fn* [^Context context]
      (execute-fn-name context "MetabaseStaticViz.initializeContextJSON" (json/encode (:options input)))
      (doseq [{:keys [identifier plugin-id source]} bundles]
        (load-js-string context source (str "custom-viz-" identifier ".js"))
