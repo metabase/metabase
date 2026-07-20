@@ -160,6 +160,19 @@
                 (assoc thread :queries [] :blocks [] :name nil)))
           threads)))
 
+(defn- gate-query-summaries
+  "Drop the `GET /:id/queries` rows belonging to threads whose derived read-data the current user
+  may not see, using the same per-thread verdict as [[gate-threads-derived-data]].
+
+  That endpoint projects the same creator-lens-derived values `GET /:id` withholds: the query
+  `:name` (top-N variants bake a discovered dimension value straight into it), both interestingness
+  scores, and the snapshot `:row_count`. Gating only the hydrated read would leave the poll endpoint
+  as a way around it — and the higher-traffic way at that."
+  [rows]
+  (let [visible-ids (derived-perms/thread-ids-with-visible-derived-data
+                     (into #{} (map :exploration_thread_id) rows))]
+    (filterv #(contains? visible-ids (:exploration_thread_id %)) rows)))
+
 (defn- thread-status
   "Derived, wire-facing lifecycle status for a hydrated thread, so the FE can tell a successful
   run from a failed/empty/canceled one. One of:
@@ -889,21 +902,25 @@
   "Lightweight list of queries for an exploration. Excludes `dataset_query` and the result blob —
   intended for the frontend to poll while pending queries finish. The `interestingness_score`
   column is left-joined from `exploration_query_result` so clients can rank/highlight without a
-  second roundtrip; pending or errored queries get `nil`."
+  second roundtrip; pending or errored queries get `nil`.
+
+  Rows are gated per-thread by [[gate-query-summaries]] on the same data-access-lens verdict
+  `GET /:id` applies, so a viewer whose lens is incompatible with the creator's sees no rows for
+  that thread rather than the values it derived."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check (get-exploration-or-404 id))
-  (t2/hydrate
-   (t2/select (into [:model/ExplorationQuery] query-summary-columns)
-              {:left-join [:exploration_thread
-                           [:= :exploration_query.exploration_thread_id :exploration_thread.id]
-                           :exploration_query_result
-                           [:= :exploration_query_result.exploration_query_id :exploration_query.id]
-                           :stored_result
-                           [:= :stored_result.id :exploration_query_result.stored_result_id]]
-               :where     [:= :exploration_thread.exploration_id id]
-               :order-by  [[:exploration_query.position :asc]
-                           [:exploration_query.id :asc]]})
-   :segment_name))
+  (-> (t2/select (into [:model/ExplorationQuery] query-summary-columns)
+                 {:left-join [:exploration_thread
+                              [:= :exploration_query.exploration_thread_id :exploration_thread.id]
+                              :exploration_query_result
+                              [:= :exploration_query_result.exploration_query_id :exploration_query.id]
+                              :stored_result
+                              [:= :stored_result.id :exploration_query_result.stored_result_id]]
+                  :where     [:= :exploration_thread.exploration_id id]
+                  :order-by  [[:exploration_query.position :asc]
+                              [:exploration_query.id :asc]]})
+      gate-query-summaries
+      (t2/hydrate :segment_name)))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up

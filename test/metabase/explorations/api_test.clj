@@ -1166,9 +1166,13 @@
                                        :dimensions [{:dimension_id "d1"}]})
             eid (:id resp)
             qid (-> resp :threads first :queries first :id)]
+        ;; `:creator_id` matters: the summaries are gated on the snapshot's data-access lens, and a
+        ;; creatorless, tokenless StoredResult is the fail-closed (admin-only) case. The runner
+        ;; always stamps the creator, so stamp it here too.
         (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
                                                      {:result_data (byte-array [0])
-                                                      :row_count   37}))]
+                                                      :row_count   37
+                                                      :creator_id  (:id u)}))]
           (t2/insert! :model/ExplorationQueryResult
                       {:exploration_query_id             qid
                        :stored_result_id                 sr-id
