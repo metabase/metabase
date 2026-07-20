@@ -1,7 +1,6 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
-export * from "./advanced-config";
 export * from "./advanced-permission";
 export * from "./ai-entity-analysis";
 export * from "./alert";

@@ -1659,14 +1659,6 @@
     {
       "spec": "../test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js",
       "duration": 113946
-    },
-    {
-      "spec": "../test/scenarios/workspaces/workspace-instance.cy.spec.ts",
-      "duration": 42522
-    },
-    {
-      "spec": "../test/scenarios/workspaces/workspace-manager.cy.spec.ts",
-      "duration": 9359
     }
   ]
 }

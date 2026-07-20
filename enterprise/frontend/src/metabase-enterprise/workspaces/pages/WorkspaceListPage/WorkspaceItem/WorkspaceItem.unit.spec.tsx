@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupGetWorkspaceEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupDeleteWorkspaceEndpoint,
+  setupDeprovisionWorkspaceEndpoint,
+  setupGetWorkspaceEndpoint,
+  setupProvisionWorkspaceEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockDatabase,
   createMockUserInfo,
@@ -23,6 +29,168 @@ describe("WorkspaceItem", () => {
   it("renders the workspace name", () => {
     setup();
     expect(screen.getByText("My workspace")).toBeInTheDocument();
+  });
+
+  it("provisions from the menu after confirmation", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "unprovisioned",
+    });
+    setupProvisionWorkspaceEndpoint(workspace);
+    setup({ workspace });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Provision this workspace?" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Provision" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}/provision`,
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("deprovisions from the menu after confirmation", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "provisioned",
+    });
+    setupDeprovisionWorkspaceEndpoint(workspace);
+    setup({ workspace });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Deprovision" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Deprovision this workspace?",
+      }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deprovision" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}/deprovision`,
+          { method: "POST" },
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("disables Provision when provisioned and Deprovision when unprovisioned", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Deprovision" })).toBeEnabled();
+  });
+
+  it("disables Deprovision and enables Provision when unprovisioned", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "unprovisioned",
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Deprovision" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Provision" })).toBeEnabled();
+  });
+
+  it("disables Provision and Deprovision while a run is in flight", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "database-provisioning",
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Provision" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("menuitem", { name: "Deprovision" }),
+    ).toBeDisabled();
+  });
+
+  it("shows status details in a modal via the See details button", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "database-provisioning-failure",
+        status_details: "warehouse down",
+      }),
+    });
+
+    expect(screen.getByText("Failed to set up databases")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "See details" }));
+
+    const modal = await screen.findByRole("dialog");
+    expect(modal).toHaveTextContent("Failed to set up databases");
+    expect(modal).toHaveTextContent("warehouse down");
+  });
+
+  it("does not offer status details when there are none", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "unprovisioned",
+        status_details: null,
+      }),
+    });
+
+    expect(screen.getByText("Not provisioned")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "See details" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the instance link instead of the status when provisioned", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+        instance_url: "https://workspace.example.com",
+      }),
+    });
+
+    expect(
+      screen.getByRole("link", { name: "https://workspace.example.com" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Provisioned")).not.toBeInTheDocument();
   });
 
   it("renders the creator info when the creator is hydrated", () => {
@@ -47,6 +215,28 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText(/^Created /)).toBeInTheDocument();
   });
 
+  it("renders the target branch when set", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        target_branch: "feature-x",
+      }),
+    });
+
+    expect(screen.getByText("feature-x")).toBeInTheDocument();
+  });
+
+  it("does not render a branch block when the target branch is not set", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        target_branch: null,
+      }),
+    });
+
+    expect(screen.queryByText("feature-x")).not.toBeInTheDocument();
+  });
+
   it("renders databases, falling back to the id when not hydrated", () => {
     setup({
       workspace: createMockWorkspace({
@@ -69,27 +259,6 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText("Database 20")).toBeInTheDocument();
   });
 
-  it("warns when a database is not provisioned", () => {
-    setup({
-      workspace: createMockWorkspace({
-        id: 1,
-        name: "My workspace",
-        databases: [
-          createMockWorkspaceDatabase({
-            database_id: 10,
-            status: "unprovisioned",
-            database: createMockDatabase({ id: 10, name: "Postgres" }),
-          }),
-        ],
-      }),
-    });
-
-    expect(
-      screen.getByText("Failed to provision the workspace."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Postgres")).toBeInTheDocument();
-  });
-
   it("does not warn when all databases are provisioned", () => {
     setup({
       workspace: createMockWorkspace({
@@ -110,26 +279,10 @@ describe("WorkspaceItem", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("offers a config download link in the menu", async () => {
-    setup();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
-    );
-
-    const downloadItem = await screen.findByRole("menuitem", {
-      name: /Download config\.yml/,
-    });
-    expect(downloadItem).toHaveAttribute(
-      "href",
-      `/api/ee/workspace-manager/${WORKSPACE.id}/config`,
-    );
-    expect(downloadItem).toHaveAttribute("download", "config.yml");
-  });
-
   it("opens the rename modal from the menu", async () => {
     setup();
     await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Rename" }),
@@ -140,10 +293,32 @@ describe("WorkspaceItem", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens the delete modal from the menu", async () => {
-    setup();
+  it("disables Delete unless the workspace is fully deprovisioned", async () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        status: "provisioned",
+      }),
+    });
     await userEvent.click(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    ).toBeDisabled();
+  });
+
+  it("deletes an unprovisioned workspace from the menu after confirmation", async () => {
+    const workspace = createMockWorkspace({
+      name: "My workspace",
+      status: "unprovisioned",
+    });
+    setupDeleteWorkspaceEndpoint(workspace.id);
+    setup({ workspace });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace actions" }),
     );
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Delete" }),
@@ -152,5 +327,17 @@ describe("WorkspaceItem", () => {
     expect(
       await screen.findByRole("heading", { name: "Delete this workspace?" }),
     ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete workspace" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/workspace-manager/${workspace.id}`,
+          { method: "DELETE" },
+        ),
+      ).toBe(true);
+    });
   });
 });

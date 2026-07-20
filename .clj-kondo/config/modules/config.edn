@@ -2870,8 +2870,8 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api
-           metabase-enterprise.advanced-config.api.logs
+   :api  #{metabase-enterprise.advanced-config.api.logs
+           metabase-enterprise.advanced-config.api.routes
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -2888,6 +2888,7 @@
            sync
            users
            util
+           enterprise/remote-sync
            enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
@@ -3620,7 +3621,6 @@
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
@@ -3800,12 +3800,11 @@
            premium-features
            query-processor
            sample-data
-           server
            settings
            sql-tools
            util
            workspaces
-           enterprise/serialization}
+           enterprise/remote-sync}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table
