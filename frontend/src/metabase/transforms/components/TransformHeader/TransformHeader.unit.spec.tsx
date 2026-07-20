@@ -28,13 +28,13 @@ function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <TransformHeader
           transform={transform}
           hasMenu={hasMenu}
           isEditMode={isEditMode}
         />
-      )}
+      }
       path="/"
     />,
     {

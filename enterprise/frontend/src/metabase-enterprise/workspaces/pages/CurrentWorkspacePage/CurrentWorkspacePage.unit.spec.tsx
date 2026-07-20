@@ -34,7 +34,7 @@ function setup({
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint(remappings);
 
-  renderWithProviders(<Route path="*" component={CurrentWorkspacePage} />, {
+  renderWithProviders(<Route path="*" element={<CurrentWorkspacePage />} />, {
     withRouter: true,
   });
 }

@@ -69,7 +69,7 @@ const setup = ({
   setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={SearchBar} />,
+    <Route path="*" element={<SearchBar />} />,
     {
       withRouter: true,
       initialRoute,

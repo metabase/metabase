@@ -31,7 +31,7 @@ function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <DiagnosticsSidebar
           node={node}
           mode={mode}
@@ -40,7 +40,7 @@ function setup({
           onResizeStop={onResizeStop}
           onClose={onClose}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/" },
   );

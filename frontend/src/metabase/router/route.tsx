@@ -20,7 +20,10 @@ import {
  * `component` or `element`. `element` is bridged to a v3 `component` that renders
  * it and exposes the matched child through `<Outlet/>`.
  */
-export type RouteElementProps = RouteProps & {
+// `component` is intentionally omitted: routes must use `element={<X/>}`. The
+// bridge still sets a `component` on the built v3 route config internally, and
+// the raw v3 `Route` (ReactRouterRoute) remains for the facade's own bootstrap.
+export type RouteElementProps = Omit<RouteProps, "component"> & {
   index?: boolean;
   element?: ReactNode;
 };
@@ -72,7 +75,12 @@ export const Route: RouteConfigElement = Object.assign(
       // route config so the bridge component can render it off the injected
       // `route` prop, letting sibling routes that share a component reconcile
       // instead of remounting. Goes away at the engine swap.
-      if (route?.element != null) {
+      //
+      // The guard is `!== undefined`, not `!= null`, to match v7: an explicit
+      // `element={null}` renders nothing (bridged to a component that renders
+      // null), while an omitted `element` falls through to v3's render-children
+      // default, which is v7's implicit `<Outlet/>`.
+      if (route != null && route.element !== undefined) {
         route.component = routeElementToComponent(route.element);
       }
 

@@ -5,25 +5,34 @@ import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
-import { type Route, type WithRouterProps, withRouter } from "metabase/router";
+import {
+  type Route,
+  type WithRouterProps,
+  useRoute,
+  withRouter,
+} from "metabase/router";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
 
 interface DashboardLeaveConfirmationModalProps extends WithRouterProps {
-  route: Route;
+  route?: Route;
 }
 
 export const DashboardLeaveConfirmationModal = withRouter(
-  ({ router, route }: DashboardLeaveConfirmationModalProps) => {
+  ({ router, route, routes }: DashboardLeaveConfirmationModalProps) => {
     const isEditing = useSelector(getIsEditing);
     const isDirty = useSelector(getIsDirty);
+    const routeFromContext = useRoute();
 
     const dispatch = useDispatch();
 
     const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({
       isEnabled: isEditing && isDirty,
-      route,
+      // `routes` is the matched-route chain; its last entry is this page's own
+      // route. Typed loosely as PlainRoute by react-router, cast to the `Route`
+      // the hook expects.
+      route: route ?? routeFromContext ?? (routes[routes.length - 1] as Route),
       router,
     });
 
