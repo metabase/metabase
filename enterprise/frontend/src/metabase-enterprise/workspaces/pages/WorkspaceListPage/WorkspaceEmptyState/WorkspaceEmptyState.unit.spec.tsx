@@ -47,16 +47,11 @@ describe("WorkspaceEmptyState", () => {
       screen.queryByRole("button", { name: "Create a workspace" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("To create a workspace, you need to:"),
+      screen.getByText(/enable workspaces on at least one database/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", {
-        name: "Enable workspaces on at least one database",
-      }),
+      screen.getByRole("link", { name: "admin settings" }),
     ).toHaveAttribute("href", "/admin/databases");
-    expect(
-      screen.queryByRole("link", { name: "Set up remote sync" }),
-    ).not.toBeInTheDocument();
   });
 
   it("links to the remote sync settings when remote sync is not set up", () => {
@@ -65,22 +60,19 @@ describe("WorkspaceEmptyState", () => {
     expect(
       screen.queryByRole("button", { name: "Create a workspace" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText(/set up remote sync/)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Set up remote sync" }),
+      screen.getByRole("link", { name: "admin settings" }),
     ).toHaveAttribute("href", "/admin/settings/remote-sync");
   });
 
-  it("shows all errors at once", () => {
+  it("shows the database error first when both are missing", () => {
     setup({ databases: [], isRemoteSyncEnabled: false });
 
     expect(
-      screen.getByRole("link", {
-        name: "Enable workspaces on at least one database",
-      }),
+      screen.getByText(/enable workspaces on at least one database/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Set up remote sync" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/set up remote sync/)).not.toBeInTheDocument();
   });
 
   it("renders docs link buttons", () => {
