@@ -157,3 +157,12 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.version }}
       commit: ${{ needs.prepare.outputs.commit }}
+
+  auto-publish-release:
+    name: Auto-publish release ${{ inputs.version }}
+    needs: [prepare, trigger-release]
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      commit: ${{ needs.prepare.outputs.commit }}

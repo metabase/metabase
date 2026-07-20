@@ -280,12 +280,3 @@ jobs:
     with:
       commit: ${{ inputs.commit }}
       version: ${{ inputs.version }}
-
-  auto-publish-release:
-    name: Auto-publish release ${{ inputs.version }}
-    needs: run-pre-release-tests
-    uses: ./.github/workflows/release.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
