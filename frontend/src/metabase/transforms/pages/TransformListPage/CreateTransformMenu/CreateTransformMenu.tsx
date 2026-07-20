@@ -53,7 +53,6 @@ export const CreateTransformMenu = () => {
     trackTransformCreate({ creationType: "metabot" });
     metabot.setPrompt(t`Create a transform that `);
     metabot.setVisible(true);
-    metabot.promptInputRef?.current?.focus();
   };
 
   const handlePythonClick = () => {
