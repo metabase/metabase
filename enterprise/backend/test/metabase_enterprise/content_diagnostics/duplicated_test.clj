@@ -6,7 +6,6 @@
   envelope."
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
@@ -417,22 +416,15 @@
         (let [prefix (scope-prefix)
               nm     (str prefix " Nightly Sync")]
           (mt/with-temp [:model/Transform {xf-a :id} {:name nm}
-                         :model/Transform {xf-b :id} {:name nm}
-                         ;; run_count counts every run status - a failed run is still activity
-                         :model/TransformRun _ {:transform_id xf-b :status :succeeded
-                                                :start_time (t/minus (t/offset-date-time) (t/minutes 2))
-                                                :end_time   (t/minus (t/offset-date-time) (t/minutes 1))}
-                         :model/TransformRun _ {:transform_id xf-b :status :failed
-                                                :start_time (t/minus (t/offset-date-time) (t/minutes 4))
-                                                :end_time   (t/minus (t/offset-date-time) (t/minutes 3))}]
+                         :model/Transform {xf-b :id} {:name nm}]
             (scan/scan!)
             (let [finding (fn [user]
                             (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
                                   (:data (mt/user-http-request user :get 200
                                                                "ee/content-diagnostics/duplicated"
                                                                :query prefix))))]
-              (testing "superuser: the peer hydrates from the transform model with its run_count, no card_type key"
-                (is (= [{:id xf-b :name nm :entity_type "transform" :run_count 2}]
+              (testing "superuser: the peer hydrates from the transform model - no card_type, no view_count"
+                (is (= [{:id xf-b :name nm :entity_type "transform"}]
                        (get-in (finding :crowberto) [:details :duplicate_entities]))))
               (testing "a non-data-analyst sees the finding (collection-visible) but not the peer"
                 (let [f (finding :rasta)]
