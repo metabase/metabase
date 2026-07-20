@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
+import {
+  hasFeature,
+  hasWorkspacesEnabled,
+} from "metabase/common/utils/database";
 import type {
+  Database,
   Workspace,
   WorkspaceDatabase,
   WorkspaceStatus,
@@ -10,6 +15,13 @@ export function getDatabaseName(workspaceDatabase: WorkspaceDatabase) {
   return (
     workspaceDatabase.database?.name ??
     t`Database ${workspaceDatabase.database_id}`
+  );
+}
+
+export function getEligibleDatabases(databases: Database[]) {
+  return databases.filter(
+    (database) =>
+      hasFeature(database, "workspace") && hasWorkspacesEnabled(database),
   );
 }
 

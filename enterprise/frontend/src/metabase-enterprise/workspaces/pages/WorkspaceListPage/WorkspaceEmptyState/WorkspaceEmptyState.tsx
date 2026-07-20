@@ -1,10 +1,11 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
+  Anchor,
   Box,
   Card,
   Divider,
@@ -16,6 +17,7 @@ import {
 } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
+import { getEligibleDatabases } from "../../../utils";
 import { NewWorkspaceButton } from "../NewWorkspaceButton";
 
 import S from "./WorkspaceEmptyState.module.css";
@@ -26,6 +28,7 @@ export type WorkspaceEmptyStateProps = {
 
 export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
   const applicationName = useSelector(getApplicationName);
+  const hasEligibleDatabase = getEligibleDatabases(databases).length > 0;
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
@@ -42,9 +45,19 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
         <Text mb="lg">
           {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
         </Text>
-        <Group gap="md">
+        {hasEligibleDatabase ? (
           <NewWorkspaceButton databases={databases} primary />
-        </Group>
+        ) : (
+          <Text>
+            {jt`You need to enable workspaces on at least one database. You can do this in ${(
+              <Anchor
+                key="link"
+                component={Link}
+                to="/admin/databases"
+              >{t`admin settings`}</Anchor>
+            )}.`}
+          </Text>
+        )}
         {(showFileBasedDevLink || showRemoteSyncLink) && (
           <>
             <Divider my="xl" />

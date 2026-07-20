@@ -1,13 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import {
-  hasFeature,
-  hasWorkspacesEnabled,
-} from "metabase/common/utils/database";
 import { Button, FixedSizeIcon, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
+import { getEligibleDatabases } from "../../../utils";
 import { NewWorkspaceModal } from "../NewWorkspaceModal";
 
 export type NewWorkspaceButtonProps = {
@@ -21,10 +18,7 @@ export function NewWorkspaceButton({
 }: NewWorkspaceButtonProps) {
   const [opened, { open, close }] = useDisclosure(false);
 
-  const eligibleDatabases = databases.filter(
-    (database) =>
-      hasFeature(database, "workspace") && hasWorkspacesEnabled(database),
-  );
+  const eligibleDatabases = getEligibleDatabases(databases);
   const hasEligibleDatabase = eligibleDatabases.length > 0;
 
   return (
