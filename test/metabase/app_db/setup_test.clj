@@ -160,11 +160,12 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
         (liquibase/with-liquibase [liquibase conn]
-          (let [db               (.getDatabase liquibase)
-                versions-table   liquibase/databasechangelog-versions-table
-                latest-available (liquibase/latest-available-major-version liquibase)]
-            ;; pretend this binary is at the latest available major version
-            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest-available))]
+          (let [db             (.getDatabase liquibase)
+                versions-table liquibase/databasechangelog-versions-table
+                ;; an arbitrary released major to play "this binary's version" -- every recorded version below is
+                ;; fabricated relative to it (999 above it, 1000 the synthetic floor), so its exact value is irrelevant
+                binary-major   64]
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" binary-major))]
               (testing "a recorded synthetic (development) version does NOT block a real binary -- it only warns"
                 (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.1000.0.0'" versions-table)])
                 (is (= "x.1000.0.0" (liquibase/last-deployment-version conn db)))
@@ -177,7 +178,7 @@
                      Exception #"migrate down` from version 999"
                      (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
               (testing "does not throw when the recorded version is not newer than this binary"
-                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest-available)])
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table binary-major)])
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))))))
 
 (deftest noop-boot-of-newer-binary-preserves-downgrade-test
@@ -185,9 +186,11 @@
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
-        (liquibase/with-liquibase [liquibase conn]
+        (liquibase/with-liquibase [_liquibase conn]
           (let [versions-table liquibase/databasechangelog-versions-table
-                latest         (liquibase/latest-available-major-version liquibase)]
+                ;; an arbitrary released major playing the installing binary's version; the newer binaries below are
+                ;; fabricated relative to it, so its exact value is irrelevant
+                latest         64]
             ;; make the recorded install version deterministic: this DB was installed by v0.<latest>
             (jdbc/execute! {:connection conn}
                            [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest)])
@@ -229,6 +232,34 @@
           (is (seq (jdbc/query {:datasource (mdb.connection/data-source)}
                                [(format "SELECT deployment_id, metabase_version FROM %s"
                                         liquibase/databasechangelog-versions-table)]))))))))
+
+(deftest migrations-sql-includes-version-tracking-test
+  (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
+    ;; Regression: the version row and the vNN.legacy-version-tracking marker are written by the exec listener, which
+    ;; only runs when Metabase itself executes the migrations. A manual `migrate print` + apply-the-SQL upgrade left
+    ;; neither, silently disabling downgrade detection for both older binaries (which read the marker) and newer ones
+    ;; (which read databasechangelog_version).
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; an existing pre-version-tracking install partway through history, with plenty of unrun changesets
+        (update-to-changelog-id "v45.00-001" conn)
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [sql (liquibase/migrations-sql liquibase)]
+              (testing "backfills the pre-upgrade version for the existing install"
+                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
+              (testing "records the upgrading version"
+                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.64\.0" sql)))
+              (testing "adds the legacy version-tracking marker so older binaries detect downgrades"
+                (is (re-find #"v64\.legacy-version-tracking" sql)))))))))
+  (testing "a dev build's SQL records its synthetic version but never a marker"
+    (mt/with-temp-empty-app-db [conn :h2]
+      (update-to-changelog-id "v45.00-001" conn)
+      (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [sql (liquibase/migrations-sql liquibase)]
+            (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
+            (is (not (re-find #"legacy-version-tracking" sql)))))))))
 
 (deftest changesets-from-later-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}

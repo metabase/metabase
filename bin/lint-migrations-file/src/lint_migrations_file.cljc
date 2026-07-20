@@ -199,15 +199,24 @@
   - Other per-release files: IDs must match the timestamp format"
   [change-log file]
   (cond
-    ;; year-based directories use version-less IDs (e.g. `aeiagus09e`). Disallow dashes and dots so that neither
-    ;; timestamp-style IDs (e.g. `2026-02-09T12:00:00`) nor version-prefixed IDs (e.g. `v60.aeiagus09e`) can sneak in
-    ;; -- the version must not be encoded in the ID.
+    ;; year-based directories use version-less IDs (e.g. `aeiagus09e`): lowercase letters/digits/underscores with at
+    ;; least one letter, and no leading `v<digit>`. This keeps out timestamp-style IDs (`2026-02-09T12:00:00`) and
+    ;; version-prefixed IDs (`v60.aeiagus09e`, `v60abc`) -- the version must not be encoded in the ID -- and all-digit
+    ;; IDs (`20260703`), which `decide-liquibase-file` would mistake for a pre-4.2 changeset if the year-directory
+    ;; filename signal were ever lost. A `v<digit>` prefix would pollute the `id LIKE 'v%'` version scans that older
+    ;; binaries use for downgrade detection.
     (year-dir-migration-file? file)
-    (let [ids     (change-set-ids change-log)
-          bad-ids (filter #(or (str/includes? % "-") (str/includes? % ".")) ids)]
+    (let [ids       (change-set-ids change-log)
+          valid-id? (fn [id]
+                      (and (re-matches #"[a-z0-9_]+" id)
+                           (re-find #"[a-z]" id)
+                           (not (re-find #"^v\d" id))))
+          bad-ids   (remove valid-id? ids)]
       (when (seq bad-ids)
         (throw (validation-error
-                (format "Year-based migration file contains IDs with dashes or dots (use a version-less ID, not a timestamp or version-prefixed ID): %s"
+                (format (str "Migration file contains invalid changeset IDs (use a version-less ID: lowercase "
+                             "letters/digits/underscores with at least one letter, no leading 'v<digit>', and no "
+                             "timestamp or version prefix): %s")
                         (str/join ", " bad-ids))
                 {:invalid-ids (vec bad-ids)}))))
 
