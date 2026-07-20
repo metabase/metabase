@@ -373,3 +373,4 @@ data-model/data-model-shared-3.cy.spec.ts
 question/notebook-data-source.cy.spec.ts
 permissions/permissions-reproductions.cy.spec.js
 actions/actions-reproductions.cy.spec.js
+dashboard/dashboard-back-navigation.cy.spec.js

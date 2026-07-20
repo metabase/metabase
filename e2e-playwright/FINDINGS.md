@@ -1785,3 +1785,30 @@ open item, not as evidence.
     sibling slots were live. **Owed: re-seed the container, then flip the fixme.**
     No Cypress cross-check was run, so whether upstream also fails is unknown and
     is not claimed either way.
+
+### `page.goBack()` is measurably not the app's back control
+
+104. **Swapping `page.goBack()` for a click on the app's back affordance changes
+    the request profile, not just the rendering** (`dashboard-back-navigation`).
+    Measured: `goBack()` fires an **extra `GET /api/dashboard/:id`** (1 → 2) and
+    an **extra dashcard query** (2 → 3).
+
+    This had been asserted in a brief as a plausible rule; it is now measured.
+    The consequence is sharper than "they're different": in a **caching** spec,
+    the swap would mask precisely the regression under test — the port would go
+    green while no longer exercising the cache path at all. **Port the click if
+    upstream clicks; use `goBack()` only where upstream uses `cy.go("back")`.**
+
+### An over-broad `@external` tag, distinguished from a vacuous test
+
+105. **Only one of two `@external`-gated tests actually depends on the container**
+    (`dashboard-back-navigation`). Repointing the slow card to H2 kills the
+    loading-cards test but leaves "preserve filter value" passing — its subject
+    is counts and filter state, indifferent to whether the query errors.
+
+    The distinction that makes this a tag finding rather than a test-quality one:
+    **the mutation provably applied**, because its sibling died from the same
+    constant. So the test is not vacuous; the *gate* is over-broad. Those are
+    different defects with different fixes, and conflating them would have led to
+    "weakening" a sound test. Tags have now been found wrong in both directions
+    on four specs today — missing, stale, over-broad, and red-herring.
