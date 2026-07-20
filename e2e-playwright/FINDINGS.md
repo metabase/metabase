@@ -2845,3 +2845,53 @@ open item, not as evidence.
     `backfill-status` is "only the global one-time backfill flag". That is
     **wrong** — `api.clj:1047` is `(not (has-stale-or-outdated?))`, genuinely
     per-entity. The `model-to-transform` reading (#142) is the correct one.
+
+### 🔴 The success toast is NOT a proxy for the write
+
+160. **Neutering the write left the success toast passing**
+    (`actions-in-object-detail-view`, M1). Dropping the `fill()` of Score so the
+    implicit `row/update` writes the row back unchanged **killed 2/2 tests at the
+    table read-back** (`987,654,321` count 1→0) — while the **success toast still
+    passed**.
+
+    **So a toast-only port would be green against a no-op write.** That
+    generalises across the whole actions tier, where "action succeeded" toasts
+    are the obvious thing to assert on. The read-back is what makes these tests
+    load-bearing; the toast only proves the request returned 200.
+
+    This is the fourth actions spec ported, and the **first where the `@external`
+    tag is correct**.
+
+### Two self-flagged mutation limits, stated rather than counted
+
+161. From `actions-in-object-detail-view`, both worth keeping as method:
+    - **M6 is partially blunt** — aimed at the error-text assertions, it killed
+      one assertion earlier. The mechanism is informative: a successful update
+      **unmounts the modal**, which turns upstream's filler-looking
+      `findByLabelText("Team Name").should("exist")` into a real *"the modal did
+      not close"* check.
+    - **M7 is expectation-side, deliberately and declared.** No input inversion
+      can reach the error-text assertions, because **any input avoiding the
+      duplicate name also closes the modal**. Rather than pretend an input
+      mutation existed, the agent used an expectation-side one and said so.
+
+    It also listed two assertions as **"not triggered by any failure mode I could
+    induce"** — the post-Escape object-detail visibility check (the behaviour the
+    test is *named* for) and the final post-delete `toHaveCount(0)`. Both
+    non-vacuous, both downstream of an assertion that dies first. **Stated, not
+    counted as covered.**
+
+### `tsc` is provably silent on dead imports
+
+162. **Measured rather than assumed** (`actions-in-object-detail-view`): the
+    agent injected **an unused import and a type error** into the same file.
+    `tsc` reported only the type error and said nothing about the dead import.
+
+    This confirms the standing instruction ("`tsc` does not catch dead imports —
+    check by hand") with a control instead of folklore. It matters because a
+    dangling import has already broken collection on every CI shard in this
+    package, and `tsc` green is the check most likely to be trusted for it.
+
+    The same agent **sanity-checked its mutation verifier before using it** —
+    confirming it aborts on 0 occurrences and on 3, with the file md5 unchanged.
+    That is #146's lesson adopted proactively rather than after a failure.
