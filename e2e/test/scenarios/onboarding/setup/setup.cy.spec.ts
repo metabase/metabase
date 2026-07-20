@@ -419,7 +419,7 @@ describe("scenarios > setup", () => {
       cy.button("Connect database").click();
     });
 
-    cy.findByRole("status").should("contain", `Connected to ${dbName}`);
+    H.undoToastList().should("contain", `Connected to ${dbName}`);
 
     skipAiConfigStep();
 
