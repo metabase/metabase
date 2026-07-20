@@ -32,7 +32,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
@@ -194,12 +193,12 @@
           ;; that `resolve/verify` rejects. Keep native cards free of `table.col` qualifiers.
           (resolve/rewrite-native-sql driver (lib/raw-native-query query) mapping backend)
           ;; MBQL path: compile under the override-provider so the compiler
-          ;; emits scratch-qualified SQL without any string rewriting.
+          ;; emits scratch-qualified SQL without any string rewriting. The
+          ;; provider rides on the query; qp.setup installs it.
           ;; Precondition: card's source tables must be synced (have a Table id)
           ;; so id->override can map them.
           (let [provider (resolve/override-provider db-id (resolve/id->override input-tables mapping))]
-            (qp.store/with-metadata-provider provider
-              (:query (qp.compile/compile dataset-q)))))]
+            (:query (qp.compile/compile (lib/query provider dataset-q)))))]
     ;; verify: every SQL ref must be a scratch table; no original table token survives.
     (resolve/verify driver mapping final-sql)
     final-sql))

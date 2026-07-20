@@ -440,14 +440,20 @@
         (qp.catch-exceptions/exception-response e)))))
 
 (defn compile-source
-  "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source] :as transform} source-range-params]
-  (let [{:keys [query]} source]
-    (assert (query-transform? transform))
-    (-> query
-        (preprocess-incremental-query source-range-params)
-        massage-sql-query
-        qp.compile/compile)))
+  "Compile the source query of a transform to SQL, applying incremental filtering if
+  required. `metadata-provider`, when given, is attached to the query so the QP
+  compiles against it instead of the app-db provider."
+  ([transform source-range-params]
+   (compile-source transform source-range-params nil))
+  ([{:keys [source] :as transform} source-range-params metadata-provider]
+   (let [{:keys [query]} source]
+     (assert (query-transform? transform))
+     (-> (if metadata-provider
+           (lib/query metadata-provider query)
+           query)
+         (preprocess-incremental-query source-range-params)
+         massage-sql-query
+         qp.compile/compile))))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 

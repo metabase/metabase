@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
@@ -150,8 +149,8 @@
 (defn override-provider
   "Return the application-database metadata provider for `db-id` with each mapped
   input table's `:name`/`:schema` overridden to its scratch spec. `id->override-map`
-  maps a table id to its `{:name :schema}` scratch override. Bind the result once
-  via `qp.store/with-metadata-provider`."
+  maps a table id to its `{:name :schema}` scratch override. Attach the result to
+  the query being compiled (`lib/query`)."
   [db-id id->override-map]
   (lib.metadata/table-overriding-metadata-provider
    (fn [t] (get id->override-map (:id t)))
@@ -385,8 +384,7 @@
           ;; compilation, so the compiler emits scratch-qualified SQL natively.
           (let [db-id    (transforms-base.u/transform-source-database transform)
                 provider (override-provider db-id (id->override input-tables mapping))]
-            (qp.store/with-metadata-provider provider
-              (transforms-base.u/compile-source transform nil))))]
+            (transforms-base.u/compile-source transform nil provider)))]
     ;; Verify (both paths) — throws on any guard failure.
     (verify driver mapping (:query compiled))
     (log/debug "Resolved test transform" {:driver driver :parser-backend backend :native? native?})
