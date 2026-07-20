@@ -2454,6 +2454,14 @@ How many days of usage metadata rollups to retain.
 
 Cron schedule (in UTC) for usage metadata batch processing.
 
+### `MB_USE_V7_ROUTER`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `use-v7-router`
+
+Serve the app with the react-router v7 engine instead of the legacy v3 engine. Toggle off for an instant rollback.
+
 ### `MB_USER_VISIBILITY`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
