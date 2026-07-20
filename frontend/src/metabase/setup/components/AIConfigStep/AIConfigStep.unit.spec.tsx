@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupMetabaseManagedAiEndpoints,
+  setupMetabotSettingsEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -14,8 +15,13 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { EnterpriseSettings, TokenFeatures } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  SettingDefinition,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -28,6 +34,7 @@ interface SetupOpts {
   settings?: Partial<EnterpriseSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
   hasMetabotPlugin?: boolean;
+  settingOverrides?: SettingDefinition[];
 }
 
 const setup = ({
@@ -35,6 +42,7 @@ const setup = ({
   settings = {},
   tokenFeatures = {},
   hasMetabotPlugin = false,
+  settingOverrides = [],
 }: SetupOpts = {}) => {
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
@@ -49,8 +57,8 @@ const setup = ({
     setupEnterpriseOnlyPlugin("metabot");
   }
 
-  setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
+  setupSettingsEndpoints(settingOverrides);
+  setupPropertiesEndpoints(createMockSettings(settings));
 
   renderWithProviders(<AIConfigStep stepLabel={4} />, {
     storeInitialState: state,
@@ -96,7 +104,7 @@ describe("AIConfigStep", () => {
       hasMetabotPlugin: true,
     });
 
-    expect(screen.getByLabelText("Provider")).toHaveValue("Metabase");
+    expect(await screen.findByLabelText("Provider")).toHaveValue("Metabase");
     expect(
       await screen.findByText("About Metabase AI service"),
     ).toBeInTheDocument();
@@ -105,6 +113,43 @@ describe("AIConfigStep", () => {
         name: /I agree with the Metabase AI Service/i,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("should show the existing connection instead of the managed suggestion when already connected", async () => {
+    setupMetabaseManagedAiEndpoints();
+    setupMetabotSettingsEndpoint({
+      provider: "anthropic",
+      response: { value: "anthropic/claude-haiku-4-5", models: [] },
+    });
+    setup({
+      tokenFeatures: { "offer-metabase-ai-managed": true },
+      hasMetabotPlugin: true,
+      settings: {
+        "llm-metabot-configured?": true,
+        "llm-metabot-provider": "anthropic/claude-haiku-4-5",
+      },
+      settingOverrides: [
+        createMockSettingDefinition({
+          key: "llm-metabot-provider",
+          value: "anthropic/claude-haiku-4-5",
+        }),
+        createMockSettingDefinition({
+          key: "llm-anthropic-api-key",
+          value: "**********45",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Done" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("About Metabase AI service"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "I'll set this up later" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should advance to the next step when skipping", async () => {

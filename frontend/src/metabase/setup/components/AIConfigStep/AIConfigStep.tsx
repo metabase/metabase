@@ -1,3 +1,4 @@
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -73,19 +74,15 @@ const getStepTitle = ({
   connectedProvider: MetabotProvider | undefined;
   isStepCompleted: boolean;
   offerMetabaseAiManaged: boolean;
-}): string => {
-  if (!isStepCompleted) {
-    return t`Connect to an AI provider`;
-  }
-
-  if (connectedProvider) {
-    const providerLabel = getProviderOptions(offerMetabaseAiManaged)[
-      connectedProvider
-    ]?.label;
-    return providerLabel
-      ? t`Connected to ${providerLabel}`
-      : t`AI provider connected`;
-  }
-
-  return t`I'll set up AI later`;
-};
+}): string =>
+  match({ isStepCompleted, connectedProvider })
+    .with({ isStepCompleted: false }, () => t`Connect to an AI provider`)
+    .with({ connectedProvider: P.nonNullable }, ({ connectedProvider }) => {
+      const providerLabel = getProviderOptions(offerMetabaseAiManaged)[
+        connectedProvider
+      ]?.label;
+      return providerLabel
+        ? t`Connected to ${providerLabel}`
+        : t`AI provider connected`;
+    })
+    .otherwise(() => t`I'll set up AI later`);
