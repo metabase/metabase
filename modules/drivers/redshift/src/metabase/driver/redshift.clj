@@ -1051,20 +1051,27 @@
          (doseq [s source-schemas]
            (assert-no-public-create-grant!       check-conn s)
            (assert-can-alter-default-privileges! check-conn s)))))
-    ;; Grants run as auto-commit per statement so privileges are immediately
-    ;; observable to a subsequent describe-database from a different connection.
-    (doseq [s   source-schemas
-            :let [quoted-schema (quote-schema s)]
-            sql [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                 (format "REVOKE CREATE ON SCHEMA %s FROM %s" quoted-schema quoted-user)
-                 (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s"
-                         quoted-schema quoted-user)
-                 ;; Schema-wide SELECT — workspace-scoped users receive whole-schema access.
-                 ;; Per-table granularity intentionally discarded (API contract is namespace-grained).
-                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
-                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
-                         quoted-schema quoted-user)]]
-      (jdbc/execute! spec [sql]))))
+    ;; Grants run as one batched transaction; it commits before this fn
+    ;; returns, so a subsequent describe-database from a different connection
+    ;; still observes the privileges.
+    (jdbc/with-db-transaction [t-conn spec]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [s   source-schemas
+                :let [quoted-schema (quote-schema s)]
+                sql [(format "GRANT USAGE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                     (format "REVOKE CREATE ON SCHEMA %s FROM %s" quoted-schema quoted-user)
+                     (format "REVOKE INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA %s FROM %s"
+                             quoted-schema quoted-user)
+                     ;; Schema-wide SELECT — workspace-scoped users receive whole-schema access.
+                     ;; Per-table granularity intentionally discarded (API contract is namespace-grained).
+                     (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" quoted-schema quoted-user)
+                     (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s"
+                             quoted-schema quoted-user)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/batch-exception t))))))))
 
 (defn- schema-exists?
   "Check if a schema exists in Redshift."

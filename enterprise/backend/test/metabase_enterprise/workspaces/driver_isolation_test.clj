@@ -1132,11 +1132,10 @@
                               driver)))))))))
 
 (deftest ^:synchronized grant-failure-is-not-a-batch-envelope-test
-  ;; Batching grant-workspace-read-access! impls (h2, mysql, postgres,
-  ;; clickhouse) rethrow the per-statement exception via
-  ;; `driver.u/batch-exception`, so a failed grant reads as the plain server
-  ;; error instead of "Batch entry N ... Call getNextException to see other
-  ;; errors in the batch." Non-batching impls pass trivially.
+  ;; Every SQL-JDBC grant-workspace-read-access! impl batches its statements
+  ;; and rethrows the per-statement exception via `driver.u/batch-exception`,
+  ;; so a failed grant reads as the plain server error instead of "Batch entry
+  ;; N ... Call getNextException to see other errors in the batch."
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
     (testing "a failed grant! surfaces the underlying server error, not a JDBC batch envelope"
       (let [schema    (case driver/*driver*
