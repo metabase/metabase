@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.duplicated-test
   "The `duplicated` checker (match mode `name`) flags clusters of ≥2 same-type non-archived entities
   whose normalized names collide, stamping the peer count in the top-level `duplicate_count` column and
-  freezing the `matches`/`matched_name`/`duplicate_entity_ids` envelope in `details` at scan time. The
+  freezing the `matches`/`normalized_name`/`duplicate_entity_ids` envelope in `details` at scan time. The
   `/duplicated` endpoint serves them with hydrated same-type peers and the shared filter/sort/pagination
   envelope."
   (:require
@@ -52,7 +52,7 @@
                   (is (some? f))
                   (is (= 1 (:duplicate_count f)))
                   (is (= {:matches              [{:match_type "name" :entity_ids [card-b]}]
-                          :matched_name         (u/lower-case-en (str prefix " Revenue"))
+                          :normalized_name      (u/lower-case-en (str prefix " Revenue"))
                           :duplicate_entity_ids [card-b]}
                          (:details f)))
                   (testing "the other magnitude columns stay null on duplicated findings"
@@ -90,11 +90,11 @@
              :model/Card {comma-a :id} {:collection_id coll-id :name (str prefix " a, b")}
              :model/Card {comma-b :id} {:collection_id coll-id :name (str prefix " a b")}]
             (let [by-entity (duplicated-findings-by-entity!)]
-              (testing "case-insensitive match; matched_name is the normalized (lowercased) form"
+              (testing "case-insensitive match; normalized_name is the normalized (lowercased) form"
                 (let [f (by-entity [:card case-a])]
                   (is (some? f))
                   (is (= (u/lower-case-en (str prefix " Rev"))
-                         (get-in f [:details :matched_name])))
+                         (get-in f [:details :normalized_name])))
                   (is (= [case-b] (get-in f [:details :duplicate_entity_ids])))))
               (testing "leading/trailing whitespace is ignored"
                 (is (= [pad-b] (get-in (by-entity [:card pad-a]) [:details :duplicate_entity_ids]))))
@@ -256,9 +256,9 @@
               (let [f (by-id ["card" card-a])]
                 (is (some? f))
                 (is (= nm (:entity_display_name f)))
-                (testing "top-level duplicate_count + normalized matched_name in details"
+                (testing "top-level duplicate_count + normalized_name in details"
                   (is (= 1 (:duplicate_count f)))
-                  (is (= (u/lower-case-en nm) (get-in f [:details :matched_name]))))
+                  (is (= (u/lower-case-en nm) (get-in f [:details :normalized_name]))))
                 (testing "the peer hydrates with its card sub-kind"
                   (is (= [{:id card-b :name nm :entity_type "card" :card_type "model"}]
                          (get-in f [:details :duplicate_entities]))))
@@ -290,7 +290,8 @@
                                                              :entity_name     (str prefix " " nm)
                                                              :finding_type    :duplicated
                                                              :duplicate_count dup-count
-                                                             :details         {:matched_name nm}})))
+                                                             :details         {:normalized_name      nm
+                                                                               :duplicate_entity_ids []}})))
                   card-fid  (insert :card      card-id  "Alpha" 1)
                   dash-fid  (insert :dashboard dash-id  "Beta"  2)
                   xform-fid (insert :transform xform-id "Gamma" 4)
@@ -330,7 +331,8 @@
                 (t2/insert! :model/ContentDiagnosticsFinding
                             {:scan_id "p" :entity_type :card :entity_id cid
                              :entity_name (str prefix "-" cid)
-                             :finding_type :duplicated :duplicate_count 1 :details {}}))
+                             :finding_type :duplicated :duplicate_count 1
+                             :details {:normalized_name "x" :duplicate_entity_ids []}}))
               (let [page (fn [limit offset]
                            (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/duplicated"
                                                  :query prefix :limit limit :offset offset))]
@@ -360,7 +362,7 @@
                                   :entity_name (str prefix "-card")
                                   :finding_type :duplicated :duplicate_count 1
                                   :details {:matches              [{:match_type "name" :entity_ids [secret-card]}]
-                                            :matched_name         "x"
+                                            :normalized_name      "x"
                                             :duplicate_entity_ids [secret-card]}}))
                   finding (fn [user]
                             (some #(when (= fid (:id %)) %)
@@ -393,7 +395,7 @@
                                       :finding_type :duplicated :duplicate_count 2
                                       :details {:matches              [{:match_type  "name"
                                                                         :entity_ids [reg-peer pers-peer]}]
-                                                :matched_name         "x"
+                                                :normalized_name      "x"
                                                 :duplicate_entity_ids [reg-peer pers-peer]}}))
                     peer-ids (fn [& kvs]
                                (let [finding (some #(when (= fid (:id %)) %)
@@ -448,7 +450,7 @@
                                                              {:scan_id "x" :entity_type :card :entity_id dup-card
                                                               :entity_name (str prefix "-dup")
                                                               :finding_type :duplicated :duplicate_count 1
-                                                              :details {:matched_name "x"
+                                                              :details {:normalized_name      "x"
                                                                         :duplicate_entity_ids []}}))
                   ids (fn [path] (set (map :id (:data (mt/user-http-request :rasta :get 200 path :query prefix)))))]
               (testing "/duplicated returns only the duplicated finding"

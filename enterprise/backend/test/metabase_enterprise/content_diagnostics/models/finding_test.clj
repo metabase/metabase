@@ -47,7 +47,7 @@
   (testing "the duplicated details envelope - a nested matches vector - survives the JSON round-trip"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (let [details {:matches              [{:match_type "name" :entity_ids [10 11]}]
-                     :matched_name         "orders by month"
+                     :normalized_name      "orders by month"
                      :duplicate_entity_ids [10 11]}
             fid     (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                      {:scan_id         "dup-round-trip"

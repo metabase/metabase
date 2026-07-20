@@ -115,9 +115,10 @@
 (def ^:private DuplicatedFinding
   "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed
   `details`. `duplicate_count` is the peer count (cluster size minus 1) and is never null on duplicated
-  findings. `details.matched_name` is the normalized name the cluster collided on;
+  findings. `details.normalized_name` is the normalized name the cluster collided on;
   `details.duplicate_entities` are the hydrated peers the caller can see - permission and
-  personal-collection filtering can leave it shorter than `duplicate_count`."
+  personal-collection filtering can leave it shorter than `duplicate_count` (down to empty, but the key
+  is always present)."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
@@ -135,8 +136,8 @@
      [:description        [:maybe :string]]
      [:owner              NormalizedUser]
      [:creator            Creator]
-     [:matched_name       {:optional true} :string]
-     [:duplicate_entities {:optional true} [:sequential DuplicatedEntity]]]]])
+     [:normalized_name    :string]
+     [:duplicate_entities [:sequential DuplicatedEntity]]]]])
 
 (def ^:private stale-sort-column->field
   "Sortable stale-list params → their native `content_diagnostics_finding` column. The shared base plus
@@ -305,8 +306,8 @@
   "List **duplicated** findings - the latest valid `duplicated` finding per entity, permission-filtered
   for the current user. Each item is a flat identity + a top-level `duplicate_count` (the number of other
   same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
-  `owner`, `creator`, `matched_name`, and the hydrated same-type `duplicate_entities` peers). Paginated
-  via `limit`/`offset`; `total` is the full valid count.
+  `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers).
+  Paginated via `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.

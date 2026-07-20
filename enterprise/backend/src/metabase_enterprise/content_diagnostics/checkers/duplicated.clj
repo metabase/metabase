@@ -5,9 +5,9 @@
   `:duplicate-count` = the peer count (→ the native `duplicate_count` column).
 
   `details` carries the mode-aware envelope shared by all future match modes: `matches` =
-  `[{match_type, entity_ids}, …]` (single-element here), `matched_name` (the normalized name the cluster
-  collided on), and `duplicate_entity_ids` (the flattened union of all matches' peers - what the serve
-  layer hydrates). Cards are grouped by their sub-kind (`type` - question/model/metric): a question and a
+  `[{match_type, entity_ids}, …]` (single-element here), `normalized_name` (the normalized name the
+  cluster collided on), and `duplicate_entity_ids` (the flattened union of all matches' peers - what the
+  serve layer hydrates). Cards are grouped by their sub-kind (`type` - question/model/metric): a question and a
   model sharing a name are not duplicates. One lightweight (id, name) load per entity type, grouped
   in memory - no per-entity loop, app-db only."
   (:require
@@ -39,7 +39,7 @@
 (defn- cluster-findings
   "One `:duplicated` finding per member of a name cluster; peers are the other members (symmetric: in
   {A,B,C}, A's finding lists {B,C}, B's {A,C}, C's {A,B})."
-  [entity-type matched-name rows]
+  [entity-type normalized-name rows]
   (let [ids (mapv :id rows)]
     (for [id ids
           :let [peer-ids (filterv #(not= % id) ids)]]
@@ -48,7 +48,7 @@
        :finding-type    :duplicated
        :duplicate-count (count peer-ids)
        :details         {:matches              [{:match_type "name" :entity_ids peer-ids}]
-                         :matched_name         matched-name
+                         :normalized_name      normalized-name
                          :duplicate_entity_ids peer-ids}})))
 
 (defn- findings-for-type
