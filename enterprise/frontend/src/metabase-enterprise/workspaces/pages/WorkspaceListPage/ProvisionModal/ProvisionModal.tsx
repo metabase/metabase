@@ -169,10 +169,7 @@ type ProvisionSuccessProps = {
 export function ProvisionSuccess({ workspace, onDone }: ProvisionSuccessProps) {
   return (
     <Stack gap="lg">
-      <Group gap="sm" wrap="nowrap">
-        <FixedSizeIcon name="check_filled" c="success" aria-hidden />
-        <Text>{t`The workspace is ready.`}</Text>
-      </Group>
+      <Text>{t`The workspace is ready.`}</Text>
       {workspace.instance_url != null && (
         <Group gap="xs" wrap="nowrap">
           <FixedSizeIcon name="workspace" c="text-secondary" aria-hidden />
