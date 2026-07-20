@@ -1,22 +1,16 @@
-import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Modal } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
 import { getStatusMessage } from "../../../utils";
+import { StatusDetails } from "../StatusDetails";
 
-import S from "./StatusDetailsModal.module.css";
-
-export type StatusDetailsModalProps = {
+export type ErrorModalProps = {
   workspace: Workspace;
   opened: boolean;
   onClose: () => void;
 };
 
-export function StatusDetailsModal({
-  workspace,
-  opened,
-  onClose,
-}: StatusDetailsModalProps) {
+export function ErrorModal({ workspace, opened, onClose }: ErrorModalProps) {
   return (
     <Modal
       title={getStatusMessage(workspace.status)}
@@ -25,9 +19,7 @@ export function StatusDetailsModal({
       size="lg"
       onClose={onClose}
     >
-      <div className={S.codeContainer}>
-        <CodeEditor value={workspace.status_details ?? ""} readOnly />
-      </div>
+      <StatusDetails details={workspace.status_details ?? ""} />
     </Modal>
   );
 }
