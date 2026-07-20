@@ -47,17 +47,16 @@
     :instance-deprovisioning :database-deprovisioning})
 
 (mr/def ::instance-status
-  "Provider-agnostic status of a workspace's child instance, reduced to what the
-   provisioning flow needs to know: `:creating`/`:starting` — still coming up,
-   keep polling; `:running` — up and usable; `:error` — terminal, stop waiting.
-   Concrete provisioners map their own richer status sets onto these."
-  [:enum :creating :starting :running :error])
+  "Status of a workspace's child instance: `:creating` — still coming up, keep
+   polling; `:active` — up and usable; `:error` — terminal, stop waiting."
+  [:enum :creating :active :error])
 
 (mr/def ::instance
-  "A workspace's child instance as reported by an InstanceProvisioner."
+  "A workspace's child instance as reported by an InstanceProvisioner. The url
+   is only set once the instance is `:active`."
   [:map
    [:id     :string]
-   [:url    :string]
+   [:url    [:maybe :string]]
    [:status ::instance-status]])
 
 (mr/def ::workspace-database-status

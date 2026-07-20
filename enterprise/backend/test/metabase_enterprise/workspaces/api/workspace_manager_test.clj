@@ -30,9 +30,9 @@
 (defn- stub-instance-provisioner []
   (reify provisioning.instance/InstanceProvisioner
     (create! [_ _workspace _config]
-      {:id (str (random-uuid)) :url "https://example.com" :status :running})
+      {:id (str (random-uuid)) :url "https://example.com" :status :active})
     (fetch [_ instance-id]
-      {:id instance-id :url "https://example.com" :status :running})
+      {:id instance-id :url "https://example.com" :status :active})
     (delete! [_ _instance-id] nil)))
 
 (use-fixtures :once
