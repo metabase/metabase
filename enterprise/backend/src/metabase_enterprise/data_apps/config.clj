@@ -1,13 +1,6 @@
 (ns metabase-enterprise.data-apps.config
-  "Parsing + validation of a per-app `data_app.yaml`. Each data app lives in its
-   own directory under `data_apps/` at the repo root, alongside its built bundle:
-
-     data_apps/
-       sales/                   # the directory name is the slug: /apps/sales
-         data_app.yaml
-         dist/index.js
-
-   where `data_app.yaml` is:
+  "Parsing + validation of a per-app `data_app.yaml`, which sits in the app's own
+   directory under `data_apps/` (see `README.md` in this directory for the layout):
 
      name: Sales dashboard      # display name
      path: dist/index.js        # bundle path, relative to this app's directory

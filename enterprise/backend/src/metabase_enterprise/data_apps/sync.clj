@@ -1,19 +1,14 @@
 (ns metabase-enterprise.data-apps.sync
-  "Materialize data apps from a synced repository snapshot.
+  "Materialize data apps from a synced repository snapshot — discovery, upsert, and
+   pruning. [[sync-from-snapshot!]] is the entry point remote-sync calls on every
+   import.
 
-   Data apps ride the remote-sync import pipeline: whenever remote-sync pulls the
-   connected repository (manual \"Pull changes\", auto-import poll, or startup),
-   it calls [[sync-from-snapshot!]] with the just-imported snapshot. We discover
-   every `data_apps/<dir>/data_app.yaml` and materialize one `data_app` row per app
-   (caching the built bundle). The connected repo is the source of truth: a sync
-   upserts each app it finds and prunes rows whose directory is gone, so removing
-   an app from the repo (or switching repos) drops it on the next sync. Unlinking
-   runs no sync, so apps survive it.
+   See `README.md` in this directory for the pipeline, the source-of-truth rules
+   (what a sync deletes, and what unlinking or switching repos does), and the
+   failure-isolation guarantees this namespace implements.
 
    This namespace does no Git access of its own — the snapshot's `read-file` /
-   `list-files` come from remote-sync. The cached `bundle` blob is what serving
-   reads, so a failed sync never takes a working app offline, and the admin
-   `enabled` toggle is preserved across syncs."
+   `list-files` come from remote-sync."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
@@ -105,12 +100,9 @@
             (vec (or allowed_hosts [])))))
 
 (defn- mark-config-error!
-  "Record a `data_app.yaml` parse failure on an app that already has a row. The row
-   and its cached bundle are kept — the directory is still in the repo, so this is a
-   broken config, not a removal — but `sync_error` is set, so the admin UI shows the
-   app as failed instead of silently presenting the last-good bundle as freshly
-   synced. An app with no row yet simply isn't materialized (a brand-new app whose
-   config never parsed has nothing to serve). Returns true when this changed the
+  "Record a `data_app.yaml` parse failure on an app that already has a row, keeping the
+   row and its cached bundle and setting `sync_error`. An app with no row yet isn't
+   materialized at all — there's nothing to serve. Returns true when this changed the
    app's recorded state, so callers can count it like any other change."
   [existing slug message]
   (boolean
@@ -161,31 +153,15 @@
       :list-files (fn [] -> [<path-string> ...])
       :sha        <commit-sha-string>}
 
-   Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and
-   prunes rows whose directory is gone from the snapshot — all in a single
-   transaction, so the connected repo is the source of truth for which apps exist.
-   Returns `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>,
-   :config-errors [<message> ...]}`, where `:changed` is how many apps this sync
-   actually created/updated (a `last_synced_sha` bump on an unchanged app does not
-   count) and `:removed` is how many were deleted for no longer being in the repo.
-   A malformed `data_app.yaml` is isolated (collected into `:config-errors`) rather
-   than aborting the others: an app that already has a row is marked failed (see
-   [[mark-config-error!]]), one that doesn't isn't materialized. Per-app bundle
-   failures are likewise recorded on the row.
+   Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and prunes
+   rows whose directory is gone from the snapshot — all in one transaction. Returns
+   `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>, :config-errors [<msg> ...]}`,
+   where `:changed` counts apps actually created/updated (a `last_synced_sha` bump on
+   unchanged content does not count) and `:removed` counts apps dropped for no longer
+   being in the repo.
 
-   Pruning is by *directory*, not by successful parse: an app whose directory is
-   still present but whose config is momentarily broken is kept and marked with a
-   `sync_error` (so the UI shows it as failed instead of serving the last-good
-   bundle as if freshly synced), rather than being dropped along with its cached
-   bundle. Deletion only happens here, on a successful snapshot read, so it
-   never fires on a failed clone/fetch (that throws before we get a snapshot).
-   Switching to a different repo therefore drops the previous repo's apps on the
-   next sync (they're absent from the new snapshot); unlinking runs no sync, so
-   apps survive it — matching how remote-sync treats other entities.
-
-   Two apps can't collide on a slug here: a slug *is* an app's directory name (see
-   the config namespace), a repo can't hold two `data_apps/<slug>` directories, and
-   discovery takes one config per directory (see [[discover-app-configs]])."
+   See `README.md` in this directory for the source-of-truth rules this implements,
+   and for why a broken config marks its app failed instead of pruning it."
   [{:keys [read-file list-files sha]}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
@@ -212,10 +188,8 @@
                                                  (assoc cfg :sha sha :read-file read-file)))
                                     inc))
                                 0 results)
-                ;; The repo is the source of truth: drop rows whose directory is
-                ;; gone. An empty repo (no `data_apps/`) removes them all. `enabled`
-                ;; is ignored here — a locally disabled app removed from the repo is
-                ;; still removed. (`[:not-in #{}]` is invalid SQL, so delete-all.)
+                ;; `enabled` is deliberately not consulted — see the README's
+                ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
                           (t2/delete! :model/DataApp :name [:not-in present-slugs])
                           (t2/delete! :model/DataApp))]
