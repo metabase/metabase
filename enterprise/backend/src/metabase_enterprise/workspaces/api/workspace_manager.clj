@@ -153,7 +153,7 @@
   just-started run (`:database-provisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        ws       (ws.provisioning/mark-workspace-provisioning! ws)
+        ws       (ws.provisioning/set-initial-workspace-provisioning-status! ws)
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
                      present-workspace)]
@@ -168,7 +168,7 @@
   just-started run (`:instance-deprovisioning`)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [ws       (api/write-check :model/Workspace id)
-        ws       (ws.provisioning/mark-workspace-deprovisioning! ws)
+        ws       (ws.provisioning/set-initial-workspace-deprovisioning-status! ws)
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
                      present-workspace)]
