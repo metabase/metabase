@@ -153,6 +153,34 @@
                 :inserted-rows [1 1]}
                (#'kondo-ratchet/reinsert-ignores round1 (plan round1 [(wl 2)]))))))))
 
+(deftest marker-lifecycle-edge-test
+  (let [stamp @#'kondo-ratchet/keep-comment
+        plan  (fn [text sites] (#'kondo-ratchet/site-restore-plan (vec (str/split-lines text)) sites))]
+    (testing "a reserved marker whose owner never restores survives the orphan strip"
+      (let [inl  {:row 2, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}}
+            wl   {:row 2, :was-marked? true, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
+            text (str stamp "\n(do (f))\n")
+            {restored :text} (#'kondo-ratchet/reinsert-ignores
+                              text
+                              (#'kondo-ratchet/site-restore-plan
+                               (vec (str/split-lines text)) [inl] [wl inl]))]
+        (is (= (str stamp "\n" stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n") restored))
+        (is (= restored (#'kondo-ratchet/strip-orphan-keep-comments restored)))))
+    (testing "a whole-line ignore with a trailing marker removes and restores through the inline path, marker never leaving"
+      (let [text (str "#_{:clj-kondo/ignore [:x]} ;; " kondo-ratchet/keep-marker " why\n(f)\n")
+            {:keys [text sites]} (#'kondo-ratchet/remove-ignores-at text [1])]
+        (is (= (str " ;; " kondo-ratchet/keep-marker " why\n(f)\n") text))
+        (is (= [{:whole-line? false, :col 1, :text "#_{:clj-kondo/ignore [:x]}"}] (map :original sites)))
+        (let [planned (plan text (map #(assoc % :was-marked? true) sites))]
+          (is (= [nil] (map :comment planned)))
+          (is (= (str "#_{:clj-kondo/ignore [:x]} ;; " kondo-ratchet/keep-marker " why\n(f)\n")
+                 (:text (#'kondo-ratchet/reinsert-ignores text planned)))))))
+    (testing "an unmarked whole-line block climbs above a marker owned by the row's inline ignore"
+      (let [text (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")
+            wl   {:row 2, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}]
+        (is (= (str stamp "\n#_{:clj-kondo/ignore [:x]}\n" text)
+               (:text (#'kondo-ratchet/reinsert-ignores text (plan text [wl])))))))))
+
 (deftest strip-orphan-keep-comments-test
   (let [stamp-line @#'kondo-ratchet/keep-comment
         hand-line  (str ";; real explanation. " kondo-ratchet/keep-marker)]

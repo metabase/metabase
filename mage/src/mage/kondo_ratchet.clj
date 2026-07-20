@@ -91,9 +91,13 @@
                             lines
                             (update lines (dec row)
                                     (fn [line]
-                                      (str (subs line 0 (dec (:col original)))
-                                           (:text original) " "
-                                           (subs line (dec (:col original))))))))
+                                      (let [rest-of-line (subs line (dec (:col original)))]
+                                        (str (subs line 0 (dec (:col original)))
+                                             (:text original)
+                                             ;; removal swallowed the separating space unless the
+                                             ;; remnant kept one; mirror it so restores are verbatim
+                                             (when-not (str/starts-with? rest-of-line " ") " ")
+                                             rest-of-line))))))
                         (vec (str/split-lines text))
                         (sort-by (fn [{:keys [row original]}] [row (:col original -1)])
                                  #(compare %2 %1)
