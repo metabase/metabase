@@ -16,13 +16,12 @@
 (defn- workspace-databases [ws-id]
   (t2/select :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
 
-(mu/defn- start-workspace-run! :- ::ws.schema/workspace
+(mu/defn- set-initial-workspace-status! :- ::ws.schema/workspace
   "Atomically flip `workspace` to `status`, the first status of a run, unless
    its current status is in `disallowed-statuses`. The conditional UPDATE is
-   the real mutual-exclusion guard — the API's status check is only a friendly
-   precheck — so two concurrent requests can never both start a run. Throws a
-   400 when the current status disallows the run. Returns the updated
-   `workspace` copy."
+   the mutual-exclusion guard — two concurrent requests can never both start a
+   run. Throws a 400 when the current status disallows the run. Returns the
+   updated `workspace` copy."
   [workspace :- ::ws.schema/workspace
    status :- ::ws.schema/workspace-status
    disallowed-statuses :- [:set ::ws.schema/workspace-status]]
@@ -44,25 +43,25 @@
   (t2/update! :model/Workspace (:id workspace) {:status status, :status_details status-details})
   (assoc workspace :status status, :status_details status-details))
 
-(mu/defn set-workspace-provisioning-status! :- ::ws.schema/workspace
+(mu/defn set-initial-workspace-provisioning-status! :- ::ws.schema/workspace
   "Atomically set `:database-provisioning`, the first status of the
    provisioning path; throws a 400 when a run is already in flight or the
    workspace is already `:provisioned`. Called before the background run
    starts so the run is immediately visible as in flight. Returns the updated
    `workspace` copy."
   [workspace :- ::ws.schema/workspace]
-  (start-workspace-run! workspace :database-provisioning
-                        (conj ws.schema/in-flight-statuses :provisioned)))
+  (set-initial-workspace-status! workspace :database-provisioning
+                                 (conj ws.schema/in-flight-statuses :provisioned)))
 
-(mu/defn set-workspace-deprovisioning-status! :- ::ws.schema/workspace
+(mu/defn set-initial-workspace-deprovisioning-status! :- ::ws.schema/workspace
   "Atomically set `:instance-deprovisioning`, the first status of the
    deprovisioning path; throws a 400 when a run is already in flight or the
    workspace is already `:unprovisioned`. Called before the background run
    starts so the run is immediately visible as in flight. Returns the updated
    `workspace` copy."
   [workspace :- ::ws.schema/workspace]
-  (start-workspace-run! workspace :instance-deprovisioning
-                        (conj ws.schema/in-flight-statuses :unprovisioned)))
+  (set-initial-workspace-status! workspace :instance-deprovisioning
+                                 (conj ws.schema/in-flight-statuses :unprovisioned)))
 
 (mu/defn provision-workspace! :- ::ws.schema/workspace
   "Provision `workspace` (blocking): every database, then the child instance,
