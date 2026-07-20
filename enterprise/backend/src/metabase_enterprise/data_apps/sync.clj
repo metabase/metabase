@@ -104,6 +104,20 @@
       (not= (vec (or (:allowed_hosts existing) []))
             (vec (or allowed_hosts [])))))
 
+(defn- mark-config-error!
+  "Record a `data_app.yaml` parse failure on an app that already has a row. The row
+   and its cached bundle are kept — the directory is still in the repo, so this is a
+   broken config, not a removal — but `sync_error` is set, so the admin UI shows the
+   app as failed instead of silently presenting the last-good bundle as freshly
+   synced. An app with no row yet simply isn't materialized (a brand-new app whose
+   config never parsed has nothing to serve). Returns true when this changed the
+   app's recorded state, so callers can count it like any other change."
+  [existing slug message]
+  (boolean
+   (when (and existing (not= (:sync_error existing) message))
+     (t2/update! :model/DataApp :name slug {:sync_error message})
+     true)))
+
 (defn- sync-app!
   "Materialize one app. On bundle failure, the row's metadata is still upserted
    with `sync_error` set so the app appears in the list with its failure; the
@@ -154,14 +168,16 @@
    :config-errors [<message> ...]}`, where `:changed` is how many apps this sync
    actually created/updated (a `last_synced_sha` bump on an unchanged app does not
    count) and `:removed` is how many were deleted for no longer being in the repo.
-   A malformed `data_app.yaml` is isolated (collected into `:config-errors`, that
-   app skipped) rather than aborting the others; per-app bundle failures are
-   recorded on the row.
+   A malformed `data_app.yaml` is isolated (collected into `:config-errors`) rather
+   than aborting the others: an app that already has a row is marked failed (see
+   [[mark-config-error!]]), one that doesn't isn't materialized. Per-app bundle
+   failures are likewise recorded on the row.
 
    Pruning is by *directory*, not by successful parse: an app whose directory is
-   still present but whose config is momentarily broken is kept (it stays as a
-   `sync_error` row), so a typo in `data_app.yaml` doesn't drop the app and its
-   cached bundle. Deletion only happens here, on a successful snapshot read, so it
+   still present but whose config is momentarily broken is kept and marked with a
+   `sync_error` (so the UI shows it as failed instead of serving the last-good
+   bundle as if freshly synced), rather than being dropped along with its cached
+   bundle. Deletion only happens here, on a successful snapshot read, so it
    never fires on a failed clone/fetch (that throws before we get a snapshot).
    Switching to a different repo therefore drops the previous repo's apps on the
    next sync (they're absent from the new snapshot); unlinking runs no sync, so
@@ -185,12 +201,17 @@
                                        :bundle_path :bundle_hash :sync_error]))
         {:keys [changed removed]}
         (t2/with-transaction [_conn]
-          (let [changed (reduce (fn [n cfg]
+          (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]
                                   (cond-> n
-                                    (sync-app! (get existing (:slug cfg))
-                                               (assoc cfg :sha sha :read-file read-file))
+                                    ;; A parse failure on an app that still exists marks
+                                    ;; that row failed rather than syncing it; everything
+                                    ;; else is materialized normally.
+                                    (if config-error
+                                      (mark-config-error! (get existing slug) slug config-error)
+                                      (sync-app! (get existing slug)
+                                                 (assoc cfg :sha sha :read-file read-file)))
                                     inc))
-                                0 good)
+                                0 results)
                 ;; The repo is the source of truth: drop rows whose directory is
                 ;; gone. An empty repo (no `data_apps/`) removes them all. `enabled`
                 ;; is ignored here — a locally disabled app removed from the repo is

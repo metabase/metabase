@@ -91,11 +91,25 @@
                     (snapshot {"data_apps/app/data_app.yaml" "name: App\n" ; missing required "path"
                                "data_apps/app/index.js"       "GOOD"}))]
         (is (=? {:removed 0} result) "the app is not pruned")
-        (is (= 1 (count (:config-errors result)))))
+        (is (= 1 (count (:config-errors result))))
+        (is (=? {:changed 1} result)
+            "marking the app failed counts as a change, so the pull isn't reported as a no-op"))
       (let [app (t2/select-one :model/DataApp :name "app")]
         (is (some? app) "the app survives a transiently broken config")
         (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
-            "its last-good cached bundle is retained")))))
+            "its last-good cached bundle is retained")
+        (is (str/includes? (:sync_error app) "path")
+            "the parse failure is recorded on the row, so the UI shows it as failed rather than freshly synced")))))
+
+(deftest a-broken-config-for-a-brand-new-app-materializes-nothing-test
+  (testing "an app whose config never parsed has no row to mark — it simply isn't materialized"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/import-from-snapshot!
+                    (snapshot {"data_apps/newbie/data_app.yaml" "name: Newbie\n" ; missing required "path"
+                               "data_apps/newbie/index.js"      "X"}))]
+        (is (= 1 (count (:config-errors result))))
+        (is (=? {:synced 0 :changed 0 :removed 0} result))
+        (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
 
 (defn- oversized-bundle ^String []
   (.repeat "a" (int (inc data-app.sync/max-bundle-bytes))))
