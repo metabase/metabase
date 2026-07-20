@@ -458,6 +458,15 @@
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
+(def ^:private max-data-type-length
+  "Truncate `INFORMATION_SCHEMA` `data_type` strings to this many characters, in SQL. Only short prefixes are ever
+  consumed (see [[raw-type->database+base-type]]; the longest verbatim type is `RANGE<TIMESTAMP>`), but a STRUCT
+  column's `data_type` spells out its entire nested schema, and the `COLUMN_FIELD_PATHS` join repeats it on every
+  nested-leaf row -- O(n^2) bytes for a column with n leaves. Dynamic-key STRUCTs (e.g. log-sink tables whose JSON
+  payloads use user IDs as keys) can reach thousands of leaves with ~270KB type strings, which OOMed sync before this
+  truncation."
+  200)
+
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
@@ -476,10 +485,12 @@
                (query-honeysql driver database
                                {:select    [[:c.table_name :table_name]
                                             [:c.column_name :column_name]
-                                            [:c.data_type :data_type]
+                                            ;; truncated in SQL: a STRUCT's data_type repeats its whole nested schema
+                                            ;; on every leaf row of the join, O(n^2) bytes -- see [[max-data-type-length]]
+                                            [[:substr :c.data_type 1 max-data-type-length] :data_type]
                                             [:c.ordinal_position :ordinal_position]
                                             [[:= :c.is_partitioning_column "YES"] :partitioned]
-                                            [:p.data_type :nested_data_type]
+                                            [[:substr :p.data_type 1 max-data-type-length] :nested_data_type]
                                             [:p.field_path :field_path]]
                                 :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                                 :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
