@@ -11,6 +11,7 @@
    [metabase-enterprise.sandbox.models.params.field-values :as sandbox.field-values]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
+   [metabase.explorations.query-plan.variants :as variants]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -333,6 +334,45 @@
                 (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))
             (testing "a superuser (router cohort, absent routing dimension) streams the cached result"
               (mt/user-http-request :crowberto :get 202 (format "exploration/query/%d" (:id query))))))))))
+
+(defn- products-count-card
+  "Hand-built `:card` ctx — a count metric on PRODUCTS. The discovery path only reads `:id` (for the
+  cache key) and `:dataset_query`, so no real Card row is needed."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    {:id            card-id
+     :dataset_query (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                           (lib/aggregate (lib/count))))}))
+
+(defn- products-category-sandbox
+  "A GTAP def filtering PRODUCTS to rows whose `category` equals the user's `cat` login attribute."
+  []
+  {:gtaps      {:products {:remappings {"cat" [:dimension [:field (mt/id :products :category) nil]]}}}
+   :attributes {"cat" "Widget"}})
+
+(deftest discovery-runs-under-the-bound-users-sandbox-test
+  (testing "top-K discovery is a real warehouse query, so the values it bakes into a chart's MBQL and
+            name must come from the bound user's lens — a sandboxed creator must never discover the
+            global value set"
+    (met/with-gtaps-for-user! :rasta (products-category-sandbox)
+      (let [ctx      {:mp              (mt/metadata-provider)
+                      :card            (products-count-card 9100001)
+                      :target          [:field (mt/id :products :category) nil]
+                      :dim             {:dimension_id   "d-category"
+                                        :display_name   "Category"
+                                        :effective_type :type/Text
+                                        :semantic_type  :type/Category}
+                      :segment         nil
+                      :params          {:k 10}
+                      :explore-filters nil}
+            discover (fn [user-id]
+                       (request/with-current-user user-id
+                         (#'variants/cached-discovery ctx)))]
+        (is (= ["Widget"] (discover (mt/user->id :rasta)))
+            "the sandboxed user discovers only the category their sandbox exposes")
+        (is (< 1 (count (discover (mt/user->id :crowberto))))
+            "an unsandboxed superuser discovers the full set — so the single value above was the
+             sandbox at work, not a small table")))))
 
 (deftest impersonation-and-routing-token-edn-round-trip-test
   (testing "keyword-keyed impersonation/routing tokens survive the stored_result.data_access_token EDN round-trip"

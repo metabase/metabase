@@ -1,10 +1,13 @@
 (ns metabase.explorations.runner-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan]
+   [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.runner :as runner]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -298,6 +301,45 @@
         (is (zero? (t2/count :model/ExplorationQueryResult
                              :exploration_query_id (:id row))))))))
 
+(defn- deferred-query!
+  "A pending row whose `dataset_query` the planner deferred to execution time (the shape
+  `top-n-other` / `per-value-time-series` rows arrive in). `finalize-row!` resolves the MBQL —
+  running top-K discovery against the warehouse — before the row is executed."
+  [thread-id card-id]
+  (first (t2/insert-returning-instances! :model/ExplorationQuery
+                                         {:exploration_thread_id thread-id
+                                          :card_id               card-id
+                                          :database_id           (mt/id)
+                                          :page_id               (thread-page! thread-id card-id)
+                                          :dimension_id          "d1"
+                                          :query_type            "top-n-other"
+                                          :dataset_query         nil
+                                          :status                "pending"
+                                          :position              0})))
+
+(deftest finalize-row-resolves-deferred-mbql-as-the-creator-test
+  (testing "resolving a deferred row's MBQL runs top-K discovery queries against the warehouse, so it
+            must happen under the exploration creator's context — otherwise the QP skips permission
+            checks entirely and the sandboxing/impersonation/routing middleware have no user to apply,
+            and discovery silently returns values from outside the creator's lens"
+    (mt/with-temp [:model/User u {:email "deferred@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (deferred-query! (:id thread) (:id card))
+            seen   (atom ::never-called)]
+        (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                      qp.variants/dataset-query    (fn [_variant _ctx]
+                                                     (reset! seen api/*current-user-id*)
+                                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                              (lib/aggregate (lib/count))))))
+                      qp.variants/query-name       (constantly "stub name")]
+          (runner/run-query! (:id row)))
+        (is (= (:id u) @seen)
+            "discovery must run as the exploration's creator, not with no user bound")))))
+
 (defn- store-fake-result!
   [query-id qp-result]
   (let [bytes (qp/do-with-serialization
@@ -391,8 +433,8 @@
             row    (pending-query! (:id thread) (:id card)
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
             ;; both deliveries got past the `pending` gate and each ran the query
-            computed-a (#'runner/compute-query-result row)
-            computed-b (#'runner/compute-query-result row)
+            computed-a (#'runner/compute-query-result row (:id u))
+            computed-b (#'runner/compute-query-result row (:id u))
             now        (OffsetDateTime/now)]
         (is (true? (#'runner/persist-query-result! row now computed-a))
             "the first writer persists")

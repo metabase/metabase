@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.request.core :as request]
    [metabase.test :as mt]))
 
 (defn- products-count-card
@@ -268,6 +269,31 @@
           "unfiltered top-N must not be served from cache after a filtered query with the same card/dim/k")
       (is (= ["Widget"] filtered-results)
           "a Widget-scoped metric query only discovers that segment"))))
+
+(deftest cached-discovery-isolates-users-test
+  (testing "cached-discovery keys on the current user, so a top-N value set discovered under one
+            user's lens (sandboxing / impersonation / routing can all narrow it) is never served to
+            a different user"
+    (let [card-id  9000102
+          mp       (mt/metadata-provider)
+          card     (products-count-card card-id)
+          ctx      {:mp mp :card card :target (category-target) :dim category-dim
+                    :segment nil :params {:k 2} :explore-filters nil}
+          discover (fn [user-id]
+                     (request/with-current-user user-id
+                       (#'variants/cached-discovery ctx)))
+          calls    (atom 0)
+          real     @#'variants/run-top-k-discovery]
+      (with-redefs [variants/run-top-k-discovery (fn [& args]
+                                                   (swap! calls inc)
+                                                   (apply real args))]
+        (discover (mt/user->id :rasta))
+        (discover (mt/user->id :crowberto))
+        (is (= 2 @calls)
+            "each user runs its own discovery query rather than inheriting the other's cached values")
+        (discover (mt/user->id :rasta))
+        (is (= 2 @calls)
+            "a repeat for the same user still hits the cache")))))
 
 (deftest cached-discovery-key-is-stable-across-query-rebuilds-test
   (testing "the cache key is stable across per-row query rebuilds, so the discovery query runs once —"
