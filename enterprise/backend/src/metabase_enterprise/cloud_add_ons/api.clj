@@ -75,7 +75,11 @@
   "Product types that are only ever provisioned as part of a bundle (see `add-on-bundles`) and can
   never be purchased directly. The Store rejects them anyway (`etl-connections` depends on a DWH
   product), so fail fast with a clear error instead of a confusing Store 400."
-  #{"etl-connections"})
+  (into #{}
+        (comp (mapcat val)
+              (map :product-type)
+              (remove (set (keys add-on-bundles))))
+        add-on-bundles))
 
 (defn- add-ons-for-purchase
   "Add-ons to upsert for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
