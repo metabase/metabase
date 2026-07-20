@@ -18,6 +18,7 @@ import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
@@ -139,7 +140,7 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const hovered = useMemo(() => {
+  const hovered: CartesianHoveredObject | null = useMemo(() => {
     if (props.hovered) {
       return props.hovered;
     }
