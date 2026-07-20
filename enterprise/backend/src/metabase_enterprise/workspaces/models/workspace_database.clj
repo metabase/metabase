@@ -18,7 +18,8 @@
 (t2/deftransforms :model/WorkspaceDatabase
   {:database_details mi/transform-encrypted-json
    :input_schemas    mi/transform-json
-   :status           mi/transform-keyword})
+   :status           mi/transform-keyword
+   :status_details   mi/transform-encrypted-text})
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
@@ -58,14 +59,20 @@
        (boolean (setting/with-database database
                   (ws.settings/database-enable-workspaces)))))
 
-(defn database-input-schemas
-  "The distinct non-blank schema names of `database`'s active tables, sorted.
-   Empty for schemaless drivers (e.g. MySQL)."
-  [database]
-  (->> (t2/select-fn-set :schema :model/Table :db_id (:id database) :active true)
-       (remove #(or (nil? %) (= % "")))
-       sort
-       vec))
+(defn database-input-schemas-by-id
+  "Map of database id -> the distinct non-blank schema names of its active
+   tables, sorted — one query for all `database-ids`. Schemaless drivers (e.g.
+   MySQL) get no entry."
+  [database-ids]
+  (when (seq database-ids)
+    (-> (group-by :db_id (t2/select [:model/Table :db_id :schema]
+                                    :db_id [:in database-ids]
+                                    :active true))
+        (update-vals (fn [tables]
+                       (->> (into #{} (map :schema) tables)
+                            (remove #(or (nil? %) (= % "")))
+                            sort
+                            vec))))))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

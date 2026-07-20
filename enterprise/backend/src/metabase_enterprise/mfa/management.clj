@@ -25,6 +25,7 @@
    [metabase.sso.core :as sso]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
@@ -67,9 +68,15 @@
                     (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
            (and password_hash (u.password/verify-password password password_salt password_hash)))
          (when (sso/ldap-enabled)
-           (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
-             (when-let [user-info (sso/find-user user-email)]
-               (sso/verify-password user-info password))))))))
+           ;; an unreachable directory fails closed: re-auth is denied (the user retries when the
+           ;; directory is back; admin/remove needs no re-auth), never an unhandled 500
+           (try
+             (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
+               (when-let [user-info (sso/find-user user-email)]
+                 (sso/verify-password user-info password)))
+             (catch Exception e
+               (log/warn e "LDAP re-auth failed because the directory is unreachable")
+               false)))))))
 
 ;; Notification emails here are fire-and-log by construction: the messages/send-mfa-*-email!
 ;; senders route through email/send-message!, which catches and logs delivery failures — so an
@@ -164,14 +171,23 @@
 ;;; -------------------------------------------------- Admin --------------------------------------------------
 
 (api.macros/defendpoint :post "/admin/remove" :- nil
-  "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
-  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
-  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —
-  there is nothing to \"reset\", the secret lives on their device."
+  "Admin: remove *another* user's two-factor enrollment entirely — the lockout escape hatch for a
+  lost authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
+  lockouts permanent). The affected user is notified by email. They re-enroll from scratch — there
+  is nothing to \"reset\", the secret lives on their device.
+
+  Removing your *own* enrollment is deliberately refused here: this is a user-management endpoint
+  that takes no second factor (the target can't produce one — that's why an admin is removing it),
+  and the admin UI never collects a code. Self-removal goes through the normal Security page, which
+  re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could
+  strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
   [_route-params
    _query-params
    {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
   (api/check-superuser)
+  (when (= user-id api/*current-user-id*)
+    (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
+                    {:status-code 400})))
   (when (enrollment/disable! user-id)
     (let [user (t2/select-one :model/User :id user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))

@@ -1,28 +1,39 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricDimensionsPage } from "./pages/MetricDimensionsPage";
 import { MetricHistoryPage } from "./pages/MetricHistoryPage";
-import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
+
+const RoutedNewMetricPage = withRouteProps(NewMetricPage);
+const RoutedMetricAboutPage = withRouteProps(MetricAboutPage);
+const RoutedMetricQueryPage = withRouteProps(MetricQueryPage);
+const RoutedMetricDimensionsPage = withRouteProps(MetricDimensionsPage);
+const RoutedMetricDependenciesPage = withRouteProps(MetricDependenciesPage);
+const RoutedMetricHistoryPage = withRouteProps(MetricHistoryPage);
 
 export function getMetricRoutes() {
   return (
     <Route path="metric">
-      <Route path="new" component={NewMetricPage} />
-      <Route path=":cardId" component={MetricAboutPage} />
-      <Route path=":cardId/overview" component={MetricOverviewPage} />
-      <Route path=":cardId/query" component={MetricQueryPage} />
-      <Route path=":cardId/dimensions" component={MetricDimensionsPage} />
+      <Route path="new" element={<RoutedNewMetricPage />} />
+      <Route path=":cardId" element={<RoutedMetricAboutPage />} />
+      <Route path=":cardId/query" element={<RoutedMetricQueryPage />} />
+      <Route
+        path=":cardId/dimensions"
+        element={<RoutedMetricDimensionsPage />}
+      />
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":cardId/dependencies" component={MetricDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        <Route
+          path=":cardId/dependencies"
+          element={<RoutedMetricDependenciesPage />}
+        >
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
-      <Route path=":cardId/history" component={MetricHistoryPage} />
+      <Route path=":cardId/history" element={<RoutedMetricHistoryPage />} />
     </Route>
   );
 }

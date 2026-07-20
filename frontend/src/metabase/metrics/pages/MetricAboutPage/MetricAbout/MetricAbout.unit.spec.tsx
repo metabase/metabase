@@ -138,10 +138,7 @@ function setup(
   setupMetricDatasetEndpoint(metricDataset ?? dataset);
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <MetricAbout card={card} urls={mockUrls} />}
-    />,
+    <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
     {
       storeInitialState: createMockState(),
       withRouter: true,

@@ -61,9 +61,9 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <PublishedTableMeasureBreadcrumbs table={table} measure={measure} />
-        )}
+        }
       />,
       { withRouter: true },
     );
@@ -174,9 +174,9 @@ describe("DataModelMeasureBreadcrumbs", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <DataModelMeasureBreadcrumbs table={table} measure={measure} />
-        )}
+        }
       />,
       { withRouter: true },
     );

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /* eslint-env node */
-/* eslint-disable import/no-commonjs, import/order, no-console */
+/* eslint-disable import/order */
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
 const glob = require("glob");
-const { Extractor, ExtractorConfig } = require("@microsoft/api-extractor");
 
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
+const API_EXTRACTOR_BIN_PATH = path.resolve(
+  "./node_modules/@microsoft/api-extractor/bin/api-extractor",
+);
 
 /*
  * This script replaces all custom aliases in Embedding SDK generated ".d.ts" files so that this imports could be resolved
@@ -26,10 +29,52 @@ const REPLACES_MAP = {
   cljs: "target/cljs_release",
 };
 
-const API_EXTRACTOR_CONFIG_PATH = path.join(
-  __dirname,
-  "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-api-extractor.json",
-);
+const DTS_ROLLUPS = [
+  {
+    name: "main",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/index.d.ts",
+    ),
+  },
+  {
+    name: "data-app",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app.d.ts",
+    ),
+  },
+  {
+    name: "data-app-dev",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-dev-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-dev.d.ts",
+    ),
+  },
+  {
+    name: "data-app-dev-config",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-dev-config-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.d.ts",
+    ),
+  },
+];
 
 const getLogger = (prefix) => {
   const verbose = process.env.SDK_FIXUP_VERBOSE_LOGS === "true";
@@ -110,7 +155,7 @@ const removeUnresolvedReexports = (filePath) => {
   }
 };
 
-const fixupTypesAfterCompilation = ({ isWatchMode }) => {
+const fixupTypesAfterCompilation = async ({ isWatchMode }) => {
   log("Fixing SDK d.ts files...");
 
   const dtsFilePaths = glob.sync(`${SDK_DIST_DIR_PATH}/**/*.d.ts`);
@@ -123,45 +168,97 @@ const fixupTypesAfterCompilation = ({ isWatchMode }) => {
   console.log("[dts fixup] Done!");
 
   if (!isWatchMode) {
-    generateDtsRollup();
+    await generateDtsRollup();
   }
 };
 
-const generateDtsRollup = () => {
+const generateDtsRollup = async () => {
   // Dts rollup logger
   const { log, error } = getLogger("dts rollup");
 
   log("Generate dts rollup...");
 
-  const dtsRollupEntryPointPath = path.resolve(
-    path.join(
-      __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/index.d.ts",
-    ),
-  );
-  const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);
+  const existingEntryPointCount = DTS_ROLLUPS.filter(({ entryPointPath }) =>
+    fs.existsSync(path.resolve(entryPointPath)),
+  ).length;
 
-  if (!dtsRollupEntryPointPathExist) {
+  if (existingEntryPointCount === 0) {
     log("It looks like dts rollup is already generated, skipping...");
 
     return;
   }
 
-  const apiExtractorConfig = ExtractorConfig.loadFileAndPrepare(
-    API_EXTRACTOR_CONFIG_PATH,
+  if (existingEntryPointCount !== DTS_ROLLUPS.length) {
+    DTS_ROLLUPS.forEach(({ entryPointPath, name }) => {
+      const resolvedEntryPointPath = path.resolve(entryPointPath);
+      if (!fs.existsSync(resolvedEntryPointPath)) {
+        error(
+          `Dts rollup entry point for ${name} does not exist: ${resolvedEntryPointPath}`,
+        );
+      }
+    });
+    process.exitCode = 1;
+    return;
+  }
+
+  let hasExtractorFailure = false;
+
+  // The extractors are independent (each reads the shared compiled d.ts tree
+  // and writes its own rollup), so run them concurrently. Output is buffered
+  // per extractor and printed on completion so parallel runs don't interleave.
+  const runApiExtractor = ({ configPath, name }) =>
+    new Promise((resolve) => {
+      const child = spawn(
+        process.execPath,
+        [
+          API_EXTRACTOR_BIN_PATH,
+          "run",
+          "--local",
+          "--verbose",
+          "--config",
+          path.resolve(configPath),
+        ],
+        { stdio: ["ignore", "pipe", "pipe"] },
+      );
+
+      let output = "";
+      child.stdout.on("data", (chunk) => (output += chunk));
+      child.stderr.on("data", (chunk) => (output += chunk));
+      child.on("close", (status, signal) =>
+        resolve({ name, status, signal, output }),
+      );
+    });
+
+  const results = await Promise.all(
+    DTS_ROLLUPS.filter(({ entryPointPath, name }) => {
+      if (fs.existsSync(path.resolve(entryPointPath))) {
+        return true;
+      }
+
+      error(
+        `Dts rollup entry point for ${name} does not exist: ${path.resolve(entryPointPath)}`,
+      );
+      hasExtractorFailure = true;
+      return false;
+    }).map(runApiExtractor),
   );
 
-  const extractorResult = Extractor.invoke(apiExtractorConfig, {
-    localBuild: true,
-    showVerboseMessages: true,
-  });
+  for (const { name, status, signal, output } of results) {
+    log(`--- api-extractor: ${name} ---`);
+    process.stdout.write(output);
 
-  if (!extractorResult.succeeded) {
-    error(
-      `API Extractor completed with ${extractorResult.errorCount} errors` +
-        ` and ${extractorResult.warningCount} warnings`,
-    );
+    if (status !== 0 || signal) {
+      error(
+        `API Extractor failed for ${name}` +
+          (signal ? ` with signal ${signal}` : ""),
+      );
+      hasExtractorFailure = true;
+    }
+  }
+
+  if (hasExtractorFailure) {
     process.exitCode = 1;
+    return;
   }
 
   log("API Extractor completed successfully");
@@ -220,7 +317,7 @@ const isWatchMode = process.argv.includes("--watch");
 const run = async () => {
   // when running on a clean state and with --watch, the folder might not exist yet
   await waitForFolder(SDK_DIST_DIR_PATH);
-  fixupTypesAfterCompilation({ isWatchMode });
+  await fixupTypesAfterCompilation({ isWatchMode });
 
   if (isWatchMode) {
     console.log("\n\n\n");

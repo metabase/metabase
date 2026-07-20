@@ -1303,7 +1303,8 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -1901,6 +1902,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -1995,12 +1997,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{driver
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database
-                    :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
   {:team "UX West"
@@ -2504,6 +2506,28 @@
                     :model/TransformRun
                     :model/TransformTag}}
 
+  typed-schemas
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           types
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
+
   types
   {:team "Querying Platform"
    :api  #{metabase.types.core
@@ -2846,8 +2870,8 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api
-           metabase-enterprise.advanced-config.api.logs
+   :api  #{metabase-enterprise.advanced-config.api.logs
+           metabase-enterprise.advanced-config.api.routes
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -2864,6 +2888,7 @@
            sync
            users
            util
+           enterprise/remote-sync
            enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
@@ -3071,6 +3096,17 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           premium-features
+           settings
+           util}}
+
   enterprise/data-complexity-score
   {:team "Metabot"
    :api  #{metabase-enterprise.data-complexity-score.api
@@ -3131,7 +3167,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3420,6 +3455,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
@@ -3564,6 +3600,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models
@@ -3584,7 +3621,6 @@
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.init
-           metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
@@ -3764,12 +3800,11 @@
            premium-features
            query-processor
            sample-data
-           server
            settings
            sql-tools
            util
            workspaces
-           enterprise/serialization}
+           enterprise/remote-sync}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

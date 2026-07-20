@@ -1,8 +1,14 @@
-import type { ComponentType, PropsWithChildren, ReactElement } from "react";
+import type {
+  ComponentType,
+  PropsWithChildren,
+  ReactElement,
+  ReactNode,
+} from "react";
 import { Route } from "react-router";
 import {
   MemoryRouter,
   Navigate as V7Navigate,
+  Outlet as V7Outlet,
   Route as V7Route,
   Routes as V7Routes,
   useLocation as v7UseLocation,
@@ -69,25 +75,83 @@ export type RenderOptions = {
   initialRoute: string;
   facadePath?: string;
   v7Path?: string;
+  /**
+   * Mount the probe in a child route of `facadePath`/`v7Path` instead of in the
+   * route itself. The parent route emits the readouts, so they survive a probe
+   * that navigates itself out of the tree.
+   */
+  childPath?: string;
 };
+
+function ParentReadouts({
+  location,
+}: {
+  location: { pathname: string; search: string };
+}) {
+  return (
+    <>
+      <span data-testid="rr-pathname">{location.pathname}</span>
+      <span data-testid="rr-search">{location.search}</span>
+    </>
+  );
+}
+
+function FacadeParent({ children }: { children?: ReactNode }) {
+  return (
+    <div>
+      <ParentReadouts location={useLocation()} />
+      {children}
+    </div>
+  );
+}
+
+function V7Parent() {
+  return (
+    <div>
+      <ParentReadouts location={v7UseLocation()} />
+      <V7Outlet />
+    </div>
+  );
+}
+
+// Keeps the parent route matched wherever a probe navigates below it, so both
+// engines are compared on the destination rather than on an unmatched URL.
+const Nothing = () => null;
 
 function renderFacade(
   Probe: Probe,
-  { initialRoute, facadePath = "*" }: RenderOptions,
+  { initialRoute, facadePath = "*", childPath }: RenderOptions,
 ) {
   const Mounted = () => <Probe api={facadeApi} />;
-  renderWithProviders(<Route path={facadePath} component={Mounted} />, {
-    withRouter: true,
-    initialRoute,
-  });
+  const tree = childPath ? (
+    <Route path={facadePath} component={FacadeParent}>
+      <Route path={childPath} component={Mounted} />
+      <Route path="*" component={Nothing} />
+    </Route>
+  ) : (
+    <Route path={facadePath} component={Mounted} />
+  );
+
+  renderWithProviders(tree, { withRouter: true, initialRoute });
 }
 
-function renderV7(Probe: Probe, { initialRoute, v7Path = "*" }: RenderOptions) {
+function renderV7(
+  Probe: Probe,
+  { initialRoute, v7Path = "*", childPath }: RenderOptions,
+) {
+  const probe = <Probe api={v7Api} />;
+  const tree = childPath ? (
+    <V7Route path={v7Path} element={<V7Parent />}>
+      <V7Route path={childPath} element={probe} />
+      <V7Route path="*" element={<Nothing />} />
+    </V7Route>
+  ) : (
+    <V7Route path={v7Path} element={probe} />
+  );
+
   renderWithProviders(
     <MemoryRouter initialEntries={[initialRoute]}>
-      <V7Routes>
-        <V7Route path={v7Path} element={<Probe api={v7Api} />} />
-      </V7Routes>
+      <V7Routes>{tree}</V7Routes>
     </MemoryRouter>,
   );
 }

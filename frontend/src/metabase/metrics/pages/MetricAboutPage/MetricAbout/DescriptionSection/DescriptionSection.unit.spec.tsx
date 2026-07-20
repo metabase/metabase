@@ -104,10 +104,7 @@ function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <DescriptionSection card={card} urls={URLS} />}
-    />,
+    <Route path="/" element={<DescriptionSection card={card} urls={URLS} />} />,
     {
       storeInitialState: state,
       withRouter: true,

@@ -2035,7 +2035,6 @@ describe("scenarios > metrics > explorer", () => {
       H.createSegment({
         name: SEGMENT_NAME,
         description: "Orders with a total over $100",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -2814,7 +2813,6 @@ function createTestMeasure(
   H.createMeasure({
     name,
     description,
-    table_id: tableId,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

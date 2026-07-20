@@ -1,50 +1,21 @@
 (ns metabase.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- tool-part->history-messages
-  "A stored v2 tool part (`:type \"tool-<name>\"`, merged input/output) →
-  AI-SDK-message pair: an assistant message with a single `:tool_calls` entry,
-  plus a `tool` message when the call resolved. Parts still in
-  `input-available` state (tool never finished) are skipped — there is no
-  result to replay. Text and data parts are skipped — assistant text still
-  comes from Slack's copy of the thread."
-  [part]
-  (when (and (schema.v2/tool-part? part)
-             (not= "input-available" (:state part)))
-    (let [input       (:input part)
-          state       (:state part)
-          tool-call   {:role       :assistant
-                       :tool_calls [{:id        (:toolCallId part)
-                                     :name      (schema.v2/tool-part-name part)
-                                     :arguments (if (string? input)
-                                                  input
-                                                  (json/encode (or input {})))}]}
-          tool-result (when (#{"output-available" "output-error"} state)
-                        {:role         :tool
-                         :tool_call_id (:toolCallId part)
-                         :content      (if (= "output-error" state)
-                                         (or (:errorText part) "Tool execution failed")
-                                         ;; a map result stores the LLM text under
-                                         ;; `[:output :output]`; a non-map result (a
-                                         ;; bare string/scalar) is stored flat under `:output`
-                                         (let [output (:output part)]
-                                           (or (if (map? output) (:output output) output) "")))})]
-      (cond-> [tool-call]
-        tool-result (conj tool-result)))))
-
 (defn- extract-history-messages
   "Walk `(:data message)` in insertion order and emit AI-SDK-message maps for
-  history replay. Preserves adjacency of tool calls and their tool results."
+  history replay. Preserves adjacency of tool calls and their tool results.
+  Unresolved tool calls, text parts, and data parts are skipped — assistant
+  text comes from Slack's copy of the thread."
   [message]
   (->> (or (:data message) [])
        (schema.v2/check-message-data "slack history replay metabot_message.data")
-       (into [] (mapcat tool-part->history-messages))))
+       (into [] (mapcat #(metabot.persistence/tool-part->llm-messages % {:on-unresolved :skip})))))
 
 (defn message-history
   "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
@@ -85,9 +56,8 @@
   "Mark the stored assistant response for this Slack channel/message as soft-deleted."
   [channel-id slack-msg-id deleter-user-id]
   (when (and channel-id slack-msg-id deleter-user-id)
-    (pos? (t2/update! :model/MetabotMessage
-                      {:channel_id   channel-id
-                       :slack_msg_id slack-msg-id
-                       :role         "assistant"}
-                      {:deleted_at         (java.time.OffsetDateTime/now)
-                       :deleted_by_user_id deleter-user-id}))))
+    (pos? (metabot.persistence/soft-delete-messages!
+           {:channel_id   channel-id
+            :slack_msg_id slack-msg-id
+            :role         "assistant"}
+           deleter-user-id))))

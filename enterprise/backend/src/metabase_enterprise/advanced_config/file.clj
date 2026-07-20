@@ -102,7 +102,6 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -159,10 +158,16 @@
   env/env)
 
 (defn- path
-  "Path for the YAML config file Metabase should use for initialization and Settings values."
+  "Path for the YAML config file Metabase should use for initialization and Settings values.
+
+  A blank `MB_CONFIG_FILE_PATH` counts as unset, consistent with [[metabase.config.core/config-str]]. (On JDK 25+ an
+  empty path \"exists\" — it resolves to the current directory — so without this we would try to parse the current
+  directory as YAML and fail to boot.)"
   ^java.nio.file.Path []
-  (let [path* (or (some-> (get *env* :mb-config-file-path) u.files/get-path)
-                  (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
+  (let [env-path (get *env* :mb-config-file-path)
+        path*    (or (when-not (str/blank? env-path)
+                       (u.files/get-path env-path))
+                     (u.files/get-path (System/getProperty "user.dir") "config.yml"))]
     (if (u.files/exists? path*)
       (log/info (u/format-color :magenta
                                 "Found config file at path %s; Metabase will be initialized with values from this file"
@@ -288,15 +293,6 @@
 
 (defn boot-initialize!
   "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present.
-   When the config contains a `:workspace` section, locks the workspace against
-   runtime mutation (see
-   [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
   []
-  (let [parsed (config-from-disk)
-        result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
-    (when (get-in parsed [:config :workspace])
-      (ws/mark-locked-by-config!))
-    result))
+  (initialize! (config-from-disk) {:expand-templates? true}))

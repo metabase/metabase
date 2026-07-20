@@ -25,7 +25,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.types.isa :as lib.types]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -48,7 +47,6 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -346,25 +344,35 @@
 
 (mu/defn populate-query-fields
   "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
-  from query definition when inserting/updating a Card."
-  [{query :dataset_query, :as card} :- ::queries.schema/card]
-  (merge
-   card
-   (when (and (seq query) (map? query))
-     (merge
-      ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
-      {:source_card_id (source-card-id query)}
-      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-        ;; TODO -- not sure `query_type` is actually used for anything important anyway
-        (let [query-type (if (query/query-is-native? query)
-                           :native
-                           :query)]
-          (merge
-           {:query_type (keyword query-type)}
-           (when database-id
-             {:database_id database-id})
-           (when table-id
-             {:table_id table-id}))))))))
+  from query definition when inserting/updating a Card.
+
+  `clear-stale-table-id?` (default true) controls whether a nil derived table id overwrites an existing `:table_id`.
+  Pass false when the query itself is not changing, so that an unrelated update (rename, archive, ...) doesn't wipe
+  a previously-valid table_id just because the derivation can no longer resolve it (e.g. the source card was
+  deleted)."
+  ([card]
+   (populate-query-fields card true))
+  ([{query :dataset_query, :as card} :- ::queries.schema/card
+    clear-stale-table-id? :- :boolean]
+   (merge
+    card
+    (when (and (seq query) (map? query))
+      (merge
+       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
+       {:source_card_id (source-card-id query)}
+       (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
+         ;; TODO -- not sure `query_type` is actually used for anything important anyway
+         (let [query-type (if (query/query-is-native? query)
+                            :native
+                            :query)]
+           (merge
+            {:query_type (keyword query-type)}
+            ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
+            ;; native SQL), same as :source_card_id above
+            (when (or table-id clear-stale-table-id?)
+              {:table_id table-id})
+            (when database-id
+              {:database_id database-id})))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
@@ -872,8 +880,9 @@
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
-        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled
-        populate-query-fields
+        ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
+        ;; Only allow it to nil out a stale table_id when the query itself is changing.
+        (populate-query-fields (contains? changes :dataset_query))
         (pre-update changes)
         maybe-populate-initially-published-at)))
 
@@ -1494,34 +1503,6 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(mu/defn- dataset-query->dimensions :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Extract dimensions (non-aggregation columns) from a dataset query."
-  [dataset-query-str :- [:maybe :string]]
-  (when dataset-query-str
-    ;; In production the :database should be always present and correct. That is not the case for some test mocks.
-    ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
-    ;; checking.
-    (when-some [query (not-empty ((:out lib-be/transform-query) dataset-query-str))]
-      (let [columns (lib/returned-columns query)]
-        ;; Dimensions are columns that are not aggregations
-        (remove (comp #{:source/aggregations} :lib/source) columns)))))
-
-(defn- extract-temporal-info
-  "Compute has-temporal-dim and non-temporal-dim-ids in a single dataset-query->dimensions call.
-  Returns a map with snake_case keys so the ingestion layer can merge them directly into the document,
-  avoiding the cost of calling dataset-query->dimensions twice per card. See PR 60912.
-  Short-circuits for native queries: they have no returnable column metadata so temporal dims are always absent."
-  [{:keys [dataset_query query_type]}]
-  (if (= query_type "native")
-    {:has_temporal_dim false :non_temporal_dim_ids "[]"}
-    (let [dimensions   (dataset-query->dimensions dataset_query)
-          non-temp-ids (->> dimensions
-                            (remove lib.types/temporal?)
-                            (keep :id)
-                            sort)]
-      {:has_temporal_dim     (boolean (some lib.types/temporal? dimensions))
-       :non_temporal_dim_ids (json/encode (or (seq non-temp-ids) []))})))
-
 (defn- maybe-extract-native-query
   "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil.
   Uses `query_type` to short-circuit without parsing JSON for non-native cards."
@@ -1557,10 +1538,7 @@
                   :display-type         :this.display
                   :collection-type      :collection.type
                   :collection-location  :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}
-                  :temporal-info        {:fn       extract-temporal-info
-                                         :fields   [:dataset_query :query_type]
-                                         :provides [:has-temporal-dim :non-temporal-dim-ids]}}
+                  :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

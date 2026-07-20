@@ -293,6 +293,10 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
+  "Should we allow users to publish and run data apps?"
+  :data-apps)
+
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
   :transforms-basic)
@@ -394,6 +398,7 @@
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
+   :data-apps                      (enable-data-apps?)
    :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)

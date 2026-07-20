@@ -4,8 +4,8 @@
 
    Background: `workspace_database.database_id -> metabase_database.id` used to be
    ON DELETE CASCADE, which silently removed the row when the parent Database was
-   deleted — orphaning any `:provisioned` warehouse schemas/users because the 409
-   guard in `delete-workspace!` was never consulted. We switched the FK to
+   deleted — orphaning any `:provisioned` warehouse schemas/users because the
+   app-side delete guards were never consulted. We switched the FK to
    RESTRICT, which requires the app-side to reconcile rows explicitly: refuse the
    delete if any row is `:provisioned`, otherwise delete the `:unprovisioned`
    rows so the FK is satisfied."
