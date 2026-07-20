@@ -1225,6 +1225,7 @@
      "Return how many milliseconds have elapsed since the given system millisecond time.
      For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
      [start-ms]
+     ;; the sanctioned wall-clock helper: nanoTime timers can't cross process or external-source boundaries
      #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
      (- (System/currentTimeMillis) start-ms)))
 
