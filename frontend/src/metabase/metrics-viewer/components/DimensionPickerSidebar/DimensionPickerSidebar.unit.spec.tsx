@@ -6,6 +6,7 @@ import { createMockMetricsViewerResult } from "metabase/metrics-viewer/test-util
 import type {
   MetricSourceId,
   MetricsViewerDimensionBreakoutState,
+  MetricsViewerFormulaEntity,
 } from "metabase/metrics-viewer/types";
 import type {
   AvailableDimension,
@@ -84,24 +85,33 @@ const sourceDataById: Record<MetricSourceId, SourceDisplayInfo> = {
   [SOURCE_ID]: { type: "metric", name: "Revenue" },
 };
 
+const standaloneMetricEntity: MetricsViewerFormulaEntity = {
+  id: SOURCE_ID,
+  type: "metric",
+  definition: null,
+};
+
 function setup({
   dimensionBreakout = activeDimensionBreakout,
   dimensions = availableDimensions,
   slots = [{ slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID }],
   sourceOrder = [SOURCE_ID],
   sources = sourceDataById,
+  formulaEntities = [],
 }: {
   dimensionBreakout?: MetricsViewerDimensionBreakoutState;
   dimensions?: AvailableDimensionsResult;
   slots?: MetricSlot[];
   sourceOrder?: MetricSourceId[];
   sources?: Record<MetricSourceId, SourceDisplayInfo>;
+  formulaEntities?: MetricsViewerFormulaEntity[];
 } = {}) {
   const onSelectDimensionBreakout = jest.fn();
   const onUpdateActiveDimensionBreakout = jest.fn();
 
   const metricsViewerResult = createMockMetricsViewerResult({
     activeDimensionBreakout: dimensionBreakout,
+    formulaEntities,
     sidebarAvailableDimensions: dimensions,
     metricSlots: slots,
     sourceColors: { 0: ["#509ee3"], 1: ["#f9d45c"] },
@@ -211,6 +221,111 @@ describe("DimensionPickerSidebar", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Revenue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows all curated dimensions without See all for a standalone metric", () => {
+    setup({ formulaEntities: [standaloneMetricEntity] });
+
+    expect(screen.getByRole("heading", { name: "Break out" })).toBeVisible();
+    expect(screen.getByText("Dimensions")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Category" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Created At" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Order Date" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "No breakout" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "See all" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters standalone metric dimensions without entering All fields", async () => {
+    setup({ formulaEntities: [standaloneMetricEntity] });
+
+    await userEvent.type(screen.getByLabelText("Search fields"), "created");
+
+    expect(screen.getByRole("heading", { name: "Break out" })).toBeVisible();
+    expect(screen.queryByText("All fields")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Created At" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Category" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("replaces the selected standalone metric dimension", async () => {
+    const userAddressBreakout: MetricsViewerDimensionBreakoutState = {
+      id: "dim-user-address",
+      type: "category",
+      label: "User - Address",
+      display: "bar",
+      dimensionMapping: { 0: "dim-user-address" },
+      projectionConfig: {},
+    };
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({
+        dimensionBreakout: userAddressBreakout,
+        dimensions: {
+          shared: [],
+          bySource: {
+            [SOURCE_ID]: [
+              {
+                icon: "label",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "User - Address",
+                  dimensionMapping: { 0: "dim-user-address" },
+                },
+              },
+              {
+                icon: "label",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Product - Category",
+                  dimensionMapping: { 0: "dim-product-category" },
+                },
+              },
+            ],
+          },
+        },
+        formulaEntities: [standaloneMetricEntity],
+      });
+
+    expect(
+      screen.getByRole("button", { name: "User - Address" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Product - Category" }),
+    );
+
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledTimes(1);
+    const updater = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(updater(userAddressBreakout)).toMatchObject({
+      label: "Product - Category",
+      dimensionMapping: { 0: "dim-product-category" },
+    });
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
+  });
+
+  it("Shows See all for a single-metric expression", () => {
+    setup({
+      formulaEntities: [
+        {
+          id: "expression:1",
+          type: "expression",
+          name: "Revenue * 100",
+          tokens: [
+            { type: "metric", sourceId: SOURCE_ID, occurrenceCount: 1 },
+            { type: "operator", op: "*" },
+            { type: "constant", value: 100 },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByRole("button", { name: "See all" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Category" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Created At" }),
     ).not.toBeInTheDocument();
   });
 

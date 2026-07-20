@@ -50,6 +50,7 @@ type DimensionPickerSidebarProps = {
 export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
   const { activeDimensionBreakout } = props;
   const {
+    formulaEntities,
     metricSlots,
     sourceColors,
     sourceDataById,
@@ -75,10 +76,12 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     categories,
     activeDimensionBreakout,
   );
+  const isStandaloneMetric =
+    formulaEntities.length === 1 && formulaEntities[0]?.type === "metric";
   const isSearching = searchText.trim() !== "";
-  const showAllFields = mode === "all" || isSearching;
+  const showAllFields = !isStandaloneMetric && (mode === "all" || isSearching);
   const hasAllFields = sections.length > 0;
-  const showSeeAll = !showAllFields && hasAllFields;
+  const showSeeAll = !isStandaloneMetric && !showAllFields && hasAllFields;
   let defaultEmptyStateText = t`No dimensions found`;
   let defaultSectionHeader = t`Dimensions`;
 
@@ -178,6 +181,17 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       sections,
       metricSlots,
     ],
+  );
+
+  const handleStandaloneMetricSelect = useCallback(
+    (item: DimensionPickerItem) => {
+      if (hasSameDimensions(item, activeDimensionBreakout)) {
+        return;
+      }
+
+      handleAllFieldsSelect(item);
+    },
+    [activeDimensionBreakout, handleAllFieldsSelect],
   );
 
   const handleCategorySelect = useCallback(
@@ -340,7 +354,16 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
                 </Button>
               )}
             </Flex>
-            {showFieldsByCategory ? (
+            {isStandaloneMetric ? (
+              <AllFieldsList
+                activeDimensionBreakout={activeDimensionBreakout}
+                sections={filteredSections}
+                metricSourceDataById={sourceDataById}
+                sourceColors={sourceColors}
+                metricSlots={metricSlots}
+                onSelect={handleStandaloneMetricSelect}
+              />
+            ) : showFieldsByCategory ? (
               <Stack gap="xs">
                 {categories.map((category) => {
                   const isSelected =

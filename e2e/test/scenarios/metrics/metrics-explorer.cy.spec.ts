@@ -1285,14 +1285,23 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
       });
 
-      it("should open and close from the viewer controls", () => {
+      it("should show all curated dimensions for a standalone metric", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
+        H.MetricsViewer.getColumnPickerButton()
+          .should("contain.text", "Created At")
+          .and("not.contain.text", "Time");
 
         H.MetricsViewer.openDimensionPickerSidebar().within(() => {
           cy.findByRole("heading", { name: "Break out" }).should("be.visible");
           cy.findByLabelText("Search fields").should("be.visible");
-          cy.findByRole("button", { name: "Time" }).should("be.visible");
+          cy.findByText("Dimensions").should("be.visible");
+          cy.findByRole("button", { name: "See all" }).should("not.exist");
+          cy.findByRole("button", { name: "Created At" }).should("be.visible");
           cy.findByRole("button", { name: "Category" }).should("be.visible");
+          cy.findByRole("button", { name: "Source" })
+            .scrollIntoView()
+            .should("be.visible");
+          cy.findByRole("button", { name: "No breakout" }).should("be.visible");
           cy.findByRole("button", { name: "Totals" }).should("not.exist");
         });
 
@@ -1361,10 +1370,8 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.assertVizType("Line");
       });
 
-      it("should keep all fields available while selecting dimensions from See all", () => {
+      it("should replace the selected curated dimension", () => {
         H.MetricsViewer.openDimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "See all" }).click();
-          cy.findByRole("heading", { name: "All fields" }).should("be.visible");
           cy.findByRole("button", { name: "Category" }).should("be.visible");
           cy.findByRole("button", { name: "Source" }).should("be.visible");
           cy.findByRole("button", { name: "Category" }).click();
@@ -1374,21 +1381,28 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.dimensionPickerSidebar().within(() => {
           cy.findByRole("button", { name: "Category" })
             .scrollIntoView()
-            .should("be.visible");
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "true");
           cy.findByRole("button", { name: "Source" })
             .scrollIntoView()
-            .should("be.visible");
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "false");
           cy.findByRole("button", { name: "Source" }).click();
         });
         cy.wait("@dataset");
+        H.MetricsViewer.getColumnPickerButton()
+          .should("contain.text", "Source")
+          .and("not.contain.text", "Category");
 
         H.MetricsViewer.dimensionPickerSidebar().within(() => {
           cy.findByRole("button", { name: "Category" })
             .scrollIntoView()
-            .should("be.visible");
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "false");
           cy.findByRole("button", { name: "Source" })
             .scrollIntoView()
-            .should("be.visible");
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "true");
         });
       });
 
@@ -1495,7 +1509,7 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       it("should serialize only the selected dimension breakout in the URL", () => {
-        selectDimensionBreakout("State", { seeAll: true });
+        selectDimensionBreakout("State");
         selectDimensionBreakout("Category");
 
         getMetricsViewerUrlState().then((state) => {
@@ -1679,7 +1693,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
 
       cy.log("add a breakout to create multiple series");
-      selectDimensionBreakout("Time", { waitForDataset: false });
+      selectDimensionBreakout("Created At", { waitForDataset: false });
       selectBreakout("Count of orders", "Source");
 
       cy.log("line supports multiple series, so should remain unified");

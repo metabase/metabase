@@ -45,6 +45,7 @@ export function ControlsContent(props: ControlsContentProps) {
   const {
     activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
+    formulaEntities,
     sourceOrder,
     openSidebar,
     updateActiveDimensionBreakout,
@@ -59,6 +60,8 @@ export function ControlsContent(props: ControlsContentProps) {
     (sourceId) => (availableDimensions.bySource[sourceId]?.length ?? 0) > 0,
   );
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
+  const isStandaloneMetric =
+    formulaEntities.length === 1 && formulaEntities[0]?.type === "metric";
   const columnPickerIcon = projectionInfo.projectionDimension
     ? getDimensionIcon(projectionInfo.projectionDimension)
     : undefined;
@@ -102,11 +105,12 @@ export function ControlsContent(props: ControlsContentProps) {
     [updateProjectionConfig],
   );
 
+  const dimensionBreakoutTypeLabel =
+    !isStandaloneMetric && dimensionBreakout
+      ? getDimensionBreakoutTypeLabel(dimensionBreakout.type)
+      : null;
   const columnPickerLabel =
-    (dimensionBreakout &&
-      getDimensionBreakoutTypeLabel(dimensionBreakout.type)) ??
-    dimensionBreakout?.label ??
-    t`Select column`;
+    dimensionBreakoutTypeLabel ?? dimensionBreakout?.label ?? t`Select column`;
   const dimensionFilter = dimensionBreakout?.projectionConfig.dimensionFilter;
 
   return (
