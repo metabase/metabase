@@ -29,6 +29,7 @@
   code will actually run on, plus this will only run one time per Metabase install, so I'd rather not spend a ton of
   time optimizing for an incredibly unlikely case."
   (:require
+   ;; migrations must be frozen in time; raw cheshire avoids util.json's evolving custom encoders
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [clojure.set :as set]

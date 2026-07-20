@@ -17,6 +17,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
    [potemkin :as p]
+   ;; pool invalidation re-fetches Database details from the app db; runs outside any query context
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

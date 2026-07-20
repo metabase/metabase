@@ -32,10 +32,12 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]
+   ;; endpoint side effects: table-read events and source-card lookups hit the app db directly
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------

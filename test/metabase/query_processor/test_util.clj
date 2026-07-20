@@ -31,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; test helpers build expected metadata from real app-db Field rows
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

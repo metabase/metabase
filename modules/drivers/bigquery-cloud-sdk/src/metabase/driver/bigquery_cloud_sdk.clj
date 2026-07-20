@@ -31,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some empty? not-empty]]
+   ;; sync fix-ups read and write Database/Table/Field rows directly; the metadata provider is read-only
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

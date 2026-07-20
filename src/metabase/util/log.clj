@@ -9,6 +9,7 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   ;; this ns is the facade over tools.logging; it has to require the real thing
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
