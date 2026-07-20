@@ -690,6 +690,7 @@
       (is (= 1 (count (lib/filters query 1))))
       (is (= 5 (lib/current-limit query 2))))))
 
+;; intentionally one giant spec: proves every test-query feature composes in a single multi-stage build
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test
   (testing "test-query exercises all functionality in a comprehensive multi-stage query"
