@@ -100,6 +100,7 @@ function QueryDataReferenceSidebar({
       popDataReferenceStack={popDataReferenceStack}
       pushDataReferenceStack={pushDataReferenceStack}
       onClose={toggleDataReference}
+      databaseId={question.databaseId() ?? undefined}
     />
   );
 }

@@ -30,6 +30,8 @@ import alert_confirm_component from "./alert_confirm.svg?component";
 import alert_confirm_source from "./alert_confirm.svg?source";
 import alert_filled_component from "./alert_filled.svg?component";
 import alert_filled_source from "./alert_filled.svg?source";
+import app_component from "./app.svg?component";
+import app_source from "./app.svg?source";
 import archive_component from "./archive.svg?component";
 import archive_source from "./archive.svg?source";
 import area_component from "./area.svg?component";
@@ -656,6 +658,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     alert_confirm: {
       component: alert_confirm_component,
       source: alert_confirm_source,
+    },
+    app: {
+      component: app_component,
+      source: app_source,
     },
     archive: {
       component: archive_component,

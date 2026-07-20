@@ -684,6 +684,29 @@
 
 ;; ----- Dispatch -----
 
+(def ^:private numeric-id-uri-types
+  "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
+  #{"database" "collection" "table" "model" "question" "metric"
+    "measure" "segment" "transform" "dashboard"})
+
+(defn- check-numeric-id-segment!
+  "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
+   where the numeric id belongs; without this check that fails downstream as a bare 404 the
+   LLM misreads as a permissions problem. Throw a directive error instead so it
+   self-corrects in one step."
+  [uri [type-seg id-seg]]
+  (when (and (numeric-id-uri-types type-seg)
+             (some? id-seg)
+             (nil? (parse-long id-seg)))
+    (throw (ex-info
+            (str "Invalid id `" id-seg "` in URI. read_resource URIs use the numeric entity "
+                 "id — copy the `uri` attribute from a search result, or build the URI from "
+                 "its numeric `id` attribute, e.g. metabase://" type-seg "/42.")
+            {:agent-error? true
+             :status-code  400
+             :uri          uri
+             :id-segment   id-seg}))))
+
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
    list of supported URI shapes — adding a new URI = adding a clause here + a handler.
@@ -692,6 +715,7 @@
    ones (with rest-binding) so the exact-length match wins for the no-extra-segments case."
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
+    (check-numeric-id-segment! uri segments)
     (match/match-one segments
       ;; Navigation
       ["databases"]                                    (fetch-databases-list query-params)
@@ -831,8 +855,8 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. URIs returned by `search` can be fed directly
+  back here. Only numeric IDs accepted, never alphanumeric entity-id's.
 
   Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
   When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).

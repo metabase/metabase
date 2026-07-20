@@ -80,7 +80,7 @@ export const setupStrategyEditorForDatabases = ({
   const TestStrategyEditorForDatabases = () => <StrategyEditorForDatabases />;
 
   return renderWithProviders(
-    <Route path="*" component={TestStrategyEditorForDatabases} />,
+    <Route path="*" element={<TestStrategyEditorForDatabases />} />,
     {
       storeInitialState,
       withRouter: true,

@@ -23,7 +23,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
@@ -71,16 +71,23 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
+(defn is-destination?
+  "Is this database a destination database for some router database?"
+  [db]
+  (boolean (:router_database_id db)))
+
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]
   (fn [temp-object]
-    ;; Grant All Users full perms on the temp-object so that tests don't have to manually set permissions
-    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
-    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
-    (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
-    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/view-data :blocked)
-    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/create-queries :no)
-    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no)
+    ;; Grant All Users full perms so tests don't have to set permissions — but skip destination
+    ;; databases, which must never carry data_permissions rows (they are reached only via routing).
+    (when-not (is-destination? temp-object)
+      (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
+      (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
+      (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/view-data :blocked)
+      (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/create-queries :no)
+      (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no))
     (f temp-object)))
 
 (defn- should-read-audit-db?
@@ -219,11 +226,6 @@
 
           :else (throw (ex-info "Illegal options combination."
                                 (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
-
-(defn is-destination?
-  "Is this database a destination database for some router database?"
-  [db]
-  (boolean (:router_database_id db)))
 
 (defn should-sync?
   "Should this database be synced at all? Destination (router-child) databases are never synced.
@@ -475,8 +477,17 @@
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
   db)
 
+(defn- assert-router-database-id-not-mutated!
+  "Throws if `database`'s pending update changes `router_database_id`. A destination's link to its
+  router is set at creation and is immutable thereafter."
+  [database]
+  (when (contains? (t2/changes database) :router_database_id)
+    (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
+                    {:status-code 400}))))
+
 (t2/define-before-update :model/Database
   [database]
+  (assert-router-database-id-not-mutated! database)
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -723,25 +734,6 @@
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
                               (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
                             maybe-local))
-
-(def ^:private metadata-export-perms
-  {:perms/view-data      :unrestricted
-   :perms/create-queries :query-builder})
-
-(defmethod serdes/metadata-query :model/Database
-  [model opts]
-  (t2/reducible-query {:select [:id :name :engine]
-                       :from   [[(t2/table-name model) :db]]
-                       :where  (serdes/metadata-query-filter model :db opts)}))
-
-(defmethod serdes/metadata-query-filter :model/Database
-  [_model alias {:keys [user-info database-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :is_audit) false]
-           [:= (u/qualified-key alias :router_database_id) nil]
-           [:in (u/qualified-key alias :id)
-            (perms/visible-database-filter-select user-info metadata-export-perms)]]
-    (seq database-ids) (conj [:in (u/qualified-key alias :id) database-ids])))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

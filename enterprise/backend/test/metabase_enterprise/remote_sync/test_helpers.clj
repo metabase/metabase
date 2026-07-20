@@ -212,13 +212,16 @@ width: fixed
         (empty-commit? [_]
           (let [current (get @files-atom branch)]
             (= current (apply-staged current))))
-        (finish-commit! [_ _message]
+        (finish-commit! [this _message]
+          (source.p/finish-commit! this _message nil))
+        (finish-commit! [_ _message report-progress]
           (case fail-mode
             :write-files-error   (throw (Exception. "Failed to write files"))
             :store-error         (throw (Exception. "Store failed"))
             :apply-changes-error (throw (Exception. "Failed to apply changes"))
             :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
             (swap! files-atom update branch apply-staged))
+          (when report-progress (report-progress 0.8))
           ;; version string discriminates a wholesale replace (replace-all!) from an incremental patch
           (if @replace-all? "write-files-version" "apply-changes-version"))
         (abort-commit! [_] nil))))
@@ -325,11 +328,14 @@ width: fixed
                               (replace-all! [_] (reset! replace-all? true) nil)
                               (empty-commit? [_]
                                 (= (get-in @state [:trees version] {}) (staged-tree)))
-                              (finish-commit! [_ _message]
+                              (finish-commit! [this _message]
+                                (source.p/finish-commit! this _message nil))
+                              (finish-commit! [_ _message report-progress]
                                 (let [n           (:counter (swap! state update :counter inc))
                                       new-version (str "written-" n)
                                       tree        (staged-tree)]
                                   (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                                  (when report-progress (report-progress 0.8))
                                   new-version))
                               (abort-commit! [_] nil))))
                         (version [_] version)))]

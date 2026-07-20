@@ -36,7 +36,7 @@ export const setup = ({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(<Route path="*" component={CustomMapFooter} />, {
+  renderWithProviders(<Route path="*" element={<CustomMapFooter />} />, {
     storeInitialState: state,
     withRouter: true,
   });

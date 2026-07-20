@@ -15,6 +15,7 @@ export const TAG_TYPES = [
   "content-translation",
   "dashboard",
   "dashboard-question-candidates",
+  "data-app",
   "database",
   "dataset",
   "document",
