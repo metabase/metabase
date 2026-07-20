@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -668,9 +669,26 @@
     (throw (ex-info (str/join (mu/explain ::permissions.schema/data-permission-type perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))
 
+;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
+(def ^:private destination-db-id?
+  "Whether `db-id` is a destination database — one with `router_database_id` set."
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (t2/exists? :model/Database :id db-id :router_database_id [:not= nil]))))
+
+(defn assert-no-destination-db-permissions!
+  "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
+  set. Destinations are reachable only through their router and must never carry `data_permissions`
+  rows."
+  [perm-rows]
+  (when-let [dest-ids (seq (into #{} (comp (keep :db_id) (filter destination-db-id?)) perm-rows))]
+    (throw (ex-info (tru "Cannot grant permissions on a destination database.")
+                    {:status-code 400 :destination-db-ids dest-ids}))))
+
 (t2/define-before-insert :model/DataPermissions
   [permission]
   (assert-valid-permission permission)
+  (assert-no-destination-db-permissions! [permission])
   permission)
 
 (t2/define-before-update :model/DataPermissions
@@ -728,6 +746,9 @@
   hitting database limits for the number of parameters in a prepared statement. This is only really applicable when a DB
   has more than ~10k tables and we're transitioning from database-level permissions to table-level permissions."
   [new-perms]
+  ;; The before-insert hook already runs this per row, so this call is dormant. Un-comment it if perms
+  ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
+  #_(assert-no-destination-db-permissions! new-perms)
   (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
     (t2/insert! :model/DataPermissions batched-new-perms)))
 
