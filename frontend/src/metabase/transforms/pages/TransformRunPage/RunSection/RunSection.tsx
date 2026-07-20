@@ -81,8 +81,9 @@ function useScheduledDagRun(transform: Transform) {
     }
   }, [scheduledDagRunId, dagFinished, dagUnavailable]);
 
-  const runStatus = transform.last_run?.status;
-  const isRunningNow = runStatus === "started" || runStatus === "canceling";
+  const hasRunThisCycle = members?.some(
+    (run) => run.transform_id === transform.id,
+  );
 
   const schedule = useCallback(
     (dagRunId: TransformDagRunId) => setScheduledDagRunId(dagRunId),
@@ -94,7 +95,7 @@ function useScheduledDagRun(transform: Transform) {
       scheduledDagRunId != null &&
       !dagFinished &&
       !dagUnavailable &&
-      !isRunningNow,
+      !hasRunThisCycle,
     schedule,
   };
 }

@@ -9,9 +9,14 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { RunTransformDagResponse, Transform } from "metabase-types/api";
+import type {
+  RunTransformDagResponse,
+  Transform,
+  TransformRunForJobRun,
+} from "metabase-types/api";
 import {
   createMockTransform,
+  createMockTransformRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
 
@@ -20,12 +25,22 @@ import { RunSection } from "./RunSection";
 const TRANSFORM_ID = 10;
 const DAG_RUN_ID = 1;
 
+const DEFAULT_DAG_MEMBERS: TransformRunForJobRun[] = [
+  createMockTransformRunForJobRun({
+    id: 1,
+    transform_id: 2,
+    status: "started",
+  }),
+];
+
 function setup({
   transform,
   runDagResponse,
+  dagMembers = DEFAULT_DAG_MEMBERS,
 }: {
   transform?: Transform;
   runDagResponse?: RunTransformDagResponse;
+  dagMembers?: TransformRunForJobRun[];
 } = {}) {
   const testTransform =
     transform ?? createMockTransform({ id: TRANSFORM_ID, last_run: null });
@@ -37,13 +52,7 @@ function setup({
     { id: TRANSFORM_ID, name: testTransform.name },
   ]);
   setupRunTransformDagEndpoint(TRANSFORM_ID, runDagResponse);
-  setupListDagRunTransformRunsEndpoint(DAG_RUN_ID, [
-    createMockTransformRunForJobRun({
-      id: 1,
-      transform_id: 2,
-      status: "started",
-    }),
-  ]);
+  setupListDagRunTransformRunsEndpoint(DAG_RUN_ID, dagMembers);
 
   renderWithProviders(
     <>
@@ -112,6 +121,38 @@ describe("RunSection DAG run flow", () => {
     expect(
       await screen.findByText("Scheduled to run as part of a reprocess run."),
     ).toBeInTheDocument();
+  });
+
+  it("stops showing the scheduled state once this transform's own run has completed mid-DAG", async () => {
+    setup({
+      transform: createMockTransform({
+        id: TRANSFORM_ID,
+        last_run: createMockTransformRun({
+          status: "succeeded",
+          end_time: null,
+        }),
+      }),
+      dagMembers: [
+        createMockTransformRunForJobRun({
+          id: 1,
+          transform_id: 2,
+          status: "started",
+        }),
+        createMockTransformRunForJobRun({
+          id: 2,
+          transform_id: TRANSFORM_ID,
+          status: "succeeded",
+        }),
+      ],
+    });
+    await triggerUpstreamRun();
+
+    expect(
+      await screen.findByText("Last ran successfully."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Scheduled to run as part of a reprocess run."),
+    ).not.toBeInTheDocument();
   });
 
   it("notifies the user and skips the scheduled state when nothing was run", async () => {

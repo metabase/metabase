@@ -124,6 +124,7 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
 
   const shouldPoll =
     run.status === "started" ||
+    run.status === "canceling" ||
     transformRuns.some(
       (transformRun) =>
         transformRun.status === "started" ||
