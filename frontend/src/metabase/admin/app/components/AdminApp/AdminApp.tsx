@@ -1,16 +1,12 @@
-import type { ReactNode } from "react";
+import { Outlet } from "metabase/router";
 
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
-export interface AdminAppProps {
-  children?: ReactNode;
-}
-
-const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
+const AdminApp = (): JSX.Element => {
   return (
     <>
       <DeprecationNotice />
-      {children}
+      <Outlet />
     </>
   );
 };

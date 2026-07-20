@@ -13,12 +13,12 @@ import {
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
+import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getCollectionLocationParts,
   getDatabaseLocationParts,
-} from "metabase/common/utils/source-location";
-import { getMetabotId } from "metabase/metabot/state";
+} from "metabase/metabot/utils/source-location";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,

@@ -124,7 +124,7 @@ export function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SegmentDetailPage
           // Unjustified type cast. FIXME
           route={{ path: "/" } as never}
@@ -135,7 +135,7 @@ export function setup({
           }
           onRemove={onRemove}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

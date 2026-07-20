@@ -65,41 +65,39 @@
   (deftest ^:synchronized workspace-isolation-perms-bigquery-test
     (mt/test-driver :bigquery-cloud-sdk
       (testing "workspace SA gets read-only access to input dataset, full access to output dataset"
-        (let [database     (mt/db)
-              details      (:details database)
+        (let [database        (mt/db)
+              details         (:details database)
               ;; The BQ test extension only populates `:project-id` in `details` when
               ;; `MB_BIGQUERY_CLOUD_SDK_TEST_PROJECT_ID` is set (see test/data/
               ;; bigquery_cloud_sdk.clj:69-70). When it isn't, fall back to the
               ;; project embedded in the admin service-account JSON — every
               ;; Google-issued SA key carries the project it was created in.
-              project-id   (or (:project-id details)
-                               (.getProjectId (bq.util/admin-credentials details)))
-              admin-creds  (bq.util/admin-credentials details)
-              admin-client (bq.util/admin-client details)
-              iam-client   (bq.util/iam-client details)
-              run-id       (random-suffix)
-              in-dataset   (str "mb_iso_in_" run-id)
-              src-name     (str "ws_iso_src_" run-id)
-              sneaky-name  (str "ws_iso_sneaky_" run-id)
-              out-name     (str "ws_iso_out_" run-id)
-              workspace    {:id   (Long/parseLong run-id 16)
-                            :name (str "wsd-permstest-" run-id)}
-              ws-state     (atom (merge workspace
-                                        {:schema (driver.u/workspace-isolation-namespace-name workspace)}))
-              qual         (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
-              run-sql      (fn [^BigQuery c sql]
-                             (.query c (QueryJobConfiguration/of sql)
-                                     (into-array BigQuery$JobOption [])))]
+              project-id      (or (:project-id details)
+                                  (.getProjectId (bq.util/admin-credentials details)))
+              admin-creds     (bq.util/admin-credentials details)
+              admin-client    (bq.util/admin-client details)
+              iam-client      (bq.util/iam-client details)
+              run-id          (random-suffix)
+              in-dataset      (str "mb_iso_in_" run-id)
+              src-name        (str "ws_iso_src_" run-id)
+              sneaky-name     (str "ws_iso_sneaky_" run-id)
+              out-name        (str "ws_iso_out_" run-id)
+              workspace       {:id   (Long/parseLong run-id 16)
+                               :name (str "wsd-permstest-" run-id)}
+              ws-with-details (merge workspace
+                                     (driver/workspace-isolation-details :bigquery-cloud-sdk database workspace))
+              qual            (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
+              run-sql         (fn [^BigQuery c sql]
+                                (.query c (QueryJobConfiguration/of sql)
+                                        (into-array BigQuery$JobOption [])))]
           (try
             (bq.util/create-dataset! admin-client project-id in-dataset)
             (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-name)))
             (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset src-name)))
-            (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
-                  ws-with-details (merge workspace init-result)
-                  _               (reset! ws-state ws-with-details)
-                  ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                  user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)
-                  out-dataset     (:schema ws-with-details)]
+            (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
+            (let [ws-sa-email (-> ws-with-details :database_details :impersonate-service-account)
+                  user-client (bq.util/impersonated-client admin-creds ws-sa-email project-id)
+                  out-dataset (:schema ws-with-details)]
               (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                    [in-dataset])
               (testing "workspace SA can SELECT from a granted input table"
@@ -191,7 +189,7 @@
                 (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
                 (bq.util/verify-destroy! project-id admin-client out-dataset)))
             (finally
-              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
+              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
                    (catch Throwable t
                      (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during test cleanup")))
               ;; Belt-and-suspenders: directly delete the input dataset and workspace SA,
@@ -234,10 +232,10 @@
                             :name (str "wsd-A-" ws-a-id)}
               ws-b         {:id   (Long/parseLong ws-b-id 16)
                             :name (str "wsd-B-" ws-b-id)}
-              ws-a-state   (atom (merge ws-a
-                                        {:schema (driver.u/workspace-isolation-namespace-name ws-a)}))
-              ws-b-state   (atom (merge ws-b
-                                        {:schema (driver.u/workspace-isolation-namespace-name ws-b)}))
+              ;; Details are pure computation, so both full workspace maps exist
+              ;; before init — the `finally` destroys always have them.
+              ws-a-full    (merge ws-a (driver/workspace-isolation-details :bigquery-cloud-sdk database ws-a))
+              ws-b-full    (merge ws-b (driver/workspace-isolation-details :bigquery-cloud-sdk database ws-b))
               qual         (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
               run-sql      (fn [^BigQuery c sql]
                              (.query c (QueryJobConfiguration/of sql)
@@ -249,17 +247,13 @@
             (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-dataset-a src-a-name)))
             (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset-b src-b-name)))
             (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-dataset-b src-b-name)))
-            (let [init-a       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-a)
-                  init-b       (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-b)
-                  ws-a-full    (merge ws-a init-a)
-                  ws-b-full    (merge ws-b init-b)
-                  _            (reset! ws-a-state ws-a-full)
-                  _            (reset! ws-b-state ws-b-full)
-                  a-sa-email   (-> ws-a-full :database_details :impersonate-service-account)
-                  b-sa-email   (-> ws-b-full :database_details :impersonate-service-account)
-                  a-client     (bq.util/impersonated-client admin-creds a-sa-email project-id)
-                  b-client     (bq.util/impersonated-client admin-creds b-sa-email project-id)
-                  out-b-ds     (:schema ws-b-full)]
+            (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-a-full)
+            (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-b-full)
+            (let [a-sa-email (-> ws-a-full :database_details :impersonate-service-account)
+                  b-sa-email (-> ws-b-full :database_details :impersonate-service-account)
+                  a-client   (bq.util/impersonated-client admin-creds a-sa-email project-id)
+                  b-client   (bq.util/impersonated-client admin-creds b-sa-email project-id)
+                  out-b-ds   (:schema ws-b-full)]
               ;; Each workspace is granted access only to its own input dataset —
               ;; A's grant must not let A read src-b in B's dataset, and vice-versa.
               (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-a-full
@@ -304,7 +298,7 @@
                       (format "A unexpectedly enumerates B's dataset %s. visible=%s"
                               out-b-ds (or names #{}))))))
             (finally
-              (doseq [w [@ws-a-state @ws-b-state]]
+              (doseq [w [ws-a-full ws-b-full]]
                 (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database w)
                      (catch Throwable t
                        (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during cross-workspace test cleanup"))))
@@ -324,31 +318,34 @@
     ;; revoke-then-grant from passing unnoticed.
     (mt/test-driver :bigquery-cloud-sdk
       (testing "grant-workspace-read-access! is additive across multiple calls"
-        (let [database     (mt/db)
-              details      (:details database)
-              project-id   (or (:project-id details)
-                               (.getProjectId (bq.util/admin-credentials details)))
-              admin-creds  (bq.util/admin-credentials details)
-              admin-client (bq.util/admin-client details)
-              iam-client   (bq.util/iam-client details)
-              run-id       (random-suffix)
+        (let [database        (mt/db)
+              details         (:details database)
+              project-id      (or (:project-id details)
+                                  (.getProjectId (bq.util/admin-credentials details)))
+              admin-creds     (bq.util/admin-credentials details)
+              admin-client    (bq.util/admin-client details)
+              iam-client      (bq.util/iam-client details)
+              run-id          (random-suffix)
               ;; Two SEPARATE input datasets: BQ's `dataViewer` is dataset-scoped,
               ;; so a per-table read-denied assertion requires the tables live in
               ;; different datasets.
-              in-a-dataset (str "mb_iso_in_a_" run-id)
-              in-b-dataset (str "mb_iso_in_b_" run-id)
-              src-a-name   (str "ws_iso_src_a_" run-id)
-              src-b-name   (str "ws_iso_src_b_" run-id)
-              workspace    {:id   (Long/parseLong run-id 16)
-                            :name (str "wsd-grantaccum-" run-id)}
-              ws-state     (atom (merge workspace {:schema (driver.u/workspace-isolation-namespace-name workspace)}))
-              qual         (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
-              run-sql      (fn [^BigQuery c sql]
-                             (.query c (QueryJobConfiguration/of sql)
-                                     (into-array BigQuery$JobOption [])))
-              select-id    (fn [^BigQuery c sql]
-                             (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
-                                   (.iterateAll ^TableResult (run-sql c sql))))]
+              in-a-dataset    (str "mb_iso_in_a_" run-id)
+              in-b-dataset    (str "mb_iso_in_b_" run-id)
+              src-a-name      (str "ws_iso_src_a_" run-id)
+              src-b-name      (str "ws_iso_src_b_" run-id)
+              workspace       {:id   (Long/parseLong run-id 16)
+                               :name (str "wsd-grantaccum-" run-id)}
+              ;; Details are pure computation, so the full workspace map exists
+              ;; before init — the `finally` destroy always has it.
+              ws-with-details (merge workspace
+                                     (driver/workspace-isolation-details :bigquery-cloud-sdk database workspace))
+              qual            (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
+              run-sql         (fn [^BigQuery c sql]
+                                (.query c (QueryJobConfiguration/of sql)
+                                        (into-array BigQuery$JobOption [])))
+              select-id       (fn [^BigQuery c sql]
+                                (mapv (fn [^FieldValueList row] {:id (.getLongValue (.get row "id"))})
+                                      (.iterateAll ^TableResult (run-sql c sql))))]
           (try
             (bigquery.ws/create-dataset! admin-client project-id in-a-dataset)
             (bigquery.ws/create-dataset! admin-client project-id in-b-dataset)
@@ -356,11 +353,9 @@
             (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual in-a-dataset src-a-name)))
             (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-b-dataset src-b-name)))
             (run-sql admin-client (format "INSERT INTO %s (id, v) VALUES (1, 'b')" (qual in-b-dataset src-b-name)))
-            (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
-                  ws-with-details (merge workspace init-result)
-                  _               (reset! ws-state ws-with-details)
-                  ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                  user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
+            (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
+            (let [ws-sa-email (-> ws-with-details :database_details :impersonate-service-account)
+                  user-client (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
               ;; First grant: only dataset A.
               (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                    [in-a-dataset])
@@ -377,7 +372,7 @@
                 (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-a-dataset src-a-name)))))
                 (is (= [{:id 1}] (select-id user-client (format "SELECT id FROM %s" (qual in-b-dataset src-b-name)))))))
             (finally
-              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
+              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
                    (catch Throwable t
                      (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during grant-accumulation test cleanup")))
               (try (bigquery.ws/drop-dataset! admin-client project-id in-a-dataset) (catch Throwable _ nil))
@@ -397,25 +392,28 @@
     ;; in the colliding dataset as the JDBC counterpart.
     (mt/test-driver :bigquery-cloud-sdk
       (testing "init-workspace-isolation! is robust when its target output dataset already exists"
-        (let [database     (mt/db)
-              details      (:details database)
-              project-id   (or (:project-id details)
-                               (.getProjectId (bq.util/admin-credentials details)))
-              admin-creds  (bq.util/admin-credentials details)
-              admin-client (bq.util/admin-client details)
-              iam-client   (bq.util/iam-client details)
-              run-id       (random-suffix)
-              in-dataset   (str "mb_iso_in_" run-id)
-              src-name     (str "ws_iso_src_" run-id)
-              out-name     (str "ws_iso_out_" run-id)
-              workspace    {:id   (Long/parseLong run-id 16)
-                            :name (str "wsd-collision-" run-id)}
-              out-dataset  (driver.u/workspace-isolation-namespace-name workspace)
-              ws-state     (atom (merge workspace {:schema out-dataset}))
-              qual         (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
-              run-sql      (fn [^BigQuery c sql]
-                             (.query c (QueryJobConfiguration/of sql)
-                                     (into-array BigQuery$JobOption [])))]
+        (let [database        (mt/db)
+              details         (:details database)
+              project-id      (or (:project-id details)
+                                  (.getProjectId (bq.util/admin-credentials details)))
+              admin-creds     (bq.util/admin-credentials details)
+              admin-client    (bq.util/admin-client details)
+              iam-client      (bq.util/iam-client details)
+              run-id          (random-suffix)
+              in-dataset      (str "mb_iso_in_" run-id)
+              src-name        (str "ws_iso_src_" run-id)
+              out-name        (str "ws_iso_out_" run-id)
+              workspace       {:id   (Long/parseLong run-id 16)
+                               :name (str "wsd-collision-" run-id)}
+              out-dataset     (driver.u/workspace-isolation-namespace-name workspace)
+              ;; Details are pure computation, so the full workspace map exists
+              ;; before init — the `finally` destroy always has it.
+              ws-with-details (merge workspace
+                                     (driver/workspace-isolation-details :bigquery-cloud-sdk database workspace))
+              qual            (fn [ds tbl] (format "`%s.%s.%s`" project-id ds tbl))
+              run-sql         (fn [^BigQuery c sql]
+                                (.query c (QueryJobConfiguration/of sql)
+                                        (into-array BigQuery$JobOption [])))]
           (try
             (bigquery.ws/create-dataset! admin-client project-id in-dataset)
             (run-sql admin-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual in-dataset src-name)))
@@ -423,15 +421,16 @@
             ;; Pre-create the output dataset at exactly the name init will target,
             ;; before init runs.
             (bigquery.ws/create-dataset! admin-client project-id out-dataset)
-            (let [init-result     (driver/init-workspace-isolation! :bigquery-cloud-sdk database workspace)
-                  ws-with-details (merge workspace init-result)
-                  _               (reset! ws-state ws-with-details)
-                  ws-sa-email     (-> ws-with-details :database_details :impersonate-service-account)
-                  user-client     (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
+            (driver/init-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
+            (let [ws-sa-email (-> ws-with-details :database_details :impersonate-service-account)
+                  user-client (bq.util/impersonated-client admin-creds ws-sa-email project-id)]
               (driver/grant-workspace-read-access! :bigquery-cloud-sdk database ws-with-details
                                                    [in-dataset])
-              (testing "init succeeded against the pre-existing dataset"
-                (is (some? init-result)))
+              (testing "isolation details target exactly the pre-existing dataset name"
+                ;; init returns nil, so reaching this point without a throw is the
+                ;; collision-tolerance signal; this pins that the computed details
+                ;; land on the deterministic (colliding) dataset name.
+                (is (= out-dataset (:schema ws-with-details))))
               (testing "workspace SA has full read+write access to its output dataset post-collision"
                 (run-sql user-client (format "CREATE TABLE %s (id INT64, v STRING)" (qual out-dataset out-name)))
                 (run-sql user-client (format "INSERT INTO %s (id, v) VALUES (1, 'a')" (qual out-dataset out-name)))
@@ -451,7 +450,7 @@
                                               (format "INSERT INTO %s (id, v) VALUES (2, 'b')" (qual in-dataset src-name))
                                               :insert-input-after-collision)))
             (finally
-              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database @ws-state)
+              (try (driver/destroy-workspace-isolation! :bigquery-cloud-sdk database ws-with-details)
                    (catch Throwable t
                      (log/warn t "destroy-workspace-isolation! failed for :bigquery-cloud-sdk during collision test cleanup")))
               (try (bigquery.ws/drop-dataset! admin-client project-id in-dataset) (catch Throwable _ nil))
