@@ -55,19 +55,30 @@ jobs:
     strategy:
       fail-fast: false
       # Sharded across N jobs to minimize critical-path wall-clock. Runners are
-      # free, so we optimize the slowest shard, not total CI minutes: shard hard
-      # until per-shard test time falls below the ~13m fixed setup floor
-      # (snapshot gen + jar download + backend boots), where wall-clock bottoms
-      # out. Each shard runs a slice with workers=2 + per-worker backends (the
-      # A/B winner — see git history). Playwright's --shard split is count/order-
+      # free, so we optimize the slowest shard, not total CI minutes.
+      #
+      # MEASURED on the 2026-07-20 run (20 shards, before QA containers):
+      #   test execution 331m total | setup 88m total = 4.4m/shard (21% of job)
+      #   runner-minutes 419 | wall clock 24.6m
+      # The older "~13m fixed setup floor" note here was wrong by ~3x.
+      #
+      # Setup is the term that multiplies with shard count, and it GREW with
+      # this change: every shard now pulls/starts postgres+mysql+mongo+maildev+
+      # webhook+openldap and generates the QA-database snapshots. Re-measure
+      # before tuning further — at 50 shards setup is likely the dominant term,
+      # which is the point where more shards stop buying wall-clock.
+      #
+      # Each shard runs a slice with workers=2 + per-worker backends (the A/B
+      # winner — see git history). Playwright's --shard split is count/order-
       # based, not duration-balanced, and can't split a single spec file, so the
-      # heaviest file + the ~13m setup are the floor; to go below it, generate
-      # snapshots once as a shared artifact instead of per-shard.
+      # heaviest file plus setup are the floor. To go below it, generate the
+      # snapshots ONCE as a shared artifact instead of per-shard — that is the
+      # single highest-value remaining CI optimisation.
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
     env:
       # Keep in sync with the shard matrix above.
-      SHARD_TOTAL: 20
+      SHARD_TOTAL: 50
       MB_EDITION: ee
       # resolveToken() in e2e-playwright/support/api.ts reads the
       # CYPRESS_-prefixed names first — same secrets as e2e-test.yml.
