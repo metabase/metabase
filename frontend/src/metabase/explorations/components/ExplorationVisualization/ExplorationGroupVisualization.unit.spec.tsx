@@ -411,6 +411,7 @@ describe("ExplorationGroupVisualization", () => {
       datasets: new Map([[101, makeTimeseriesDataset()]]),
       exploreFilters: [
         {
+          operator: "=",
           field_ref: ["field", 1, null],
           value: "TX",
           display_value: "TX",
@@ -648,13 +649,14 @@ describe("ExplorationGroupVisualization", () => {
       datasets: new Map([[101, makeTimeseriesDataset()]]),
     };
 
-    it("passes mode, highlighted, and onChangeCardAndRun to Visualization", () => {
+    it("passes mode, highlighted, onBrush, and onChangeCardAndRun to Visualization", () => {
       setup(timeseriesSetup);
 
       const stub = screen.getByTestId("visualization-stub");
       expect(stub).toHaveAttribute("data-has-on-change-card-and-run", "true");
       expect(lastVisualizationProps?.mode).toBeDefined();
       expect(lastVisualizationProps?.highlighted).toBeNull();
+      expect(typeof lastVisualizationProps?.onBrush).toBe("function");
     });
 
     it("includes explore further for eligible metric blocks", () => {

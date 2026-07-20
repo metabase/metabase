@@ -589,6 +589,18 @@ export interface ClickObjectDataRow {
   value: RowValue;
 }
 
+export type BrushRange =
+  | {
+      type: "temporal";
+      start: string;
+      end: string;
+    }
+  | {
+      type: "numeric";
+      start: number;
+      end: number;
+    };
+
 export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
@@ -606,7 +618,22 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+  brushRange?: BrushRange;
 }
+
+export interface BrushClickObject extends ClickObject {
+  brushRange: BrushRange;
+  column: DatasetColumn;
+  event: MouseEvent;
+}
+
+export const isBrushClickObject = (
+  clicked: ClickObject | null | undefined,
+): clicked is BrushClickObject =>
+  clicked != null &&
+  clicked.brushRange != null &&
+  clicked.column != null &&
+  clicked.event != null;
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;

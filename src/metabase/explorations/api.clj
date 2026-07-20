@@ -277,12 +277,12 @@
         dimensions))
 
 (defn- format-explore-filter-for-thread-name
-  [{:keys [dimension_name display_value value]}]
-  (let [value-str (or (some-> display_value str/trim not-empty)
-                      (some-> value str))]
-    (if (and dimension_name (not (str/blank? value-str)))
-      (str dimension_name ": " value-str)
-      value-str)))
+  "Format one explore filter for a thread name. `:display_value` is FE-authored and is the
+  sole source of truth for the value label."
+  [{:keys [dimension_name display_value]}]
+  (if dimension_name
+    (str dimension_name ": " display_value)
+    display_value))
 
 (defn- explore-further-thread-name
   "Build the sidebar name for an \"Explore further\" thread from enriched `explore_filters`.
@@ -290,7 +290,7 @@
   nested follow-ups use only the formatted filters."
   [card-name enriched-filters top-level-follow-up?]
   (let [formatted (->> enriched-filters
-                       (keep format-explore-filter-for-thread-name)
+                       (map format-explore-filter-for-thread-name)
                        (str/join ", ")
                        not-empty)]
     (cond
@@ -304,6 +304,26 @@
       card-name)))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
+
+(def ^:private ExploreFilterSpec
+  "One segment filter stamped onto a block metric selection's `:explore_filters` vector.
+  `:display_value` is required — the FE formats it at click time and both the thread name
+  and filter pills read it as-is."
+  [:multi {:dispatch :operator}
+   ["="
+    [:map
+     [:operator       [:= "="]]
+     [:field_ref      [:sequential :any]]
+     [:value          :any]
+     [:display_value  ms/NonBlankString]
+     [:dimension_name {:optional true} [:maybe :string]]]]
+   ["between"
+    [:map
+     [:operator       [:= "between"]]
+     [:field_ref      [:sequential :any]]
+     [:values         [:tuple :any :any]]
+     [:display_value  ms/NonBlankString]
+     [:dimension_name {:optional true} [:maybe :string]]]]])
 
 (def ^:private MetricSelection
   [:map
@@ -384,12 +404,7 @@
    [:name            [:maybe :string]]
    [:position        ms/IntGreaterThanOrEqualToZero]
    [:explore_filters {:optional true}
-    [:maybe [:sequential
-             [:map
-              [:field_ref     [:sequential :any]]
-              [:value         :any]
-              [:display_value {:optional true} [:maybe :string]]
-              [:dimension_name {:optional true} [:maybe :string]]]]]]
+    [:maybe [:sequential ExploreFilterSpec]]]
    [:pages           [:sequential ::ExplorationPageNode]]])
 
 (mr/def ::HydratedThread
@@ -494,14 +509,6 @@
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:blocks        {:optional true} [:maybe [:sequential BlockSelection]]]
    [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
-
-(def ^:private ExploreFilterSpec
-  "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
-  [:map
-   [:field_ref     [:sequential :any]]
-   [:value         :any]
-   [:display_value {:optional true} [:maybe :string]]
-   [:dimension_name {:optional true} [:maybe :string]]])
 
 (def ^:private ExploreFurther
   "Body schema for `POST /api/exploration/:id/explore-further`. `page_id` is the clicked chart's

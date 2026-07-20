@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -16,8 +17,10 @@ import {
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
+import type { OnBrush } from "metabase/visualizations/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 
 export function MetricsViewerDimensionBreakoutContent() {
   const {
@@ -103,8 +106,13 @@ export function MetricsViewerDimensionBreakoutContent() {
     [dimensionItems, metricSlots],
   );
 
-  const handleBrush = useCallback(
-    ({ start, end }: { start: number; end: number }) => {
+  const handleBrush = useCallback<OnBrush>(
+    ({ clickObject }) => {
+      const { brushRange, column } = clickObject;
+      if (brushRange.type !== "temporal") {
+        return;
+      }
+
       updateActiveDimensionBreakout((prev) => ({
         ...prev,
         projectionConfig: {
@@ -112,8 +120,11 @@ export function MetricsViewerDimensionBreakoutContent() {
           dimensionFilter: {
             type: "specific-date",
             operator: "between",
-            values: [new Date(start), new Date(end)],
-            hasTime: true,
+            values: [
+              dayjs(brushRange.start).toDate(),
+              dayjs(brushRange.end).toDate(),
+            ],
+            hasTime: !isDateWithoutTime(column),
           },
         },
       }));

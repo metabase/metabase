@@ -1050,10 +1050,12 @@ describe("scenarios > explorations > chart click-through", () => {
             expect(request.body.explore_filters).to.be.an("array").and.not.be
               .empty;
             expect(request.body.explore_filters[0]).to.include.keys(
+              "operator",
               "field_ref",
               "value",
               "display_value",
             );
+            expect(request.body.explore_filters[0].operator).to.eq("=");
 
             // Unjustified type cast. FIXME
             const threads = (response?.body as Exploration).threads ?? [];
@@ -1094,6 +1096,133 @@ describe("scenarios > explorations > chart click-through", () => {
             .findByTestId("exploration-chart-grid")
             .should("exist");
         });
+      });
+    });
+  });
+
+  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, and navigates from the new-thread toast", () => {
+    cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+      // Unjustified type cast. FIXME
+      const data = body as GetExplorationDataResponse;
+      const ordersMetric = data.metrics.find(
+        (metric) => metric.name === "Count of orders",
+      );
+      expect(
+        ordersMetric,
+        '"Count of orders" metric is exposed by /api/exploration/dimensions',
+      ).to.exist;
+      const dimsById = new Map(
+        data.dimension_groups.flatMap((group) =>
+          group.dimensions.map((dim) => [dim.id, dim] as const),
+        ),
+      );
+      const temporalDimension = ordersMetric!.dimension_ids
+        .map((id) => dimsById.get(id))
+        .find((dim) => dim != null && dim.effective_type.includes("Date"));
+      expect(
+        temporalDimension,
+        "orders metric exposes at least one temporal dimension",
+      ).to.exist;
+
+      H.createExplorationViaApi({
+        name: "Chart brush explore-further fixture",
+        metricCardIds: [ordersMetric!.id],
+        dimensionIds: [temporalDimension!.id],
+      }).then((explorationId) => {
+        let initialThreadIds: number[] = [];
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/explore-further`,
+        ).as("exploreFurther");
+
+        H.visitExploration(explorationId);
+        cy.findAllByRole("treeitem", { timeout: 30000 })
+          .first()
+          .should("be.visible");
+
+        cy.request("GET", `/api/exploration/${explorationId}`).then(
+          ({ body }) => {
+            // Unjustified type cast. FIXME
+            const exploration = body as Exploration;
+            initialThreadIds = (exploration.threads ?? []).map(
+              (thread) => thread.id,
+            );
+          },
+        );
+
+        cy.findByTestId("exploration-page-sidebar").within(() => {
+          cy.findByRole("group", { name: ordersMetric!.name }).then(
+            ($group) => {
+              if ($group.attr("aria-expanded") !== "true") {
+                cy.wrap($group).click();
+              }
+            },
+          );
+          cy.findByRole("treeitem", {
+            name: new RegExp(`${temporalDimension!.display_name}$`), // anchor on end so we don't match e.g. Hour of day
+          })
+            .first()
+            .click();
+        });
+
+        cy.findAllByLabelText("Ready", { timeout: 30000 })
+          .first()
+          .should("be.visible");
+
+        H.ensureEchartsContainerHasSvg();
+        cy.wait(100);
+        H.applyBrush(120, 280);
+
+        cy.findByTestId("click-actions-view").within(() => {
+          cy.findByRole("button", { name: /Explore further/i }).should(
+            "be.visible",
+          );
+          cy.findByRole("button", { name: /Add comment/i }).should("not.exist");
+        });
+
+        cy.findByTestId("click-actions-view")
+          .findByRole("button", { name: /Explore further/i })
+          .click();
+
+        cy.wait("@exploreFurther").then(({ request, response }) => {
+          expect(request.body.explore_filters)
+            .to.be.an("array")
+            .and.have.length(1);
+          expect(request.body.explore_filters[0]).to.include.keys(
+            "operator",
+            "field_ref",
+            "values",
+            "display_value",
+          );
+          expect(request.body.explore_filters[0].operator).to.eq("between");
+          expect(request.body.explore_filters[0].values)
+            .to.be.an("array")
+            .and.have.length(2);
+
+          // Unjustified type cast. FIXME
+          const threads = (response?.body as Exploration).threads ?? [];
+          const newThread = threads.find(
+            (thread) => !initialThreadIds.includes(thread.id),
+          );
+          expect(newThread, "explore-further adds a new thread").to.exist;
+          cy.wrap(newThread!.name).as("newThreadName");
+        });
+
+        cy.get("@newThreadName").then((name) => {
+          cy.findByText(`Added ${name}`, { timeout: 60000 }).should(
+            "be.visible",
+          );
+        });
+
+        cy.findByRole("button", { name: "View" }).click();
+
+        cy.location("pathname").should(
+          "include",
+          `/question/research/${explorationId}/page/`,
+        );
+
+        cy.findByTestId("filter-pill").should("be.visible");
       });
     });
   });

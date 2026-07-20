@@ -157,6 +157,7 @@ describe("useExplorationClickActionsMode", () => {
       page_id: 7,
       explore_filters: [
         {
+          operator: "=",
           field_ref: ["field", 1, null],
           value: "Gadget",
           display_value: "Gadget",
@@ -164,6 +165,26 @@ describe("useExplorationClickActionsMode", () => {
       ],
     });
     expect(closePopover).toHaveBeenCalled();
+  });
+
+  it("shows only explore further for brush click objects", () => {
+    const { result } = renderMode();
+    const actions = result.current.actionsForClick({
+      brushRange: {
+        type: "temporal",
+        start: "2020-01-01T00:00:00",
+        end: "2020-03-01T00:00:00",
+      },
+      column: createMockColumn({
+        name: "CREATED_AT",
+        source: "breakout",
+        field_ref: ["field", 20, { "temporal-unit": "month" }],
+      }),
+      event: new MouseEvent("click"),
+      settings: {},
+    });
+
+    expect(actions.map((action) => action.name)).toEqual(["explore-further"]);
   });
 
   it("shows an error toast when explore further fails", async () => {

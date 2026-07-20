@@ -314,9 +314,24 @@
                 dimension-name (assoc :dimension_name dimension-name))))
           explore-filters)))
 
+(defn- explore-filter-clause
+  "Build the Lib filter clause for one explore-filter spec. Equality filters use `lib/=`;
+  range filters use `lib/between` with ordered bounds."
+  [fref {:keys [operator value values] :as filter-spec}]
+  (case operator
+    "="
+    (lib/= fref value)
+
+    "between"
+    (let [[min-v max-v] (sort values)]
+      (lib/between fref min-v max-v))
+
+    (throw (ex-info "Unknown explore filter operator"
+                    {:operator operator :filter-spec filter-spec}))))
+
 (defn- apply-single-explore-filter
-  "Apply one `{:field_ref ... :value ...}` filter spec to `card`'s `dataset_query`."
-  [mp card {:keys [field_ref value] :as filter-spec}]
+  "Apply one explore-filter spec to `card`'s `dataset_query`."
+  [mp card {:keys [field_ref] :as filter-spec}]
   (when-not field_ref
     (throw (ex-info "Explore filter missing :field_ref" {:filter-spec filter-spec})))
   (let [base       (lib/query mp (:dataset_query card))
@@ -326,15 +341,15 @@
                        (throw (ex-info "Could not resolve explore filter field ref on metric query"
                                        {:field-ref field_ref})))
         fref       (filter-ref-from-click ref-clause col)
-        filtered   (lib/filter base (lib/= fref value))]
+        filtered   (lib/filter base (explore-filter-clause fref filter-spec))]
     (assoc card :dataset_query filtered)))
 
 (defn- apply-explore-filters
   "When the block's metric selection carries `:explore_filters` (added by the \"Explore further\"
-  chart drill), scope the metric Card's `dataset_query` to each `[<bucketed dimension> = <value>]`
-  in order so *every* variant built from it inherits the segment — a single injection point, since
-  all the variant builders re-wrap `(lib/query mp (:dataset_query card))`. Returns `card` untouched
-  when there are no filters."
+  chart drill), scope the metric Card's `dataset_query` to each explore filter in order so
+  *every* variant built from it inherits the segment — a single injection point, since all the
+  variant builders re-wrap `(lib/query mp (:dataset_query card))`. Returns `card` untouched when
+  there are no filters."
   [mp card explore-filters]
   (reduce (fn [card' ef]
             (apply-single-explore-filter mp card' ef))
