@@ -3,6 +3,7 @@ import { test as base, BrowserContext, APIRequestContext } from "@playwright/tes
 import { MetabaseApi } from "./api";
 import { BASE_URL } from "./env";
 import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
+import type { SnowplowCollector } from "./snowplow-collector";
 import { startWorkerBackend } from "./worker-backend";
 
 /**
@@ -22,9 +23,33 @@ class MetabaseHarness {
     request: APIRequestContext,
     private sampleDbUrl?: string,
     baseUrl: string = BASE_URL,
+    private collector?: SnowplowCollector,
   ) {
     this.api = new MetabaseApi(request, () => this.sessionId);
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * This worker's private Snowplow collector — the seam for **backend-emitted**
+   * events, which leave the JVM directly and are invisible to `page.route`.
+   * Frontend-emitted events are still captured at the browser boundary by
+   * `installSnowplowCapture` (support/search-snowplow.ts); the two coexist.
+   *
+   * Throws rather than skipping when there is no collector (i.e. running
+   * against the shared BASE_URL backend without PW_PER_WORKER_BACKEND). A spec
+   * that silently no-ops when its observation seam is missing is the FINDINGS
+   * #49 "green run that never executed" shape. CI always sets
+   * PW_PER_WORKER_BACKEND=1 (.github/workflows/e2e-playwright.yml:136).
+   */
+  get snowplow(): SnowplowCollector {
+    if (!this.collector) {
+      throw new Error(
+        "No per-slot Snowplow collector: backend-emitted snowplow events can " +
+          "only be observed with PW_PER_WORKER_BACKEND=1, which boots each slot " +
+          "backend pointed at its own collector.",
+      );
+    }
+    return this.collector;
   }
 
   async signIn(user: UserName = "admin") {
@@ -132,7 +157,11 @@ type Fixtures = {
 };
 
 type WorkerFixtures = {
-  workerBackend: { url: string; sampleDbUrl?: string };
+  workerBackend: {
+    url: string;
+    sampleDbUrl?: string;
+    snowplow?: SnowplowCollector;
+  };
 };
 
 export const test = base.extend<Fixtures, WorkerFixtures>({
@@ -169,7 +198,12 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       await use({
         url: `http://localhost:${backend.port}`,
         sampleDbUrl: backend.sampleDbUrl,
+        snowplow: backend.snowplow,
       });
+      // The collector, unlike the backend, IS stopped: it lives in this node
+      // process, so a replacement worker cannot inherit it and would fail to
+      // bind the port. A crashed worker releases the port with the process.
+      await backend.snowplow.stop();
     },
     { scope: "worker", timeout: 11 * 60_000 },
   ],
@@ -185,6 +219,7 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
         request,
         workerBackend.sampleDbUrl,
         workerBackend.url,
+        workerBackend.snowplow,
       ),
     );
   },

@@ -111,3 +111,27 @@ reach, it just depends on a container at a URL the backend was booted against.
   record, so any collector-side port must assert on the derived `event_name`
   (or the `iglu:com.metabase/instance_stats/...` schema URI in the raw payload),
   not on `data.data`.
+
+---
+
+## RESOLVED (2026-07-20) — see findings-inbox/per-slot-snowplow-collector.md
+
+Both tests now run and pass. Each slot backend is booted pointing at its own
+in-process `node:http` collector (`support/snowplow-collector.ts`), so
+backend-emitted events are observable without snowplow-micro's shared store.
+
+**One claim above needs correcting.** The proposed fix — "boot each slot backend
+with `MB_SNOWPLOW_URL=…` in `support/worker-backend.ts`" — does not work.
+Settings resolve through `environ`, which merges system properties *after*
+environment variables, and `deps.edn`'s `:e2e` alias already sets
+`-Dmb.snowplow.url=http://localhost:9090` (applied via `JDK_JAVA_OPTIONS` by
+`e2e/runner/cypress-runner-backend.js`, in both jar and source mode). Measured:
+booting with `MB_SNOWPLOW_URL=http://localhost:5999` left the setting reporting
+`http://localhost:9090`. `_JAVA_OPTIONS` is used instead — the JVM applies it
+after the command line, so it beats the alias.
+
+Two other claims above are also corrected there: `config/is-prod?` is **false**
+for slot backends (the same alias sets `-Dmb.run.mode=e2e`), so the jar's
+`snowplow-url` default was never `https://sp.metabase.com` here; and the
+"leaked" `MB_SNOWPLOW_URL`/`MB_SNOWPLOW_AVAILABLE` process env is not leakage —
+`support/env.ts` loads them from repo-root `cypress.env.json` on every run.

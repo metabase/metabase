@@ -1063,19 +1063,35 @@ collector at the app origin removes CORS entirely. **Any port that wants to
 observe a POST body sent to a third-party origin has this problem**; re-pointing
 the client at the app origin is the cheap fix.
 
-**Artifact-dependent defaults — know these before debugging.** `snowplow-available`
-defaults to `config/is-prod?` → **true on the jar**, false in source mode;
-`snowplow-url` defaults to **`https://sp.metabase.com` on the jar**, localhost:9090
-in dev. Without the client-side override, a jar-mode port fires real analytics at
-Metabase's production collector. Also: if a slot backend has
-`MB_SNOWPLOW_URL`/`MB_SNOWPLOW_AVAILABLE` in its process env from an earlier
-session, env beats the app DB and the settings API silently refuses to change
-them (`is_env_setting: true` in `GET /api/setting`) — reboot the slot.
-**Qualifier (measured, batch-13):** a leaked `MB_SNOWPLOW_*` env is a **non-issue
-for this technique** — the capture overrides client-side, so the backend value
-never reaches the tracker. `visualizer-snowplow-tracking` ran green on a slot
-that had those vars set. The reboot advice applies to ports that drive snowplow
-through *backend* settings, not to `installSnowplowCapture`.
+**Artifact-dependent defaults — CORRECTED 2026-07-20, an earlier version of this
+paragraph was wrong twice.** The raw `defsetting` defaults are: `snowplow-available`
+→ `config/is-prod?`, `snowplow-url` → `https://sp.metabase.com` when prod,
+`http://localhost:9090` otherwise (`analytics/settings.clj:64-72`).
+
+**But those prod defaults never applied to our slot backends.** `deps.edn`'s
+`:e2e` alias sets `-Dmb.run.mode=e2e`, so **`config/is-prod?` is FALSE even in
+jar mode**. Measured: a clean-shell boot reports `localhost:9090`. The earlier
+claim here — that a jar-mode port "fires real analytics at Metabase's production
+collector" — **was false, and nothing was ever escaping to production.**
+
+**Nor is `MB_SNOWPLOW_*` in a slot's env "leakage from an earlier session":**
+`support/env.ts` loads it from `cypress.env.json` on every run. There is nothing
+to reboot away.
+
+**And `MB_SNOWPLOW_URL` does not work at all.** Settings resolve through
+`environ`, which merges **system properties after env vars**, and the `:e2e`
+alias already pins `-Dmb.snowplow.url=http://localhost:9090` via
+`JDK_JAVA_OPTIONS` (set unconditionally by `cypress-runner-backend.js`, so
+appending to it is also out). Measured: booting with
+`MB_SNOWPLOW_URL=http://localhost:5999` reports `9090`; booting with
+`_JAVA_OPTIONS="-Dmb.snowplow.url=http://localhost:5101"` reports `5101` —
+`_JAVA_OPTIONS` is applied *after* the command line and wins. **This is why
+`MB_SITE_URL` works but `MB_SNOWPLOW_URL` doesn't: site-url isn't pinned as a
+system property.** Do not assume the env-beats-app-DB pattern generalises.
+
+The real (narrower) problem the per-slot collector solves: every slot used to
+emit to one fixed port, so with micro up all five slots interleaved into a store
+any slot could wipe, and with micro down events vanished silently.
 
 ⚠️ **SCOPE — this covers exactly the FE-emitted class, not "snowplow specs"
 generally.** Measured on `instance-stats-snowplow`: `instance_stats` is

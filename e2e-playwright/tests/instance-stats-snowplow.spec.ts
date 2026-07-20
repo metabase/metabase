@@ -1,102 +1,75 @@
 /**
  * Playwright port of e2e/test/scenarios/stats/instance-stats-snowplow.cy.spec.js
  *
- * BOTH TESTS ARE `test.fixme`. This is a harness capability gap, not a product
- * bug and not port drift. Read the analysis before touching them.
+ * Both tests were `test.fixme` until the per-slot collector landed. The reason
+ * is worth keeping, because it generalises: snowplow events split into two
+ * classes and they need two different observation seams.
  *
- * Why the browser-boundary capture cannot work here
- * -------------------------------------------------
- * Every other ported snowplow-subject spec (`search-snowplow`,
- * `visualizer-snowplow-tracking`, `data-studio-metrics`, `reference-databases`,
- * `security-center-snowplow`) asserts an event the *frontend* emits, so
- * `installSnowplowCapture` can record the tracker's POST at the browser
- * boundary. `instance_stats` is different: it is emitted by the **backend**.
+ *  - **Frontend-emitted** (`trackSchemaEvent` in `frontend/`): the browser's
+ *    tracker POSTs to the collector, so `installSnowplowCapture`
+ *    (support/search-snowplow.ts) intercepts it with `page.route`. That is what
+ *    every other snowplow-subject port uses, and it is unchanged.
+ *  - **Backend-emitted**: `stats.clj:1054` calls `track-event!
+ *    :snowplow/instance_stats`, which `snowplow.clj` hands to a Java `Tracker`
+ *    that POSTs via Apache HttpClient. It never passes through the browser, so
+ *    `page.route` can see nothing at all.
  *
- *   src/metabase/analytics/stats.clj:1054
- *     (analytics.event/track-event! :snowplow/instance_stats snowplow-data)
- *   src/metabase/analytics/snowplow.clj
- *     track-event! → .track on a Java `Tracker` → Apache HttpClient POST to
- *     `(analytics.settings/snowplow-url)`
+ * `POST /api/testing/stats` (`testing_api/api.clj` -> `phone-home-stats!`) is
+ * the backend-emitted case, so this spec asserts at `mb.snowplow` — the slot's
+ * own `node:http` collector, which the backend is booted pointing at
+ * (`support/worker-backend.ts`, `_JAVA_OPTIONS` -> `mb.snowplow.url`). Same
+ * vantage point Cypress gets from snowplow-micro, without micro's one global
+ * store on one fixed port.
  *
- * `POST /api/testing/stats` (`testing_api/api.clj:231` → `phone-home-stats!`)
- * therefore produces an HTTP POST **from the JVM**, which never passes through
- * the browser and cannot be intercepted by `page.route`.
+ * Assertion shape: upstream's `H.expectSnowplowEvent({ event: { event_name:
+ * "instance_stats" } })` matches micro's *enriched* record, not the unstruct
+ * payload — so this asserts on the derived event name, which
+ * `expectCollectedSnowplowEvent` reads back out of the Iglu schema URI exactly
+ * as micro does.
  *
- * Measured, not inferred (2026-07-20, slot 4105, jar 751c2a98): a plain node
- * HTTP server bound on the collector port received, ~1s after
- * `POST /api/testing/stats` returned 200, one
- * `POST /com.snowplowanalytics.snowplow/tp2` whose base64url `ue_px` decodes to
- * `iglu:com.metabase/instance_stats/jsonschema/2-0-0`. The browser made no such
- * request. So the event is real and correct — we simply have no seam to observe
- * it from.
+ * Known gap, same as the browser-side capture: `H.expectNoBadSnowplowEvents` is
+ * micro's Iglu schema validation. We have no Iglu validator, so
+ * `expectNoBadCollectedSnowplowEvents` is a structural check only.
  *
- * Why we cannot just point the collector at a test-owned server
- * ------------------------------------------------------------
- * `snowplow.clj` creates the tracker in a `defonce`, and `network-config`
- * reads `snowplow-url` at that moment:
- *
- *   (defonce ^:private tracker (Snowplow/createTracker ... (network-config) ...))
- *
- * The collector URL is therefore **fixed at backend boot**. Writing the
- * `snowplow-url` setting from a test has no effect on where events go, so the
- * usual "stand up a local collector and re-point the client" trick — the one
- * `installSnowplowCapture` uses for the FE — is unavailable.
- *
- * The one thing that *would* work is a harness change: boot each slot backend
- * with `MB_SNOWPLOW_URL=http://localhost:<per-slot collector port>` and have
- * the spec bind that port. That means editing `support/worker-backend.ts`, a
- * shared module this port is not allowed to touch, so it is written up as a
- * follow-up (findings-inbox/instance-stats-snowplow.md) rather than done here.
- * Binding the collector port from inside the spec without the harness change is
- * NOT an option: the port is global, five slots share the box, and on a clean
- * backend (and in CI) `snowplow-url` is not a localhost URL at all — the jar's
- * default is `https://sp.metabase.com`. A spec that silently skips whenever the
- * env var happens to be absent is the "green run that never executed" failure
- * shape from FINDINGS #49.
- *
- * Why upstream passes: snowplow-micro IS such an external collector, running at
- * the boot-fixed `http://localhost:9090`, and Cypress polls its `/micro/good`
- * store over HTTP. The Cypress spec is not doing anything Playwright can't do;
- * it depends on a container at a URL the backend was booted against. PORTING
- * deliberately rejected micro for the ports (one global store that
- * `resetSnowplow` wipes, shared by every parallel slot) — that trade is right
- * for FE-emitted events and is exactly what leaves this spec stranded.
- *
- * Scope of what was NOT verified: the Cypress original was not run, because the
- * probe above already establishes the only fact in dispute (where the event
- * goes). No claim is made here about the app's behaviour — the event fires,
- * with the right schema.
- *
- * Other port notes, for whoever un-fixmes this:
- * - Upstream's first test is `@OSS`-tagged, so on the spike's EE jar it would
- *   gate-skip via `isOssBackend` (PORTING wave-5 gotcha). The second is
- *   untagged and runs. The two test bodies are otherwise identical.
- * - `H.expectSnowplowEvent({ event: { event_name: "instance_stats" } })` matches
- *   against micro's enriched record, NOT the unstruct payload — it is
- *   `expectSnowplowEvent`, not `expectUnstructuredSnowplowEvent`. Any
- *   collector-side port must therefore assert on the derived `event_name`
- *   (or, equivalently, the `iglu:com.metabase/instance_stats/...` schema URI in
- *   the raw payload) rather than on `data.data`.
- * - `H.expectNoBadSnowplowEvents()` is micro's Iglu schema validation, which
- *   `support/search-snowplow.ts` can only degrade to a structural check. A
- *   collector-side port has the same gap.
+ * Port note: upstream's first test is `@OSS`-tagged. Playwright has no tag
+ * filtering, so it probes the backend with `isOssBackend` (PORTING wave-5
+ * gotcha); on the spike's EE jar it skips, and the second, untagged test runs.
+ * The two bodies are otherwise identical.
  */
+import { isOssBackend } from "../support/admin";
 import { test } from "../support/fixtures";
+import {
+  expectCollectedSnowplowEvent,
+  expectNoBadCollectedSnowplowEvents,
+} from "../support/snowplow-collector";
 
 test.describe("scenarios > stats > snowplow", () => {
-  test.fixme(
-    "should send a snowplow event when the stats ping is triggered on OSS",
-    async () => {
-      // Upstream: @OSS-tagged. See header — backend-emitted event, unobservable
-      // from the browser with the current harness.
-    },
-  );
+  test.beforeEach(async ({ mb }) => {
+    await mb.restore();
+    // Port of H.resetSnowplow (micro/reset) — scoped to this slot's collector,
+    // so parallel slots cannot wipe each other's events.
+    mb.snowplow.reset();
+    await mb.signInAsAdmin();
+    // Port of H.enableTracking().
+    await mb.api.updateSetting("anon-tracking-enabled", true);
+  });
 
-  test.fixme(
-    "should send a snowplow event when the stats ping is triggered on EE",
-    async () => {
-      // See header — backend-emitted event, unobservable from the browser with
-      // the current harness.
-    },
-  );
+  test.afterEach(async ({ mb }) => {
+    expectNoBadCollectedSnowplowEvents(mb.snowplow);
+  });
+
+  test("should send a snowplow event when the stats ping is triggered on OSS", async ({
+    mb,
+  }) => {
+    test.skip(!(await isOssBackend(mb.api)), "upstream @OSS-tagged");
+    await mb.api.post("/api/testing/stats", undefined, { timeout: 120_000 });
+    await expectCollectedSnowplowEvent(mb.snowplow, "instance_stats");
+  });
+
+  test("should send a snowplow event when the stats ping is triggered on EE", async ({
+    mb,
+  }) => {
+    await mb.api.post("/api/testing/stats", undefined, { timeout: 120_000 });
+    await expectCollectedSnowplowEvent(mb.snowplow, "instance_stats");
+  });
 });

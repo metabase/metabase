@@ -1165,15 +1165,45 @@ evidence isn't worth making.
     `POST /api/testing/stats` returned 200, with zero browser traffic. **The app
     is fine; there is no seam to observe it from.**
 
-    The two tests are `test.fixme`'d rather than faked. Re-pointing the collector
-    per-test is impossible — `snowplow.clj` builds the tracker in a `defonce`
-    whose `network-config` reads `snowplow-url` **once at backend boot** — so the
-    fix is a harness change (`MB_SNOWPLOW_URL=http://localhost:<per-slot port>`
-    in `worker-backend.ts`). Doing it from inside the spec was explicitly
-    rejected: the collector port is global across five slots, and on a clean or
-    CI backend `snowplow-url` defaults to `https://sp.metabase.com`, so the
-    "fix" would both degrade to a #49 green-that-never-ran **and fire real events
-    at Metabase's production collector**. Correctly left undone.
+    The two tests were `test.fixme`'d rather than faked, and re-pointing the
+    collector per-test is impossible — `snowplow.clj` builds the tracker in a
+    `defonce` whose `network-config` reads `snowplow-url` **once at backend
+    boot** — so the fix had to be a harness change.
+
+    **RESOLVED 2026-07-20 — a per-slot collector now exists** (`support/snowplow-collector.ts`,
+    wired in `worker-backend.ts` + `fixtures.ts`): a `node:http` server in the
+    Playwright process on `backend port + 1000`, started before the slot backend
+    spawns. It restores micro's vantage point (downstream of everything, so it
+    sees backend-emitted events) without micro's one-store-on-one-fixed-port
+    contention. `instance-stats-snowplow` is un-fixme'd and passing;
+    `installSnowplowCapture` is untouched and the two coexist. See
+    `findings-inbox/per-slot-snowplow-collector.md`.
+
+    ⚠️ **Two claims in the original version of this entry were WRONG and are
+    retracted** (measured during the fix):
+    - **`MB_SNOWPLOW_URL` does not work.** `environ` merges system properties
+      *after* env vars, and `deps.edn`'s `:e2e` alias pins
+      `-Dmb.snowplow.url` via `JDK_JAVA_OPTIONS`. `_JAVA_OPTIONS` is what wins,
+      because it is applied after the command line. The `MB_SITE_URL` pattern
+      does **not** generalise — site-url simply isn't pinned as a system property.
+    - **"A clean or CI backend would fire real events at
+      `https://sp.metabase.com`" is false.** The `:e2e` alias also sets
+      `-Dmb.run.mode=e2e`, so `config/is-prod?` is **false** for slot backends
+      and that default never applied. A clean-shell boot reports
+      `localhost:9090`. **Nothing was escaping to production**, and the
+      safety argument that was made for this change does not hold. The real
+      benefit is narrower: previously all five slots emitted to one fixed port
+      (interleaving into a store any slot could wipe, or vanishing silently when
+      micro was down); now each slot owns its collector.
+
+    Also landed: `expectNoBadSnowplowEvents` is now **real** on the collector
+    path — `ajv` against the schemas vendored in `snowplow/iglu-client-embedded`,
+    verified inside a Playwright worker (valid passes; `analytics_uuid: 12345`
+    fails `must be string`; an unknown schema URI is reported, not skipped). This
+    closes the Iglu gap #62 recorded, **for the collector path only** — the
+    browser-side check in `search-snowplow.ts` was deliberately left alone, since
+    retrofitting it would change assertion strength across ~26 landed tests and
+    deserves its own verification pass.
 
 ### Capability: `page.clock` reaches into embed iframes
 

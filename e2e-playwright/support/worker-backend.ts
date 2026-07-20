@@ -6,16 +6,26 @@
  * Enabled with PW_PER_WORKER_BACKEND=1. Reuses e2e/runner/start-backend.js
  * (source mode, --hot), so the shared rspack dev server on :8080 must be up.
  */
-import { spawn, ChildProcess } from "child_process";
+import { execSync, spawn, ChildProcess } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
+
+import { SnowplowCollector, collectorPortFor } from "./snowplow-collector";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
 export type WorkerBackend = {
   port: number;
   startupMs: number;
+  /**
+   * This slot's private Snowplow collector. The backend is booted pointing at
+   * it, so BACKEND-emitted events (`analytics/snowplow.clj track-event!`, which
+   * POSTs from the JVM and never touches the browser) are observable here.
+   * Frontend-emitted events keep being captured at the browser boundary by
+   * `installSnowplowCapture` — the two mechanisms are independent.
+   */
+  snowplow: SnowplowCollector;
   /**
    * H2 connection string for this worker's private copy of the sample
    * database. The snapshots pin database 1 to the shared e2e/tmp H2 file,
@@ -131,23 +141,80 @@ async function warmUp(port: number, sampleDbUrl: string) {
   throw new Error(`Backend on :${port} failed warm-up query after 300s`);
 }
 
+/**
+ * Whether an already-running backend is pointed at this slot's collector.
+ *
+ * `snowplow-url` is fixed at backend boot — `snowplow.clj` builds its `Tracker`
+ * in a `defonce` whose `network-config` reads the setting once — so a backend
+ * booted without the wiring below can never be re-pointed. Reusing one would
+ * leave every backend-event assertion silently unobservable (and, worse, send
+ * its events wherever it was booted to). Cheaper to detect and reboot.
+ */
+async function pointsAtCollector(port: number, collectorUrl: string) {
+  try {
+    const response = await fetch(
+      `http://localhost:${port}/api/session/properties`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    if (!response.ok) {
+      return false;
+    }
+    const properties = (await response.json()) as Record<string, unknown>;
+    return properties["snowplow-url"] === collectorUrl;
+  } catch {
+    return false;
+  }
+}
+
+function killPort(port: number) {
+  try {
+    const pids = execSync(`lsof -ti:${port}`, { encoding: "utf8" })
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    for (const pid of pids) {
+      process.kill(Number(pid), "SIGKILL");
+    }
+  } catch {
+    // nothing listening
+  }
+}
+
 export async function startWorkerBackend(
   slot: number,
 ): Promise<WorkerBackend> {
   const port = 4100 + slot;
   const nreplPort = 4600 + slot;
+  const collectorPort = collectorPortFor(port);
+
+  // Start the collector BEFORE the backend can exist, so nothing emitted
+  // during boot (e.g. `account`/`new_instance_created`, which fires the first
+  // time the `instance-creation` setting is read) escapes unobserved.
+  const snowplow = new SnowplowCollector();
+  await snowplow.start(collectorPort);
+  const collectorUrl = snowplow.url;
 
   try {
     const response = await fetch(`http://localhost:${port}/api/health`, {
       signal: AbortSignal.timeout(1000),
     });
-    if (response.ok) {
+    if (response.ok && (await pointsAtCollector(port, collectorUrl))) {
       return {
         port,
         startupMs: 0,
         sampleDbUrl: slotSampleDbUrl(slot),
+        snowplow,
         stop: () => {},
       };
+    }
+    if (response.ok) {
+      // Healthy, but booted against some other collector (a pre-change slot
+      // backend, or one carrying leaked MB_SNOWPLOW_URL). Replace it.
+      console.log(
+        `[slot ${slot}] backend on :${port} is not pointed at ${collectorUrl} — rebooting it`,
+      );
+      killPort(port);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   } catch {
     // nothing on this slot yet — boot one
@@ -202,6 +269,37 @@ export async function startWorkerBackend(
       // shared cwd-relative plugins/ dir — give each backend its own.
       MB_PLUGINS_DIR: path.join(scratch, "plugins"),
       NREPL_PORT: String(nreplPort),
+      // Point this slot's backend at its OWN snowplow collector.
+      //
+      // Why a system property and not MB_SNOWPLOW_URL: settings resolve through
+      // `environ`, whose `env` map is `(merge … (read-system-env)
+      // (read-system-props))` — system properties WIN over environment
+      // variables. `deps.edn`'s `:e2e` alias already sets
+      // `-Dmb.snowplow.url=http://localhost:9090` (snowplow-micro's fixed port),
+      // and `e2e/runner/cypress-runner-backend.js` applies that alias's jvm-opts
+      // via JDK_JAVA_OPTIONS in BOTH jar and source mode — and overwrites
+      // JDK_JAVA_OPTIONS unconditionally, so we cannot append there either.
+      // MEASURED (slot 4101, jar 751c2a98): booting with
+      // MB_SNOWPLOW_URL=http://localhost:5999 left `snowplow-url` reporting
+      // `http://localhost:9090`; booting with the `_JAVA_OPTIONS` below made it
+      // report `http://localhost:5101`. `_JAVA_OPTIONS` is the one channel the
+      // JVM applies AFTER the command line, so it wins over the alias.
+      //
+      // Two things this buys, beyond making backend events observable:
+      //  - Isolation: micro has ONE global store on ONE fixed port, which
+      //    `resetSnowplow` wipes; per-slot collectors cannot trample each other.
+      //  - Safety: nothing this backend emits can leave the machine. See
+      //    findings-inbox/per-slot-snowplow-collector.md.
+      //
+      // `mb.snowplow.available` is already true via the same alias; it is
+      // repeated here so the wiring does not depend on that staying true.
+      _JAVA_OPTIONS: [
+        process.env._JAVA_OPTIONS,
+        `-Dmb.snowplow.url=${collectorUrl}`,
+        "-Dmb.snowplow.available=true",
+      ]
+        .filter(Boolean)
+        .join(" "),
       // On memory-tight CI runners, cap each worker JVM's heap (deps.edn's
       // :e2e opts set no -Xmx, so JAVA_TOOL_OPTIONS survives; JVM default
       // would be 25% of machine RAM per backend). e.g. PW_WORKER_MAX_HEAP=1500m
@@ -288,6 +386,7 @@ export async function startWorkerBackend(
     port,
     startupMs: Date.now() - startedAt,
     sampleDbUrl,
+    snowplow,
     stop: () => {
       // start-backend.js spawns the JVM detached in its own group; kill the
       // whole group so the JVM dies with the wrapper.
