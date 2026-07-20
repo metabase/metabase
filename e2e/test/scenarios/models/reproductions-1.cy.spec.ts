@@ -238,10 +238,30 @@ describe("issue 23103", () => {
     cy.wait("@modelQuery");
     H.tableInteractiveBody().should("be.visible");
 
-    cy.findAllByTestId("header-cell")
-      .contains("Category")
-      .should("be.visible")
-      .realHover();
+    // realHover fires a single mouseenter. If a late re-render (e.g. fingerprint
+    // metadata attaching to the header) lands between the hover and Mantine
+    // opening its HoverCard, the card never appears and H.hovercard()'s retry
+    // can't recover — the pointer never physically re-enters the cell. So keep
+    // re-hovering (moving the pointer away and back so a fresh mouseenter fires
+    // against the settled node) until the HoverCard is actually open.
+    const openCategoryHovercard = (remaining = 6) => {
+      cy.findAllByTestId("header-cell")
+        .contains("Category")
+        .should("be.visible")
+        .realHover();
+
+      cy.get("body").then(($body) => {
+        const isOpen =
+          $body.find(".mb-mantine-HoverCard-dropdown[role='dialog']:visible")
+            .length > 0;
+        if (!isOpen && remaining > 0) {
+          cy.get("body").realHover({ position: "topLeft" });
+          openCategoryHovercard(remaining - 1);
+        }
+      });
+    };
+
+    openCategoryHovercard();
 
     H.hovercard().findByText("4 distinct values").should("be.visible");
   });
