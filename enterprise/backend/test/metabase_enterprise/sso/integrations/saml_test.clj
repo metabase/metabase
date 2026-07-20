@@ -10,6 +10,7 @@
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -1224,6 +1225,21 @@
                (is (seq body-nonce)))
              (testing "Header nonce matches body script nonce"
                (is (= header-nonce body-nonce))))))))))
+
+(deftest successful-saml-login-does-not-log-pii-test
+  (testing "Successful SAML authentication should not log user's first or last name"
+    (with-saml-default-setup!
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.saml :info]]
+          ;; Mock SAML validation to run in-thread so log capture works (real HTTP calls don't convey dynamic bindings)
+          (with-redefs [saml/validate-response (constantly ::mock-response)
+                        saml/assertions (constantly [{:attrs {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" ["john@example.com"]
+                                                              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" ["John"]
+                                                              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" ["Doe"]}}])]
+            (let [result (auth-identity/authenticate :provider/saml {:request-method :post})]
+              (is (:success? result) "Authentication should succeed")
+              (is (not-any? #(re-find #"John|Doe" (:message %)) (log-messages))
+                  "Log messages should not contain user's first or last name"))))))))
 
 (deftest popup-csp-nonce-per-request-unique-test
   (testing "Each `/auth/sso` popup response carries a freshly generated nonce (no static reuse)."

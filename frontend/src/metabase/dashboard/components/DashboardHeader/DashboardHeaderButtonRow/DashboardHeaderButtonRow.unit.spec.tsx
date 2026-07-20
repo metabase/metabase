@@ -152,7 +152,7 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           refreshPeriod={null}
           onRefreshPeriodChange={jest.fn()}
@@ -169,7 +169,7 @@ const setup = ({
             isAnalyticsDashboard={isAnalyticsDashboard}
           />
         </MockDashboardContext>
-      )}
+      }
     ></Route>,
     {
       storeInitialState: {
