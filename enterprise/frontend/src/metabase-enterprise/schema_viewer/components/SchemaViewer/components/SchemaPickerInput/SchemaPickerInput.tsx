@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Button, FixedSizeIcon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
@@ -83,13 +83,13 @@ export function SchemaPickerInput({
         leftSection={
           <FixedSizeIcon
             name="database"
-            c={isInputEmpty ? "text-tertiary" : undefined}
+            c={isInputEmpty ? "text-disabled" : undefined}
           />
         }
         rightSection={
           <FixedSizeIcon
             name="chevrondown"
-            c={isInputEmpty ? "text-tertiary" : undefined}
+            c={isInputEmpty ? "text-disabled" : undefined}
           />
         }
         data-testid="schema-picker-button"

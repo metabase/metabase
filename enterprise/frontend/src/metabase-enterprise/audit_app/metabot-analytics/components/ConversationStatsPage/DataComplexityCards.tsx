@@ -74,7 +74,7 @@ function DataComplexityCardSkeleton() {
         <Skeleton h={14} />
       </Box>
       <Stack align="center" gap={0} my="sm">
-        <Skeleton h="4rem" w="30%" />
+        <Skeleton h="3rem" w="30%" />
       </Stack>
     </Card>
   );
@@ -99,22 +99,23 @@ function DataComplexityCard({
     }))
     .with("metabot", () => ({
       title: t`Metabot-visible layer`,
-      subtitle: t`The subset the internal Metabot can surface with its current scope.`,
+      subtitle: t`The subset the internal Metabot can see.`,
     }))
     .exhaustive();
 
   return (
     <Card withBorder shadow="none" p="md">
-      <UnstyledButton onClick={open}>
+      <Stack component={UnstyledButton} onClick={open} flex={1} gap={0}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
-          <Icon name="expand" c="text-tertiary" />
+          <Icon name="expand" c="text-disabled" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
         {catalog.score !== null ? (
-          <Stack align="center" gap="sm" my="sm">
+          <Stack align="center" gap="sm" pt="sm" mt="auto" mb="sm">
             <Text
-              size="4rem"
+              size="2.5rem"
+              lh="3rem"
               fw={700}
               c={RATING_TEXT_COLORS[catalog.rating ?? "default"]}
             >
@@ -123,12 +124,12 @@ function DataComplexityCard({
             <Text c="text-secondary">{catalog.rating_label}</Text>
           </Stack>
         ) : (
-          <Stack gap={4} my="sm">
-            <Text c="error" fw={700}>{t`Score unavailable`}</Text>
+          <Stack align="center" ta="center" gap={4} pt="sm" mt="auto" mb="sm">
+            <Text c="feedback-negative" fw={700}>{t`Score unavailable`}</Text>
             <Text c="text-secondary">{t`Open for component details.`}</Text>
           </Stack>
         )}
-      </UnstyledButton>
+      </Stack>
 
       <Modal
         opened={isModalOpen}
@@ -295,7 +296,7 @@ function DataComplexityComponentItem({
             {count}
           </Text>
           <Tooltip label={description}>
-            <Icon name="info" c="text-tertiary" size={14} />
+            <Icon name="info" c="text-disabled" size={14} />
           </Tooltip>
           <ScoreDisplayInline score={component} />
         </Flex>
@@ -306,7 +307,7 @@ function DataComplexityComponentItem({
         </Text>
         {match(component)
           .with({ error: P.nonNullable }, ({ error }) => (
-            <Text c="error" size="sm" role="alert">
+            <Text c="feedback-negative" size="sm" role="alert">
               {error}
             </Text>
           ))
@@ -383,7 +384,7 @@ function ScoreDisplayInline({
 } & MantineStyleProps) {
   return match(score)
     .with({ score: P.nullish }, { error: P.nonNullable }, () => (
-      <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
+      <Text c="feedback-negative" fw={700} lh="1rem" ml="auto" {...rest}>
         {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
     ))

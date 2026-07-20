@@ -9,6 +9,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
@@ -20,8 +21,9 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -30,7 +32,7 @@
 (set! *warn-on-reflection* true)
 
 (System/setProperty "clickhouse.jdbc.v2" "true")
-(driver/register! :clickhouse :parent #{:sql-jdbc})
+(driver/register! :clickhouse :parent #{:sql-mbql5 :sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
@@ -55,6 +57,11 @@
                               :expressions/float                true
                               :expressions/integer              true
                               :expressions/text                 true
+                              ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
+                              ;; clause at creation, while data-skipping indexes are added as separate statements after.
+                              :index/fetch                      true
+                              :index/inline-create              true
+                              :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
                               :now                              true
@@ -250,31 +257,163 @@
   ;; filenames as table/column names. But its an approximation
   206)
 
+(defn- escape-ident
+  ;; Backslash-escape rather than double the backtick: ClickHouse identifiers follow string-literal escaping, where
+  ;; a preceding backslash would defeat quote-doubling.
+  [s]
+  (-> s
+      (str/replace "\\" "\\\\")
+      (str/replace "`" "\\`")))
+
 (defn- quote-name [s]
   (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
         parts (filter identity (str/split (name s) #"\."))]
-    (str/join "." (map #(str "`" % "`") parts))))
+    (str/join "." (map #(str "`" (escape-ident %) "`") parts))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; ClickHouse exercises both index lifecycles. ORDER BY (the MergeTree sorting key) is inlined into the table at
+;; creation, so it is rendered at both creation seams: the CTAS in `compile-transform` (SQL transforms) and the
+;; CREATE TABLE in `create-table!` (Python transforms). A data-skipping index is applied afterwards as a separate
+;; statement via `compile-create-index`.
+
+(defmethod driver/supported-index-methods :clickhouse
+  [_driver _database]
+  {:order-by   {:lifecycle    :inline
+                :display-name (deferred-tru "Sorting key")
+                :fields       [driver.common/index-columns-field]}
+   :skip-index {:lifecycle    :standalone
+                :display-name (deferred-tru "Skip index")
+                :fields       [driver.common/index-name-field
+                               driver.common/index-columns-field
+                               {:name         "type"
+                                :display-name (deferred-tru "Type")
+                                :type         :select
+                                :required     true
+                                ;; only arg-free types; set/ngrambf_v1/tokenbf_v1 need params the form can't supply yet
+                                :options      [{:name (deferred-tru "Min/max")      :value "minmax"}
+                                               {:name (deferred-tru "Bloom filter") :value "bloom_filter"}]}
+                               driver.common/index-granularity-field]}})
+
+(defn- order-by-columns
+  "Columns for the MergeTree ORDER BY: the inline `:order-by` index's columns when present, else the primary key (the
+  existing behavior). Returns a seq of column-name strings."
+  [{:keys [primary-key indexes]}]
+  (or (some->> indexes (filter (comp #{:order-by} :kind)) first :columns (map :name) seq)
+      primary-key))
+
+(defn- order-by-clause
+  "Render `ORDER BY (...)` for the given table opts. MergeTree requires an ORDER BY; with no order-by index and no
+  primary key it is the empty tuple `ORDER BY ()` (an unsorted table)."
+  [opts]
+  (format "ORDER BY (%s)" (str/join ", " (map quote-name (order-by-columns opts)))))
+
+(defn- allow-nullable-key-setting
+  "The `allow_nullable_key = 1` MergeTree setting, or nil when there's no sorting key. Transform target columns are
+  nullable, and MergeTree rejects a nullable sorting key without this."
+  [opts]
+  (when (seq (order-by-columns opts))
+    "allow_nullable_key = 1"))
+
+(defn- skip-index-type-sql
+  [type type-args]
+  (if (seq type-args)
+    (format "%s(%s)" (name type) (str/join ", " type-args))
+    (name type)))
+
+(defmethod driver/compile-create-index :clickhouse
+  [_driver schema table {index-name :name, :keys [columns type type-args granularity if-not-exists]}]
+  ;; A data-skipping index needs two statements: ADD INDEX registers it (metadata only, applies to new parts), then
+  ;; MATERIALIZE INDEX backfills it over the existing parts.
+  (let [target (quote-name (if (seq schema) (keyword schema table) (keyword table)))
+        idx    (quote-name index-name)
+        expr   (str/join ", " (map (comp quote-name :name) columns))]
+    [[(format "ALTER TABLE %s ADD INDEX %s%s (%s) TYPE %s GRANULARITY %d"
+              target (if if-not-exists "IF NOT EXISTS " "") idx expr
+              (skip-index-type-sql type type-args) (or granularity 1))]
+     [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
+
+(defn- strip-wrapping-parens
+  "Drop one `(...)` that wraps the whole expression (a skip-index `expr` has one, a sorting key doesn't)."
+  [^String s]
+  (cond-> s (and (str/starts-with? s "(") (str/ends-with? s ")")) (subs 1 (dec (count s)))))
+
+(defn- expr->columns
+  "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. A quoted name like
+  `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
+  [expr]
+  (if-let [s (perf/not-empty expr)]
+    (perf/mapv #(driver.common/unquote-ident (str/trim %) \`)
+               (driver.common/split-top-level-commas (strip-wrapping-parens s)))
+    []))
+
+;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
+;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
+(defmethod driver/fetch-table-indexes :clickhouse
+  [_driver database schema table]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        db        (perf/not-empty schema)
+        skip-idxs (->> (jdbc/query
+                        conn-spec
+                        [(str "SELECT name, type, type_full, expr, granularity "
+                              "FROM system.data_skipping_indices "
+                              "WHERE database = coalesce(?, currentDatabase()) AND table = ? "
+                              "ORDER BY name")
+                         db table])
+                       (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
+                                    {:name              name
+                                     :kind              :skip-index
+                                     :access-method     type
+                                     :is-unique         false
+                                     :is-primary        false
+                                     :is-valid          true
+                                     :key-columns       (expr->columns expr)
+                                     :include-columns   []
+                                     :partial-predicate nil
+                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                                name expr type_full granularity)})))
+        sorting   (-> (jdbc/query
+                       conn-spec
+                       [(str "SELECT sorting_key FROM system.tables "
+                             "WHERE database = coalesce(?, currentDatabase()) AND name = ?")
+                        db table])
+                      first :sorting_key)]
+    (cond-> skip-idxs
+      (perf/not-empty sorting) (conj {:name              nil
+                                      :kind              :order-by
+                                      :access-method     nil
+                                      :is-unique         false
+                                      :is-primary        false
+                                      :is-valid          true
+                                      :key-columns       (expr->columns sorting)
+                                      :include-columns   []
+                                      :partial-predicate nil
+                                      :definition        (format "ORDER BY (%s)" sorting)}))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
-  [_driver table-name column-definitions & {:keys [primary-key] :as opts}]
+  [_driver table-name column-definitions & {:as opts}]
   (str/join "\n"
             [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
              "ENGINE = MergeTree"
-             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
-             ;; disable insert idempotency to allow duplicate inserts
-             "SETTINGS replicated_deduplication_window = 0"]))
+             (order-by-clause opts)
+             ;; disable insert idempotency to allow duplicate inserts; permit a nullable sorting key (see
+             ;; `allow-nullable-key-setting`).
+             (str "SETTINGS replicated_deduplication_window = 0"
+                  (when-let [s (allow-nullable-key-setting opts)] (str ", " s)))]))
 
 (defmethod driver/create-table! :clickhouse
-  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  [driver db-id table-name column-definitions & {:as opts}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    db-id
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+       (let [sql (create-table!-sql driver table-name column-definitions opts)]
          (.execute stmt sql))))))
 
 ;; rename-tables!* only supported by the atomic engine
@@ -367,14 +506,15 @@
         (str/starts-with? msg "Code: 81"))))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [query output-table]}]
+  [driver {:keys [query output-table indexes]}]
   (let [{sql-query :query sql-params :params} query
-        pieces [(sql.qp/format-honeysql driver {:create-table output-table})
-                ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
-                ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
-                (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
-                ["AS"]
-                [sql-query sql-params]]
+        ;; A sorting key needs `allow_nullable_key`; the SETTINGS clause has to go before `AS SELECT`.
+        settings (when-let [s (allow-nullable-key-setting {:indexes indexes})]
+                   (sql.qp/format-honeysql driver {:raw (str "SETTINGS " s)}))
+        pieces (cond-> [(sql.qp/format-honeysql driver {:create-table output-table})
+                        (sql.qp/format-honeysql driver {:raw (order-by-clause {:indexes indexes})})]
+                 settings (conj settings)
+                 :always  (conj ["AS"] [sql-query sql-params]))
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
 
@@ -407,34 +547,48 @@
 ;;; ------------------------------------------ Workspace Isolation ------------------------------------------
 
 (defmethod driver/init-workspace-isolation! :clickhouse
-  [_driver database workspace]
-  (let [db-name             (driver.u/workspace-isolation-namespace-name workspace)
+  [driver database workspace]
+  (let [db-name             (:schema workspace)
         canonical-db        (:db (driver.conn/effective-details database))
-        read-user           {:user     (driver.u/workspace-isolation-user-name workspace)
-                             :password (driver.u/random-workspace-password)}
+        read-user           (:database_details workspace)
         quoted-db           (quote-schema db-name)
         quoted-user         (quote-field (:user read-user))
         quoted-canonical-db (when-not (str/blank? canonical-db)
                               (quote-schema canonical-db))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
-                             (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
-                                     quoted-user (:password read-user))
-                             (format "GRANT ALL ON %s.* TO %s" quoted-db quoted-user)]
-                      quoted-canonical-db
-                      (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
-                                    quoted-canonical-db quoted-user)))]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions t [(:password read-user)]))))))
-    {:schema           db-name
-     :database_details read-user}))
+    ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
+    ;; immediately. Failure recovery is compensation via the idempotent destroy.
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
+                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                                      quoted-user (:password read-user))
+                              ;; the user may survive a failed teardown; without this it would keep
+                              ;; its old password while the new one gets persisted
+                              (format "ALTER USER %s IDENTIFIED BY '%s'"
+                                      quoted-user (:password read-user))
+                              ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
+                              ;; owner auto-privileges, so grant each verb explicitly):
+                              ;;   SELECT       - read its own tables
+                              ;;   INSERT       - CTAS populate + incremental insert
+                              ;;   CREATE TABLE - transform target
+                              ;;   DROP TABLE   - swap/cleanup
+                              ;; (these four also satisfy the atomic-swap RENAME TABLE.)
+                              (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
+                                      quoted-db quoted-user)]
+                       quoted-canonical-db
+                       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
+                                     quoted-canonical-db quoted-user)))]
+           (.addBatch ^Statement stmt ^String sql))
+         (try
+           (.executeBatch ^Statement stmt)
+           (catch Throwable t
+             (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
+    nil))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
         quoted-user    (quote-field read-user-name)]
     (when-not read-user-name
@@ -450,25 +604,29 @@
                  (format "GRANT SELECT ON %s.* TO %s"
                          (quote-schema schema)
                          quoted-user))]
-      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-        (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql sqls]
-            (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver database {:write? true}
+       (fn [^Connection conn]
+         (with-open [stmt (.createStatement conn)]
+           (doseq [sql sqls]
+             (.addBatch ^Statement stmt ^String sql))
+           (.executeBatch ^Statement stmt)))))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
-  [_driver database workspace]
-  (let [db-name      (driver.u/workspace-isolation-namespace-name workspace)
-        username     (driver.u/workspace-isolation-user-name workspace)
+  [driver database workspace]
+  (let [db-name      (:schema workspace)
+        username     (-> workspace :database_details :user)
         quoted-db    (quote-schema db-name)
         quoted-user  (quote-field username)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql [;; DROP DATABASE cascades to all tables within it
-                     (format "DROP DATABASE IF EXISTS %s" quoted-db)
-                     (format "DROP USER IF EXISTS %s" quoted-user)]]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [sql [;; DROP DATABASE cascades to all tables within it
+                      (format "DROP DATABASE IF EXISTS %s" quoted-db)
+                      (format "DROP USER IF EXISTS %s" quoted-user)]]
+           (.addBatch ^Statement stmt ^String sql))
+         (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")

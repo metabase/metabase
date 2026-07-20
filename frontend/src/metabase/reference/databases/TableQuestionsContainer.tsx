@@ -4,13 +4,14 @@ import { Component } from "react";
 
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -101,7 +102,12 @@ class TableQuestionsContainer extends Component<TableQuestionsContainerProps> {
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(TableQuestionsContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
+    // Unjustified type cast. FIXME
+    TableQuestionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
+);

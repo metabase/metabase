@@ -21,6 +21,7 @@ export * from "./SegmentedControl";
 export * from "./Select";
 export * from "./Slider";
 export * from "./Switch";
+export * from "./TagsInput";
 export * from "./Textarea";
 export * from "./TextareaBlurChange";
 export * from "./TextInput";

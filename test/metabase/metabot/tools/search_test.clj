@@ -434,7 +434,7 @@
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
 (deftest enrich-with-portable-entity-ids-test
-  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
@@ -500,16 +500,16 @@
               (is (= 3 (count results))))))))))
 
 (deftest entity-refs->search-results-same-card-two-types-test
-  (testing "a card referenced under two type strings hydrates to one record per ref (neither is dropped)"
+  (testing "a card referenced under two (possibly stale) type strings collapses to one record with its current type"
     (mt/with-test-user :crowberto
-      (mt/with-temp [:model/Card {c-id :id} {:name "Dual Typed"
+      (mt/with-temp [:model/Card {c-id :id} {:name "Dual Typed" :type :model
                                              :database_id (mt/id) :table_id (mt/id :orders)
                                              :dataset_query {:database (mt/id) :type :query
                                                              :query {:source-table (mt/id :orders)}}}]
         (let [results (search/entity-refs->search-results
                        [{:model "model" :id c-id} {:model "metric" :id c-id}])]
-          (is (= #{["model" c-id] ["metric" c-id]}
-                 (set (map (juxt :type :id) results)))))))))
+          (is (= [["model" c-id]] (map (juxt :type :id) results))
+              "one record, carrying the card's current type"))))))
 
 (deftest entity-refs->search-results-respects-read-perms-test
   (testing "hydration drops entities the current user can't read — a curated entry may point at a restricted one"
@@ -530,7 +530,7 @@
 
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
-                "`source-table:` without a separate entity_details call. We look up\n"
+                "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
                 "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
                 "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"
@@ -601,3 +601,13 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+(deftest card-ref-hydration-emits-current-string-type-test
+  (testing "a card ref hydrates to the Card's CURRENT type as a string — not the stale ref type, not a keyword"
+    ;; regression: a stale index hit across a metric<->model relabel must describe the entity by its current
+    ;; shape, and the type must be the agent-facing string (a :model keyword breaks entity-class + enrichers).
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+        (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
+          (is (= "model" (:type result)))
+          (is (string? (:type result))))))))

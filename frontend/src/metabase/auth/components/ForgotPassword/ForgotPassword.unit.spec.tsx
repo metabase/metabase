@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupForgotPasswordEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -7,8 +6,11 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route, withRouteProps } from "metabase/router";
 
 import { ForgotPassword } from "./ForgotPassword";
+
+const RoutedForgotPassword = withRouteProps(ForgotPassword);
 
 const TEST_EMAIL = "user@metabase.test";
 
@@ -28,7 +30,7 @@ const setup = ({ isEmailConfigured, isLdapEnabled }: SetupOpts) => {
   setupForgotPasswordEndpoint();
 
   renderWithProviders(
-    <Route path="/auth/forgot_password" component={ForgotPassword} />,
+    <Route path="/auth/forgot_password" element={<RoutedForgotPassword />} />,
     {
       storeInitialState: state,
       withRouter: true,

@@ -52,6 +52,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
   // Handle sort column click
   const handleSort = useCallback(
     (columnName: string, direction: SortDirection) => {
+      // Unjustified type cast. FIXME
       setSortColumn(columnName as CacheSortColumn);
       setSortDirection(direction);
       resetPage();
@@ -273,7 +274,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-tertiary">
+  <Center fw="bold" c="text-disabled">
     {t`No dashboards or questions have their own caching policies yet.`}
   </Center>
 );

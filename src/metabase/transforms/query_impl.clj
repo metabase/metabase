@@ -51,7 +51,7 @@
            (tracing/with-span :tasks "task.transform.query"
              {:transform/id                   id
               :transform/target-type          (name target-type)
-              :transform/incremental          (= :table-incremental target-type)
+              :transform/incremental          (transforms-base.u/incremental-target? transform)
               :transform/full-incremental-run (transforms-base.u/full-incremental-run? transform)
               :db/id                          (:id db)
               :db/engine                      (name driver)}

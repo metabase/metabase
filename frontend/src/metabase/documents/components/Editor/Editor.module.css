@@ -25,6 +25,13 @@
   line-height: 1.5;
 }
 
+@media print {
+  .editorContent :global(.ProseMirror) {
+    margin-inline: 0;
+    max-width: none;
+  }
+}
+
 /* Apply typography styles only to elements NOT inside .editor-style-boundary */
 .editorContent
   :global(.ProseMirror)
@@ -192,7 +199,7 @@
 
 .editorContent :global(.is-empty:first-child:before),
 .editorContent :global(.node-paragraph.is-empty:first-child:before) {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   content: attr(data-placeholder);
   float: left;
   height: 0;

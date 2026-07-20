@@ -224,8 +224,6 @@
     ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
     ;; its feature is present, so the precomputed flag is already feature-correct.
     :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
-    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
-    :has-temporal-dim        {:type :single-value :engine :appdb}
     :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
@@ -341,19 +339,19 @@
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
   Keep in sync with the frontend `SearchContext` type (frontend/src/metabase-types/api/search.ts).
   Give every value a comment naming the surface that issues it."
-  [:search-bar          ; the global navbar search typeahead
-   :search-app          ; the full-page search results app
-   :command-palette     ; the ⌘K command palette
-   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
-   :data-picker         ; picking a data source (table/model/metric) while building a query
-   :type-filter         ; the search type-filter dropdown's available-models lookup
-   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
+  [:basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
    :browse              ; the Browse models / Browse metrics pages
-   :embedding-setup     ; embedding/SDK setup and preview resource selection
-   :document            ; entity references embedded in documents
-   :library             ; the data-studio Library page (EE)
+   :command-palette     ; the ⌘K command palette
+   :data-picker         ; picking a data source (table/model/metric) while building a query
    :dependencies        ; the dependency-graph entry search (EE)
-   :model-migration])   ; the migrate-models admin page (EE)
+   :document            ; entity references embedded in documents
+   :embedding-setup     ; embedding/SDK setup and preview resource selection
+   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
+   :library             ; the data-studio Library page (EE)
+   :model-migration     ; the migrate-models admin page (EE)
+   :search-app          ; the full-page search results app
+   :search-bar          ; the global navbar search typeahead
+   :type-filter])       ; the search type-filter dropdown's available-models lookup
 
 (def ^:private non-ui-contexts
   "Search `context` values for non-frontend callers.
@@ -464,8 +462,6 @@
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
-   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]
    [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string

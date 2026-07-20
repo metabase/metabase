@@ -1,4 +1,4 @@
-(ns metabase.query-processor.card-test
+(ns ^:mb/driver-tests metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.queries-rest.api.card-test]]."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
@@ -223,14 +223,15 @@
 
 (deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
-    (mt/with-temp [:model/Card card {:dataset_query
-                                     (mt/mbql-query venues
-                                       {:aggregation [[:count]]})
-                                     :display :pivot}]
-      (let [result (run-query-for-card card)]
-        (is (=? {:status :completed}
-                result))
-        (is (= [[100]] (mt/rows result)))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/with-temp [:model/Card card {:dataset_query
+                                       (mt/mbql-query venues
+                                         {:aggregation [[:count]]})
+                                       :display :pivot}]
+        (let [result (run-query-for-card card)]
+          (is (=? {:status :completed}
+                  result))
+          (is (= [[100]] (mt/rows result))))))))
 
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
@@ -271,6 +272,17 @@
                 (is (mi/can-read? child-card))
                 (is (= [[1] [2]]
                        (mt/rows (process-query-for-card child-card))))))))))))
+
+(deftest ^:parallel archived-source-card-still-queryable-test
+  (testing "a card whose source is an archived card can still be run (#52071)"
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :archived      true
+                                               :dataset_query (lib/query (mt/metadata-provider)
+                                                                         (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                   :model/Card child-card {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (lib/query mp (lib.metadata/card mp model-id)))}]
+      (is (=? {:status :completed}
+              (run-query-for-card child-card))))))
 
 (deftest ^:parallel updates-metadata-provider
   (testing "should set the previous results metadata to the store"

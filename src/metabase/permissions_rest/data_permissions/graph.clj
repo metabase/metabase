@@ -20,6 +20,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; See also: [[permissions.schema/data-permissions]]
 (def ^:private ->api-keys
   {:perms/view-data             :view-data
@@ -109,11 +111,6 @@
      (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas])
      (granular-perm-rename perm-map :perms/view-data [:view-data])
      (granular-perm-rename perm-map :perms/create-queries [:create-queries]))))
-
-(defn- rename-perms [graph]
-  (update-vals graph
-               (fn [db-id->perms]
-                 (update-vals db-id->perms rename-perm))))
 
 (def ^:private admin-perms
   {:view-data      :unrestricted
@@ -205,46 +202,78 @@
       (= 1 (count leaf-vals))
       (assoc :perms/view-data (first leaf-vals)))))
 
+(defn- data-perms-reducible
+  "Reducible of the raw `data_permissions` rows for the given `opts`. Using a reducible (rather than realizing the full
+  result set) keeps the row data out of memory -- we reduce each row into the graph as it streams from the app DB.
+  Ordered by `(group_id, db_id)` so that all rows for a given (group, db) arrive contiguously, which lets
+  [[reduce-into-graph]] finalize and compact each (group, db) perm-map without buffering the whole graph."
+  [{:keys [group-id group-ids db-id perm-type audit?]}]
+  (t2/reducible-select [:model/DataPermissions
+                        [:perm_type :type]
+                        [:group_id :group-id]
+                        [:perm_value :value]
+                        [:db_id :db-id]
+                        [:schema_name :schema]
+                        [:table_id :table-id]]
+                       {:where    [:and
+                                   (when perm-type [:= :perm_type (u/qualified-name perm-type)])
+                                   (when db-id [:= :db_id db-id])
+                                   (when group-id [:= :group_id group-id])
+                                   (when group-ids [:in :group_id group-ids])
+                                   (when-not audit? [:not= :db_id audit/audit-db-id])
+                                   [:not-in :db_id {:select [:id]
+                                                    :from   [:metabase_database]
+                                                    :where  [:not= :router_database_id nil]}]]
+                        :order-by [:group_id :db_id]}))
+
+(defn- add-perm
+  "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
+  db-level `[perm-type]` or table-level `[perm-type schema table-id]` path."
+  [perm-map {:keys [schema table-id value] perm-type :type}]
+  (let [path (if table-id
+               [perm-type (or schema "") table-id]
+               [perm-type])]
+    (assoc-in perm-map path value)))
+
+(defn- reduce-into-graph
+  "Builds the nested `group-id -> db-id -> <perm-map>` graph by streaming `reducible`, applying `finalize` (e.g. collapse
+  + rename + prune) to each (group, db)'s perm-map and dropping it if `finalize` empties it.
+
+  `reducible` MUST be ordered by `(group_id, db_id)` so each (group, db)'s rows arrive contiguously: we accumulate one
+  raw perm-map at a time and commit it as soon as its group ends, so the full raw table-level graph -- which can be on
+  the order of a gigabyte -- is never materialized. (The rows are transient, cursor-backed instances, so they can't be
+  buffered and grouped after the fact, e.g. via `partition-by`.)"
+  [reducible finalize]
+  (let [commit (fn [graph path perm-map]
+                 (if (nil? path)
+                   graph
+                   (let [perm-map (finalize perm-map)]
+                     (cond-> graph (seq perm-map) (assoc-in path perm-map)))))
+        [graph last-path perm-map]
+        (reduce (fn [[graph last-path perm-map] row]
+                  (let [row-path [(:group-id row) (:db-id row)]]
+                    (if (= row-path last-path)
+                      ;; same (group, db) as the previous row: keep accumulating
+                      [graph last-path (add-perm perm-map row)]
+                      ;; new (group, db): commit the finished group, then start the next one
+                      [(commit graph last-path perm-map) row-path (add-perm {} row)])))
+                [{} nil nil]
+                reducible)]
+    (commit graph last-path perm-map)))
+
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
   and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
   for permission enforcement, as it will read much more data than necessary."
-  [& {:keys [group-id group-ids db-id perm-type audit?]}]
-  (let [data-perms (t2/select [:model/DataPermissions
-                               [:perm_type :type]
-                               [:group_id :group-id]
-                               [:perm_value :value]
-                               [:db_id :db-id]
-                               [:schema_name :schema]
-                               [:table_id :table-id]]
-                              {:where [:and
-                                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                                       (when db-id [:= :db_id db-id])
-                                       (when group-id [:= :group_id group-id])
-                                       (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])
-                                       [:not-in :db_id {:select [:id]
-                                                        :from   [:metabase_database]
-                                                        :where  [:not= :router_database_id nil]}]]})
-        raw-graph  (reduce
-                    (fn [graph {:keys [group-id value db-id schema table-id]
-                                perm-type :type}]
-                      (let [schema (or schema "")
-                            path   (if table-id
-                                     [group-id db-id perm-type schema table-id]
-                                     [group-id db-id perm-type])]
-                        (assoc-in graph path value)))
-                    {}
-                    data-perms)]
-    (update-vals raw-graph (fn [db-id->perms]
-                             (update-vals db-id->perms collapse-uniform-view-data)))))
+  [& {:as opts}]
+  (reduce-into-graph (data-perms-reducible opts) collapse-uniform-view-data))
 
 (mu/defn api-graph :- ::permissions-rest.schema/data-permissions-graph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
   - Converts DB value names to API value names
-  - Nesting: see [[rename-perms]] to see which keys in `graph` affect which paths in the api permission-graph
+  - Nesting: see [[rename-perm]] to see which keys in `graph` affect which paths in the api permission-graph
   - Adds sandboxed entries, and impersonations to graph"
   ([]
    (api-graph {}))
@@ -256,15 +285,17 @@
         [:db-id     {:optional true} [:maybe pos-int?]]
         [:audit?    {:optional true} [:maybe :boolean]]
         [:perm-type {:optional true} [:maybe ::permissions.schema/data-permission-type]]]]
-   (let [graph (data-permissions-graph opts)]
-     {:revision (perms/latest-permissions-revision-id)
-      :groups (-> graph
-                  rename-perms
-                  remove-empty-vals
-                  (add-sandboxes-to-permissions-graph opts)
-                  (add-impersonations-to-permissions-graph opts)
-                  (add-admin-perms-to-permissions-graph opts)
-                  (add-data-analyst-perms-to-permissions-graph opts))})))
+   {:revision (perms/latest-permissions-revision-id)
+    :groups (-> (reduce-into-graph (data-perms-reducible opts)
+                                   (fn [perm-map]
+                                     (-> perm-map
+                                         collapse-uniform-view-data
+                                         rename-perm
+                                         remove-empty-vals)))
+                (add-sandboxes-to-permissions-graph opts)
+                (add-impersonations-to-permissions-graph opts)
+                (add-admin-perms-to-permissions-graph opts)
+                (add-data-analyst-perms-to-permissions-graph opts))}))
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 

@@ -13,6 +13,7 @@ const MOCK_COLORS: Record<string, string> = {
   "text-primary-inverse": "#ffffff",
   "text-secondary": "#949aab",
   white: "#ffffff",
+  "core-white": "#ffffff",
 };
 
 const renderingContext: RenderingContext = {

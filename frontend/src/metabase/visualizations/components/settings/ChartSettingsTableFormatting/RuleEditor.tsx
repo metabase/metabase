@@ -116,6 +116,7 @@ export const RuleEditor = ({
             value={rule.type}
             onChange={(type) =>
               onChange({
+                // Unjustified type cast. FIXME
                 ...DEFAULTS_BY_TYPE[type as "single" | "range"],
                 columns: rule.columns,
               })
@@ -207,6 +208,7 @@ export const RuleEditor = ({
                 onChange({
                   ...rule,
                   min_type:
+                    // Unjustified type cast. FIXME
                     min_type as ColumnRangeFormattingSetting["min_type"],
                 })
               }
@@ -239,6 +241,7 @@ export const RuleEditor = ({
                 onChange({
                   ...rule,
                   max_type:
+                    // Unjustified type cast. FIXME
                     max_type as ColumnRangeFormattingSetting["max_type"],
                 })
               }

@@ -276,7 +276,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers
-    (mt/with-premium-features #{:workspaces :config-text-file}
+    (mt/with-premium-features #{:workspaces :config-text-file :transforms-basic :hosting}
       ;; The default test-time `db-connection-timeout-ms` is 5s. BigQuery's
       ;; first call through a freshly-built impersonated client (cold gRPC
       ;; handshake + impersonation token mint + `listDatasets`) regularly
@@ -414,7 +414,7 @@
                             (is (= (:db admin-details) (:db (:details ws-db)))
                                 (str "loader must preserve canonical :db on the workspace Database. "
                                      "If you see the isolation DB here, a driver's "
-                                     "init-workspace-isolation! is putting :db into :database_details, "
+                                     "workspace-isolation-details is putting :db into :database_details, "
                                      "which the workspace config-loader merges over canonical :details "
                                      "and breaks the connection's bound database for sync."))
                             (mt/with-db ws-db
@@ -652,31 +652,38 @@
                                               (str "no app-db Table row should point at a table in the isolation DB " isolation-schema
                                                    " (leaked: " (pr-str (map :name leaked)) ")")))
                                         (is (= [] (filter #(= iso-tbl-schema (:schema %)) (map #(select-keys % [:schema :name]) tables)))
-                                            "no app-db Table row points at the isolation schema")))))))))
+                                            "no app-db Table row points at the isolation schema"))))
+                                  (testing "DELETE /api/transform/:id/table succeeds for the workspace user"
+                                    (let [outcome (try (mt/user-http-request :crowberto :delete 204
+                                                                             (format "transform/%d/table" (:id transform)))
+                                                       ::ok
+                                                       (catch Throwable t [::failed (ex-message t)]))]
+                                      (is (= ::ok outcome)
+                                          (str "deleting the transform output table failed; outcome=" (pr-str outcome))))))))))
                         (finally
                           ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
                           ;; (DROP DATABASE / DROP USER on MySQL, etc), so restore admin details first.
-                          ;; `delete-workspace!` then deprovisions any `:provisioned` databases (calls
+                          ;; `delete-workspace!` then tears down every database (any state, calls
                           ;; `destroy-workspace-isolation!`) before deleting the row, safe whether
                           ;; provision succeeded fully or partially.
                           (ws/clear-instance-workspace!)
                           (t2/update! :model/Database (:id ws-db) {:details admin-details})
-                          ;; Cleanup tries [[ws/delete-workspace!]] first. If it throws (e.g. on
-                          ;; Redshift, [[destroy-workspace-isolation!]] rolls WSD status back to
-                          ;; `:provisioned` if any cleanup statement fails, and [[delete-workspace!]]
-                          ;; refuses with 409), fall back to force-clearing the WSD status so
+                          ;; Cleanup tries [[ws/delete-workspace!]] first. A failed warehouse
+                          ;; teardown throws and keeps the workspace + rows for retry. For test
+                          ;; cleanup we don't retry: fall back to force-clearing the rows so
                           ;; `mt/with-temp Database` cleanup can complete. Real fix for the
                           ;; Redshift destroy fragility is tracked separately.
-                          (let [delete-result (try (ws/delete-workspace! ws-id) ::deleted-ok
-                                                   (catch Throwable t
-                                                     (log/warn t "delete-workspace! failed; force-clearing WSD")
-                                                     ::delete-failed))]
-                            (when (= ::delete-failed delete-result)
-                              (doseq [wsd (t2/select :model/WorkspaceDatabase :workspace_id ws-id)]
-                                (t2/update! :model/WorkspaceDatabase :id (:id wsd) {:status :unprovisioned}))
+                          (let [deleted? (try (ws/delete-workspace! ws-id)
+                                              true
+                                              (catch Throwable t
+                                                (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
+                                                           ws-id)
+                                                false))]
+                            (when-not deleted?
+                              (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
                               (t2/delete! :model/Workspace :id ws-id)))))))
                   (finally
                     (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name output-table-name)

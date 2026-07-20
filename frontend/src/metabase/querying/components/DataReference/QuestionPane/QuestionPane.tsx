@@ -79,6 +79,8 @@ export const QuestionPane = ({
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const lastEditInfo = question.lastEditInfo();
+
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -119,7 +121,7 @@ export const QuestionPane = ({
             {collection?.name ?? t`Our analytics`}
           </Box>
         </Flex>
-        {question.lastEditInfo() && (
+        {lastEditInfo && (
           <Flex
             color="text-secondary"
             align="center"
@@ -129,11 +131,7 @@ export const QuestionPane = ({
             <Icon className={S.QuestionPaneIcon} name="calendar" />
             <Box component="span" ml="sm" fw="normal">
               {jt`Last edited ${(
-                <DateTime
-                  key="day"
-                  unit="day"
-                  value={question.lastEditInfo().timestamp}
-                />
+                <DateTime key="day" unit="day" value={lastEditInfo.timestamp} />
               )}`}
             </Box>
           </Flex>
@@ -147,7 +145,8 @@ export const QuestionPane = ({
                 id:
                   typeof field.id === "number"
                     ? field.id
-                    : (field.getUniqueId() as UniqueFieldId),
+                    : // Unjustified type cast. FIXME
+                      (field.getUniqueId() as UniqueFieldId),
               });
             }}
           />

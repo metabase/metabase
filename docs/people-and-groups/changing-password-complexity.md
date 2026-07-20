@@ -2,6 +2,7 @@
 title: Passwords
 redirect_from:
   - /docs/latest/operations-guide/changing-password-complexity
+summary: Configure required password complexity for your Metabase instance. 
 ---
 
 # Passwords
@@ -10,34 +11,36 @@ Metabase can allow authentication via email and password.
 
 ## Password complexity
 
-Metabase offers a couple controls for administrators who prefer to increase the password requirements on their user accounts.
+The default password complexity for both Metabase instances and Metabase Store acccounts is minimum 15 characters.
 
-    export MB_PASSWORD_COMPLEXITY=strong
-    export MB_PASSWORD_LENGTH=10
+On self-hosted Metabases, you can configure required password complexity through environment variables:
 
-The settings above can be used independently, so it's fine to use only one or the other. By default Metabase uses complexity = `normal` and a password length of 6. The following options are available for complexity choice:
+```sh
+export MB_PASSWORD_COMPLEXITY=<complexity_level>
+export MB_PASSWORD_LENGTH=10
+```
+You can set either `MB_PASSWORD_COMPLEXITY` or `MB_PASSWORD_LENGTH` independently. 
 
-- `weak` = no character constraints
-- `normal` = at least 1 digit
-- `strong` = minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
-- `strong-enough` = minimum 15 characters
+The options for complexity level are:
+
+- `weak`: no constraints.
+- `normal`: at least 1 digit.
+- **`strong-enough`: minimum 15 characters (default)**.
+- `strong`:  minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
 
 By default, Metabase also prevents users from setting passwords that are in a list of common passwords (like `qwerty123` and
 `passw0rd`). Changing the complexity requirement to `weak` disables this behavior.
 
-## Metabase Cloud passwords
-
-If your instance is hosted on Metabase Cloud, passwords must:
-
-- Be at least 12 characters long
-- Contain at least:
-  - 2 lowercase letters
-  - 2 uppercase letters
-  - 1 digit
-  - 1 special character (!,$,%, etc.)
-
-## Disabling password logins
+## Disable password logins
 
 {% include plans-blockquote.html feature="Disabling password logins" %}
 
-On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication**.
+On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication** > **Overview**.
+
+## Change a password
+
+You can change your password in [Account settings](account-settings.md).
+
+## Reset a password
+
+See [Resetting passwords](managing.md#resetting-someones-password).

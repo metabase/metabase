@@ -30,11 +30,27 @@
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
-  "Build a source-table-entry for the first active table in the current test database."
+  "Build a source-table-entry for an active, field-synced table in the current test database.
+  Deterministic: orders by id and requires a synced field."
   ([]
    (default-source-table-entry "test"))
   ([alias]
-   (source-table-entry alias (t2/select-one-pk :model/Table :db_id (mt/id) :active true))))
+   ;; Requiring a field skips field-less leftovers (un-synced transform targets, or Snowflake tables whose
+   ;; columns haven't propagated yet) that would make the QP throw "Table has no Fields associated with it".
+   (source-table-entry alias
+                       (t2/select-one-pk :model/Table
+                                         :db_id  (mt/id)
+                                         :active true
+                                         :id     [:in {:select [:table_id]
+                                                       :from   [(t2/table-name :model/Field)]
+                                                       ;; Mirror the QP's queryable-column filter (active-column-pred):
+                                                       ;; active, and visibility not sensitive/retired, else the picked
+                                                       ;; table still yields no implicit fields.
+                                                       :where  [:and
+                                                                [:= :active true]
+                                                                [:or [:= :visibility_type nil]
+                                                                 [:not-in :visibility_type ["sensitive" "retired"]]]]}]
+                                         {:order-by [[:id :asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
@@ -96,12 +112,24 @@
        ~@body)))
 
 (defn table-rows
+  "Fetch all rows of `table-name` in the current test database.
+
+   Dataset tables (e.g. `transforms_products`) are resolved by their logical name via `mt/id`, which handles
+   drivers like Redshift that load datasets under prefixed physical names (`transforms_test_transforms_products`).
+   Transform TARGET tables are created with their exact requested name, so they are looked up by bare name scoped
+   to the current test database and, when the transforms dataset is loaded, to its schema — avoiding an unrelated
+   `Table` row with the same name under a different database/schema."
   [table-name]
-  (->>
-   (mt/rows (mt/process-query {:database (mt/id)
-                               :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
-                               :type     :query}))
-   (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x)))))
+  (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
+               (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
+                                 (t2/select-one-fn :schema :model/Table products-id))]
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
+    (->>
+     (mt/rows (mt/process-query {:database (mt/id)
+                                 :query    {:source-table pk}
+                                 :type     :query}))
+     (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x))))))
 
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."
@@ -121,17 +149,25 @@
   (-> timestamp-string parse-instant str))
 
 (defn wait-for-table
-  "Wait for a table to appear in metadata, with timeout."
+  "Wait for a table to become queryable in the current test database, with timeout.
+
+   Sync creates the target's `Table` row first (already active) and inserts its `Field` rows in a later
+   step, so \"table exists but has no fields\" is a normal mid-sync state; a query against the table in
+   that state fails in `add-implicit-clauses` with \"Table has no Fields associated with it\". Wait for
+   the same condition the QP requires: an active table row (scoped to the current test database, like
+   `mt/id` resolution) with at least one active field."
   [^String table-name timeout-ms]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table (t2/select-one :model/Table :name table-name)
-            fields (t2/select :model/Field :table_id (:id table))]
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
         (cond
-          (and table (seq fields)) table
+          (and table (t2/exists? :model/Field :table_id (:id table) :active true))
+          table
+
           (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+          (throw (ex-info (format "Table %s did not become queryable after %dms" table-name timeout-ms)
                           {:table-name table-name :timeout-ms timeout-ms}))
+
           :else (do (Thread/sleep 100)
                     (recur)))))))
 

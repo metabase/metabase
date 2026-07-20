@@ -9,11 +9,13 @@
   (:require
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as tools]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -165,15 +167,28 @@
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
 
+;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
+;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
+;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
+;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
-  ;; the nlq profile gets both the general instance search and, for users with the semantic-search
-  ;; feature, the curated search tool (gated via its :feature-semantic-search capability).
+  :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/read-resource-tool
+                    #'tools/construct-notebook-query-tool
+                    #'tools/navigate-user-tool
+                    #'tools/create-chart-tool
+                    #'tools/edit-chart-tool]})
+
+(register-profile!
+ {:name            :nlq-fallback
+  :prompt-template "natural-language-querying-fallback.selmer"
+  :max-iterations  10
+  :temperature     0.3
   :tools           [#'tools/nlq-search-tool
-                    #'tools/curated-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
@@ -239,24 +254,44 @@
 
 ;;; API
 
+(defn- nlq-fallback?
+  "Whether a :nlq request should be served the general-search fallback: true when the library index
+  can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
+  and on OSS / unlicensed instances."
+  [profile-id]
+  (and (= profile-id :nlq)
+       (not (entity-retrieval/entity-retrieval-available?))))
+
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`
-  setting at call time, so it always reflects the current admin configuration."
+  setting at call time, so it always reflects the current admin configuration.
+
+  A :nlq request whose library index can't serve queries is transparently served the :nlq-fallback
+  profile's discovery tool and prompt (see [[nlq-fallback?]]); the profile's `:name` stays :nlq so
+  telemetry, recent-views, and skill matching are unaffected."
   [profile-id]
-  (when-let [profile (get @*profiles profile-id)]
-    (assoc profile :model (metabot.settings/llm-metabot-provider))))
+  (if-let [profile (get @*profiles profile-id)]
+    (let [profile (if (nlq-fallback? profile-id)
+                    (if-let [fb (get @*profiles :nlq-fallback)]
+                      (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb))
+                      ;; The redirect target should always be registered; if it isn't, serve :nlq
+                      ;; unredirected rather than a profile with nil tools/prompt.
+                      (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
+                          profile))
+                    profile)]
+      (assoc profile :model (metabot.settings/llm-metabot-provider)))
+    ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
+    (log/warnf "No metabot profile registered for %s" profile-id)))
 
-(defn get-tools-for-profile
-  "Get tool registry filtered by profile configuration, user capabilities, and scope.
-  Filters out EE-only tools when the feature is not available, then filters by
-  capabilities, then filters by `*current-user-scope*`. Returns a map of
-  tool-name -> tool-var.
-
-  When the resolved profile exposes at least one skill in its catalog, the
-  `load_skill` tool is injected so the agent can pull skill bodies on demand."
-  [profile-id capabilities]
-  (when-let [profile (get-profile profile-id)]
+(defn profile->tools
+  "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.
+  Returns a map of tool-name -> tool-var.
+  Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
+  [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
+  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
+  [profile capabilities]
+  (when profile
     (let [base     (-> profile
                        :tools
                        (filter-by-capabilities capabilities)
@@ -270,3 +305,10 @@
         ;; synthetic `load_skill` call that must resolve to a registered tool.
         (or (seq (:catalog manifest)) (seq (:always-on manifest)))
         (assoc "load_skill" #'tools/load-skill-tool)))))
+
+(defn get-tools-for-profile
+  "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).
+  Convenience for callers that only need the tools; code that also needs the prompt should call
+  [[get-profile]] once and pass the result to [[profile->tools]]."
+  [profile-id capabilities]
+  (profile->tools (get-profile profile-id) capabilities))

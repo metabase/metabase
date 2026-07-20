@@ -1,10 +1,10 @@
 .keyword {
-  color: var(--mb-color-saturated-purple);
+  color: var(--mb-color-core-purple-saturated);
 }
 
 .variable,
 .function {
-  color: var(--mb-color-saturated-blue);
+  color: var(--mb-color-core-blue-saturated);
 }
 
 .function.variableName {
@@ -13,16 +13,16 @@
 
 .constant,
 .typeName {
-  color: var(--mb-color-saturated-red);
+  color: var(--mb-color-core-red-saturated);
 }
 
 .string {
-  color: var(--mb-color-saturated-green);
+  color: var(--mb-color-core-green-saturated);
 }
 
 .number,
 .bool {
-  color: var(--mb-color-saturated-red);
+  color: var(--mb-color-core-red-saturated);
 }
 
 .paren {
@@ -32,12 +32,12 @@
 .comment,
 .lineComment,
 .blockComment {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-style: italic;
 }
 
 .brace {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .squareBracket {
@@ -53,7 +53,7 @@
 }
 
 .logicOperator {
-  color: var(--mb-color-saturated-purple);
+  color: var(--mb-color-core-purple-saturated);
 }
 
 .arithmeticOperator,
@@ -62,9 +62,9 @@
 }
 
 .escape {
-  color: var(--mb-color-saturated-red);
+  color: var(--mb-color-core-red-saturated);
 }
 
 .typeName {
-  color: var(--mb-color-saturated-purple);
+  color: var(--mb-color-core-purple-saturated);
 }

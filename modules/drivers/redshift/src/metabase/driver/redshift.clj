@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -23,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -52,6 +54,12 @@
                               :describe-is-nullable             false
                               :expression-literals              true
                               :identifiers-with-spaces          false
+                              ;; Redshift has no secondary indexes; sortkeys are inlined into the table-creation
+                              ;; statement, not created afterwards. Override the `:postgres`-inherited standalone
+                              ;; support.
+                              :index/fetch                      true
+                              :index/inline-create              true
+                              :index/standalone-create          false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
@@ -219,6 +227,157 @@
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :redshift
+  [_driver _database]
+  ;; Redshift has no secondary indexes: a sortkey and a distribution style are inlined into the table at creation.
+  ;; That's the CTAS for a SQL transform and the CREATE TABLE for a Python transform, so both are rendered in
+  ;; `compile-transform` and `create-table!`.
+  {:sortkey {:lifecycle    :inline
+             :display-name (deferred-tru "Sort key")
+             :fields       [driver.common/index-columns-field
+                            {:name         "style"
+                             :display-name (deferred-tru "Style")
+                             :type         :select
+                             :required     true
+                             :options      [{:name (deferred-tru "Compound")    :value "compound"}
+                                            {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}
+   :distkey {:lifecycle    :inline
+             :display-name (deferred-tru "Distribution key")
+             :fields       [{:name         "style"
+                             :display-name (deferred-tru "Style")
+                             :type         :select
+                             :required     true
+                             ;; AUTO is Redshift's default and drifts over time, so it's not offered as a managed style;
+                             ;; an AUTO table still surfaces its current style as a (non-managed) index.
+                             :options      [{:name (deferred-tru "Key")  :value "key"}
+                                            {:name (deferred-tru "All")  :value "all"}
+                                            {:name (deferred-tru "Even") :value "even"}]}
+                            ;; only the :key style takes a column, so this is not required
+                            {:name         "columns"
+                             :display-name (deferred-tru "Columns")
+                             :type         :columns}]}})
+
+(defn- sortkey-clause
+  "Render the inline sortkey clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there
+  is no sortkey."
+  [driver indexes]
+  (when-let [{:keys [style columns]} (first (filter (comp #{:sortkey} :kind) indexes))]
+    (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
+          cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+      (format "%s SORTKEY (%s)" style-sql cols))))
+
+(defn- distkey-clause
+  "Render the inline distribution clause for a table's `indexes`, e.g. `DISTSTYLE KEY DISTKEY (\"a\")` or
+  `DISTSTYLE ALL`, or nil when there is no distkey."
+  [driver indexes]
+  (when-let [{:keys [style columns]} (first (filter (comp #{:distkey} :kind) indexes))]
+    (if (= style :key)
+      (format "DISTSTYLE KEY DISTKEY (%s)" (sql.u/quote-name driver :field (:name (first columns))))
+      (format "DISTSTYLE %s" (u/upper-case-en (name style))))))
+
+(defn- table-attributes-clause
+  "Render the inline Redshift table attributes (distribution then sort key) for `indexes`, in the order Redshift
+  requires, or nil when there are none. Shared by both creation seams: the CTAS in `compile-transform` and the
+  CREATE TABLE in `create-table!`."
+  [driver indexes]
+  (let [clauses (remove nil? [(distkey-clause driver indexes) (sortkey-clause driver indexes)])]
+    (when (seq clauses)
+      (str/join " " clauses))))
+
+(defn- distkey-index
+  "The distkey entry from a table's declared `reldiststyle` (0 EVEN, 1 KEY, 8 ALL) and KEY column; nil for AUTO (9) and
+  anything else. Reads the declared style, not the effective one Redshift drifts AUTO tables toward."
+  [reldiststyle key-column]
+  (when-let [style (case (long reldiststyle) 0 "even", 1 "key", 8 "all", nil)]
+    (let [key? (= style "key")]
+      {:name              nil
+       :kind              :distkey
+       :access-method     style
+       :is-unique         false
+       :is-primary        false
+       :is-valid          true
+       :key-columns       (if key? [key-column] [])
+       :include-columns   []
+       :partial-predicate nil
+       :definition        (if key?
+                            (format "DISTSTYLE KEY DISTKEY (%s)" key-column)
+                            (format "DISTSTYLE %s" (u/upper-case-en style)))})))
+
+;; Redshift has no secondary indexes; the only physical "indexes" are the inline unnamed sortkey and the distribution,
+;; so we override the inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position
+;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY column. The declared distribution
+;; style comes from `pg_class_info`, which reports it for empty tables (`svv_table_info` doesn't). Blank `schema`
+;; falls back to `current_schema()`.
+(defmethod driver/fetch-table-indexes :redshift
+  [_driver database schema table]
+  (let [spec      (sql-jdbc.conn/db->pooled-connection-spec database)
+        rows      (jdbc/query
+                   spec
+                   [(str "SELECT column_name, sortkey, distkey FROM svv_redshift_columns "
+                         "WHERE schema_name = COALESCE(?, current_schema()) AND table_name = ? "
+                         "ORDER BY abs(sortkey)")
+                    (perf/not-empty schema) table])
+        sort-rows (filter (comp (complement zero?) :sortkey) rows)
+        key-col   (perf/some #(when (:distkey %) (:column_name %)) rows)
+        diststyle (-> (jdbc/query
+                       spec
+                       [(str "SELECT c.reldiststyle AS reldiststyle FROM pg_class_info c "
+                             "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                             "WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?")
+                        (perf/not-empty schema) table])
+                      first :reldiststyle)
+        distkey   (some-> diststyle (distkey-index key-col))]
+    (cond-> []
+      (seq sort-rows)
+      (conj (let [interleaved? (perf/some (comp neg? :sortkey) sort-rows)
+                  columns      (perf/mapv :column_name sort-rows)]
+              {:name              nil
+               :kind              :sortkey
+               :access-method     nil
+               :is-unique         false
+               :is-primary        false
+               :is-valid          true
+               :key-columns       columns
+               :include-columns   []
+               :partial-predicate nil
+               :definition        (format "%s SORTKEY (%s)"
+                                          (if interleaved? "INTERLEAVED" "COMPOUND")
+                                          (str/join ", " columns))}))
+      distkey (conj distkey))))
+
+(defmethod driver/compile-transform :redshift
+  [driver {:keys [query output-table indexes] :as transform-details}]
+  (if-let [clause (table-attributes-clause driver indexes)]
+    (let [{sql-query :query sql-params :params} query
+          k      (keyword output-table)
+          target (if (namespace k)
+                   (sql.u/quote-name driver :table (namespace k) (name k))
+                   (sql.u/quote-name driver :table (name k)))]
+      [(format "CREATE TABLE %s %s AS %s" target clause sql-query)
+       sql-params])
+    ((get-method driver/compile-transform :sql) driver transform-details)))
+
+(defn- create-table-sql
+  "Render the `CREATE TABLE (...)` for a Python-transform target, inlining sortkey/distkey from `:indexes` when present.
+  Reuses the `:sql-jdbc` renderer for the column list and appends the inline clause."
+  [driver table-name column-definitions {:keys [primary-key indexes]}]
+  (let [base (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (if-let [clause (table-attributes-clause driver indexes)]
+      (str base " " clause)
+      base)))
+
+(defmethod driver/create-table! :redshift
+  [driver db-id table-name column-definitions & {:as opts}]
+  ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey when one is present. Non-transform callers
+  ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
+  (let [sql (create-table-sql driver table-name column-definitions opts)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -844,9 +1003,8 @@
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
-  (let [schema-name    (driver.u/workspace-isolation-namespace-name workspace)
-        read-user      {:user     (driver.u/workspace-isolation-user-name workspace)
-                        :password (driver.u/random-workspace-password)}
+  (let [schema-name    (:schema workspace)
+        read-user      (:database_details workspace)
         quoted-schema  (quote-schema schema-name)
         quoted-user    (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
@@ -854,26 +1012,29 @@
                        (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
                        (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Schema-level grant only (Redshift's two schema privileges):
+          ;;   USAGE  - access the schema
+          ;;   CREATE - create tables in it
+          ;; Table DML comes from ownership (the user owns the tables it creates), so we skip
+          ;; `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES` (that only covers tables created
+          ;; by the admin connection, which never happens on the transform path).
           (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)]]
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
               (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
-    {:schema           schema-name
-     :database_details read-user}))
+    nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Pre-flight check (read-only) can run in its own transaction. Redshift's
+    ;; Pre-flight check (read-only, one connection, no transaction). Redshift's
     ;; GRANT statements error loudly when grant authority is missing, so PG's
     ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
     ;; DEFAULT PRIVILEGES failure modes do reproduce and need explicit checks:
@@ -883,10 +1044,13 @@
     ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
-    (jdbc/with-db-transaction [t-conn spec]
-      (doseq [s source-schemas]
-        (assert-no-public-create-grant!       t-conn s)
-        (assert-can-alter-default-privileges! t-conn s)))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver database nil
+     (fn [^Connection conn]
+       (let [check-conn {:connection conn}]
+         (doseq [s source-schemas]
+           (assert-no-public-create-grant!       check-conn s)
+           (assert-can-alter-default-privileges! check-conn s)))))
     ;; Grants run as auto-commit per statement so privileges are immediately
     ;; observable to a subsequent describe-database from a different connection.
     (doseq [s   source-schemas

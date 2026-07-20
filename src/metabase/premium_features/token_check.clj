@@ -148,6 +148,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (internal-stats/metabot-stats)
+                                         (internal-stats/data-app-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
@@ -715,16 +716,18 @@
 (defn query-transforms-enabled?
   "Whether query (native/MBQL) transforms are available on this instance. Available on any non-hosted
   instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
-  `:transforms-basic` feature."
+  `:transforms-basic` feature. Also requires the :transforms-enabled setting to be true."
   []
-  (or (not (premium-features.settings/is-hosted?))
-      (has-feature? :transforms-basic)))
+  (and (setting/get :transforms-enabled)
+       (or (not (premium-features.settings/is-hosted?))
+           (has-feature? :transforms-basic))))
 
 (defn python-transforms-enabled?
   "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
-  and `:transforms-python`."
+  and `:transforms-python`. Also requires the :transforms-enabled setting to be true."
   []
-  (and (has-feature? :transforms-basic)
+  (and (setting/get :transforms-enabled)
+       (has-feature? :transforms-basic)
        (has-feature? :transforms-python)))
 
 (defn any-transforms-enabled?

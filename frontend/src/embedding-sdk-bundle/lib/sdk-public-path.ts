@@ -45,6 +45,7 @@ const resolveAssetBaseUrl = (): string | undefined => {
     return undefined;
   }
 
+  // Unjustified type cast. FIXME
   const scriptUrl = (document.currentScript as HTMLScriptElement | null)?.src;
 
   if (!scriptUrl) {

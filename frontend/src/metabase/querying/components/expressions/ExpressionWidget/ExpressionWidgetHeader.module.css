@@ -7,7 +7,7 @@
   height: 3rem;
 
   .HeaderButton[data-variant="subtle"] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
 
     &:not(:disabled):hover {
       color: var(--mb-color-core-brand);

@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import Database from "metabase-lib/v1/metadata/Database";
 import type { Database as IDatabase } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -11,11 +10,11 @@ const setup = (database: IDatabase) => {
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <ImpersonationWarning
           database={new Database({ ...database, tables: [] })}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

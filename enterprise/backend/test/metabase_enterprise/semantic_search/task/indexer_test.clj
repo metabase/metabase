@@ -16,7 +16,7 @@
     ;; env var), where the setter's transition event never fired -- see the safety net in sut/init!. Redefs
     ;; avoid scheduling a real quartz job or spawning a real build future.
     (let [builds (atom 0)]
-      (mt/with-dynamic-fn-redefs [semantic.u/semantic-search-available? (constantly true)
+      (mt/with-dynamic-fn-redefs [semantic.u/semantic-search-configured? (constantly true)
                                   task/schedule-task!                   (fn [& _] nil)
                                   semantic.core/build-hnsw-index-async! (fn [] (swap! builds inc))]
         (testing ":brute-force does not trigger a build"

@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -72,7 +72,7 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
     background-color: var(--mb-color-background_surface-hover);
   }
 
@@ -181,7 +181,7 @@
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
     background-color: var(--mb-color-background_surface-hover);
   }
 }
@@ -199,7 +199,7 @@
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
     background-color: var(--mb-color-background_surface-hover);
   }
 }
@@ -230,7 +230,7 @@
   }
 
   &:hover:not([data-selected], :disabled) {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
     background-color: var(--mb-color-background_surface-hover);
   }
 }

@@ -83,7 +83,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
             </Menu.Item>
             <Menu.Item
               leftSection={<Icon name="trash" />}
-              color="error"
+              color="feedback-negative"
               onClick={() => setIsConfirmOpen(true)}
             >
               {t`Remove`}

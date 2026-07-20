@@ -3246,3 +3246,79 @@
               (when (= :mysql (mdb/db-type))
                 (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
                   (is (nil? (nid invalid))))))))))))
+
+(deftest delete-destination-db-permissions-test
+  (testing "v63.destperm-cleanup: data_permissions rows for destination dbs (router_database_id set) are deleted; rows for normal dbs remain"
+    (impl/test-migrations ["v63.destperm-cleanup" "v63.destperm-cleanup"] [migrate!]
+      (let [new-db!      (fn [name & {:as extra}]
+                           (t2/insert-returning-pk! :metabase_database
+                                                    (merge {:name       name
+                                                            :engine     "postgres"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"}
+                                                           extra)))
+            group-id     (t2/insert-returning-pk! :permissions_group {:name "Destperm Test Group"})
+            router-id    (new-db! "Router DB")
+            dest-id      (new-db! "Destination DB" :router_database_id router-id)
+            normal-id    (new-db! "Normal DB")
+            new-perm!    (fn [db-id]
+                           (t2/insert-returning-pk! :data_permissions
+                                                    {:group_id   group-id
+                                                     :perm_type  "perms/view-data"
+                                                     :db_id      db-id
+                                                     :perm_value "unrestricted"}))
+            dest-perm    (new-perm! dest-id)
+            normal-perm  (new-perm! normal-id)]
+        (testing "seeded rows exist before the migration"
+          (is (some? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm))))
+        (migrate!)
+        (testing "destination db permissions are deleted"
+          (is (nil? (t2/select-one-fn :id :data_permissions :id dest-perm)))
+          (is (zero? (t2/count :data_permissions :db_id dest-id))))
+        (testing "normal db permissions are untouched"
+          (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
+          (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
+
+(deftest move-metabot-conversation-state-to-messages-test
+  (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
+    (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "State"
+                                                              :last_name     "Mover"
+                                                              :email         "state-mover@test.com"
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            blob         "{\"queries\":{\"q1\":{\"database\":1}},\"todos\":[{\"id\":\"a\"}]}"
+            conv-a       (str (random-uuid))
+            conv-b       (str (random-uuid))
+            new-message! (fn [conversation-id role & {:as extra}]
+                           (t2/insert-returning-pk! :metabot_message
+                                                    (merge {:conversation_id conversation-id
+                                                            :created_at      :%now
+                                                            :profile_id      "internal"
+                                                            :role            role
+                                                            :data            "[]"
+                                                            :total_tokens    0
+                                                            :data_version    2}
+                                                           extra)))
+            _            (t2/insert! :metabot_conversation {:id conv-a :user_id user-id :state blob})
+            _            (t2/insert! :metabot_conversation {:id conv-b :user_id user-id})
+            a-user       (new-message! conv-a "user")
+            a-deleted    (new-message! conv-a "assistant" :deleted_at :%now)
+            a-earliest   (new-message! conv-a "assistant")
+            a-later      (new-message! conv-a "assistant")
+            b-assistant  (new-message! conv-b "assistant")]
+        (migrate!)
+        (is (= blob (t2/select-one-fn :state :metabot_message :id a-earliest))
+            "the blob lands on the earliest live assistant row")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-deleted))
+            "soft-deleted rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-later)))
+        (is (nil? (t2/select-one-fn :state :metabot_message :id a-user))
+            "user rows are skipped")
+        (is (nil? (t2/select-one-fn :state :metabot_message :id b-assistant))
+            "conversations without a blob are untouched")
+        (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
+            "metabot_conversation.state is gone")))))

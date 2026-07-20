@@ -25,12 +25,12 @@
   }
 
   &:hover::after {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 }
 
 .MoveParameterMenuOptionIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .MoveParameterMenuOptionText {

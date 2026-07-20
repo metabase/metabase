@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 import { Select } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
 

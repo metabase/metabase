@@ -67,6 +67,9 @@
       (log/warn e "Semantic search engine not supported")
       false)))
 
+(defmethod search.engine/dependencies :search.engine/semantic [_]
+  [:search.engine/appdb])
+
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
   (results search-ctx))

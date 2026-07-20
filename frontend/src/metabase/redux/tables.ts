@@ -78,8 +78,9 @@ export const fetchTableMetadataAndForeignKeys =
   async (dispatch: Dispatch, getState: GetState) => {
     await dispatch(fetchTableMetadata({ id }, options));
 
+    // Unjustified type cast. FIXME
     const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
-    await Promise.all([
+    await Promise.allSettled([
       ...getTableForeignKeyTableIds(table).map((tableId) =>
         dispatch(fetchTableMetadata({ id: tableId }, options)),
       ),

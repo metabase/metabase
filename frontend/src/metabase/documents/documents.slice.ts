@@ -100,6 +100,7 @@ const documentsSlice = createSlice({
       }>,
     ) => {
       const { originalCard, modifiedData, draftId } = action.payload;
+      // Unjustified type cast. FIXME
       state.draftCards[draftId] = {
         ...originalCard,
         ...modifiedData,

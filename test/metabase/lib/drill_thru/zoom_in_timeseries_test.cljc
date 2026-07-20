@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.util.malli :as mu]))
 
@@ -335,3 +336,84 @@
                                      :filters      [[:= {}
                                                      [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
                                                      "2022-12-09"]]}]}})))))
+
+(deftest ^:parallel zoom-in-with-expression-breakout-test
+  (testing "zoom-in.timeseries works when the stage also has an expression breakout (#13289)"
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/expression "Math" (lib/+ 1 1)))
+          math-col   (m/find-first #(= (:name %) "Math")
+                                   (lib/breakoutable-columns base))
+          _          (is (some? math-col))
+          query      (-> base
+                         (lib/aggregate (lib/count))
+                         (lib/breakout math-col)
+                         (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                           (lib/with-temporal-bucket :month))))
+          columns    (lib/returned-columns query)
+          created-at (m/find-first #(and (= (:name %) "CREATED_AT")
+                                         (= (lib.temporal-bucket/raw-temporal-bucket %) :month))
+                                   columns)
+          _          (is (some? created-at))
+          count-col  (m/find-first #(= (:name %) "count") columns)
+          _          (is (some? count-col))
+          drill      (m/find-first #(= (:type %) :drill-thru/zoom-in.timeseries)
+                                   (lib/available-drill-thrus
+                                    query -1
+                                    {:column     count-col
+                                     :column-ref (lib/ref count-col)
+                                     :value      100
+                                     :dimensions [{:column     created-at
+                                                   :column-ref (lib/ref created-at)
+                                                   :value      "2025-09-01T00:00:00Z"}]}))]
+      (is (=? {:type         :drill-thru/zoom-in.timeseries
+               :next-unit    :week
+               :display-name "See this month by week"}
+              drill))
+      (testing "drilling preserves the expression breakout and re-buckets the datetime breakout"
+        (is (=? {:stages [{:breakout [[:expression {} "Math"]
+                                      [:field {:temporal-unit :week} (meta/id :orders :created-at)]]
+                           :filters  [[:= {}
+                                       [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                       "2025-09-01T00:00:00Z"]]}]}
+                (lib/drill-thru query -1 nil drill)))))))
+
+(deftest ^:parallel zoom-in-day-to-hour-on-join-aliased-native-datetime-column-test
+  (testing "zooming a join-aliased native-card datetime breakout from day to hour produces a valid :hour query (#42817)"
+    (let [mp         (lib.tu/metadata-provider-with-mock-cards)
+          card       (:orders/native (lib.tu/mock-cards))
+          card-id    (m/find-first #(= "ID" (:name %))
+                                   (lib/returned-columns (lib/query mp card)))
+          joined     (lib/join (lib/query mp (meta/table-metadata :orders))
+                               (-> (lib/join-clause card
+                                                    [(lib/= (meta/field-metadata :orders :id) card-id)])
+                                   (lib/with-join-alias "NativeOrders")
+                                   (lib/with-join-fields :all)))
+          card-created (m/find-first #(and (= "CREATED_AT" (:name %))
+                                           (= :source/joins (:lib/source %)))
+                                     (lib/breakoutable-columns joined))
+          query      (-> joined
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket card-created :day)))
+          cols       (lib/returned-columns query)
+          created-at (m/find-first #(and (= (:name %) "CREATED_AT")
+                                         (= (lib.temporal-bucket/raw-temporal-bucket %) :day))
+                                   cols)
+          _          (is (some? created-at))
+          count-col  (m/find-first #(= (:name %) "count") cols)
+          _          (is (some? count-col))
+          drill      (m/find-first #(= (:type %) :drill-thru/zoom-in.timeseries)
+                                   (lib/available-drill-thrus
+                                    query -1
+                                    {:column     count-col
+                                     :column-ref (lib/ref count-col)
+                                     :value      50
+                                     :dimensions [{:column     created-at
+                                                   :column-ref (lib/ref created-at)
+                                                   :value      "2026-06-23T00:00:00Z"}]}))]
+      (is (=? {:type         :drill-thru/zoom-in.timeseries
+               :next-unit    :hour
+               :display-name "See this day by hour"}
+              drill))
+      (testing "drilling produces a valid :hour breakout without an invalid-temporal-unit error"
+        (is (=? {:stages [{:breakout [[:field {:temporal-unit :hour, :join-alias "NativeOrders"} "CREATED_AT"]]}]}
+                (lib/drill-thru query -1 nil drill)))))))

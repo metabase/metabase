@@ -1,14 +1,15 @@
-import { Route } from "react-router";
-
 import {
   setupDependencyGraphEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route, withRouteProps } from "metabase/router";
 import { createMockDependencyGraph } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";
+
+const RoutedDependencyGraphPage = withRouteProps(DependencyGraphPage);
 
 describe("DependencyGraphPage", () => {
   beforeEach(() => {
@@ -16,9 +17,12 @@ describe("DependencyGraphPage", () => {
     setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   });
   it("should show an app switcher if there is no context", async () => {
-    renderWithProviders(<Route path="/" component={DependencyGraphPage} />, {
-      withRouter: true,
-    });
+    renderWithProviders(
+      <Route path="/" element={<RoutedDependencyGraphPage />} />,
+      {
+        withRouter: true,
+      },
+    );
 
     expect(await screen.findByTestId("dependency-graph")).toBeInTheDocument();
     expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
@@ -28,7 +32,7 @@ describe("DependencyGraphPage", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
             value={{
               baseUrl: "any-url",
@@ -37,7 +41,7 @@ describe("DependencyGraphPage", () => {
           >
             <DependencyGraphPage />
           </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-        )}
+        }
       />,
       {
         withRouter: true,

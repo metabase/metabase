@@ -7,7 +7,6 @@ import type {
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -23,6 +22,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
+  ColumnSettings,
   Dashboard,
   DashboardCard,
   DashboardId,
@@ -65,7 +65,7 @@ export interface Padding {
 
 export type Formatter = (
   value: RowValue,
-  options?: OptionsType,
+  options?: ColumnSettings,
 ) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
@@ -118,13 +118,6 @@ export type OnChangeCardAndRunOpts = {
 };
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
-
-export type ColumnSettings = OptionsType & {
-  _column_title_full?: string;
-  "pivot_table.column_show_totals"?: boolean;
-  text_align?: "left" | "middle" | "right";
-  [key: string]: unknown;
-};
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
@@ -212,7 +205,7 @@ export interface VisualizationProps {
   ) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -235,7 +228,7 @@ export type VisualizationPassThroughProps = {
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
   onDeselectTimelineEvents?: () => void;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
@@ -295,12 +288,12 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
-  getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
-  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  getDefault?: (col: DatasetColumn, settings: ColumnSettings) => TValue;
+  getHidden?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
+  isValid?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
   getProps?: (
     col: DatasetColumn,
-    settings: OptionsType,
+    settings: ColumnSettings,
     onChange: (value: TValue) => void,
     extra: { series: Series },
   ) => TProps;

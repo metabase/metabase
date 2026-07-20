@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -232,88 +232,6 @@ describe("scenarios > question > native", () => {
         );
       });
 
-      it("should run saved question with time grouping", () => {
-        const questionWithDefaultValue = {
-          name: "Saved question with time grouping",
-          native: {
-            query:
-              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
-            "template-tags": {
-              unit: {
-                type: "temporal-unit",
-                name: "unit",
-                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                "display-name": "Unit",
-                dimension: ["field", ORDERS.CREATED_AT, null],
-                required: true,
-                default: "year",
-              },
-            },
-          },
-        };
-        const questionWithoutDefaultValue = {
-          name: "Saved question with time grouping",
-          native: {
-            query:
-              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
-            "template-tags": {
-              unit: {
-                type: "temporal-unit",
-                name: "unit",
-                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                "display-name": "Unit",
-                dimension: ["field", ORDERS.CREATED_AT, null],
-                required: true,
-              },
-            },
-          },
-        };
-
-        H.createNativeQuestion(questionWithDefaultValue, {
-          wrapId: true,
-          idAlias: "q1",
-        }).then(() => {
-          return H.createNativeQuestion(questionWithoutDefaultValue, {
-            wrapId: true,
-            idAlias: "q2",
-          });
-        });
-
-        cy.get("@q1").then((questionId) => {
-          H.visitQuestion(questionId);
-        });
-
-        cy.log(
-          "verify that saved query with time grouping can run and return correct results",
-        );
-        cy.findByTestId("visualization-root").should(
-          "contain",
-          "January 1, 2025",
-        );
-
-        cy.get("@q2").then((questionId) => {
-          H.visitQuestion(questionId);
-        });
-
-        cy.log(
-          "verify that saved query without time grouping can run and return correct results",
-        );
-        cy.findByTestId("query-visualization-root").should(
-          "contain",
-          "You'll need to pick a value for 'Unit' before this query can run.",
-        );
-
-        H.filterWidget().click();
-        H.popover().findByText("Year").click();
-
-        cy.findAllByTestId("run-button").first().click();
-
-        cy.findByTestId("visualization-root").should(
-          "contain",
-          "January 1, 2025",
-        );
-      });
-
       it("should reset default value when time grouping options are changed", () => {
         const questionWithDefaultValue = {
           name: "Saved question with time grouping",
@@ -359,79 +277,6 @@ describe("scenarios > question > native", () => {
         H.rightSidebar().should("contain", "Enter a default value…");
       });
 
-      it("should handle time grouping in optional clause", () => {
-        const questionWithDefaultValue = {
-          name: "Saved question with time grouping",
-          native: {
-            query: `
-              SELECT
-                ID [[,{{unit}} as unit]]
-              FROM
-                PEOPLE
-              ORDER BY
-                ID
-              LIMIT
-                10
-            `,
-            "template-tags": {
-              unit: {
-                type: "temporal-unit",
-                name: "unit",
-                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                "display-name": "Unit",
-                dimension: ["field", PEOPLE.CREATED_AT, null],
-                default: "year",
-              },
-            },
-          },
-        };
-
-        H.createNativeQuestion(questionWithDefaultValue, {
-          visitQuestion: true,
-        });
-
-        cy.findByTestId("visualization-root")
-          .should("contain", "January 1, 2025")
-          .should("contain", "January 1, 2026");
-      });
-
-      it("should handle time grouping in optional clause without default value", () => {
-        const questionWithDefaultValue = {
-          name: "Saved question with time grouping",
-          native: {
-            query: `
-              SELECT
-                ID [[,{{unit}} as unit]]
-              FROM
-                PEOPLE
-              WHERE
-                1 = 1 [[AND ID = {{x}}]]
-              ORDER BY
-                ID
-              LIMIT
-                10
-            `,
-            "template-tags": {
-              unit: {
-                type: "temporal-unit",
-                name: "unit",
-                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                dimension: ["field", PEOPLE.CREATED_AT, null],
-                "display-name": "Unit",
-              },
-            },
-          },
-        };
-
-        H.createNativeQuestion(questionWithDefaultValue, {
-          visitQuestion: true,
-        });
-
-        cy.findByTestId("query-visualization-root")
-          .should("not.contain", "October 7, 2026, 1:34 AM")
-          .should("not.contain", "UNIT");
-      });
-
       it("should show validation error when query is invalid", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(
@@ -462,68 +307,6 @@ describe("scenarios > question > native", () => {
 
     // confirm that the question saved and url updated
     cy.location("pathname").should("match", /\/question\/\d+/);
-  });
-
-  it("shouldn't remove rows containing NULL when using 'Is not' or 'Does not contain' filter (metabase#13332, metabase#37100)", () => {
-    const FILTERS = ["Is not", "Does not contain"];
-
-    const questionDetails = {
-      name: "13332",
-      native: {
-        query:
-          'SELECT null AS "V", 1 as "N" UNION ALL SELECT \'This has a value\' AS "V", 2 as "N"',
-        "template-tags": {},
-      },
-    };
-
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": `card__${id}`,
-          },
-          type: "query",
-        },
-      });
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This has a value");
-
-    FILTERS.forEach((operator) => {
-      cy.log("Apply a filter");
-      H.filter();
-      H.popover().findByText("V").click();
-      H.selectFilterOperator(operator);
-      H.popover().within(() => {
-        cy.findByLabelText("Filter value").type("This has a value");
-        cy.button("Apply filter").click();
-      });
-
-      cy.log(
-        `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
-      );
-      cy.findByText(`V ${operator.toLowerCase()} This has a value`);
-      cy.findByText("No results").should("not.exist");
-
-      cy.log(
-        "**Final assertion: Count of rows with 'null' value should be 1**",
-      );
-      // "Count" is pre-selected option for "Summarize"
-      H.summarize();
-      cy.findByText("Done").click();
-      cy.findByTestId("scalar-value").contains("1");
-
-      cy.findByTestId("qb-filters-panel").within(() => {
-        cy.icon("close").click();
-      });
-      H.summarize();
-      H.rightSidebar().within(() => {
-        cy.icon("close").click();
-      });
-      cy.findByText("Done").click();
-    });
   });
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {

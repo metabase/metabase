@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -9,7 +7,8 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
+import { Route } from "metabase/router";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field } from "metabase-types/api";
 import {
   createMockCard,
@@ -78,10 +77,7 @@ function setup(card: Card, dataset: Dataset = SCALAR_DATASET) {
   setupMetricEndpoint(createMockMetric({ id: card.id, name: card.name }));
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <MetricAbout card={card} urls={mockUrls} />}
-    />,
+    <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
     {
       storeInitialState: createMockState(),
       withRouter: true,

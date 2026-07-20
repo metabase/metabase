@@ -1,5 +1,4 @@
 import { memo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -9,6 +8,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Link } from "metabase/router";
 import {
   ActionIcon,
   Group,
@@ -174,7 +174,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-tertiary"
+                  color="text-disabled"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}
@@ -207,9 +207,7 @@ const TableSectionBase = ({
           >
             {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
 
-            {isUpdatingSorting && (
-              <Loader data-testid="loading-indicator" size="xs" />
-            )}
+            {isUpdatingSorting && <Loader size="xs" />}
 
             {!isSorting && hasFields && (
               <ResponsiveButton

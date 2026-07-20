@@ -3,7 +3,7 @@ import type { State } from "metabase/redux/store";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 
-// Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
+// Must be in sync with CanAccessDataStudio in frontend/src/metabase/router/guards.tsx
 export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;

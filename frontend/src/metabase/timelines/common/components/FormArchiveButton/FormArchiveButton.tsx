@@ -18,7 +18,7 @@ const FormArchiveButton = ({
       className={S.archiveButton}
       type="button"
       variant="subtle"
-      color="danger"
+      color="feedback-negative"
       px={0}
       onClick={onClick}
     >

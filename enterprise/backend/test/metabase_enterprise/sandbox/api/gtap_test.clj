@@ -5,6 +5,7 @@
    [metabase.api.response :as api.response]
    [metabase.driver.util :as driver.util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -293,6 +294,25 @@
                             (t2/select-one :model/Sandbox
                                            :table_id table-id-2
                                            :group_id group-id))))))))))
+
+(deftest sandbox-and-create-queries-persist-together-test
+  (testing "PUT /api/permissions/graph with a sandbox view-data change and a create-queries change persists both (#46450)"
+    (mt/with-premium-features #{:sandboxes :advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                     :model/Card             {cid :id} {}]
+        (with-gtap-cleanup!
+          (let [tid   (mt/id :orders)
+                graph (-> (data-perms.graph/api-graph)
+                          (assoc-in [:groups gid (mt/id) :view-data]     {"PUBLIC" {tid :sandboxed}})
+                          (assoc-in [:groups gid (mt/id) :create-queries] {"PUBLIC" {tid :query-builder}})
+                          (assoc :sandboxes [{:table_id             tid
+                                              :group_id             gid
+                                              :card_id              cid
+                                              :attribute_remappings {"foo" 1}}]))]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
+            (is (t2/exists? :model/Sandbox :table_id tid :group_id gid))
+            (is (= :query-builder
+                   (data-perms/table-permission-for-groups #{gid} :perms/create-queries (mt/id) tid)))))))))
 
 (deftest bulk-upsert-sandboxes-error-test
   (testing "PUT /api/permissions/graph"

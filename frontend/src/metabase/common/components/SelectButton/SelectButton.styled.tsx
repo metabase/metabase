@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
 
-import { inputPadding } from "metabase/common/style/input";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 interface SelectButtonRootProps {
@@ -15,12 +14,12 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-tertiary");
+    return color("text-disabled");
   }
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
-  ${inputPadding()}
+  padding: 0.625rem 0.75rem;
   cursor: pointer;
   display: flex;
   width: ${(props) => (props.fullWidth ? "100%" : "unset")};
@@ -43,7 +42,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:focus {
     border-color: var(--mb-color-core-brand);
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {

@@ -4,6 +4,8 @@ import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
+import type { MeasureId } from "./measure";
+import type { MetricId } from "./metric";
 import type { Parameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -157,7 +159,8 @@ type NestedQueryTableId = string;
 type SourceTableId = TableId | NestedQueryTableId;
 
 export type StructuredQuery = {
-  "source-table"?: SourceTableId;
+  // `null` is the legacy MBQL marker for a not-yet-selected source table
+  "source-table"?: SourceTableId | null;
   "source-query"?: StructuredQuery;
   aggregation?: AggregationClause;
   breakout?: BreakoutClause;
@@ -456,7 +459,9 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 export type TestColumnSpec = {
   type: "column";
   name: string;
+  tableId?: TableId;
   sourceName?: string;
+  sourceFieldId?: FieldId;
   displayName?: string;
 
   // When the columns cannot be disambiguated with name, sourceName and displayName
@@ -469,9 +474,28 @@ export type TestExpressionSpec =
   | TestOperatorSpec
   | TestColumnSpec;
 
-export type TestFilterSpec = TestExpressionSpec;
+export type TestSegmentSpec = {
+  type: "segment";
+  id: SegmentId;
+};
 
-export type TestAggregationSpec = TestExpressionSpec | TestNamedExpressionSpec;
+export type TestMeasureSpec = {
+  type: "measure";
+  id: MeasureId;
+};
+
+export type TestMetricSpec = {
+  type: "metric";
+  id: MetricId;
+};
+
+export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
+
+export type TestAggregationSpec =
+  | TestExpressionSpec
+  | TestNamedExpressionSpec
+  | TestMeasureSpec
+  | TestMetricSpec;
 
 export type TestNamedExpressionSpec = {
   name: string;
@@ -486,7 +510,7 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args?: TestExpressionSpec[];
+  args?: readonly TestExpressionSpec[];
 };
 
 export type TestTemporalBucketSpec = {
@@ -526,16 +550,16 @@ type TestJoinConditionSpec = {
 
 export type TestOrderBySpec = TestColumnSpec & {
   direction?: "asc" | "desc";
-};
+} & TestBinningSpec;
 
 export type TestStageSpec = {
-  fields?: TestColumnSpec[];
-  expressions?: TestNamedExpressionSpec[];
-  joins?: TestJoinSpec[];
-  filters?: TestFilterSpec[];
-  aggregations?: TestAggregationSpec[];
-  breakouts?: TestBreakoutSpec[];
-  orderBys?: TestOrderBySpec[];
+  fields?: readonly TestColumnSpec[];
+  expressions?: readonly TestNamedExpressionSpec[];
+  joins?: readonly TestJoinSpec[];
+  filters?: readonly TestFilterSpec[];
+  aggregations?: readonly TestAggregationSpec[];
+  breakouts?: readonly TestBreakoutSpec[];
+  orderBys?: readonly TestOrderBySpec[];
   limit?: number;
 };
 

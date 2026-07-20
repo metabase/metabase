@@ -240,7 +240,7 @@ export function ColumnValue({
             {String(value).slice(0, -1)}
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 paddingLeft: "0.25rem",
               }}
             >
@@ -265,7 +265,7 @@ export function ColumnValue({
           <Text fw="bold">
             <span
               style={{
-                color: "var(--mb-color-text-tertiary)",
+                color: "var(--mb-color-text-disabled)",
                 fontWeight: "normal",
                 paddingRight: "0.25rem",
               }}

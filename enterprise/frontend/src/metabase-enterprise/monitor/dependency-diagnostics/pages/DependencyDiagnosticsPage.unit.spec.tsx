@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListBreakingGraphNodesEndpoint,
@@ -12,6 +11,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { Route, withRouteProps } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
@@ -82,13 +82,14 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const PageComponent =
+  const PageComponent = withRouteProps(
     mode === "broken"
       ? BrokenDependencyDiagnosticsPage
-      : UnreferencedDependencyDiagnosticsPage;
+      : UnreferencedDependencyDiagnosticsPage,
+  );
 
   const { history } = renderWithProviders(
-    <Route path={getPageUrl(mode, {})} component={PageComponent} />,
+    <Route path={getPageUrl(mode, {})} element={<PageComponent />} />,
     {
       withRouter: true,
       initialRoute: getPageUrl(mode, urlParams),

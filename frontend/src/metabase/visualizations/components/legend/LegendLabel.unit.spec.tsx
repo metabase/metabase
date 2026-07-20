@@ -1,8 +1,8 @@
 import { fireEvent, render } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { Route, Router, createMemoryHistory } from "react-router";
 
 import { screen } from "__support__/ui";
+import { Route, Router, createMemoryHistory } from "metabase/router";
 
 import { LegendLabel } from "./LegendLabel";
 
@@ -13,23 +13,23 @@ describe("LegendLabel", () => {
     const onMouseEnter = jest.fn();
 
     const history = createMemoryHistory();
-    const component = () => {
-      return (
-        <LegendLabel
-          href="#hello"
-          onClick={onClick}
-          onFocus={onFocus}
-          onMouseEnter={onMouseEnter}
-          {...props}
-        >
-          Test
-        </LegendLabel>
-      );
-    };
 
     render(
       <Router history={history}>
-        <Route path="/" component={component} />
+        <Route
+          path="/"
+          element={
+            <LegendLabel
+              href="#hello"
+              onClick={onClick}
+              onFocus={onFocus}
+              onMouseEnter={onMouseEnter}
+              {...props}
+            >
+              Test
+            </LegendLabel>
+          }
+        />
       </Router>,
     );
 

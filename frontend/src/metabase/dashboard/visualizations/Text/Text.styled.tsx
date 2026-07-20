@@ -81,7 +81,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-core-brand);
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile, isFixedWidth }) => {
