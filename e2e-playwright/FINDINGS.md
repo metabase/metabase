@@ -2776,3 +2776,72 @@ open item, not as evidence.
     Both renamed (`tt_tag_target`, `TTFoo`) and **declared as deviations**, both
     being unasserted literals. Container: **37 tables before, 37 after, listings
     identical.**
+
+### 🔴🔴 THE #85 ROOT CAUSE: `resetWritableDb` was never ported
+
+157. **Cypress's `H.restore("*-writable")` also calls `resetWritableDb`
+    (`e2e/support/db_tasks.js:41`), which wipes the warehouse. Our `mb.restore()`
+    does the app-DB half only** (`dependency-checks`). Verified independently:
+    `resetWritableDb` exists in the Cypress harness and has **zero
+    implementations** in `e2e-playwright/`, while **47 files** in this package
+    restore a writable snapshot.
+
+    **This is the missing half of #85.** The debris was previously attributed to
+    self-inflicted fixtures (#101) and cross-spec cleanup (#138), both real — but
+    the reason *nothing ever clears it* is that the restore path which clears it
+    upstream was never ported. Under Cypress every writable restore starts from a
+    clean warehouse; under ours, warehouse state accumulates **forever**.
+
+    It surfaced concretely: test 4 died `403 A table with that name already
+    exists`, because two transform tests target the same `public.base_transform`
+    and the target check hits the warehouse via `driver/table-exists?`.
+
+    **This is also a fidelity gap, not just hygiene.** Every ported spec on this
+    tier runs against a materially different warehouse state than upstream does,
+    which can both mask real failures and manufacture false ones.
+
+    **The fix is owed and is NOT a drop-in:** a faithful `resetWritableDb` would
+    `DROP SCHEMA … CASCADE` across `Schema A`…`Schema Z`, destroying live
+    siblings' fixtures. It must land when the slots are drained, and be verified
+    against a container that already carries the debris.
+
+### A spec whose subject was deleted from the product
+
+158. **`dependency-checks` tests behaviour that no longer exists**
+    (`dependency-checks`). `git log` on the source surfaced `d8b40292d12`
+    *"Disable blocking dependency checks on save (#70819)"*, which unregistered
+    the `useCheck*Dependencies` hooks **and deleted 145 lines from this very
+    spec** — every test asserting the confirmation *does* appear. A follow-up
+    deleted the components and the
+    `POST /api/ee/dependencies/check-card|check-transform|check-snippet`
+    endpoints. Confirmed against the current tree: zero grep hits, absent from
+    `api.clj`'s endpoint list.
+
+    So the four surviving tests are the **negative half of a pair whose positive
+    half is gone**. Measured rather than asserted — a probe replicating the
+    deleted breaking-change test returned `modals=0 affectedListed=0
+    saveAnywayButtons=0` with `PUT /api/card → 200`, and mutation M3 confirmed it
+    on the transform surface. Ported faithfully with the analysis inline, **not
+    strengthened**.
+
+    Left explicitly unexplained: **whether the removal is permanent or a
+    temporary disable cannot be determined from the repo** —
+    `errors-from-proposed-edits` is intact and still wired to Metabot, which is
+    consistent with either.
+
+### The backfill hazard is moot here, and the direction inverts
+
+159. **I briefed the async-backfill race (#142) as this spec's primary hazard. It
+    doesn't apply** (`dependency-checks`), and the agent measured rather than
+    assumed: `--repeat-each=3` ran **12/12 both with and without** the
+    `backfill-status` wait.
+
+    There is a mechanism — the only consumer of the graph on these paths was the
+    **deleted** check endpoint. And the agent noted the direction **inverts** my
+    framing: a stale graph here would make these tests pass *more* easily
+    (hollow green), never flake. It kept the wait as cheap insurance.
+
+    **Inbox correction owed:** `dependency-unreferenced-list.ts:78` claims
+    `backfill-status` is "only the global one-time backfill flag". That is
+    **wrong** — `api.clj:1047` is `(not (has-stale-or-outdated?))`, genuinely
+    per-entity. The `model-to-transform` reading (#142) is the correct one.
