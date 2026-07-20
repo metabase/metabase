@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -12,7 +11,6 @@ import {
   Divider,
   FixedSizeIcon,
   Group,
-  List,
   Stack,
   Text,
   Title,
@@ -79,56 +77,38 @@ type CreateWorkspaceSectionProps = {
 };
 
 function CreateWorkspaceSection({ databases }: CreateWorkspaceSectionProps) {
-  const isRemoteSyncEnabled = useSetting("remote-sync-enabled") ?? false;
+  const isRemoteSyncEnabled = useSetting("remote-sync-enabled");
   const hasEligibleDatabase = getEligibleDatabases(databases).length > 0;
 
-  if (!hasEligibleDatabase || !isRemoteSyncEnabled) {
+  if (!hasEligibleDatabase) {
     return (
-      <CreateWorkspaceErrors
-        hasEligibleDatabase={hasEligibleDatabase}
-        isRemoteSyncEnabled={isRemoteSyncEnabled}
-      />
+      <Text>
+        {jt`You need to enable workspaces on at least one database. You can do this in ${(
+          <Anchor
+            key="link"
+            component={Link}
+            to={Urls.viewDatabases()}
+          >{t`admin settings`}</Anchor>
+        )}.`}
+      </Text>
+    );
+  }
+
+  if (!isRemoteSyncEnabled) {
+    return (
+      <Text>
+        {jt`You need to set up remote sync. You can do this in ${(
+          <Anchor
+            key="link"
+            component={Link}
+            to={Urls.remoteSyncSettings()}
+          >{t`admin settings`}</Anchor>
+        )}.`}
+      </Text>
     );
   }
 
   return <NewWorkspaceButton databases={databases} primary />;
-}
-
-type CreateWorkspaceErrorsProps = {
-  hasEligibleDatabase: boolean;
-  isRemoteSyncEnabled: boolean;
-};
-
-function CreateWorkspaceErrors({
-  hasEligibleDatabase,
-  isRemoteSyncEnabled,
-}: CreateWorkspaceErrorsProps) {
-  const errors: ReactNode[] = [];
-  if (!hasEligibleDatabase) {
-    errors.push(
-      <Anchor key="databases" component={Link} to={Urls.viewDatabases()}>
-        {t`Enable workspaces on at least one database`}
-      </Anchor>,
-    );
-  }
-  if (!isRemoteSyncEnabled) {
-    errors.push(
-      <Anchor key="remote-sync" component={Link} to={Urls.remoteSyncSettings()}>
-        {t`Set up remote sync`}
-      </Anchor>,
-    );
-  }
-
-  return (
-    <Stack gap="sm">
-      <Text>{t`To create a workspace, you need to:`}</Text>
-      <List>
-        {errors.map((error, index) => (
-          <List.Item key={index}>{error}</List.Item>
-        ))}
-      </List>
-    </Stack>
-  );
 }
 
 type DocsLinkProps = {
