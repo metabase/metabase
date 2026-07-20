@@ -169,18 +169,14 @@
           "or recent: true for your recently viewed items.")))
   args)
 
-(def ^:private no-scoping-collection-ids
-  "`collection_id` values that mean \"no scoping\": absent (nil, stripped before the handler) or
-   the documented \"root\" sentinel. Both are inert — they must neither scope the search nor trip
-   the collection teaching errors."
-  #{nil "root"})
-
 (defn- collection-scoping?
-  "True when `collection_id` names a real collection to scope to — present and not an inert
-   value. A missing or \"root\" filter does nothing, so it must not trip the collection checks."
+  "True when `collection_id` scopes the search to a specific collection: present and not the inert
+   \"root\" sentinel (nil is stripped before the handler, so a present value is non-nil). A missing
+   or \"root\" filter does nothing, so it must not trip the collection checks. \"trash\" counts as
+   scoping and surfaces its teaching error when [[resolve-collection-filter]] resolves it."
   [{:keys [collection_id] :as args}]
   (and (contains? args :collection_id)
-       (not (contains? no-scoping-collection-ids collection_id))))
+       (not= "root" collection_id)))
 
 (defn- validate-filters!
   [{:keys [type created_by archived] :as args}]
@@ -237,12 +233,14 @@
      {:status-code 403})))
 
 (defn- resolve-collection-filter
-  "Resolve the `collection_id` argument to a numeric collection id behind the collection's
-   read check, or nil when it names the root (no scoping). The search context takes numeric
+  "Resolve the `collection_id` argument to a numeric collection id behind the collection's read
+   check, or nil when it means the root (no scoping). Sentinel handling is delegated to
+   [[common/resolve-collection-id]] — nil/\"root\" resolve to nil, \"trash\" is a teaching error —
+   and a real id still gets the read check the REST endpoint runs. The search context takes numeric
    ids only, so entity_ids are translated here."
   [collection-id]
-  (when-not (contains? no-scoping-collection-ids collection-id)
-    (:id (common/resolve-and-read :model/Collection collection-id
+  (when-let [id (common/resolve-collection-id collection-id)]
+    (:id (common/resolve-and-read :model/Collection id
                                   (fn [id]
                                     (when-let [collection (t2/select-one :model/Collection :id id)]
                                       (when (mi/can-read? collection)

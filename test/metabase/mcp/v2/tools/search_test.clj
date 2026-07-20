@@ -185,6 +185,18 @@
       (is (= 400 (:status-code (ex-data (try (validate-modes! {:term_queries [" "]} true false)
                                              (catch clojure.lang.ExceptionInfo e e)))))))))
 
+(deftest resolve-collection-filter-delegates-sentinels-test
+  (testing "GHY-4137: resolve-collection-filter delegates sentinel handling to
+            common/resolve-collection-id instead of a local set — so \"trash\" gets its specific
+            teaching error rather than a generic invalid-id, and nil/\"root\" still mean no scoping"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "\"trash\" is the specific teaching error"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not a valid collection here"
+                              (resolve-collection-filter "trash"))))
+      (testing "nil and \"root\" resolve to nil (no scoping)"
+        (is (nil? (resolve-collection-filter nil)))
+        (is (nil? (resolve-collection-filter "root")))))))
+
 (defn- nothing-to-search?
   "True when the search handler rejects `args` with the \"Nothing to search for\" teaching error.
    A non-matching failure (e.g. the engine's \"No current user\") means validation was passed."
