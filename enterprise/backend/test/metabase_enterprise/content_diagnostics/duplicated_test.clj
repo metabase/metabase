@@ -297,9 +297,10 @@
                                 (:data (mt/user-http-request :crowberto :get 200
                                                              "ee/content-diagnostics/duplicated" :query prefix)))]
               (testing "card/dashboard/document each carry their own live view_count in details"
-                (is (= 7  (get-in by-type ["card" :details :view_count])))
-                (is (= 12 (get-in by-type ["dashboard" :details :view_count])))
-                (is (= 3  (get-in by-type ["document" :details :view_count]))))
+                (are [etype vc] (= vc (get-in by-type [etype :details :view_count]))
+                  "card"      7
+                  "dashboard" 12
+                  "document"  3))
               (testing "a transform (no view_count column) omits the key entirely from details"
                 (is (contains? by-type "transform"))
                 (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
@@ -451,7 +452,7 @@
                   (is (= #{reg-peer pers-peer} (peer-ids :include-personal-collections true))))))))))))
 
 (deftest duplicated-api-transform-peers-hydrate-test
-  (testing "GET /duplicated gates transform peers on transform readability (mi/can-read?), not collection visibility"
+  (testing "GET /duplicated gates transform peers on transform readability, not collection visibility"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
@@ -506,7 +507,7 @@
                 (is (= #{stale-fid} (ids "ee/content-diagnostics/stale")))))))))))
 
 (deftest duplicated-api-feature-gated-test
-  (testing "GET /duplicated is gated on the :content-diagnostics premium feature (premium-handler)"
+  (testing "GET /duplicated is gated on the :content-diagnostics premium feature"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
         (mt/with-premium-features #{:content-diagnostics}

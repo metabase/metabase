@@ -148,6 +148,21 @@
                      :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
             colls))))
 
+(defn- readable-entities-where
+  "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
+  (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
+  `excluded-personal-ids` is provided. Shared by the culprit/peer hydrators so the read-time gate lives in
+  one place - a perms change lands once, not per hydrator."
+  [ids excluded-personal-ids]
+  [:and
+   [:in :id ids]
+   (collection/visible-collection-filter-clause :collection_id)
+   ;; root-collection entities (nil collection_id) must survive the NOT-IN.
+   (when excluded-personal-ids
+     [:or
+      [:= :collection_id nil]
+      [:not [:in :collection_id excluded-personal-ids]]])])
+
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
   read-time hydration of a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects.
@@ -164,44 +179,24 @@
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)
                                :view_count (:view_count c)})
                       [:model/Card :id :name :type :view_count :card_schema]
-                      {:where [:and
-                               [:in :id (set card-ids)]
-                               (collection/visible-collection-filter-clause :collection_id)
-                               ;; root-collection culprits (nil collection_id) must survive the NOT-IN.
-                               (when excluded-personal-ids
-                                 [:or
-                                  [:= :collection_id nil]
-                                  [:not [:in :collection_id excluded-personal-ids]]])]})))
+                      {:where (readable-entities-where (set card-ids) excluded-personal-ids)})))
 
-(defn- hydrate-duplicate-peers
+(defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
-  :card_type <kw> :view_count <int>}}` (`card_type` only on card peers). Card/dashboard/document peers
-  carry their live `view_count` so callers can judge which duplicate is the abandoned one; transforms
-  have no view concept, so transform peers carry no usage signal. The generalization of
-  [[hydrate-slow-entities]]:
-  duplicate peers share the **finding's own** entity type, which varies per finding, so each type's peer-id
-  union resolves from that type's own model. Mode-agnostic - it hydrates the union regardless of which
-  match modes produced it.
-
-  The per-caller read-time filters are re-applied exactly as in [[hydrate-slow-entities]]: caller
-  visibility always, personal-collection exclusion when `excluded-personal-ids` is provided (with the
-  nil-`collection_id` root-survival clause). For card/dashboard/document peers the collection clause IS
-  the model's read permission (they derive `:perms/use-parent-collection-perms`); transform readability
-  is not collection-based, so transform peers additionally require `mi/can-read?`. A filtered-out peer
-  drops out of `duplicate_entities` exactly like a deleted one."
+  :card_type <kw> :view_count <int>}}`. `card_type` and `view_count` are present only on card/dashboard/
+  document peers (transforms have no view concept, so their peers carry no usage signal). Peers share the
+  finding's own entity type, so each type's ids resolve from that type's own model, read-filtered by
+  [[readable-entities-where]]. For card/dashboard/document that collection gate IS the read permission
+  (they derive `:perms/use-parent-collection-perms`); transform readability is not collection-based, so
+  transform peers additionally require `mi/can-read?`. A filtered-out peer drops out of
+  `duplicate_entities` like a deleted one."
   [findings excluded-personal-ids]
   (into {}
         (for [[etype rows] (group-by :entity_type findings)
               :let  [model (common/entity-type->model etype)
                      ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
               :when (and model (seq ids))
-              :let  [where [:and
-                            [:in :id ids]
-                            (collection/visible-collection-filter-clause :collection_id)
-                            (when excluded-personal-ids
-                              [:or
-                               [:= :collection_id nil]
-                               [:not [:in :collection_id excluded-personal-ids]]])]]
+              :let  [where (readable-entities-where ids excluded-personal-ids)]
               row   (if (= etype :transform)
                       ;; mi/can-read? on a transform = source-type feature gate + (superuser, or
                       ;; data-analyst with readable source tables) - the collection clause alone would
@@ -238,13 +233,14 @@
   Options let each endpoint add its per-finding-type extras without changing the shared base:
   `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
   stale, `:duration_ms` for slow); `:hydrate-culprits?` - replace `details.slow_entity_ids` with hydrated
-  `details.slow_entities` objects (slow roll-ups); `:hydrate-duplicate-peers?` - replace
+  `details.slow_entities` objects (slow roll-ups); `:hydrate-duplicate-entities?` - replace
   `details.duplicate_entity_ids` with hydrated same-type `details.duplicate_entities` objects (duplicated
-  findings), also dropping the stored `details.matches` envelope (its raw per-mode peer ids are not
+  findings), also dropping the stored `details.matches` envelope (its raw per-mode ids are not
   permission-filtered - the hydrated list is the served form); `:excluded-personal-collection-ids` - the
-  request's resolved exclusion set (see `excluded-personal-collection-ids`), threaded to the culprit/peer
-  hydration so its personal-collection exclusion matches the findings filter without re-querying."
-  [findings & [{:keys [top-level-cols hydrate-culprits? hydrate-duplicate-peers? excluded-personal-collection-ids]
+  request's resolved exclusion set (see `excluded-personal-collection-ids`), threaded to the
+  culprit/duplicate-entity hydration so its personal-collection exclusion matches the findings filter
+  without re-querying."
+  [findings & [{:keys [top-level-cols hydrate-culprits? hydrate-duplicate-entities? excluded-personal-collection-ids]
                 :or   {top-level-cols []}}]]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
@@ -255,8 +251,8 @@
         culprits    (when hydrate-culprits?
                       (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
                                              excluded-personal-collection-ids))
-        peers       (when hydrate-duplicate-peers?
-                      (hydrate-duplicate-peers findings excluded-personal-collection-ids))]
+        entities    (when hydrate-duplicate-entities?
+                      (hydrate-duplicate-entities findings excluded-personal-collection-ids))]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name details] :as row}]
             (let [entity  (get-in ctx-by-type [entity_type entity_id])
@@ -275,10 +271,10 @@
                              (-> (dissoc :slow_entity_ids)
                                  (assoc :slow_entities (into [] (keep culprits) (:slow_entity_ids details))))
 
-                             (and hydrate-duplicate-peers? (contains? details :duplicate_entity_ids))
+                             (and hydrate-duplicate-entities? (contains? details :duplicate_entity_ids))
                              (-> (dissoc :duplicate_entity_ids :matches)
                                  (assoc :duplicate_entities (into []
-                                                                  (keep #(get peers [entity_type %]))
+                                                                  (keep #(get entities [entity_type %]))
                                                                   (:duplicate_entity_ids details)))))]
               (merge {:id                  id
                       :finding_type        finding_type

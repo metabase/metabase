@@ -347,7 +347,7 @@
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
     {:data         (api.common/hydrate-findings page {:top-level-cols                   [:duplicate_count]
-                                                      :hydrate-duplicate-peers?         true
+                                                      :hydrate-duplicate-entities?      true
                                                       :excluded-personal-collection-ids excluded-personal-ids})
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
