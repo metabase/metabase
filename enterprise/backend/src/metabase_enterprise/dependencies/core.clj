@@ -142,6 +142,7 @@
                        (merge errors)))
                  {} by-db))))))
 
+;; REPL comment block calls metabase.premium-features.core without a ns require
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
