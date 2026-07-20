@@ -2,7 +2,9 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build",
+    "noEmit": true,
     "baseUrl": "./",
+    "rootDir": "..",
     "types": [
       "cypress",
       "@testing-library/cypress",
@@ -17,6 +19,16 @@
       ],
       "@metabase/embedding-sdk-react/data-app": [
         "../enterprise/frontend/src/embedding-sdk-package/data-app.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app-dev": [
+        "../enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts"
+      ],
+      // The data-app dev preview (toolbar + diagnostics feed) is only reachable
+      // from source — its internals aren't on the package's public barrel.
+      // Mirrors the webpack `embedding-sdk-package` alias so component specs can
+      // import it (e.g. data-apps/diagnostics-toolbar).
+      "embedding-sdk-package/*": [
+        "../enterprise/frontend/src/embedding-sdk-package/*"
       ],
       "*": ["../frontend/src/*"]
     }

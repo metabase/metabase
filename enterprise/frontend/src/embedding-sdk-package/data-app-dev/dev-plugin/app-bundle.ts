@@ -14,6 +14,7 @@ export interface AppBundle {
   /** Resolves `true` only for the call that produced fresh output. */
   rebuild: () => Promise<boolean>;
   readonly code: string;
+  readonly lastRebuildAt: number | null;
 }
 
 export function createAppBundle({
@@ -22,6 +23,7 @@ export function createAppBundle({
   onError,
 }: AppBundleOptions): AppBundle {
   let code = "";
+  let lastRebuildAt: number | null = null;
   let building = false;
   let stale = false;
 
@@ -37,6 +39,9 @@ export function createAppBundle({
         build: {
           write: false,
           minify: mode === "production",
+          // Inline: only `chunk.code` is kept, so a sibling `.map` has nothing
+          // to resolve against.
+          sourcemap: "inline",
           ...dataAppLibBuild("data-app-bundle.js"),
         },
       });
@@ -48,6 +53,8 @@ export function createAppBundle({
           .flatMap((output) => ("output" in output ? output.output : []))
           .find((chunk): chunk is Rollup.OutputChunk => chunk.type === "chunk")
           ?.code ?? "";
+
+      lastRebuildAt = Date.now();
 
       return true;
     } catch (error) {
@@ -85,6 +92,10 @@ export function createAppBundle({
 
     get code() {
       return code;
+    },
+
+    get lastRebuildAt() {
+      return lastRebuildAt;
     },
   };
 }
