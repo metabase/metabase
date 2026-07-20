@@ -3452,3 +3452,31 @@ open item, not as evidence.
     (request-count delta 1 → 1 across ~60 executions) while correctly noting it
     is itself an **exposer** of the shared maildev inbox, since `setupSMTP`
     deletes it once per test.
+
+### Scope of the #188 exposure, measured — 41 specs, but the hazard is narrow
+
+190. **I swept the landed ports for the `be.enabled` mapping hazard.** 120 files
+    use `toBeEnabled()`/`toBeDisabled()`; of the specs whose upstream source also
+    uses `should("be.enabled")` / `should("not.be.enabled")`, **41 are exposed**,
+    including `database-connection-strings` (4 upstream uses),
+    `transforms-template-tags` (5), `embedding-hub` (5),
+    `data-studio-snippets` (3), `document-links` (3), `add-initial-data` (3),
+    `custom-viz` (3), and `alert-types` (3, already handled).
+
+    **This is an exposure list, not a defect list, and the distinction matters.**
+    The hazard only bites when the assertion's target is **not a form control** —
+    Sizzle's `:enabled` is `elem.disabled === false`, which a `<div>` fails
+    (so Cypress passes), while Playwright's ARIA notion treats that same `<div>`
+    as enabled. For a genuine `<input>` or `<button>` the two agree and the
+    mapping is correct.
+
+    So the audit is per-**site**, not per-file: for each of those uses, check
+    whether the resolved element is a form control. Where it isn't, the faithful
+    port is `toHaveJSProperty("disabled", false)`.
+
+    **Direction of the failure is worth noting: a naive port goes RED against
+    correct product code**, which is the *safe* direction — it surfaces as a
+    failure to investigate rather than a silent false green. That is why this is
+    recorded as owed work rather than something to chase mid-wave. It also means
+    any of these 41 that are currently **green have already demonstrated** their
+    targets behave consistently under both notions.
