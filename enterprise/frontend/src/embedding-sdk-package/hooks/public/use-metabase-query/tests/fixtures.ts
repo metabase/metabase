@@ -132,8 +132,6 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
-      name: "Revenue",
-      databaseId: 1,
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
@@ -158,14 +156,12 @@ export const TEST_SCHEMA = {
       type: "metric" as const,
       id: 33,
       sourceCardId: 41,
-      mappedTableIds: [1],
     },
   },
   questions: {
     ordersQuestion: {
       type: "card" as const,
       id: 41,
-      name: "Orders question",
       columns: [
         {
           type: "column" as const,
@@ -178,12 +174,6 @@ export const TEST_SCHEMA = {
           name: "AMOUNT",
           displayName: "Amount",
           jsType: "number",
-        },
-        {
-          type: "column" as const,
-          name: "CREATED_AT",
-          displayName: "Created At",
-          jsType: "Date",
         },
       ],
     },
