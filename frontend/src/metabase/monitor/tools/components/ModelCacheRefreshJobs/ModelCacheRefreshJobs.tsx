@@ -17,7 +17,7 @@ import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { Outlet, push } from "metabase/router";
 import {
   ActionIcon,
   Card,
@@ -130,14 +130,14 @@ export function ModelCacheRefreshJobs() {
   );
 }
 
-export function ModelCachePage({ children }: { children?: ReactNode }) {
+export function ModelCachePage() {
   return (
     <Flex h="100%" wrap="nowrap">
       <MonitorMain>
         <MonitorHeaderTitle mb="sm">{t`Model caching log`}</MonitorHeaderTitle>
         <ModelCacheRefreshJobs />
       </MonitorMain>
-      {children /* refresh modal */}
+      <Outlet /> {/* refresh modal */}
     </Flex>
   );
 }

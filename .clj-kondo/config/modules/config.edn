@@ -1303,7 +1303,8 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -2505,6 +2506,28 @@
                     :model/TransformRun
                     :model/TransformTag}}
 
+  typed-schemas
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           types
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
+
   types
   {:team "Querying Platform"
    :api  #{metabase.types.core
@@ -3072,6 +3095,17 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           premium-features
+           settings
+           util}}
+
   enterprise/data-complexity-score
   {:team "Metabot"
    :api  #{metabase-enterprise.data-complexity-score.api
@@ -3420,6 +3454,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}

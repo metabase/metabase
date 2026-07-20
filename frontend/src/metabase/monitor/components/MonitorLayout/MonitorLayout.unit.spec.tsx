@@ -102,10 +102,9 @@ const setup = ({
   });
 
   renderWithProviders(
-    <Route
-      path="*"
-      component={() => <MonitorLayout>{children}</MonitorLayout>}
-    />,
+    <Route element={<MonitorLayout />}>
+      <Route path="*" element={children} />
+    </Route>,
     {
       initialRoute,
       storeInitialState: state,

@@ -19,7 +19,7 @@ const setup = ({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <AreaTab
           label="Dependency diagnostics"
           icon="search_check"
@@ -29,7 +29,7 @@ const setup = ({
           rightSection={rightSection}
           showLabel
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

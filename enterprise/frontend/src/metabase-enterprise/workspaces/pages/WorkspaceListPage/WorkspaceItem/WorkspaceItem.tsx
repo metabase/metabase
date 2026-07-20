@@ -15,6 +15,11 @@ import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
+import {
+  getProvisioningFailureMessage,
+  getWorkspaceDatabaseName,
+  isUnprovisioned,
+} from "../../../utils";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
@@ -25,6 +30,8 @@ export type WorkspaceItemProps = {
 };
 
 export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
+  const databases = workspace.databases ?? [];
+
   return (
     <Card
       role="region"
@@ -40,7 +47,8 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {workspace.databases?.map((workspaceDatabase) => (
+          {databases.some(isUnprovisioned) && <WorkspaceProvisioningWarning />}
+          {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
               workspaceDatabase={workspaceDatabase}
@@ -74,20 +82,25 @@ type WorkspaceDatabaseItemProps = {
   workspaceDatabase: WorkspaceDatabase;
 };
 
+function WorkspaceProvisioningWarning() {
+  return (
+    <Box c="text-secondary" lh="1rem">
+      <Group gap="xs" wrap="nowrap">
+        <FixedSizeIcon name="warning" aria-hidden />
+        {getProvisioningFailureMessage()}
+      </Group>
+    </Box>
+  );
+}
+
 function WorkspaceDatabaseItem({
   workspaceDatabase,
 }: WorkspaceDatabaseItemProps) {
-  const { database } = workspaceDatabase;
-
-  if (database == null) {
-    return null;
-  }
-
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
-        {database.name}
+        {getWorkspaceDatabaseName(workspaceDatabase)}
       </Group>
     </Box>
   );
@@ -143,12 +156,13 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         onRename={closeRename}
         onClose={closeRename}
       />
-      <DeleteWorkspaceModal
-        workspace={workspace}
-        opened={isDeleteOpen}
-        onDelete={closeDelete}
-        onClose={closeDelete}
-      />
+      {isDeleteOpen && (
+        <DeleteWorkspaceModal
+          workspaceId={workspace.id}
+          onDelete={closeDelete}
+          onClose={closeDelete}
+        />
+      )}
     </>
   );
 }

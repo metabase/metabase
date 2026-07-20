@@ -74,10 +74,10 @@ async function setup({
 
   renderWithProviders(
     <>
-      <Route path="/" component={AppSwitcher} />
-      <Route path="/admin" component={AppSwitcher} />
-      <Route path="/data-studio" component={AppSwitcher} />
-      <Route path="/monitor" component={AppSwitcher} />
+      <Route path="/" element={<AppSwitcher />} />
+      <Route path="/admin" element={<AppSwitcher />} />
+      <Route path="/data-studio" element={<AppSwitcher />} />
+      <Route path="/monitor" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,

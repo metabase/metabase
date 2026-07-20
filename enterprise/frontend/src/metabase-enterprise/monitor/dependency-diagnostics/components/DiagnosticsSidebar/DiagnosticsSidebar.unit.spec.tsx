@@ -29,9 +29,7 @@ function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
-        <DiagnosticsSidebar node={node} mode={mode} onClose={onClose} />
-      )}
+      element={<DiagnosticsSidebar node={node} mode={mode} onClose={onClose} />}
     />,
     { withRouter: true, initialRoute: "/" },
   );

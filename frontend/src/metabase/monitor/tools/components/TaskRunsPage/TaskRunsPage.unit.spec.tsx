@@ -41,7 +41,7 @@ const setup = ({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunsPage}>
+    <Route path={PATHNAME} element={<TaskRunsPage />}>
       <Route path=":runId" />
     </Route>,
     {

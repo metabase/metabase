@@ -1668,9 +1668,8 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name   (driver.u/workspace-isolation-namespace-name workspace)
-        read-user     {:user     (driver.u/workspace-isolation-user-name workspace)
-                       :password (driver.u/random-workspace-password)}
+  (let [schema-name   (:schema workspace)
+        read-user     (:database_details workspace)
         quoted-schema (quote-schema schema-name)
         quoted-user   (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
@@ -1695,8 +1694,7 @@
             (.executeBatch ^Statement stmt)
             (catch Throwable t
               (throw (driver.u/scrub-exceptions t [(:password read-user)])))))))
-    {:schema           schema-name
-     :database_details read-user}))
+    nil))
 
 (defmethod driver/destroy-workspace-isolation! :postgres
   [_driver database workspace]
@@ -1731,7 +1729,7 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [_driver database workspace schemas]
+  [driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         source-schemas (set schemas)
         ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
@@ -1739,12 +1737,16 @@
         ;; isolation hole this catches. We probe per-schema so only the schemas
         ;; actually used as inputs need to be locked down — schemas the workspace
         ;; never touches can keep their default ACLs.
-        _              (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-                         (doseq [s source-schemas]
-                           (assert-no-public-create-grant!       check-conn s)
-                           (assert-has-usage-grant-option!       check-conn s)
-                           (assert-has-grant-option!             check-conn s)
-                           (assert-can-alter-default-privileges! check-conn s)))
+        ;; read-only probes — one connection, no transaction needed
+        _              (sql-jdbc.execute/do-with-connection-with-options
+                        driver database nil
+                        (fn [^Connection conn]
+                          (let [check-conn {:connection conn}]
+                            (doseq [s source-schemas]
+                              (assert-no-public-create-grant!       check-conn s)
+                              (assert-has-usage-grant-option!       check-conn s)
+                              (assert-has-grant-option!             check-conn s)
+                              (assert-can-alter-default-privileges! check-conn s)))))
         sqls           (grant-workspace-read-access-sqls username schemas)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]

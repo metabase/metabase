@@ -22,7 +22,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { AdminNotification, UserListResult } from "metabase-types/api";
 import {
@@ -39,6 +39,8 @@ import {
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 import { PAGE_SIZE } from "./constants";
+
+const RoutedNotificationsAdminPage = withRouteProps(NotificationsAdminPage);
 
 const PATHNAME = "/monitor/notifications";
 
@@ -180,11 +182,11 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="/monitor/notifications(/:notificationId)"
-      component={(props) => (
+      element={
         <MonitorContent>
-          <NotificationsAdminPage {...props} />
+          <RoutedNotificationsAdminPage />
         </MonitorContent>
-      )}
+      }
     />,
     { withRouter: true, initialRoute },
   );

@@ -87,7 +87,7 @@ async function setup({
   }
 
   const utils = renderWithProviders(
-    <Route path="/" component={ErrorOverview} />,
+    <Route path="/" element={<ErrorOverview />} />,
     { withRouter: true, initialRoute },
   );
 
@@ -162,7 +162,7 @@ describe("ErrorOverview", () => {
       }),
     );
 
-    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
+    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
       withRouter: true,
     });
 
@@ -303,7 +303,7 @@ describe("ErrorOverview", () => {
       ),
     );
 
-    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
+    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
       withRouter: true,
     });
 

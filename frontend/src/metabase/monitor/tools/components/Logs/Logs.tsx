@@ -1,5 +1,4 @@
-import type { Location } from "history";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -11,7 +10,7 @@ import {
 } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { Link, withRouter } from "metabase/router";
+import { Link, Outlet, useRouter } from "metabase/router";
 import {
   Button,
   Center,
@@ -30,8 +29,6 @@ import { usePollingLogsQuery, useTailLogs } from "./hooks";
 import { filterLogs, urlStateConfig } from "./utils";
 
 interface LogsProps {
-  children?: ReactNode;
-  location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
@@ -40,11 +37,10 @@ interface LogsProps {
 
 export const DEFAULT_POLLING_DURATION_MS = 1000;
 
-const LogsBase = ({
-  children,
-  location,
+export const Logs = ({
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
+  const { location } = useRouter();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -173,11 +169,9 @@ const LogsBase = ({
       </Flex>
 
       {
-        // render 'children' so that the modals show up
-        children
+        // render the outlet so that the modals show up
+        <Outlet />
       }
     </>
   );
 };
-
-export const Logs = withRouter(LogsBase);

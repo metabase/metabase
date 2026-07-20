@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useAsync } from "react-use";
 
 import {
@@ -9,7 +8,7 @@ import {
 } from "metabase/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { Outlet, type Route } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
@@ -26,7 +25,6 @@ import {
 import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
-  children: ReactNode;
   route: Route;
   params: {
     databaseId: DatabaseId;
@@ -36,11 +34,7 @@ type DataPermissionsPageProps = {
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 const EMPTY_DATABASE_LIST: Database[] = [];
 
-function DataPermissionsPage({
-  children,
-  route,
-  params,
-}: DataPermissionsPageProps) {
+function DataPermissionsPage({ route, params }: DataPermissionsPageProps) {
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const databases = useSelector(
     (state) =>
@@ -112,7 +106,7 @@ function DataPermissionsPage({
       helpContent={<DataPermissionsHelp />}
       showSplitPermsModal={showSplitPermsModal}
     >
-      {children}
+      <Outlet />
     </PermissionsPageLayout>
   );
 }

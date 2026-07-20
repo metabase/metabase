@@ -12,7 +12,7 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    ;; Side-effects: registers BigQuery driver multimethods for workspace
    ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
-   ;; `check-isolation-permissions`, `destroy-workspace-isolation!`).
+   ;; `destroy-workspace-isolation!`).
    [metabase.driver.bigquery-cloud-sdk.workspaces]
    [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -6,7 +5,7 @@ import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { WithRouterProps } from "metabase/router";
+import { Outlet, type WithRouterProps } from "metabase/router";
 import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
@@ -15,12 +14,9 @@ import { SectionLayout } from "../../components/SectionLayout";
 
 import { NoWritableDatabasesEmptyState } from "./NoWritableDatabasesEmptyState";
 
-type TransformsSectionLayoutProps = WithRouterProps & {
-  children?: ReactNode;
-};
+type TransformsSectionLayoutProps = WithRouterProps;
 
 export function TransformsSectionLayout({
-  children,
   params,
 }: TransformsSectionLayoutProps) {
   usePageTitle(t`Transforms`, { titleIndex: 1 });
@@ -60,7 +56,7 @@ export function TransformsSectionLayout({
         error={databasesError}
         noWrapper
       >
-        {children}
+        <Outlet />
       </LoadingAndErrorWrapper>
     </SectionLayout>
   );

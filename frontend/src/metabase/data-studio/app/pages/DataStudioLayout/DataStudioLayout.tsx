@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
@@ -12,17 +12,14 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
 
-type DataStudioLayoutProps = {
-  children?: ReactNode;
-};
-
-export function DataStudioLayout({ children }: DataStudioLayoutProps) {
+export function DataStudioLayout() {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -208,7 +205,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       upperNav={upperNav}
       lowerNav={lowerNav}
     >
-      {children}
+      <Outlet />
     </AreaLayout>
   );
 }

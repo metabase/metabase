@@ -4,7 +4,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Outlet, Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
@@ -13,18 +13,22 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock("./components/MonitorLayout", () => ({
-  MonitorLayout: ({ children }: { children?: ReactNode }) => <>{children}</>,
-}));
+jest.mock("./components/MonitorLayout", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return { MonitorLayout: () => <Outlet /> };
+});
 jest.mock(
   "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout",
-  () => ({
-    DependencyDiagnosticsSectionLayout: ({
-      children,
-    }: {
-      children?: ReactNode;
-    }) => <div data-testid="diagnostics-section">{children}</div>,
-  }),
+  () => {
+    const { Outlet } = jest.requireActual("metabase/router");
+    return {
+      DependencyDiagnosticsSectionLayout: () => (
+        <div data-testid="diagnostics-section">
+          <Outlet />
+        </div>
+      ),
+    };
+  },
 );
 
 jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
@@ -32,14 +36,17 @@ jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
   UnreferencedDependencyDiagnosticsPage: () => <div>{"Unreferenced page"}</div>,
 }));
 
-jest.mock("metabase/monitor/tools/components/Logs", () => ({
-  Logs: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="logs-page">
-      {"Logs"}
-      {children}
-    </div>
-  ),
-}));
+jest.mock("metabase/monitor/tools/components/Logs", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return {
+    Logs: () => (
+      <div data-testid="logs-page">
+        {"Logs"}
+        <Outlet />
+      </div>
+    ),
+  };
+});
 jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
   JobInfoApp: () => <div data-testid="jobs-page">{"Jobs"}</div>,
 }));
@@ -83,23 +90,10 @@ jest.mock(
   }),
 );
 
-const CanAccessMonitor = ({ children }: { children?: ReactNode }) => (
-  <>{children}</>
-);
-
-const CanAccessMonitorDiagnostics = ({
-  children,
-}: {
-  children?: ReactNode;
-}) => <>{children}</>;
-
-const CanAccessMonitoringTools = ({ children }: { children?: ReactNode }) => (
-  <>{children}</>
-);
-
-const CanAccessAlertsManagement = ({ children }: { children?: ReactNode }) => (
-  <>{children}</>
-);
+const CanAccessMonitor = () => <Outlet />;
+const CanAccessMonitorDiagnostics = () => <Outlet />;
+const CanAccessMonitoringTools = () => <Outlet />;
+const CanAccessAlertsManagement = () => <Outlet />;
 
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
@@ -131,7 +125,7 @@ const setup = ({
   );
 };
 
-const DenyingGuard = ({ children: _children }: { children?: ReactNode }) => (
+const DenyingGuard = () => (
   <div data-testid="unauthorized-marker">{"Unauthorized"}</div>
 );
 
@@ -142,9 +136,9 @@ const setupWithGuards = ({
   CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
 }: {
   initialRoute: string;
-  CanAccessMonitorDiagnostics?: (props: { children?: ReactNode }) => ReactNode;
-  CanAccessMonitoringTools?: (props: { children?: ReactNode }) => ReactNode;
-  CanAccessAlertsManagement?: (props: { children?: ReactNode }) => ReactNode;
+  CanAccessMonitorDiagnostics?: () => ReactNode;
+  CanAccessMonitoringTools?: () => ReactNode;
+  CanAccessAlertsManagement?: () => ReactNode;
 }) => {
   return renderWithProviders(
     <Route path="/">

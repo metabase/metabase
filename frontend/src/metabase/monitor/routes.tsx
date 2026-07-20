@@ -1,3 +1,5 @@
+import { createElement } from "react";
+
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
@@ -23,10 +25,13 @@ import {
   Route,
   type RouteComponent,
   redirect,
+  withRouteProps,
 } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";
+
+const RoutedJobInfoApp = withRouteProps(JobInfoApp);
 
 /** Lands on the first Monitor section the user can access. */
 function MonitorIndexRedirect() {
@@ -41,47 +46,49 @@ export function getMonitorRoutes(
   CanAccessAlertsManagement: RouteComponent,
 ) {
   return (
-    <Route component={CanAccessMonitor}>
-      <Route path="monitor" component={MonitorLayout}>
-        <Route index component={MonitorIndexRedirect} />
-        <Route component={CanAccessMonitorDiagnostics}>
+    <Route element={<CanAccessMonitor />}>
+      <Route path="monitor" element={<MonitorLayout />}>
+        <Route index element={<MonitorIndexRedirect />} />
+        <Route element={<CanAccessMonitorDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
-              component={DependencyDiagnosticsSectionLayout}
+              element={<DependencyDiagnosticsSectionLayout />}
             >
               {PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()}
             </Route>
           ) : (
             <Route path="dependency-diagnostics">
-              <Route index component={DependencyDiagnosticsUpsellPage} />
-              <Route path="*" component={DependencyDiagnosticsUpsellPage} />
+              <Route index element={<DependencyDiagnosticsUpsellPage />} />
+              <Route path="*" element={<DependencyDiagnosticsUpsellPage />} />
             </Route>
           )}
         </Route>
 
-        <Route component={CanAccessMonitoringTools}>
+        <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" component={JobInfoApp}>
+          <Route path="jobs" element={<RoutedJobInfoApp />}>
             <Route path=":jobKey" />
           </Route>
-          <Route path="logs" component={Logs}>
+          <Route path="logs" element={<Logs />}>
             {modalRoute("levels", LogLevelsModal)}
           </Route>
           <Route
             path="errors"
-            component={PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell}
+            element={createElement(
+              PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell,
+            )}
           />
-          <Route path="model-caching" component={ModelCachePage}>
+          <Route path="model-caching" element={<ModelCachePage />}>
             {modalRoute(":jobId", ModelCacheRefreshJobModal)}
           </Route>
         </Route>
 
-        <Route component={CanAccessAlertsManagement}>
+        <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
         </Route>
 
-        <Route path="*" component={NotFound} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Route>
   );
@@ -107,63 +114,57 @@ export function getMonitorRedirects() {
     <>
       <Route
         path="/data-studio/dependency-diagnostics"
-        component={redirect(Urls.dependencyDiagnostics())}
+        element={redirect(Urls.dependencyDiagnostics())}
       />
       <Route
         path="/data-studio/dependency-diagnostics/*"
-        component={redirect(`${Urls.dependencyDiagnostics()}/*`)}
+        element={redirect(`${Urls.dependencyDiagnostics()}/*`)}
       />
 
-      <Route path="/admin/tools/help" component={redirect(Urls.adminHelp())} />
+      <Route path="/admin/tools/help" element={redirect(Urls.adminHelp())} />
       <Route
         path="/admin/tools/help/*"
-        component={redirect(`${Urls.adminHelp()}/*`)}
+        element={redirect(`${Urls.adminHelp()}/*`)}
       />
       <Route
         path="/admin/tools/tasks"
-        component={redirect(Urls.monitorTasks())}
+        element={redirect(Urls.monitorTasks())}
       />
       <Route
         path="/admin/tools/tasks/*"
-        component={redirect(`${Urls.monitorTasks()}/*`)}
+        element={redirect(`${Urls.monitorTasks()}/*`)}
       />
-      <Route
-        path="/admin/tools/jobs"
-        component={redirect(Urls.monitorJobs())}
-      />
+      <Route path="/admin/tools/jobs" element={redirect(Urls.monitorJobs())} />
       <Route
         path="/admin/tools/jobs/*"
-        component={redirect(`${Urls.monitorJobs()}/*`)}
+        element={redirect(`${Urls.monitorJobs()}/*`)}
       />
-      <Route
-        path="/admin/tools/logs"
-        component={redirect(Urls.monitorLogs())}
-      />
+      <Route path="/admin/tools/logs" element={redirect(Urls.monitorLogs())} />
       <Route
         path="/admin/tools/logs/*"
-        component={redirect(`${Urls.monitorLogs()}/*`)}
+        element={redirect(`${Urls.monitorLogs()}/*`)}
       />
       <Route
         path="/admin/tools/errors"
-        component={redirect(Urls.monitorErroringQuestions())}
+        element={redirect(Urls.monitorErroringQuestions())}
       />
       <Route
         path="/admin/tools/model-caching"
-        component={redirect(Urls.monitorModelCaching())}
+        element={redirect(Urls.monitorModelCaching())}
       />
       <Route
         path="/admin/tools/model-caching/*"
-        component={redirect(`${Urls.monitorModelCaching()}/*`)}
+        element={redirect(`${Urls.monitorModelCaching()}/*`)}
       />
       <Route
         path="/admin/tools/notifications"
-        component={redirect(Urls.monitorNotifications())}
+        element={redirect(Urls.monitorNotifications())}
       />
       <Route
         path="/admin/tools/notifications/*"
-        component={redirect(`${Urls.monitorNotifications()}/*`)}
+        element={redirect(`${Urls.monitorNotifications()}/*`)}
       />
-      <Route path="/admin/tools" component={redirect(Urls.monitor())} />
+      <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>
   );
 }

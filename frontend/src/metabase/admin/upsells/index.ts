@@ -2,6 +2,7 @@ export * from "./UpsellBetterSupport";
 export * from "./UpsellCacheConfig";
 export * from "./UpsellCloud";
 export * from "./UpsellCustomViz";
+export * from "./UpsellDataApps";
 export * from "./UpsellEmailWhitelabel";
 export * from "./UpsellEmbeddingTheme";
 export * from "./UpsellHosting";

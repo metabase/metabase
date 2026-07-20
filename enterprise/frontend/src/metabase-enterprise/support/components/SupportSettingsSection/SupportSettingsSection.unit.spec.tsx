@@ -16,10 +16,10 @@ import { SupportSettingsSection } from "./SupportSettingsSection";
 const setup = () => {
   return renderWithProviders(
     <>
-      <Route path="/admin/help" component={() => <SupportSettingsSection />} />
+      <Route path="/admin/help" element={<SupportSettingsSection />} />
       <Route
         path="/admin/help/grant-access"
-        component={() => <GrantAccessModal onClose={jest.fn()} />}
+        element={<GrantAccessModal onClose={jest.fn()} />}
       />
     </>,
     { withRouter: true, initialRoute: "/admin/help" },

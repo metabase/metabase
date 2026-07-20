@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -15,15 +14,12 @@ import {
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import { FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
-
-type MonitorLayoutProps = {
-  children?: ReactNode;
-};
 
 type MonitorSection =
   | "diagnostics"
@@ -56,7 +52,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .otherwise(() => null);
 }
 
-export function MonitorLayout({ children }: MonitorLayoutProps) {
+export function MonitorLayout() {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
@@ -174,7 +170,9 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
       onNavbarToggle={setIsNavbarOpened}
       upperNav={upperNav}
     >
-      <MonitorContent>{children}</MonitorContent>
+      <MonitorContent>
+        <Outlet />
+      </MonitorContent>
     </AreaLayout>
   );
 }
