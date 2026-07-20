@@ -28,7 +28,6 @@ export type WorkspaceEmptyStateProps = {
 
 export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
   const applicationName = useSelector(getApplicationName);
-  const hasEligibleDatabase = getEligibleDatabases(databases).length > 0;
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
@@ -45,19 +44,7 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
         <Text mb="lg">
           {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
         </Text>
-        {hasEligibleDatabase ? (
-          <NewWorkspaceButton databases={databases} primary />
-        ) : (
-          <Text>
-            {jt`You need to enable workspaces on at least one database. You can do this in ${(
-              <Anchor
-                key="link"
-                component={Link}
-                to="/admin/databases"
-              >{t`admin settings`}</Anchor>
-            )}.`}
-          </Text>
-        )}
+        <CreateWorkspaceSection databases={databases} />
         {(showFileBasedDevLink || showRemoteSyncLink) && (
           <>
             <Divider my="xl" />
@@ -82,6 +69,30 @@ export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
       </Box>
     </Card>
   );
+}
+
+type CreateWorkspaceSectionProps = {
+  databases: Database[];
+};
+
+function CreateWorkspaceSection({ databases }: CreateWorkspaceSectionProps) {
+  const hasEligibleDatabase = getEligibleDatabases(databases).length > 0;
+
+  if (!hasEligibleDatabase) {
+    return (
+      <Text>
+        {jt`You need to enable workspaces on at least one database. You can do this in ${(
+          <Anchor
+            key="link"
+            component={Link}
+            to="/admin/databases"
+          >{t`admin settings`}</Anchor>
+        )}.`}
+      </Text>
+    );
+  }
+
+  return <NewWorkspaceButton databases={databases} primary />;
 }
 
 type DocsLinkProps = {
