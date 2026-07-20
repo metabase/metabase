@@ -329,13 +329,9 @@
         user-info {:user-id api/*current-user-id*
                    :is-superuser? (mi/superuser?)
                    :is-data-analyst? api/*is-data-analyst?*}
-        base-where [:and
-                    [:= :is_stub false]
-                    (when-not include-analytics?
-                      [:= :is_audit false])
-                    (if filter-on-router-database-id
-                      [:= :router_database_id router-database-id]
-                      [:= :router_database_id nil])]
+        base-where (schema.table/browsable-databases-honeysql-filter
+                    {:include-analytics?  include-analytics?
+                     :router-database-id  filter-on-router-database-id})
         where-clause (if filter-by-data-access?
                        [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))

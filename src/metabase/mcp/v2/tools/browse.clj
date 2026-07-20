@@ -107,11 +107,16 @@
                (if (next bad) "them" "it"))))))
 
 (defn- check-database!
-  "Read-check `database-id`, collapsing \"doesn't exist\" and \"not readable\" into the shared
-   not-found teaching error."
+  "Read-check `database-id` and confirm it is browsable, collapsing \"doesn't exist\", \"not
+   readable\", and \"not browsable\" (a stub, or a router-destination database — a multi-tenant
+   boundary a raw id must not cross) into the shared not-found teaching error. Selecting through
+   the same filter [[list-databases]] pages means the tool never serves a database it would not
+   list, independent of what the schema/table helpers happen to filter."
   [database-id]
   (try
-    (api/read-check (t2/select-one :model/Database :id database-id))
+    (api/read-check (t2/select-one :model/Database
+                                   :id database-id
+                                   {:where (schema.table/browsable-databases-honeysql-filter)}))
     (catch clojure.lang.ExceptionInfo e
       (if (contains? #{403 404} (:status-code (ex-data e)))
         (common/throw-not-found :database database-id)
@@ -127,21 +132,13 @@
    :offset (or (:offset args) 0)})
 
 (defn- paged-list-content
-  "Slice `rows` (the full filtered set) per `limit`/`offset` and build the envelope content,
-   with a truncation line naming `param` when one narrows this action (and a bare
-   continuation offset otherwise). `project-fn` runs on the page only."
-  [args rows param project-fn]
+  "Slice `rows` (the full filtered set) per `limit`/`offset` and build the envelope content.
+   `project-fn` runs on the page only; `opts` pass through to [[common/list-content]]."
+  [args rows opts project-fn]
   (let [{:keys [limit offset]} (page-args args)
-        total    (count rows)
-        page     (into [] (comp (drop offset) (take limit)) rows)
-        envelope (common/list-envelope (project-fn page) total)
-        line     (when (< (+ offset (count page)) total)
-                   (if param
-                     (common/truncation-line {:param param :offset offset :limit limit :total total})
-                     (format "Returned %d of %d — continue with `offset: %d`."
-                             (count page) total (+ offset limit))))]
-    (common/success-content (cond-> (json/encode envelope)
-                              line (str "\n" line)))))
+        page (into [] (comp (drop offset) (take limit)) rows)]
+    (common/list-content (project-fn page) (count rows)
+                         (assoc opts :offset offset :limit limit))))
 
 (defn- project-rows
   [type args rows]
@@ -155,17 +152,33 @@
 
 ;;; ------------------------------------------------ list_* actions ------------------------------------------------
 
+(def ^:private database-select-columns
+  "Columns `list_databases` selects for the `:database` projection."
+  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every
+  ;; row — nothing projected reads them, and `mi/can-read?` needs only `:id`.
+  (into [:model/Database] database-detailed-keys))
+
+(def ^:private no-databases-hint
+  "Steering for an empty list_databases: without it an empty envelope reads as `this instance has
+   no data`, and the caller stops instead of reporting the permission gap."
+  ;; Deliberately does not distinguish \"none exist\" from \"none readable\" — same collapse as
+  ;; [[common/throw-not-found]], and true either way.
+  "No databases are visible to you — browsing data needs query-builder or table-metadata permission on at least one database.")
+
 (defn- list-databases
   [args]
-  (let [dbs (->> (t2/select :model/Database :is_audit false {:order-by [[:%lower.name :asc]]})
+  (let [dbs (->> (t2/select database-select-columns
+                            {:where    (schema.table/browsable-databases-honeysql-filter)
+                             :order-by [[:%lower.name :asc]]})
                  (filterv mi/can-read?))]
-    (paged-list-content args dbs nil #(project-rows :database args %))))
+    (paged-list-content args dbs {:empty-hint no-databases-hint}
+                        #(project-rows :database args %))))
 
 (defn- list-schemas
   [{:keys [database_id include_hidden] :as args}]
   (check-database! database_id)
   (let [schemas (vec (schema.table/database-schemas database_id {:include-hidden? include_hidden}))]
-    (paged-list-content args schemas nil identity)))
+    (paged-list-content args schemas {} identity)))
 
 (defn- named-schema-tables
   [database-id schema include-hidden?]
@@ -195,6 +208,14 @@
                         (throw e))))))
         [nil ""]))
 
+(defn- matches-search?
+  "Case-insensitive substring match on either name the row exposes. `display_name` is nullable and
+   is what an admin edits when renaming a table, so it is the name the caller was most likely
+   shown — matching only `name` loses renamed tables."
+  [needle table]
+  (boolean (some #(and % (str/includes? (u/lower-case-en %) needle))
+                 [(:name table) (:display_name table)])))
+
 (defn- list-tables
   [{:keys [database_id schema search include_hidden] :as args}]
   (check-database! database_id)
@@ -203,20 +224,29 @@
                    (named-schema-tables database_id schema include_hidden))
         filtered (if search
                    (let [needle (u/lower-case-en search)]
-                     (filterv #(str/includes? (u/lower-case-en (:name %)) needle) tables))
+                     (filterv (partial matches-search? needle) tables))
                    (vec tables))]
-    (paged-list-content args filtered :search #(project-rows :table args %))))
+    ;; Once search was supplied there is nothing left to narrow by, so drop the `:search` steering.
+    (paged-list-content args filtered (if search {} {:param :search}) #(project-rows :table args %))))
+
+(def ^:private question-select-columns
+  "Columns `list_models` selects for the `:question` projection."
+  ;; Naming the columns keeps `t2/select` from running the `dataset_query` and `result_metadata`
+  ;; transforms on every model — the expensive part of listing a database with thousands of cards.
+  ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
+  ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
+  (into [:model/Card :card_schema] projections/question-detailed-keys))
 
 (defn- list-models
   [{:keys [database_id] :as args}]
   (check-database! database_id)
-  (let [models (->> (t2/select :model/Card
+  (let [models (->> (t2/select question-select-columns
                                :type :model
                                :database_id database_id
                                :archived false
                                {:order-by [[:%lower.name :asc]]})
                     (filterv mi/can-read?))]
-    (paged-list-content args models nil #(project-rows :question args %))))
+    (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
 
@@ -419,32 +449,47 @@
 
 (defn- get-fields
   [{:keys [table_ids include_hidden offset] :as args}]
-  (when (empty? table_ids)
-    (common/throw-teaching-error "`table_ids` must name at least one table."))
-  (when (> (count table_ids) max-table-ids)
-    (common/throw-teaching-error
-     (format "`table_ids` accepts at most %d ids per call — you passed %d; split the request."
-             max-table-ids (count table_ids))))
-  (when (and offset (> (count table_ids) 1))
-    (common/throw-teaching-error
-     "`offset` with get_fields pages the fields of one large table — request that table alone."))
-  (let [table-ids (into [] (distinct) table_ids)
-        {:keys [rows missing]} (fetch-table-metadata-rows table-ids (true? include_hidden))
-        detailed? (or (contains? args :fields)
-                      (= :detailed (common/response-format args)))
-        rows      (cond-> rows detailed? attach-inline-values)
-        related   (related-tables-by-requested-table rows)
-        payloads  (mapv #(project-table args related %) rows)
-        {:keys [tables omitted message]} (assemble-tables payloads offset)
-        omitted   (into (mapv (fn [id]
-                                {:id     id
-                                 :reason "not found — it may not exist, or you may not have access to it"})
-                              missing)
-                        omitted)
-        body      (cond-> {:tables tables}
-                    (seq omitted) (assoc :omitted omitted))]
-    (common/success-content (cond-> (json/encode body)
-                              message (str "\n" message)))))
+  ;; Dedup before the guards: the cap and the single-table `offset` rule are about distinct tables,
+  ;; so `[1 1]` is one table (a valid `offset` target), not two, and repeated ids don't inflate the
+  ;; count toward the cap.
+  (let [table-ids (into [] (distinct) table_ids)]
+    (when (empty? table-ids)
+      (common/throw-teaching-error "`table_ids` must name at least one table."))
+    (when (> (count table-ids) max-table-ids)
+      (common/throw-teaching-error
+       (format "`table_ids` accepts at most %d ids per call — you passed %d; split the request."
+               max-table-ids (count table-ids))))
+    (when (and offset (> (count table-ids) 1))
+      (common/throw-teaching-error
+       "`offset` with get_fields pages the fields of one large table — request that table alone."))
+    (let [{fetched :rows missing :missing} (fetch-table-metadata-rows table-ids (true? include_hidden))
+          ;; A table whose database isn't browsable (a stub or router-destination database) is
+          ;; collapsed into `missing` exactly like an unreadable one — enforced here against the same
+          ;; filter [[list-databases]] uses, so a change to the metadata fetch can't reopen a leak.
+          browsable-db-ids (let [db-ids (into #{} (map :db_id) fetched)]
+                             (when (seq db-ids)
+                               (t2/select-pks-set :model/Database
+                                                  {:where [:and
+                                                           [:in :id db-ids]
+                                                           (schema.table/browsable-databases-honeysql-filter)]})))
+          browsable? (fn [row] (contains? browsable-db-ids (:db_id row)))
+          rows      (filterv browsable? fetched)
+          missing   (into (vec missing) (comp (remove browsable?) (map :id)) fetched)
+          detailed? (or (contains? args :fields)
+                        (= :detailed (common/response-format args)))
+          rows      (cond-> rows detailed? attach-inline-values)
+          related   (related-tables-by-requested-table rows)
+          payloads  (mapv #(project-table args related %) rows)
+          {:keys [tables omitted message]} (assemble-tables payloads offset)
+          omitted   (into (mapv (fn [id]
+                                  {:id     id
+                                   :reason "not found — it may not exist, or you may not have access to it"})
+                                missing)
+                          omitted)
+          body      (cond-> {:tables tables}
+                      (seq omitted) (assoc :omitted omitted))]
+      (common/success-content (cond-> (json/encode body)
+                                message (str "\n" message))))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
@@ -457,7 +502,7 @@
    [:schema {:optional true}
     [:maybe [:string {:description "list_tables only: the schema to list. Omit (or pass \"\") for databases without schemas."}]]]
    [:search {:optional true}
-    [:maybe [:string {:min 1 :description "list_tables only: case-insensitive substring filter on table name, applied before paging."}]]]
+    [:maybe [:string {:min 1 :description "list_tables only: case-insensitive substring filter on table name or display name, applied before paging."}]]]
    [:table_ids {:optional true}
     [:maybe [:sequential {:description "get_fields only: numeric table ids (tables have no entity_id), at most 20 per call."}
              [:int {:min 1}]]]]
