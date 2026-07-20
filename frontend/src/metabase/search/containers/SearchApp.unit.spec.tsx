@@ -14,7 +14,7 @@ import {
   within,
 } from "__support__/ui";
 import type { SearchFilters } from "metabase/common/search/types";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
 import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
@@ -30,6 +30,8 @@ import {
 jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 4,
 }));
+
+const RoutedSearchApp = withRouteProps(SearchApp);
 
 const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   collection: "Collection",
@@ -97,7 +99,7 @@ const setup = async ({
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
   const { history } = renderWithProviders(
-    <Route path="search" component={SearchApp} />,
+    <Route path="search" element={<RoutedSearchApp />} />,
     {
       withRouter: true,
       initialRoute,

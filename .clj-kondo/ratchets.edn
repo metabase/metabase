@@ -1,0 +1,51 @@
+;; Per-linter budgets for inline `:clj-kondo/ignore` forms.
+;; metabase.core.kondo-ratchet-test fails when the budgets drift from the actual counts.
+;; `./bin/mage fix-kondo-ratchets` lowers budgets to match the tree; local test runs do it
+;; automatically. Raising a budget, or adding one for a new linter (`--seed`), is a hand edit
+;; to defend in your PR.
+;; :all is the vector-less ignore form, which suppresses every linter on the next form.
+{:ignore-counts {:aliased-namespace-symbol                                            3
+                 :all                                                                 61
+                 :case-symbol-test                                                    2
+                 :clojure-lsp/unused-public-var                                       9
+                 :consistent-alias                                                    1
+                 :def-fn                                                              1
+                 :deprecated-namespace                                                97
+                 :deprecated-var                                                      91
+                 :discouraged-java-method                                             4
+                 :discouraged-namespace                                               81
+                 :discouraged-var                                                     143
+                 :equals-true                                                         28
+                 :invalid-arity                                                       1
+                 :main-without-gen-class                                              1
+                 :metabase/defsetting-namespace                                       7
+                 :metabase/disallow-hardcoded-driver-names-in-tests                   34
+                 :metabase/discourage-millis-duration                                 1
+                 :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 19
+                 :metabase/modules                                                    12
+                 :metabase/namespace-name                                             4
+                 :metabase/prefer-with-dynamic-fn-redefs                              35
+                 :metabase/test-helpers-use-non-thread-safe-functions                 40
+                 :metabase/validate-defendpoint-has-response-schema                   462
+                 :metabase/validate-defendpoint-query-params-use-kebab-case           40
+                 :metabase/validate-defendpoint-route-uses-kebab-case                 44
+                 :metabase/validate-deftest                                           19
+                 :missing-docstring                                                   10
+                 :missing-protocol-method                                             4
+                 :non-arg-vec-return-type-hint                                        1
+                 :reduce-without-init                                                 3
+                 :redundant-fn-wrapper                                                1
+                 :redundant-nested-call                                               1
+                 :syntax                                                              2
+                 :unquote-not-syntax-quoted                                           1
+                 :unresolved-namespace                                                5
+                 :unresolved-require                                                  1
+                 :unresolved-symbol                                                   4
+                 :unresolved-var                                                      1
+                 :unsorted-required-namespaces                                        1
+                 :unused-alias                                                        1
+                 :unused-binding                                                      9
+                 :unused-excluded-var                                                 2
+                 :unused-namespace                                                    1
+                 :unused-private-var                                                  9
+                 :unused-value                                                        1}}

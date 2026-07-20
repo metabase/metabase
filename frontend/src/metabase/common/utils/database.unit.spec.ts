@@ -1,7 +1,10 @@
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, Dashboard, Database } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import {
   dashboardUsesRoutingEnabledDatabases,
+  findDatabaseByName,
   hasDbRoutingEnabled,
   questionUsesRoutingEnabledDatabase,
 } from "./database";
@@ -100,5 +103,48 @@ describe("database routing utility functions", () => {
         ),
       ).toBe(expected);
     });
+  });
+});
+
+describe("findDatabaseByName", () => {
+  const databases = [
+    createMockDatabase({ id: 1, name: "Sample Database" }),
+    createMockDatabase({ id: 7, name: "Sales" }),
+  ];
+
+  it("finds a database by its exact name", () => {
+    expect(findDatabaseByName(databases, "Sales").id).toBe(databases[1].id);
+  });
+
+  it("matches case-sensitively", () => {
+    expect(findDatabaseByName(databases, "sales")).toBeUndefined();
+    expect(findDatabaseByName(databases, "SALES")).toBeUndefined();
+  });
+
+  it("returns undefined for an unknown name", () => {
+    expect(findDatabaseByName(databases, "Nonexistent")).toBeUndefined();
+  });
+
+  it("returns the database with the lowest id on a name collision", () => {
+    const collisions = [
+      createMockDatabase({ id: 9, name: "Production" }),
+      createMockDatabase({ id: 4, name: "Production" }),
+      createMockDatabase({ id: 12, name: "Production" }),
+    ];
+
+    expect(findDatabaseByName(collisions, "Production").id).toBe(
+      collisions[1].id,
+    );
+  });
+
+  it("never matches the virtual Saved Questions database", () => {
+    const virtualDb = createMockDatabase({
+      id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+      name: "Saved Questions",
+    });
+
+    expect(
+      findDatabaseByName([...databases, virtualDb], "Saved Questions"),
+    ).toBeUndefined();
   });
 });

@@ -48,7 +48,7 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
             maxHeight={580}
@@ -68,9 +68,9 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
               return <PaletteResultItem item={item} active={active} />;
             }}
           />
-        )}
+        }
       />
-      <Route path="search" component={() => null} />
+      <Route path="search" element={null} />
     </>,
     { withRouter: true, withKBar: true },
   );

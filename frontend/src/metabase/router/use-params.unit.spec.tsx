@@ -28,7 +28,7 @@ describe("router/useParams", () => {
     renderWithProviders(
       <Route
         path="reference/segments/:segmentId/fields/:fieldId"
-        component={ParamsProbe}
+        element={<ParamsProbe />}
       />,
       {
         withRouter: true,
@@ -41,7 +41,7 @@ describe("router/useParams", () => {
   });
 
   it("exposes the splat under v7's `*` key, not v3's `splat`", () => {
-    renderWithProviders(<Route path="files/**" component={SplatProbe} />, {
+    renderWithProviders(<Route path="files/**" element={<SplatProbe />} />, {
       withRouter: true,
       initialRoute: "/files/a/b",
     });

@@ -91,12 +91,12 @@ const setup = async ({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <>
           <GeneralSettingsPage />
           <UndoListing />
         </>
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/admin/settings/general" },
   );
