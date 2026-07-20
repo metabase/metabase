@@ -650,6 +650,12 @@ describe("Remote Sync", () => {
 
       cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
+      // `waitForTask` only observes a single UI poll of `current-task`, which doesn't guarantee the
+      // branch-switch import has fully settled server-side. Confirm completion via a server-side poll
+      // (as `configureGitAndPullChanges` does for the reliable first visit) before reloading, so the
+      // fresh page's sidebar tree and collection contents reflect the "test" branch.
+      H.pollForTask({ taskName: "import" });
+
       cy.visit("/");
 
       H.navigationSidebar()
