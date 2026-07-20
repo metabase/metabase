@@ -368,3 +368,4 @@ native/native-reproductions.cy.spec.js
 actions/model-actions.cy.spec.js
 admin/databases.cy.spec.js
 question-reproductions/reproductions-1.cy.spec.js
+onboarding/setup/setup.cy.spec.ts

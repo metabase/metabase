@@ -1574,6 +1574,53 @@ evidence isn't worth making.
     file's `WRITABLE_DB_ID` usage without updating it. Gating on it reflexively
     would have skipped a perfectly runnable test.
 
+94. **A distinct vacuity shape, now seen TWICE: an assertion targeting a testid
+    that does not exist anywhere in the product.**
+    - `tenants` asserts absence of **`navbar-new-collection-button`** — zero hits
+      across `frontend/src` + `enterprise/frontend/src`; `git log -S` shows the
+      tenants PR introduced it **in the spec only**. Proven by probe: it resolves
+      to 0 for an admin too, so it can never match for anyone.
+    - `admin-databases`' *"should handle is_attached_dwh databases"* has its one
+      flag-gated assertion pointed at **`database-actions-panel`** — likewise
+      **zero occurrences** in the codebase. A presence probe under the same
+      mutation confirmed the mutation *had* applied (the `!is_attached_dwh`-gated
+      "Sync database schema" rendered) and the test simply doesn't observe it.
+      The rest of that test's signal comes from `isDbModifiable`, which is false
+      for `is_sample` too — so it isn't discriminating the flag either.
+
+    Both ported verbatim with the analysis inline. This shape is worth a
+    dedicated sweep: **a grep for asserted testids that appear nowhere in
+    `frontend/src`/`enterprise/frontend/src` would find these mechanically**, and
+    unlike the timing-dependent vacuities it is a static check.
+
+95. **🔴 The wave-11 "actions specs are all-skip" claim was too broad — and
+    ~33 tests may be recoverable.** Wave 11 recorded that fully
+    `@external`+`@actions` specs are ported-but-unexecuted everywhere, based on
+    `actions-on-dashboards` (33/33 gated). `model-actions` falsifies the general
+    form: **17 of its 18 tests run green** against live `writable_db` on
+    :5404/:3304, and the single skip is correct
+    (`cy.onlyOn(dialect === "postgres")`).
+
+    **So the claim should be narrowed to `actions-on-dashboards` specifically —
+    and that spec is now worth re-checking**, because if it runs for the same
+    reason `model-actions` does, that is 33 tests moving from
+    ported-and-gated into executed coverage. Concrete, cheap, and directly
+    improves the honest coverage number #49 asks us to quote.
+
+96. **A near-miss that would have produced a false product-bug claim**
+    (`model-actions`). The port initially **guessed** `USER_GROUPS` ids as 4/5
+    for COLLECTION/DATA; the real values are 5/6, and **4 is
+    `DATA_ANALYSTS_GROUP`**. So the test blocked the *wrong group*, impersonation
+    was never enforced, the write succeeded (`200 {"rows-affected":1}`) — and it
+    read exactly like *"impersonation is broken in the app."*
+
+    Caught because the agent verified the constant rather than trusting the
+    symptom. The temptation was structural: `click-behavior.ts` exports a
+    **partial** mirror (`COLLECTION_GROUP` only), which invites guessing the
+    rest. **A complete shared `USER_GROUPS` is a consolidation candidate**, and
+    the general rule is worth stating: *a guessed fixture id doesn't fail — it
+    silently tests something else.*
+
 ### Capability: `page.clock` reaches into embed iframes
 
 75. **`page.clock` installs into the embed iframe, where upstream gave up on
@@ -1612,3 +1659,70 @@ path only runs after the `postgres-writable` setup (#50), so **the probe never
 executed**. To settle it: `PW_QA_DB_ENABLED=1` against a live writable QA
 postgres, `assertDbRoutingDisabled` under `--repeat-each=3`. Recorded as an owned
 open item, not as evidence.
+
+## Batch 14 additions (onboarding/setup, native pack, admin/databases)
+
+### A harness defect that reads exactly like port drift
+
+97. **This box's `e2e/snapshots/blank.sql` is corrupt — it holds the fully
+    set-up `default` state (11 users, 97 cards) instead of a blank instance**
+    (`onboarding-setup`). `e2e/snapshot-creators/default.cy.snap.js` takes
+    `snapshot("blank")` *before* `setup()`, so a correct one has no users at all.
+
+    What makes this a finding rather than a guess is the **same-backend
+    control**: `restore/blank` → `has-user-setup TRUE`, a freshly captured blank
+    → `FALSE`, and `restore/nonsense` → 404. The third leg is the important one —
+    it proves the endpoint was live, so the first two results are real answers
+    rather than a silently-failing restore.
+
+    It cost a **15-way failure** that looked precisely like a bad port: a setup
+    wizard cannot be tested against an instance that is already set up. Any spec
+    needing a genuinely un-set-up instance will fail here the same way.
+
+    **`e2e/snapshots/*` is gitignored, so CI is unaffected** — CI generates these
+    at run time. This is a stale local artifact only. The agent deliberately did
+    **not** regenerate it, because regenerating means running Cypress and
+    rewriting files all five slots share; it captured a correct snapshot under an
+    unreferenced name on its own port instead. **Owed: regenerate `blank.sql`
+    once the slots drain.**
+
+### A porting hazard general enough to sweep for
+
+98. **`getByText(..., { exact: true })` is not equivalent to Cypress's exact
+    match** (`onboarding-setup`). testing-library's `getNodeText` reads only an
+    element's **direct child text nodes**; Playwright reads its full
+    `textContent`, including nested elements. An element whose label is split
+    across child spans therefore matches upstream and not the port. Measured on
+    the same element: `exact: true` → **0 matches**, `exact: false` → **1**.
+
+    This is the third member of the exact-match family (after the
+    testing-library trim rule and the ECharts anchored-regex case), and the one
+    most likely to be mistaken for a product bug, because the text is plainly
+    visible on screen while the locator finds nothing.
+
+### Two mutation results worth recording for method, not outcome
+
+99. **A survivor explained by measurement rather than argument**
+    (`onboarding-setup`). `expect.poll(...).not.toBe("onscreen")` accepted its
+    **first** offscreen sample, catching the element's pre-animation position —
+    the helper genuinely discriminates (hidden `y=860` vs shown `y=574` against a
+    720px fold), so the assertion is not vacuous, but its retry semantics let a
+    transient state satisfy it. **Upstream's `should("not.be.visible")` has
+    identical semantics**, so this was recorded as a faithfully-ported weakness
+    and documented in the helper rather than silently strengthened.
+
+    Also of note: the agent judged **one of its own mutations bad** (it died at a
+    precondition rather than the assertion under test) and reaimed it. That is
+    now the fourth agent today to catch an invalid mutation of its own — the
+    "check *where* the mutant dies" rule is doing real work.
+
+100. **A hypothesis correctly withheld from the findings** (`onboarding-setup`).
+    The backend `invite_sent` snowplow event is dropped before leaving the JVM,
+    but *only* when preceded by a test that generated backend snowplow traffic —
+    it passes alone and under `--repeat-each=4`. The collector logged exactly 3
+    POSTs, 0 malformed, with tracking enabled and `POST /api/user` returning 200
+    on the `source: setup` branch, so the event is never sent at all. The agent
+    had a plausible mechanism (the collector's default 5s keep-alive against the
+    backend's `defonce` pooled client) but **could not confirm it, and recorded
+    it as a hypothesis with a fixme rather than a finding.** The fix would touch
+    a shared support module, which a port must not edit. **Owed: investigate.**

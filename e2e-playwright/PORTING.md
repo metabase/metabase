@@ -676,6 +676,27 @@ give them an explicit `timeout` too — don't rely on the 30s default.
   `getByText` does NOT trim", which overreaches — **`getByText` normalizes
   whitespace even with `exact: true`**, so string matching is unaffected. The
   rule bites **regex matching only**. (viz-charts-reproductions)
+- ⚠️ **`getByText(..., { exact: true })` is NOT equivalent to Cypress's exact
+  match.** testing-library's `getNodeText` reads only an element's **direct child
+  text nodes**; Playwright reads its **full `textContent`**, including text from
+  nested elements. So an element whose label is split across child spans matches
+  upstream but not the port. Measured on the setup flow: `exact: true` → **0
+  matches**, `exact: false` → **1**, same element. If an exact-match locator
+  finds nothing where the text is plainly on screen, this is the likely cause —
+  **not** a product bug. (onboarding-setup)
+- 🔴 **`e2e/snapshots/blank.sql` on this box is corrupt** (found 2026-07-20):
+  it contains the fully-set-up `default` state — **11 users, 97 cards** — rather
+  than a blank instance. `e2e/snapshot-creators/default.cy.snap.js` takes
+  `snapshot("blank")` *before* `setup()`, so a correct one has no users at all.
+  Proven with a same-backend control: `restore/blank` → `has-user-setup TRUE`,
+  a freshly captured blank → `FALSE`, `restore/nonsense` → 404 (so the endpoint
+  was live and the first two results are real).
+  `e2e/snapshots/*` is **gitignored**, so this is a stale local artifact, not a
+  repo defect — and it means **CI is unaffected**. Any spec needing a genuinely
+  un-set-up instance will fail here in a way that looks exactly like port drift.
+  **Do not regenerate snapshots while other slots are live** — all five share
+  those files, and regenerating means running Cypress. Owed: regenerate
+  `blank.sql` once the slots drain. (onboarding-setup)
 - **`filter({ has: scope.getByText(...) })` breaks when `scope` is a Locator.**
   The `has` sub-locator gets re-anchored to the outer scope, not matched within
   each candidate row, so it never resolves (hover/click times out though the row
