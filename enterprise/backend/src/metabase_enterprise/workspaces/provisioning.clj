@@ -51,7 +51,10 @@
   (set-initial-workspace-status! workspace :instance-deprovisioning
                                  (conj ws.schema/in-flight-statuses :unprovisioned)))
 
-(defn- workspace-databases [ws-id]
+(defn- workspace-databases
+  "The workspace's WorkspaceDatabase rows, in stable row order — the order the
+   database phases provision and deprovision them in."
+  [ws-id]
   (t2/select :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
 
 (mu/defn- set-workspace-status! :- ::ws.schema/workspace
