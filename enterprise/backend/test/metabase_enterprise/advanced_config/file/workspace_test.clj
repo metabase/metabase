@@ -9,7 +9,7 @@
    [metabase-enterprise.workspaces.instance :as ws.instance]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.quick-task :as quick-task]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.yaml :as yaml])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -306,7 +306,7 @@
                                            remote-sync-branch nil
                                            remote-sync-token  nil]
           (let [started (atom 0)]
-            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+            (with-redefs [u.jvm/run-in-virtual-thread (fn [thunk] (thunk) nil)
                           remote-sync/start-import! (fn [] (swap! started inc) nil)]
               (advanced-config.file/initialize!
                {:version 1
@@ -319,7 +319,7 @@
       (mt/with-premium-features #{:workspaces :config-text-file}
         (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
           (let [started (atom 0)]
-            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+            (with-redefs [u.jvm/run-in-virtual-thread (fn [thunk] (thunk) nil)
                           remote-sync/start-import! (fn [] (swap! started inc) nil)]
               (advanced-config.file/initialize!
                {:version 1
@@ -331,7 +331,7 @@
                                            remote-sync-branch nil
                                            remote-sync-token  nil]
           (let [started (atom 0)]
-            (with-redefs [quick-task/submit-task!    (fn [f] (f) nil)
+            (with-redefs [u.jvm/run-in-virtual-thread (fn [thunk] (thunk) nil)
                           remote-sync/start-import! (fn [] (swap! started inc) nil)]
               (advanced-config.file/initialize!
                {:version 1

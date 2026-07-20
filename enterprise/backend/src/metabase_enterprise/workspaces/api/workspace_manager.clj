@@ -10,7 +10,6 @@
    clients poll `GET /:id` and follow the workspace's `:status`."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as ws.provisioning]
    [metabase-enterprise.workspaces.schema :as ws.schema]
@@ -18,6 +17,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -157,7 +158,11 @@
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
                      present-workspace)]
-    (ws.execute/execute-async! #(ws.provisioning/provision-workspace! ws))
+    (u.jvm/in-virtual-thread*
+     (try
+       (ws.provisioning/provision-workspace! ws)
+       (catch Throwable t
+         (log/error t "Async workspace provisioning failed"))))
     response))
 
 (api.macros/defendpoint :post "/:id/deprovision" :- WorkspaceResponse
@@ -172,5 +177,9 @@
         response (-> ws
                      (t2/hydrate :creator [:databases :database])
                      present-workspace)]
-    (ws.execute/execute-async! #(ws.provisioning/deprovision-workspace! ws))
+    (u.jvm/in-virtual-thread*
+     (try
+       (ws.provisioning/deprovision-workspace! ws)
+       (catch Throwable t
+         (log/error t "Async workspace deprovisioning failed"))))
     response))

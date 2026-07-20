@@ -11,12 +11,12 @@
    with their own reify via an inner `with-redefs`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.jvm :as u.jvm]
    [toucan2.core :as t2]))
 
 (defn- stub-database-provisioner []
@@ -41,7 +41,7 @@
     (mt/with-premium-features #{:workspaces}
       (with-redefs [provisioning.database/database-provisioner (stub-database-provisioner)
                     provisioning.instance/instance-provisioner (stub-instance-provisioner)
-                    ws.execute/execute-async!                  (fn [work]
+                    u.jvm/run-in-virtual-thread                (fn [work]
                                                                  (try (work) (catch Throwable _))
                                                                  nil)]
         (thunk)))))
