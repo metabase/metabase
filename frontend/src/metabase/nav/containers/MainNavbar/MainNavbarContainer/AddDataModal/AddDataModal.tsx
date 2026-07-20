@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
@@ -14,11 +14,7 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataPermissions } from "./use-add-data-permission";
-import {
-  type AddDataTab,
-  hasMeaningfulUploadableDatabases,
-  isValidTab,
-} from "./utils";
+import { type AddDataTab, isValidTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
@@ -35,29 +31,36 @@ interface Tabs {
   iconName: IconName;
 }
 
-export const AddDataModal = ({
+export const AddDataModal = (props: AddDataModalProps) => (
+  // The provider sits outside `Modal.Root` so the storage setup state and its
+  // polling survive the modal being closed and reopened, and so the purchase
+  // confirmation modal it hosts can replace this modal instead of stacking.
+  // `enabled` defers the add-ons fetch until the modal is actually shown.
+  <PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider enabled={props.opened}>
+    <AddDataModalContent {...props} />
+  </PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider>
+);
+
+const AddDataModalContent = ({
   opened,
   onClose,
   initialTab,
   fromEmbeddingSetupGuide,
 }: AddDataModalProps) => {
-  const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
-    useAddDataPermissions();
+  const {
+    areUploadsEnabled,
+    canUploadToDatabase,
+    canManageUploads,
+    isAdmin,
+    canPerformMeaningfulActions,
+    hasUploadableDatabases,
+  } = useAddDataPermissions();
+  const { isPurchaseModalOpened, canSetUpStorage } = useStorageSetup();
 
-  const { data: databasesResponse } = useListDatabasesQuery();
-  const { data: uploadableDatabasesResponse } = useListDatabasesQuery({
-    include_only_uploadable: true,
-  });
-
-  const hasUploadableDatabases = hasMeaningfulUploadableDatabases({
-    allDatabases: databasesResponse?.data,
-    allUploadableDatabases: uploadableDatabasesResponse?.data,
-  });
-
-  const shouldShowUploadsPanel = hasUploadableDatabases || canUploadToDatabase;
+  const shouldShowUploadsTab =
+    hasUploadableDatabases || canPerformMeaningfulActions || canSetUpStorage;
 
   const [activeTab, setActiveTab] = useState<Tabs["value"] | null>(null);
-
   const isHosted = useSetting("is-hosted?");
 
   const handleTabChange = (tabValue: string | null) => {
@@ -77,11 +80,16 @@ export const AddDataModal = ({
 
   const tabs = useMemo(() => {
     return [
-      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
+      {
+        name: t`Database`,
+        value: "db",
+        isVisible: true,
+        iconName: "database",
+      },
       {
         name: t`CSV`,
         value: "csv",
-        isVisible: shouldShowUploadsPanel,
+        isVisible: shouldShowUploadsTab,
         iconName: "table2",
       },
       {
@@ -91,7 +99,7 @@ export const AddDataModal = ({
         iconName: "document",
       },
     ] satisfies Tabs[];
-  }, [shouldShowUploadsPanel, isHosted]);
+  }, [shouldShowUploadsTab, isHosted]);
 
   useEffect(() => {
     if (initialTab) {
@@ -106,7 +114,14 @@ export const AddDataModal = ({
   }, [tabs, initialTab]);
 
   return (
-    <Modal.Root opened={opened} onClose={onClose} size="auto">
+    // The modal hides itself (stays mounted) while the storage purchase
+    // confirmation is shown, so the confirmation replaces it instead of
+    // stacking on top of it.
+    <Modal.Root
+      opened={opened && !isPurchaseModalOpened}
+      onClose={onClose}
+      size="auto"
+    >
       <Modal.Overlay />
       <Modal.Content h="30rem">
         <Tabs
@@ -142,22 +157,26 @@ export const AddDataModal = ({
           <Box component="main" w="30rem" className={S.panelContainer}>
             <PanelsHeader
               showDatabasesLink={activeTab === "db" && isAdmin}
-              showUploadsLink={activeTab === "csv" && canManageUploads}
-              showManageImports={activeTab === "gsheets" && isAdmin}
+              showUploadsLink={
+                activeTab === "csv" && canManageUploads && areUploadsEnabled
+              }
+              showManageImports={
+                activeTab === "gsheets" && isAdmin && areUploadsEnabled
+              }
               onAddDataModalClose={onClose}
             />
+            <Tabs.Panel value="db" className={S.panel}>
+              <DatabasesPanel
+                canSeeContent={isAdmin}
+                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
+              />
+            </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>
               <CSVPanel
                 onCloseAddDataModal={onClose}
                 uploadsEnabled={areUploadsEnabled}
                 canUpload={canUploadToDatabase}
                 canManageUploads={canManageUploads}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel
-                canSeeContent={isAdmin}
-                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
               />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
