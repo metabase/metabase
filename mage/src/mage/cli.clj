@@ -74,6 +74,7 @@
         (println "\n"
                  #_:clj-kondo/ignore
                  ((eval usage-fn) current-task)))
+      ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
@@ -104,6 +105,7 @@
     (when @*error-hit?
       (println "Usage:")
       (println summary)
+      ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
@@ -136,6 +138,7 @@
       parsed)
     (catch Exception e
       (println (c/red "Mage CLI parsing Error:") (.getMessage e))
+      ;; parse failure must kill the bb process with code 1; u/exit's throw could be caught upstream
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 1))))
 

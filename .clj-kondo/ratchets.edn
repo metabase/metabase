@@ -70,7 +70,6 @@
                    :clojure-lsp/unused-public-var
                    :deprecated-namespace
                    :deprecated-var
-                   :discouraged-java-method
                    :discouraged-namespace
                    :discouraged-var
                    :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
