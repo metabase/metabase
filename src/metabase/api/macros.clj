@@ -978,6 +978,7 @@
 ;;;; Example usages
 ;;;;
 
+;; examples are fully qualified so they can be pasted into a REPL from any namespace
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (comment
   (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline)
