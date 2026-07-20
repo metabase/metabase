@@ -1,11 +1,11 @@
 /* eslint-disable import/order */
 
-import { createMockStore, resetTestState } from "./tests/setup";
-import { TEST_SCHEMA } from "./tests/fixtures";
+import { createMockStore, resetTestState } from "./setup";
+import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 
-import { avg, breakout, filter, orderBy, sum } from ".";
+import { avg, breakout, filter, orderBy, sum } from "..";
 
 beforeEach(resetTestState);
 

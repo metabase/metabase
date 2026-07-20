@@ -7,13 +7,13 @@ import {
   mockRunRtkEndpoint,
   resetTestState,
   stagesOf,
-} from "./tests/setup";
-import { TEST_SCHEMA } from "./tests/fixtures";
+} from "./setup";
+import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
 
-import { avg, breakout, count, filter, orderBy, sum } from ".";
+import { avg, breakout, count, filter, orderBy, sum } from "..";
 
 beforeEach(resetTestState);
 

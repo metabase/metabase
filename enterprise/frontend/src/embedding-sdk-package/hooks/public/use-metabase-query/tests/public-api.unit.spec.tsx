@@ -1,14 +1,14 @@
 /* eslint-disable import/order */
 
-import { TEST_SCHEMA } from "./tests/fixtures";
+import { TEST_SCHEMA } from "./fixtures";
 
-import * as DataApp from "../../../data-app";
-import type { RowValue } from "../data-schema";
+import * as DataApp from "../../../../data-app";
+import type { RowValue } from "../../data-schema";
 
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
-import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from ".";
-import { breakout, filter, orderBy, sum, useMetabaseQuery } from ".";
+import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
+import { breakout, filter, orderBy, sum, useMetabaseQuery } from "..";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];

@@ -7,8 +7,8 @@ import {
   mockUseLazySelector,
   resetTestState,
   stubSdkBundle,
-} from "./tests/setup";
-import { TEST_SCHEMA } from "./tests/fixtures";
+} from "./setup";
+import { TEST_SCHEMA } from "./fixtures";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 
@@ -16,7 +16,7 @@ import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset"
 import type { QueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { useMetabaseQuery, useMetabaseQueryObject } from ".";
+import { useMetabaseQuery, useMetabaseQueryObject } from "..";
 
 beforeEach(resetTestState);
 
