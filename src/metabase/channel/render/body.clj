@@ -526,11 +526,14 @@
                              (get card :visualization_settings))
         {:keys [content] :as result} (js.svg/*javascript-visualization* cards-with-data viz-settings
                                                                         (custom-viz-bundles card))]
-    ;; If the custom viz plugin didn't define a StaticVisualizationComponent,
-    ;; RenderChart returns an empty string. Fall back to table rendering.
+    ;; Blank content means the plugin either never registered or exports no
+    ;; StaticVisualizationComponent — either way there is no static viz to show.
     (if (and (render.util/custom-viz-display? (:display card))
              (str/blank? content))
-      (render :table render-type timezone-id card dashcard data)
+      (do
+        (log/warnf "Custom viz plugin for card %s (%s) produced no static visualization; falling back to table rendering."
+                   (:id card) (:display card))
+        (render :table render-type timezone-id card dashcard data))
       (javascript-visualization->rendered-part render-type result))))
 
 (mu/defmethod render :region_map :- ::RenderedPartCard
