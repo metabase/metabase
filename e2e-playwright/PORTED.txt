@@ -409,3 +409,4 @@ sharing/alert/alert-permissions.cy.spec.js
 sharing/alert/alert-types.cy.spec.js
 dashboard-filters/dashboard-filters-sql-text-category.cy.spec.js
 workspaces/workspace-manager.cy.spec.ts
+admin/admin-reproductions.cy.spec.js

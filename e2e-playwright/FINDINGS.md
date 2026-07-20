@@ -3565,3 +3565,52 @@ open item, not as evidence.
     assertion catch it, so it proves nothing new), designed M2a/M2b to correct
     for that, and **probed a suspicious ~1.0s runtime** with a `pw:api` trace
     rather than banking it — the fourth agent to interrogate its own green.
+
+### 🔴 Model persistence leaks a fresh schema FOREVER — a second, independent leak
+
+195. **`unpersist` only *marks for pruning*** (`model_persistence/api.clj:296`),
+    **and the schema name hashes the site-uuid** — so **every model-persistence
+    run leaks a new `metabase_cache_*` schema permanently**
+    (`admin-reproductions`). The agent counted exactly **9**, matching its 9
+    persists.
+
+    **I verified and cleaned this myself.** `writable_db` held exactly 9
+    `metabase_cache_%` schemas, each containing only `cache_info`; dropped all 9,
+    taking the container from 39 to **30** schemas.
+
+    **This is a second, independent leak mechanism from #157.** Porting
+    `resetWritableDb` would clear these as a side effect, but the leak is real
+    upstream too — it just never accumulates there, because CI containers are
+    ephemeral and a developer's local run is occasional. **A long-lived container
+    plus repeated runs is the condition that surfaces it**, which is exactly what
+    this spike created.
+
+    The agent **did not route around the permission block** on its cleanup — it
+    put the SQL in its findings file for me to run. That is the correct
+    behaviour, and it is why the cleanup happened at all.
+
+### `waitForSyncToFinish` is very nearly a bare `cy.wait(500)`
+
+196. **`initial_sync_status` is a FIRST-EVER-sync marker** — once `complete` it
+    stays complete across later `sync_schema` runs (`admin-reproductions`). In
+    `41765`, the `beforeEach` already resyncs and waits on that exact table, so
+    by the time the test body calls `waitForSyncToFinish` after clicking "Sync
+    database schema", **the predicate is already true and it returns after one
+    500 ms sleep**. It does **not** wait for the newly-added column.
+
+    **Upstream is therefore racing the sync, and the port reproduces that race
+    rather than papering over it** — the faithful choice.
+
+    This sharpens the earlier `resyncDatabase` note (a stale
+    `initial_sync_status: "complete"` satisfies the wait instantly) by explaining
+    *why*: the flag is not a "sync is idle" signal at all.
+
+    Also from that spec: an untagged token gate on `issue 45890`, traced to
+    `caching/index.tsx:23` and proven with both arms — **0 vs 42 features,
+    `PUT /api/cache {type:"schedule"}` 400 vs 200, launcher count 0 vs 1**. Worth
+    banking: the backend rejects with **400 ("enum of :nocache, :ttl"), not
+    402** — the strategy is **absent from the schema**, not merely forbidden.
+    And one briefed hazard reported **inapplicable by mechanism**: the
+    accessible-name-is-state Switch trap does not apply, since the name comes
+    from a static `<label for>`; what actually bit was plain pointer
+    interception, which is why upstream forces the click.
