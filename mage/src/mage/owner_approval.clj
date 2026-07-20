@@ -32,6 +32,11 @@
 (def ^:private report-csv (str cache-dir "/report.csv"))
 (def ^:private report-html (str cache-dir "/report.html"))
 
+;; Increment whenever the cached review shape or fetch semantics change. In particular, version 1 records
+;; distinguish genuine missing PRs from the false `:missing` entries the old, permissive fetch path could
+;; write after a failed GraphQL request.
+(def ^:private review-cache-version 1)
+
 ;;;; =============================================================================
 ;;;; git plumbing (blob reads, no checkout)
 ;;;; =============================================================================
@@ -132,10 +137,24 @@
 (defn- review-cache-file [pr]
   (io/file (str reviews-dir "/" pr ".json")))
 
+(defn- valid-cached-review?
+  [review]
+  (and (= review-cache-version (:cache-version review))
+       (int? (:pr review))
+       (or (true? (:missing review))
+           (and (int? (:n-reviews review))
+                (not (neg? (:n-reviews review)))
+                (sequential? (:approvers review))))))
+
 (defn- cached-review [pr]
   (let [f (review-cache-file pr)]
     (when (.isFile f)
-      (json/parse-string (slurp f) true))))
+      (try
+        (let [review (json/parse-string (slurp f) true)]
+          (when (valid-cached-review? review)
+            review))
+        (catch Exception _
+          nil)))))
 
 (defn- graphql-query [prs]
   (str "query{repository(owner:\"" (first (str/split repo #"/")) "\",name:\""
@@ -178,7 +197,8 @@
                       {:exit exit, :errors (:errors body), :prs (vec prs)})))
     (doseq [n prs
             :let [node (get by-pr (keyword (str "pr" n)))
-                  data (or (parse-pr-node node) {:pr n :missing true})]]
+                  data (assoc (or (parse-pr-node node) {:pr n :missing true})
+                              :cache-version review-cache-version)]]
       (when (< reviews-page-size (or (:n-reviews data) 0))
         (println (c/yellow (format "warning: PR #%d has %d reviews; only the first %d were read, later approvals may be missed"
                                    n (:n-reviews data) reviews-page-size))))
@@ -187,18 +207,18 @@
     (count prs)))
 
 (defn- ensure-reviews!
-  "Fetch and cache reviews for every uncached PR number in `prs`. Returns nothing."
+  "Fetch and cache reviews for every PR without a valid current-version cache record. Returns nothing."
   [prs batch-size]
-  (let [missing (remove #(.isFile (review-cache-file %)) prs)]
-    (when (seq missing)
+  (let [uncached (remove cached-review prs)]
+    (when (seq uncached)
       (println (format "Fetching reviews for %s PRs (%s cached)..."
-                       (c/yellow (count missing)) (c/green (- (count prs) (count missing)))))
-      (let [batches (partition-all batch-size missing)
+                       (c/yellow (count uncached)) (c/green (- (count prs) (count uncached)))))
+      (let [batches (partition-all batch-size uncached)
             done    (atom 0)]
         (doseq [batch batches]
           (fetch-batch! batch)
           (swap! done + (count batch))
-          (print (format "\r  %s/%s" @done (count missing)))
+          (print (format "\r  %s/%s" @done (count uncached)))
           (flush))
         (println)))))
 

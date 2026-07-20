@@ -9,6 +9,7 @@
 (def ^:private file-owner-teams @#'mage.owner-approval/file-owner-teams)
 (def ^:private approving-teams @#'mage.owner-approval/approving-teams)
 (def ^:private parse-pr-node @#'mage.owner-approval/parse-pr-node)
+(def ^:private valid-cached-review? @#'mage.owner-approval/valid-cached-review?)
 (def ^:private path-owners @#'mage.owner-approval/path-owners)
 (def ^:private enforced-for? @#'mage.owner-approval/enforced-for?)
 (def ^:private no-team-label @#'mage.owner-approval/no-team-label)
@@ -60,6 +61,17 @@
 (deftest parse-pr-node-nil-for-missing-test
   (testing "a null node (number wasn't a PR) yields nil"
     (is (nil? (parse-pr-node nil)))))
+
+(deftest valid-cached-review-test
+  (testing "legacy review and missing records are invalidated"
+    (is (false? (valid-cached-review? {:pr 42 :n-reviews 1 :approvers ["bob"]})))
+    (is (false? (valid-cached-review? {:pr 42 :missing true}))))
+  (testing "current complete and genuine missing records remain cached"
+    (is (true? (valid-cached-review? {:cache-version 1 :pr 42 :n-reviews 1 :approvers ["bob"]})))
+    (is (true? (valid-cached-review? {:cache-version 1 :pr 42 :missing true}))))
+  (testing "malformed current-version records are invalidated"
+    (is (false? (valid-cached-review? {:cache-version 1 :pr 42 :approvers ["bob"]})))
+    (is (false? (valid-cached-review? {:cache-version 1 :pr 42 :n-reviews -1 :approvers ["bob"]})))))
 
 (deftest path-owners-picks-most-specific-rule-test
   (testing "the deepest ancestor rule governs; an owner-less exclusion overrides a broad owner; uncovered = nil"
