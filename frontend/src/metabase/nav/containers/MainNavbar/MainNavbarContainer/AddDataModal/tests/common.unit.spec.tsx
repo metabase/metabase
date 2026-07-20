@@ -249,15 +249,19 @@ describe("AddDataModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("does not offer the CSV tab to a regular user who cannot upload to any database", async () => {
+    it("still offers the CSV tab to a regular user who cannot upload to any database", async () => {
+      // The tabs advertise what Metabase can do, so CSV stays visible and the
+      // panel explains what is missing, the same way Google Sheets does.
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: false });
 
       expect(
         await screen.findByRole("tab", { name: /Database$/ }),
       ).toBeInTheDocument();
+
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
       expect(
-        screen.queryByRole("tab", { name: /CSV$/ }),
-      ).not.toBeInTheDocument();
+        await screen.findByText(/You are not permitted to upload CSV files/),
+      ).toBeInTheDocument();
     });
 
     it("should show CSV panel for a regular user with sufficient permissions", async () => {

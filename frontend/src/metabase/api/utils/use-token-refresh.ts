@@ -64,9 +64,6 @@ export function useTokenRefreshUntil(
   }
 
   const refreshToken = useCallback(async () => {
-    // Bust the server-side cache first; the mutation's invalidatesTags will
-    // also invalidate session-properties on success, but we do it in finally
-    // too so the UI updates even if the request fails.
     try {
       const status = await refreshTokenStatus().unwrap();
 
@@ -78,7 +75,9 @@ export function useTokenRefreshUntil(
         hasCalledOnSatisfied.current = true;
         onSatisfied();
       }
-    } finally {
+    } catch {
+      // The mutation only invalidates session-properties when it succeeds, so
+      // the failure path has to do it here for the UI to move on.
       dispatch(Api.util.invalidateTags(["session-properties"]));
     }
   }, [dispatch, onSatisfied, refreshTokenStatus, tokenFeature]);

@@ -20,13 +20,18 @@ export type ErrorPayload =
   | { message: string }
   | { error_message: string };
 
-export function useShowGdrive() {
+/**
+ * `isLoading` is reported alongside the flag because a `showGdrive` of `false`
+ * that is only waiting on the service account looks the same as a settled
+ * "Sheets is unavailable here", and callers would flash the wrong one.
+ */
+export function useShowGdrive(): { showGdrive: boolean; isLoading: boolean } {
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
   const hasDwh = useHasTokenFeature("attached_dwh");
   const userIsAdmin = useSelector(getUserIsAdmin);
 
   const shouldGetServiceAccount = gSheetsEnabled && userIsAdmin && hasDwh;
-  const { data: serviceAccount } = useGetServiceAccountQuery(
+  const { data: serviceAccount, isLoading } = useGetServiceAccountQuery(
     shouldGetServiceAccount ? undefined : skipToken,
   );
 
@@ -34,7 +39,7 @@ export function useShowGdrive() {
     hasDwh && gSheetsEnabled && userIsAdmin && serviceAccount?.email,
   );
 
-  return showGdrive;
+  return { showGdrive, isLoading };
 }
 
 export const getStatus = ({
