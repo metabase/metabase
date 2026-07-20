@@ -292,6 +292,36 @@
                            :semantic_type  :type/Quantity}]
                    :rows [["2021-01-01T00:00:00Z" val]]}}})
 
+(defn- referenced-timeseries-result
+  "Like [[timeseries-result]] but with the goal referencing another card's value."
+  [val goal-part]
+  (-> (timeseries-result val)
+      (assoc-in [:card :visualization_settings :graph.goal_value] {:card_id 42 :column "target"})
+      (assoc-in [:result :data :referenced_cards] {"42" goal-part})))
+
+(deftest ^:parallel goal-met-referenced-goal-test
+  (testing "Timeseries whose goal is another card's value"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          goal-part {:status "completed"
+                     :data   {:cols [{:name "target"}]
+                              :rows [[5]]}}]
+      (testing "alert above"
+        (let [alert {:send_condition "goal_above"}]
+          (testing "value below goal"  (is (false? (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value equals goal" (is (true?  (goal-met? alert (referenced-timeseries-result 5 goal-part)))))
+          (testing "value above goal"  (is (true?  (goal-met? alert (referenced-timeseries-result 6 goal-part)))))))
+      (testing "alert below"
+        (let [alert {:send_condition "goal_below"}]
+          (testing "value below goal" (is (true?  (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value above goal" (is (false? (goal-met? alert (referenced-timeseries-result 6 goal-part))))))))))
+
+(deftest ^:parallel goal-met-referenced-goal-failed-test
+  (testing "a failed referenced query makes the alert error instead of silently (not) firing"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                            (goal-met? {:send_condition "goal_above"}
+                                       (referenced-timeseries-result 4 {:status "failed" :error "boom"})))))))
+
 (deftest ^:parallel goal-met-progress-bar-alert-above-test
   (testing "Progress bar with alert above"
     (let [alert-above-pulse {:send_condition "goal_above"}

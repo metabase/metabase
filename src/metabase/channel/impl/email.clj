@@ -249,7 +249,8 @@
                             creator_id)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
-        goal               (ui-logic/find-goal-value payload)
+        ;; card_part, not payload: find-goal-value reads [:result :data ...], which only card_part has
+        goal               (ui-logic/find-goal-value card_part)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (keyword (:send_condition notification_card))
