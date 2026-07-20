@@ -47,11 +47,9 @@ describe("WorkspaceItem", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Provision workspace" }),
+      await screen.findByRole("heading", { name: "Provision this workspace?" }),
     ).toBeInTheDocument();
-    const provisionButton = screen.getByRole("button", { name: "Provision" });
-    await waitFor(() => expect(provisionButton).toBeEnabled());
-    await userEvent.click(provisionButton);
+    await userEvent.click(screen.getByRole("button", { name: "Provision" }));
 
     await waitFor(() => {
       expect(
@@ -80,14 +78,10 @@ describe("WorkspaceItem", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Deprovision workspace",
+        name: "Deprovision this workspace?",
       }),
     ).toBeInTheDocument();
-    const deprovisionButton = screen.getByRole("button", {
-      name: "Deprovision",
-    });
-    await waitFor(() => expect(deprovisionButton).toBeEnabled());
-    await userEvent.click(deprovisionButton);
+    await userEvent.click(screen.getByRole("button", { name: "Deprovision" }));
 
     await waitFor(() => {
       expect(
@@ -309,9 +303,11 @@ describe("WorkspaceItem", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Delete workspace" }),
+      await screen.findByRole("heading", { name: "Delete this workspace?" }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete workspace" }),
+    );
 
     await waitFor(() => {
       expect(

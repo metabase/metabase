@@ -5,7 +5,7 @@ import { setupUpdateWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockWorkspace } from "metabase-types/api/mocks";
 
-import { RenameModal } from "./RenameModal";
+import { RenameWorkspaceModal } from "./RenameWorkspaceModal";
 
 const WORKSPACE = createMockWorkspace({ id: 1, name: "Old name" });
 
@@ -16,7 +16,7 @@ function setup() {
   const onClose = jest.fn();
 
   renderWithProviders(
-    <RenameModal
+    <RenameWorkspaceModal
       workspace={WORKSPACE}
       opened
       onRename={onRename}
@@ -27,7 +27,7 @@ function setup() {
   return { onRename, onClose };
 }
 
-describe("RenameModal", () => {
+describe("RenameWorkspaceModal", () => {
   it("prefills the current name and submits the new one", async () => {
     const { onRename } = setup();
 
