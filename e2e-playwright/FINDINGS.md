@@ -2141,3 +2141,66 @@ open item, not as evidence.
     `ORDER BY ID ASC`→`DESC` killed both label tests, which **answers the
     ordering question the brief raised** — that list's order is guaranteed by
     the query, not incidental.
+
+### 🔴 The `@external` tagging convention has drifted repo-wide
+
+123. **~20 of ~50 specs that restore a `*-writable` snapshot carry no
+    `@external` tag** (`database-writable-connection`). This spec's describe has
+    *no* tag at all, yet it restores `mysql-writable` and issues raw
+    `CREATE USER` / `CREATE TABLE` against the QA MySQL container.
+
+    The agent audited the whole repo rather than reporting its own file, which is
+    what makes this actionable: **the convention has drifted generally**, so
+    "untagged" cannot be read as "needs no container". Combined with #121 (the
+    queue's gate column was a per-file scan) and #120 (an accurate tag over
+    tests that don't need the container), **the tag metadata is unreliable in
+    every direction** — missing, stale, over-broad, red-herring, dead-setup, and
+    now systematically absent across a whole class.
+
+    **Operational consequence: the gate-OFF control is the only trustworthy
+    signal.** A spec that runs green with the gate off is either genuinely
+    container-free or silently skipping — and only the executed-vs-skipped counts
+    distinguish those.
+
+### A token gap traced to its predicate — and how it differs from the retracted one
+
+124. **`writable_connection` is genuinely unavailable on the local token, with no
+    short-circuit** (`database-writable-connection`). It is `false` on
+    `pro-self-hosted`, `pro-cloud` and `starter`, and true only on
+    `bleeding-edge` (53 features).
+
+    This is the **opposite** outcome to #106, and the contrast is the point.
+    There, `transforms-basic` was absent but gated nothing, because
+    `query-transforms-enabled?` short-circuits on `(not is-hosted?)`. Here the
+    agent checked for the same escape and found none: `define-premium-feature` on
+    the stock getter, the FE rendering `PluginPlaceholder → null`, and the
+    backend hard-throwing `assert-has-feature`. **Same method, opposite answer** —
+    which is exactly why the method matters.
+
+    So this is a **local token gap, not a product finding**; CI's
+    `pro-self-hosted` evidently carries the feature. The port keeps
+    `pro-self-hosted` verbatim and probes the feature at runtime. The agent
+    verified the port by *temporarily* swapping to a feature-carrying token —
+    **9/9 green, 27/27 under `--repeat-each=3`** — then restored it, leaving a
+    two-line diff that was both the token. Gate-OFF control: 9 skipped / 0
+    executed.
+
+### A placeholder trap where the accessible name IS the state
+
+125. **The global model-persistence `Switch`'s accessible name changes with its
+    state** (`Disabled` → `Enabled`), so a locator built on it **dies mid-flow**
+    (`database-writable-connection`). This is the placeholder-trap family again,
+    but with the mutating value in the *a11y name* rather than the `placeholder`
+    or `value` attribute — a third variant, after the native parameter widgets
+    and React's `value`-attribute sync.
+
+    It surfaced as a real failure: model persistence returned
+    `400 "Persisting models not enabled for database"` because the admin toggle's
+    async mutation **raced the next API call**. Fixed by gating on the state the
+    race corrupts (the checked switch) rather than on a sleep.
+
+    Also recorded, and left alone: the runs leaked **8 orphan
+    `metabase_cache_*` schemas**, which the agent cleaned — attributing them by
+    *contents*, because `create_time` proved unreliable (the container clock runs
+    ~7h behind the host). **Upstream has the same cache-schema leak**, so this is
+    not port-specific.
