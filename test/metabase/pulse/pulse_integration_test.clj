@@ -94,6 +94,7 @@
 
 (deftest result-metadata-preservation-in-html-static-viz-for-dashboard-test
   (testing "In a dashboard, results metadata applied to a model or query based on a model should be used in the HTML rendering of the pulse email."
+    ;; kondo can't see that with-metadata-data-cards binds the three card-id symbols
     #_{:clj-kondo/ignore [:unresolved-symbol]}
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "just dash"}
@@ -762,6 +763,7 @@
        ~@body)))
 
 (deftest skip-if-empty-test
+  ;; with-skip-if-empty-pulse-result! binds result and pulse anaphorically; invisible to kondo
   #_{:clj-kondo/ignore [:unresolved-symbol]}
   (testing "Only send non-empty cards when 'Don't send if there aren't results is enabled' (#34777)"
     (mt/dataset test-data

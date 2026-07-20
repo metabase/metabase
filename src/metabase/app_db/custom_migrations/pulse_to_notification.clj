@@ -152,6 +152,7 @@
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
+  ;; kondo can't see that with-temp-schedule! binds scheduler
   #_{:clj-kondo/ignore [:unresolved-symbol]}
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (run! #(alert->notification! scheduler %)
