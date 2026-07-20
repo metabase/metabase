@@ -44,15 +44,12 @@ export function CreateModal({ databases, opened, onClose }: CreateModalProps) {
   );
 }
 
-type CreateStep = "form" | "progress" | "success";
-
 type CreateModalBodyProps = {
   databases: Database[];
   onClose: () => void;
 };
 
 function CreateModalBody({ databases, onClose }: CreateModalBodyProps) {
-  const [step, setStep] = useState<CreateStep>("form");
   const [workspaceId, setWorkspaceId] = useState<WorkspaceId | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [provisionWorkspace, { isLoading }] = useProvisionWorkspaceMutation();
@@ -64,30 +61,26 @@ function CreateModalBody({ databases, onClose }: CreateModalBodyProps) {
     setIsPolling(workspace != null && isProvisioning(workspace));
   }, [workspace]);
 
-  useEffect(() => {
-    if (step === "progress" && workspace != null && isProvisioned(workspace)) {
-      setStep("success");
-    }
-  }, [step, workspace]);
-
   const handleCreated = (workspace: Workspace) => {
     setWorkspaceId(workspace.id);
-    setStep("progress");
     provisionWorkspace(workspace.id);
   };
 
-  if (step === "form" || workspace == null) {
+  if (workspace == null) {
     return (
       <NewWorkspaceForm
         databases={databases}
+        disabled={workspaceId != null}
         onCreated={handleCreated}
         onClose={onClose}
       />
     );
   }
-  if (step === "success") {
+
+  if (isProvisioned(workspace)) {
     return <ProvisionSuccess workspace={workspace} onDone={onClose} />;
   }
+
   return (
     <ProvisionProgress
       workspace={workspace}
@@ -117,12 +110,14 @@ function getInitialValues(databases: Database[]): NewWorkspaceFormValues {
 
 type NewWorkspaceFormProps = {
   databases: Database[];
+  disabled: boolean;
   onCreated: (workspace: Workspace) => void;
   onClose: () => void;
 };
 
 function NewWorkspaceForm({
   databases,
+  disabled,
   onCreated,
   onClose,
 }: NewWorkspaceFormProps) {
@@ -168,7 +163,11 @@ function NewWorkspaceForm({
           <FormErrorMessage />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Create workspace`} variant="filled" />
+            <FormSubmitButton
+              label={t`Create workspace`}
+              variant="filled"
+              disabled={disabled}
+            />
           </Group>
         </Stack>
       </Form>

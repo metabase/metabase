@@ -2,15 +2,19 @@ import { t } from "ttag";
 
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import type { WorkspaceId } from "metabase-types/api";
 
 type DeleteModalProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   opened: boolean;
   onClose: () => void;
 };
 
-export function DeleteModal({ workspace, opened, onClose }: DeleteModalProps) {
+export function DeleteModal({
+  workspaceId,
+  opened,
+  onClose,
+}: DeleteModalProps) {
   return (
     <Modal
       title={t`Delete workspace`}
@@ -18,21 +22,21 @@ export function DeleteModal({ workspace, opened, onClose }: DeleteModalProps) {
       padding="xl"
       onClose={onClose}
     >
-      <DeleteModalBody workspace={workspace} onClose={onClose} />
+      <DeleteModalBody workspaceId={workspaceId} onClose={onClose} />
     </Modal>
   );
 }
 
 type DeleteModalBodyProps = {
-  workspace: Workspace;
+  workspaceId: WorkspaceId;
   onClose: () => void;
 };
 
-function DeleteModalBody({ workspace, onClose }: DeleteModalBodyProps) {
+function DeleteModalBody({ workspaceId, onClose }: DeleteModalBodyProps) {
   const [deleteWorkspace, { isLoading }] = useDeleteWorkspaceMutation();
 
   const handleDelete = async () => {
-    await deleteWorkspace(workspace.id);
+    await deleteWorkspace(workspaceId);
     onClose();
   };
 

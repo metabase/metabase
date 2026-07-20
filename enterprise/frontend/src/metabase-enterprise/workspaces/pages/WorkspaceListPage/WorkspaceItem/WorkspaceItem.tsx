@@ -27,9 +27,9 @@ import {
 } from "../../../utils";
 import { DeleteModal } from "../DeleteModal";
 import { DeprovisionModal } from "../DeprovisionModal";
-import { ErrorModal } from "../ErrorModal";
 import { ProvisionModal } from "../ProvisionModal";
 import { RenameModal } from "../RenameModal";
+import { StatusDetailsModal } from "../StatusDetailsModal";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
@@ -117,7 +117,7 @@ function SeeDetailsButton({ workspace }: WorkspaceStatusItemProps) {
           <FixedSizeIcon name="info" aria-hidden />
         </ActionIcon>
       </Tooltip>
-      <ErrorModal
+      <StatusDetailsModal
         workspace={workspace}
         opened={isDetailsOpen}
         onClose={closeDetails}
@@ -238,17 +238,17 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         onClose={closeRename}
       />
       <ProvisionModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isProvisionOpen}
         onClose={closeProvision}
       />
       <DeprovisionModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isDeprovisionOpen}
         onClose={closeDeprovision}
       />
       <DeleteModal
-        workspace={workspace}
+        workspaceId={workspace.id}
         opened={isDeleteOpen}
         onClose={closeDelete}
       />
