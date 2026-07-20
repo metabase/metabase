@@ -311,6 +311,7 @@
   :ok)
 
 (defn- migration-files []
+  ;; kondo can't parse the :bb reader-conditional branch and mangles the surrounding let
   #_{:clj-kondo/ignore [:unresolved-symbol :unused-binding :syntax]}
   (let [dir-str #?(:bb "resources/migrations" :clj "../../resources/migrations")
         dir (io/file dir-str)]
