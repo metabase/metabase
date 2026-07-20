@@ -638,7 +638,11 @@ describe("scenarios > table-editing", () => {
         )`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TABLE_NAME,
+        retrigger: true,
+      });
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
       cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
