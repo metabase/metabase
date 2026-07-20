@@ -113,7 +113,12 @@
                                      (subvec lines (dec row)))
                      :inserted (into (:inserted acc) (repeat n-added row))}))
                 {:lines (vec (str/split-lines text)), :inserted []}
-                (sort-by :row > sites))]
+                ;; bottom-up; within a row, inline splices right-to-left so earlier columns stay
+                ;; valid, and any whole-line insert last so it can't displace the line being spliced
+                (sort-by (fn [{:keys [row original]}]
+                           [row (if (:whole-line? original) -1 (:col original))])
+                         #(compare %2 %1)
+                         sites))]
     {:text          (str (str/join "\n" (:lines result)) ending)
      :inserted-rows (:inserted result)}))
 
@@ -346,8 +351,9 @@
                                            (str/join ", " (sort (distinct (map :type covered))))
                                            keep-marker)))
                         (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
-                        (when (seq exposed)
-                          (throw (ex-info "the removals left warnings exposed; re-ignore them by hand and re-run" {:exit-code 1}))))]
+                        (when (or (seq exposed) (seq mismatched))
+                          (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
+                                          {:exit-code 1}))))]
           (loop [round         1
                  pending       (update-vals removals :sites)
                  baseline-freq (frequencies
@@ -373,6 +379,9 @@
                                         (for [[file fps] (group-by (comp :filename first) attributable)]
                                           [file (vec (distinct (map second fps)))]))
                       collisions  (into #{} (map second) (filter (comp :collision? first) attributable))
+                      collision-keys (into #{}
+                                           (map (fn [{:keys [filename row type]}] [filename row type]))
+                                           (filter :collision? (map first attributable)))
                       inserted    (restore-sites! file->sites collisions)
                       shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
                   (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
@@ -385,9 +394,12 @@
                                      :let [gone (set (get file->sites file))]]
                                  [file (vec (for [s sites :when (not (gone s))]
                                               (shift-site file s)))]))
+                         ;; a collision restore also suppresses the pre-existing finding its baseline
+                         ;; slot counted, so drop those slots before shifting the rest
                          (into {}
-                               (map (fn [[[file row type] n]]
-                                      [[file (shift-past-inserts row (get inserted file [])) type] n]))
+                               (comp (remove (fn [[key _]] (contains? collision-keys key)))
+                                     (map (fn [[[file row type] n]]
+                                            [[file (shift-past-inserts row (get inserted file [])) type] n])))
                                baseline-freq)
                          (into restored (for [[file sites] file->sites, s sites]
                                           {:file file, :row (:row s), :collision? (contains? collisions s)}))

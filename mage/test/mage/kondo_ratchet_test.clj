@@ -49,6 +49,13 @@
             "(f\n  :mysql)\n"
             [{:row 2, :comment ";; why"
               :original {:whole-line? false, :col 3, :text "#_{:clj-kondo/ignore [:x]}"}}]))))
+  (testing "two inline removals on one row restore right-to-left, so the left splice can't shift the right column"
+    (is (= {:text          "(do #_{:clj-kondo/ignore [:x]} (f) #_{:clj-kondo/ignore [:y]} (g))\n"
+            :inserted-rows []}
+           (#'kondo-ratchet/reinsert-ignores
+            "(do (f) (g))\n"
+            [{:row 1, :comment nil, :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
+             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
   (testing "multiple sites in one file restore bottom-up"
     (is (= {:text          "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             :inserted-rows [2 1]}
