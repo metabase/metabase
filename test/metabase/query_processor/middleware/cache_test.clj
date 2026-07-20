@@ -43,6 +43,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
