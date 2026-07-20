@@ -48,6 +48,35 @@ for (const file of files) {
   rows.push({ rel, lines, tags });
 }
 
+// A port that was finished but never committed is invisible to PORTED.txt, so
+// the queue happily re-offers it and an agent redoes work (or overwrites work
+// that git cannot recover, because it was never tracked). This happened twice
+// on 2026-07-20. Ports name their source in the file header, so cross-check the
+// queue against what is actually on disk and shout about any overlap.
+const portedOnDisk = new Set();
+const TESTS = path.resolve(import.meta.dirname, "../tests");
+for (const f of fs.readdirSync(TESTS)) {
+  if (!f.endsWith(".spec.ts")) continue;
+  const head = fs.readFileSync(path.join(TESTS, f), "utf8").slice(0, 4000);
+  for (const m of head.matchAll(
+    /e2e\/test(?:-component)?\/scenarios\/([A-Za-z0-9_./-]+\.cy\.spec\.[jt]s)/g,
+  )) {
+    portedOnDisk.add(m[1]);
+  }
+}
+
+const alreadyPorted = rows.filter((r) => portedOnDisk.has(r.rel));
+if (alreadyPorted.length > 0) {
+  console.error(
+    `\n⚠️  ${alreadyPorted.length} queued spec(s) ALREADY have a port on disk but are` +
+      ` missing from PORTED.txt.\n   Either an agent is writing them right now, or a` +
+      ` finished port was never committed.\n   Do NOT dispatch these. Once the port is` +
+      ` done, commit it and add it to PORTED.txt:\n` +
+      alreadyPorted.map((r) => `     ${r.rel}`).join("\n") +
+      "\n",
+  );
+}
+
 rows.sort((a, b) => b.lines - a.lines);
 
 const out = [
