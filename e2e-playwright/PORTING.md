@@ -881,6 +881,13 @@ matching element.
   **How to prove vacuity** (do this before claiming it): invert the input the
   assertion is about and show the test stays green. Reading the source is not
   enough.
+
+  ⚠️ **But a SURVIVING MUTANT is not proof of vacuity either.** If the content
+  under test renders only under a **conjunction** of settings, inverting either
+  one alone leaves the test green — and that looks exactly like vacuity while
+  the assertion is perfectly sound. Measured in `embed-flow-enable-embed-js-*`
+  test 3. The decisive probe is **"can this locator ever match?"**, not "does one
+  inverted input kill it". Run that before writing a vacuity claim.
 - **Read a Cypress helper's SIGNATURE before porting its call shape.**
   `tooltipHeader(x)`, `completions(x)`, `assertOrdersExport(n)` all silently
   discard their arguments. Strengthening them into real assertions can turn a
@@ -1077,6 +1084,53 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   after reads the pre-render state — deterministically, not flakily. Gate on a
   mirror of the state you expect ("Copy code" visible ⟺ the link is gone) rather
   than weakening the one-shot semantics.
+- **`.body` is a METHOD on Playwright's `APIResponse`, and reading it as a
+  property fails toward the WRONG conclusion.** `(await mb.api.get(url)).body[x]`
+  yields `undefined`; a `?? {}` fallback then manufactures a convincing empty
+  result. When probing whether a token took effect this prints `{}` for both the
+  licensed and unlicensed arms — i.e. it looks exactly like "the token silently
+  failed" and would have produced the opposite of the true answer. The habit is
+  learned from this codebase, where `api.getDashboard()` genuinely does return
+  `{status, body}`. **Cross-check any negative token/feature probe against
+  `curl`** before concluding a gate isn't real.
+- **A cancelled agent can leave a file that LOOKS finished but carries a live
+  mutation.** An agent stopped mid-mutation-check leaves its corruption in place
+  — and if the mutation lives in a shared constant the assertions merely echo
+  (e.g. a `cardText` string), the spec reads as complete and even passes its own
+  altered expectation. **Never inherit a partial file on trust**: diff it against
+  the Cypress original line by line before adopting it.
+- **A shared factory that spreads unknown keys can make your fixture STRONGER
+  than upstream's — the harder mismatch to spot.** Upstream's `question()`
+  helper **silently drops `embedding_type`** (not destructured, absent from both
+  the POST and the follow-up PUT), while our `factories.createQuestion` spreads
+  unknown keys straight into the POST. Transcribing a spec's arguments literally
+  therefore creates a card upstream never created. Drop it, matching upstream.
+  **Blast radius checked 2026-07-20: no other spec passes `embedding_type` to a
+  question factory** — the only other uses are a `createDashboard` call (fine)
+  and a test whose subject *is* `embedding_type`. Generalise the shape, not the
+  instance: when a shared factory forwards keys the Cypress original discarded,
+  the port silently diverges upward.
+- **Check `ERROR_DOC_LINKS` before loosening an error-text assertion.** `SdkError`
+  appends "Read more." into the shared text container only when
+  `ERROR_DOC_LINKS[code]` exists, and it has exactly one entry — so most error
+  assertions can stay **exact** matches. This is the inverse of the
+  loosen-by-default instinct; check the table rather than always loosening.
+- **`cy.type()` CLICKS its subject first — porting it onto an input silently
+  drops that click.** Cypress's `type` command does
+  `cy.now('click', $el, {force:true})` ("click the element first to simulate
+  focus") and *then* sends keystrokes to `document.activeElement`. So
+  `findByLabelText("ID").type("123")` works even though that accessible name
+  resolves to a **`<button aria-label="ID">`** (the Mantine Popover trigger
+  `ParameterValueWidgetTrigger`, not an input): the click opens the popover,
+  Mantine autofocuses the field-values input, and the text lands there.
+  **If your Playwright locator is the input where Cypress's was a wrapper, you
+  have dropped a click.** Port it literally: click → assert an input took focus
+  → `keyboard.type`. Fingerprint: the target "isn't typeable" and the port looks
+  impossible.
+- **`cy.get()` RESETS the subject** — in
+  `findAllByTestId(X).get("[data-parameter-slug=…]")` the `findAllByTestId` half
+  is dead code and the real selector is the attribute alone. Same family as #15;
+  port what actually executes, scoped as the test intended.
 - **Key a retroactive-`cy.wait` recorder on WHICH response, never on a COUNT.**
   When you port a retroactive `cy.wait("@alias")` as a passive `page.on`
   recorder, it is tempting to model it as "≥N responses" because an earlier
@@ -1119,6 +1173,26 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   - A mock JWT provider on `http://` is **mixed content** on the https-upgraded
     test page. Use a local https twin, reusing the harness's exported signer and
     CORS handling.
+- **Some assertions are OSS-BUILD-only and NO token can reproduce them.** The
+  sharpest case: any upsell-CTA assertion of the form
+  `findByRole("link", { name: "Upgrade" })`. `UpsellCta.tsx` is a `ts-pattern`
+  match testing **`onClick` before `url`**; `onClick` comes from
+  `PLUGIN_ADMIN_SETTINGS.useUpsellFlow`, whose OSS default returns `undefined`
+  (→ `<ExternalLink href>`) but which `metabase-enterprise/license/index.ts`
+  overwrites (→ `<UnstyledButton>`). It is gated on `PLUGIN_IS_EE_BUILD`, **not**
+  on token features, so on an EE jar it is a `<button>` with `href=null` at
+  *every* tier and **there is no runtime lever**. `test.fixme` with the analysis
+  rather than shipping a weakened green test. Also: **upsell content renders
+  asynchronously** — a `count()` taken right after the page heading appeared
+  returned 0 where 2 existed 2s later.
+- **`cy.icon(x).should("be.visible")` on a multi-element subject is rule 3
+  (ANY-of-set)** — chai-jquery's `visible` is `$el.is(":visible")` and jQuery
+  `.is()` is true if *one* element matches. So `.filter({visible:true}).first()`
+  is the FAITHFUL port, not a defensive one. (Needed because the EE build adds a
+  second `dev_instances` gem where OSS has one.)
+- **`.within()` rooted at a `findByTestId` carries an implicit existence
+  requirement** — Cypress errors on a missing subject. Porting that as an
+  explicit anchor is what keeps a nested absence check honest.
 - **"EE jar with no token" is NOT an OSS build — the heuristic is close but not
   identical.** Clearing the token zeroes `token-features`, which is why most
   `@OSS` describes genuinely run on the EE jar (verified repeatedly, and
@@ -1128,6 +1202,15 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   from `UpsellDevInstances`. Harmless for matcher-based assertions, but a port
   that **counts upsells page-wide**, or asserts the absence of EE-build chrome,
   will read the wrong answer. Check before relying on the equivalence.
+- **Tier gating does NOT generalise across specs — check each one.** Two
+  measured results that point opposite ways: `select-embed-options`'s gating is
+  **not real** (both its OSS and unlicensed-EE describes pass on the EE jar),
+  but `common-ee`'s **is** — removing `activateToken` and changing nothing else
+  **fails 7 of its 8 tests**, with the single survivor being verbatim the one
+  test its OSS sibling also carries. Without `embedding_simple`/`sso_jwt` the
+  wizard genuinely refuses SSO and the navigation chain collapses. So neither
+  "skip it, it's EE" nor "run it unlicensed, gating is never real" is safe as a
+  default. Probe by removing the token and seeing what actually breaks.
 - **A tier gate can be an ASSERTION gate, not a describe gate.** `guest-embed-ee`
   carries no tag: its entire EE-ness is `activateToken("pro-self-hosted")`, and
   the `-oss` sibling asserts the *same* `upsell-card` is visible where `-ee`

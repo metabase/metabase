@@ -53,6 +53,32 @@ import { modal } from "./ui";
  * implicit ARIA role `complementary`. `.first()` is kept: Mantine can leave a
  * second `[role=dialog][aria-modal]` mounted (the entity picker, the legacy
  * static-embedding modal), and upstream pins the wizard by taking the first.
+ *
+ * ⚠️ KNOWN SCOPE DISCREPANCY (found by `common-ee`, 2026-07-20).
+ * Cypress's `.within()` yields its ORIGINAL subject, so upstream's
+ * `getEmbedSidebar()` actually returns the **modal**, not the sidebar — every
+ * upstream `getEmbedSidebar().within(...)` is modal-scoped. This port returns
+ * the `<aside>`, which is NARROWER.
+ *
+ * Deliberately left as-is: the aside is inside the modal, so the narrowing is
+ * invisible for the sidebar controls every spec actually uses, and widening it
+ * now would risk strict-mode violations across the nine specs where the
+ * aside-scoped locator is currently unique.
+ *
+ * It bites when a `.within()` block reaches for something in the modal but
+ * OUTSIDE the aside — notably the **preview iframe**. `common-ee` hit exactly
+ * that and handled it locally with page-scoped iframe helpers. If you need
+ * modal scope, use `modal(page).first()` directly rather than widening this.
+ *
+ * ✅ AUDIT CLOSED 2026-07-20 — no other spec is affected.
+ * `user-settings-persistence`: never calls this helper.
+ * `select-embed-options`: audited past `.within()` blocks (the discrepancy
+ * applies to ANY chained descendant lookup, not just `.within()`); all 6 sites
+ * touch sidebar controls only, and the two absence checks ("Reset colors" ×2)
+ * are self-anchored — the same test asserts the element visible in the same
+ * scope, proving it is inside the aside. Empirically backed: that port runs
+ * 21/21 green with the narrow helper. See
+ * `findings-inbox/get-embed-sidebar-scope-audit-verdict.md`.
  */
 export function getEmbedSidebar(page: Page): Locator {
   return modal(page).first().getByRole("complementary");

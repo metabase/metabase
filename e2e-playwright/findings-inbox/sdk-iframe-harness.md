@@ -51,7 +51,13 @@ Ports of `e2e-embedding-iframe-sdk-helpers.ts`, `embedding-sdk-helpers.ts` and
 | — | `stubWindowOpenInert` | extracted from an inline `cy.stub` in the spec. |
 | — | `assertEmbedTargetsThisSlot`, `writeSlotMarker`, `readApplicationNameFromEmbed` | new; the anti-#39 guard, see §4. |
 
-**Not yet ported:** `prepareGuestEmbedSdkIframeEmbedTest` (needed by 3 specs).
+~~**Not yet ported:** `prepareGuestEmbedSdkIframeEmbedTest` (needed by 3 specs).~~
+**LANDED 2026-07-20** in `support/sdk-iframe-guest-token-refresh.ts`, alongside
+`signGuestJwt`. `content-translations` already consumes both read-only. Do not
+rebuild it — import from there. (Also note `guest-embed-ee`/`-oss` turned out
+NOT to need it: they reach the guest page via
+`loadSdkIframeEmbedTestPage({ metabaseConfig: { isGuest: true } })`, which
+`support/sdk-iframe.ts` supports unchanged.)
 It is the same shape as `prepareSdkIframeEmbedTest` plus
 `enable-embedding-static` and `embedding-secret-key`; ~20 lines, no new risk.
 

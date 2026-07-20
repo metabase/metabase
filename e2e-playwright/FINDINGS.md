@@ -12,10 +12,14 @@ questions (#45, #46 — jar-observed, but neither established as a defect rather
 than intended behaviour; do NOT count these as bugs).** Every claim
 was put through the jar gauntlet.
 
-**Coverage claims need two numbers, not one.** ~273 specs are ported; a
-non-trivial share is **ported-and-gated** — faithful, typechecked, and never
-executed anywhere, because the QA-container snapshot CI would need is gitignored
-(#49, #50). Quote ported-and-verified separately from ported-and-gated.
+**Coverage claims need two numbers, not one.** ~300+ specs are ported; a
+non-trivial share is **ported-and-gated** — faithful, typechecked, and not
+executed anywhere *yet*, because the spike's own CI workflow skips QA-database
+snapshot generation (`-@external`) and we don't run those containers locally
+(#49). Quote ported-and-verified separately from ported-and-gated. **Note this
+is a config gap in the spike, NOT a limit of the harness** — Cypress CI runs
+these specs today with QA containers, and #50, which claimed otherwise, is
+retracted.
 
 **The case has costs on the record too**, deliberately: one spec where the
 migration *reduced* coverage (#47), and one input class where Playwright's real
@@ -676,17 +680,40 @@ evidence isn't worth making.
     **ported-and-gated**, or the effort estimate silently claims coverage the
     spike has not demonstrated.
 
-50. **A whole class of specs can never run in CI — the `postgres-writable`
-    snapshot is gitignored** (`remote-sync`, `table-editing`, `transforms-codegen`).
-    `git check-ignore e2e/snapshots/postgres_writable.sql` → IGNORED, so
-    `restore("postgres-writable")` returns 204 locally and would 404 in CI. Three
-    specs in one batch are 100% all-skip on the jar (`table-editing` 21/21,
-    `transforms-codegen` 5/5, `remote-sync` 10/26). This extends #27 with the
-    harder fact that the artifact CI needs **does not exist**, and the same gap
-    exists upstream in Cypress. `transforms-codegen` is the sharpest case: its
-    Metabot LLM is fully stubbed via canned SSE, so the *only* thing keeping it
-    off CI is the writable Postgres — provisioning that container converts an
-    all-skip spec into real coverage with no API key.
+50. ~~**A whole class of specs can never run in CI — the `postgres-writable`
+    snapshot is gitignored**~~ **RETRACTED 2026-07-20 — the inference was wrong.
+    Do not cite this.** The original claim was that because
+    `git check-ignore e2e/snapshots/postgres_writable.sql` reports IGNORED, the
+    artifact CI needs "does not exist", so `@external`/QA-DB specs could never
+    run in CI even once ported.
+
+    **Every limb of that inference is false:**
+    - **All snapshots are gitignored** — `/e2e/snapshots/*` is a blanket
+      `.gitignore` entry covering `default.sql`, which every landed spec in this
+      spike uses. Snapshots are **generated at CI time**, never committed, so
+      "gitignored" carries no information about CI at all.
+    - **Cypress CI runs these specs today.** `.github/workflows/e2e-test.yml`
+      provisions maildev, openldap, webhook, snowplow, **postgres, mysql and
+      mongo** containers, and runs with
+      `grepTags="-@mongo+-@python+-@OSS+-@skip"` — which does **not** exclude
+      `@external`.
+    - **The gap is our own spike workflow's scoping choice**, one line:
+      `e2e-playwright.yml:114` generates snapshots with
+      `grepTags="-@external"`, deliberately skipping the QA-database snapshots.
+
+    **What is actually true**, and all that should be claimed: these specs are
+    ported-and-gated *in the Playwright spike's current CI config*. Unblocking
+    them is a workflow change that mirrors what `e2e-test.yml` already does —
+    add the QA-DB containers and drop `-@external` from the snapshot step — not
+    an infrastructure impossibility. `transforms-codegen` remains the cheapest
+    proof case (its LLM is already fully stubbed via canned SSE).
+
+    **Mechanism note, and the reason this entry is kept rather than deleted:**
+    this is the same failure mode the file keeps documenting — a real
+    observation (`git check-ignore` really does report IGNORED) turned into a
+    confident causal claim without checking the one thing that would falsify it
+    (what CI actually does). #31 is about exactly this, and the author of this
+    entry had read #31.
 
 ### Vacuous upstream assertions — two new mechanisms
 
@@ -798,9 +825,11 @@ evidence isn't worth making.
     (`remote-sync`). `setupGitSync()` builds a throwaway repo under `$TMPDIR` and
     the backend clones `file://…/.git` in-process. The read-write describe
     (create branch, push, switch, force-push, stash-to-branch, discard) passes
-    8/8 locally. It won't run in CI only because that describe's `beforeEach`
-    restores `postgres-writable` (#50) despite the tests never touching that DB —
-    a gating over-reach worth revisiting.
+    8/8 locally. It doesn't run in the spike's CI only because that describe's
+    `beforeEach` restores `postgres-writable` despite the tests never touching
+    that DB — a gating over-reach worth revisiting. (Originally cited #50 as
+    "can't run in CI"; #50 is retracted — the spike's workflow simply doesn't
+    generate QA-DB snapshots, and Cypress CI runs these specs today.)
 
 60. **Consolidation debt has crossed from "worth a pass" to "costing every
     port".** Five more independent duplications in one batch of eleven specs:
@@ -1037,6 +1066,29 @@ evidence isn't worth making.
     question" **fails**, because its default is a different question. So the
     weakness is specific to the dashboard case, not a property of the harness.
     Ported faithfully rather than strengthened — the fix is upstream's to make.
+
+77. **Upstream's CSV assertions inspect the WRONG BYTES** (`sdk-csv-downloads`) —
+    a sharper instance of #4. The spec intercepts `/api/dataset/csv` and calls
+    `res.send({ statusCode: 200 })`, **replacing the response body**; the file
+    `cy.verifyDownload` then inspects is Cypress's replacement, not the actual
+    export. So the assertions never witness what the endpoint produced. The port
+    completes the real download and asserts against the saved file — confirmed a
+    genuine pivoted export (51 lines,
+    `Created At: Month,0,20,…,Row totals`) — which means it now actually
+    witnesses the metabase#70757 fix the test is named for.
+    **Stated gap:** CSV validity is checked structurally (every record splits to
+    the same field count), not with a real parser — upstream uses `csv-parse`,
+    which is not a dependency of this package. Weaker than upstream on that axis,
+    deliberately recorded rather than quietly dropped.
+
+78. **`installSnowplowCapture` reaches inside the embed iframe — proven, not
+    assumed.** `page.addInitScript` runs in every frame and `page.route`
+    intercepts every frame, so the shared capture sees events fired from within
+    a cross-origin embed. Payload printed to confirm: exactly one
+    `{"event":"dashboard_pdf_exported","dashboard_id":10,"dashboard_accessed_via":"sdk-embed"}`.
+    Every remaining sdk-iframe spec whose snowplow events are the subject can
+    therefore capture rather than stub. (Eighth independent reuse of the helper
+    with zero modification.)
 
 ### Capability: `page.clock` reaches into embed iframes
 
