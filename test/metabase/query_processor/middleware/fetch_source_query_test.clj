@@ -399,8 +399,8 @@
       ;; this doesn't actually need to load Mongo code, there is special casing for `:mongo`
       ;; in [[metabase.query-processor.middleware.fetch-source-query/source-query]]
       (qp.store/with-metadata-provider (-> meta/metadata-provider
-                                           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-                                           (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
+                                           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                                           (lib.tu/merged-mock-metadata-provider {:database {:engine #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mongo}})
                                            (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (=? {:stages            [{:lib/type                     :mbql.stage/native
                                       :projections                  ["_id" "user_id" "venue_id"]
@@ -428,8 +428,8 @@
                                 :collection "checkins"}
                      :database (meta/id)}]
       (qp.store/with-metadata-provider (-> meta/metadata-provider
-                                           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-                                           (lib.tu/merged-mock-metadata-provider {:database {:engine :mongo}})
+                                           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                                           (lib.tu/merged-mock-metadata-provider {:database {:engine #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mongo}})
                                            (lib.tu/metadata-provider-with-cards-for-queries [query]))
         (is (=? {:stages [{:lib/type   :mbql.stage/native
                            :collection "checkins"

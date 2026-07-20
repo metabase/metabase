@@ -178,8 +178,8 @@
     (testing ":between with dates"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
-      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-      (when (= driver/*driver* :snowflake)
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      (when (= driver/*driver* #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :snowflake)
         (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (=? {:rows [[29]]
                :cols [(qp.test-util/aggregate-col :count)]}

@@ -11,11 +11,11 @@
 (deftest ^:parallel quote-name-test
   (are [driver expected] (= expected
                             (sql.u/quote-name driver :field "wow"))
-    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-    :mysql    "`wow`"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql    "`wow`"
     :h2       "\"wow\""
-    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-    :postgres "\"wow\""))
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "\"wow\""))
 
 (deftest ^:parallel select-clause-alias-everything-test
   (testing "first column is just <identifer>, wrap it like [<identifier> <alias>]"
@@ -95,38 +95,38 @@
 (deftest ^:parallel format-sql-with-params-test
   (testing "Baseline: format-sql expands metabase params, which is not desired."
     (is (= "SELECT\n  *\nFROM\n  { { # 1234 } }"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql :postgres "SELECT * FROM {{#1234}}")))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT * FROM {{#1234}}")))
     (is (= "SELECT\n  *\nFROM\n  { { #1234}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql :mysql "SELECT * FROM {{#1234}}")))))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql "SELECT * FROM {{#1234}}")))))
 
 (deftest ^:parallel format-sql-with-params-test-2
   (testing "A compact representation should remain compact (and inner spaces removed, if any)."
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{ #1234 }}")))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT * FROM {{ #1234 }}")))
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{#1234}}")))))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT * FROM {{#1234}}")))))
 
 (deftest ^:parallel format-sql-with-params-test-3
   (testing "Symbolic params should also have spaces removed."
     (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{FOO_BAR}}")))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT * FROM {{FOO_BAR}}")))
     (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{ FOO_BAR }}")))))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT * FROM {{ FOO_BAR }}")))))
 
 (deftest ^:parallel format-sql-with-params-test-4
   (testing "Dialect-specific versions should work"
     (is (= "SELECT\n  A\nFROM\n  {{#1234}} WHERE {{STATE}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :mysql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mysql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))
     (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
-           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-           (sql.u/format-sql-and-fix-params :postgres "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))))
+           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+           (sql.u/format-sql-and-fix-params #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))))
 
 (defmulti pound-sign-is-special-word-char?
   {:arglists '([driver-or-dialect])}

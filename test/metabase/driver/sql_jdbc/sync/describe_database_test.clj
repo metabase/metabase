@@ -40,8 +40,8 @@
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
       :h2
-      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-      :postgres)))
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres)))
 
 (deftest ^:parallel simple-select-probe-query-test-3
   (testing "simple-select-probe-query shouldn't actually return any rows"
@@ -263,8 +263,8 @@
 
 ;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
 (deftest sync-table-with-backslash-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-drivers #{:postgres}
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  (mt/test-drivers #{#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
                                 [{:field-name "humanraceid" :base-type :type/Integer :pk? true}

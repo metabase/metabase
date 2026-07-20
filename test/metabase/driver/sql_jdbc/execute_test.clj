@@ -85,10 +85,10 @@
 
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
-    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
                            ;; too tricky to stub the connection
-                           :presto-jdbc :databricks :starburst)
+                           ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                           #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :presto-jdbc #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :databricks #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :starburst)
       (let [connection-option-calls (volatile! [])
             is-default-options
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)

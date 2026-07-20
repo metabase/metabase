@@ -675,8 +675,8 @@
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "`:now` is usable inside `:case` with mongo (#32216)"
-        #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-        (mt/test-driver :mongo
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+        (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :mongo
           (is (= {"$switch"
                   {"branches"
                    [{"case" {"$eq" [{"$dayOfMonth" {"date" "$$NOW", "timezone" "UTC"}}
@@ -693,8 +693,8 @@
 
 ;; historical test: don't do this going forward
 (deftest report-timezone-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver :postgres
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [results (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query checkins
@@ -708,8 +708,8 @@
 ;; historical test: don't do this going forward
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
-    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-    (mt/test-driver :databricks
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :databricks
       (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]

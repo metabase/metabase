@@ -444,8 +444,8 @@
 
 (deftest array-query-can-be-cached-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/arrays)
-                         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-                         :sqlite) ;; Disabling until issue #57301 is resolved
+                         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :sqlite) ;; Disabling until issue #57301 is resolved
     (with-mock-cache! [save-chan]
       (mt/with-temporary-setting-values [enable-query-caching true]
         (mt/with-clock #t "2025-02-06T00:00:00.000Z[UTC]"
@@ -473,14 +473,15 @@
                    (dissoc cached-result :cache/details)))))))))
 
 (deftest postgres-domain-can-be-cached-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver :postgres
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
     (mt/dataset (mt/dataset-definition
                  "domain_dataset"
                  [["placeholder"
                    [{:field-name "foo", :base-type :type/Integer}]
                    [[1]]]])
-      (let [spec (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      (let [spec (sql-jdbc.conn/connection-details->spec #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres (:details (mt/db)))
             dom-name (str "dom_" (mt/random-name))]
         (jdbc/execute! spec [(format "CREATE DOMAIN %s AS text CHECK (VALUE <> '')" dom-name)])
         (with-mock-cache! [save-chan]

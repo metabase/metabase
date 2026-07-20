@@ -75,15 +75,16 @@
                  (update :id int)))))))
 
 (deftest ^:parallel invalid-ssh-credentials-test
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver :postgres
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  (mt/test-driver #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
            java.net.ConnectException
            ;; this test works if sshd is running or not
            (try
              (let [details {:dbname         "test"
-                            :engine         :postgres
+                            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                            :engine         #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres
                             :host           "localhost"
                             :password       "changeme"
                             :port           5432
@@ -98,7 +99,8 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
+               ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+               (driver.u/can-connect-with-details? #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]} :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
