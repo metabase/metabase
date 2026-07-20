@@ -76,7 +76,6 @@
                    :metabase/defsetting-namespace
                    :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
-                   :metabase/namespace-name
                    :metabase/test-helpers-use-non-thread-safe-functions
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
