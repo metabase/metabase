@@ -20,14 +20,6 @@ export function setupUpdateWorkspaceEndpoint(workspace: Workspace) {
   fetchMock.put(`${BASE_URL}/${workspace.id}`, workspace);
 }
 
-export function setupProvisionWorkspaceEndpoint(workspace: Workspace) {
-  fetchMock.post(`${BASE_URL}/${workspace.id}/provision`, workspace);
-}
-
-export function setupDeprovisionWorkspaceEndpoint(workspace: Workspace) {
-  fetchMock.post(`${BASE_URL}/${workspace.id}/deprovision`, workspace);
-}
-
 export function setupDeleteWorkspaceEndpoint(workspaceId: WorkspaceId) {
   fetchMock.delete(`${BASE_URL}/${workspaceId}`, { status: 204 });
 }

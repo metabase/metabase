@@ -2870,8 +2870,8 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.api.routes
+   :api  #{metabase-enterprise.advanced-config.api
+           metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -2888,7 +2888,6 @@
            sync
            users
            util
-           enterprise/remote-sync
            enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
@@ -3014,20 +3013,6 @@
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
-
-  enterprise/checker
-  {:team "Graphy"
-   ;; todo: add ability to prevent usage (transitive even) of app db
-   :api  #{}
-   :uses #{classloader
-           lib
-           models
-           plugins
-           query-processor
-           sql-tools
-           util
-           enterprise/dependencies}
-   :model-imports #{:model/Database}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -3184,8 +3169,7 @@
 
   enterprise/dependencies
   {:team "Graphy"
-   :api  #{metabase-enterprise.dependencies.analysis
-           metabase-enterprise.dependencies.api
+   :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
@@ -3620,7 +3604,6 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.init
            metabase-enterprise.serialization.v2.backfill-ids}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
@@ -3637,9 +3620,7 @@
            search
            server
            setup
-           sync
-           util
-           warehouse-schema}
+           util}
    :model-imports :bypass}
 
   enterprise/snippet-collections
@@ -3803,8 +3784,7 @@
            settings
            sql-tools
            util
-           workspaces
-           enterprise/remote-sync}
+           workspaces}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

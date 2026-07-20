@@ -16,6 +16,7 @@ import type {
   TableRemapping,
 } from "metabase-types/api";
 
+import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
 
@@ -89,6 +90,7 @@ function CurrentWorkspacePageBody({
             remappings={remappings}
           />
         ))}
+        {workspace.can_write && <DeleteSection />}
       </Stack>
     </PageContainer>
   );
