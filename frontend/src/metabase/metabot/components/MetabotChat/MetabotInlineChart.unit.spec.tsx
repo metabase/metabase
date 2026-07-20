@@ -253,13 +253,13 @@ describe("MetabotInlineChart", () => {
       const { store } = renderWithProviders(
         <Route
           path="/"
-          component={() => (
+          element={
             <MetabotInlineChart
               value={value}
               readonly={false}
               conversationId="convo-1"
             />
-          )}
+          }
         />,
         { withRouter: true },
       );
