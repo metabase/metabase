@@ -4,7 +4,8 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -151,6 +152,18 @@
       (is (some? (validate-filters! {:type ["table"] :archived false}))))
     (testing "no archived filter at all is fine"
       (is (some? (validate-filters! {:type ["table"]}))))))
+
+(deftest snippet-rows-does-not-load-content-test
+  (testing "GHY-4137: snippet-rows must not pull the SQL body (:content) into the heap — it needs
+            only id/name/description for output and :collection_id for the can-read? check"
+    (let [captured (atom nil)]
+      (with-redefs [t2/select (fn [model & _] (reset! captured model) [])]
+        (#'tools.search/snippet-rows [] false))
+      (is (vector? @captured)
+          "the select is column-scoped (a [model & cols] vector), not the bare model keyword")
+      (let [cols (set (rest @captured))]
+        (is (contains? cols :collection_id) "collection_id is selected — can-read? consults it")
+        (is (not (contains? cols :content)) "the SQL body column is not selected")))))
 
 ;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
 (deftest blank-query-is-rejected-test

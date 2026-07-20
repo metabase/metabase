@@ -279,7 +279,9 @@
    case-insensitive substring."
   [queries archived]
   (let [readable (filter mi/can-read?
-                         (t2/select :model/NativeQuerySnippet
+                         ;; Select only what we return (id/name/description) plus :collection_id,
+                         ;; which can-read? consults — never :content, which holds the SQL body.
+                         (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
                                     :archived (boolean archived)
                                     {:order-by [[:%lower.name :asc]]}))
         matches  (if (seq queries)
