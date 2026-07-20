@@ -66,8 +66,7 @@
                   :unresolved-symbol                       19
                   :unresolved-var                          1
                   :unused-referred-var                     4}
- :comment-exempt #{:aliased-namespace-symbol
-                   :all
+ :comment-exempt #{:all
                    :case-symbol-test
                    :clojure-lsp/unused-public-var
                    :deprecated-namespace
