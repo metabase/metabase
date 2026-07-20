@@ -38,6 +38,13 @@
   "Types the collection filter can never serve — they don't live in collections."
   #{"measure" "segment" "database"})
 
+(def ^:private non-archivable-types
+  "Types whose search model has no archived state (`:archived false` in their spec). `archived: true`
+   with any of them can only ever return nothing, so the engine silently drops the type — a teaching
+   error instead. Note transforms *do* live in collections, so this is distinct from
+   `collectionless-types`."
+  #{"table" "database" "transform"})
+
 (def ^:private type->rv-model
   "v2 type → the recent-views model keyword; the domain of this map is exactly the set of
    types recents tracks."
@@ -197,10 +204,18 @@
       (when (contains? types "snippet")
         (common/throw-teaching-error
          "collection_id cannot filter snippets — list them with type: [\"snippet\"] and no collection_id."))
+      (when (contains? types "transform")
+        (common/throw-teaching-error
+         "collection_id cannot filter transforms — the search index doesn't record their collection. Remove transform from type or drop collection_id."))
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
          "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id.")))
+    (when (true? archived)
+      (when-let [bad (seq (sort (filter non-archivable-types types)))]
+        (common/throw-teaching-error
+         (format "archived: true cannot filter %s — these types have no archived state. Remove them from type or drop archived."
+                 (str/join ", " bad)))))
     (when (true? (:recent args))
       (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]
         (common/throw-teaching-error

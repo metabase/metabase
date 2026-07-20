@@ -125,6 +125,33 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= coll-id (resolve-collection-filter coll-id))))))))
 
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest transform-collection-id-is-teaching-error-test
+  (testing "GHY-4137: the search index doesn't record a transform's collection, so type:[transform]
+            with a collection_id can only ever return an empty page — a teaching error instead of a
+            silent empty result the agent would read as \"no transforms here\""
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"collection_id cannot filter transforms"
+                          (validate-filters! {:type ["transform"] :collection_id "someEntityId01234567_"})))
+    (testing "transform without a collection_id is fine"
+      (is (some? (validate-filters! {:type ["transform"]}))))
+    (testing "\"root\" collection_id stays inert for transforms"
+      (is (some? (validate-filters! {:type ["transform"] :collection_id "root"}))))))
+
+;; not ^:parallel: the `!` in validate-filters! trips the kondo deftest lint
+(deftest archived-non-archivable-type-is-teaching-error-test
+  (testing "GHY-4137: table, database, and transform have no archived state, so archived: true with
+            any of them guarantees an empty page — the engine silently drops the type. Teach instead."
+    (doseq [t ["table" "database" "transform"]]
+      (testing t
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no archived state"
+                              (validate-filters! {:type [t] :archived true})))))
+    (testing "archivable types are unaffected"
+      (is (some? (validate-filters! {:type ["question" "dashboard"] :archived true}))))
+    (testing "archived: false is fine even for the non-archivable types"
+      (is (some? (validate-filters! {:type ["table"] :archived false}))))
+    (testing "no archived filter at all is fine"
+      (is (some? (validate-filters! {:type ["table"]}))))))
+
 ;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
 (deftest blank-query-is-rejected-test
   (testing "GHY-4137: a whitespace-only query passes the {:min 1} schema, but Postgres treats a
