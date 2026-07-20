@@ -150,8 +150,8 @@ function CustomMcpOriginsSection() {
     <Box>
       <AdminSettingInput
         name="mcp-apps-cors-custom-origins"
-        title={t`Custom MCP client origins to show inline charts`}
-        description={t`Add the origins for self-hosted MCP clients, such as LibreChat and Open WebUI, where we want to show inline charts. Separate values with a space.`}
+        title={t`Allowed origins for custom MCP clients`}
+        description={t`To display charts in your self-hosted MCP clients (like LibreChat and Open WebUI), add each MCP client's base URL (origin) here. Separate origins with a space.`}
         inputType="text"
         placeholder="https://*.example.com"
       />
