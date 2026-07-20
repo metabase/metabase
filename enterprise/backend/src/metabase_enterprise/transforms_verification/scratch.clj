@@ -36,9 +36,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log])
   (:import
@@ -282,25 +279,19 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- list-tables-in-schema
-  "Return a seq of table-name strings in namespace `schema` on `db-id` — a real
-  schema, or the catalog on engines where `information_schema.table_schema`
-  holds the database (MySQL)."
-  [db-id ^String schema]
-  ;; information_schema rather than driver/describe-database: the latter lists the
-  ;; whole database (every schema) via a full DB-level driver call; a scoped
-  ;; information_schema query is cheaper and schema-specific.
-  ;;
-  ;; Schema passed as a JDBC parameter, not interpolated, to avoid SQL injection /
-  ;; malformed SQL when the schema name contains single quotes or other SQL
-  ;; metacharacters. (Not execute/native-query: execute requires this ns.)
-  (let [query  (-> (lib/native-query (lib-be/application-database-metadata-provider db-id)
-                                     (str "SELECT table_name"
-                                          " FROM information_schema.tables"
-                                          " WHERE table_schema = ?"
-                                          " ORDER BY table_name"))
-                   (lib/update-query-stage 0 assoc :params [schema]))
-        result (qp/process-query query)]
-    (mapv first (get-in result [:data :rows]))))
+  "Return a vector of table-name strings in namespace `schema` on the warehouse — a
+  real schema, or the catalog on engines whose namespace travels in the `:db` slot
+  (MySQL, where `describe-database` reports the catalog as each table's `:schema`)."
+  [driver db ^String schema]
+  ;; driver/describe-database, not raw `information_schema.tables` SQL: BigQuery
+  ;; exposes INFORMATION_SCHEMA only per-dataset, so an unqualified reference
+  ;; resolves to a nonexistent dataset. describe-database lists the whole
+  ;; warehouse; filter to the target namespace. Sync's temp-table skip runs
+  ;; downstream of describe-database, so scratch tables remain visible here.
+  (into []
+        (comp (filter #(= schema (:schema %)))
+              (map :name))
+        (:tables (driver/describe-database driver db))))
 
 (defn cleanup-all-test-tables!
   "Drop every test scratch table in `schema` older than `:min-age-seconds`
@@ -315,8 +306,8 @@
   (let [driver   (keyword (:engine db))
         now-secs (quot (System/currentTimeMillis) 1000)]
     ;; Self-elevate: the sweep's DROPs run on write-data credentials via the
-    ;; :transform pool. The information_schema enumeration is a fixed system query,
-    ;; not user SQL, so sharing that scope is harmless.
+    ;; :transform pool. The describe-database enumeration is read-only metadata, so
+    ;; sharing that scope is harmless.
     (driver.conn/with-transform-connection
       (reduce
        (fn [report tbl-name]
@@ -331,14 +322,14 @@
              (update report :skipped-young conj tbl-name))
            (update report :non-matching-count inc)))
        {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}
-       (list-tables-in-schema db-id schema)))))
+       (list-tables-in-schema driver db schema)))))
 
 (defn sweep-old-test-tables!
   "Reap old test scratch tables, best-effort. Never throws; returns nil.
 
   Sweeps `schema` when non-blank, else the driver's `:db`-slot catalog. With
-  neither, skips: an unscoped information_schema sweep could list tables in
-  namespaces this connection should not touch."
+  neither, skips: an unscoped sweep could list tables in namespaces this
+  connection should not touch."
   ([db-id db ^String schema]
    (sweep-old-test-tables! db-id db schema {}))
   ([db-id db ^String schema opts]

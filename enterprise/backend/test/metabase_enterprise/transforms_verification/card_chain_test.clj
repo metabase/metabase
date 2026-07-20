@@ -41,14 +41,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-verification.chain :as chain]
-   [metabase-enterprise.transforms-verification.execute :as execute]
    [metabase-enterprise.transforms-verification.test-util :as tu]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -341,14 +339,12 @@
          tu/correct-expected-csv {}
          (t2/select :model/Transform))
         ;; After the run, verify that enriched-name (t1's real output) is absent.
-        (let [result (qp.core/process-query
-                      (execute/native-query
-                       db-id
-                       (str "SELECT COUNT(*) FROM information_schema.tables"
-                            " WHERE table_schema = ? AND table_name = ?")
-                       [(tu/scratch-namespace db-id) enriched-name]))]
-          (testing "t1 real output table was never written"
-            (is (= 0 (-> result (get-in [:data :rows]) first first int)))))))))
+        ;; driver/table-exists? (not information_schema): BigQuery has no
+        ;; instance-global information_schema.
+        (testing "t1 real output table was never written"
+          (is (not (driver/table-exists? driver/*driver* (mt/db)
+                                         {:schema (tu/scratch-namespace db-id)
+                                          :name   enriched-name}))))))))
 
 ;;; ===========================================================================
 ;;; Metric card: :type :metric card as card target
