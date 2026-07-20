@@ -239,7 +239,7 @@ function setup({
   return renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <ExplorationGroupVisualization
           explorationId={1}
           page={{
@@ -258,7 +258,7 @@ function setup({
           isCommentsSidebarOpen={isCommentsSidebarOpen}
           wasCommentsSidebarOpen={wasCommentsSidebarOpen}
         />
-      )}
+      }
     />,
     { withRouter: true, initialRoute: "/exploration/1" },
   );
