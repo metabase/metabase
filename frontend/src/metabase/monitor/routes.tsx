@@ -106,7 +106,6 @@ function getMonitorIndexPath(state: State) {
  * Legacy redirects for Admin Tools pages that moved into the Monitor area:
  *   - /admin/tools → /monitor
  *   - /admin/tools/help → /admin/help
- *   - /admin/tools/dependencies → /data-studio/dependencies (the dependency graph)
  *
  * The Data Studio → Monitor redirect for Dependency Diagnostics lives in
  * data-studio/routes.tsx instead: it must be declared inside the Data Studio
@@ -158,14 +157,6 @@ export function getMonitorRedirects() {
       <Route
         path="/admin/tools/notifications/*"
         element={redirect(`${Urls.monitorNotifications()}/*`)}
-      />
-      <Route
-        path="/admin/tools/dependencies"
-        element={redirect(Urls.dependencyGraph())}
-      />
-      <Route
-        path="/admin/tools/dependencies/*"
-        element={redirect(`${Urls.dependencyGraph()}/*`)}
       />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>
