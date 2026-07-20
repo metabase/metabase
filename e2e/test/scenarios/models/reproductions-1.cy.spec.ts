@@ -226,9 +226,17 @@ describe("issue 23103", () => {
       cy.findByText("Category").click();
     });
 
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
     cy.button("Save changes").click();
     cy.wait("@updateModel");
     cy.button("Saving…").should("not.exist");
+
+    // Saving metadata navigates back to the model and re-runs its query.
+    // Wait for those results to load and render before hovering — otherwise
+    // the header cell is re-rendered out from under the hover (and its
+    // fingerprint metadata isn't attached yet), so the HoverCard never opens.
+    cy.wait("@modelQuery");
+    H.tableInteractiveBody().should("be.visible");
 
     cy.findAllByTestId("header-cell")
       .contains("Category")
