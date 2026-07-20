@@ -631,6 +631,7 @@
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
                            :id :settings :fingerprint :nfc_path)
+                   ;; mirrors annotate's legacy display-name handling in the expected col
                    #_{:clj-kondo/ignore [:deprecated-var]}
                    lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]

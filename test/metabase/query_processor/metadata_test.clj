@@ -86,6 +86,7 @@
                {:name          "CREATED_AT"
                 :display_name  "CREATED_AT"
                 :semantic_type :type/CreationTimestamp}]
+              ;; the deprecated legacy path is itself under test
               #_{:clj-kondo/ignore [:deprecated-var]}
               (qp.metadata/legacy-result-metadata query nil))))))
 
@@ -121,6 +122,7 @@
               ((get-method driver/query-result-metadata :default) :h2 query))))))
 
 (deftest ^:parallel combine-metadata-test
+  ;; the deprecated combine-metadata is itself under test
   #_{:clj-kondo/ignore [:deprecated-var]}
   (are [old-metadata new-metadata expected] (= expected (qp.util/combine-metadata new-metadata old-metadata))
     ;; columns get the correct display name after columns with the same name are removed

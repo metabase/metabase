@@ -52,6 +52,7 @@
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
         (lib/column-name
+         ;; this ns is the legacy-MBQL bridge for drivers; the deprecated conversion is its purpose
          #_{:clj-kondo/ignore [:deprecated-var]}
          (legacy-inner-query->mbql5-query legacy-inner-query)
          (lib/->mbql5 legacy-ag-clause)))))

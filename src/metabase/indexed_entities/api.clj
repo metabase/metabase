@@ -14,6 +14,7 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
+  ;; stored refs are legacy MBQL; normalize as legacy to match metadata field_refs
   (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
                                             :field_ref)
                                       f)

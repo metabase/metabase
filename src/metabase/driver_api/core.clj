@@ -59,6 +59,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
+;; driver-api facade must keep re-exporting deprecated vars until all drivers migrate off them
 #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
