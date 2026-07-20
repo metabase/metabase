@@ -176,18 +176,15 @@ describe("DashboardSubscriptionsButton", () => {
       await waitFor(() => expect(getButton()).toBeEnabled());
     });
 
-    it("should show a disabled button when no channel is set up", async () => {
+    it("should not render when neither email nor slack is set up", async () => {
       setup({ isAdmin: false, hasEmailSetup: false, hasSlackSetup: false });
 
-      const button = await screen.findByTestId(
-        "dashboard-subscriptions-button",
-      );
-      expect(button).toBeDisabled();
-
-      await userEvent.hover(button);
-      expect(
-        await screen.findByText("Can't send subscriptions"),
-      ).toBeInTheDocument();
+      // Wait for channel info to load so we don't assert on the pre-fetch state
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("dashboard-subscriptions-button"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("should not render if there are no data cards", () => {
@@ -209,7 +206,7 @@ describe("DashboardSubscriptionsButton", () => {
   });
 
   describe("enterprise", () => {
-    it("should render for non-admins with subscription permissions", async () => {
+    it("should render for non-admins with subscription permissions when a channel is set up", async () => {
       setup({
         canManageSubscriptions: true,
         hasEmailSetup: true,
@@ -219,6 +216,22 @@ describe("DashboardSubscriptionsButton", () => {
       expect(
         await screen.findByTestId("dashboard-subscriptions-button"),
       ).toBeInTheDocument();
+    });
+
+    it("should not render for non-admins with subscription permissions when no channel is set up", async () => {
+      setup({
+        canManageSubscriptions: true,
+        hasEmailSetup: false,
+        hasSlackSetup: false,
+        isEnterprise: true,
+        isAdmin: false,
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("dashboard-subscriptions-button"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("should not render for non-admins without subscription permissions", () => {
