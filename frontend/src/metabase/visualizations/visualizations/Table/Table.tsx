@@ -12,9 +12,8 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
-import type { DatasetData, Series } from "metabase-types/api";
+import type { DatasetData } from "metabase-types/api";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type { VisualizationProps } from "../../types";
@@ -133,7 +132,10 @@ function TableComponent(props: TableProps) {
  * question (and rebuild every column) mid-interaction; series changes on every
  * query run, which is when fresh metadata actually needs to be picked up.
  */
-function useSyncedQuestion(series: Series, metadata: Metadata | undefined) {
+function useSyncedQuestion(
+  series: VisualizationProps["series"],
+  metadata: VisualizationProps["metadata"],
+) {
   const metadataRef = useLatest(metadata);
   return useMemo(() => {
     const [{ card }] = series;
