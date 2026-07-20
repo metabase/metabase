@@ -1375,3 +1375,21 @@
                     (is (some? tenant))
                     (testing "tenant created but with no attributes since the value wasn't a map"
                       (is (nil? (:attributes tenant))))))))))))))
+
+(deftest successful-jwt-login-does-not-log-pii-test
+  (testing "Successful JWT authentication should not log user's first or last name"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.jwt :info]]
+        ;; client-full-response uses mock client (in-process, future) so dynamic bindings are conveyed
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"}
+                                                     default-jwt-secret))]
+          (is (sso.test-setup/successful-login? response))
+          (is (not-any? #(re-find #"Rasta|Toucan" (:message %)) (log-messages))
+              "Log messages should not contain user's first or last name"))))))
