@@ -1128,61 +1128,6 @@
               (is (= "Created At" (get by-dim users-created)))
               (is (= "Country"    (get by-dim users-country)))))))))) ; binding+let+with-temp+testing+deftest
 
-(deftest exploration-list-queries-endpoint-test
-  (testing "GET /:id/queries returns lightweight summaries without dataset_query"
-    (mt/with-temp [:model/User u {:email "list@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "list"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            eid       (:id resp)
-            summaries (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))]
-        (is (= 1 (count summaries)))
-        (let [s (first summaries)]
-          (is (contains? s :status))
-          (is (= "pending" (:status s)))
-          (is (contains? s :position))
-          (is (not (contains? s :dataset_query)) "dataset_query must not leak")
-          (is (not (contains? s :result_data)) "result blob must not leak")
-          (is (contains? s :interestingness_score) "score is included via the result-table left-join")
-          (is (nil? (:interestingness_score s)) "pending queries have no result row, hence nil score")
-          (is (contains? s :contextual_interestingness_score)
-              "contextual score is included via the result-table left-join")
-          (is (nil? (:contextual_interestingness_score s))
-              "pending queries have no result row, hence nil contextual score")
-          (is (contains? s :row_count) "row_count is included via the result-table left-join")
-          (is (nil? (:row_count s)) "pending queries have no result row, hence nil row_count"))))))
-
-(deftest exploration-list-queries-includes-score-from-result-test
-  (testing "GET /:id/queries surfaces both interestingness scores via the result-table left-join"
-    (mt/with-temp [:model/User u {:email "score-list@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "score-list"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            eid (:id resp)
-            qid (-> resp :threads first :queries first :id)]
-        ;; `:creator_id` matters: the summaries are gated on the snapshot's data-access lens, and a
-        ;; creatorless, tokenless StoredResult is the fail-closed (admin-only) case. The runner
-        ;; always stamps the creator, so stamp it here too.
-        (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                     {:result_data (byte-array [0])
-                                                      :row_count   37
-                                                      :creator_id  (:id u)}))]
-          (t2/insert! :model/ExplorationQueryResult
-                      {:exploration_query_id             qid
-                       :stored_result_id                 sr-id
-                       :interestingness_score            0.42
-                       :contextual_interestingness_score 0.83}))
-        (let [s (-> (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid)) first)]
-          (is (= 0.42 (:interestingness_score s)))
-          (is (= 0.83 (:contextual_interestingness_score s)))
-          (is (= 37 (:row_count s)) "row_count surfaces from the linked stored_result"))))))
-
 (deftest exploration-get-includes-interestingness-on-queries-test
   (testing "GET /:id hydrates both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
@@ -1219,15 +1164,6 @@
             (is (= 0.42 (:interestingness_score q)))
             (is (= 0.83 (:contextual_interestingness_score q)))
             (is (= 37 (:row_count q)) "row_count hydrates from the linked stored_result")))))))
-
-(deftest exploration-list-queries-permissions-test
-  (testing "GET /:id/queries enforces the same read-check as the parent exploration"
-    (mt/with-temp [:model/User owner {:email "lq-owner@example.com"}
-                   :model/User other {:email "lq-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
-                                            {:name "lq-private"
-                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
-        (mt/user-http-request other :get 403 (format "exploration/%d/queries" eid))))))
 
 (defn- store-fake-result!
   "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult

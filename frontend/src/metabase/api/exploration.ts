@@ -208,7 +208,6 @@ export const {
   useRestartExplorationMutation,
   useDeleteExplorationMutation,
   useCancelExplorationThreadMutation,
-  useGetExplorationQueryResultQuery,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } = explorationApi;

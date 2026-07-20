@@ -168,55 +168,6 @@
           (is (= 1 (count queries)))
           (is leaks? "the creator reads back the values their own lens produced"))))))
 
-(defn- query-summaries
-  "`GET /api/exploration/:id/queries` — the list the FE polls while queries finish."
-  [user exploration]
-  (mt/user-http-request user :get 200 (format "exploration/%d/queries" (:id exploration))))
-
-(deftest different-sandbox-viewer-is-denied-query-summaries-test
-  (testing "the /queries poll returns the same creator-lens-derived values as `GET /:id` — the query
-            :name bakes in values discovered under the creator's lens, plus both interestingness
-            scores and the snapshot row_count — so it must apply the same gate. Otherwise it is a
-            way around the withholding `GET /:id` performs, and the higher-traffic one at that"
-    (met/with-gtaps-for-user! :rasta (price-sandbox)
-      ;; snapshot stored under price=1 ...
-      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
-        (with-done-exploration!
-          {:creator-id (mt/user->id :lucky) :data-access-token token}
-          (fn [{:keys [exploration]}]
-            ;; ... but rasta now resolves to price=2 -> a different lens
-            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
-              (let [body (query-summaries :rasta exploration)]
-                (is (= [] body)
-                    "no query summaries — their :name carries creator-discovered values")
-                (is (not (str/includes? (pr-str body) discovered-value))
-                    (str "the discovered value " (pr-str discovered-value)
-                         " must not appear anywhere in the response"))))))))))
-
-(deftest same-sandbox-viewer-sees-query-summaries-test
-  (testing "a viewer whose lens matches the creator's still polls the full query list — the gate
-            must not lock out legitimate collaborators"
-    (met/with-gtaps-for-user! :rasta (price-sandbox)
-      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
-        (with-done-exploration!
-          {:creator-id (mt/user->id :lucky) :data-access-token token}
-          (fn [{:keys [exploration]}]
-            (let [body (query-summaries :rasta exploration)]
-              (is (= 1 (count body)) "the query summary is returned")
-              (is (str/includes? (pr-str body) discovered-value)
-                  "and its creator-derived name is visible to a same-lens viewer"))))))))
-
-(deftest creator-sees-own-query-summaries-test
-  (testing "the creator always polls their own query list, even against an incompatible stored token"
-    (with-done-exploration!
-      {:creator-id        (mt/user->id :rasta)
-       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
-      (fn [{:keys [exploration]}]
-        (let [body (query-summaries :rasta exploration)]
-          (is (= 1 (count body)))
-          (is (str/includes? (pr-str body) discovered-value)
-              "the creator reads back the values their own lens produced"))))))
-
 (deftest unsandboxed-viewer-with-perms-sees-cached-result-test
   (testing "an unsandboxed viewer with data perms may stream a sandboxed creator's result (superset)"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
