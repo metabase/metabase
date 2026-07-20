@@ -1100,6 +1100,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; default impl of the deprecated multimethod; throws to point implementers at the replacement
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod splice-parameters-into-native-query ::driver
   [_driver _query]

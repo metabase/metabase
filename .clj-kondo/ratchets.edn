@@ -69,7 +69,6 @@
  :comment-exempt #{:all
                    :clojure-lsp/unused-public-var
                    :deprecated-namespace
-                   :deprecated-var
                    :discouraged-namespace
                    :discouraged-var
                    :metabase/modules

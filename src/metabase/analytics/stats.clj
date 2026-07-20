@@ -1048,6 +1048,7 @@
       (assert (= #{"analytics_uuid" "features" "grouped_metrics" "instance_attributes" "metadata" "metrics" "settings"}
                  (set (keys snowplow-data)))
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
+      ;; legacy usage-stats endpoint still runs alongside Snowplow until it is decommissioned
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (analytics.event/track-event! :snowplow/instance_stats snowplow-data)

@@ -27,6 +27,7 @@
   [query :- :map]
   (future
     (try
+      ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e

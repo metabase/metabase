@@ -32,5 +32,6 @@
   is not enabled, this passes thru to the OSS implementation of the endpoint."
   (->> (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table)
        +auth
+       ;; sandboxing swaps out the OSS table endpoint; +when-premium-feature is the only swap mechanism
        #_{:clj-kondo/ignore [:deprecated-var]}
        (ee.api/+when-premium-feature :sandboxes)))

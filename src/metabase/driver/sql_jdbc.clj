@@ -281,6 +281,7 @@
   [driver db-id table-name column-definitions]
   (driver-api/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
+;; back-compat: honors driver overrides of the old alter-columns! method until drivers migrate
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-table-columns! :sql-jdbc
   [driver db-id table-name column-definitions & opts]

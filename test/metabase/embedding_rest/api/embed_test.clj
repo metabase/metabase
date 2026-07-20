@@ -330,11 +330,13 @@
           (let [expected-status (response-format->status-code response-format)]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
               (with-temp-card [card {:enable_embedding true}]
+                ;; embed tests still assert via the deprecated helper; not yet migrated
                 #_{:clj-kondo/ignore [:deprecated-var]}
                 (test-query-results
                  response-format
                  (client/real-client :get expected-status (card-query-url card response-format)
                                      {:request-options request-options}))
+                ;; embed tests still assert via the deprecated helper; not yet migrated
                 #_{:clj-kondo/ignore [:deprecated-var]}
                 (test-query-results
                  response-format
@@ -416,6 +418,7 @@
             (is (= "You must specify a value for :venue_id in the JWT."
                    (client/client :get 400 (card-query-url card response-format)))))
           (testing "if `:locked` param is present, request should succeed"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -456,6 +459,7 @@
                                                         "&venue_id=100"
                                                         "?venue_id=100")))))))
           (testing "If an `:enabled` param is present in the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -463,6 +467,7 @@
                                  (card-query-url card response-format {:params {:venue_id "enabled"}})
                                  {:request-options request-options})))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
@@ -757,8 +762,10 @@
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        ;; embed tests still assert via the deprecated helper; not yet migrated
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard)))
+        ;; embed tests still assert via the deprecated helper; not yet migrated
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 

@@ -240,6 +240,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ;; operates on legacy refs kept for FE compat; the legacy options helper matches that shape
   ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))

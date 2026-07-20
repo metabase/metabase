@@ -1571,6 +1571,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
+      ;; input is a legacy ref from the FE; must be normalized as legacy MBQL before converting to MBQL 5
       #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-field-ref
       lib.convert/->mbql5

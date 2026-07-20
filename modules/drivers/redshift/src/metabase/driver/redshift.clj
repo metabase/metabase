@@ -842,6 +842,7 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+;; overriding the old method is picked up by alter-table-columns!'s back-compat dispatch, covering both
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]

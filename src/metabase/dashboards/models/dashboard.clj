@@ -306,6 +306,7 @@
 (defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
+  ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 

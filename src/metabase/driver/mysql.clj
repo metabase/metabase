@@ -315,6 +315,7 @@
       ;; else
       message)))
 
+;; the JDBC-spec variant is still needed so the audit/app-db path can reuse it without a driver pool
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]

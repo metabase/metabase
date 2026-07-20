@@ -117,6 +117,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;; default impl of the deprecated multimethod itself, kept until the method is removed
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod set-role-statement :default
   [_driver _role]
