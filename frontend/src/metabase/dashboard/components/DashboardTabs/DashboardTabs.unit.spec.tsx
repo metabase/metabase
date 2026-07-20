@@ -16,7 +16,6 @@ import {
   Route,
   type WithRouterProps,
   withRouteProps,
-  withRouter,
 } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -54,21 +53,19 @@ function setup({
     },
   };
 
-  const RoutedDashboardComponent = withRouter(
-    ({ location }: { location: Location }) => {
-      const { selectedTabId } = useDashboardTabs();
-      useDashboardUrlQuery(createMockRouter(), location);
-      return (
-        <>
-          <DashboardTabs />
-          <span>Selected tab id is {selectedTabId}</span>
-          <br />
-          <span>Path is {location.pathname + location.search}</span>
-          <Link to="/someotherpath">Navigate away</Link>
-        </>
-      );
-    },
-  );
+  const RoutedDashboardComponent = ({ location }: { location: Location }) => {
+    const { selectedTabId } = useDashboardTabs();
+    useDashboardUrlQuery(createMockRouter(), location);
+    return (
+      <>
+        <DashboardTabs />
+        <span>Selected tab id is {selectedTabId}</span>
+        <br />
+        <span>Path is {location.pathname + location.search}</span>
+        <Link to="/someotherpath">Navigate away</Link>
+      </>
+    );
+  };
 
   const OtherComponent = () => {
     const selectedTabId = useSelector(getSelectedTabId);

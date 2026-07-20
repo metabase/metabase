@@ -179,6 +179,8 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     dev.kondo-ratchet/fix!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!

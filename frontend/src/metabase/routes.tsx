@@ -15,6 +15,7 @@ import {
   BrowseModels,
   BrowseSchemas,
   BrowseTables,
+  TablePermalinkRedirect,
 } from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
@@ -166,7 +167,7 @@ export const getRoutes = (store: AppStore) => {
           </Route>
 
           <Route
-            path="collection/entity/:entity_id(**)"
+            path="collection/entity/:entity_id/*"
             element={createEntityIdRedirect({
               parametersToTranslate: [
                 {
@@ -210,7 +211,7 @@ export const getRoutes = (store: AppStore) => {
           </Route>
 
           <Route
-            path="dashboard/entity/:entity_id(**)"
+            path="dashboard/entity/:entity_id/*"
             element={createEntityIdRedirect({
               parametersToTranslate: [
                 {
@@ -237,7 +238,7 @@ export const getRoutes = (store: AppStore) => {
 
           <Route path="/question">
             <Route
-              path="/question/entity/:entity_id(**)"
+              path="/question/entity/:entity_id/*"
               element={createEntityIdRedirect({
                 parametersToTranslate: [
                   {
@@ -285,6 +286,10 @@ export const getRoutes = (store: AppStore) => {
             <Route
               path="databases/:dbId/schema/:schemaName"
               element={<RoutedBrowseTables />}
+            />
+            <Route
+              path="databases/:dbName(/schema/:schemaName)/table/:tableName"
+              component={TablePermalinkRedirect}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}
