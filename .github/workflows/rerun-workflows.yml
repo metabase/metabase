@@ -37,6 +37,8 @@ jobs:
 
       - name: Trigger a re-run
         uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
             const MAX_ATTEMPTS = 1;
