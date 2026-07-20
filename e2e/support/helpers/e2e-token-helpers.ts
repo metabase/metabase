@@ -42,7 +42,7 @@ export const activateToken = (
     return cy.request({
       method: "PUT",
       url: "/api/setting/premium-embedding-token",
-      retryOnStatusCodeFailure: true,
+      failOnStatusCode: false,
       body: {
         value: token,
       },
