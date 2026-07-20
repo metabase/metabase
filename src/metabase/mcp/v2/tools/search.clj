@@ -201,12 +201,34 @@
      (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
           "To browse without a query, use " target "."))))
 
+(def ^:private max-queries-per-list
+  "Cap on term_queries/semantic_queries entries. Each entry fans out into its own subsearch (a full
+   ranked-pool fetch, plus an embedding call for a semantic query), and the MCP throttler counts
+   requests, not the queries inside one — so an uncapped list turns one call into many concurrent
+   searches."
+  10)
+
+(def ^:private max-query-length
+  "Cap on each query string, in characters — a long query wastes embedding tokens and slows the
+   full-text scan without adding signal."
+  500)
+
 (defn- validate-modes!
   [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
   (when (some str/blank? (concat term_queries semantic_queries))
     (common/throw-teaching-error
      (str "A blank query matches everything — every term_queries and semantic_queries entry must "
           "be non-empty. Drop the blank entry.")))
+  (when (or (> (count term_queries) max-queries-per-list)
+            (> (count semantic_queries) max-queries-per-list))
+    (common/throw-teaching-error
+     (format (str "Too many queries — pass at most %d entries each in term_queries and "
+                  "semantic_queries. Combine related queries or drop some.")
+             max-queries-per-list)))
+  (when (some #(> (count %) max-query-length) (concat term_queries semantic_queries))
+    (common/throw-teaching-error
+     (format "A query is too long — each term_queries/semantic_queries entry must be at most %d characters."
+             max-query-length)))
   (when (and (true? recent) queries?)
     (common/throw-teaching-error
      (str "recent: true returns your recently viewed items and cannot be combined with "

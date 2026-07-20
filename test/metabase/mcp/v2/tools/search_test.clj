@@ -166,6 +166,26 @@
         (is (not (contains? cols :content)) "the SQL body column is not selected")))))
 
 ;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
+(deftest query-limits-test
+  (testing "GHY-4137: each query list is length-capped and each query is char-bounded, so one call
+            can't fan out into hundreds of concurrent searches — the MCP throttler counts requests,
+            not the queries inside one"
+    (testing "more than 10 term_queries is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10"
+                            (validate-modes! {:term_queries (vec (repeat 11 "x"))} true false))))
+    (testing "more than 10 semantic_queries is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10"
+                            (validate-modes! {:semantic_queries (vec (repeat 11 "x"))} true false))))
+    (testing "exactly 10 per list is allowed"
+      (is (some? (validate-modes! {:term_queries (vec (repeat 10 "x"))
+                                   :semantic_queries (vec (repeat 10 "y"))} true false))))
+    (testing "a query longer than 500 characters is a teaching error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 500 characters"
+                            (validate-modes! {:term_queries [(apply str (repeat 501 "a"))]} true false))))
+    (testing "a 500-character query is allowed"
+      (is (some? (validate-modes! {:term_queries [(apply str (repeat 500 "a"))]} true false))))))
+
+;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
 (deftest blank-query-is-rejected-test
   (testing "GHY-4137: a whitespace-only query passes the {:min 1} schema, but Postgres treats a
             blank search string as match-all — so a blank query silently becomes an unscoped
