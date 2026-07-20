@@ -182,27 +182,41 @@
   removal that stuck leaves behind. A stamped whole-line marker comment is deleted; a hand-written
   comment that merely carries the token keeps its prose and loses only the token. Attachment looks
   past further comment lines, and only needs the ignore's first line (the linter vector may wrap).
-  Trailing markers on code lines are left alone."
-  [text]
-  (let [lines    (vec (str/split-lines text))
-        ending   (if (str/ends-with? text "\n") "\n" "")
-        ignored? (fn [line] (str/includes? (str line) ":clj-kondo/ignore"))
-        stamped? #{keep-comment}
-        orphan?  (fn [i line]
-                   (and (marker-on-line? line)
-                        (re-matches #"\s*;.*" line)
-                        (let [below (drop-while #(re-matches #"\s*;.*" %) (subvec lines (inc i)))]
-                          (not (ignored? (first below))))))]
-    (str (str/join "\n"
-                   (keep-indexed (fn [i line]
-                                   (cond
-                                     (not (orphan? i line))       line
-                                     (stamped? (str/trim line))   nil
-                                     :else                        (-> line
-                                                                      (str/replace (str " " keep-marker) "")
-                                                                      (str/replace keep-marker ""))))
-                                 lines))
-         ending)))
+  Trailing markers on code lines are left alone. `pending-sites` identifies markers reserved for
+  marked whole-line sites that never restored; those are removed by ownership rather than adjacency,
+  since another restored ignore may now sit below them."
+  ([text]
+   (strip-orphan-keep-comments text nil))
+  ([text pending-sites]
+   (let [lines      (vec (str/split-lines text))
+         ending     (if (str/ends-with? text "\n") "\n" "")
+         ignored?   (fn [line] (str/includes? (str line) ":clj-kondo/ignore"))
+         stamped?   #{keep-comment}
+         owned-rows (into #{}
+                          (comp (filter :was-marked?)
+                                (filter #(get-in % [:original :whole-line?]))
+                                (map (comp dec :row)))
+                          pending-sites)
+         orphan?    (fn [i line]
+                      (and (marker-on-line? line)
+                           (re-matches #"\s*;.*" line)
+                           (let [below (drop-while #(re-matches #"\s*;.*" %) (subvec lines (inc i)))]
+                             (not (ignored? (first below))))))
+         strip?     (fn [i line]
+                      (and (marker-on-line? line)
+                           (re-matches #"\s*;.*" line)
+                           (or (contains? owned-rows (inc i))
+                               (orphan? i line))))]
+     (str (str/join "\n"
+                    (keep-indexed (fn [i line]
+                                    (cond
+                                      (not (strip? i line))        line
+                                      (stamped? (str/trim line))   nil
+                                      :else                         (-> line
+                                                                        (str/replace (str " " keep-marker) "")
+                                                                        (str/replace keep-marker ""))))
+                                  lines))
+          ending))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; kondo-redundant-ignores
@@ -367,7 +381,7 @@
                                                (reinsert-ignores text (site-restore-plan lines sites (get pending file)))]
                                            (spit file text)
                                            [file inserted-rows]))))
-                finish!  (fn [exposed mismatched restored covered rounds-run]
+                finish!  (fn [exposed mismatched restored covered rounds-run pending]
                            (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) exposed)]
                              (println (format "WARNING: %s:%d still exposes %s after %d restore rounds -- re-ignore by hand"
                                               filename row type rounds-run)))
@@ -376,7 +390,7 @@
                                               filename row type)))
                            (when audit?
                              (doseq [file files]
-                               (spit file (strip-orphan-keep-comments (slurp file)))))
+                               (spit file (strip-orphan-keep-comments (slurp file) (get pending file)))))
                            (if (empty? restored)
                              (println "Verified: the removals exposed no findings.")
                              (println (format "Restored %d removed ignores covering %d findings (%s), stamped %s."
@@ -429,7 +443,7 @@
                            (into restored (for [[file sites] file->sites, s sites]
                                             {:file file, :row (:row s)}))
                            (into covered (map first attributable))))
-                  (finish! exposed mismatched restored covered (dec round)))))))))))
+                  (finish! exposed mismatched restored covered (dec round) pending))))))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; kondo-insert-ignores
