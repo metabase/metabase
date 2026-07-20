@@ -410,7 +410,7 @@
                   (is (= #{reg-peer pers-peer} (peer-ids :include-personal-collections true))))))))))))
 
 (deftest duplicated-api-transform-peers-hydrate-test
-  (testing "GET /duplicated hydrates transform peers from the transform model, with no card_type key"
+  (testing "GET /duplicated gates transform peers on transform readability (mi/can-read?), not collection visibility"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
@@ -418,13 +418,18 @@
           (mt/with-temp [:model/Transform {xf-a :id} {:name nm}
                          :model/Transform {xf-b :id} {:name nm}]
             (scan/scan!)
-            (let [f (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
-                          (:data (mt/user-http-request :crowberto :get 200
-                                                       "ee/content-diagnostics/duplicated"
-                                                       :query prefix)))]
-              (is (some? f))
-              (is (= [{:id xf-b :name nm :entity_type "transform"}]
-                     (get-in f [:details :duplicate_entities]))))))))))
+            (let [finding (fn [user]
+                            (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
+                                  (:data (mt/user-http-request user :get 200
+                                                               "ee/content-diagnostics/duplicated"
+                                                               :query prefix))))]
+              (testing "superuser: the peer hydrates from the transform model, with no card_type key"
+                (is (= [{:id xf-b :name nm :entity_type "transform"}]
+                       (get-in (finding :crowberto) [:details :duplicate_entities]))))
+              (testing "a non-data-analyst sees the finding (collection-visible) but not the peer"
+                (let [f (finding :rasta)]
+                  (is (some? f))
+                  (is (= [] (get-in f [:details :duplicate_entities]))))))))))))
 
 (deftest duplicated-api-does-not-leak-across-finding-types-test
   (testing "a duplicated finding never surfaces in /stale or /slow, and theirs never surface in /duplicated"

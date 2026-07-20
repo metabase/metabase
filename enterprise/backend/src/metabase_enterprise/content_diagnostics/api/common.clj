@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -181,25 +182,34 @@
 
   The per-caller read-time filters are re-applied exactly as in [[hydrate-slow-entities]]: caller
   visibility always, personal-collection exclusion when `excluded-personal-ids` is provided (with the
-  nil-`collection_id` root-survival clause). A filtered-out peer drops out of `duplicate_entities` exactly
-  like a deleted one."
+  nil-`collection_id` root-survival clause). For card/dashboard/document peers the collection clause IS
+  the model's read permission (they derive `:perms/use-parent-collection-perms`); transform readability
+  is not collection-based, so transform peers additionally require `mi/can-read?`. A filtered-out peer
+  drops out of `duplicate_entities` exactly like a deleted one."
   [findings excluded-personal-ids]
   (into {}
         (for [[etype rows] (group-by :entity_type findings)
               :let  [model (common/entity-type->model etype)
                      ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
               :when (and model (seq ids))
-              :let  [cols (cond-> [model :id :name]
-                            ;; :card_schema is required on any Card select - its after-select hook reads it.
-                            (= etype :card) (conj :type :card_schema))]
-              row   (t2/select cols
-                               {:where [:and
-                                        [:in :id ids]
-                                        (collection/visible-collection-filter-clause :collection_id)
-                                        (when excluded-personal-ids
-                                          [:or
-                                           [:= :collection_id nil]
-                                           [:not [:in :collection_id excluded-personal-ids]]])]})]
+              :let  [where [:and
+                            [:in :id ids]
+                            (collection/visible-collection-filter-clause :collection_id)
+                            (when excluded-personal-ids
+                              [:or
+                               [:= :collection_id nil]
+                               [:not [:in :collection_id excluded-personal-ids]]])]]
+              row   (if (= etype :transform)
+                      ;; mi/can-read? on a transform = source-type feature gate + (superuser, or
+                      ;; data-analyst with readable source tables) - the collection clause alone would
+                      ;; leak transform names to collection-granted non-analysts. It reads :source, so
+                      ;; select full rows; peer sets are page-bounded, so the per-row check is cheap.
+                      (filter mi/can-read? (t2/select :model/Transform {:where where}))
+                      (t2/select (cond-> [model :id :name]
+                                   ;; :card_schema is required on any Card select - its after-select
+                                   ;; hook reads it.
+                                   (= etype :card) (conj :type :card_schema))
+                                 {:where where}))]
           [[etype (:id row)] (cond-> {:id (:id row) :name (:name row) :entity_type etype}
                                (= etype :card) (assoc :card_type (:type row)))])))
 
