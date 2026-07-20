@@ -138,20 +138,17 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      // The picker tree keeps mounting after the databases request resolves, so
-      // clicking the database row before its expand handler is wired drops the click
-      // and the schema fetch that populates the tables never fires. Wait for the
-      // expand toggle to render collapsed, click it, then confirm it expanded so the
-      // schema request reliably occurs before we select the tables.
-      TablePicker.getDatabaseToggle("Writable Postgres12")
-        .should("have.attr", "aria-expanded", "false")
+      // Expand the database only once its row has settled and is visible. The
+      // picker tree re-renders as the databases request resolves (skeleton →
+      // tree, plus a reload-driven re-render); a click captured against an
+      // earlier-pinned toggle detaches and is dropped, so the schema fetch that
+      // populates the tables never fires. A fresh, visible row click re-queries
+      // on detach and also sets the active path, matching the reliable pattern
+      // the sibling tests use.
+      TablePicker.getDatabase("Writable Postgres12")
+        .should("be.visible")
         .click();
       cy.wait("@getSchema");
-      TablePicker.getDatabaseToggle("Writable Postgres12").should(
-        "have.attr",
-        "aria-expanded",
-        "true",
-      );
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
