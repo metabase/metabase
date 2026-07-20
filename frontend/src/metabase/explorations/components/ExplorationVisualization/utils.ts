@@ -484,10 +484,14 @@ export function getHighlightedWithShouldShowTooltip(
     return null;
   }
   const { series } = seriesGroup;
+  const firstSeries = series[0];
+  if (!firstSeries) {
+    return null;
+  }
   const {
     card: { display },
     data: { cols },
-  } = series[0];
+  } = firstSeries;
   const hasMultipleSeries = series.length > 1;
   const hasBreakout = cols.length > 2;
   const shouldShowTooltip =

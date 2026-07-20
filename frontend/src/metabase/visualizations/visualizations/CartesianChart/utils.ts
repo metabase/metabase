@@ -16,7 +16,7 @@ import type {
 import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";
-import type { CartesianHoveredObject } from "./use-chart-events";
+import type { CartesianHoveredObject } from "./types";
 
 export { getDashboardAdjustedSettings };
 

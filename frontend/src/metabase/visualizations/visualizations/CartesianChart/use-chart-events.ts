@@ -24,7 +24,6 @@ import {
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type {
-  HoveredObject,
   RenderingContext,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -39,13 +38,10 @@ import {
 import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
-
-export interface CartesianHoveredObject extends HoveredObject {
-  shouldShowTooltip?: boolean;
-}
 
 function getSplitPanelGrids(option: EChartsOption) {
   const { grid } = option;
@@ -298,9 +294,10 @@ export const useChartEvents = (
 
       // a normal hover triggers the tooltip via the tooltip option's `trigger` "item"
       // but we may need to show the tooltip manually for highlighted items
+      let showTipTimeout: ReturnType<typeof setTimeout> | undefined;
       if (hovered.shouldShowTooltip) {
         // setTimeout because ChartItemTooltip/reactNodeToHtmlString uses flushSync
-        setTimeout(() => {
+        showTipTimeout = setTimeout(() => {
           chart.dispatchAction({
             type: "showTip",
             dataIndex,
@@ -310,6 +307,7 @@ export const useChartEvents = (
       }
 
       return () => {
+        clearTimeout(showTipTimeout);
         chart.dispatchAction({
           type: "downplay",
           dataIndex,
