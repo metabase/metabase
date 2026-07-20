@@ -481,7 +481,7 @@
           ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
           ;; changed set before computing what is affected, so it suppresses self-triggering.
           triggers  '[driver transforms query-processor
-                      enterprise/transforms enterprise/transforms-python]
+                      enterprise/transforms enterprise/transforms.python]
           upstream  (into (set triggers) (mapcat #(get full %)) triggers)
           overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
       (doseq [m (sort overrides)]
