@@ -4,8 +4,10 @@ import { useMount } from "react-use";
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDatabaseQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
 import type {
@@ -25,13 +27,10 @@ import {
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
-interface ImpersonationModalProps {
-  params: ImpersonationModalParams;
-  onClose: () => void;
-}
-
 const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
-  const groupId = parseInt(params.groupId);
+  // NaN preserves the pre-conversion parseInt behavior for the
+  // route-guaranteed param
+  const groupId = parseIntParam(params.groupId) ?? NaN;
   const databaseId = getImpersonatedDatabaseId(params);
 
   return {
@@ -43,7 +42,7 @@ const parseParams = (params: ImpersonationModalParams): ImpersonationParams => {
 export const ImpersonationModal = ({
   params,
   onClose,
-}: ImpersonationModalProps) => {
+}: ModalComponentProps) => {
   const { groupId, databaseId } = parseParams(params);
 
   const {

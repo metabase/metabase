@@ -35,6 +35,10 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
+export const getIsDataApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith(`${Urls.DATA_APP_ROOT_URL}/`);
+});
+
 export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
   return path.startsWith("/explore");
 });
@@ -69,6 +73,9 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
   /^\/data-studio/,
+  // Data apps run full-page with their own custom chrome (a hover-down panel),
+  // so neither the left navbar nor the top app bar should be shown.
+  new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
