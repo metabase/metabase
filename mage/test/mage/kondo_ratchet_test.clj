@@ -42,28 +42,28 @@
            (#'kondo-ratchet/reinsert-ignores
             "(do (foo))\n"
             [{:row 1, :comment nil
-              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}]))))
+              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}", :separator " "}}]))))
   (testing "an inline restore's comment sits above at the target line's indentation"
     (is (= {:text          "(f\n  ;; why\n  #_{:clj-kondo/ignore [:x]} :mysql)\n"
             :inserted-rows [2]}
            (#'kondo-ratchet/reinsert-ignores
             "(f\n  :mysql)\n"
             [{:row 2, :comment ";; why"
-              :original {:whole-line? false, :col 3, :text "#_{:clj-kondo/ignore [:x]}"}}]))))
+              :original {:whole-line? false, :col 3, :text "#_{:clj-kondo/ignore [:x]}", :separator " "}}]))))
   (testing "two inline removals on one row restore right-to-left, so the left splice can't shift the right column"
     (is (= {:text          "(do #_{:clj-kondo/ignore [:x]} (f) #_{:clj-kondo/ignore [:y]} (g))\n"
             :inserted-rows []}
            (#'kondo-ratchet/reinsert-ignores
             "(do (f) (g))\n"
-            [{:row 1, :comment nil, :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
-             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+            [{:row 1, :comment nil, :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}", :separator " "}}
+             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}}]))))
   (testing "a same-row restore with a comment splices first, so the comment can't displace the splice target"
     (is (= {:text          ";; why\n(do #_{:clj-kondo/ignore [:x]} (f) #_{:clj-kondo/ignore [:y]} (g))\n"
             :inserted-rows [1]}
            (#'kondo-ratchet/reinsert-ignores
             "(do (f) (g))\n"
-            [{:row 1, :comment ";; why", :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
-             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+            [{:row 1, :comment ";; why", :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}", :separator " "}}
+             {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}}]))))
   (testing "a whole-line and an inline restore sharing a row each keep their marker adjacent"
     (is (= {:text          (str ";; kept A\n"
                                 "#_{:clj-kondo/ignore [:x]}\n"
@@ -75,7 +75,7 @@
             [{:row 1, :comment ";; kept A"
               :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 1, :comment ";; kept B"
-              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}}]))))
   (testing "consecutive whole-line restores on one row each keep their own marker adjacent"
     (is (= {:text          (str ";; kept B\n"
                                 "#_{:clj-kondo/ignore [:y]}\n"
@@ -100,7 +100,7 @@
 (deftest site-restore-plan-test
   (let [stamp @#'kondo-ratchet/keep-comment
         wl    (fn [row] {:row row, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}})
-        inl   (fn [row] {:row row, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}})
+        inl   (fn [row] {:row row, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}})
         plan  (fn [text sites] (#'kondo-ratchet/site-restore-plan (vec (str/split-lines text)) sites))]
     (testing "a whole-line restore onto an unmarked row gets its own marker"
       (is (= [[1 stamp]]
@@ -157,7 +157,7 @@
   (let [stamp @#'kondo-ratchet/keep-comment
         plan  (fn [text sites] (#'kondo-ratchet/site-restore-plan (vec (str/split-lines text)) sites))]
     (testing "a reserved marker is removed when only the inline site restores"
-      (let [inl  {:row 2, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}}
+      (let [inl  {:row 2, :linters [:y], :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}}
             wl   {:row 2, :was-marked? true, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
             text (str stamp "\n(do (f))\n")
             {restored :text, inserted :inserted-rows}
@@ -173,7 +173,8 @@
       (let [text (str "#_{:clj-kondo/ignore [:x]} ;; " kondo-ratchet/keep-marker " why\n(f)\n")
             {:keys [text sites]} (#'kondo-ratchet/remove-ignores-at text [1])]
         (is (= (str " ;; " kondo-ratchet/keep-marker " why\n(f)\n") text))
-        (is (= [{:whole-line? false, :col 1, :text "#_{:clj-kondo/ignore [:x]}"}] (map :original sites)))
+        (is (= [{:whole-line? false, :col 1, :text "#_{:clj-kondo/ignore [:x]}", :separator ""}]
+               (map :original sites)))
         (let [planned (plan text (map #(assoc % :was-marked? true) sites))]
           (is (= [nil] (map :comment planned)))
           (is (= (str "#_{:clj-kondo/ignore [:x]} ;; " kondo-ratchet/keep-marker " why\n(f)\n")
@@ -254,7 +255,7 @@
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(defn f [x]\n  #_{:clj-kondo/ignore [:equals-true]}\n  (= true x))\n"
                          [2])))))
-    (is (= [{:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}]
+    (is (= [{:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}", :separator " "}]
            (map :original
                 (:sites (#'kondo-ratchet/remove-ignores-at "(do #_{:clj-kondo/ignore [:x]} (foo))\n" [1])))))
     (is (= [{:whole-line? true, :text "#_{:clj-kondo/ignore [:x\n                      :y]}"}]
@@ -262,6 +263,22 @@
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
                          [2])))))))
+
+(deftest inline-ignore-separator-round-trip-test
+  (doseq [[description separator text]
+          [["no space after the ignore" ""
+            "(do #_{:clj-kondo/ignore [:x]}(foo))\n"]
+           ["multiple spaces after the ignore" "   "
+            "(do #_{:clj-kondo/ignore [:x]}   (foo))\n"]
+           ["an ignore ending a line" ""
+            "(do (foo) #_{:clj-kondo/ignore [:x]}\n(bar))\n"]]]
+    (testing description
+      (let [{removed :text, :keys [sites]} (#'kondo-ratchet/remove-ignores-at text [1])]
+        (is (= [separator] (map (comp :separator :original) sites)))
+        (is (= text
+               (:text (#'kondo-ratchet/reinsert-ignores
+                       removed
+                       (map #(assoc % :comment nil) sites)))))))))
 
 (deftest remove-ignores-at-test
   (testing "a standalone ignore line disappears entirely; :sites points at the uncovered form"

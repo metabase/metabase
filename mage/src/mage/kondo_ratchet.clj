@@ -94,9 +94,7 @@
                                       (let [rest-of-line (subs line (dec (:col original)))]
                                         (str (subs line 0 (dec (:col original)))
                                              (:text original)
-                                             ;; removal swallowed the separating space unless the
-                                             ;; remnant kept one; mirror it so restores are verbatim
-                                             (when-not (str/starts-with? rest-of-line " ") " ")
+                                             (:separator original)
                                              rest-of-line))))))
                         (vec (str/split-lines text))
                         (sort-by (fn [{:keys [row original]}] [row (:col original -1)])
@@ -245,7 +243,8 @@
   Forms that name any clojure-lsp/* linter survive ([[names-lsp?]]): the verify pass could never restore
   that half of the suppression. Forms whose matched span has unbalanced braces (nested maps the regex
   can't span) are skipped and reported under `:skipped` rather than corrupted.
-  A line left whitespace-only by a removal is deleted; an inline removal also swallows one space.
+  A line left whitespace-only by a removal is deleted; an inline removal also swallows the spaces
+  separating it from the following form when the preceding text already ends in a space.
   Returns `{:text _, :sites [{:row _, :linters _, :original _} ...], :skipped [rows...]}`.
   `:sites` carries the post-removal row of the form each ignore covered, the linters it named, and
   `:original` -- the removed form's exact text and placement, so a restore can put it back verbatim."
@@ -264,9 +263,10 @@
         result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
                          (let [before     (subs text 0 start)
                                after      (subs text end)
-                               after      (if (and (str/ends-with? before " ") (str/starts-with? after " "))
-                                            (str/replace-first after #" +" "")
-                                            after)
+                               separator  (if (str/ends-with? before " ")
+                                            (or (re-find #"^ +" after) "")
+                                            "")
+                               after      (subs after (count separator))
                                line-start (inc (or (str/last-index-of before "\n") -1))
                                line-end   (or (str/index-of after "\n") (count after))
                                remnant    (str (subs before line-start) (subs after 0 line-end))
@@ -289,7 +289,8 @@
                                                          :text        (subs text line-start (+ end line-end))}
                                                         {:whole-line? false
                                                          :col         (inc (- start line-start))
-                                                         :text        (subs text start end)})}))))
+                                                         :text        (subs text start end)
+                                                         :separator   separator})}))))
                        {:text text, :deletions []}
                        ;; bottom-up so earlier offsets stay valid
                        (sort-by :start > removable))
