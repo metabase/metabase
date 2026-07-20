@@ -9,6 +9,7 @@
    [metabase.mq.queue.quartz :as q.quartz]
    [metabase.mq.test-util :as mq.tu]
    [metabase.mq.transport :as transport]
+   [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -216,6 +217,25 @@
                   [{:id id :channel :queue/outbox-require :payload pl}]})))
         (is (t2/exists? :queue_message_outbox :id id)
             "publish failed, so the row is retained (not silently deleted)")))))
+
+(deftest publish-outbox-rows-retains-row-when-scheduler-disabled-test
+  (testing "a present-but-disabled scheduler (MB_DISABLE_SCHEDULER) also fails the publish, retaining the row"
+    (mq.tu/with-test-mq [_ctx]
+      ;; Unlike the nil-scheduler case above, here a scheduler *exists* (initialized, job store
+      ;; writable) but is flagged disabled, so it will never fire triggers. quartz publish! must
+      ;; throw rather than durably write a trigger that never delivers; the per-row try/catch in
+      ;; publish-outbox-rows! then leaves the row in place for the recovery sweep.
+      (mt/with-temp-scheduler!
+        (let [pl (payload/encode ["keep-me-too"])
+              id (t2/insert-returning-pk! :queue_message_outbox
+                                          {:queue_name "outbox-require" :payload pl})]
+          (binding [q.backend/*backend* q.quartz/backend]
+            (with-redefs [task/scheduler-disabled? (constantly true)]
+              (outbox/publish-outbox-rows!
+               (atom {:metabase.mq.queue.outbox/rows
+                      [{:id id :channel :queue/outbox-require :payload pl}]}))))
+          (is (t2/exists? :queue_message_outbox :id id)
+              "publish failed, so the row is retained (not silently deleted)"))))))
 
 (deftest recover-outbox-partial-failure-keeps-delivered-rows-deleted-test
   (testing "a publish failure partway through the sweep does not roll back rows already published+deleted"
