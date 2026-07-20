@@ -655,14 +655,15 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
     });
 
-    cy.log("close any existing open popovers to reduce flakes");
-    cy.get("body").type("{esc}");
+    cy.log("ensure that the interactive question still works after the change");
+    // A brand-new question auto-opens the data picker (see data-picker.cy.spec.tsx),
+    // which renders in a Mantine popover portal mounted outside the SDK root. Rely on
+    // that auto-open rather than toggling the picker via a "Pick your starting data"
+    // click: that click races with the picker re-opening itself after the
+    // targetCollection change and can toggle the popover closed, so H.popover() never
+    // appears. Anchor on the trigger label first so the editor has finished rendering.
+    getSdkRoot().contains("Pick your starting data");
 
-    getSdkRoot().findByText("Pick your starting data").click();
-
-    cy.log("ensure that the interactive question still works");
-    // The data picker renders in a Mantine popover portal that mounts outside
-    // the SDK root, so query it at the document level (not scoped to getSdkRoot).
     H.popover().findByRole("link", { name: "Orders" }).click();
 
     getSdkRoot()
