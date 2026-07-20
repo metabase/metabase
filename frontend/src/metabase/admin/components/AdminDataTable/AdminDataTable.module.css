@@ -1,0 +1,36 @@
+.table {
+  width: 100%;
+}
+
+/* Scrolls the body internally (with `maxBodyHeight`) so the pagination controls below the table
+   stay in view instead of being pushed off the bottom of the page. */
+.scrollBox {
+  overflow: auto;
+  min-height: 15rem;
+}
+
+/* Keeps the (sortable) headers reachable while the body scrolls. */
+.scrollBox .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+.table thead th,
+.table thead th * {
+  color: var(--mb-color-core-brand);
+}
+
+.table td,
+.table th {
+  padding-block: 0.75em;
+}
+
+.table td:first-child {
+  font-weight: normal;
+}
+
+.table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}

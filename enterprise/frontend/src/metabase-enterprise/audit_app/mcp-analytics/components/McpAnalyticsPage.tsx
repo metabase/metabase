@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -33,7 +33,7 @@ import { McpEventsTable } from "./McpEventsTable";
  */
 export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   const [
-    { date, user, group, tenant, tab, page, sortColumn, sortDirection },
+    { date, user, group, tenant, tab, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, mcpUrlStateConfig);
 
@@ -66,6 +66,14 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   };
 
   const chartFilters = { dateFilter, userId, groupId, tenantId };
+
+  // Keep this referentially stable: it feeds the events query's `useMemo`, and each rebuild mints
+  // fresh metabase-lib UUIDs, which change the query's serialized RTK cache key and trigger a
+  // redundant refetch (and loader flash) on every incidental re-render.
+  const sortingOptions = useMemo(
+    () => ({ sort_column, sort_direction }),
+    [sort_column, sort_direction],
+  );
 
   const { isInitialLoading, isRefetching, hasData, count } = useMcpHasData({
     ...dataSources,
@@ -207,14 +215,11 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
                   page={page}
                   total={count}
                   onPageChange={(newPage) => patchUrlState({ page: newPage })}
-                  sortingOptions={{
-                    sort_column: sortColumn,
-                    sort_direction: sortDirection,
-                  }}
+                  sortingOptions={sortingOptions}
                   onSortingOptionsChange={(newSorting) =>
                     patchUrlState({
-                      sortColumn: newSorting.sort_column,
-                      sortDirection: newSorting.sort_direction,
+                      sort_column: newSorting.sort_column,
+                      sort_direction: newSorting.sort_direction,
                       page: 0,
                     })
                   }

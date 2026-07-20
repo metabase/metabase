@@ -1,12 +1,11 @@
-import cx from "classnames";
 import { type ReactNode, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import {
+  AdminDataTable,
+  type AdminDataTableColumn,
+} from "metabase/admin/components/AdminDataTable";
 import { DateTime } from "metabase/common/components/DateTime";
-import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
-import AdminS from "metabase/css/admin.module.css";
-import { Box, Card, Flex, LoadingOverlay } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import type {
@@ -231,72 +230,41 @@ function McpEventsTableInner({
     return new Map(cols.map((col, index) => [col.name.toLowerCase(), index]));
   }, [data]);
 
-  const showEmpty = !isFetching && rows.length === 0;
+  // Adapt the curated `columns` to the generic table: each render pulls its value out of the
+  // warehouse-ordered result row by the column's position in `columnIndex`.
+  const dataColumns = useMemo<
+    AdminDataTableColumn<RowValues, McpEventSortColumn>[]
+  >(
+    () =>
+      columns.map((column) => ({
+        key: column.key,
+        title: column.title,
+        sortKey: column.sort,
+        align: column.align,
+        render: (row) => {
+          const index = columnIndex.get(column.key);
+          const value = index != null ? row[index] : null;
+          return renderCell(column, value);
+        },
+      })),
+    [columns, columnIndex],
+  );
 
   return (
-    <>
-      <Card withBorder shadow="none" p={0} pos="relative">
-        <LoadingOverlay visible={isFetching} />
-        <Box className={S.scroll}>
-          <table className={cx(AdminS.ContentTable, S.table)}>
-            <thead>
-              <tr>
-                {columns.map((column) => (
-                  <SortableColumnHeader
-                    key={column.key}
-                    name={column.sort}
-                    sortingOptions={sortingOptions}
-                    onSortingOptionsChange={onSortingOptionsChange}
-                    columnHeaderProps={{ style: { textAlign: column.align } }}
-                  >
-                    {column.title}
-                  </SortableColumnHeader>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {showEmpty ? (
-                <tr>
-                  <td colSpan={columns.length}>
-                    <Flex c="text-disabled" justify="center">
-                      {t`No tool calls found`}
-                    </Flex>
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {columns.map((column) => {
-                      const index = columnIndex.get(column.key);
-                      const value = index != null ? row[index] : null;
-                      return (
-                        <td
-                          key={column.key}
-                          style={{ textAlign: column.align }}
-                        >
-                          {renderCell(column, value)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Box>
-      </Card>
-
-      <Flex justify="flex-end" mt="md">
-        <PaginationControls
-          page={page}
-          pageSize={EVENTS_PAGE_SIZE}
-          itemsLength={rows.length}
-          total={total}
-          showTotal
-          onPreviousPage={() => onPageChange(page - 1)}
-          onNextPage={() => onPageChange(page + 1)}
-        />
-      </Flex>
-    </>
+    <AdminDataTable
+      columns={dataColumns}
+      rows={rows}
+      sorting={{ sortingOptions, onSortingOptionsChange }}
+      pagination={{
+        page,
+        pageSize: EVENTS_PAGE_SIZE,
+        total,
+        onPageChange,
+      }}
+      loading={isFetching}
+      emptyText={t`No tool calls found`}
+      maxBodyHeight="calc(100vh - 23rem)"
+      tableClassName={S.table}
+    />
   );
 }
