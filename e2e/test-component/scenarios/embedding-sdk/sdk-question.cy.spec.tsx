@@ -655,18 +655,16 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("be.visible");
     });
 
-    cy.log(
-      "close the data picker the re-render may have auto-opened, and wait until it is actually gone",
-    );
-    cy.get("body").type("{esc}");
-    H.popover().should("not.exist");
-
     getSdkRoot().within(() => {
-      cy.log("open the data picker from a known-closed state");
-      cy.findByText("Pick your starting data").should("be.visible").click();
+      cy.log(
+        "the data picker auto-opens after the target-collection re-render because no source table is selected; interact with the already-open popover directly instead of toggling it, which races the async auto-open",
+      );
+      H.popover()
+        .findByRole("link", { name: "Orders" })
+        .should("be.visible")
+        .click();
 
       cy.log("ensure that the interactive question still works");
-      H.popover().findByRole("link", { name: "Orders" }).should("be.visible").click();
       cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });
