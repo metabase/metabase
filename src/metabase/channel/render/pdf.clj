@@ -624,7 +624,8 @@
                                  :fit-within? true}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
-          {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
+          {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz
+                                                                    (body/custom-viz-bundles card))]
       (when (= :svg type)
         (js.svg/svg-string->bytes content)))))
 
