@@ -3659,3 +3659,50 @@ open item, not as evidence.
     survive for an uninteresting reason, since the Sample Database holds the same
     data. One **declared strengthening**: an added `expect(db.name).toBe(dbName)`
     identity check the source doesn't perform, which is what M3 kills on.
+
+### ⚠️ My "expect this to be blocked" framing was wrong — and it was checked, not inherited
+
+199. **`python-library` is fully green: 1 of 1 executed, 0 unexecuted, 0 fixme.**
+    I briefed it as almost certainly blocked on two independent legs. **Both were
+    wrong for this spec**, and the agent checked each rather than accepting them.
+
+    - **Leg 1 (the gate) — wrong mechanism.**
+      `GET/PUT /api/ee/transforms-python/library/:path` **never call
+      `check-feature-enabled!` at all**, so the MBQL-vs-python split I leaned on
+      (#136) is irrelevant here. Their gate is the **route mount** at
+      `api_routes/routes.clj:144` — `premium-handler … :transforms-python`.
+      Measured across three arms: no token → **402/402**; `pro-self-hosted` →
+      **200/200** *with `transforms-basic` still false* — which is exactly why my
+      prediction misfired; all-features → 200/200.
+    - **Leg 2 (localstack) — true but inapplicable.** :4566 and :5001 are both
+      genuinely down, but **neither is on this spec's path**: the library is
+      app-DB-backed CRUD and upstream never calls `setPythonRunnerSettings()`.
+
+    The decisive question was one I'd put in the brief almost as an aside —
+    *"check whether the library surface needs python at all"*. **Twelfth claim of
+    mine corrected on evidence**, and the second where a hazard was real
+    elsewhere but simply not on the path.
+
+    🔴 **And the `token` gate here is REAL — the opposite of the sibling result
+    on a different transforms spec.** Two-arm control: remove `activateToken` and
+    the test fails at the link click (30s timeout), because the FE hides the
+    "Python library" row without `transforms-python`. **Do not generalise a
+    token verdict across the transforms family** — this family has now produced
+    a short-circuit, a hard route-mount gate, a split-by-argument, and a pure red
+    herring.
+
+    Also: **no support module was created**, flagged loudly against the brief's
+    expectation — everything already existed in `transforms.ts`,
+    `transforms-codegen.ts`, `search-snowplow.ts` and `transforms-indexes.ts`,
+    imported read-only. One structural trap recorded: **`PythonLibrary` is a
+    sibling of `Transforms` under `DataStudio`, not nested.**
+
+    Its snowplow tag is **not** dead setup — upstream's `afterEach` is a real
+    assertion — so it is ported at the browser boundary, with the degradation to
+    a structural envelope check **recorded rather than hidden**. Slot 3 measured
+    at **42** features. It flagged **M2 as weak** (removing Save dies at the
+    toast, *earlier* than the persistence assertion, so it doesn't independently
+    prove persistence — M1's input inversion is the one that does), and added
+    `resetTransformTargetTables()` with no upstream counterpart because the
+    long-lived warehouse carries `"Schema A"."table_a"` residue that CI avoids by
+    provisioning fresh.
