@@ -149,8 +149,9 @@
   re-restore) returns beneath its still-present marker, unstamped; any other marker above the row
   marks that row's own ignore, so an unmarked whole-line site moves above it with its own stamp.
   A row's inline restores share one marker, directly above the code line, unless the row already
-  carries one. `pending-sites` preserves ownership of markers belonging to marked whole-line sites
-  that may restore in a later round; an inline restore at such a row gets a separate marker."
+  carries one, including a trailing marker on the row itself. `pending-sites` preserves ownership
+  of markers belonging to marked whole-line sites that may restore in a later round; an inline
+  restore at such a row gets a separate marker only when it does not retain its own trailing marker."
   ([lines sites]
    (site-restore-plan lines sites sites))
   ([lines sites pending-sites]
@@ -161,15 +162,17 @@
                              pending-sites)]
      (mapcat (fn [[row row-sites]]
                (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)
-                     above-marker? (marker-on-line? (get lines (- row 2)))
-                     reserved?     (and above-marker? (contains? reserved-rows row))]
+                     above-marker?  (marker-on-line? (get lines (- row 2)))
+                     on-row-marker? (marker-on-line? (get lines (dec row)))
+                     reserved?      (and above-marker? (contains? reserved-rows row))]
                  (concat (for [s wl]
                            (cond
                              (and above-marker? (:was-marked? s)) (assoc s :comment nil)
                              above-marker?                        (assoc s :row (dec row), :comment keep-comment)
                              :else                                (assoc s :comment keep-comment)))
                          (when (seq inl)
-                           (if (and (marked-row? lines row) (not reserved?))
+                           (if (or on-row-marker?
+                                   (and above-marker? (not reserved?)))
                              (map #(assoc % :comment nil) inl)
                              (cons (assoc (first inl) :comment keep-comment)
                                    (map #(assoc % :comment nil) (rest inl))))))))

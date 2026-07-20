@@ -169,6 +169,23 @@
         (is (= (str stamp "\n" stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n") restored))
         (is (= (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")
                (#'kondo-ratchet/strip-orphan-keep-comments restored pending)))))
+    (testing "a restored inline site's trailing marker is not duplicated beside a pending reserved marker"
+      (let [inl     {:row 2, :was-marked? true, :linters [:y],
+                     :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}", :separator " "}}
+            wl      {:row 2, :was-marked? true, :linters [:x],
+                     :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
+            text    (str stamp "\n(do (f)) ;; " kondo-ratchet/keep-marker " inline\n")
+            result  (#'kondo-ratchet/reinsert-ignores
+                     text
+                     (#'kondo-ratchet/site-restore-plan
+                      (vec (str/split-lines text)) [inl] [wl inl]))
+            pending [(#'kondo-ratchet/shift-site-past-inserts wl (:inserted-rows result))]]
+        (is (= (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f)) ;; "
+                    kondo-ratchet/keep-marker " inline\n")
+               (:text result)))
+        (is (= (str "(do #_{:clj-kondo/ignore [:y]} (f)) ;; "
+                    kondo-ratchet/keep-marker " inline\n")
+               (#'kondo-ratchet/strip-orphan-keep-comments (:text result) pending)))))
     (testing "a whole-line ignore with a trailing marker removes and restores through the inline path, marker never leaving"
       (let [text (str "#_{:clj-kondo/ignore [:x]} ;; " kondo-ratchet/keep-marker " why\n(f)\n")
             {:keys [text sites]} (#'kondo-ratchet/remove-ignores-at text [1])]
