@@ -3127,3 +3127,68 @@ open item, not as evidence.
     Two upstream weaknesses ported verbatim: **#68378 ends on a Save click with
     no assertion at all**, and **GDGT-1776 checks `loading-indicator` absence
     *before* its positive anchor**.
+
+### 🔴🔴 `toHaveCount(0)` retries, but a ZERO-assertion is satisfied on its FIRST poll
+
+176. **Retrying never rescues a negative assertion from a render race**
+    (`sso-ldap`). This is the most generally important finding of the session and
+    it invalidates a comfortable assumption behind every absence check we have
+    written.
+
+    Measured: M6 (grant the token, require the OSS denial to go red) **survived**,
+    because the provisioning section is a separate plugin component that commits
+    **~550 ms after** the form fields. `toHaveCount(0)` fired **pre-render** and
+    passed. The retry loop cannot help — the very first poll already satisfies a
+    zero-assertion, so there is nothing to retry *into*.
+
+    Fixed by anchoring on the settings response **plus** the submit button, and
+    **proven by M6 killing against the anchored version**.
+
+    **Consequence: "both `toHaveCount(0)` and `expect(await count()).toBe(0)`
+    retry" — which I have told every agent — is true and beside the point.** An
+    absence assertion needs a **positive anchor proving the thing that would
+    contain it has rendered**. This joins the pre-fetch empty-state family (#73),
+    the auto-expiry-timer family (#167), and the name-settles-before-selects case
+    (#168) as the fourth distinct way an absence check goes hollow.
+
+    It also **retracts that agent's own pass-1 "unexplained"**: provisioning
+    rendering nothing with `sso_ldap=true` was its pre-render measurement
+    artifact, not a mystery.
+
+### The LDAP tier: 4 → 14 executing, and the mutation predictions held
+
+177. **All 14 `sso-ldap` tests now execute and pass, 42/42 under
+    `--repeat-each=3`**, after I started the OpenLDAP container the agent had
+    correctly identified as the sole blocker. Ten tests moved from
+    ported-and-unverified into real coverage.
+
+    **M3 flipped from survivor to kill, exactly as predicted.** With no server,
+    ports `1` and `389` both yielded "Wrong host or port"; with a real one, 389
+    succeeds and 1 fails. So **#16226 is genuinely load-bearing**, and the
+    agent retracted its own "data cannot discriminate" verdict.
+
+    **The cleanest evidence of the session: M7** (break the bind password) kills
+    **exactly 10** and spares **exactly 4** — and those 4 are precisely the tests
+    that ran before the container existed. **Two entirely independent methods
+    partitioned the suite identically.** M8 (break the login password) is the
+    surgical complement, killing only the two login tests.
+
+    `:sso-ldap` is confirmed **split by argument** — basic login is OSS, attribute
+    sync and provisioning are gated — now proven **by execution** rather than
+    code-reading, since the OSS login test passes without a token.
+
+    **Also caught by the live run: a strict-mode violation** from Playwright's
+    non-exact `getByText` being **case-insensitive substring** matching —
+    `"Password"` matched *"I seem to have forgotten my password"*. Fixed with
+    `exact: true`, which is the **faithful** port since Cypress's string match is
+    exact. Second independent confirmation of #170.
+
+    **And a bad mutation the agent disproved by probing rather than reasoning:**
+    M10 survived and it hypothesised `getByText("Active")` was matching
+    *"Deactivate"*. It probed, **was wrong** — the card reads `"LDAP\nPaused\n…"`
+    — and found the real cause was `waitForResponse` resolving a tick before
+    React commits. Replaced with M11, which kills.
+
+    Judgement call I endorse: it **kept** the `ldapReachable()` TCP gate now that
+    the container exists. One connect per worker turns "no container" into an
+    actionable skip rather than a 10-test cascade.

@@ -401,3 +401,4 @@ dashboard-filters/dashboard-chained-filters.cy.spec.js
 data-studio/data-model/data-studio-single-table.cy.spec.ts
 sharing/alert/alert.cy.spec.js
 data-studio/transforms/reproductions.cy.spec.ts
+admin-2/sso/ldap.cy.spec.js
