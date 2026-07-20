@@ -42,7 +42,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- do-with-t1-t2-chain [f]
-  (mt/with-premium-features #{:dependencies}
+  (tu/with-test-run-features
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [enriched-name (mt/random-name)
@@ -72,7 +72,7 @@
   `(do-with-t1-t2-chain (fn [~ctx-binding] ~@body)))
 
 (defn- do-with-single-native-transform [sql-thunk f]
-  (mt/with-premium-features #{:dependencies}
+  (tu/with-test-run-features
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
@@ -271,7 +271,7 @@
 
 (deftest card-subgraph-inputs-endpoint-test
   (testing "GET card inputs returns the card's boundary leaf tables"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -289,7 +289,7 @@
 
 (deftest card-subgraph-test-run-endpoint-passed-test
   (testing "POST card subgraph runs a card target over the chain → 200 passed"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -320,7 +320,7 @@
 
 (deftest card-subgraph-test-run-endpoint-failed-test
   (testing "POST card subgraph with wrong expected CSV → 200 failed"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -388,7 +388,7 @@
 
 (deftest card-mbql-subgraph-inputs-endpoint-test
   (testing "GET card/inputs for a stored MBQL card returns the leaf tables"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -406,7 +406,7 @@
 
 (deftest card-mbql-subgraph-test-run-endpoint-passed-test
   (testing "POST card/subgraph for a stored MBQL card → 200 passed"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -432,7 +432,7 @@
 
 (deftest card-mbql-subgraph-test-run-endpoint-failed-test
   (testing "POST card/subgraph for a stored MBQL card with wrong expected CSV → 200 failed"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -458,7 +458,7 @@
 
 (deftest card-target-read-check-test
   (testing "card target enforces read-check :model/Card — no collection access → 403"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/with-temp [:model/Collection coll {}
                      :model/Card card {:collection_id (:id coll)
                                        :dataset_query (lib/native-query (mt/metadata-provider)
@@ -472,7 +472,7 @@
 
 (deftest unknown-target-type-rejected-test
   (testing "unrecognised target-type returns 404 (metric cards use target-type=card)"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (is (= "API endpoint does not exist."
              (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/inputs"))))))
 
@@ -557,7 +557,7 @@
 
 (deftest card-chain-assertion-cte-binding-test
   (testing "run-card-chain-test! with assertions via CTE binding — no extra scratch table"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -897,7 +897,7 @@
   ;; `finally` must still drop every scratch table created so far (leaves,
   ;; t1's output, and t2's registered-but-failed output).
   (testing "a node failing mid-slice leaves no scratch tables behind"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -971,7 +971,7 @@
   ;; equivalent behavior to pin (MySQL: schema = database; create-schema-if-needed!
   ;; is a no-op there).
   (testing "single-node run-chain-test! seeds a transform whose target schema does not exist yet"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-driver :postgres
         (mt/dataset test-data
           (let [db-id        (mt/id)
@@ -1021,7 +1021,7 @@
     ;; whole-second granularity, so 1000 ms is the smallest enforceable value);
     ;; if the timeout were a no-op the query would *succeed* after 3 s and no
     ;; exception would be thrown at all.
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-driver :postgres
         (mt/dataset test-data
           (let [mp (mt/metadata-provider)]
@@ -1182,7 +1182,7 @@
 
 (deftest subgraph-transform-target-permissions-403-test
   (testing "POST /subgraph for a transform target enforces read-check → 403 for non-admin"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/with-temp [:model/Transform t {}]
         (with-temp-csv-files [expected-f "x\n1\n"]
           (mt/user-http-request
@@ -1214,7 +1214,7 @@
     ;; A realistic decayed reference: an MBQL transform sourced on a card that has
     ;; since been deleted. `table-dependencies` throws at preprocess time ("Card N
     ;; does not exist") — no stubbing anywhere in this test.
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/with-temp [:model/Card card {:dataset_query (tu/table-query (mt/id :orders))}]
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t
@@ -1234,7 +1234,7 @@
 
 (deftest subgraph-inputs-permissions-403-test
   (testing "GET /inputs — user without read access → 403"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/with-temp [:model/Transform t {}]
         (mt/user-http-request
          :rasta :get 403 (tu/inputs-url (:id t)))))))
@@ -1270,7 +1270,7 @@
 
 (deftest card-target-native-perms-403-test
   (testing "card target: collection read without native create-queries → early 403"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                         "SELECT 1 AS n")}]
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder

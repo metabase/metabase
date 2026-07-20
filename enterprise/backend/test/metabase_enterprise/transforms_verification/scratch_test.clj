@@ -125,18 +125,22 @@
 
 (deftest sync-skip-test
   (testing "is-temp-transform-table? returns true for test scratch names"
-    (let [nonce "sync1234"
-          name  (scratch/scratch-table-name nonce "in_7")]
-      (is (mt/with-driver :postgres
-            (sync-util/is-temp-transform-table? {:name name}))
-          "sync should skip test scratch tables"))))
+    ;; The predicate is gated on transforms being enabled; a verification run
+    ;; implies they are.
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (let [nonce "sync1234"
+            name  (scratch/scratch-table-name nonce "in_7")]
+        (is (mt/with-driver :postgres
+              (sync-util/is-temp-transform-table? {:name name}))
+            "sync should skip test scratch tables")))))
 
 (deftest sync-does-not-skip-production-prefix-test
   (testing "is-temp-transform-table? also true for production prefix (sanity)"
     ;; Any name starting with mb_transform_temp_table is skipped
-    (is (mt/with-driver :postgres
-          (sync-util/is-temp-transform-table? {:name "mb_transform_temp_table_1781129582000"}))
-        "production temp tables also sync-skipped")))
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (is (mt/with-driver :postgres
+            (sync-util/is-temp-transform-table? {:name "mb_transform_temp_table_1781129582000"}))
+          "production temp tables also sync-skipped"))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Naming: 63-char Postgres limit

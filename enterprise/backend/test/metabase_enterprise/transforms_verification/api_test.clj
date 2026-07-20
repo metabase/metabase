@@ -18,7 +18,7 @@
     ;; unguarded, that lets the diff silently skip and the run report \"passed\"
     ;; having compared nothing. The reject must mirror the `input-<id>` parts'
     ;; file-upload check.
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform transform

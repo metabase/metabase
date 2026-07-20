@@ -132,7 +132,7 @@
 
 (deftest e2e-join-aggregation-passed-test
   (testing "E2E: JOIN orders→people + aggregation with NULL/indicator/date fixtures → 200 passed"
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id      (mt/id)
@@ -192,7 +192,7 @@
 (deftest e2e-join-aggregation-failed-test
   (testing "E2E: mutate one expected cell (TX order_count 99) → 200 failed with named diff"
     ;; Uses POST /ee/transform-test/transform/:id/run with sources=[] (degenerate single-node).
-    (mt/with-premium-features #{:dependencies}
+    (tu/with-test-run-features
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id      (mt/id)

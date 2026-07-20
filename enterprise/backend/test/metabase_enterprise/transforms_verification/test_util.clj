@@ -23,6 +23,17 @@
 
 (set! *warn-on-reflection* true)
 
+(defmacro with-test-run-features
+  "Token features + settings a test-run request needs: the `:dependencies`
+  capability, plus `transforms-enabled` set explicitly. The Transform model's
+  feature gate reads that setting, whose default falls back to token features —
+  which `with-premium-features` replaces, so without the explicit value every
+  transform read 402/403s under the narrowed test token."
+  [& body]
+  `(mt/with-premium-features #{:dependencies}
+     (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
+       ~@body)))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Query builders (Lib)
 ;;; ---------------------------------------------------------------------------
