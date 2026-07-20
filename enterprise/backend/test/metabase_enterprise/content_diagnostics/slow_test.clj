@@ -378,6 +378,7 @@
              :model/Card           {slow-card :id} {:collection_id coll-id
                                                     :name          "Full Orders Export"
                                                     :type          :model
+                                                    :view_count    5
                                                     :creator_id    (mt/user->id :rasta)}
              :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
                                       :cache_hit false :running_time 25000}
@@ -409,9 +410,52 @@
                   (is (nil? (get-in f [:details :slow_entity_ids])))
                   (let [entities (get-in f [:details :slow_entities])]
                     (is (= 1 (count entities)))
-                    (is (= {:id slow-card :name "Full Orders Export"
-                            :entity_type "card" :card_type "model"}
-                           (first entities)))))))))))))
+                    (testing "each culprit carries its own live view_count alongside id/name/type"
+                      (is (= {:id slow-card :name "Full Orders Export"
+                              :entity_type "card" :card_type "model" :view_count 5}
+                             (first entities))))))))))))))
+
+(deftest slow-api-subject-view-count-test
+  (testing "GET /slow hydrates each finding's own live view_count into details; a transform omits it"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp
+          [:model/Collection {coll-id :id}  {}
+           :model/Collection {tcoll-id :id} {:namespace "transforms"}
+           :model/Card       {card-id :id}  {:collection_id coll-id :view_count 7}
+           :model/Dashboard  {dash-id :id}  {:collection_id coll-id :view_count 12}
+           :model/Document   {doc-id :id}   {:collection_id coll-id
+                                             :view_count    3
+                                             :creator_id    (mt/user->id :rasta)
+                                             :content_type  prose-mirror/prose-mirror-content-type
+                                             :document      {:type "doc" :content []}}
+           :model/Transform  {xform-id :id} {:collection_id tcoll-id}]
+          (let [prefix (scope-prefix)]
+            (doseq [[etype eid] [[:card card-id] [:dashboard dash-id] [:document doc-id] [:transform xform-id]]]
+              (t2/insert! :model/ContentDiagnosticsFinding
+                          {:scan_id      "vc"
+                           :entity_type  etype
+                           :entity_id    eid
+                           :entity_name  (str prefix "-" (name etype))
+                           :finding_type :slow
+                           :duration_ms  20000
+                           :details      {:threshold_ms 15000}}))
+            (let [by-type (into {} (map (juxt :entity_type identity))
+                                (:data (mt/user-http-request :crowberto :get 200
+                                                             "ee/content-diagnostics/slow" :query prefix)))]
+              (testing "card/dashboard/document each carry their own live view_count in details"
+                (is (= 7  (get-in by-type ["card" :details :view_count])))
+                (is (= 12 (get-in by-type ["dashboard" :details :view_count])))
+                (is (= 3  (get-in by-type ["document" :details :view_count]))))
+              (testing "a transform (no view_count column) omits the key entirely from details"
+                (is (contains? by-type "transform"))
+                (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
+              (testing "view_count is hydrated live at read time, not frozen at scan time"
+                (t2/update! :model/Card card-id {:view_count 99})
+                (let [card-f (some #(when (= "card" (:entity_type %)) %)
+                                   (:data (mt/user-http-request :crowberto :get 200
+                                                                "ee/content-diagnostics/slow" :query prefix)))]
+                  (is (= 99 (get-in card-f [:details :view_count]))))))))))))
 
 (deftest slow-api-filter-and-sort-test
   (testing "GET /slow filters by entity-types/min-duration-ms and sorts by duration-ms/name"
