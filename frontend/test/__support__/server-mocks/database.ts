@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
+import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
@@ -89,11 +90,15 @@ export const setupSchemaEndpoints = (db: Database) => {
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach((schema) => {
-    fetchMock.get(
-      `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
-      schemas[schema],
-      { name: `database-${db.id}-schema-${schema}` },
-    );
+    const isQueryParam = shouldSchemaBePassedAsQueryParam(schema);
+    fetchMock.get({
+      url: isQueryParam
+        ? `path:/api/database/${db.id}/schema/`
+        : `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
+      ...(isQueryParam && { query: { schema } }),
+      response: schemas[schema],
+      name: `database-${db.id}-schema-${schema}`,
+    });
   });
 };
 
