@@ -3756,3 +3756,68 @@ open item, not as evidence.
     `select current_user` → `orders_products_access`, a *positive* proxy, since a
     denial alone is a shape many failures produce (the token-less arm denies too)
     while the role name appears only if the role was actually assumed.
+
+### 🔴 `[].every(...)` is TRUE — a shared helper passes on an empty result set
+
+202. **`rowsShouldContainOnlyOneCategory` passes on an EMPTY result set**
+    (`sandboxing-misconfiguration`), because `[].every(...)` is `true`. Mutant
+    M4b drove the pre-drop assertion to zero rows and it **sailed through**.
+
+    The helper is **shared**, so per the faithfulness rule it was documented
+    rather than patched — and note **a fix there would also strengthen
+    `sandboxing-via-ui`**, which is the larger sandboxing port.
+
+    This is a distinct vacuity shape from the four absence-assertion families: a
+    **universally-quantified predicate over a collection that can be empty**.
+    Worth grepping for `.every(`/`.all(` in shared assertion helpers, since the
+    same reasoning applies to any of them.
+
+    Related, from the same spec: **M4b also proved the two halves of
+    `assertResponseFailsClosed` are not over-determined** — `rows.length === 0`
+    cannot distinguish "failed closed" from "legitimately empty"; only
+    `error_type` can.
+
+### 🔴 A CI parallelism hazard: two specs rebuild the same table in the shared warehouse
+
+203. **`sandboxing-misconfiguration` and `tests/question-reproductions.spec.ts`
+    both rebuild `public.products` in the shared warehouse**, so **they must not
+    run concurrently across slots**. Flagged by the agent rather than discovered
+    as a flake.
+
+    This is the concrete, actionable form of the parallelism limit sketched in
+    #191: upstream is safe because Cypress is serial, and a parallel runner needs
+    either sharding that keeps such pairs apart or per-slot warehouses. **Worth
+    settling before the shard count is raised** — it will present as an
+    inexplicable intermittent failure in exactly one of the two.
+
+    The same spec's **first failure was environmental, not port drift**: the
+    permissions page timed out because the never-reset `writable_db` has 29 debris
+    schemas, so it lists *schemas* instead of tables. Handled with a
+    **conditional** schema click that is byte-identical to upstream in a clean
+    single-schema environment, plus a positive anchor so a pre-render empty
+    sidebar cannot pick the branch.
+
+### A token trace that predicted the wrong death site
+
+204. **Removing `activateToken` killed at `advanced_permissions`, not
+    `:sandboxes`** (`sandboxing-misconfiguration`) — `blockUserGroupPermissions`
+    takes a 402 in **setup**, long before the sandbox gate is reached. A second
+    arm that also skipped `preparePermissions` was needed to reach the real gate,
+    where the FE omits "Row and column security", agreeing with the
+    `defenterprise :feature :sandboxes` backend half.
+
+    **Two independent token dependencies on one spec**, and the agent flagged its
+    own arm B as **a bad mutation in isolation** because it changes two things at
+    once. Its first spec header had asserted only the `:sandboxes` predicate; the
+    arms corrected it.
+
+    It also **did not take the neighbour's cookie-jar explanation on trust** —
+    it pinned **both** ends every run (`assertRunningAs(api, alice)` *and*
+    `assertRunningAs(mb.api, admin)`), so the sandboxed queries provably run as
+    the sandboxed user while `mb.api` provably stays admin.
+
+    Two caveats it chose to state rather than bury: under `--repeat-each` every
+    repeat landed on a **fresh worker**, so the `built === true` path was never
+    exercised by those greens; and its `waitForSyncedField` guard catches a
+    shape-*changed* stale table but **not a shape-identical one** — a partial
+    mitigation, not a fix.
