@@ -13,7 +13,7 @@
                  :deprecated-var                                                      81
                  :discouraged-java-method                                             3
                  :discouraged-namespace                                               81
-                 :discouraged-var                                                     107
+                 :discouraged-var                                                     108
                  :equals-true                                                         1
                  :main-without-gen-class                                              1
                  :metabase/defsetting-namespace                                       7
