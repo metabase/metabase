@@ -1895,3 +1895,52 @@ open item, not as evidence.
     stale, over-broad and red-herring: **a setup call with no corresponding
     assertion**. The generated queue's gate column is a keyword scan and cannot
     tell the difference; only reading the spec can.
+
+### #41 RESOLVED: the viewport line in playwright.config.ts is dead code
+
+111. **The harness runs 1280×720, not the 1280×800 the config appears to
+    specify** (`custom-column-2`). Mechanism, confirmed directly in
+    `playwright.config.ts`: line 46 sets `viewport: { width: 1280, height: 800 }`
+    in the **top-level `use`**, but the `chromium` project at line 52 spreads
+    `...devices["Desktop Chrome"]`, which carries its own `viewport` of
+    **1280×720** — and **project-level `use` overrides top-level `use`**. So line
+    46 has never taken effect.
+
+    This closes FINDINGS #41, which had been open since early in the spike as an
+    unexplained discrepancy against Cypress's 1280×800.
+
+    **It is not cosmetic.** At 720 the expression popover flips *above* its
+    anchor (measured `y=26` vs `y=402`) and covers "Pick columns", which broke
+    **four tests** in a way that reads exactly like port drift. Any spec whose
+    layout depends on fold position has been silently running at the wrong
+    viewport, and a port that "fixed" such a failure locally may have encoded a
+    workaround for a harness defect.
+
+    **Fix, deliberately NOT applied yet:** add the viewport *after* the spread in
+    the project block. Doing so while agents are live would change rendering
+    mid-run and invalidate verification already completed at 720. **Owed once the
+    slots drain — and landed ports should then be re-run**, since some may
+    contain workarounds that become unnecessary or wrong at 800.
+
+### The mechanism behind "the first Mod-j is silently refused"
+
+112. **`@codemirror/autocomplete` has a 75ms `interactionDelay`**
+    (`custom-column-2`; `dist/index.js:1044,1066`, left at its default by
+    Metabase). For 75ms after the suggestion tooltip opens,
+    `acceptCompletion`, `moveCompletionSelection` and option-click all return
+    `false`.
+
+    The damaging part is what happens next: **a refused Enter falls through to
+    `insertNewline`**, silently corrupting the formula rather than doing nothing.
+    Measured: three back-to-back Enters produce `["rou","","",""]`; with a 300ms
+    gap, `round(column)`.
+
+    Two consequences worth propagating:
+    - **The tooltip DOM is not a valid gate** — the option renders
+      `aria-selected="true"` immediately, so waiting for it proves nothing. A
+      `toPass` retry loop is *unsafe* here, because each refused attempt inserts
+      a newline.
+    - This is very likely the **same root cause** as the long-standing "first
+      `Mod-j` after a completion tooltip is silently refused" gotcha (identical
+      guard) — which had been recorded as an observation with no mechanism.
+      Upstream's own helper works around it with `cy.wait(300)`.

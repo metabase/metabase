@@ -376,3 +376,4 @@ actions/actions-reproductions.cy.spec.js
 dashboard/dashboard-back-navigation.cy.spec.js
 data-studio/transforms/transforms-inspect.cy.spec.ts
 data-model/data-model-shared-4.cy.spec.ts
+custom-column/custom-column-2.cy.spec.js
