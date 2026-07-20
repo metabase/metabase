@@ -24,6 +24,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
   cancel-in-progress: true
 
+env:
+  # Consumed by the report-failures-to-ci-conductor step in fe-tests-unit. Absent
+  # (e.g. fork PRs without secret access) the reporter no-ops. Matches the other
+  # suite workflows (backend, drivers, e2e, app-db, semantic-search).
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   fe-lint:
     if: ${{ !inputs.skip-lint }}
@@ -89,6 +96,10 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Resolve current job id
+        # Resolve JOB_ID before the long test step so the ci-conductor reporter
+        # below can link failures to this exact job. Best-effort.
+        uses: ./.github/actions/resolve-job-id
       - name: Run frontend unit tests
         id: fe-tests
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
@@ -96,6 +107,23 @@ jobs:
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
+      - name: Report failed tests to ci-conductor
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        # This step should NEVER fail the job!
+        continue-on-error: true
+        uses: ./.github/actions/report-failures-to-ci-conductor
+        with:
+          test-suite: fe-tests-unit
+          adapter: frontend
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: frontend
+          test-suite: fe-tests-unit
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && github.event_name != 'workflow_dispatch'
@@ -108,6 +136,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.fe-tests.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}

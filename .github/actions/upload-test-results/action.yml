@@ -29,6 +29,10 @@ inputs:
     description: >-
       Set to 'true' when the driver was skipped via the ci-test-config ignored list,
       so this action becomes a no-op (no JUnit XMLs exist to upload).
+  run-trunk:
+    required: false
+    default: "true"
+    description: Whether to run the Trunk step at all.
 
 runs:
   using: "composite"
@@ -59,10 +63,10 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
+      if: ${{ always() && github.repository_owner == 'metabase' && inputs.run-trunk == 'true' && inputs.quarantine-skipped != 'true' }}
       # Important!
       # 1. This step must always run because it controls job's exit code.
       # 2. There's no point in running this outside the organization
-      if: always() && github.repository_owner == 'metabase' && inputs.quarantine-skipped != 'true'
       uses: trunk-io/analytics-uploader@main
       env:
         TRUNK_REPO_URL: git@github.com:metabase/metabase.git

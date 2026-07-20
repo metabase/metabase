@@ -37,6 +37,20 @@ env:
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   JOB_NAME: ${{ inputs.name }}
+  # ci-conductor reporting (DEV-1999). Secret holds the base origin
+  # (e.g. "https://conductor.<host>"); each consumer appends the path it needs
+  # (the reporter POSTs to "/webhooks/failed-tests"). Callers pass
+  # `secrets: inherit`; reporting no-ops when it's unset.
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  # Shared secret sent as the `x-internal-secret` header to authenticate.
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  # Commit + PR target branch under test, so conductor can tie failures to the
+  # right code. On PRs the ambient GITHUB_SHA is the synthetic merge commit and
+  # GITHUB_BASE_REF the target, so we pass the PR head sha / base ref explicitly
+  # (falling back to push-event values). The reporter reads these. DEV-1999.
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   e2e-tests:
@@ -45,6 +59,11 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
+      # Absolute path for the quarantine failures file (DEV-2082). The after:spec
+      # recorder runs in Cypress' plugins process, whose cwd differs from the
+      # workspace where the gate step runs; an absolute path anchored to the
+      # workspace makes both agree regardless of cwd.
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -107,6 +126,15 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
+      # below (ci-conductor failed-tests reporting reads it in after:spec).
+      # Snapshot generation is itself a Cypress run that fires after:spec, so
+      # this must precede it. Placed late, not after checkout: the Actions jobs
+      # API is eventually consistent, so the longer the job has been alive the
+      # more reliably the lookup resolves. JOB_ID exported here persists to the
+      # steps below. DEV-1999.
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
@@ -131,9 +159,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -148,9 +174,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
           --spec "$SPEC_PATH"
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Upload Test Results
@@ -168,6 +192,18 @@ jobs:
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+
+      - name: Quarantine gate
+        # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.
+        if: ${{ !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure') }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: e2e
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
