@@ -206,6 +206,46 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn- tree-children
+  "Names of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
+  subtree once it's exhausted, so a drop in depth is what marks the end of the children."
+  [^TreeWalk tree-walk]
+  (let [depth (.getDepth tree-walk)]
+    (loop [names []]
+      (if (and (.next tree-walk) (= depth (.getDepth tree-walk)))
+        (recur (conj names (.getNameString tree-walk)))
+        (vec (sort names))))))
+
+(defn list-dir
+  "Lists the immediate children of one directory in the git repository at the snapshot.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read, and a
+  repo-root relative directory path (no trailing slash).
+
+  Resolves the commit's root tree, looks `path` up in it and reads that single tree object, iterating its
+  entries non-recursively — so the cost is proportional to the depth of `path` plus the number of entries
+  it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
+  exactly what this walks.
+
+  Returns a sorted vector of child names (not paths), or an empty vector when the path doesn't exist or
+  isn't a directory."
+  [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (with-open [rev-walk (RevWalk. repo)]
+      (or (when-let [commit-id (.resolve repo version)]
+            (let [tree (.getTree (.parseCommit rev-walk commit-id))]
+              (if (str/blank? path)
+                (with-open [^TreeWalk tree-walk (TreeWalk. repo)]
+                  (.addTree tree-walk tree)
+                  (tree-children tree-walk))
+                ;; one binary search per path segment down to the entry, then a single tree object read
+                (when-let [found (TreeWalk/forPath repo path tree)]
+                  (with-open [^TreeWalk tree-walk found]
+                    (when (.isSubtree tree-walk)
+                      (.enterSubtree tree-walk)
+                      (tree-children tree-walk)))))))
+          []))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -499,6 +539,9 @@
 
   (list-files [this]
     (list-files this))
+
+  (list-dir [this path]
+    (list-dir this path))
 
   (read-file [this path]
     (read-file this path))

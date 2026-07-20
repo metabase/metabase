@@ -20,13 +20,22 @@
 
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
+(defn- child-names
+  "The immediate children of `dir` implied by `paths` — the flat-map stand-in for the real snapshot's
+   single-subtree read."
+  [paths dir]
+  (let [prefix (str dir "/")]
+    (distinct (keep #(when (str/starts-with? % prefix)
+                       (first (str/split (subs % (count prefix)) #"/")))
+                    paths))))
+
 (defn- snapshot
   "Build a snapshot (as the remote-sync import passes one) from a path->content
    map. `read-file` returns file text (a string) or nil."
   [path->content & {:keys [sha] :or {sha fake-sha}}]
-  {:sha        sha
-   :list-files (fn [] (vec (keys path->content)))
-   :read-file  (fn [p] (get path->content p))})
+  {:sha       sha
+   :list-dir  (fn [dir] (child-names (keys path->content) dir))
+   :read-file (fn [p] (get path->content p))})
 
 (defn- app-config
   "Render a per-app data_app.yaml from `{:name :path :allowed_hosts}`. No slug: an

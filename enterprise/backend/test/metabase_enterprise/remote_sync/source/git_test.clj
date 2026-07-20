@@ -198,6 +198,28 @@
       (is (= ["file-in-branch-1.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-1)))
       (is (= ["file-in-branch-2.txt" "master.txt" "subdir/path.txt"] (source.p/list-files branch-2))))))
 
+(deftest list-dir
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir
+                                         :files {"root.txt"                    "at the root"
+                                                 "data_apps/README.md"         "a file, not an app"
+                                                 "data_apps/alpha/data_app.yaml" "name: Alpha\npath: index.js\n"
+                                                 "data_apps/alpha/index.js"    "ALPHA"
+                                                 "data_apps/alpha/deep/nested.js" "DEEP"
+                                                 "data_apps/beta/data_app.yaml" "name: Beta\npath: index.js\n"
+                                                 "zzz/other.txt"               "elsewhere"})
+          snap (source.p/snapshot master)]
+      (testing "immediate children only — no descendants, no siblings of the directory itself"
+        (is (= ["README.md" "alpha" "beta"] (source.p/list-dir snap "data_apps"))))
+      (testing "files and directories are both listed, sorted"
+        (is (= ["data_app.yaml" "deep" "index.js"] (source.p/list-dir snap "data_apps/alpha"))))
+      (testing "the repo root"
+        (is (= ["data_apps" "root.txt" "zzz"] (source.p/list-dir snap ""))))
+      (testing "a path that is a file, or absent, has no children rather than throwing"
+        (is (= [] (source.p/list-dir snap "data_apps/README.md")))
+        (is (= [] (source.p/list-dir snap "nope")))
+        (is (= [] (source.p/list-dir snap "data_apps/alpha/nope")))))))
+
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]
     (let [[master _remote] (init-source! "master" remote-dir

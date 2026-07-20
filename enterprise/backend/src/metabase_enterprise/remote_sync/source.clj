@@ -19,6 +19,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn paths->child-names
+  "The immediate children of directory `path` implied by a flat collection of file `paths`. For snapshots
+  that hold their whole file list in memory and so have no tree objects to walk; the git source overrides
+  this with a real subtree read."
+  [paths ^String path]
+  (let [prefix (str path "/")]
+    (into []
+          (comp (keep (fn [^String p]
+                        (when (str/starts-with? p prefix)
+                          (let [child (subs p (count prefix))]
+                            (if-let [idx (str/index-of child "/")]
+                              (subs child 0 idx)
+                              child)))))
+                (distinct))
+          (sort paths))))
+
 ;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
 ;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the
 ;; unfiltered source snapshot — so the write methods throw rather than silently filtering writes.
@@ -29,6 +45,11 @@
     (filter (fn [file-path]
               (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
             (source.p/list-files original-snapshot)))
+
+  ;; Derived from this view's own (filtered) file list rather than delegated, so a child filtered out of
+  ;; `list-files` can't reappear here.
+  (list-dir [this path]
+    (paths->child-names (source.p/list-files this) path))
 
   (read-file [_ path]
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
@@ -138,6 +159,7 @@
   (let [by-path (into {} (map (juxt :path :content)) specs)]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ path] (paths->child-names (keys by-path) path))
       (read-file [_ path] (get by-path path))
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))

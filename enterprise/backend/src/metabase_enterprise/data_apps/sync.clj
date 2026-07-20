@@ -9,7 +9,7 @@
    whose directory is gone from the repo is kept until an admin removes it.
 
    This namespace does no Git access of its own — the snapshot's `read-file` /
-   `list-files` come from remote-sync. The cached `bundle` blob is what serving
+   `list-dir` come from remote-sync. The cached `bundle` blob is what serving
    reads, so a failed sync never takes a working app offline, and the admin
    `enabled` toggle is preserved across syncs."
   (:require
@@ -21,7 +21,6 @@
    [toucan2.core :as t2])
   (:import
    (java.security MessageDigest)
-   (java.util.regex Pattern)
    (org.apache.commons.codec.binary Hex)))
 
 (set! *warn-on-reflection* true)
@@ -49,31 +48,34 @@
 
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
-(def ^:private app-dir-regex
-  ;; the data_apps/<dir> folder a repo path sits in (dir = a single path segment)
-  (re-pattern (format "(%s/[^/]+)/.*" (Pattern/quote data-app.config/apps-dir))))
-
 (defn- discover-app-configs
-  "Given the snapshot's `list-files` and `read-file` fns (where `read-file`
-   returns file text or nil), iterate the folders under `data_apps/` and return one
-   entry per folder that is an app — it holds a `data_app.yaml`; a folder without
-   one is skipped. Each entry is a parsed app
-   `{:slug :display_name :bundle :allowed_hosts}` (with `:bundle` the repo-root
-   relative bundle path) or `{:config-error <message>}`. Parse/read failures are
-   isolated per app so one bad config can't abort the sync."
-  [list-files read-file]
-  (let [files    (set (list-files))
-        app-dirs (distinct (keep #(second (re-matches app-dir-regex %)) files))]
-    (for [dir  app-dirs
-          :let [config-path (files (str dir "/data_app.yaml"))]
-          :when config-path]
-      (try
-        (if-let [content (read-file config-path)]
-          (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
-            {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
-          {:config-error (tru "Could not read {0}." config-path)})
-        (catch Throwable e
-          {:config-error (ex-message e)})))))
+  "Given the snapshot's `list-dir` and `read-file` fns (where `list-dir` returns a
+   directory's immediate child names and `read-file` returns file text or nil),
+   iterate the folders under `data_apps/` and return one entry per folder that is
+   an app — it holds a `data_app.yaml`; a folder without one is skipped. Each entry
+   is a parsed app `{:slug :display_name :bundle :allowed_hosts}` (with `:bundle`
+   the repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
+   failures are isolated per app so one bad config can't abort the sync.
+
+   Reads only `data_apps/` and its app folders, never the whole tree. That matters
+   beyond this fn: `data_apps/` is not a serdes path, so a pull that changes only
+   data apps builds no ingestable at all (see remote-sync's
+   `incremental-import-plan`) — discovery here is the only thing that would touch
+   the tree, and it now stays proportional to the number of apps rather than to
+   the size of the repo."
+  [list-dir read-file]
+  (for [name (list-dir data-app.config/apps-dir)
+        :let [dir         (str data-app.config/apps-dir "/" name)
+              config-path (str dir "/" data-app.config/config-file-name)]
+        ;; a plain file under `data_apps/` lists no children, so it drops out here
+        :when (some #{data-app.config/config-file-name} (list-dir dir))]
+    (try
+      (if-let [content (read-file config-path)]
+        (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+          {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
+        {:config-error (tru "Could not read {0}." config-path)})
+      (catch Throwable e
+        {:config-error (ex-message e)}))))
 
 ;;; ----------------------------------------------------- Materialize -----------------------------------------------------
 
@@ -138,9 +140,9 @@
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
 
-     {:read-file  (fn [path] -> <file-text-string> | nil)
-      :list-files (fn [] -> [<path-string> ...])
-      :sha        <commit-sha-string>}
+     {:read-file <(fn [path] -> <file-text-string> | nil)>
+      :list-dir  <(fn [path] -> [<child-name-string> ...])>
+      :sha       <commit-sha-string>}
 
    Discovers every `data_apps/<dir>/data_app.yaml` and upserts a row per app in a
    single transaction. Apps not present in the snapshot are left untouched (a
@@ -155,10 +157,10 @@
    Two apps can't collide on a slug here: a slug *is* an app's directory name (see
    the config namespace), a repo can't hold two `data_apps/<slug>` directories, and
    discovery takes one config per directory (see [[discover-app-configs]])."
-  [{:keys [read-file list-files sha]}]
+  [{:keys [read-file list-dir sha]}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
-  (let [results  (vec (discover-app-configs list-files read-file))
+  (let [results  (vec (discover-app-configs list-dir read-file))
         good     (filter :slug results)
         errors   (vec (keep :config-error results))
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump

@@ -14,11 +14,20 @@
 
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
+(defn- child-names
+  "The immediate children of `dir` implied by `paths` — the flat-map stand-in for the real snapshot's
+   single-subtree read."
+  [paths dir]
+  (let [prefix (str dir "/")]
+    (distinct (keep #(when (str/starts-with? % prefix)
+                       (first (str/split (subs % (count prefix)) #"/")))
+                    paths))))
+
 (defn- snapshot
   [path->content & {:keys [sha] :or {sha fake-sha}}]
-  {:sha        sha
-   :list-files (fn [] (vec (keys path->content)))
-   :read-file  (fn [p] (get path->content p))})
+  {:sha       sha
+   :list-dir  (fn [dir] (child-names (keys path->content) dir))
+   :read-file (fn [p] (get path->content p))})
 
 (defn- app-files
   "The repo files for one app in `data_apps/<dir>`. `dir` is the app's slug — the
@@ -108,10 +117,9 @@
 (deftest an-unreadable-config-is-a-config-error-test
   (testing "a data_app.yaml the snapshot lists but can't read is isolated as a config-error, not a crash"
     (mt/with-model-cleanup [:model/DataApp]
+      ;; the config is listed in the tree, but reading its blob yields nothing
       (let [result (data-app.sync/import-from-snapshot!
-                    {:sha        fake-sha
-                     :list-files (fn [] ["data_apps/ghost/data_app.yaml"])
-                     :read-file  (fn [_] nil)})]
+                    (snapshot {"data_apps/ghost/data_app.yaml" nil}))]
         (is (= 1 (count (:config-errors result))))
         (is (str/includes? (first (:config-errors result)) "data_apps/ghost/data_app.yaml"))
         (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
