@@ -1,1 +1,0 @@
-export { RenameModal } from "./RenameModal";

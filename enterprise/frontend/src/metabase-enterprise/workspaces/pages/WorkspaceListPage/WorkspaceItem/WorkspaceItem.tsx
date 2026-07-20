@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   ActionIcon,
   Anchor,
@@ -15,6 +16,11 @@ import {
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
+import {
+  useDeleteWorkspaceMutation,
+  useDeprovisionWorkspaceMutation,
+  useProvisionWorkspaceMutation,
+} from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import {
@@ -25,10 +31,7 @@ import {
   isProvisioned,
   isProvisioning,
 } from "../../../utils";
-import { DeleteModal } from "../DeleteModal";
-import { DeprovisionModal } from "../DeprovisionModal";
-import { ProvisionModal } from "../ProvisionModal";
-import { RenameModal } from "../RenameModal";
+import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 import { StatusDetailsModal } from "../StatusDetailsModal";
 
 export type WorkspaceItemProps = {
@@ -183,15 +186,42 @@ type WorkspaceMenuProps = {
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
-  const [isProvisionOpen, { open: openProvision, close: closeProvision }] =
-    useDisclosure(false);
-  const [
-    isDeprovisionOpen,
-    { open: openDeprovision, close: closeDeprovision },
-  ] = useDisclosure(false);
-  const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
-    useDisclosure(false);
+  const [provisionWorkspace, { isLoading: isProvisionLoading }] =
+    useProvisionWorkspaceMutation();
+  const [deprovisionWorkspace, { isLoading: isDeprovisionLoading }] =
+    useDeprovisionWorkspaceMutation();
+  const [deleteWorkspace, { isLoading: isDeleteLoading }] =
+    useDeleteWorkspaceMutation();
+  const { modalContent, show: showConfirmation } = useConfirmation();
   const isInFlight = isProvisioning(workspace) || isDeprovisioning(workspace);
+
+  const handleProvision = () => {
+    showConfirmation({
+      title: t`Provision this workspace?`,
+      message: t`This will set up temporary database users and schemas and a workspace instance.`,
+      confirmButtonText: t`Provision`,
+      confirmButtonProps: { color: "core-brand" },
+      onConfirm: () => provisionWorkspace(workspace.id),
+    });
+  };
+
+  const handleDeprovision = () => {
+    showConfirmation({
+      title: t`Deprovision this workspace?`,
+      message: t`This will delete the workspace instance and the temporary database users and schemas that were created for this workspace.`,
+      confirmButtonText: t`Deprovision`,
+      onConfirm: () => deprovisionWorkspace(workspace.id),
+    });
+  };
+
+  const handleDelete = () => {
+    showConfirmation({
+      title: t`Delete this workspace?`,
+      message: t`This will delete the workspace. This can't be undone.`,
+      confirmButtonText: t`Delete workspace`,
+      onConfirm: () => deleteWorkspace(workspace.id),
+    });
+  };
 
   return (
     <>
@@ -204,15 +234,19 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         <Menu.Dropdown>
           <Menu.Item
             leftSection={<FixedSizeIcon name="play" aria-hidden />}
-            disabled={isProvisioned(workspace) || isInFlight}
-            onClick={openProvision}
+            disabled={
+              isProvisioned(workspace) || isInFlight || isProvisionLoading
+            }
+            onClick={handleProvision}
           >
             {t`Provision`}
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="revert" aria-hidden />}
-            disabled={isDeprovisioned(workspace) || isInFlight}
-            onClick={openDeprovision}
+            disabled={
+              isDeprovisioned(workspace) || isInFlight || isDeprovisionLoading
+            }
+            onClick={handleDeprovision}
           >
             {t`Deprovision`}
           </Menu.Item>
@@ -224,34 +258,20 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-            disabled={!isDeprovisioned(workspace)}
-            onClick={openDelete}
+            disabled={!isDeprovisioned(workspace) || isDeleteLoading}
+            onClick={handleDelete}
           >
             {t`Delete`}
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      <RenameModal
+      <RenameWorkspaceModal
         workspace={workspace}
         opened={isRenameOpen}
         onRename={closeRename}
         onClose={closeRename}
       />
-      <ProvisionModal
-        workspaceId={workspace.id}
-        opened={isProvisionOpen}
-        onClose={closeProvision}
-      />
-      <DeprovisionModal
-        workspaceId={workspace.id}
-        opened={isDeprovisionOpen}
-        onClose={closeDeprovision}
-      />
-      <DeleteModal
-        workspaceId={workspace.id}
-        opened={isDeleteOpen}
-        onClose={closeDelete}
-      />
+      {modalContent}
     </>
   );
 }

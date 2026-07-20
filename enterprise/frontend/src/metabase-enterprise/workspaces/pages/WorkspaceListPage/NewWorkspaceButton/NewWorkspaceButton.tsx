@@ -8,7 +8,7 @@ import {
 import { Button, FixedSizeIcon, Tooltip } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-import { CreateModal } from "../CreateModal";
+import { NewWorkspaceModal } from "../NewWorkspaceModal";
 
 export type NewWorkspaceButtonProps = {
   databases: Database[];
@@ -44,9 +44,10 @@ export function NewWorkspaceButton({
           {primary ? t`Create a workspace` : t`New`}
         </Button>
       </Tooltip>
-      <CreateModal
+      <NewWorkspaceModal
         databases={eligibleDatabases}
         opened={opened}
+        onCreate={close}
         onClose={close}
       />
     </>
