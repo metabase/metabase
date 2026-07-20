@@ -2,7 +2,6 @@ import type { FrameLocator, Locator, Page } from "@playwright/test";
 
 import { isOssBackend } from "../support/admin";
 import { configureSmtpSettings } from "../support/admin-extras";
-import { findByDisplayValue } from "../support/filters-repros";
 import { expect, test } from "../support/fixtures";
 import {
   FIRST_COLLECTION_ID,
@@ -53,6 +52,19 @@ import { popover } from "../support/ui";
  *
  * - The `@OSS` describe is gated on `isOssBackend` (PORTING wave-5 rule); the
  *   spike's backend is EE, so it gate-skips here.
+ *
+ * - The frequency picker is targeted by `data-testid="select-frequency"` and
+ *   the option is lowercase `daily`, matching upstream master. This spec was
+ *   originally ported from the revision before 8dd86422fec ("Replace
+ *   deprecated SchedulePicker component"), which swapped the subscriptions
+ *   sidebar onto the shared `Schedule` component: the frequency Select's
+ *   visible label went from "Hourly"/"Daily" to sentence-cased
+ *   "Sent hourly"/"daily", and that commit updated the Cypress spec in the
+ *   same way (away from `findByDisplayValue`, which now matches a dupe
+ *   visible+hidden input pair). Our local verification jar predates it, so
+ *   the pre-fix spec passed locally and failed on CI's fresh jar
+ *   (run 29711801159) — FINDINGS #43's class exactly. Verified against the
+ *   CI jar for this commit (COMMIT-ID e45bd0c9), not the stale local one.
  */
 
 const SUBSCRIPTIONS_BUTTON = "Subscriptions";
@@ -161,10 +173,10 @@ test.describe("EE > scenarios > embedding > Modular embedding (EAJS)", () => {
     await sidebar
       .getByRole("button", { name: "Set up a new schedule", exact: true })
       .click();
-    (await findByDisplayValue(sidebar, "Hourly")).click();
+    await sidebar.getByTestId("select-frequency").click();
 
     await popover(frame)
-      .getByRole("option", { name: "Daily", exact: true })
+      .getByRole("option", { name: "daily", exact: true })
       .click();
     await frame.getByRole("button", { name: "Done", exact: true }).click();
 

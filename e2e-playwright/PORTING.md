@@ -750,6 +750,24 @@ duplicates were collapsed (along with the create* superset in `support/factories
 
 ## Gotchas & lessons added during continuous-dispatch waves (Opus, post-consolidation)
 
+**To debug a CI-only failure: download the exact uberjar CI ran.** Pull it from
+the failing run's artifact, boot a slot from it, and reproduce locally — this
+turns "CI-only, can't reproduce" into an ordinary debugging loop and gives you a
+before-red/after-green on the *same artifact*, which is far stronger than a green
+on our stale local jar. Used to settle batch-15's `select-frequency` failure
+(CI jar `COMMIT-ID e45bd0c9`), where it directly measured a control value
+flipping between the two jars.
+
+**CI builds a MERGE COMMIT — its jar contains master code your branch does not.**
+This is worse than the sample-data drift below: it is stale *product code*. A
+Jul-18 upstream commit moved the subscriptions sidebar onto the shared
+`Schedule` component **and updated the Cypress spec in the same PR**; our branch
+lacked both, so a faithful port of the pre-move original failed on CI and was
+right to. Consequence: **a spec verified only against the local jar may be stale
+against CI**, and long-lived branches make this worse over time. A fix matching
+current master may legitimately fail on the local jar — document that in the
+spec header rather than reverting it.
+
 **Local verify-jar drift vs CI (IMPORTANT).** The local `target/uberjar/metabase.jar`
 (COMMIT-ID 751c2a98) can carry OLDER sample data than CI's freshly-built jar.
 `smartscalar-trend`'s `maxPeriodsAgo` clamp is derived from the sample DB's month

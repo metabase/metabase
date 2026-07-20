@@ -1090,6 +1090,54 @@ evidence isn't worth making.
     therefore capture rather than stub. (Eighth independent reuse of the helper
     with zero modification.)
 
+79. **CI builds a MERGE commit, so CI's jar contains master code our branch does
+    not — a sharper and nastier variant of #43.** #43 was about stale *sample
+    data* in the local jar. This is stale *product code*: upstream
+    `8dd86422fec` (Jul 18) moved the subscriptions sidebar onto the shared
+    `Schedule` component (lowercase "Sent *hourly*",
+    `data-testid="select-frequency"`) **and updated that very Cypress spec in the
+    same PR**, away from `findByDisplayValue`. Our branch doesn't contain it;
+    CI's merge jar does. The port was faithful to the original as it existed at
+    fork time, and CI was right to fail it.
+
+    **The technique that settled it, worth reusing:** download **the exact
+    uberjar CI ran** (from the run's artifact — here `COMMIT-ID e45bd0c9`), boot
+    a slot from it, and reproduce locally. That converts "CI-only, can't
+    reproduce" into an ordinary local debugging loop, and it produced a
+    before-red/after-green on the *same artifact* — far stronger evidence than a
+    green on our stale jar. It also directly measured the control value flipping
+    from `"Hourly"` to `"hourly"`/aria `Frequency` between the two jars.
+
+    **Accepted trade-off, documented in the spec header:** the fixed test now
+    **fails on our stale local jar** (which has no `select-frequency`). Local
+    re-verification of that spec requires a jar containing `8dd86422fec`. Same
+    shape as the trade already accepted for the #22/#24 re-enabled tests.
+
+    **Standing hazard this implies:** any spec verified only against our local
+    jar may be stale with respect to CI's merge jar. Long-lived branches make
+    this worse the longer they run.
+
+80. **A hardcoded plan→feature table is billing data living outside the repo, and
+    it drifts** (`admin-tools-help`). FINDINGS #52 correctly established that
+    `mockSessionPropertiesTokenFeatures` is **inert** for the "Helping hand"
+    section — `initializePlugin()` gates `PLUGIN_SUPPORT.isEnabled` on
+    `hasPremiumFeature("support-users")`, called at module scope from
+    `app.js:65` reading `window.MetabaseBootstrap`, which no
+    `/api/session/properties` intercept can reach. But that mechanism was **not
+    what reddened CI**. The actual cause: the staging **`pro-self-hosted` token
+    now grants `support-users`** — measured, all four tokens return true, and
+    the served `#_metabaseBootstrap` confirms it. The upstream test hardcodes a
+    plan→feature mapping that is not repo state, and it drifted out from under
+    the test.
+
+    Fixed by asserting the **relationship** rather than the table: read the
+    bootstrap grant per document and assert the section renders iff granted. Still
+    non-vacuous — the no-token step is a hard negative independent of any plan,
+    and four sibling tests still require `pro-cloud` to render the section.
+    **Unexplained and recorded as such:** the first local run of the unmodified
+    spec passed before probing began. `token_check.clj`'s 12h soft-TTL cache is
+    the obvious candidate; it was not proven and is not claimed.
+
 ### Capability: `page.clock` reaches into embed iframes
 
 75. **`page.clock` installs into the embed iframe, where upstream gave up on

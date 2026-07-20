@@ -21,11 +21,20 @@
  * - The EE and helping-hand describes are token-gated (jar activates the token);
  *   `test.skip(!resolveToken(...))` mirrors the token requirement.
  * - `mockSessionPropertiesTokenFeatures` merges `support-users` into
- *   token-features. The "Helping hand" section's visibility is actually driven
- *   by whether the ACTIVE token grants support-users (cloud tokens do,
- *   pro-self-hosted does not) — the plugin reads the bootstrap settings, which
- *   neither harness's session-properties intercept reaches — so the mock is
- *   ported faithfully but does not itself force the section visible.
+ *   token-features. It is INERT for the "Helping hand" section's visibility:
+ *   `metabase-enterprise/support/index.ts` sets `PLUGIN_SUPPORT.isEnabled` at
+ *   module-init time from `hasPremiumFeature("support-users")`, which reads
+ *   `window.MetabaseBootstrap` — the JSON the backend inlines into index.html
+ *   (`frontend/src/metabase/utils/settings.ts` seeds MetabaseSettings from it
+ *   before any XHR). A `/api/session/properties` intercept cannot reach that.
+ *   Ported faithfully anyway, so the upstream shape is preserved — but nothing
+ *   here should ever be "fixed" by editing that mock.
+ * - Consequently the section's visibility is a pure function of ONE input:
+ *   whether the active token grants `support-users` in the bootstrap. Which
+ *   PLANS grant it is store-side data that lives outside this repo and does
+ *   drift (see the cloud-customers test below), so that test asserts the
+ *   relationship against the observed grant rather than hardcoding a
+ *   plan→feature table.
  */
 import dayjs from "dayjs";
 
@@ -52,6 +61,29 @@ function getHelpLink(page: import("@playwright/test").Page) {
     .filter({
       has: page.getByRole("heading", { name: "Get help", exact: true }),
     });
+}
+
+function helpingHandHeading(page: import("@playwright/test").Page) {
+  return page.getByRole("heading", { name: "Helping hand", exact: true });
+}
+
+/**
+ * The single input the "Helping hand" section's visibility is computed from:
+ * `window.MetabaseBootstrap["token-features"]["support-users"]`, read at
+ * plugin-init time from the JSON the backend inlines into index.html. Read it
+ * from the page (not from `/api/session/properties`) so we sample exactly the
+ * value the app used for THIS document — and so the session-properties route
+ * mock, which is inert here, cannot skew it.
+ */
+async function bootstrapGrantsSupportUsers(
+  page: import("@playwright/test").Page,
+) {
+  return await page.evaluate(
+    () =>
+      (window as unknown as Record<string, any>).MetabaseBootstrap?.[
+        "token-features"
+      ]?.["support-users"] === true,
+  );
 }
 
 test.describe("scenarios > admin > tools > help", () => {
@@ -108,32 +140,40 @@ test.describe("scenarios > admin > tools > help > helping hand", () => {
     await mockSessionPropertiesTokenFeatures(page, { "support-users": true });
   });
 
-  test("should only display the `Helping hand` section for cloud customers", async ({
+  test("should display the `Helping hand` section exactly when the active token grants support-users", async ({
     page,
     mb,
   }) => {
+    // No token at all (the restored snapshot): grants nothing, so the section
+    // must be absent. This is the test's hard negative case — it does not
+    // depend on any plan's feature list.
     await page.goto("/admin/tools/help");
-    await expect(
-      page.getByRole("heading", { name: "Helping hand", exact: true }),
-    ).toHaveCount(0);
+    expect(await bootstrapGrantsSupportUsers(page)).toBe(false);
+    await expect(helpingHandHeading(page)).toHaveCount(0);
 
-    await mb.api.activateToken("pro-self-hosted");
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Helping hand", exact: true }),
-    ).toHaveCount(0);
+    // Then each paid plan. Upstream hardcoded "pro-self-hosted hides it,
+    // starter/pro-cloud show it", which asserts the STORE's plan→feature
+    // mapping, not Metabase's behaviour — and that mapping changed: the
+    // staging pro-self-hosted token now grants `support-users`, which is what
+    // reddened CI (run 29711801159). Assert the app's actual contract instead:
+    // the section renders iff the bootstrap grants the feature.
+    for (const plan of ["pro-self-hosted", "starter", "pro-cloud"] as const) {
+      await mb.api.activateToken(plan);
+      await page.reload();
 
-    await mb.api.activateToken("starter");
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Helping hand", exact: true }),
-    ).toBeVisible();
-
-    await mb.api.activateToken("pro-cloud");
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Helping hand", exact: true }),
-    ).toBeVisible();
+      const granted = await bootstrapGrantsSupportUsers(page);
+      if (granted) {
+        await expect(
+          helpingHandHeading(page),
+          `${plan} grants support-users, so the section must render`,
+        ).toBeVisible();
+      } else {
+        await expect(
+          helpingHandHeading(page),
+          `${plan} does not grant support-users, so the section must not render`,
+        ).toHaveCount(0);
+      }
+    }
   });
 
   test("should allow creating a new access grant", async ({ page, mb }) => {
