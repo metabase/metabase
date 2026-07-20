@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useSetting } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { TransformGraphRun } from "metabase-types/api";
 
@@ -72,7 +71,7 @@ export function TransformGraphRunTable({
 
   return (
     <Card
-      className={CS.overflowHidden}
+      style={{ overflow: "hidden" }}
       p={0}
       flex="0 1 auto"
       mih={0}

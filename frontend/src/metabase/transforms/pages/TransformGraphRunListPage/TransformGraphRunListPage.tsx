@@ -162,7 +162,10 @@ export function TransformGraphRunListPage({
                 transforms={transforms}
                 onFilterOptionsChange={handleFilterOptionsChange}
               />
-              <DetailedViewSwitch detailed={false} />
+              <DetailedViewSwitch
+                detailed={false}
+                params={Urls.pickCommonRunListParams(params)}
+              />
             </Group>
             <TransformGraphRunTable
               runs={runs}

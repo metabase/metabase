@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   CardId,
   CollectionId,
@@ -263,6 +265,27 @@ export function transformGraphRunList({
   return queryString.length > 0
     ? `${RUNS_ROOT_URL}?${queryString}`
     : RUNS_ROOT_URL;
+}
+
+export type CommonRunListParams = {
+  statuses?: TransformRunStatus[];
+  transformIds?: TransformId[];
+  startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
+};
+
+export function pickCommonRunListParams(
+  params: CommonRunListParams,
+): CommonRunListParams {
+  return _.pick(
+    params,
+    "statuses",
+    "transformIds",
+    "startTime",
+    "endTime",
+    "runMethods",
+  );
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {

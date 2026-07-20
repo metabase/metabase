@@ -7,14 +7,22 @@ import * as Urls from "metabase/urls";
 
 type DetailedViewSwitchProps = {
   detailed: boolean;
+  params: Urls.CommonRunListParams;
 };
 
-export function DetailedViewSwitch({ detailed }: DetailedViewSwitchProps) {
+export function DetailedViewSwitch({
+  detailed,
+  params,
+}: DetailedViewSwitchProps) {
   const dispatch = useDispatch();
 
   const handleChange = () => {
     dispatch(
-      push(detailed ? Urls.transformGraphRunList() : Urls.transformRunList()),
+      push(
+        detailed
+          ? Urls.transformGraphRunList(params)
+          : Urls.transformRunList(params),
+      ),
     );
   };
 

@@ -45,13 +45,15 @@ function setup({
   );
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route
       path="/data-studio/transforms/runs"
       component={TransformGraphRunListPage}
     />,
     { withRouter: true, initialRoute },
   );
+
+  return { history };
 }
 
 const JOB_RUN = createMockTransformGraphRun({
@@ -96,6 +98,28 @@ describe("TransformGraphRunListPage", () => {
   it("shows the Detailed view switch unchecked in the grouped view", async () => {
     setup({ runs: [] });
     expect(await screen.findByLabelText("Detailed view")).not.toBeChecked();
+  });
+
+  it("preserves shared filters (and drops view-specific params) when toggling to the detailed view", async () => {
+    const { history } = setup({
+      runs: [],
+      initialRoute:
+        "/data-studio/transforms/runs?statuses=failed&transform-ids=7&start-time=2024-01-01&run-methods=cron&sort-column=start_time&sort-direction=desc&page=2",
+    });
+
+    await userEvent.click(await screen.findByLabelText("Detailed view"));
+
+    const location = history?.getCurrentLocation();
+    expect(location?.pathname).toBe("/data-studio/transforms/runs/individual");
+
+    const search = new URLSearchParams(location?.search);
+    expect(search.getAll("statuses")).toEqual(["failed"]);
+    expect(search.getAll("transform-ids")).toEqual(["7"]);
+    expect(search.get("start-time")).toBe("2024-01-01");
+    expect(search.getAll("run-methods")).toEqual(["cron"]);
+
+    expect(search.has("sort-column")).toBe(false);
+    expect(search.has("page")).toBe(false);
   });
 
   it("greys a deleted-entity run and hides the Transforms section for a deleted job", async () => {

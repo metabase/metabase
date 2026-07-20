@@ -181,7 +181,10 @@ export function RunListPage({ location }: RunListPageProps) {
                 tags={tags}
                 onFilterOptionsChange={handleFilterOptionsChange}
               />
-              <DetailedViewSwitch detailed={true} />
+              <DetailedViewSwitch
+                detailed={true}
+                params={Urls.pickCommonRunListParams(params)}
+              />
             </Group>
             <RunTable
               runs={runs}
