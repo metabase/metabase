@@ -817,6 +817,7 @@
   `profile` form or 1 for a form inside that."
   0)
 
+;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a

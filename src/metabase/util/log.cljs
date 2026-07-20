@@ -16,12 +16,14 @@
 (glogi-console/install!)
 (log/set-levels {:glogi/root :info})
 
+;; called only from glogi-logp/logf macroexpansions, which clojure-lsp can't see
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn is-loggable?
   "Part of the internals of [[glogi-logp]] etc."
   [logger-name level]
   (glog/isLoggable (log/logger logger-name) (log/level level)))
 
+;; called only from logf macroexpansions, which clojure-lsp can't see
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn format-msg
   "Part of the internals of [[logf]]."
