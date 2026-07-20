@@ -78,11 +78,8 @@ const getStepTitle = ({
   match({ isStepCompleted, connectedProvider })
     .with({ isStepCompleted: false }, () => t`Connect to an AI provider`)
     .with({ connectedProvider: P.nonNullable }, ({ connectedProvider }) => {
-      const providerLabel = getProviderOptions(offerMetabaseAiManaged)[
-        connectedProvider
-      ]?.label;
-      return providerLabel
-        ? t`Connected to ${providerLabel}`
-        : t`AI provider connected`;
+      return t`Connected to ${
+        getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label
+      }`;
     })
     .otherwise(() => t`I'll set up AI later`);

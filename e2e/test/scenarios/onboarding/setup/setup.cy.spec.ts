@@ -543,6 +543,101 @@ describe("scenarios > setup", () => {
   });
 });
 
+describe("scenarios > setup > AI config step", () => {
+  const MOCK_LLM_PORT = 6123;
+
+  beforeEach(() => {
+    H.restore("blank");
+  });
+
+  afterEach(() => {
+    cy.task("stopMockLlmServer");
+  });
+
+  const navigateToAiConfigStep = () => {
+    navigateToDatabaseStep();
+    cy.findByTestId("setup-forms")
+      .findByText("Continue with sample data")
+      .click();
+    cy.findByLabelText("Connect to an AI provider").should("be.visible");
+  };
+
+  it("should offer BYOK providers without the managed option and allow skipping", () => {
+    navigateToAiConfigStep();
+
+    cy.findByLabelText("Connect to an AI provider")
+      .findByLabelText("Provider")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Anthropic").should("be.visible");
+      cy.findByText("OpenAI").should("be.visible");
+      cy.findByText("OpenRouter").should("be.visible");
+      cy.findByText("Microsoft Azure").should("be.visible");
+      cy.findByText("Amazon Bedrock").should("be.visible");
+      cy.findByText("Metabase").should("not.exist");
+    });
+    H.popover().findByText("Anthropic").click();
+
+    cy.findByLabelText("Connect to an AI provider").within(() => {
+      cy.findByLabelText("API key").should("be.visible");
+      cy.button("I'll set this up later").click();
+    });
+
+    cy.findByLabelText("I'll set up AI later").should("be.visible");
+  });
+
+  it("should connect an Anthropic API key during setup", () => {
+    cy.task("startMockLlmServer", {
+      port: MOCK_LLM_PORT,
+      responseText: "Hello from mock LLM!",
+    });
+    cy.intercept("PUT", "/api/metabot/settings").as("connectProvider");
+
+    navigateToAiConfigStep();
+
+    // The wizard runs as the freshly created admin, so settings can be
+    // updated mid-flow. Point the Anthropic client at the mock server that
+    // answers the credential-validating /v1/models call.
+    H.updateSetting(
+      "llm-anthropic-api-base-url",
+      `http://localhost:${MOCK_LLM_PORT}`,
+    );
+
+    cy.findByLabelText("Connect to an AI provider")
+      .findByLabelText("Provider")
+      .click();
+    H.popover().findByText("Anthropic").click();
+
+    cy.findByLabelText("Connect to an AI provider").within(() => {
+      cy.findByLabelText("API key").type("sk-ant-api03-e2e-test-key");
+      cy.button("Connect").click();
+      cy.wait("@connectProvider");
+
+      cy.findByLabelText("Model").should("be.visible");
+      cy.button("Done").click();
+    });
+
+    cy.findByLabelText("Connected to Anthropic").should("be.visible");
+  });
+
+  it("should not show the step when AI features are disabled", () => {
+    H.mockSessionProperty("ai-features-enabled?", false);
+
+    navigateToDatabaseStep();
+    cy.findByTestId("setup-forms")
+      .findByText("Continue with sample data")
+      .click();
+
+    cy.findByTestId("setup-forms")
+      .findByText("Connect to an AI provider")
+      .should("not.exist");
+
+    skipLicenseStepOnEE();
+    cy.findByLabelText("Usage data preferences").should("be.visible");
+  });
+});
+
 describe("scenarios > setup (EE)", () => {
   beforeEach(() => H.restore("blank"));
 
