@@ -852,14 +852,23 @@
   (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
 
 (defn batch-exception
-  "The per-statement exception hiding inside a `java.sql.BatchUpdateException`
-   (via `.getNextException`), or `t` itself for any other throwable. Rethrow
-   this instead of the raw batch exception so failures read as the plain server
-   error rather than `Batch entry N ... was aborted: ... Call getNextException
-   to see other errors in the batch.`"
+  "The per-statement exception hiding inside a `java.sql.BatchUpdateException`,
+   or `t` itself for any other throwable. Rethrow this instead of the raw batch
+   exception so failures read as the plain server error rather than `Batch
+   entry N ... was aborted: ... Call getNextException to see other errors in
+   the batch.`
+
+   Connectors chain the underlying exception differently: pgjdbc (and its
+   Redshift fork) via `.getNextException`, the MariaDB connector via
+   `.getCause`, and mssql-jdbc not at all — for the latter we rebuild a plain
+   `SQLException` carrying the same message/SQLState/error code."
   ^Throwable [^Throwable t]
   (if (instance? java.sql.BatchUpdateException t)
-    (or (.getNextException ^java.sql.BatchUpdateException t) t)
+    (let [^java.sql.BatchUpdateException bue t]
+      (or (.getNextException bue)
+          (.getCause bue)
+          (doto (java.sql.SQLException. (ex-message bue) (.getSQLState bue) (.getErrorCode bue))
+            (.setStackTrace (.getStackTrace bue)))))
     t))
 
 (defn scrub-exceptions

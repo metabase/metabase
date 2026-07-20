@@ -1217,20 +1217,22 @@
      driver database {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @sql += 'DROP TABLE %s.[' + name + ']; ' "
+         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
+         ;; variable names must be unique across the batch entries.
+         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @drop_tables_sql += 'DROP TABLE %s.[' + name + ']; ' "
                                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                                   "EXEC sp_executesql @sql")
+                                   "EXEC sp_executesql @drop_tables_sql")
                               quoted-schema escaped-schema)
                       (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
                               escaped-schema quoted-schema)
                       (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
                               escaped-username quoted-user)
                       ;; Kill all sessions using this login before dropping it
-                      (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
                                    "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                   "EXEC sp_executesql @sql")
+                                   "EXEC sp_executesql @kill_sessions_sql")
                               escaped-username)
                       (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
                               escaped-username quoted-user)]]

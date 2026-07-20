@@ -674,9 +674,18 @@
           batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
                   (.setNextException inner))]
       (is (identical? inner (driver.u/batch-exception batch)))))
-  (testing "a BatchUpdateException without a next exception passes through"
-    (let [batch (java.sql.BatchUpdateException. "alone" (int-array 0))]
-      (is (identical? batch (driver.u/batch-exception batch)))))
+  (testing "the MariaDB-connector shape chains the real exception via the cause"
+    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
+          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the mssql-jdbc shape (no next exception, no cause) is rebuilt as a plain SQLException"
+    (let [batch     (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))
+          unwrapped (driver.u/batch-exception batch)]
+      (is (not (instance? java.sql.BatchUpdateException unwrapped)))
+      (is (instance? java.sql.SQLException unwrapped))
+      (is (= "Cannot find the schema 'x'" (ex-message unwrapped)))
+      (is (= "S0001" (.getSQLState ^java.sql.SQLException unwrapped)))
+      (is (= 208 (.getErrorCode ^java.sql.SQLException unwrapped)))))
   (testing "non-batch throwables pass through"
     (let [e (ex-info "boom" {})]
       (is (identical? e (driver.u/batch-exception e))))))
