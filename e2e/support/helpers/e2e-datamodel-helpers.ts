@@ -805,7 +805,16 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      // Trigger the hovercard with retryable, deterministic events instead of
+      // realHover(): a single real-mouse hover can be lost when the preview
+      // re-renders, leaving the description hovercard closed (metabase flake).
+      const headerCell = () =>
+        cy
+          .findByTestId("header-cell")
+          .findByTestId("cell-data")
+          .should("be.visible");
+      headerCell().trigger("mouseenter", { force: true });
+      headerCell().trigger("mouseover", { force: true });
     }
   });
 
