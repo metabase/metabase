@@ -46,6 +46,5 @@ export interface SetupState {
   isEmbeddingUseCase: boolean;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
-  hasVisitedAiConfigStep: boolean;
   licenseToken?: string | null;
 }

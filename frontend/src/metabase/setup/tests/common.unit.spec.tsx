@@ -135,18 +135,6 @@ describe("setup (OSS)", () => {
   });
 
   describe("AI config step", () => {
-    it("should not show the step when an AI provider is already configured", async () => {
-      await setup({ settings: { "llm-metabot-configured?": true } });
-      await skipWelcomeScreen();
-
-      expect(
-        screen.queryByText("Connect to an AI provider"),
-      ).not.toBeInTheDocument();
-
-      expectSectionToHaveLabel("Add your data", "3");
-      expectSectionToHaveLabel("Usage data preferences", "4");
-    });
-
     it("should not show the step when AI features are disabled", async () => {
       await setup({ settings: { "ai-features-enabled?": false } });
       await skipWelcomeScreen();

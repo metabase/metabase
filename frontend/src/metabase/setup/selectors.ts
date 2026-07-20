@@ -93,8 +93,6 @@ export const getSteps = createSelector(
     (state: State) => state.setup.licenseToken,
     (state: State) => getIsEmbeddingUseCase(state),
     (state: State) => getSetting(state, "ai-features-enabled?"),
-    (state: State) => getSetting(state, "llm-metabot-configured?"),
-    (state: State) => state.setup.hasVisitedAiConfigStep,
   ],
   (
     usageReason,
@@ -103,8 +101,6 @@ export const getSteps = createSelector(
     licenseToken,
     isEmbeddingUseCase,
     areAiFeaturesEnabled,
-    isAiConfigured,
-    hasVisitedAiConfigStep,
   ) => {
     const isPaidPlan =
       tokenFeatures &&
@@ -112,15 +108,8 @@ export const getSteps = createSelector(
     const hasAddedPaidPlanInPreviousStep = Boolean(licenseToken);
 
     const shouldShowDBConnectionStep = usageReason !== "embedding";
-
-    // Once the wizard has entered the AI step, keep it in the list even though
-    // connecting a provider flips `llm-metabot-configured?` to true mid-step.
-    const isAiPreconfigured =
-      Boolean(isAiConfigured) && !hasVisitedAiConfigStep;
     const shouldShowAiConfigStep =
-      shouldShowDBConnectionStep &&
-      areAiFeaturesEnabled !== false &&
-      !isAiPreconfigured;
+      shouldShowDBConnectionStep && areAiFeaturesEnabled !== false;
     const shouldShowLicenseStep =
       PLUGIN_IS_EE_BUILD.isEEBuild() &&
       (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
