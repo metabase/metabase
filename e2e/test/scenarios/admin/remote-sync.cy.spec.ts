@@ -616,7 +616,9 @@ describe("Remote Sync", () => {
 
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-only");
+      // Read-only setup auto-triggers a server-side import; wait for it to finish before booting the
+      // app, otherwise the initial page load races the import and the navbar can miss its render window.
+      H.configureGitAndPullChanges("read-only");
 
       cy.visit("/");
 
