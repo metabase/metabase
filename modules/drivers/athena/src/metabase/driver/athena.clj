@@ -519,7 +519,8 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_{:clj-kondo/ignore [:aliased-namespace-symbol :discouraged-var :unresolved-namespace]}
+;; one-off REPL script kept for reference; leans on test namespaces drivers can't require
+#_:clj-kondo/ignore
 (comment
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
   (with-open [conn (clojure.java.jdbc/get-connection
