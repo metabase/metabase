@@ -2554,3 +2554,57 @@ open item, not as evidence.
     distinct mechanism in the #85 family, after self-inflicted fixtures,
     virtualized pickers, unpinned lookups, and a spec's cleanup reaching into
     another spec's fixtures.
+
+### A hidden 30-day fuse in the `default` snapshot
+
+145. **"Getting Started" renders only while `instance-creation` is under 30 days
+    old** (`add-initial-data`) — that setting is the snapshot's first-user
+    timestamp. This box reads 2026-07-17, so it passes now, but **an aging local
+    `default.sql` will fail two tests in a way that looks exactly like port
+    drift**.
+
+    Same family as the corrupt `blank.sql` (#97), different snapshot and a
+    different mechanism: not wrong *content* but **stale content that decays**.
+    Both are invisible in CI, which regenerates snapshots per run, and both
+    manufacture failures that read as port defects locally.
+
+    **Third environmental trap of this shape**, after `blank.sql` and the
+    heap-order accident behind `issue 34350`. The general lesson: **before
+    accepting a local failure as port drift, check whether the fixture itself is
+    time- or order-dependent.**
+
+### The mutation-verification script was itself wrong
+
+146. **An agent's readback assertion asserted the wrong thing and false-aborted
+    *after* the file had already been written** (`add-initial-data`). It checked
+    that the *new* text appears exactly once; on M6 that failed even though the
+    mutation had landed correctly. **Had the agent trusted the abort, it would
+    have interpreted a mutated file as clean** — a false "survivor" of the worst
+    kind. Its "LANDED @ line" locator was also 236 lines off on M11.
+
+    This is #128 recurring one level up: that entry said *verify the mutation
+    landed*, and here **the verifier itself was the broken thing**. The agent
+    caught it, fixed both, re-verified every multi-line mutant by hand, and
+    separately sanity-checked its dead-import checker by injecting a known-unused
+    import.
+
+    **Rule to carry: a verification step is not self-verifying.** When a check
+    reports something surprising, test the check before believing it — twice
+    today a tool's verdict was wrong rather than the thing it measured.
+
+### An `@external` tag gating precisely nothing
+
+147. **`add-initial-data`'s `@external` gates zero tests.** Read from the
+    `beforeEach` rather than the tag: plain `H.restore()` on the `default`
+    snapshot, no QA dialect, no `WRITABLE_DB_ID`. The only external service was
+    **snowplow-micro**, which browser-boundary capture replaces outright.
+
+    Gate-OFF control: **11 passed both ways, 0 skipped both ways** — the cleanest
+    possible demonstration that the tag is inert. Meanwhile the *token* gate is
+    real and maps to exactly one test (`application-name` is
+    `defsetting :feature :whitelabel`, no short-circuit; FE `getIsWhiteLabeling`
+    is EE-plugin-only; probed live at **204 with token, 500 without**).
+
+    Seventh way the tag metadata misleads, and a reminder that **container gating
+    and token gating are independent** — a spec can be wrongly tagged for one and
+    correctly gated by the other.
