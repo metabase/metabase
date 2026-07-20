@@ -285,7 +285,16 @@
                (-> (build-config ws-id) :config :settings))))
       (testing "and no :settings section when remote sync is disabled"
         (mt/with-temporary-setting-values [remote-sync-url nil]
-          (is (not (contains? (-> (build-config ws-id) :config) :settings))))))))
+          (is (not (contains? (-> (build-config ws-id) :config) :settings)))))))
+  (testing "the workspace's target_branch overrides the instance's remote-sync branch"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name          "github"
+                                                 :creator_id    (mt/user->id :crowberto)
+                                                 :target_branch "workspace-branch"}]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://git.example.com/test.git"
+                                         remote-sync-branch "main"
+                                         remote-sync-token  "s3cr3t-token"]
+        (is (= "workspace-branch"
+               (-> (build-config ws-id) :config :settings :remote-sync-branch)))))))
 
 (deftest build-workspace-config-creator-superuser-test
   (testing "when workspace-instance-user-password is set, :config carries the creator as a superuser"

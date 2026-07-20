@@ -89,11 +89,12 @@
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
   The param map must supply `:creator_id`. Returns the created Workspace row."
-  [{:keys [name creator_id databases]}]
+  [{:keys [name target_branch creator_id databases]}]
   (t2/with-transaction [_conn]
     (let [workspace (t2/insert-returning-instance! :model/Workspace
-                                                   {:name       name
-                                                    :creator_id creator_id})]
+                                                   {:name          name
+                                                    :target_branch target_branch
+                                                    :creator_id    creator_id})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % (:id workspace)) databases)))

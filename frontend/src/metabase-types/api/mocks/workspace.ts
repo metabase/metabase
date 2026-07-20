@@ -16,6 +16,7 @@ export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
   return {
     id: 1,
     name: "Test workspace",
+    target_branch: null,
     status: "unprovisioned",
     status_details: null,
     instance_id: null,

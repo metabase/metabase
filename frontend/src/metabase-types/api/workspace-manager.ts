@@ -35,6 +35,7 @@ export type WorkspaceDatabase = {
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  target_branch: string | null;
   status: WorkspaceStatus;
   status_details: string | null;
   instance_id: string | null;
@@ -48,6 +49,7 @@ export type Workspace = {
 
 export type CreateWorkspaceRequest = {
   name: string;
+  target_branch?: string;
   database_ids: DatabaseId[];
 };
 

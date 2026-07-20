@@ -215,6 +215,28 @@ describe("WorkspaceItem", () => {
     expect(screen.getByText(/^Created /)).toBeInTheDocument();
   });
 
+  it("renders the target branch when set", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        target_branch: "feature-x",
+      }),
+    });
+
+    expect(screen.getByText("feature-x")).toBeInTheDocument();
+  });
+
+  it("does not render a branch block when the target branch is not set", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        target_branch: null,
+      }),
+    });
+
+    expect(screen.queryByText("feature-x")).not.toBeInTheDocument();
+  });
+
   it("renders databases, falling back to the id when not hydrated", () => {
     setup({
       workspace: createMockWorkspace({

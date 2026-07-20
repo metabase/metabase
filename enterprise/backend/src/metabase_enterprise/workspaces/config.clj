@@ -109,13 +109,18 @@
 (defn- remote-sync-settings
   "Remote-sync settings for the child instance's `settings:` config section, or
    nil when remote sync is not enabled on this instance. The child instance
-   always gets `:read-write` — its whole purpose is committing changes back."
-  []
+   always gets `:read-write` — its whole purpose is committing changes back.
+   The child works on the workspace's `:target_branch` when set, falling back
+   to this instance's configured remote-sync branch."
+  [workspace]
   (when (remote-sync/remote-sync-enabled)
-    {:remote-sync-url    (remote-sync/remote-sync-url)
-     :remote-sync-branch (remote-sync/remote-sync-branch)
-     :remote-sync-token  (remote-sync/remote-sync-token)
-     :remote-sync-type   :read-write}))
+    (let [target-branch (:target_branch workspace)]
+      {:remote-sync-url    (remote-sync/remote-sync-url)
+       :remote-sync-branch (if (str/blank? target-branch)
+                             (remote-sync/remote-sync-branch)
+                             target-branch)
+       :remote-sync-token  (remote-sync/remote-sync-token)
+       :remote-sync-type   :read-write})))
 
 (defn- user-entries
   "config-file `users:` entries for the child instance: the workspace creator
@@ -180,7 +185,7 @@
           ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
           stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
           sample-entries   (sample-database-entries)
-          settings         (remote-sync-settings)
+          settings         (remote-sync-settings workspace)
           users            (user-entries workspace)]
       {:version 1
        :config  (cond-> {:databases (-> ws-entries
