@@ -12,6 +12,7 @@ import {
   type RouteProps,
   createRoutes,
 } from "./react-router";
+import { translatePatternToV3 } from "./translate-pattern";
 
 /**
  * Props accepted by the `<Route>` element. Adds react-router v7's `index` and
@@ -64,11 +65,17 @@ export const Route: RouteConfigElement = Object.assign(
       // Rebuild the element as a raw v3 `<Route>` so v3's own builder turns it (and
       // its children) into a route object without dispatching back into this static.
       const { index, ...props } = element.props;
+      // The tree is authored in v7 path syntax; translate to v3 so the v3 engine
+      // matches it. A no-op for ordinary paths. Goes away with the v3 engine.
+      const v3Props =
+        typeof props.path === "string"
+          ? { ...props, path: translatePatternToV3(props.path) }
+          : props;
       // v3 copies our `element` prop onto the route config but `PlainRoute` does
       // not type it, so widen the result to read it below.
-      const [route] = createRoutes(createElement(ReactRouterRoute, props)) as [
-        (PlainRoute & { element?: ReactNode }) | undefined,
-      ];
+      const [route] = createRoutes(
+        createElement(ReactRouterRoute, v3Props),
+      ) as [(PlainRoute & { element?: ReactNode }) | undefined];
 
       // Bridge `element` onto v3: render it through a `component` that publishes
       // the matched child on `<Outlet/>`'s context. The `element` stays on the

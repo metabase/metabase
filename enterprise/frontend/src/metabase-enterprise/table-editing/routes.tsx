@@ -7,7 +7,7 @@ const RoutedEditTableDataContainer = withRouteProps(EditTableDataContainer);
 export function getRoutes() {
   return (
     <Route
-      path="databases/:dbId/tables/:tableId/edit(/:objectId)"
+      path="databases/:dbId/tables/:tableId/edit/:objectId?"
       element={<RoutedEditTableDataContainer />}
     />
   );
