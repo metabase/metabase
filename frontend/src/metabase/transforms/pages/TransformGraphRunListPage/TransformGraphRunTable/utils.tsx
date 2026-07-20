@@ -39,14 +39,11 @@ export function isDeletedRun(run: TransformGraphRun): boolean {
   return run.entity_id == null;
 }
 
-// For a DAG run: how many dependencies (upstream) / dependents (downstream) the
-// reprocess ran — the plan size minus the seed transform. null for job/standalone
-// runs, or DAG runs predating the transform_count column (render the plain name).
 function dagDependencyCount(run: TransformGraphRun): number | null {
   if (run.run_type !== "dag" || run.transform_count == null) {
     return null;
   }
-  const count = run.transform_count - 1;
+  const count = run.transform_count - 1; // Doesn't include transform that triggered this DAG run
   return count > 0 ? count : null;
 }
 
@@ -58,7 +55,6 @@ function dependentsText(count: number): string {
   return ngettext(msgid`${count} dependent`, `${count} dependents`, count);
 }
 
-// Plain-text run identity — used for the Run column value and the sidebar title.
 export function formatRunName(run: TransformGraphRun): string {
   const name = run.name ?? t`Deleted`;
   const count = dagDependencyCount(run);
@@ -70,7 +66,6 @@ export function formatRunName(run: TransformGraphRun): string {
     : `${name} › ${dependentsText(count)}`;
 }
 
-// The seed transform / job name, greyed when the underlying entity was deleted.
 function renderRunEntityName(run: TransformGraphRun): ReactNode {
   const name = run.name ?? t`Deleted`;
   if (!isDeletedRun(run)) {
