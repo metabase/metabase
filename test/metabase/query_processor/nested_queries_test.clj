@@ -1755,6 +1755,7 @@
   (testing "can query a card that has an empty column alias (#57685)"
     (let [mp (mt/metadata-provider)
           card-query (lib/native-query mp "select id as \"\" from orders limit 2")]
+      ;; the card is fetched via the app-db metadata provider mid-query, so it must be a real row
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Card card {:dataset_query card-query}]
         (let [query (->> (lib/query mp (lib.metadata/card mp (:id card)))

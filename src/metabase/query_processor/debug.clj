@@ -16,6 +16,7 @@
   "tap> something for debug purposes if [[*debug*]] is enabled. Body is not evaluated unless debugging is enabled."
   {:style/indent 0}
   [& body]
+  ;; tapping for Portal is this macro's entire purpose; inert unless *debug* is bound
   #_{:clj-kondo/ignore [:discouraged-var]}
   `(when *debug*
      (when-some [result# (do ~@body)]

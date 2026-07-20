@@ -294,6 +294,7 @@
      :cljs (glogi-spy (str *ns*) level expr
                       #(str/trim-newline
                         (with-out-str
+                          ;; spy's own formatter: pprint goes into with-out-str, nothing is printed
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/with-pprint-dispatch pprint/code-dispatch
                             (pprint/pprint '~expr)
