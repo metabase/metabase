@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type PropsWithChildren, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,6 +15,7 @@ import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Box, Code, Group } from "metabase/ui";
 import { getBasename } from "metabase/utils/basename";
@@ -98,7 +99,7 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
   </Box>
 );
 
-export const Help = ({ children }: PropsWithChildren) => {
+export const Help = () => {
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
 
@@ -151,8 +152,8 @@ export const Help = ({ children }: PropsWithChildren) => {
           link={getConnectionPoolDetailsUrl()}
         />
       </SettingsSection>
-      {/* render 'children' so that the child modal routes can show up */}
-      {children}
+      {/* render the outlet so that the child modal routes can show up */}
+      <Outlet />
     </SettingsPageWrapper>
   );
 };

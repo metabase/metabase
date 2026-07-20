@@ -47,6 +47,7 @@ describe("getBehaviorDocsUrlParams", () => {
     },
   ])("returns $expected for $name", ({ settings, expected }) => {
     expect(
+      // Unjustified type cast. FIXME
       getBehaviorDocsUrlParams(settings as SdkIframeEmbedSetupSettings),
     ).toEqual(expected);
   });

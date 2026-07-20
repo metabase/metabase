@@ -29,7 +29,7 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  Route,
+  ReactRouterRoute,
   RouterProvider,
   routerMiddleware,
   routing as routingReducer,
@@ -144,7 +144,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <Route path="/" component={() => <>{children}</>} />
+        <ReactRouterRoute path="/" component={() => <>{children}</>} />
       </Wrapper>
     );
   };
@@ -207,9 +207,11 @@ export function getTestStoreAndWrapper({
     history && routerMiddleware(history),
   ]);
 
+  // Unjustified type cast. FIXME
   const store = getStore(
     reducers,
     initialState,
+    // Unjustified type cast. FIXME
     storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
@@ -477,6 +479,7 @@ export function createMockClipboardData(
   opts?: Partial<DataTransfer>,
 ): DataTransfer {
   const clipboardData = { ...opts };
+  // Unjustified type cast. FIXME
   return clipboardData as unknown as DataTransfer;
 }
 

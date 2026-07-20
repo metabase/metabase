@@ -8,18 +8,21 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, withRouteProps } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskRunExtended } from "metabase-types/api";
 import { createMockTaskRunExtended } from "metabase-types/api/mocks";
 
 import { TaskRunDetailsPage } from "./TaskRunDetailsPage";
 
+const RoutedTaskRunDetailsPage = withRouteProps(TaskRunDetailsPage);
+
 jest.mock("@mantine/hooks", () => ({
   ...jest.requireActual("@mantine/hooks"),
   useClipboard: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockUseClipboard = useClipboard as jest.Mock;
 
 const PATHNAME = `${Urls.adminToolsTasksRuns()}/:runId`;
@@ -32,7 +35,7 @@ const setup = ({ taskRun = createMockTaskRunExtended() }: SetupOpts = {}) => {
   setupTaskRunEndpoint(taskRun);
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunDetailsPage} />,
+    <Route path={PATHNAME} element={<RoutedTaskRunDetailsPage />} />,
     {
       initialRoute: Urls.adminToolsTaskRunDetails(taskRun.id),
       withRouter: true,

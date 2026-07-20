@@ -104,6 +104,7 @@ function Emoji({
       component="button"
       w="2rem"
       fz="1.25rem"
+      // Unjustified type cast. FIXME
       ref={ref as React.RefObject<HTMLButtonElement>}
       data-emoji={emoji.emoji}
       styles={{

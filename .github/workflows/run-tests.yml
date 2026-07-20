@@ -93,6 +93,32 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
+  # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
+  # The compile is doesn't depend on MB_EDITION
+  e2e-cljs:
+    name: Compile CLJS for e2e
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.e2e_all == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+      - name: Upload compiled CLJS
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+          if-no-files-found: error
+          # Uploads fail when an artifact of this name already exists in the run
+          # replace it rather than fail on a re-run.
+          overwrite: true
+
   backend-tests:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
     needs: [create-test-plan]

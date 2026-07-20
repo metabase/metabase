@@ -268,5 +268,6 @@ async function waitForBody(name: string) {
     expect(fetchMock.callHistory.called(name)).toBe(true);
   });
   const call = fetchMock.callHistory.lastCall(name);
+  // Unjustified type cast. FIXME
   return JSON.parse(call?.options?.body as string);
 }

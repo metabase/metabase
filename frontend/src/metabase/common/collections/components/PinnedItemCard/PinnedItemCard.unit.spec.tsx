@@ -56,6 +56,7 @@ const getCollectionItem = ({
   description?: string;
   collection_position?: number;
 } = {}): CollectionItem & { description: string } => {
+  // Unjustified type cast. FIXME
   return createMockCollectionItem({
     ...rest,
     id,
@@ -75,7 +76,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <PinnedItemCard
           item={item}
           collection={collection}
@@ -84,7 +85,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
           createBookmark={jest.fn()}
           deleteBookmark={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );

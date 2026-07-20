@@ -132,6 +132,7 @@ const detailView = handleActions(
 
 const tempStorageSlice = createSlice({
   name: "tempStorage",
+  // Unjustified type cast. FIXME
   initialState: {} as TempStorage,
   reducers: {
     setTempSetting: (

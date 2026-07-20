@@ -7,6 +7,10 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
+actionlint:
+  - ".github/workflows/*.yml"
+  - ".github/workflows/*.yaml"
+
 shared_sources: &shared_sources
   - "src/**/*.cljc"
   - "src/**/*.cljs"

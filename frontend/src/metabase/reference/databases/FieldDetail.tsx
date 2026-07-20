@@ -55,6 +55,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "bar",
@@ -67,6 +68,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "pie",
@@ -79,6 +81,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         metadata,
       }),
@@ -287,4 +290,5 @@ const FieldDetail = (props: FieldDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(FieldDetail as unknown as React.ComponentType);

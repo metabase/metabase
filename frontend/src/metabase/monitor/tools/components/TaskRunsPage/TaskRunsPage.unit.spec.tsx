@@ -35,7 +35,7 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunsPage} />,
+    <Route path={PATHNAME} element={<TaskRunsPage />} />,
     {
       initialRoute,
       withRouter: true,

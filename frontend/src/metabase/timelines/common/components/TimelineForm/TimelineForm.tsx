@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { getTimelineIcons } from "metabase/common/utils/timelines";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -66,7 +66,7 @@ const TimelineForm = ({
           />
           <IconField name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
-            <FormErrorMessage inline />
+            <FormErrorMessage />
             {!isNew && (
               <FormArchiveButton onClick={onArchive}>
                 {t`Archive timeline and all events`}

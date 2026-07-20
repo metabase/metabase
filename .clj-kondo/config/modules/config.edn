@@ -159,7 +159,8 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{ai-tracing
+              api
               auth-identity
               channel
               collections
@@ -180,6 +181,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/Table
                     :model/User}}
@@ -191,6 +193,15 @@
            metabase.agent-lib.representations.resolve}
    :uses #{lib
            models
+           util}}
+
+  ai-tracing
+  {:team "Metabot"
+   :api  #{metabase.ai-tracing.api
+           metabase.ai-tracing.core
+           metabase.ai-tracing.init}
+   :uses #{api
+           settings
            util}}
 
   analytics
@@ -1124,6 +1135,7 @@
            metabase.lib.metadata
            metabase.lib.metadata.protocols
            metabase.lib.options
+           metabase.lib.pivot
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1252,10 +1264,12 @@
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
    :uses #{agent-api
+           ai-tracing
            api
            app-db
            config
            llm
+           metabot
            oauth-server
            premium-features
            request
@@ -1289,13 +1303,15 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
               slackbot}
    :uses    #{activity-feed
               agent-lib
+              ai-tracing
               analytics
               analytics-interface
               api
@@ -1327,7 +1343,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
@@ -1343,6 +1358,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/Field
                     :model/Glossary
@@ -1431,6 +1448,17 @@
                     :model/Segment
                     :model/Table
                     :model/User}}
+
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.init}
+   :uses #{analytics-interface
+           app-db
+           classloader
+           settings
+           startup
+           task
+           util}}
 
   native-query-snippets
   {:team "Graphy"
@@ -1875,6 +1903,7 @@
            cache
            config
            dashboards
+           database-routing
            driver
            events
            formatter
@@ -1968,12 +1997,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{driver
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database
-                    :model/Table}}
+   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
   {:team "UX West"
@@ -2087,6 +2116,7 @@
            channel
            config
            events
+           premium-features
            request
            settings
            sso
@@ -2183,8 +2213,8 @@
 
   sql-parsing
   {:team "DevEx"
-   :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
-   :uses #{analytics-interface settings util}}
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics-interface util}}
 
   sql-tools
   {:team "DevEx"
@@ -2327,6 +2357,7 @@
            permissions
            premium-features
            search
+           session
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
@@ -2474,6 +2505,28 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
+
+  typed-schemas
+  {:team "Embedding"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           types
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   types
   {:team "Querying Platform"
@@ -2868,6 +2921,7 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
+           enterprise/mfa
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
@@ -3041,6 +3095,17 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           premium-features
+           settings
+           util}}
+
   enterprise/data-complexity-score
   {:team "Metabot"
    :api  #{metabase-enterprise.data-complexity-score.api
@@ -3101,7 +3166,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           config
            database-routing
            driver
            events
@@ -3339,6 +3403,22 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
+  enterprise/mfa
+  {:team "Graphy"
+   :api  #{metabase-enterprise.mfa.core
+           metabase-enterprise.mfa.init
+           metabase-enterprise.mfa.routes}
+   :uses #{api
+           appearance
+           channel
+           config
+           events
+           premium-features
+           settings
+           sso
+           util}
+   :model-imports #{:model/AuthIdentity :model/User}}
+
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}
@@ -3374,6 +3454,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
@@ -3518,6 +3599,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models

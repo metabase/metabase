@@ -107,6 +107,55 @@
 
 ;;; ### Public Interface
 
+;;; ---- MFA notification emails ----
+
+(defn send-mfa-enabled-email!
+  "Send an email notifying `email` that two-factor authentication was enabled on their account."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was enabled on your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_enabled" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-disabled-email!
+  "Send an email notifying `email` that two-factor authentication was disabled on their account.
+  The phrase 'using a verification code' is deliberate — the server can assert only what
+  credential authorized the action, not who acted."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was disabled on your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_disabled" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-removed-by-admin-email!
+  "Send an email notifying `email` that an administrator removed their two-factor authentication."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was removed from your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_removed_by_admin" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-login-code-email!
+  "Send an email containing a one-time sign-in `code` to `email`.
+  Uses [[metabase.channel.email/send-message-or-throw!]] directly so that SMTP delivery failures
+  propagate to the caller — the /send-email-otp endpoint returns 500 on failure. Because of this,
+  the data-URI logo-attachment handling in [[send-email-with-logo!]] is skipped."
+  [email code]
+  {:pre [(u/email? email) (string? code)]}
+  (email/send-message-or-throw!
+   {:subject      (trs "[{0}] Your sign-in code" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_login_code" (assoc (common-context) :logoHeader true :code code))}))
+
+;;; ---- end MFA notification emails ----
+
 (defn all-admin-recipients
   "Return a sequence of email addresses for all Admin users who have accepted their invitation (i.e. have logged in at
   least once). Admins who have been invited but not yet accepted are excluded — they shouldn't receive notifications

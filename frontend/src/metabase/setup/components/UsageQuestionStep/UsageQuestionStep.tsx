@@ -39,6 +39,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
   };
 
   const handleChange = (value: string) => {
+    // Unjustified type cast. FIXME
     setUsageReason(value as UsageReason);
   };
 

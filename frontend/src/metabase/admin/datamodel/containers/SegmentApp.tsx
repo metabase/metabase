@@ -108,6 +108,7 @@ function CreateSegmentForm({ route }: CreateSegmentFormProps) {
       setIsDirty(false);
 
       scheduleCallback(async () => {
+        // Unjustified type cast. FIXME
         const result = await createSegment(segment as CreateSegmentRequest);
         if (result.error) {
           sendErrorToast(t`Failed to create segment`);

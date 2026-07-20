@@ -55,6 +55,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: table.db_id!,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         metadata,
@@ -66,6 +67,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: table.db_id!,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         metadata,
       }),
@@ -256,4 +258,5 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentFieldDetail as unknown as React.ComponentType);

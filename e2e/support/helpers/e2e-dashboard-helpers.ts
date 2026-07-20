@@ -509,6 +509,7 @@ export function dashboardParametersDoneButton() {
 }
 
 export function dashboardParametersPopover() {
+  // Unjustified type cast. FIXME
   return popover({ testId: "parameter-value-dropdown" } as any);
 }
 

@@ -9,8 +9,8 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import registerVisualizations from "metabase/visualizations/register";
+import { Route, withRouteProps } from "metabase/router";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,
@@ -28,10 +28,17 @@ import { AUDIT_DB_ID } from "../constants";
 
 import { McpAnalyticsPage } from "./McpAnalyticsPage";
 
+const RoutedMcpAnalyticsPage = withRouteProps(McpAnalyticsPage);
+
 registerVisualizations();
 
 const MCP_TOOL_CALLS_TABLE_ID = 2001;
 const GROUP_MEMBERS_TABLE_ID = 2002;
+
+// Field ids are deterministic — `table_id * 100 + field index` (see `buildTable`). Indices below
+// match the field order of the `v_mcp_tool_calls` table defined further down.
+const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
+const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -118,6 +125,32 @@ const datasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
+// A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
+// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
+const multiPageDatasetResponse: Dataset = createMockDataset({
+  data: createMockDatasetData({
+    rows: [
+      [60, "search_data"],
+      [7, "run_query"],
+    ],
+    cols: [
+      createMockColumn({
+        source: "aggregation",
+        name: "count",
+        display_name: "Count",
+      }),
+      createMockColumn({
+        source: "breakout",
+        name: "tool_name",
+        display_name: "Tool name",
+      }),
+    ],
+  }),
+  database_id: AUDIT_DB_ID,
+  row_count: 2,
+  running_time: 1,
+});
+
 // A zero-count aggregation result — what the page's "has any data?" probe gets when the
 // filtered view is empty.
 const emptyDatasetResponse: Dataset = createMockDataset({
@@ -152,7 +185,7 @@ function setup({ dataset }: { dataset?: Dataset } = {}) {
   return renderWithProviders(
     <Route
       path="/admin/metabot/usage-auditing/mcp"
-      component={McpAnalyticsPage}
+      element={<RoutedMcpAnalyticsPage />}
     />,
     {
       initialRoute: "/admin/metabot/usage-auditing/mcp",
@@ -200,9 +233,102 @@ describe("McpAnalyticsPage", () => {
     );
 
     const eventsPanel = screen.getByRole("tabpanel");
+    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    // curated column header + a cell value from the mocked dataset row
+    expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
-      await within(eventsPanel).findByTestId("table-root"),
+      await within(eventsPanel).findByText("search_data"),
     ).toBeInTheDocument();
+  });
+
+  it("sorts the events table server-side when a column header is clicked", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
+    await userEvent.click(await screen.findByRole("button", { name: "Tool" }));
+
+    await waitFor(() => {
+      const sortedAscending = fetchMock.callHistory
+        .calls("dataset")
+        .some((call) => {
+          const body = call.options?.body;
+          if (typeof body !== "string") {
+            return false;
+          }
+          const stage = JSON.parse(body).stages?.[0];
+          return stage?.page != null && stage["order-by"]?.[0]?.[0] === "asc";
+        });
+      expect(sortedAscending).toBe(true);
+    });
+  });
+
+  it("paginates the events table when there are more matching rows than one page", async () => {
+    setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
+    // First page: previous disabled, next enabled (total 60 spans multiple pages of 25).
+    expect(within(pagination).getByLabelText("Previous page")).toBeDisabled();
+    const nextButton = within(pagination).getByLabelText("Next page");
+    expect(nextButton).toBeEnabled();
+
+    await userEvent.click(nextButton);
+
+    // Advancing issues an adhoc dataset query for the second MBQL page (1-indexed).
+    await waitFor(() => {
+      const requestedPage2 = fetchMock.callHistory
+        .calls("dataset")
+        .some((call) => {
+          const body = call.options?.body;
+          if (typeof body !== "string") {
+            return false;
+          }
+          return JSON.parse(body)?.stages?.[0]?.page?.page === 2;
+        });
+      expect(requestedPage2).toBe(true);
+    });
+  });
+
+  it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    // The events request is the paginated one (carries a `page` clause); its order-by must be
+    // created_at followed by the tool_call_id (PK) tiebreaker, so pages can't skip/duplicate rows
+    // on tied timestamps.
+    await waitFor(() => {
+      const eventsStage = fetchMock.callHistory
+        .calls("dataset")
+        .map((call) => call.options?.body)
+        .filter((body): body is string => typeof body === "string")
+        .map((body) => JSON.parse(body).stages?.[0])
+        .find((stage) => stage?.page != null);
+      // pMBQL order-by clause: [direction, opts, ["field", opts, fieldId]]
+      const orderBy = eventsStage?.["order-by"] as [
+        string,
+        object,
+        [string, object, number],
+      ][];
+      expect(orderBy?.map((clause) => clause[2][2])).toEqual([
+        CREATED_AT_FIELD_ID,
+        TOOL_CALL_ID_FIELD_ID,
+      ]);
+    });
   });
 
   it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
