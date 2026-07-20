@@ -78,7 +78,6 @@
                    :discouraged-var
                    :equals-true
                    :metabase/defsetting-namespace
-                   :metabase/discourage-millis-duration
                    :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
                    :metabase/namespace-name
