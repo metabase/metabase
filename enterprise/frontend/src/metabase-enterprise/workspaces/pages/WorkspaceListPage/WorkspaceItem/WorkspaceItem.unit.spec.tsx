@@ -47,7 +47,7 @@ describe("WorkspaceItem", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Provision this workspace?" }),
+      await screen.findByRole("heading", { name: "Provision workspace" }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Provision" }));
 
@@ -78,7 +78,7 @@ describe("WorkspaceItem", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Deprovision this workspace?",
+        name: "Deprovision workspace",
       }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Deprovision" }));
@@ -303,11 +303,9 @@ describe("WorkspaceItem", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Delete this workspace?" }),
+      await screen.findByRole("heading", { name: "Delete workspace" }),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete workspace" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
       expect(

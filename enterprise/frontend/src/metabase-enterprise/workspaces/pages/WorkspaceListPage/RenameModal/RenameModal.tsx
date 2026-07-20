@@ -13,19 +13,19 @@ import * as Errors from "metabase/utils/errors";
 import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-export type RenameWorkspaceModalProps = {
+export type RenameModalProps = {
   workspace: Workspace;
   opened: boolean;
   onRename: (workspace: Workspace) => void;
   onClose: () => void;
 };
 
-export function RenameWorkspaceModal({
+export function RenameModal({
   workspace,
   opened,
   onRename,
   onClose,
-}: RenameWorkspaceModalProps) {
+}: RenameModalProps) {
   return (
     <Modal
       title={t`Rename this workspace?`}

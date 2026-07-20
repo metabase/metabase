@@ -1,0 +1,1 @@
+export { DeprovisionModal } from "./DeprovisionModal";

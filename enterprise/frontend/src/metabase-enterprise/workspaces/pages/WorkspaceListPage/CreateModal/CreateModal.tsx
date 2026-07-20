@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { skipToken } from "metabase/api";
 import {
   Form,
   FormCheckboxGroup,
@@ -13,26 +15,23 @@ import { Button, Checkbox, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceMutation,
-  useLazyListWorkspacesQuery,
+  useGetWorkspaceQuery,
   useProvisionWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { Database, Workspace } from "metabase-types/api";
+import type { Database, Workspace, WorkspaceId } from "metabase-types/api";
 
 import { trackWorkspaceCreated } from "../../../analytics";
+import { POLLING_INTERVAL } from "../../../constants";
+import { isProvisioned, isProvisioning } from "../../../utils";
+import { ProvisionProgress, ProvisionSuccess } from "../ProvisionModal";
 
-type NewWorkspaceModalProps = {
+type CreateModalProps = {
   databases: Database[];
   opened: boolean;
-  onCreate: (workspace: Workspace) => void;
   onClose: () => void;
 };
 
-export function NewWorkspaceModal({
-  databases,
-  opened,
-  onCreate,
-  onClose,
-}: NewWorkspaceModalProps) {
+export function CreateModal({ databases, opened, onClose }: CreateModalProps) {
   return (
     <Modal
       title={t`Create a workspace`}
@@ -40,12 +39,62 @@ export function NewWorkspaceModal({
       padding="xl"
       onClose={onClose}
     >
+      <CreateModalBody databases={databases} onClose={onClose} />
+    </Modal>
+  );
+}
+
+type CreateStep = "form" | "progress" | "success";
+
+type CreateModalBodyProps = {
+  databases: Database[];
+  onClose: () => void;
+};
+
+function CreateModalBody({ databases, onClose }: CreateModalBodyProps) {
+  const [step, setStep] = useState<CreateStep>("form");
+  const [workspaceId, setWorkspaceId] = useState<WorkspaceId | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [provisionWorkspace, { isLoading }] = useProvisionWorkspaceMutation();
+  const { data: workspace } = useGetWorkspaceQuery(workspaceId ?? skipToken, {
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  });
+
+  useEffect(() => {
+    setIsPolling(workspace != null && isProvisioning(workspace));
+  }, [workspace]);
+
+  useEffect(() => {
+    if (step === "progress" && workspace != null && isProvisioned(workspace)) {
+      setStep("success");
+    }
+  }, [step, workspace]);
+
+  const handleCreated = (workspace: Workspace) => {
+    setWorkspaceId(workspace.id);
+    setStep("progress");
+    provisionWorkspace(workspace.id);
+  };
+
+  if (step === "form" || workspace == null) {
+    return (
       <NewWorkspaceForm
         databases={databases}
-        onCreate={onCreate}
+        onCreated={handleCreated}
         onClose={onClose}
       />
-    </Modal>
+    );
+  }
+  if (step === "success") {
+    return <ProvisionSuccess workspace={workspace} onDone={onClose} />;
+  }
+  return (
+    <ProvisionProgress
+      workspace={workspace}
+      isProvisioning={isLoading}
+      onProvision={() => provisionWorkspace(workspace.id)}
+      onClose={onClose}
+    />
   );
 }
 
@@ -68,18 +117,16 @@ function getInitialValues(databases: Database[]): NewWorkspaceFormValues {
 
 type NewWorkspaceFormProps = {
   databases: Database[];
-  onCreate: (workspace: Workspace) => void;
+  onCreated: (workspace: Workspace) => void;
   onClose: () => void;
 };
 
 function NewWorkspaceForm({
   databases,
-  onCreate,
+  onCreated,
   onClose,
 }: NewWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
-  const [provisionWorkspace] = useProvisionWorkspaceMutation();
-  const [fetchWorkspaces] = useLazyListWorkspacesQuery();
 
   const handleSubmit = async ({
     name,
@@ -90,9 +137,7 @@ function NewWorkspaceForm({
       database_ids: database_ids.map(Number),
     }).unwrap();
     trackWorkspaceCreated({ workspaceId: workspace.id });
-    await provisionWorkspace(workspace.id);
-    await fetchWorkspaces();
-    onCreate(workspace);
+    onCreated(workspace);
   };
 
   return (
