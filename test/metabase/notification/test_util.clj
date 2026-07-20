@@ -119,6 +119,7 @@
 
 (def default-card-name "Card notification test card")
 
+;; the `!` calls only create and delete this helper's own temp notification, so parallel use is safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
