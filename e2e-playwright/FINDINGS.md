@@ -3821,3 +3821,51 @@ open item, not as evidence.
     exercised by those greens; and its `waitForSyncedField` guard catches a
     shape-*changed* stale table but **not a shape-identical one** — a partial
     mitigation, not a fix.
+
+### The shared-inbox risk, solved by isolating on the per-slot site URL
+
+205. **`forgot-password` isolates its inbox assertion on the reset link's
+    per-slot site URL** (`session/api.clj` builds it from `system/site-url`;
+    `worker-backend.ts:265` pins `MB_SITE_URL` per slot). That converts the
+    #186 hazard from "hope no sibling deletes the inbox" into a mechanism.
+
+    **The agent watched the inbox go to 0 mid-probe** — a sibling's `setupSMTP`
+    DELETE, exactly as briefed — and its mutation M1 is the proof the isolation
+    works: pointed at `:4101` it failed **with the correct email visibly sitting
+    in the inbox**, subject and recipient matching, rejected purely by the
+    site-URL conjunct. That is the right shape for an isolation guard: it must
+    reject a message that looks right in every other respect.
+
+### `cy.icon("gear").should("not.exist")` matches nothing, anywhere
+
+206. **`.Icon-gear` matches zero elements on any page**, including `/` as admin
+    (`forgot-password`) — the app bar renders `Icon-burger`/`Icon-search` and the
+    settings entry point is labelled "Settings" with no gear class. So the
+    assertion cannot fail. Kept **verbatim with analysis inline**, plus a
+    **declared strengthening** on `appBar()`, presence-probed as a real
+    discriminator (1 on `/`, 0 on the auth page).
+
+    Found only because the agent's **first presence probe was over-determined and
+    died at the anchor** — which it called out as its own bad mutation. Fourth
+    "asserted testid/class that exists nowhere in the product" case.
+
+    Also recorded: **M2 is survivor-adjacent by design.** The "If the email
+    exists" message appears for a nonexistent address too — **anti-enumeration**
+    — so that assertion *cannot* discriminate, and all the real evidence lives in
+    the email read and the toast. That is a case where the weak assertion is
+    correct product behaviour, not a defect.
+
+### An unexplained 5s tax on every email spec
+
+207. **`setupSMTP`'s single `PUT /api/email` takes ~5.0s on first call and
+    ~0.12s thereafter**, reproducible with plain curl (`#1 → 5.124s`, `#2–6 →
+    ~0.12s`) (`forgot-password`). It surfaced as a suspicious 6.7s/1.6s
+    alternation, and the agent **localized it precisely and then stopped**.
+
+    Ruled out: its own test code, delivery latency, and **IPv6 fallback — its
+    first hypothesis, which it tested and found wrong** (both `::1` and
+    `127.0.0.1` connect in 0 ms). **It did not identify the mechanism and
+    deliberately did not invent one.**
+
+    Recorded as open, and worth pursuing: **it taxes every email spec through the
+    shared helper**, so it is a real if small cost across the suite.

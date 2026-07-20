@@ -414,3 +414,4 @@ question/query-external.cy.spec.js
 data-studio/transforms/python-library.cy.spec.ts
 permissions/impersonated.cy.spec.js
 permissions/sandboxing/sandboxing-misconfiguration.cy.spec.ts
+onboarding/auth/forgot_password.cy.spec.js
