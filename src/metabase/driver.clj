@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; third-party drivers depend on this exact name
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like

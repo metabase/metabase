@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; the canonical QP entrypoint name predates the module layout
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.query-processor
   "Primary entrypoints to running Metabase (MBQL) queries.
