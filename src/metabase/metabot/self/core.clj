@@ -829,29 +829,18 @@
       (or auth
           (throw (missing-api-key-ex llm-type))))))
 
-(def ^:private ^:const default-connection-timeout-ms
-  "TCP connect timeout for an LLM HTTP request. A provider that's down or
-  unreachable should fail fast instead of holding a worker thread forever."
-  10000)
-
-(def ^:private ^:const default-socket-timeout-ms
-  "Inter-byte read timeout for an LLM HTTP request. Anthropic streams responses,
-  so this is the gap between successive chunks (NOT total response time). Picked
-  generously: extended thinking can pause for tens of seconds between thinking
-  chunks. Without this, a hung TLS read inside the stream blocks the worker
-  indefinitely — observed in production when an upstream proxy held the
-  connection open without sending data."
-  120000)
-
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
   Forces a connection + socket timeout on every request so a hung upstream can
-  never block the caller forever. Callers can override either timeout by
-  passing `:connection-timeout` / `:socket-timeout` in `req`."
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout default-connection-timeout-ms
-                     :socket-timeout     default-socket-timeout-ms}
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
                     (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))
