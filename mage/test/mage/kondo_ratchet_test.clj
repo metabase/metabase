@@ -108,10 +108,15 @@
       (is (= [[1 stamp]]
              (map (juxt :row :comment)
                   (plan (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n") [(wl 2)])))))
-    (testing "a marker above a plain code line marked the removed site itself; re-restore under it, no new marker"
+    (testing "a site that was itself marked before removal re-restores under its marker, no new marker"
       (is (= [[2 nil]]
              (map (juxt :row :comment)
-                  (plan (str stamp "\n(f)\n") [(wl 2)])))))
+                  (plan (str stamp "\n(f)\n") [(assoc (wl 2) :was-marked? true)])))))
+    (testing "a marked whole-line site over an unrelated inline ignore doesn't donate its marker to it"
+      (is (= [[2 nil]]
+             (map (juxt :row :comment)
+                  (plan (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")
+                        [(assoc (wl 2) :was-marked? true)])))))
     (testing "cross-round end to end: the round-two whole-line block lands above the round-one marker"
       (let [round1 (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")]
         (is (= {:text          (str stamp "\n#_{:clj-kondo/ignore [:x]}\n" round1)
@@ -171,7 +176,7 @@
   covers the originals."
   [text rows]
   (update (#'kondo-ratchet/remove-ignores-at text rows)
-          :sites (partial mapv #(dissoc % :original))))
+          :sites (partial mapv #(dissoc % :original :removed-line))))
 
 (deftest remove-ignores-at-originals-test
   (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"

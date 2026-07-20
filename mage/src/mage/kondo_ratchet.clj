@@ -134,21 +134,20 @@
 (defn- site-restore-plan
   "Restore sites annotated with `:comment` (and sometimes an adjusted `:row`), so every restored
   ignore ends up with its own marker adjacent and no insert splits an existing marker from the line
-  it marks. Whole-line restores each carry a marker; when the line above already holds one that marks
-  the code line's own ignore, the whole-line block moves above that marker instead of splitting the
-  pair -- unless the code line has no ignore, in which case the marker marked the removed site itself
-  (an --audit re-restore) and no new marker is needed. A row's inline restores share one marker,
-  directly above the code line, unless the row already carries one."
+  it marks. A whole-line site that was itself marked before removal (`:was-marked?`, an --audit
+  re-restore) returns beneath its still-present marker, unstamped; any other marker above the row
+  marks that row's own ignore, so an unmarked whole-line site moves above it with its own stamp.
+  A row's inline restores share one marker, directly above the code line, unless the row already
+  carries one."
   [lines sites]
   (mapcat (fn [[row row-sites]]
             (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)
-                  above-marker? (marker-on-line? (get lines (- row 2)))
-                  code-ignored? (seq (kondo-ratchet/line-linters (str (get lines (dec row)))))]
+                  above-marker? (marker-on-line? (get lines (- row 2)))]
               (concat (for [s wl]
                         (cond
-                          (and above-marker? code-ignored?) (assoc s :row (dec row), :comment keep-comment)
-                          above-marker?                     (assoc s :comment nil)
-                          :else                             (assoc s :comment keep-comment)))
+                          (and above-marker? (:was-marked? s)) (assoc s :comment nil)
+                          above-marker?                        (assoc s :row (dec row), :comment keep-comment)
+                          :else                                (assoc s :comment keep-comment)))
                       (when (seq inl)
                         (if (marked-row? lines row)
                           (map #(assoc % :comment nil) inl)
@@ -264,9 +263,10 @@
                                               + deletions)))]
     {:text    (:text result)
      :sites   (for [{:keys [line linters original]} deletions]
-                {:row      (post-removal-row line)
-                 :linters  linters
-                 :original original})
+                {:row          (post-removal-row line)
+                 :removed-line line
+                 :linters      linters
+                 :original     original})
      ;; adjusted like :sites, so warnings point at the rewritten file
      :skipped (map (comp post-removal-row :line) unbalanced)}))
 
@@ -317,7 +317,10 @@
           (println (format "WARNING: %s has pre-existing findings; its candidates are excluded this run -- clean it up or mark them by hand"
                            file)))
         (when (seq candidates)
-          (let [removals (into {}
+          (let [marked-rows (into {}
+                                  (map (fn [[file ms]] [file (into #{} (map :row) ms)]))
+                                  (group-by :filename marked))
+                removals (into {}
                                (for [[file file-candidates] (group-by :filename candidates)]
                                  (let [{:keys [text sites skipped]}
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
@@ -325,7 +328,11 @@
                                    (doseq [row skipped]
                                      (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
                                                       file row)))
-                                   [file sites])))
+                                   ;; whether the removed site carried a marker decides where its marker
+                                   ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it
+                                   [file (mapv #(assoc % :was-marked?
+                                                       (contains? (get marked-rows file #{}) (:removed-line %)))
+                                               sites)])))
                 named    (fn [file] (into #{} (mapcat :linters) (removals file)))
                 restore-sites! (fn [file->sites]
                                  ;; puts each removed ignore back exactly as it was; returns
