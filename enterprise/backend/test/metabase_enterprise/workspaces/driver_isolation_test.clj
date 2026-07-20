@@ -1155,5 +1155,6 @@
         (when thrown
           (let [sql-ex (find-sql-exception thrown)]
             (when sql-ex
-              (is (not (instance? java.sql.BatchUpdateException sql-ex))
-                  (str "the JDBC batch envelope should be unwrapped:\n" (ex-message sql-ex))))))))))
+              (is (not (re-find #"Batch entry|getNextException" (str (ex-message sql-ex))))
+                  (str "the JDBC batch envelope wording should not leak into the message:\n"
+                       (ex-message sql-ex))))))))))

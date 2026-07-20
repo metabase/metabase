@@ -860,15 +860,14 @@
 
    Connectors chain the underlying exception differently: pgjdbc (and its
    Redshift fork) via `.getNextException`, the MariaDB connector via
-   `.getCause`, and mssql-jdbc not at all — for the latter we rebuild a plain
-   `SQLException` carrying the same message/SQLState/error code."
+   `.getCause`. Connectors that chain nothing (e.g. mssql-jdbc) don't wrap the
+   message in the first place, so the batch exception is returned as is."
   ^Throwable [^Throwable t]
   (if (instance? java.sql.BatchUpdateException t)
     (let [^java.sql.BatchUpdateException bue t]
       (or (.getNextException bue)
           (.getCause bue)
-          (doto (java.sql.SQLException. ^String (ex-message bue) (.getSQLState bue) (.getErrorCode bue))
-            (.setStackTrace (.getStackTrace bue)))))
+          bue))
     t))
 
 (defn scrub-exceptions
