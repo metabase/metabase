@@ -361,10 +361,10 @@
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
             (let [collections (#'collections.children/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :permissions-set                #{"/"}})]
+                                                                          :exclude-other-user-collections false
+                                                                          :namespaces #{nil}
+                                                                          :shallow                        true
+                                                                          :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -375,11 +375,11 @@
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
             (let [collections (#'collections.children/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id a)
-                                                                    :permissions-set                #{"/"}})]
+                                                                          :exclude-other-user-collections false
+                                                                          :namespaces #{nil}
+                                                                          :shallow                        true
+                                                                          :collection-id                  (:id a)
+                                                                          :permissions-set                #{"/"}})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -390,10 +390,10 @@
                           (map #(select-keys % [:name]))
                           (into #{})))))
             (let [collections (#'collections.children/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id b)
-                                                                    :permissions-set                #{"/"}})]
+                                                                          :exclude-other-user-collections false
+                                                                          :shallow                        true
+                                                                          :collection-id                  (:id b)
+                                                                          :permissions-set                #{"/"}})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
@@ -1388,8 +1388,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1400,8 +1400,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1414,8 +1414,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1428,8 +1428,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1439,8 +1439,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :model
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1450,8 +1450,8 @@
             [:%lower.name :asc]
             [:id :asc]]
            (collections.children/children-sort-clause {:sort-column :model
-                                                 :sort-direction :desc
-                                                 :official-collections-first? true} :mysql)))))
+                                                       :sort-direction :desc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1462,8 +1462,8 @@
               [:%lower.name :asc]
               [:id :asc]]
              (collections.children/children-sort-clause {:sort-column :description
-                                                   :sort-direction :asc
-                                                   :official-collections-first? true} :postgres))))
+                                                         :sort-direction :asc
+                                                         :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
@@ -1471,8 +1471,8 @@
               [:%lower.name :asc]
               [:id :asc]]
              (collections.children/children-sort-clause {:sort-column :description
-                                                   :sort-direction :desc
-                                                   :official-collections-first? true} :postgres))))))
+                                                         :sort-direction :desc
+                                                         :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
