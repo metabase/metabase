@@ -1031,6 +1031,17 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   below it. Write `create\*/…` or reword.
 - **`MetabaseApi` has no `delete` shorthand** — port `cy.request("DELETE", …)`
   via `api.fetch("DELETE", …)`.
+- **"List re-renders under a resolved locator" also hits BREADCRUMBS.** React
+  reuses the Mantine `Breadcrumbs` anchor nodes while swapping the trail
+  contents, so a locator that resolved to "Orders" can be the "Library" anchor by
+  click time — landing you on the wrong page, 3/3 deterministically. An href
+  assertion alone is NOT sufficient (it re-resolves too). Gate on the settled
+  trail (e.g. the expected crumb count) before clicking.
+- **An avatar initial is part of the accessible name.** Group/collection links in
+  `/admin/people/groups` compute as `"C collection"`, not `"collection"`, so
+  `getByRole("link", { name: "collection", exact: true })` matches nothing — and
+  as an *absence* anchor it fails silently in the passing direction. Drop
+  `exact`, or match the rendered form.
 - **A Cypress chain carries an implicit existence assertion that a naive port
   silently drops.** `cy.findByTestId("library-page").find(X).should("have.length", 0)`
   asserts TWO things: that `library-page` exists (findBy* throws if not) and that

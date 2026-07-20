@@ -98,6 +98,13 @@
 - `MetabaseApi` — HTTP client mirroring cy.request semantics: requests run as the currently
 - `resolveToken`
 
+## application-permissions.ts
+- `SETTINGS_INDEX` — Column indices in the application-permissions table
+- `MONITORING_INDEX`
+- `SUBSCRIPTIONS_INDEX`
+- `createSubscription` — Port of the spec-local createSubscription(user_id): create a question on a
+- `notificationsList` — cy.findByTestId("notifications-list"). */
+
 ## bar-chart.ts
 - `getValueLabels` — Port of H.getValueLabels (e2e-visual-tests-helpers.js): the ECharts data
 - `otherSeriesChartPaths` — Port of H.otherSeriesChartPaths (e2e-visual-tests-helpers.js): the grouped
@@ -994,6 +1001,55 @@
 - `createLibraryWithItems` — Port of createLibraryWithItems (e2e/support/test-library-data.ts): create the
 - `createLibraryWithTable` — Port of createLibraryWithTable (e2e/support/test-library-data.ts). */
 
+## data-studio-metrics.ts
+- `MetricDetail` — The rest of Cypress's MetricPage (e2e-metric-page-helpers.ts). Header tabs
+- `visitMetricPage` — Port of the spec-local visitMetricPage: navigate straight to the metric by
+- `waitForCreateCard` — The `@createCard` alias: cy.intercept("POST", "/api/card"). */
+- `waitForUpdateCard` — The `@updateCard` alias: cy.intercept("PUT", "/api/card/*"). */
+- `waitForUpdateCacheConfig` — The `@updateCacheConfig` alias: cy.intercept("PUT", "/api/cache"). */
+- `renameMetricTitle` — Rename the metric's EditableText title (the `aboutPage` header) and commit
+
+## data-studio-snippets.ts
+- `newSnippetPage` — Port of H.DataStudio.Snippets.newPage(). */
+- `editSnippetPage` — Port of H.DataStudio.Snippets.editPage(). */
+- `archivedSnippetsPage` — Port of H.DataStudio.Snippets.archivedPage(). */
+- `visitSnippet` — Port of H.DataStudio.Snippets.visitSnippet(id). */
+- `snippetHeader` — The snippet header (`cy.findByTestId("snippet-header")`). */
+- `newSnippetNameInput` — Port of H.DataStudio.Snippets.nameInput():
+- `snippetNameInput` — The snippet name field addressed the way the spec's "editing" tests do:
+- `snippetDescriptionInput` — Port of H.DataStudio.Snippets.descriptionInput():
+- `snippetSaveButton` — Port of H.DataStudio.Snippets.saveButton(). */
+- `snippetCancelButton` — Port of H.DataStudio.Snippets.cancelButton(). */
+- `snippetEditor` — Port of `editor.get()`: wait out the loading indicator, then the content. */
+- `focusSnippetEditor` — Port of `editor.focus()`: click the RIGHT edge of the content (the Cypress
+- `typeInSnippetEditor` — Port of `editor.type(text)` for plain text (no `{…}` escape sequences). */
+- `snippetEditorValue` — Port of `editor.value()`: join the `.cm-line` text nodes with newlines,
+- `createSnippetFolder` — Port of H.createSnippetFolder (api/createSnippetFolder.ts). */
+- `updateSnippet` — Port of H.updateSnippet (api/updateSnippet.ts). */
+- `waitForCreateSnippet` — The `@createSnippet` alias: POST /api/native-query-snippet. */
+- `waitForUpdateSnippet` — The `@updateSnippet` alias: PUT /api/native-query-snippet/*. */
+- `waitForCreateCollection` — The `@createCollection` alias: POST /api/collection. */
+- `waitForUpdateCollection` — The `@updateCollection` alias: PUT /api/collection/*. */
+- `blurEditableText` — Blur the focused `EditableText` textarea. Never `keyboard.press("Tab")` —
+
+## data-studio-tables.ts
+- `tableFieldsPage` — Port of H.DataStudio.Tables.fieldsPage(). */
+- `visitTableOverviewPage` — Port of H.DataStudio.Tables.visitOverviewPage(tableId). */
+- `visitTableFieldsPage` — Port of H.DataStudio.Tables.visitFieldsPage(tableId). */
+- `tableNameInput` — Port of H.DataStudio.Tables.nameInput(): cy.findByTestId("table-name-input").
+- `tableMoreMenu` — Port of H.DataStudio.Tables.moreMenu(): header().icon("ellipsis").
+- `tableOverviewTab` — Port of H.DataStudio.Tables.overviewTab(): header().findByText("Overview"). */
+- `tableFieldsTab` — Port of H.DataStudio.Tables.fieldsTab(). */
+- `tableDependenciesTab` — Port of H.DataStudio.Tables.dependenciesTab(). */
+- `clickMoreMenuViewTable` — Port of H.DataStudio.Tables.moreMenuViewTable(): the popover's
+- `tableDescriptionSidebar` — Port of H.DataStudio.Tables.Overview.descriptionSidebar(). */
+- `tableDescriptionText` — Port of H.DataStudio.Tables.Overview.descriptionText(). */
+- `tableDescriptionInput` — Port of H.DataStudio.Tables.Overview.descriptionInput(). */
+- `allTableItems` — Port of H.DataStudio.Library.allTableItems(). */
+- `fieldSectionNameInput` — Port of H.DataModel.FieldSection.getNameInput(). */
+- `fieldSectionCloseButton` — Port of H.DataModel.FieldSection.getCloseButton():
+- `replaceEditableText` — `.clear().type(text).blur()` on an EditableText textarea.
+
 ## database-routing-admin.ts
 - `SAMPLE_DB_ID` — Mirrors e2e/support/cypress_data.js SAMPLE_DB_ID / WRITABLE_DB_ID. */
 - `WRITABLE_DB_ID`
@@ -1172,6 +1228,13 @@
 - `expectVisibleNodeButtonCount` — Port of getDocumentNodeButtons().filter(":visible").should("have.length", n). */
 - `lastVisibleNodeButtonHref` — The href of the LAST visible node button in DOM order — the Playwright
 - `getInboxWithRetry` — Port of H.getInbox(emailsCount): polls until the inbox holds exactly
+
+## downgrade-ee-to-oss.ts
+- `EE_DATA_ACCESS_PERMISSION_INDEX` — The spec's EE_DATA_ACCESS_PERMISSION_INDEX (the view-data column in EE). */
+- `OSS_NATIVE_QUERIES_PERMISSION_INDEX` — The spec's OSS_NATIVE_QUERIES_PERMISSION_INDEX. Same numeric index as the EE
+- `isPermissionDisabled` — Port of H.isPermissionDisabled (e2e-permissions-helpers.js):
+- `saveAndConfirmPermissions` — cy.button("Yes").click();
+- `configureSandboxPolicy` — Port of the spec's sandboxing-modal block: after picking "Row and column
 
 ## download-permissions.ts
 - `DATA_ACCESS_PERMISSION_INDEX`
@@ -1446,6 +1509,15 @@
 - `signJwt` — Port of cy.task("signJwt") (e2e/support/commands/embedding/signJwt or the
 - `ALL_USERS_GROUP` — Mirrors ALL_USERS_GROUP in e2e/support/cypress_data.js (fixed id baked
 
+## invite-to-view.ts
+- `PASSWORD` — Port of the spec-local PASSWORD. */
+- `inviteEmail` — Port of the spec-local inviteEmail(). */
+- `inviteFromShareMenu` — Port of the spec-local inviteFromShareMenu: open the Share menu on the
+- `joinUrlFromEmail` — Port of the spec-local joinUrlFromEmail: pull the Join link out of a sent
+- `completeSignup` — Port of the spec-local completeSignup: set a password on the new-user
+- `enableGoogleSSO` — Port of the spec-local enableGoogleSSO(). Requires an admin session. */
+- `revokeCollectionAccess` — Revoke a group's access to a collection through the collection graph
+
 ## joins-custom-expressions.ts
 - `addJoinConditionCustomExpression` — Add one side of a join condition through the Custom Expression editor: the
 
@@ -1535,6 +1607,12 @@
 - `MeasureEditor`
 - `MeasureRevisionHistory`
 - `createMeasure` — Port of H.createMeasure (e2e-table-metadata-helpers.js): POST /api/measure. */
+
+## measures-published-tables.ts
+- `publishedTableMeasuresUrl` — The published-table measures list route. */
+- `visitPublishedTableMeasuresPage` — Port of H.DataStudio.Tables.visitMeasuresPage(tableId). */
+- `visitPublishedTableMeasurePage` — Port of H.DataStudio.Tables.visitMeasurePage(tableId, measureId). */
+- `tableMeasuresTab` — Port of H.DataStudio.Tables.measuresTab(): header().findByText("Measures"). */
 
 ## measures-queries.ts
 - `MeasureEditor`
@@ -1765,6 +1843,25 @@
 - `runNativeQuery` — Port of H.runNativeQuery: click the play button in the native editor, wait
 - `createNativeModel` — Port of H.createNativeQuestion({ type: "model", ... }). Mirrors the Cypress
 
+## multi-factor-auth.ts
+- `mfaSetting` — Port of the spec-local mfaSetting(). */
+- `mfaToggle` — Port of the spec-local mfaToggle() — `findByLabelText(/Enabled|Disabled/)`.
+- `loginPage` — The auth page shell (`cy.findByTestId("login-page")`). */
+- `authenticatorCodeInput` — `findByLabelText("Authenticator code")` → exact (PORTING rule 1). */
+- `recoveryCodeInput` — `findByLabelText("Recovery code")` → exact. */
+- `confirmCodeInput` — `findByLabelText("Confirm with an authenticator code or a recovery code")`
+- `button` — Port of `cy.button(name)` — findByRole("button", { name }), exact for
+- `waitForEnforcement` — Port of `cy.intercept("PUT", "/api/setting/mfa-enforcement")`. */
+- `waitForEnroll` — Port of `cy.intercept("POST", "/api/ee/mfa/enroll")`. */
+- `waitForRecoveryCodes` — Port of `cy.intercept("POST", "/api/ee/mfa/recovery-codes")`. */
+- `enableMfa` — Port of the spec-local enableMfa(). Requires an admin session. */
+- `enrollNormalUser` — Port of the spec-local enrollNormalUser(): sign in as the normal user and
+- `clickAuthTextButton` — These sit inside the same `<Form>` as the autofocused code input, so the
+- `enrollViaUI` — Port of the spec-local enrollViaUI(): drive the whole setup modal from the
+- `signInWithPassword` — Port of the spec-local signInWithPassword(): sign out, then log the normal
+- `getResetLink` — Port of the spec-local getResetLink(): the href of the email's first anchor. */
+- `generateTotpCode` — Port of the spec-local generateTotpCode(). SHA1 / 6 digits / 30s, matching
+
 ## multiple-column-breakouts.ts
 - `createAndVisitQuestion` — Port of H.createQuestion(details, { visitQuestion: true }). */
 - `assertTableData` — Port of H.assertTableData — header cells and first body rows of the QB's
@@ -1922,6 +2019,10 @@
 - `notificationList` — Port of H.notificationList: findByRole("list", { name: "undo-list" }). */
 - `openUserNotifications` — Port of the spec's openUserNotifications: visit /account/notifications and
 
+## onboarding-sso.ts
+- `setupFakeGoogleAuth` — Port of the spec's beforeEach block: set a fake Google client ID and enable
+- `signInWithEmailLink` — The "Sign in with email" link on the SSO card screen (PasswordButton renders
+
 ## onboarding.ts
 - `USER_NAMES` — First/last names from e2e/support/cypress_data.js — that file is untyped
 - `getFullName` — Port of H.getFullName (e2e/support/helpers/e2e-users-helpers.ts), minus the
@@ -2036,6 +2137,12 @@
 - `waitForPublicListings` — The public-sharing page fires three list requests on load
 - `revokePublicLink` — Port of the spec's revoke flow: click a listing's "Revoke link" icon, confirm
 
+## published-tables-segments.ts
+- `publishedTableSegmentsUrl` — The published-table segments list route. */
+- `visitPublishedTableSegmentsPage` — Port of H.DataStudio.Tables.visitSegmentsPage(tableId). */
+- `visitPublishedTableSegmentPage` — Port of H.DataStudio.Tables.visitSegmentPage(tableId, segmentId). */
+- `tableSegmentsTab` — Port of H.DataStudio.Tables.segmentsTab(): header().findByText("Segments"). */
+
 ## question-management.ts
 - `ORDERS_COUNT_QUESTION_ID`
 - `getPersonalCollectionName`
@@ -2103,6 +2210,10 @@
 ## recently-viewed.ts
 - `advanceServerClockBy` — Port of the spec-local advanceServerClockBy: POST /api/testing/set-time
 - `assertRecentlyViewedItem` — Port of the spec-local assertRecentlyViewedItem: the index-th
+
+## reference-databases.ts
+- `startEditingReferenceDetails` — Port of `cy.button(/Edit/).trigger("click")` on the reference Details header.
+- `referenceSidebarItem` — Port of `cy.findAllByRole("listitem").filter(":contains(<name>)")` against the
 
 ## relative-datetime.ts
 - `STARTING_FROM_UNITS`
@@ -2205,6 +2316,49 @@
 - `queryWritableDB` — Port of H.queryWritableDB(sql, "postgres") — the Cypress version runs
 - `getTableId` — Port of H.getTableId (e2e-qa-databases-helpers.js). */
 - `resyncDatabase` — Port of H.resyncDatabase + waitForSyncToFinish
+
+## sdk-embed-setup.ts
+- `getEmbedSidebar` — Port of `getEmbedSidebar`.
+- `getResourceSelectorButton` — Port of `getResourceSelectorButton`. Upstream takes a Cypress
+- `codeBlock` — Port of `codeBlock`: the CodeMirror content of the generated snippet. */
+- `embedModalContent` — Port of H.embedModalContent. */
+- `embedModalEnableEmbeddingCard` — Port of H.embedModalEnableEmbeddingCard. */
+- `loadedPreviewIframe` — The wizard preview's loaded-iframe marker — `visitNewEmbedPage` gates on it,
+- `embedModalEnableEmbedding` — freezes via `useState`) but ALSO appears transiently on the *stale*
+- `waitForWizardDashboard` — Arms a wait for the wizard's dashboard fetch. Exported because several
+- `waitForRecentActivity` — Arms a wait for `GET /api/activity/recents?…` (upstream's `@recentActivity`
+- `visitNewEmbedPage` — Port of `visitNewEmbedPage`.
+- `navigateToEntitySelectionStep` — already accepted by `visitNewEmbedPage`'s `embedModalEnableEmbedding()` — so
+- `navigateToEmbedOptionsStep` — Port of `navigateToEmbedOptionsStep`. */
+- `navigateToGetCodeStep` — Port of `navigateToGetCodeStep`. */
+- `completeWizard` — Port of `completeWizard`.
+- `assertRecentItemName` — Port of `assertRecentItemName`. Upstream reads the `@recentActivity` alias;
+- `assertDashboard` — Port of `assertDashboard`. Same alias→awaited-body inversion. */
+- `logRecent` — Port of the `logRecent` helper duplicated in select-embed-entity /
+
+## sdk-iframe.ts
+- `AUTH_PROVIDER_URL` — Port of e2e/support/helpers/embedding-sdk-helpers/constants.ts. */
+- `JWT_SHARED_SECRET` — Port of e2e-jwt-helpers.ts. */
+- `getSignedJwtForUser` — Port of H.getSignedJwtForUser. Upstream uses `jose`; that package lives in
+- `prepareSdkIframeEmbedTest` — Port of H.prepareSdkIframeEmbedTest.
+- `enableJwtAuth` — Port of H.enableJwtAuth. */
+- `enableSamlAuth` — Port of H.enableSamlAuth. Upstream reads the cert with `cy.readFile`; here
+- `mockAuthProviderAndJwtSignIn` — Port of H.mockAuthProviderAndJwtSignIn.
+- `mockAuthSsoEndpointForSamlAuthProvider` — Port of H.mockAuthSsoEndpointForSamlAuthProvider. Upstream's relative
+- `stubWindowOpenForSamlPopup` — Port of H.stubWindowOpenForSamlPopup.
+- `stubWindowOpenInert` — Stub `window.open` into an inert popup — for the "we only care which auth
+- `loadSdkIframeEmbedTestPage` — Port of H.loadSdkIframeEmbedTestPage.
+- `visitCustomHtmlPage` — Port of H.visitCustomHtmlPage. */
+- `getSdkIframeEmbedHtml` — Port of getSdkIframeEmbedHtml. Every URL comes from `mb.baseUrl`. */
+- `getNewEmbedScriptTag`
+- `getNewEmbedConfigurationScript`
+- `SIMPLE_EMBED_IFRAME_SELECTOR`
+- `getSimpleEmbedIframe` — Port of H.getSimpleEmbedIframeContent (as a FrameLocator). */
+- `waitForSimpleEmbedIframesToLoad` — Port of H.waitForSimpleEmbedIframesToLoad. */
+- `sdkErrorContainer`
+- `assertEmbedTargetsThisSlot` — 1. STRUCTURAL — the embed iframe's own `src` origin must equal
+- `writeSlotMarker` — Writes a slot-unique marker into the app DB and returns it. Read it back
+- `readApplicationNameFromEmbed` — Reads `application-name` from inside the embed iframe's own session
 
 ## search-filters.ts
 - `ADMIN_USER_ID`
@@ -2356,6 +2510,20 @@
 - `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
 - `setupGoogleAuth` — Port of the spec-local setupGoogleAuth: PUT /api/google/settings with the
 
+## sso-jwt.ts
+- `getJwtCard` — Port of the spec-local getJwtCard:
+- `waitForUpdateSettings` — The `@updateSettings` alias: PUT /api/setting (the bulk endpoint). */
+- `waitForUpdateSetting` — The `@updateSetting` alias: PUT /api/setting/<key> (the single-key endpoint). */
+
+## sso-saml.ts
+- `getSamlCard` — Port of the spec-local getSamlCard:
+- `typeAndBlurUsingLabel` — Port of H.typeAndBlurUsingLabel (e2e-misc-helpers.js):
+- `goToAuthOverviewPage` — Port of H.goToAuthOverviewPage (e2e-misc-helpers.js:443). */
+- `enterSamlSettings` — Port of the spec-local enterSamlSettings.
+- `visitAuthSettings` — The group-mappings settings page for an auth method, with the two GETs the
+- `crudGroupMappingsWidget` — Port of crudGroupMappingsWidget(authenticationMethod). */
+- `checkGroupConsistencyAfterDeletingMappings` — Port of checkGroupConsistencyAfterDeletingMappings(authenticationMethod). */
+
 ## summarization.ts
 - `createTestQuery` — Port of H.createTestQuery (api/createTestQuery.ts): POST the MBQL5 test-query
 - `createCard` — Port of H.createCard (api/createCard.ts): POST /api/card with a raw
@@ -2437,12 +2605,30 @@
 - `resetFilterWidgetToDefault` — Port of H.resetFilterWidgetToDefault (the revert icon, hover-gated). */
 - `dashcardTableHeaderColumn` — Port of H.tableHeaderColumn scoped to a dashcard — the click-behavior tests
 
+## tenant-users-sidecar.ts
+- `GIZMO_TENANT`
+- `GIZMO_USER`
+- `loginWithJWT` — user (jwt-user-provisioning-enabled?), issues a session cookie and redirects
+- `createTenant` — Port of `cy.request("POST", "/api/ee/tenant", tenant)`. */
+- `sidebarCollectionItem` — Port of `cy.findByText(name).closest("li")` inside the navigation sidebar.
+- `pickerRowLink` — Port of `cy.findByText(name).closest("a")` inside the entity picker: the
+- `expectIconVisible` — Port of `cy.icon(name).should("be.visible")`.
+
 ## text-cards.ts
 - `addTextBoxWhileEditing` — Port of H.addTextBoxWhileEditing: assumes the dashboard is already in edit
 
 ## text.ts
 - `escapeRegExp` — Escape a string for literal use inside a RegExp. */
 - `caseSensitiveSubstring` — Case-sensitive substring matcher (Cypress `cy.contains` / `:contains`
+
+## theme-upsell.ts
+- `ADMIN_EMAIL` — The email of the `admin` snapshot user — mirrors support/sample-data.ts. */
+- `CLOUD_TRIAL_PATH`
+- `mockTrialAvailability` — Port of the spec's
+- `mockCurrentAdminAsStoreUser` — Port of the spec's `cy.intercept("GET", "/api/session/properties", req =>
+- `themesNavLink` — Port of
+- `visibleGemIcon` — Port of `cy.icon("gem").should("be.visible")` scoped inside a locator.
+- `gemIcons` — The `.Icon-gem` elements inside a scope, unfiltered (for absence checks). */
 
 ## time-series-chrome.ts
 - `dateFilterPicker` — The `date-filter-picker` container. Both the timeseries chrome popover
@@ -2603,6 +2789,13 @@
 - `applyBrush` — Port of H.applyBrush(left, right), scoped to a dashcard. Cypress fires
 - `waitForDataset` — The @dataset intercept: POST /api/dataset. Register BEFORE the triggering
 - `trackDatasetRequests` — A running counter of POST /api/dataset requests, for the VIZ-979 assertion
+
+## visualizer-snowplow-tracking.ts
+- `ACCOUNTS_COUNT_BY_CREATED_AT` — Port of ACCOUNTS_COUNT_BY_CREATED_AT (e2e/support/test-visualizer-data.ts). */
+- `deselectDataset` — Port of H.deselectDataset: search for the dataset, assert its swap button is
+- `removeDataSourceThroughMenu` — Port of H.removeDataSource(name, { throughMenu: true }): open the datasource
+- `toggleVisualizerSettingsSidebar` — Port of H.toggleVisualizerSettingsSidebar. */
+- `closeDashcardVisualizerModal` — Port of H.closeDashcardVisualizerModal. */
 
 ## viz-charts-repros.ts
 - `visitAdhoc`
