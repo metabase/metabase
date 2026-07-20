@@ -164,6 +164,7 @@
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/delete-from-index! pgvector index model ids)))
 
+;; REPL-only requires in the comment block; metabase.test also crosses the module boundary
 #_{:clj-kondo/ignore [:unresolved-require :metabase/modules]}
 (comment
   (init-semantic-search! pgvector index-metadata embedding-model)
