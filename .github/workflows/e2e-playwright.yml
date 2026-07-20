@@ -172,7 +172,9 @@ jobs:
         run: |
           mkdir -p slot-logs
           for d in /tmp/mb-pw-slot-*; do
-            [ -e "$d/backend.log" ] && cp "$d/backend.log" "slot-logs/$(basename "$d").log" || true
+            if [ -e "$d/backend.log" ]; then
+              cp "$d/backend.log" "slot-logs/$(basename "$d").log" || true
+            fi
           done
           ls -la slot-logs || true
       - name: Upload slot backend logs
