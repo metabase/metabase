@@ -2052,3 +2052,44 @@ open item, not as evidence.
     this is recorded as environment-bounded rather than as a product claim.
     Third instance of the virtualization-window class today, after the ~18-row
     results grid and the ~20-row schema picker.
+
+### A row-count assertion that cannot distinguish true from false
+
+119. **Flipping the boolean filter leaves one test green, and the cause is the
+    data, not the assertion** (`dashboard-filters-boolean`). Flipping
+    `False`→`True` killed the mbql and native-variable tests **at a tail
+    assertion** (the fourth row-count check) but **survived** on the
+    native-field-filter test.
+
+    Confirmed against the container rather than inferred: `many_data_types` holds
+    **exactly one `true` row and one `false` row**, so both branches expect the
+    identical string `"1 row"`. The assertion is structurally incapable of
+    telling the two values apart.
+
+    **The distinction that matters was then made explicitly.** "Same data" and
+    "vacuous assertion" are different defects, and the agent separated them by
+    asserting *presence* under the same mutation: a temporary "false cell
+    visible" check went **red**, proving the interaction genuinely fires and only
+    the *count* is blind. Corroborated three further times, where
+    `assertTableRowsCount(1)` and `assertQueryBuilderRowCount(1)` all sail
+    through a flipped boolean.
+
+    Kept **verbatim with the analysis inline** — the test is faithful to
+    upstream and the weakness is upstream's. **A row count is a weak proxy for a
+    boolean filter whenever both branches return the same number of rows**, which
+    for a two-row fixture is always.
+
+### An accurate tag over a partially unnecessary gate
+
+120. **`@external` is correct here, but 6 of 9 tests never touch the container**
+    (`dashboard-filters-boolean`). The `beforeEach` writes and syncs
+    `many_data_types` in the writable postgres, so the gate is genuinely required
+    for the spec as written — gate-ON 9 executed, gate-OFF 9 skipped.
+
+    But only 3 tests actually depend on it; the other 6 would run on `default`.
+    Because the `beforeEach` is **shared upstream**, splitting them would be a
+    structural change rather than a port, so it was recorded as an audit note and
+    left faithful. Same class as `custom-viz`.
+
+    Worth tracking as a **coverage-recovery candidate**: specs where an accurate
+    tag hides tests that could execute without containers. This is the second.
