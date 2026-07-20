@@ -24,16 +24,18 @@
   that hold their whole file list in memory and so have no tree objects to walk; the git source overrides
   this with a real subtree read."
   [paths ^String path]
-  (let [prefix (str path "/")]
-    (into []
-          (comp (keep (fn [^String p]
-                        (when (str/starts-with? p prefix)
-                          (let [child (subs p (count prefix))]
-                            (if-let [idx (str/index-of child "/")]
-                              (subs child 0 idx)
-                              child)))))
-                (distinct))
-          (sort paths))))
+  ;; the root is the empty prefix — snapshot paths are repo-relative, so they never start with a slash
+  (let [prefix (if (str/blank? path) "" (str path "/"))]
+    (->> paths
+         (keep (fn [^String p]
+                 (when (str/starts-with? p prefix)
+                   (let [child (subs p (count prefix))]
+                     (if-let [idx (str/index-of child "/")]
+                       (subs child 0 idx)
+                       child)))))
+         distinct
+         sort
+         vec)))
 
 ;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
 ;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the

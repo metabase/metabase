@@ -24,10 +24,13 @@
   "The immediate children of `dir` implied by `paths` — the flat-map stand-in for the real snapshot's
    single-subtree read."
   [paths dir]
-  (let [prefix (str dir "/")]
-    (distinct (keep #(when (str/starts-with? % prefix)
-                       (first (str/split (subs % (count prefix)) #"/")))
-                    paths))))
+  (let [prefix (if (str/blank? dir) "" (str dir "/"))]
+    (->> paths
+         (keep #(when (str/starts-with? % prefix)
+                  (first (str/split (subs % (count prefix)) #"/"))))
+         distinct
+         sort
+         vec)))
 
 (defn- snapshot
   "Build a snapshot (as the remote-sync import passes one) from a path->content

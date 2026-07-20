@@ -31,6 +31,7 @@
   (let [by-path (into {} (map (juxt :path :content)) (source/serialize-specs entities task-id))]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
+      (list-dir [_ p] (source/paths->child-names (keys by-path) p))
       (read-file [_ p] (get by-path p))
       (open-commit [_]
         (let [staged (atom [])]
@@ -48,6 +49,25 @@
               "merged-version")
             (abort-commit! [_] nil))))
       (version [_] "remote-tip"))))
+
+(deftest paths->child-names-test
+  (testing "the flat-path stand-in matches the contract git's list-dir implements"
+    (let [paths ["root.txt"
+                 "data_apps/README.md"
+                 "data_apps/beta/data_app.yaml"
+                 "data_apps/alpha/data_app.yaml"
+                 "data_apps/alpha/deep/nested.js"]]
+      (testing "immediate children only, sorted, deduped"
+        (is (= ["README.md" "alpha" "beta"] (source/paths->child-names paths "data_apps")))
+        (is (= ["data_app.yaml" "deep"] (source/paths->child-names paths "data_apps/alpha"))))
+      (testing "the repo root — paths are repo-relative, so the root prefix is empty, not \"/\""
+        (is (= ["data_apps" "root.txt"] (source/paths->child-names paths ""))))
+      (testing "a file, or an absent directory, has no children"
+        (is (= [] (source/paths->child-names paths "root.txt")))
+        (is (= [] (source/paths->child-names paths "nope"))))
+      (testing "sorting is by child name — a sibling sorting before the directory's separator can't reorder it"
+        ;; \- sorts before \/, so sorting the raw paths would yield ("a-b" "a") here
+        (is (= ["a" "a-b"] (source/paths->child-names ["d/a-b" "d/a/x"] "d")))))))
 
 (deftest preview-merge-clean-test
   (testing "preview-merge reports a clean merge and summary without writing"
