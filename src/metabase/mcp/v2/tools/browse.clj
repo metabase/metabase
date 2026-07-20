@@ -1,19 +1,29 @@
 (ns metabase.mcp.v2.tools.browse
-  "The v2 MCP `browse_data` tool: one tool for the data hierarchy, dispatched on an explicit
-   `action` enum. The `list_*` actions page server-side over the full permission-filtered sets
-   (the backing endpoints have no paging); `get_fields` rides the batched, sandbox-aware
-   table-metadata fetch and applies a byte budget — whole tables in request order, the rest
-   named under `omitted`, never a silently truncated table."
+  "The v2 MCP browse tools.
+
+   `browse_data`: one tool for the data hierarchy, dispatched on an explicit `action` enum.
+   The `list_*` actions page server-side over the full permission-filtered sets (the backing
+   endpoints have no paging); `get_fields` rides the batched, sandbox-aware table-metadata
+   fetch and applies a byte budget — whole tables in request order, the rest named under
+   `omitted`, never a silently truncated table.
+
+   `browse_collection`: structural navigation over every collection partition — items mode
+   over any id form (numeric | entity_id | \"root\" | \"trash\") and namespace, tree mode
+   composing the shallow tree fetch per expandable node under a depth, per-node child cap,
+   and total node budget."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.children :as collections.children]
+   [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -522,3 +532,302 @@
     "list_tables"    (list-tables args)
     "list_models"    (list-models args)
     "get_fields"     (get-fields args)))
+
+;;; --------------------------------------------- browse_collection ------------------------------------------------
+
+(def ^:private collection-item-concise-keys
+  [:id :name :model :description :collection_position])
+
+(def ^:private collection-item-detailed-keys
+  (into collection-item-concise-keys
+        [:entity_id :collection_id :database_id :display :archived :authority_level
+         :moderated_status :last_used_at :location :here :below :last-edit-info]))
+
+(projections/register-projection!
+ :collection-item
+ {:concise  #(compact (select-keys % collection-item-concise-keys))
+  :detailed #(compact (select-keys % collection-item-detailed-keys))
+  :sample   (-> (zipmap collection-item-detailed-keys (repeat "x"))
+                (assoc :last-edit-info {:id 1 :email "x" :first_name "x" :last_name "x" :timestamp "x"}
+                       :here ["card"]
+                       :below ["card"]))})
+
+;;; ------------------------------------------ browse_collection validation ----------------------------------------
+
+(def ^:private collection-items-mode-args
+  #{:id :mode :namespace :type :created_by :pinned_state :sort_column :sort_direction :limit :offset
+    :response_format :fields})
+
+(def ^:private collection-tree-mode-args
+  #{:id :mode :namespace :depth})
+
+(defn- validate-browse-collection-args!
+  [{:keys [mode] :as args}]
+  (if (= mode "tree")
+    (when-let [bad (seq (sort (map name (remove collection-tree-mode-args (keys args)))))]
+      (common/throw-teaching-error
+       (format "`%s` do%s not apply to tree mode — trees have no pagination or item filters; re-root with browse_collection(id: <subcollection>, mode: \"tree\"), raise `depth`, or use mode: \"items\"."
+               (str/join "`, `" bad) (if (next bad) "" "es"))))
+    (when-let [bad (seq (sort (map name (remove collection-items-mode-args (keys args)))))]
+      (common/throw-teaching-error
+       (format "`%s` do%s not apply to items mode — `depth` shapes the tree; pass mode: \"tree\" to get one."
+               (str/join "`, `" bad) (if (next bad) "" "es"))))))
+
+(defn- namespace-arg
+  "The requested namespace as collection rows carry it: nil for content."
+  [{:keys [namespace]}]
+  (when-not (contains? #{nil "content"} namespace)
+    namespace))
+
+(defn- check-collection-namespace!
+  "A real collection id already carries its namespace; an explicit `namespace` argument that
+   contradicts it is a teaching error."
+  [{:keys [id] :as args} target-collection]
+  (when (contains? args :namespace)
+    (let [wanted (namespace-arg args)
+          actual (some-> (:namespace target-collection) u/qualified-name)]
+      (when (not= wanted actual)
+        (common/throw-teaching-error
+         (format "Collection %s is in the %s namespace — a real collection id already carries its namespace, so drop `namespace` or pass %s."
+                 id (or actual "content") (pr-str (or actual "content"))))))))
+
+(defn- read-checked-collection
+  [id-or-eid]
+  (common/resolve-and-read :model/Collection id-or-eid
+                           (fn [id] (api/read-check :model/Collection id))))
+
+(defn- read-checked-trash
+  []
+  (try
+    (api/read-check (collection/trash-collection))
+    (catch clojure.lang.ExceptionInfo e
+      (if (contains? #{403 404} (:status-code (ex-data e)))
+        (common/throw-not-found :collection "trash")
+        (throw e)))))
+
+(defn- resolve-browse-target
+  "Resolve the `id` argument to `{:root? <bool> :collection <row-or-root-placeholder>}`. Real
+   collections come back read-checked, with \"doesn't exist\" and \"not readable\" collapsed."
+  [{:keys [id] :as args}]
+  (cond
+    (= id "root")
+    {:root?      true
+     :collection (assoc collection/root-collection :namespace (namespace-arg args))}
+
+    (= id "trash")
+    (let [trash (read-checked-trash)]
+      (check-collection-namespace! args trash)
+      {:collection trash})
+
+    :else
+    (let [coll (read-checked-collection id)]
+      (check-collection-namespace! args coll)
+      {:collection coll})))
+
+;;; --------------------------------------------- browse_collection items ------------------------------------------
+
+(def ^:private type->rest-model
+  {"question"   :card
+   "model"      :dataset
+   "metric"     :metric
+   "dashboard"  :dashboard
+   "collection" :collection
+   "document"   :document})
+
+(defn- root-namespace-models
+  "Model set for a root listing: each namespace's own model plus subfolders; content follows
+   `type` (empty set = every type)."
+  [ns-str type]
+  (case ns-str
+    nil          (into #{} (map type->rest-model) type)
+    "snippets"   #{:snippet :collection}
+    "transforms" #{:transform :collection}
+    "analytics"  #{:collection}))
+
+(defn- collection-items-content
+  [{:keys [type created_by pinned_state sort_column sort_direction] :as args} {:keys [root? collection]}]
+  (let [{:keys [limit offset]} (page-args args)
+        ns-str        (some-> (:namespace collection) u/qualified-name)
+        _             (when (and (seq type) (some? ns-str))
+                        (common/throw-teaching-error
+                         (format "`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."
+                                 ns-str)))
+        created-by-id (when (= created_by "me") api/*current-user-id*)
+        models        (if root?
+                        (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
+                        (into #{} (map type->rest-model) type))
+        trash?        (collection/is-trash? collection)
+        options   {:show-dashboard-questions? false
+                   :include-library?          (not root?)
+                   :archived?                 (boolean (or (:archived collection) trash?))
+                   :models                    models
+                   :created-by-id             created-by-id
+                   :pinned-state              (keyword (or pinned_state "all"))
+                   :sort-info                 {:sort-column                 (keyword (str/replace (or sort_column "name") "_" "-"))
+                                               :sort-direction              (keyword (or sort_direction "asc"))
+                                               :official-collections-first? (not trash?)}}
+        res       (request/with-limit-and-offset limit offset
+                    (collections.children/collection-children collection options))
+        total     (or (:total res) 0)
+        ;; the snippets-namespace root path ignores the limit/offset binding (no :limit key on
+        ;; the result) and returns every row, so the page is sliced here
+        rows      (if (contains? res :limit)
+                    (vec (:data res))
+                    (into [] (comp (drop offset) (take limit)) (:data res)))
+        projected (project-rows :collection-item args rows)
+        line      (when (< (+ offset (count rows)) total)
+                    (if (nil? ns-str)
+                      (common/truncation-line {:param :type :offset offset :limit limit :total total})
+                      (format "Returned %d of %d — continue with `offset: %d`."
+                              (count rows) total (+ offset limit))))]
+    (common/success-content (cond-> (json/encode (common/list-envelope projected total))
+                              line (str "\n" line)))))
+
+;;; --------------------------------------------- browse_collection tree -------------------------------------------
+
+(def ^:private tree-default-depth 2)
+
+(def ^:private tree-child-cap
+  "Children surfaced per node in tree mode; the rest are named in the truncation marker."
+  50)
+
+(def ^:private tree-node-budget
+  "Total nodes one tree response may contain, bounding the shallow-fetch composition."
+  250)
+
+(defn- pr-id
+  [id]
+  (if (number? id) id (pr-str id)))
+
+(defn- tree-marker
+  "Marker for a node re-rooting recovers: re-rooting resets the depth and node budget, so a
+   fresh `mode: \"tree\"` call at this node reveals what depth or budget cut off here."
+  [more-count parent-name parent-id]
+  (format "… %s under %s — browse_collection(id: %s, mode: \"tree\")"
+          (if more-count (str more-count " more") "more")
+          (pr-str parent-name)
+          (pr-id parent-id)))
+
+(defn- cap-marker
+  "Marker for a node the per-node child cap trimmed. Re-rooting in tree mode re-applies the same
+   cap and returns the identical page, so this steers to items-mode pagination — the only way to
+   reach the children past the cap."
+  [more parent-name parent-id offset]
+  (format "… %d more under %s — browse_collection(id: %s, mode: \"items\", type: [\"collection\"], offset: %d)"
+          more (pr-str parent-name) (pr-id parent-id) offset))
+
+(defn- expand-tree-node
+  "Build the output node for `node` (`{:id :name :children <expandable?>}`), expanding up to
+   `depth` more levels through `fetch` while the shared node `budget` (an atom) lasts. A node
+   left unexpanded carries a truncation marker: depth/budget exhaustion recovers by re-rooting
+   in tree mode, but a node trimmed by the per-node cap steers to items-mode pagination, which
+   is the only call that reaches the trimmed children."
+  [fetch {:keys [id name] :as node} depth budget]
+  (cond
+    (not (:children node))
+    {:id id :name name :children []}
+
+    (or (zero? depth) (not (pos? @budget)))
+    {:id id :name name :children [] :truncated (tree-marker nil name id)}
+
+    :else
+    (let [children (fetch id)
+          allowed  (min tree-child-cap @budget)
+          included (vec (take allowed children))
+          _        (swap! budget - (count included))
+          expanded (mapv #(expand-tree-node fetch % (dec depth) budget) included)
+          more     (- (count children) (count included))]
+      (cond-> {:id id :name name :children expanded}
+        (pos? more) (assoc :truncated
+                           ;; cap-bound (budget left room) → items pagination; budget-bound → tree
+                           (if (<= tree-child-cap allowed)
+                             (cap-marker more name id (count included))
+                             (tree-marker more name id)))))))
+
+(defn- tree-child-fetch
+  "A `fetch` for [[expand-tree-node]] backed by a single query: the visible, non-archived
+   collections of `namespaces` grouped by direct-parent id (root-level under `::root`), each an
+   expandable tree node in `select-collections` order. Replaces the former per-node fetch — one
+   permission-filtered query for the whole tree instead of one per expanded node."
+  [namespaces]
+  (let [colls   (collections.children/select-collections
+                 {:archived                       false
+                  :exclude-other-user-collections false
+                  :namespaces                     namespaces
+                  :shallow                        false
+                  :include-library?               false})
+        grouped (group-by #(or (last (collection/location-path->ids (:location %))) ::root) colls)]
+    (fn [id]
+      (mapv (fn [c] {:id (:id c) :name (:name c) :children (contains? grouped (:id c))})
+            (grouped (if (number? id) id ::root))))))
+
+(defn- collection-tree-content
+  [args {:keys [root? collection]}]
+  (when (collection/is-trash? collection)
+    (common/throw-teaching-error
+     "The trash never appears in tree mode — use mode: \"items\" to list trashed items."))
+  (when (:archived collection)
+    (common/throw-teaching-error
+     (format "Collection %s is archived — archived subtrees never appear in tree mode; browse its items instead."
+             (:id collection))))
+  (let [depth      (or (:depth args) tree-default-depth)
+        ns-str     (some-> (:namespace collection) u/qualified-name)
+        fetch      (tree-child-fetch #{ns-str})
+        budget     (atom tree-node-budget)
+        root-node  {:id       (if root? "root" (:id collection))
+                    :name     (if root?
+                                (:name (collection/root-collection-with-ui-details ns-str))
+                                (:name collection))
+                    :children true}]
+    (common/success-content (json/encode (expand-tree-node fetch root-node depth budget)))))
+
+;;; --------------------------------------------- browse_collection tool -------------------------------------------
+
+(def ^:private browse-collection-args-schema
+  [:map {:closed true}
+   [:id [:or
+         [:int {:description "Numeric collection id."}]
+         [:string {:min 1 :description "A 21-character entity_id, \"root\" (the per-namespace root), or \"trash\" (items mode only — archived content, making restore discoverable)."}]]]
+   [:mode {:optional true}
+    [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
+             "items" "tree"]]]
+   [:namespace {:optional true}
+    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
+             "content" "snippets" "transforms" "analytics"]]]
+   [:type {:optional true}
+    [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
+                          "question" "model" "metric" "dashboard" "collection" "document"]]]]
+   [:created_by {:optional true}
+    [:maybe [:enum {:description "items mode: me restricts results to items the current user created (questions, models, metrics, dashboards, documents — other types return nothing under this filter). Composes with type."}
+             "me"]]]
+   [:pinned_state {:optional true}
+    [:maybe [:enum {:description "items mode: all (default) interleaves pinned and unpinned rows. Pinned-first as in the product is two calls — is_pinned, then is_not_pinned — each paging independently."}
+             "all" "is_pinned" "is_not_pinned"]]]
+   [:sort_column {:optional true}
+    [:maybe [:enum {:description "items mode: sort key (default name)."} "name" "last_edited_at" "model"]]]
+   [:sort_direction {:optional true}
+    [:maybe [:enum {:description "items mode: sort direction (default asc)."} "asc" "desc"]]]
+   [:limit {:optional true}
+    [:maybe [:int {:min 1 :max 500 :description "items mode: maximum rows to return (default 50)."}]]]
+   [:offset {:optional true}
+    [:maybe [:int {:min 0 :description "items mode: rows to skip, for paging."}]]]
+   [:depth {:optional true}
+    [:maybe [:int {:min 1 :max 10 :description "tree mode: subcollection levels to expand (default 2). Deeper or trimmed nodes carry a truncation marker naming the re-rooting call."}]]]
+   [:response_format {:optional true}
+    [:maybe [:enum {:description "items mode: concise (default) returns {id, name, model, description, collection_position} rows; detailed adds entity_id, collection_id, archived, location, and last-edit info."}
+             "concise" "detailed"]]]
+   [:fields {:optional true}
+    [:maybe [:sequential [:string {:min 1 :description "items mode: dot-paths picked from the detailed row shape, item-relative (e.g. \"last-edit-info.email\"). Mutually exclusive with response_format."}]]]]])
+
+(registry/deftool browse-collection
+  "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
+  {:name        "browse_collection"
+   :scope       metabot.scope/agent-resource-read
+   :annotations {:readOnlyHint true :idempotentHint true}
+   :args        browse-collection-args-schema}
+  [{:keys [mode] :as args} _context]
+  (validate-browse-collection-args! args)
+  (let [target (resolve-browse-target args)]
+    (if (= mode "tree")
+      (collection-tree-content args target)
+      (collection-items-content args target))))
