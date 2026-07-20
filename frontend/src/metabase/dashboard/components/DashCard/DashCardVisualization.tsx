@@ -70,6 +70,7 @@ import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
 import {
+  getMetricSeriesWithDefaultDisplay,
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
 } from "./utils";
@@ -215,13 +216,12 @@ export function DashCardVisualization({
   }, [dashcard, rawSeries]);
 
   const untranslatedSeries = useMemo(() => {
-    if (
-      !dashcard ||
-      !rawSeries ||
-      rawSeries.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
-    ) {
+    if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
+    }
+
+    if (!isVisualizerDashboardCard(dashcard)) {
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -310,7 +310,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets]);
+  }, [rawSeries, dashcard, datasets, metadata]);
 
   const series =
     PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(untranslatedSeries);

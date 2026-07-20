@@ -311,7 +311,7 @@ describe("scenarios > metrics > dashboard default dimension", () => {
     cy.signIn("admin", { skipCache: true });
   });
 
-  it("uses the default curated dimension without changing the visualization (UXW-4769)", () => {
+  it("uses the visualization type for the default curated dimension", () => {
     const metricDefinition = {
       ...ORDERS_TIMESERIES_METRIC,
       visualization_settings: {
@@ -324,20 +324,19 @@ describe("scenarios > metrics > dashboard default dimension", () => {
       cy.request("GET", `/api/metric/${metric.id}`)
         .then(() => cy.request("GET", `/api/metric/${metric.id}/dimension`))
         .then(({ body }) => {
-          const productIdDimension = body.added.find(
-            (dimension) => dimension.display_name === "Product ID",
+          const totalDimension = body.added.find(
+            (dimension) => dimension.display_name === "Total",
           );
 
-          expect(productIdDimension, "Product ID metric dimension").not.to.be
-            .undefined;
-          if (!productIdDimension) {
+          expect(totalDimension, "Total metric dimension").not.to.be.undefined;
+          if (!totalDimension) {
             return;
           }
 
           return cy.request(
             "POST",
             `/api/metric/${metric.id}/dimension/set-default`,
-            { dimension_id: productIdDimension.id },
+            { dimension_id: totalDimension.id },
           );
         })
         .then(() => H.createDashboard())
@@ -355,13 +354,24 @@ describe("scenarios > metrics > dashboard default dimension", () => {
 
           cy.wait("@newMetricQuery").then(({ request, response }) => {
             expect(request.body.dashboard_id).to.equal(dashboard.id);
-            expect(response?.body.data.cols[0].name).to.equal("PRODUCT_ID");
+            expect(response?.body.data.cols[0].name).to.equal("TOTAL");
           });
 
           H.getDashboardCard().within(() => {
             cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-            H.echartsContainer().should("be.visible");
+            cy.findByTestId("visualization-root").should(
+              "have.attr",
+              "data-viz-ui-name",
+              "Bar",
+            );
           });
+
+          H.saveDashboard();
+          cy.reload();
+
+          H.getDashboardCard()
+            .findByTestId("visualization-root")
+            .should("have.attr", "data-viz-ui-name", "Bar");
         });
     });
   });
