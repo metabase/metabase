@@ -87,7 +87,6 @@
                    :metabase/validate-deftest
                    :missing-docstring
                    :missing-protocol-method
-                   :syntax
                    :unresolved-namespace
                    :unresolved-require
                    :unresolved-symbol
