@@ -59,6 +59,10 @@ jobs:
             const majorVersion = Number('${{ inputs.version }}');
             const kind = '${{ inputs.kind }}';
 
+            if (github.repository !== 'metabase/metabase') {
+              throw new Error(`This workflow is only intended to run in the metabase/metabase repo, but is running in ${github.repository}`);
+            }
+
             if (Number.isNaN(majorVersion)) {
               throw new Error(`Invalid version number: ${{ inputs.version }}`);
             }
