@@ -6,6 +6,7 @@ import {
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Workspace } from "metabase-types/api";
 import {
@@ -28,6 +29,9 @@ function setup({ workspaces = [] as Workspace[] } = {}) {
 
   renderWithProviders(<Route path="*" element={<WorkspaceListPage />} />, {
     withRouter: true,
+    storeInitialState: {
+      settings: createMockSettingsState({ "remote-sync-enabled": true }),
+    },
   });
 }
 
@@ -55,7 +59,7 @@ describe("WorkspaceListPage", () => {
     const item = await screen.findByRole("region", { name: "Existing" });
     expect(item).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Workspace options" }),
+      screen.getByRole("button", { name: "Workspace actions" }),
     ).toBeInTheDocument();
   });
 });

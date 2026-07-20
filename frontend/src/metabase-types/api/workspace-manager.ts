@@ -6,13 +6,32 @@ export type WorkspaceId = number;
 export type WorkspaceDatabaseStatus =
   | "unprovisioned"
   | "provisioning"
+  | "provisioning-failure"
   | "provisioned"
-  | "deprovisioning";
+  | "deprovisioning"
+  | "deprovisioning-failure";
+
+export type WorkspaceStatus =
+  | "unprovisioned"
+  | "database-provisioning"
+  | "database-provisioning-failure"
+  | "branch-provisioning"
+  | "branch-provisioning-failure"
+  | "instance-provisioning"
+  | "instance-provisioning-failure"
+  | "provisioned"
+  | "instance-deprovisioning"
+  | "instance-deprovisioning-failure"
+  | "branch-deprovisioning"
+  | "branch-deprovisioning-failure"
+  | "database-deprovisioning"
+  | "database-deprovisioning-failure";
 
 export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   status: WorkspaceDatabaseStatus;
+  status_details: string | null;
 
   database?: Database | null;
 };
@@ -20,6 +39,11 @@ export type WorkspaceDatabase = {
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  target_branch: string | null;
+  status: WorkspaceStatus;
+  status_details: string | null;
+  instance_id: string | null;
+  instance_url: string | null;
   created_at: string;
   creator_id: UserId;
 
@@ -29,6 +53,7 @@ export type Workspace = {
 
 export type CreateWorkspaceRequest = {
   name: string;
+  target_branch?: string;
   database_ids: DatabaseId[];
 };
 

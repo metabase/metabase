@@ -494,6 +494,35 @@
     (push-branch! (assoc source :branch branch-name))
     branch-name))
 
+(defn delete-branch
+  "Deletes a branch from the remote repository, along with the local ref.
+  A no-op when the branch does not exist on the remote.
+
+  Takes a source map containing a :git Git instance and optional :token for
+  authentication, and the branch-name string to delete.
+
+  Returns nil. Throws ExceptionInfo if the remote refuses the deletion."
+  [{:keys [^Git git] :as source} branch-name]
+  (let [branch-ref    (qualify-branch branch-name)
+        push-cmd      (-> (.push git)
+                          (.setRefSpecs (doto (java.util.ArrayList.)
+                                          ;; empty source side = delete the remote ref
+                                          (.add (RefSpec. (str ":" branch-ref))))))
+        push-response (call-remote-command push-cmd source)
+        statuses      (->> push-response
+                           (mapcat #(.getRemoteUpdates ^PushResult %))
+                           (map #(.getStatus ^RemoteRefUpdate %)))]
+    (when-let [failures (seq (remove #{RemoteRefUpdate$Status/OK
+                                       RemoteRefUpdate$Status/UP_TO_DATE
+                                       RemoteRefUpdate$Status/NON_EXISTING}
+                                     statuses))]
+      (throw (ex-info (str "Failed to delete branch " branch-name " on remote") {:failures failures})))
+    (when (.resolve (.getRepository git) branch-ref)
+      (call-command (-> (.branchDelete git)
+                        (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch-name]))
+                        (.setForce true))))
+    nil))
+
 (defrecord GitSnapshot [git remote-url branch version token managed-dirs]
   source.p/SourceSnapshot
 
@@ -577,6 +606,9 @@
 
   (create-branch [source branch-name base-commit-ish]
     (create-branch source branch-name base-commit-ish))
+
+  (delete-branch [source branch-name]
+    (delete-branch source branch-name))
 
   (default-branch [this]
     (default-branch this))
