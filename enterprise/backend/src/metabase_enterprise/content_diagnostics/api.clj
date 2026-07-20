@@ -104,13 +104,17 @@
 
 (def ^:private DuplicatedEntity
   "A hydrated peer of a `duplicated` finding: another entity **of the same type** sharing the flagged
-  entity's normalized name. `{id, name, entity_type, card_type?}` - `card_type` (question/model/metric)
-  only on card peers."
+  entity's normalized name. `{id, name, entity_type, card_type?, view_count|run_count}` - `card_type`
+  (question/model/metric) only on card peers. Each peer carries a live usage signal for judging which
+  duplicate is the abandoned one: `view_count` (card/dashboard/document) or `run_count` (transform -
+  total runs, any status)."
   [:map
    [:id          :int]
    [:name        [:maybe :string]]
    [:entity_type :keyword]
-   [:card_type   {:optional true} [:maybe :keyword]]])
+   [:card_type   {:optional true} [:maybe :keyword]]
+   [:view_count  {:optional true} :int]
+   [:run_count   {:optional true} :int]])
 
 (def ^:private DuplicatedFinding
   "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed

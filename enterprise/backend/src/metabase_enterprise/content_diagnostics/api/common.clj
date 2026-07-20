@@ -173,9 +173,25 @@
                                   [:= :collection_id nil]
                                   [:not [:in :collection_id excluded-personal-ids]]])]})))
 
+(defn- transform-run-counts
+  "`{transform-id → total `transform_run` count}` for `ids` - one grouped count, every run status (a
+  failed run is still activity). A never-run transform has no entry; callers default to 0."
+  [ids]
+  (if (seq ids)
+    (into {}
+          (map (juxt :transform_id :run_count))
+          (t2/query {:select   [:transform_id [[:count :*] :run_count]]
+                     :from     [:transform_run]
+                     :where    [:in :transform_id ids]
+                     :group-by [:transform_id]}))
+    {}))
+
 (defn- hydrate-duplicate-peers
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
-  :card_type <kw>}}` (`card_type` only on card peers). The generalization of [[hydrate-slow-entities]]:
+  :card_type <kw> :view_count <int>}}` (`card_type` only on card peers). Each peer carries a live usage
+  signal so callers can judge which duplicate is the abandoned one: `view_count` for
+  card/dashboard/document, `run_count` (total `transform_run` rows) for transforms, which have no view
+  concept. The generalization of [[hydrate-slow-entities]]:
   duplicate peers share the **finding's own** entity type, which varies per finding, so each type's peer-id
   union resolves from that type's own model. Mode-agnostic - it hydrates the union regardless of which
   match modes produced it.
@@ -199,19 +215,26 @@
                               [:or
                                [:= :collection_id nil]
                                [:not [:in :collection_id excluded-personal-ids]]])]]
-              row   (if (= etype :transform)
-                      ;; mi/can-read? on a transform = source-type feature gate + (superuser, or
-                      ;; data-analyst with readable source tables) - the collection clause alone would
-                      ;; leak transform names to collection-granted non-analysts. It reads :source, so
-                      ;; select full rows; peer sets are page-bounded, so the per-row check is cheap.
-                      (filter mi/can-read? (t2/select :model/Transform {:where where}))
-                      (t2/select (cond-> [model :id :name]
-                                   ;; :card_schema is required on any Card select - its after-select
-                                   ;; hook reads it.
-                                   (= etype :card) (conj :type :card_schema))
-                                 {:where where}))]
-          [[etype (:id row)] (cond-> {:id (:id row) :name (:name row) :entity_type etype}
-                               (= etype :card) (assoc :card_type (:type row)))])))
+              :let  [peer-rows  (if (= etype :transform)
+                                  ;; mi/can-read? on a transform = source-type feature gate + (superuser,
+                                  ;; or data-analyst with readable source tables) - the collection clause
+                                  ;; alone would leak transform names to collection-granted non-analysts.
+                                  ;; It reads :source, so select full rows; peer sets are page-bounded,
+                                  ;; so the per-row check is cheap.
+                                  (filter mi/can-read? (t2/select :model/Transform {:where where}))
+                                  (t2/select (cond-> [model :id :name :view_count]
+                                               ;; :card_schema is required on any Card select - its
+                                               ;; after-select hook reads it.
+                                               (= etype :card) (conj :type :card_schema))
+                                             {:where where}))
+                     run-counts (when (= etype :transform)
+                                  (transform-run-counts (map :id peer-rows)))]
+              row   peer-rows]
+          [[etype (:id row)]
+           (if (= etype :transform)
+             {:id (:id row) :name (:name row) :entity_type etype :run_count (get run-counts (:id row) 0)}
+             (cond-> {:id (:id row) :name (:name row) :entity_type etype :view_count (:view_count row)}
+               (= etype :card) (assoc :card_type (:type row))))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
