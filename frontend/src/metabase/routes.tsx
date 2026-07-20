@@ -105,6 +105,7 @@ const RoutedExplorationPage = withRouteProps(ExplorationPage);
 const RoutedNewModelOptions = withRouteProps(NewModelOptions);
 const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 const RoutedBrowseTables = withRouteProps(BrowseTables);
+const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 const RoutedMetricsViewerPage = withRouteProps(MetricsViewerPage);
 const RoutedTableDetailPage = withRouteProps(TableDetailPage);
 const RoutedUnsubscribePage = withRouteProps(UnsubscribePage);
@@ -299,8 +300,12 @@ export const getRoutes = (store: AppStore) => {
               element={<RoutedBrowseTables />}
             />
             <Route
-              path="databases/:dbName(/schema/:schemaName)/table/:tableName"
-              component={TablePermalinkRedirect}
+              path="databases/:dbName/schema/:schemaName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
+            />
+            <Route
+              path="databases/:dbName/table/:tableName"
+              element={<RoutedTablePermalinkRedirect />}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}
