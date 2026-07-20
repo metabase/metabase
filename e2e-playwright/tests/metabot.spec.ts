@@ -363,15 +363,22 @@ test.describe("Metabot in full-app embedding", () => {
     await expect(
       icon(frame.getByLabel("Navigation bar"), "metabot"),
     ).toBeVisible();
-    // Cypress's `.should("not.exist")` is a ONE-SHOT check (it passes on the
-    // first absent poll). The QB header's "Explain this chart" button mounts
-    // ~160ms AFTER the navbar metabot icon — both are gated on the same
-    // metabot-permissions query, but the toolbar lags the navbar — so at the
-    // instant the metabot icon is visible the chart explainer is not yet in the
-    // DOM. Read the count once here (no retry) to match that semantics. A
-    // retrying toHaveCount(0) would instead wait out the lag and catch the
-    // later mount: on a fully-settled embedded question the app DOES surface
-    // "Explain this chart" (verified against the jar — see findings-inbox).
+    // The QB header's "Explain this chart" button mounts ~160ms AFTER the navbar
+    // metabot icon — both are gated on the same metabot-permissions query, but
+    // the toolbar lags the navbar — so at the instant the metabot icon is
+    // visible the chart explainer is not yet in the DOM. On a fully-settled
+    // embedded question the app DOES surface it (verified against the jar — see
+    // findings-inbox). That mount lag is what makes upstream's absence check
+    // vacuous, and it is the substance of FINDINGS #46.
+    //
+    // NOTE on form: `should("not.exist")` and `toHaveCount(0)` BOTH retry and
+    // both pass at the first absent observation, so they are equivalent here —
+    // an earlier comment claiming a retrying check would "wait out the lag" was
+    // wrong (see the corrected rule in PORTING.md). The one-shot read is kept
+    // deliberately because it fails FAST if the timing ever shifts and the
+    // explainer is already mounted, which is precisely the race under test;
+    // a retrying form would burn the full timeout to report the same thing.
+    // The positive anchor above is what pins the instant.
     expect(
       await frame.getByLabel("Explain this chart", { exact: true }).count(),
     ).toBe(0);

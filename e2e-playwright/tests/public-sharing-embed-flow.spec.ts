@@ -52,11 +52,11 @@ import { visitDashboard, visitQuestion } from "../support/ui";
  *   asynchronously after "publish this dashboard" — upstream's `.should()`
  *   after a `.then()` is effectively one-shot, so this is a deliberate (small)
  *   strengthening in the *safe* direction.
- * - `getEmbedSidebar().findByText("Back").should("not.exist")` is a ONE-SHOT
- *   absence check in Cypress, so it is ported as a non-retrying `count()`
- *   taken at a defined instant (after the embed preview has rendered), not as
- *   a retrying `toHaveCount(0)`. The `getEmbedSidebar()` anchor also carries an
- *   implicit existence assertion — kept as an explicit `toBeVisible()` first.
+ * - `getEmbedSidebar().findByText("Back").should("not.exist")` retries and
+ *   passes at the first absent observation, so `toHaveCount(0)` is the faithful
+ *   port. It is taken after the embed preview has rendered so it is not
+ *   vacuous, and the `getEmbedSidebar()` anchor's implicit existence assertion
+ *   is kept as an explicit `toBeVisible()` first.
  * - No EE gate. The spike backend is the EE jar and `activateToken` succeeds,
  *   so all three tests really execute.
  */
@@ -131,7 +131,7 @@ test.describe(suiteTitle, () => {
     ).toBeVisible({ timeout: 10_000 });
 
     await expect(sidebar).toBeVisible();
-    expect(await sidebar.getByText("Back", { exact: true }).count()).toBe(0);
+    await expect(sidebar.getByText("Back", { exact: true })).toHaveCount(0);
 
     await sidebar.getByText("Get code", { exact: true }).click();
 
@@ -204,7 +204,7 @@ test.describe(suiteTitle, () => {
     ).toBeVisible({ timeout: 10_000 });
 
     await expect(sidebar).toBeVisible();
-    expect(await sidebar.getByText("Back", { exact: true }).count()).toBe(0);
+    await expect(sidebar.getByText("Back", { exact: true })).toHaveCount(0);
 
     await sidebar.getByText("Get code", { exact: true }).click();
 

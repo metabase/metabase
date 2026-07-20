@@ -16,10 +16,14 @@
  *   PUT wait upstream's helper has.
  * - `cy.findByText(string)` / `findByLabelText(string)` are EXACT
  *   testing-library matches → `{ exact: true }` (rule 1).
- * - `should("not.exist")` is a ONE-SHOT absence check in Cypress, not a
- *   retrying one. Each is ported as a non-retrying `count()` taken at a defined
- *   instant, after gating on the container that must be present — matching the
- *   original's strength rather than silently strengthening it.
+ * - `should("not.exist")` RETRIES and passes at the first absent observation,
+ *   which is exactly what `expect(loc).toHaveCount(0)` does — so `toHaveCount(0)`
+ *   is the faithful port. Each is gated on the container that must be present
+ *   first, so the absence cannot pass vacuously against an un-rendered page.
+ *   (An earlier revision used a non-retrying `expect(await loc.count()).toBe(0)`
+ *   on the mistaken belief that it "matched" Cypress; that form samples a single
+ *   instant, which is *stricter* than upstream and can go falsely red on an
+ *   in-place re-render. See PORTING.md.)
  * - Bare `cy.findByText(...)` / `cy.findAllByText(...)` with no `.should` ARE
  *   assertions (testing-library throws when nothing matches), so they port as
  *   real visibility assertions, not as no-ops.
@@ -83,9 +87,9 @@ test.describe("scenarios > admin > permissions > application", () => {
       exact: true,
     });
     await permissionHelpButton.click();
-    // Upstream's `should("not.exist")` fires once; the button is replaced by
-    // the reference panel synchronously on click.
-    expect(await permissionHelpButton.count()).toBe(0);
+    // The button is replaced by the reference panel on click. Retrying
+    // absence, matching upstream's retrying `should("not.exist")`.
+    await expect(permissionHelpButton).toHaveCount(0);
 
     const helpReference = page.getByLabel("Permissions help reference", {
       exact: true,
@@ -126,9 +130,9 @@ test.describe("scenarios > admin > permissions > application", () => {
         await visitDashboard(page, mb.api, ORDERS_DASHBOARD_ID);
 
         await openSharingMenu(page);
-        // One-shot absence, like upstream — the menu is already open.
+        // Steady-state absence; gate on the menu being open first.
         await expect(sharingMenu(page)).toBeVisible();
-        expect(await sharingMenu(page).getByText(/subscri/i).count()).toBe(0);
+        await expect(sharingMenu(page).getByText(/subscri/i)).toHaveCount(0);
 
         await visitQuestion(page, ORDERS_QUESTION_ID);
         await expect(tableInteractive(page)).toBeVisible();
@@ -148,7 +152,7 @@ test.describe("scenarios > admin > permissions > application", () => {
         await expect(
           list.getByText("Subscription", { exact: true }),
         ).toBeVisible();
-        expect(await icon(list, "close").count()).toBe(0);
+        await expect(icon(list, "close")).toHaveCount(0);
       });
     });
 
@@ -231,11 +235,11 @@ test.describe("scenarios > admin > permissions > application", () => {
         await page.goto("/");
         await getProfileLink(page).click();
 
-        // One-shot absence, like upstream — gate on the menu being open first.
+        // Steady-state absence; gate on the menu being open first.
         await expect(popover(page).first()).toBeVisible();
-        expect(
-          await popover(page).getByText(adminAppLinkText, { exact: true }).count(),
-        ).toBe(0);
+        await expect(
+          popover(page).getByText(adminAppLinkText, { exact: true }),
+        ).toHaveCount(0);
 
         await page.goto("/admin/tools/errors");
         await expect(
@@ -273,14 +277,14 @@ test.describe("scenarios > admin > permissions > application", () => {
           .toContain("/admin/settings/general");
 
         const content = page.getByTestId("admin-layout-content");
-        // One-shot absences, taken once the settings form has rendered.
+        // Steady-state absences, taken once the settings form has rendered.
         await expect(content.getByLabel("Site name", { exact: true })).toBeVisible();
-        expect(
-          await content.getByText("License and Billing", { exact: true }).count(),
-        ).toBe(0);
-        expect(await content.getByLabel("Updates", { exact: true }).count()).toBe(
-          0,
-        );
+        await expect(
+          content.getByText("License and Billing", { exact: true }),
+        ).toHaveCount(0);
+        await expect(
+          content.getByLabel("Updates", { exact: true }),
+        ).toHaveCount(0);
 
         const siteName = content.getByLabel("Site name", { exact: true });
         await siteName.fill("NewName");

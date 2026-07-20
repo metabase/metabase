@@ -298,3 +298,14 @@ data-studio/measures/measures-published-tables.cy.spec.ts
 sharing/public-sharing-embed-flow.cy.spec.ts
 permissions/downgrade-ee-to-oss.cy.spec.js
 embedding/sdk-iframe-embedding-setup/get-code.cy.spec.ts
+embedding/sdk-iframe-embedding/sdk-iframe-embedding.cy.spec.ts
+embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts
+embedding/sdk-iframe-embedding/embed-options.cy.spec.ts
+embedding/sdk-iframe-embedding/eajs-internal-navigation.cy.spec.ts
+embedding/sdk-iframe-embedding/view-and-curate-content.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/select-embed-options.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/guest-embed-ee.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/guest-embed-oss.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/select-embed-entity.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/select-embed-experience.cy.spec.ts
+embedding/sdk-iframe-embedding-setup/embed-parameters-remapping.cy.spec.ts

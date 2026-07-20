@@ -983,6 +983,86 @@ evidence isn't worth making.
     become both faster and deterministic — a likely capability win of the same
     shape as #1 and #44.
 
+### The absence-assertion class — the biggest test-quality finding of the spike
+
+73. **All 8 absence assertions in `custom-elements-api` were vacuous upstream,
+    proven by inversion.** `H.getSimpleEmbedIframeContent()` gates on
+    `data-iframe-loaded`, which fires *before* the embed paints — measured:
+    iframe loaded +0ms, metabot chat +92ms, drill popover +243ms. Every
+    `should("not.exist")` in that window is satisfied by "nothing has rendered
+    yet". Verified the right way: each input was **inverted**
+    (`with-title="false"`→`"true"`, `drills` off→on, `embedded-metabot-enabled?`
+    false→true) and **all 8 stayed green with the behaviour under test
+    reversed**. Reading the source would not have established this.
+
+    All 8 now carry an anchor and were re-mutated to confirm they fail for the
+    right reason (8/8 red). Six anchor on content present in both variants —
+    including the disabled component's own error text
+    ("Metabot is not enabled for embedded analytics."), a discriminating signal
+    found by dumping the disabled DOM. Two `drills="false"` cases have no DOM
+    signal for "the click was ignored" and use a bounded 3s settle against the
+    measured 243ms (>12× margin), documented as the honest fallback rather than
+    a habit.
+
+    Sub-trap worth its own rule: **a locator that exists in a pre-interaction
+    placeholder form gates nothing.** `data-step-cell` resolves in ~3ms because
+    the empty notebook step is already mounted; the anchor has to be the step
+    *naming Orders*.
+
+74. **A correction to our own playbook, caught by two agents and proven by a
+    third.** PORTING.md had claimed Cypress's `should("not.exist")` is a one-shot
+    check and that agents should match it with a non-retrying
+    `expect(await loc.count()).toBe(0)`, on the reasoning that a retrying
+    `toHaveCount(0)` would be "stronger than the original". **That is backwards.**
+    Both forms retry and both pass at the first absent observation — they are
+    equivalent, and `toHaveCount(0)` is the faithful port. The non-retrying form
+    samples one instant, is *stricter*, and can go falsely red.
+
+    Not theoretical: `select-embed-options` written to the bad rule flaked
+    **1-in-36** (the wizard re-renders its preview in place, so the one-shot
+    count catches the outgoing DOM); converted to retrying, **63/63**. 28
+    assertions across 7 specs were written this way before the rule was fixed.
+    Recorded because the spike's credibility rests on the playbook being
+    correctable, and because it is a clean example of the failure mode this file
+    keeps documenting: a plausible mechanism asserted without measurement.
+
+76. **A test whose entire subject can be deleted without turning it red — with a
+    control that makes the claim sharp** (`select-embed-entity`). Removing the
+    *whole* entity-picker interaction from "can search and select a dashboard"
+    leaves the test **green**: it creates "Acme Inc" in its own body, and the
+    wizard defaults to the most-recently-created dashboard (the EMB-1179
+    behaviour the file's last test asserts), so the picker merely re-selects what
+    was already selected. What makes this a finding rather than a guess is the
+    control: the identical probe against the sibling "can search and select a
+    question" **fails**, because its default is a different question. So the
+    weakness is specific to the dashboard case, not a property of the harness.
+    Ported faithfully rather than strengthened — the fix is upstream's to make.
+
+### Capability: `page.clock` reaches into embed iframes
+
+75. **`page.clock` installs into the embed iframe, where upstream gave up on
+    `cy.clock()`** (`sdk-iframe-embedding`). Verified from inside the frame's own
+    runtime on a loaded dashboard — `window.setTimeout` there is Playwright's
+    stub, and the frame's `Date.now()` advances by exactly the amount passed to
+    `runFor`, in lockstep with the parent. The SDK's 1s refresh `setInterval`
+    (`useDashboardRefreshPeriod` → Mantine `useInterval`, living inside the
+    iframe) is therefore drivable. Both auto-refresh tests now freeze real time
+    and advance virtual time; the negative test's window went from upstream's
+    ~1 real second to **30 virtual seconds** at the same wall clock, and because
+    real time is frozen the positive test becomes the negative test's control.
+
+    **Framed honestly, at the porting agent's own insistence:** the wall-clock
+    saving is small (upstream waited only ~1–2s), so this is a
+    determinism/assertion-width win, not a speed one. And it is a **weaker**
+    instance of the #1/#44 pattern than hoped — upstream *tried* `cy.clock()` and
+    abandoned it, but nobody has proven Cypress **cannot** do it. Do not cite
+    this as a third "Cypress structurally can't" alongside #1 and #44.
+
+    **The reusable catch:** you must step the clock at the app timer's own
+    period. Against a 1s timer, `runFor(1000)`×12 → exactly 12 refreshes; a
+    single `runFor(3000)` → **0**; `runFor(5000)` → 1. A big jump coalesces
+    ticks, which on a negative assertion is a silently vacuous pass.
+
 ### Open item owed from this batch
 
 **The one experiment that would give a third instance of #1/#44 is blocked, and

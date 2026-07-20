@@ -836,12 +836,51 @@ matching element.
 ## Gotchas added in batches 8–11 (reconciled from 66 inbox entries, 2026-07-20)
 
 ### Assertions and waits that don't mean what they look like
-- **`should("not.exist")` is a ONE-SHOT absence check, not a retrying one.** It
-  passes on its first absent poll and never re-checks, so any upstream assertion
-  of absence inside a mount-lag window is vacuous by construction. Porting it as
-  a retrying `toHaveCount(0)` is *stronger than the original* and may legitimately
-  go red. Match the original with a non-retrying `expect(await loc.count()).toBe(0)`
-  taken at a defined instant, and comment why.
+- **Absence assertions are vacuous inside a mount-lag window — and the fix is an
+  ANCHOR, not a different assertion form.** (Corrected 2026-07-20; an earlier
+  version of this bullet had it backwards and briefly propagated into agent
+  briefs — see the correction note below.)
+
+  The semantics, stated correctly:
+  - Cypress `should("not.exist")` **retries** and passes at the *first absent
+    observation*.
+  - Playwright `expect(loc).toHaveCount(0)` **also retries** and also passes at
+    the first absent observation. **These two are EQUIVALENT** — `toHaveCount(0)`
+    is the faithful port, not a stronger one.
+  - A non-retrying `expect(await loc.count()).toBe(0)` samples **one instant**.
+    That is *stricter* than the original and can go **falsely red** when the
+    element is transiently present but would have vanished. Do not reach for it
+    to "match" Cypress; it does not.
+
+  The real problem is that *both* retrying forms are satisfied by "nothing has
+  rendered yet". If the gate you await fires before the content paints, the
+  absence check proves nothing. **Measured** (`custom-elements-api`):
+  `data-iframe-loaded` fires at +0ms, metabot chat paints at +92ms, the drill
+  popover at +243ms — so all 8 of that spec's absence assertions passed with the
+  behaviour under test **inverted**.
+
+  **The fix**: anchor on something that is present in *both* variants and that
+  proves the render completed, then assert absence. Prefer a discriminating
+  signal (e.g. the disabled component's own error text) over a timeout. Where no
+  DOM signal exists for "the interaction was ignored", a bounded settle well
+  clear of the measured paint time is the honest fallback — document the margin.
+
+  **Beware pre-interaction placeholders**: a locator that also exists in an empty
+  state does not gate anything. `data-step-cell` resolves in ~3ms because the
+  empty notebook step is already mounted; anchor on the step *naming Orders*.
+
+  **When IS a non-retrying `count()` right?** Only for a genuinely *momentary*
+  absence — where the point is "X was not present at this specific instant" and
+  X may legitimately appear later. For a **steady-state** absence following a
+  DOM-mutating action it is a flake generator: the wizard in
+  `select-embed-options` re-renders its preview **in place** (no iframe remount),
+  so a one-shot count catches the *outgoing* DOM. Measured: 1-in-36 flake with
+  the one-shot form, 63/63 after converting to retrying `toHaveCount(0)`.
+  **Default to `toHaveCount(0)`; justify any one-shot in a comment.**
+
+  **How to prove vacuity** (do this before claiming it): invert the input the
+  assertion is about and show the test stays green. Reading the source is not
+  enough.
 - **Read a Cypress helper's SIGNATURE before porting its call shape.**
   `tooltipHeader(x)`, `completions(x)`, `assertOrdersExport(n)` all silently
   discard their arguments. Strengthening them into real assertions can turn a
@@ -1031,6 +1070,71 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   below it. Write `create\*/…` or reword.
 - **`MetabaseApi` has no `delete` shorthand** — port `cy.request("DELETE", …)`
   via `api.fetch("DELETE", …)`.
+- **A one-shot absence check taken straight after a helper that resolves on a
+  network response is a race BY CONSTRUCTION.** `publishChanges` (and any helper
+  awaiting a PUT/POST) returns on the *response*; Cypress's command queue then
+  supplies a settle that Playwright does not, so `count() === 0` immediately
+  after reads the pre-render state — deterministically, not flakily. Gate on a
+  mirror of the state you expect ("Copy code" visible ⟺ the link is gone) rather
+  than weakening the one-shot semantics.
+- **Key a retroactive-`cy.wait` recorder on WHICH response, never on a COUNT.**
+  When you port a retroactive `cy.wait("@alias")` as a passive `page.on`
+  recorder, it is tempting to model it as "≥N responses" because an earlier
+  helper consumed the first. That is measurably fragile: in
+  `select-embed-entity`, "can search and select a dashboard" produces exactly
+  **one** `/api/dashboard/:id` fetch in the whole test, so a "≥2" model was
+  simply wrong. Assert that the *specific* resource you care about was fetched.
+- **Routing `/api/session/properties` AFTER `installSnowplowCapture` silently
+  defeats the capture.** Playwright runs the **last-registered** route handler
+  first, so a test-level patch of session properties wins and the capture's
+  snowplow settings override is dropped. The failure mode is invisible — events
+  simply stop matching, with no error. If a test must patch session properties
+  after installing the capture, re-apply the three overrides verbatim in that
+  handler. Will bite any future port that touches session properties.
+- **`waitForRecentActivity` is broader than upstream's alias.** Upstream aliases
+  `?context=selections*`; the shared helper matches the pathname regardless of
+  query. Fine as a *gate*, wrong as a *body source* for `assertRecentItemName` —
+  port the literal glob if you need the body.
+- **`res.setThrottle(n)` has no Playwright equivalent** — port as a route delay,
+  and inversion-probe at a much larger delay to confirm the behaviour under test
+  is real rather than a timing artifact.
+- **`page.clock` DOES install into embed iframes — and you must STEP it at the
+  app timer's own period.** Verified from inside the frame's runtime on a loaded
+  dashboard: `window.setTimeout` there is Playwright's stub, and the frame's
+  `Date.now()` advances by exactly the amount passed to `runFor`, in lockstep
+  with the parent. So an in-iframe `setInterval` (e.g. the SDK's 1s dashboard
+  refresh via `useDashboardRefreshPeriod`) is fully drivable.
+  **The trap:** a big jump COALESCES ticks. Measured against a 1s app timer —
+  `runFor(1000)`×12 → exactly 12 refreshes; a single `runFor(3000)` → **0**;
+  `runFor(5000)` → 1. On a negative assertion ("it did not refresh") a coalesced
+  jump is a **silently vacuous pass**. Always step at the timer's period.
+  This refines the wave-12 clock note, which is right about `install()` but omits
+  that `pauseAt` + `runFor` gives full control, iframes included.
+- **Two more `chromeWebSecurity: false` blockers, for any Group A spec that
+  combines a production origin with a REAL auth flow** (the landed
+  `authentication` spec missed them only because its production tests fail early
+  inside `embed.js`'s own validation):
+  - Cross-origin `/auth/sso` has no `Access-Control-Allow-Origin`. Fix with the
+    **product's own** `embedding-app-origins-sdk` setting, not a route patch.
+  - A mock JWT provider on `http://` is **mixed content** on the https-upgraded
+    test page. Use a local https twin, reusing the harness's exported signer and
+    CORS handling.
+- **"EE jar with no token" is NOT an OSS build — the heuristic is close but not
+  identical.** Clearing the token zeroes `token-features`, which is why most
+  `@OSS` describes genuinely run on the EE jar (verified repeatedly, and
+  `select-embed-options` confirmed its tier gating isn't real). But
+  `PLUGIN_IS_EE_BUILD` is still set, so EE-only chrome renders that an OSS build
+  never emits — measured: the embedding page fires `upsell_viewed / dev_instances`
+  from `UpsellDevInstances`. Harmless for matcher-based assertions, but a port
+  that **counts upsells page-wide**, or asserts the absence of EE-build chrome,
+  will read the wrong answer. Check before relying on the equivalence.
+- **A tier gate can be an ASSERTION gate, not a describe gate.** `guest-embed-ee`
+  carries no tag: its entire EE-ness is `activateToken("pro-self-hosted")`, and
+  the `-oss` sibling asserts the *same* `upsell-card` is visible where `-ee`
+  asserts it absent. There is nothing to `test.skip`, and skipping by reflex
+  deletes the only assertions that distinguish the two specs. Also: "activateToken
+  didn't throw" is NOT evidence it worked — it PUTs with
+  `failOnStatusCode: false`. Check `token-features` actually flipped.
 - **"List re-renders under a resolved locator" also hits BREADCRUMBS.** React
   reuses the Mantine `Breadcrumbs` anchor nodes while swapping the trail
   contents, so a locator that resolved to "Orders" can be the "Library" anchor by
