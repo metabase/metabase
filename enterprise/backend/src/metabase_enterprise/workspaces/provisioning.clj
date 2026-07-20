@@ -7,6 +7,7 @@
   (:require
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
+   [metabase-enterprise.workspaces.provisioning.remote-sync :as provisioning.remote-sync]
    [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -67,10 +68,11 @@
   (assoc workspace :status status, :status_details status-details))
 
 (mu/defn provision-workspace! :- ::ws.schema/workspace
-  "Provision `workspace` (blocking): every database, then the child instance,
-   ending `:provisioned`. Stops on the first failure — the phase's `*-failure`
-   status and the error message land on the workspace — and rethrows. Retries
-   skip work that already succeeded. Returns the updated workspace copy."
+  "Provision `workspace` (blocking): every database, then the git branch, then
+   the child instance, ending `:provisioned`. Stops on the first failure — the
+   phase's `*-failure` status and the error message land on the workspace —
+   and rethrows. Retries skip work that already succeeded. Returns the updated
+   workspace copy."
   [workspace :- ::ws.schema/workspace]
   (as-> workspace ws
     (set-workspace-status! ws :database-provisioning nil)
@@ -79,6 +81,12 @@
       ws
       (catch Throwable t
         (set-workspace-status! ws :database-provisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :branch-provisioning nil)
+    (try
+      (provisioning.remote-sync/provision-branch! ws)
+      (catch Throwable t
+        (set-workspace-status! ws :branch-provisioning-failure (ex-message t))
         (throw t)))
     (set-workspace-status! ws :instance-provisioning nil)
     (try
@@ -91,10 +99,11 @@
     (set-workspace-status! ws :provisioned nil)))
 
 (mu/defn deprovision-workspace! :- ::ws.schema/workspace
-  "Deprovision `workspace` (blocking): the child instance, then every database,
-   ending `:unprovisioned`. Stops on the first failure — the phase's `*-failure`
-   status and the error message land on the workspace — and rethrows. Retries
-   skip work that already succeeded. Returns the updated workspace copy."
+  "Deprovision `workspace` (blocking): the child instance, then the git branch,
+   then every database, ending `:unprovisioned`. Stops on the first failure —
+   the phase's `*-failure` status and the error message land on the workspace —
+   and rethrows. Retries skip work that already succeeded. Returns the updated
+   workspace copy."
   [workspace :- ::ws.schema/workspace]
   (as-> workspace ws
     (set-workspace-status! ws :instance-deprovisioning nil)
@@ -102,6 +111,12 @@
       (provisioning.instance/deprovision-instance! ws)
       (catch Throwable t
         (set-workspace-status! ws :instance-deprovisioning-failure (ex-message t))
+        (throw t)))
+    (set-workspace-status! ws :branch-deprovisioning nil)
+    (try
+      (provisioning.remote-sync/deprovision-branch! ws)
+      (catch Throwable t
+        (set-workspace-status! ws :branch-deprovisioning-failure (ex-message t))
         (throw t)))
     (set-workspace-status! ws :database-deprovisioning nil)
     (try

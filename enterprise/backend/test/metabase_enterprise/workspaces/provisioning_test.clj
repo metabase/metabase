@@ -7,6 +7,7 @@
    inner `with-redefs`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
    [metabase-enterprise.workspaces.provisioning.instance :as provisioning.instance]
@@ -103,6 +104,78 @@
       (is (=? {:status           :provisioned
                :output_namespace (str "mb_iso_" wsd2-id)}
               (t2/select-one :model/WorkspaceDatabase :id wsd2-id))))))
+
+(deftest provision-workspace-branch-test
+  (testing "the branch phase creates the workspace's target branch when remote sync is enabled"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS" :target_branch "ws-branch"}]
+      (let [calls (atom [])]
+        (with-redefs [remote-sync/remote-sync-enabled (constantly true)
+                      remote-sync/branch-exists?      (fn [branch] (swap! calls conj [:exists? branch]) false)
+                      remote-sync/create-branch!      (fn [branch] (swap! calls conj [:create! branch]) branch)]
+          (is (=? {:status :provisioned}
+                  (provisioning/provision-workspace! (workspace-row ws-id))))
+          (is (= [[:exists? "ws-branch"] [:create! "ws-branch"]] @calls))))))
+  (testing "an already existing branch is fine"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS" :target_branch "ws-branch"}]
+      (with-redefs [remote-sync/remote-sync-enabled (constantly true)
+                    remote-sync/branch-exists?      (constantly true)
+                    remote-sync/create-branch!      (fn [_] (throw (ex-info "should not be called" {})))]
+        (is (=? {:status :provisioned}
+                (provisioning/provision-workspace! (workspace-row ws-id)))))))
+  (testing "the branch phase is a no-op when remote sync is disabled or there is no branch"
+    (mt/with-temp [:model/Workspace {with-branch-id :id} {:name "WS" :target_branch "ws-branch"}
+                   :model/Workspace {no-branch-id :id} {:name "WS"}]
+      (with-redefs [remote-sync/remote-sync-enabled (constantly false)
+                    remote-sync/branch-exists?      (fn [_] (throw (ex-info "should not be called" {})))
+                    remote-sync/create-branch!      (fn [_] (throw (ex-info "should not be called" {})))]
+        (is (=? {:status :provisioned}
+                (provisioning/provision-workspace! (workspace-row with-branch-id))))
+        (is (=? {:status :provisioned}
+                (provisioning/provision-workspace! (workspace-row no-branch-id)))))))
+  (testing "a branch failure lands in :branch-provisioning-failure and stops the run"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS" :target_branch "ws-branch"}]
+      (with-redefs [remote-sync/remote-sync-enabled (constantly true)
+                    remote-sync/branch-exists?      (constantly false)
+                    remote-sync/create-branch!      (fn [_] (throw (ex-info "git down" {})))]
+        (is (thrown-with-msg? ExceptionInfo #"git down"
+                              (provisioning/provision-workspace! (workspace-row ws-id))))
+        (is (=? {:status         :branch-provisioning-failure
+                 :status_details "git down"}
+                (workspace-row ws-id)))))))
+
+(deftest deprovision-workspace-branch-test
+  (testing "the branch phase deletes the branch and keeps :target_branch as is"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name          "WS"
+                                                 :status        :provisioned
+                                                 :target_branch "ws-branch"}]
+      (let [calls (atom [])]
+        (with-redefs [remote-sync/remote-sync-enabled (constantly true)
+                      remote-sync/delete-branch!      (fn [branch] (swap! calls conj [:delete! branch]) nil)]
+          (is (=? {:status :unprovisioned}
+                  (provisioning/deprovision-workspace! (workspace-row ws-id))))
+          (is (= [[:delete! "ws-branch"]] @calls))
+          (is (= "ws-branch" (:target_branch (workspace-row ws-id)))
+              "the branch column survives deprovisioning")))))
+  (testing "when remote sync is disabled there is nothing to delete and the column is kept"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name          "WS"
+                                                 :status        :provisioned
+                                                 :target_branch "ws-branch"}]
+      (with-redefs [remote-sync/remote-sync-enabled (constantly false)
+                    remote-sync/delete-branch!      (fn [_] (throw (ex-info "should not be called" {})))]
+        (is (=? {:status :unprovisioned}
+                (provisioning/deprovision-workspace! (workspace-row ws-id))))
+        (is (= "ws-branch" (:target_branch (workspace-row ws-id)))))))
+  (testing "a branch deletion failure lands in :branch-deprovisioning-failure and stops the run"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name          "WS"
+                                                 :status        :provisioned
+                                                 :target_branch "ws-branch"}]
+      (with-redefs [remote-sync/remote-sync-enabled (constantly true)
+                    remote-sync/delete-branch!      (fn [_] (throw (ex-info "git down" {})))]
+        (is (thrown-with-msg? ExceptionInfo #"git down"
+                              (provisioning/deprovision-workspace! (workspace-row ws-id))))
+        (is (=? {:status         :branch-deprovisioning-failure
+                 :status_details "git down"}
+                (workspace-row ws-id)))))))
 
 (deftest provision-workspace-failure-test
   (testing "the first database failure stops the run and records the error on the row and the workspace"

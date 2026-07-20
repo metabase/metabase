@@ -15,11 +15,15 @@ export type WorkspaceStatus =
   | "unprovisioned"
   | "database-provisioning"
   | "database-provisioning-failure"
+  | "branch-provisioning"
+  | "branch-provisioning-failure"
   | "instance-provisioning"
   | "instance-provisioning-failure"
   | "provisioned"
   | "instance-deprovisioning"
   | "instance-deprovisioning-failure"
+  | "branch-deprovisioning"
+  | "branch-deprovisioning-failure"
   | "database-deprovisioning"
   | "database-deprovisioning-failure";
 

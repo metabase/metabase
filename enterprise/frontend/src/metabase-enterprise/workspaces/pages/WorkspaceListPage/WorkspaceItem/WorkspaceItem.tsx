@@ -107,12 +107,12 @@ function WorkspaceStatusItem({ workspace }: WorkspaceStatusItemProps) {
       <Box c="text-primary" lh="1rem">
         {getStatusMessage(workspace.status)}
       </Box>
-      {showDetails && <SeeDetailsButton workspace={workspace} />}
+      {showDetails && <StatusDetailsButton workspace={workspace} />}
     </Group>
   );
 }
 
-function SeeDetailsButton({ workspace }: WorkspaceStatusItemProps) {
+function StatusDetailsButton({ workspace }: WorkspaceStatusItemProps) {
   const [isDetailsOpen, { open: openDetails, close: closeDetails }] =
     useDisclosure(false);
 

@@ -40,6 +40,30 @@
                                       (impl/publish-sync-event! :event/remote-sync-import task-id
                                                                 {:branch branch :auto true} nil)))))
 
+(defn branch-exists?
+  "Whether `branch-name` exists on the configured remote. Throws when remote
+   sync is not configured or the remote is unreachable."
+  [branch-name]
+  (contains? (set (source.p/branches (source/source-from-settings))) branch-name))
+
+(defn create-branch!
+  "Create `branch-name` on the configured remote, branching off the configured
+   remote-sync branch (or the remote's default branch when none is
+   configured). Throws when the branch already exists, remote sync is not
+   configured, or the remote is unreachable."
+  [branch-name]
+  (let [source (source/source-from-settings)
+        base   (or (not-empty (settings/remote-sync-branch))
+                   (source.p/default-branch source))]
+    (source.p/create-branch source branch-name base)))
+
+(defn delete-branch!
+  "Delete `branch-name` on the configured remote. A no-op when the branch does
+   not exist. Throws when remote sync is not configured or the remote refuses
+   the deletion."
+  [branch-name]
+  (source.p/delete-branch (source/source-from-settings) branch-name))
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
