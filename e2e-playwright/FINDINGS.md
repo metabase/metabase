@@ -3192,3 +3192,54 @@ open item, not as evidence.
     Judgement call I endorse: it **kept** the `ldapReachable()` TCP gate now that
     the container exists. One connect per worker turns "no container" into an
     actionable skip rather than a 10-test cascade.
+
+### ⚠️ CORRECTION: slots do NOT share an app DB — only the warehouse containers
+
+178. **I told every agent "four other slots share this instance" for
+    instance-wide state. That is wrong for app-DB state** (`email-alert`
+    caught it; verified independently at `support/worker-backend.ts:266`, which
+    sets `MB_DB_FILE` to `$TMPDIR/mb-pw-slot-<N>/metabase.db`).
+
+    The correct split:
+    - **Per-slot, isolated:** settings, users, groups, tokens, collections,
+      questions, dashboards — everything in the application database. Each slot
+      is its own JVM with its own H2 file.
+    - **Genuinely shared:** the **warehouse containers** (postgres :5404, mysql
+      :3304, mongo), plus maildev and webhook-tester. That is where #85, the
+      `resetWritableDb` gap (#157), and cross-spec fixture collisions (#138,
+      #156) all live.
+
+    **This also reframes #163** (a probe leaving `bleeding-edge` active). The
+    hazard was real, but it is **sequential — the next agent on the same slot** —
+    not concurrent contamination of siblings. Killing that backend was still the
+    right call; my description of *why* was not.
+
+    **Net effect: I have been over-constraining app-DB writes and
+    under-emphasising warehouse hygiene.** SMTP config, token activation and
+    settings churn were never visible across slots. Tenth claim of mine corrected
+    on evidence.
+
+### An `@OSS` gate resolved by reading what the assertion actually reads
+
+179. **`email-alert`'s `@OSS` tag is a red herring, and the reasoning is worth
+    copying.** The predicate is
+    `:include_branding (not (enable-whitelabeling?))`
+    (`notification/payload/core.clj:137`) — a pure `:whitelabel` **feature**
+    check with **no build check**, so an EE jar with no token satisfies it
+    identically.
+
+    My standing counter-case ("some assertions are OSS-build-only because
+    `PLUGIN_IS_EE_BUILD` renders EE chrome") **does not apply here**, and the
+    agent said exactly why: the assertion is on the **email HTML served by
+    maildev**, which the frontend bundle cannot influence. Confirmed by a run
+    showing the test green at `token features ON: 0`.
+
+    It also noted `isOssBackend()` would have **skipped this permanently**, since
+    the backend reports `version.tag = vUNKNOWN`. Ported ungated — real coverage
+    recovered.
+
+    **Services probed rather than assumed:** maildev genuinely engages (M3
+    repointed SMTP at a dead port and turned all three branding tests red — they
+    read the delivered message off :1080, with **no toast to be fooled by**),
+    while webhook-tester is **never contacted** (the saved alert is Slack, and
+    Slack is mocked).
