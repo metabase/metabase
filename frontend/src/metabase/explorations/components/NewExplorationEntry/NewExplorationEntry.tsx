@@ -16,6 +16,8 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -32,19 +34,14 @@ import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { ExplorationSummary } from "metabase-types/api";
 
 import type { ExplorationSelection } from "../../hooks";
-import type { NewExplorationMode } from "../../types";
 
 import S from "./NewExplorationEntry.module.css";
 
 interface NewExplorationEntryProps {
   selection: ExplorationSelection;
-  setMode: (mode: NewExplorationMode) => void;
 }
 
-export function NewExplorationEntry({
-  selection,
-  setMode,
-}: NewExplorationEntryProps) {
+export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   const { collection, setCollection } = selection;
   const { prompt, setPrompt, submitInput } = useMetabotAgent(
     EXPLORATIONS_AGENT_ID,
@@ -62,14 +59,21 @@ export function NewExplorationEntry({
     },
   ] = useDisclosure(false);
 
+  const dispatch = useDispatch();
+
+  const goToPlanPage = useCallback(() => {
+    dispatch(push(Urls.newExplorationPlan()));
+  }, [dispatch]);
+
   const handleSubmit = useCallback(() => {
     trackExplorationAgentMessageSent();
     submitInput(prompt, {
       preventOpenSidebar: true,
       profile: "explorations",
     });
-    setMode("plan");
-  }, [prompt, submitInput, setMode]);
+
+    goToPlanPage();
+  }, [prompt, submitInput, goToPlanPage]);
 
   return (
     <Stack h="100%" bg="background-primary" align="center" p="2rem">
@@ -128,7 +132,7 @@ export function NewExplorationEntry({
                 c="text-secondary"
                 bd="none"
                 className={S.buttonHoverSecondary}
-                onClick={() => setMode("plan")}
+                onClick={goToPlanPage}
               >
                 {t`Manual setup`}
               </Button>
