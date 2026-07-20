@@ -993,6 +993,18 @@ Metabase's production collector. Also: if a slot backend has
 `MB_SNOWPLOW_URL`/`MB_SNOWPLOW_AVAILABLE` in its process env from an earlier
 session, env beats the app DB and the settings API silently refuses to change
 them (`is_env_setting: true` in `GET /api/setting`) — reboot the slot.
+**Qualifier (measured, batch-13):** a leaked `MB_SNOWPLOW_*` env is a **non-issue
+for this technique** — the capture overrides client-side, so the backend value
+never reaches the tracker. `visualizer-snowplow-tracking` ran green on a slot
+that had those vars set. The reboot advice applies to ports that drive snowplow
+through *backend* settings, not to `installSnowplowCapture`.
+
+**Reuse status: proven on four independent specs** (`search-snowplow`,
+`data-studio-metrics`, `visualizer-snowplow-tracking`, `reference-databases`)
+with **zero modification**
+to the helper — including matcher shapes (`event` + `event_detail` +
+`triggered_from`) and count-accumulation assertions the original never
+exercised. Treat it as the default for snowplow-subject specs.
 
 **The gap, stated:** this cannot reproduce `expectNoBadSnowplowEvents`, which asks
 micro for **Iglu schema validation failures**. The port degrades it to a
@@ -1019,6 +1031,43 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   below it. Write `create\*/…` or reword.
 - **`MetabaseApi` has no `delete` shorthand** — port `cy.request("DELETE", …)`
   via `api.fetch("DELETE", …)`.
+- **A Cypress chain carries an implicit existence assertion that a naive port
+  silently drops.** `cy.findByTestId("library-page").find(X).should("have.length", 0)`
+  asserts TWO things: that `library-page` exists (findBy* throws if not) and that
+  it contains no `X`. Porting it as `scope.locator(X)).toHaveCount(0)` keeps only
+  the second — and that half passes trivially when the page never rendered.
+  Port the anchor as its own visibility assertion first. **Worth sweeping across
+  already-landed ports**: any `toHaveCount(0)` whose Cypress original hung off a
+  `findByTestId`/`findByRole` anchor has the same hole.
+- **Set `iat` explicitly when signing a JWT.** Upstream signs via
+  `jsonwebtoken`, which stamps `iat` automatically; the local `signJwt` port adds
+  no claims, and the backend unsigns with `{:max-age three-minutes-in-seconds}`
+  (`sso/providers/jwt.clj:73`). Without `iat` the token is rejected. Affects
+  every JWT port, not just the spec that found it.
+- **FINDINGS #33 ("Playwright does not proxy a redirect's follow-up request")
+  reads broader than it is.** It applies to a `page.route`-MOCKED hop. An
+  `/auth/sso?jwt=` redirect handled by the real backend is the app's own
+  redirect, and a plain `page.goto` follows it fine. Do not reach for the
+  client-side redirect shim on every JWT SSO port — only when you are mocking
+  the IdP.
+- **Pin `maildev@2.0.5` — 3.x makes email specs silently gate-skip while looking
+  green.** maildev 3.x moved the REST API to `/api/email`, so `isMaildevRunning()`
+  probes the 2.x path, reports false, and every email test skips. The run is
+  green and the tests never executed. `bunx maildev` installs 3.x by default, so
+  this is the easy mistake. **This is a way to report a pass you never ran** —
+  the same failure shape as FINDINGS #49; check executed-vs-skipped counts, never
+  just the exit code.
+- **The first-real-click drop generalises beyond auth-page links.** PORTING
+  already notes auth links drop Playwright's first click (blur → "required"
+  alert → reflow between mousedown and mouseup). It fires on **any control below
+  an autofocused validated input** — e.g. the MFA challenge form's
+  `AuthTextButton`s, which share a `<Form>` with the autofocused code input. Fix
+  with a `toPass` retry gated on the button's OWN name, which relabels once the
+  click lands and so cannot toggle back.
+- **`H.getInbox()` returns as soon as the inbox is non-empty**, not when the
+  email under test arrives. If any earlier mail is already sitting there (an
+  enrollment notification, say), the poll returns immediately and the following
+  `to.exist` is a timing coin flip. Port as a subject-matching wait.
 - **Submitting a form while a `MultiAutocomplete`/`PillsInput` holds focus
   silently does nothing.** A real Playwright mousedown on the submit button blurs
   the focused `PillsInput`, whose blur handler re-renders the form — mouseup then

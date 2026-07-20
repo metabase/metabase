@@ -461,6 +461,12 @@ methodology note first — it reframes several earlier entries.
     `goto` hits the handler, the same URL via a 302 skips even a `() => true`
     catch-all. Fixed with a client-side redirect shim.
 
+    **Scope narrowed 2026-07-20** (`tenant-users-sidecar`): this applies to a
+    `page.route`-**mocked** hop. An `/auth/sso?jwt=` redirect served by the real
+    backend is the app's own redirect and a plain `page.goto` follows it fine —
+    no shim needed. As originally written the entry sounded like it covered every
+    JWT SSO port; it does not.
+
 ### Tests that got strictly stronger
 
 34. **A resize test that asserts the opposite of the app's behaviour and passes
@@ -813,6 +819,169 @@ evidence isn't worth making.
     existing content-translation helpers, `visitEmbeddedPage` and the shared
     factories covered it entirely. A concrete data point for the effort estimate:
     the third spec in a domain costs roughly the diff, not the harness.
+
+## Batch 12–13 additions
+
+### A capability the spike had been leaving on the table
+
+62. **Snowplow events can be captured at the browser boundary — no micro, no
+    container, no cross-slot contention** (`search-snowplow`). PORTING rule 6
+    said stub snowplow to no-ops; applied to a spec whose *subject* is analytics
+    that would have produced **26 no-op tests**. The working mechanism instead:
+    `page.addInitScript` overrides `window.MetabaseBootstrap` to force tracking
+    on and point the collector at the app's own origin, then `page.route`
+    base64url-decodes the tracker's `tp2` POST body — yielding `data.data`
+    byte-identical to what micro exposes, which is exactly what
+    `expectUnstructuredSnowplowEvent` matches on.
+
+    Two things make this a genuine dividend rather than a workaround. First, the
+    **CORS discovery**: the tracker sends `application/json` plus `SP-Anonymous`,
+    so a cross-origin collector triggers a preflight — and **Playwright does not
+    intercept preflight `OPTIONS`**, so the real POST is never sent and the
+    capture sees nothing. Re-pointing the client at the app origin removes CORS
+    entirely, and this generalises to *any* port trying to observe a POST body
+    sent to a third-party origin. Second, a shared snowplow-micro on :9090 has a
+    structural problem this avoids: `resetSnowplow` wipes one global store that
+    every parallel worker shares.
+
+    **Proven on three independent specs with zero modification to the helper** —
+    `search-snowplow`, `data-studio-metrics` (which reported that stubbing would
+    have made three of its tests no-ops), and `visualizer-snowplow-tracking`
+    (whose matcher shapes and count-accumulation assertions the original never
+    exercised). It is now the documented default for snowplow-subject specs.
+
+    **Stated gap:** it cannot reproduce `expectNoBadSnowplowEvents`, which asks
+    micro for **Iglu schema validation failures**; the port degrades that to a
+    structural check, so it does NOT catch "the FE emits a field the schema
+    rejects". Closing it means running `snowplow/iglu-client-embedded/schemas`
+    through a JSON-schema validator (`ajv` is already in the repo root).
+
+    The rule change also has to survive its own converse, and it did:
+    `data-studio-snippets` correctly judged the *opposite* way — upstream calls
+    `resetSnowplow` but asserts no events at all, so capture would have bought
+    nothing. Its 14 tests carry no analytics coverage, upstream included, and
+    that is now written down rather than papered over.
+
+### More upstream tests that assert nothing
+
+63. **A test with no assertion whatsoever** (`data-studio-library`): "should let
+    you move metrics into the library, even when empty" ends on a `Duplicate`
+    click and simply stops — it would pass if the duplicate returned 500. Ported
+    with the test's stated intent made real: anchor the `POST /api/card`
+    response, assert 200 and `collection_id === <library-metrics id>`. The
+    starkest member of the #15/#38/#51 family so far.
+
+64. **An absence assertion aimed at the wrong object** (`measures-data-studio`):
+    the deletion test creates "Measure to Delete", then asserts
+    `verifyMeasureNotInQueryBuilder("Total Revenue")` — a measure it never
+    creates and that `restore()` guarantees absent. The deletion was never
+    verified. Ported against the right name; it passes, so the behaviour is fine
+    and only the check was empty.
+
+65. **Absence checks that pass just as well on a broken page**
+    (`application-permissions`, three instances). Each asserts X is absent from a
+    container the test never asserts is *present*. The strongest is the
+    notifications list, where the whole claim is "the subscription is listed but
+    unremovable" — an empty list satisfies it identically. All three are now
+    gated on the container, and on "Subscription" actually being listed; they
+    still pass, so the gates are load-bearing rather than cosmetic. Ported as
+    non-retrying `count()` per #46's one-shot rule, not as a stronger
+    `toHaveCount(0)`.
+
+66. **A poll that returns before the thing it waits for**
+    (`multi-factor-auth`): `H.getInbox()` resolves as soon as the inbox is
+    non-empty, and both email tests already have an enrollment notification
+    sitting there — so it returns before the email under test is necessarily
+    sent, making the following `to.exist` a timing coin flip. Ported as a
+    subject-matching wait, and `expect(code).to.be.a("string")` tightened to
+    `/^\d{6}$/`.
+
+### Infrastructure
+
+67. **A green run that never ran: maildev 3.x silently disables every email
+    test** (`multi-factor-auth`). maildev 3.x moved its REST API to `/api/email`,
+    so `isMaildevRunning()` probes the 2.x path, reports false, and every email
+    test gate-skips — while the suite reports green. `bunx maildev` installs 3.x
+    by default, so this is the easy mistake, not the exotic one. Pin
+    `maildev@2.0.5`. Same failure shape as #49: the exit code is not the
+    coverage number.
+
+68. **A container dependency inherited from a helper is not automatically a real
+    dependency of the test** (`application-permissions`). `H.setupSMTP()` PUTs
+    `/api/email`, which live-validates and therefore needs maildev — but the test
+    calling it never reads an inbox; it only needs the "email is configured"
+    state. Swapping to `configureSmtpSettings` (bulk `PUT /api/setting`, no
+    validation) kept the test executable on the bare jar instead of gate-skipped.
+    Cheap win, and the same audit that #56 describes for snapshots.
+
+### The SDK-iframe tier — feasibility settled
+
+69. **The 28 deferred SDK-iframe specs are PORTABLE, with no hard blockers, and
+    all three assumed obstacles were false or cheap.** `embed.js` needs no SDK
+    build — confirmed by measurement, not assumption: it ships in the uberjar at
+    82,224 bytes and `GET :4105/app/embed.js` returns exactly that off a slot
+    backend, so upstream's `mockEmbedJsToDevServer` is a hot-reload convenience
+    and was dropped. The `:4000` hardcoding is not structural — it appears in
+    three places that must merely agree (script `src`, `instanceUrl`, test-page
+    origin), all now derived from `mb.baseUrl`; no product code reads `:4000`.
+    And `visitCustomHtmlPage` is *less* machinery in Playwright than in Cypress
+    (`page.route()` + `fulfill()` + `goto()`). Proof spec `authentication`:
+    **16/16, 32/32 under `--repeat-each=2`**, tsc clean; 3 first-run failures,
+    all port drift, no bug claims.
+
+70. **Cypress's `chromeWebSecurity: false` has been doing invisible work, and
+    two browser security mechanisms surface the moment you stop disabling it.**
+    Both were found porting the SDK harness, and both look exactly like product
+    regressions:
+    - **Credentialed CORS**: a wildcard `Access-Control-Allow-Origin` is rejected
+      for `credentials: "include"`. Fix: echo the caller's Origin.
+    - **Private Network Access**: `http://example.com` → `http://localhost:4105`
+      is refused — *"the request client is not a secure context and the resource
+      is in more-private address space `loopback`"*. `embed.js` never loads, the
+      iframe never exists, and it reads as the app being broken. **Critically,
+      `grantPermissions(["local-network-access"])` does NOT lift this** — the
+      blocker is the secure-context requirement, not a permission. Fix: upgrade
+      non-loopback test origins to `https://` (faithful, because `_getIsLocalhost`
+      reads hostname only).
+
+    **This qualifies #7's harness**, which leans on that `grantPermissions` call
+    — it works there only because that page's origin is already loopback. Anyone
+    reusing #7's approach from a non-loopback origin will hit this.
+
+71. **Method note: proving you are on your own slot requires falsification, not
+    assertion** (the #39 discipline applied). Content assertions cannot prove it —
+    `:4000` serves identical sample data, which is exactly why #39 failed
+    silently. The harness ships a two-leg guard and the agent **falsified both
+    rather than asserting them**: leg 1 rejected a deliberate misdirection at
+    another live slot (`:4104`), producing
+    `Expected /^http:\/\/localhost:4105/ Received "http://localhost:4104/embed/sdk/v1…"`;
+    leg 2 writes a slot-unique marker to the app DB and reads it back *from
+    inside the embed iframe's own document*, then re-writes a second marker to
+    track the change — proving live backend state rather than anything the
+    harness injected. **Scope caveat on record:** `:4000` was not running during
+    that session, so a `:4000` misdirection would have failed loudly anyway. The
+    guard is what makes this trustworthy on a box where `:4000` *is* up — the
+    normal dev machine, and the exact condition of #39.
+
+72. **The tier is two groups, not one — and that halves the scary number.** The
+    13 `sdk-iframe-embedding-setup/` specs **do not use the embed.js harness at
+    all**: they are ordinary admin-UI tests that visit `/admin/embedding` and
+    drive the setup flow, with only 2 touching `loadSdkIframeEmbedTestPage` once
+    each. They need a port of their 200-line spec-local `helpers/index.ts` —
+    normal work, no novel infrastructure.
+    - **Group A** (14 specs genuinely needing the harness): ~7–9 sessions, with
+      one ~20-line gap to close first (`prepareGuestEmbedSdkIframeEmbedTest`,
+      needed by 3 specs). Highest variance: `guest-token-refresh` (1018 lines).
+    - **Group B** (13 setup specs): 1 session for the shared helper, then 4–5 to
+      fan out.
+    - **Total ~12–14 sessions**, which is the spike's remaining runway of
+      genuinely CI-verifiable work.
+
+    Flagged upside worth a dedicated look: in `sdk-iframe-embedding.cy.spec.ts`
+    upstream **explicitly gives up on `cy.clock()` inside the iframe** and falls
+    back to real timeouts. `page.clock` installs into frames, so that block may
+    become both faster and deterministic — a likely capability win of the same
+    shape as #1 and #44.
 
 ### Open item owed from this batch
 
