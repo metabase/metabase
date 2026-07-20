@@ -12,11 +12,15 @@
 
 (def ^:private css "
 :root{
+  color-scheme:light dark;
   --bg:#f7f8fa; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#1a1f27; --ink-soft:#5b6572;
   --line:#e4e8ee; --line-strong:#d2d8e0; --accent:#4a6fe8; --accent-soft:#e8eeff;
   --group:#8a94a3; --chip:#eef1f6; --chip-ink:#3a4350; --shadow:0 1px 2px rgba(20,30,50,.06),0 8px 24px rgba(20,30,50,.06);
   --uses:#e8892b; --usedby:#2fa36b;
 }
+/* explicit color-scheme per theme keeps native controls matched and opts out of Chrome auto-darkening */
+:root[data-theme=light],:root[data-theme=solarized-light]{color-scheme:only light}
+:root[data-theme=dark],:root[data-theme=solarized-dark],:root[data-theme=gruvbox],:root[data-theme=nord]{color-scheme:dark}
 @media (prefers-color-scheme:dark){:root{
   --bg:#0f1319; --panel:#161b23; --panel-2:#12161d; --ink:#e6eaf0; --ink-soft:#8b96a6;
   --line:#252c37; --line-strong:#323a48; --accent:#6d8bff; --accent-soft:#1c2740;
@@ -49,9 +53,15 @@
 }
 :root[data-theme=gruvbox]{
   --bg:#282828; --panel:#32302f; --panel-2:#3c3836; --ink:#ebdbb2; --ink-soft:#a89984;
-  --line:#3c3836; --line-strong:#504945; --accent:#8ec07c; --accent-soft:#3a4a3a;
+  --line:#3c3836; --line-strong:#504945; --accent:#83a598; --accent-soft:#374446;
   --group:#928374; --chip:#3c3836; --chip-ink:#d5c4a1; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.4);
   --uses:#fe8019; --usedby:#b8bb26;
+}
+:root[data-theme=nord]{
+  --bg:#2e3440; --panel:#3b4252; --panel-2:#353c4a; --ink:#e5e9f0; --ink-soft:#94a0b8;
+  --line:#434c5e; --line-strong:#4c566a; --accent:#88c0d0; --accent-soft:#3d4a5c;
+  --group:#7b88a1; --chip:#434c5e; --chip-ink:#d8dee9; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.4);
+  --uses:#d08770; --usedby:#a3be8c;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -75,6 +85,13 @@ header h1 .dim{color:var(--ink-soft);font-weight:400}
   border-radius:8px;padding:6px 11px;font-size:12.5px;cursor:pointer}
 .ghost:hover{color:var(--ink);border-color:var(--accent)}
 .ghost:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--panel-2)}
+.seg button{border:none;background:transparent;color:var(--ink-soft);font:inherit;font-size:12.5px;
+  padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .themepick:focus-within{color:var(--ink);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .themepick{display:inline-flex;align-items:center;gap:6px;padding:0 9px}
 .themepick .ticon{color:var(--ink-soft);flex-shrink:0}
@@ -107,24 +124,44 @@ main{flex:1;display:flex;min-height:0}
 .dot.group{background:transparent;border:1.5px solid var(--group)}
 .name{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
 .name.group{color:var(--group)}
-.badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.03em}
-.badge.ent{background:var(--accent-soft);color:var(--accent)}
-.badge.star{color:var(--uses);border:1px solid var(--uses);padding:0 4px}
+.name.nsmoved{text-decoration:underline dotted var(--group);text-underline-offset:3px;text-decoration-thickness:1px}
+.badge{font-size:9px;font-weight:700;padding:1px 4px;border-radius:4px;letter-spacing:.03em}
+.badge.ent{background:var(--accent-soft);color:var(--accent);opacity:.85}
 .badge.debt{background:transparent;border:1px solid var(--uses);color:var(--uses);padding:0 4px}
 .badge.bypass{background:transparent;border:1px dashed var(--group);color:var(--group);padding:0 4px}
 .submini{font-size:10px;color:var(--group);margin-left:5px}
 .row.flat{padding-left:8px}
 .ghost.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
-.mini{font-size:10.5px;color:var(--ink-soft);margin-left:2px}
+.mini{font-size:10.5px;color:var(--ink-soft);margin-left:4px;opacity:.55;font-variant-numeric:tabular-nums}
+.row:hover .mini,.row.sel .mini{opacity:1}
 .cnt-in{color:var(--usedby);font-weight:600}
 .cnt-out{color:var(--uses);font-weight:600}
+/* hotspots view */
+.viewbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 8px 10px;padding:9px 14px;
+  border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.viewbar b{font-size:12.5px;font-weight:650}
+.viewbar .desc{color:var(--ink-soft);font-size:12px;flex:1;min-width:260px}
+.viewbar .desc code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--uses)}
+.viewbar .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;vertical-align:baseline;margin:0 3px 0 1px}
+.viewbar select{border:1px solid var(--line-strong);background:var(--panel-2);color:var(--ink);
+  border-radius:7px;padding:4px 7px;font:inherit;font-size:12px;outline:none;cursor:pointer}
+.rank{width:26px;text-align:right;color:var(--group);font-size:10.5px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.hname{display:inline-flex;align-items:center;gap:7px;width:300px;flex-shrink:0;overflow:hidden}
+.track{flex:1;max-width:360px;height:7px;border-radius:4px;background:var(--chip);overflow:hidden;display:flex}
+.track .in{background:var(--usedby)}
+.track .out{background:var(--uses)}
+.hcounts{margin-left:12px;font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex-shrink:0}
 .dep-mark{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-left:3px;vertical-align:middle}
 .dep-mark.uses{background:var(--uses)}
 .dep-mark.usedby{background:var(--usedby)}
 .kids{margin-left:15px;border-left:1px solid var(--line);padding-left:2px}
 .kids.hidden{display:none}
 /* detail panel */
-.d-empty{padding:60px 26px;color:var(--ink-soft);text-align:center;font-size:13px}
+.d-empty{padding:60px 26px;color:var(--ink-soft);text-align:center;font-size:13px;line-height:1.7}
+.d-empty .keys{margin-top:24px;font-size:11.5px;color:var(--group);line-height:2.2}
+kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;color:var(--ink-soft);
+  background:var(--chip);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:5px;
+  padding:1px 5px;margin:0 3px}
 .d-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
 .d-title{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:16px;font-weight:600;
   word-break:break-all;display:flex;align-items:center;gap:8px}
@@ -165,14 +202,15 @@ main{flex:1;display:flex;min-height:0}
     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>
     <input id=q type=search placeholder='Filter modules…' autocomplete=off spellcheck=false>
   </div>
-  <button class=ghost id=debt title='Show only modules with an unfilled boundary (:any / :bypass)'>Debt only</button>
-  <button class=ghost id=view title='Toggle flat coupling-hotspots view'>Hotspots</button>
-  <button class=ghost id=expand>Expand all</button>
-  <button class=ghost id=collapse>Collapse</button>
-  <select class=ghost id=sortby title='Sort hotspots by'>
-    <option value='used-by'>by used-by</option>
-    <option value='uses'>by uses</option>
-  </select>
+  <div class=seg role=group aria-label='View'>
+    <button id=view-tree class=on>Tree</button>
+    <button id=view-hotspots title='Rank modules by coupling'>Hotspots</button>
+  </div>
+  <button class=ghost id=debt title='Show only modules with an unfilled boundary (:api :any, :uses :any, or :model-imports :bypass)'>Unfilled only</button>
+  <div class=seg id=foldctl role=group aria-label='Folding'>
+    <button id=expand title='Expand all groups'>Expand</button>
+    <button id=collapse title='Collapse all groups'>Collapse</button>
+  </div>
   <label class='themepick ghost' title='Theme'>
     <svg class=ticon viewBox='0 0 24 24' width='15' height='15' fill='none' stroke='currentColor' stroke-width='2'><circle cx='12' cy='12' r='9'/><path d='M12 3a9 9 0 0 0 0 18' fill='currentColor' stroke='none'/></svg>
     <select id=theme>
@@ -182,6 +220,7 @@ main{flex:1;display:flex;min-height:0}
       <option value='solarized-light'>Solarized Light</option>
       <option value='solarized-dark'>Solarized Dark</option>
       <option value='gruvbox'>Gruvbox</option>
+      <option value='nord'>Nord</option>
     </select>
     <span class=tchev>▾</span>
   </label>
@@ -189,7 +228,7 @@ main{flex:1;display:flex;min-height:0}
 <div class=legend id=legend></div>
 <main>
   <div class=tree id=tree></div>
-  <aside class=detail id=detail><div class=d-empty>Select a module to see its team, API surface, and dependencies.</div></aside>
+  <aside class=detail id=detail></aside>
 </main>
 ")
 
@@ -244,21 +283,19 @@ const starred = MODULES.filter(m=>m['ns-prefix']).length;
 const debtN = MODULES.filter(isDebt).length;
 document.getElementById('stats').innerHTML =
   `<span><b>${MODULES.length}</b> modules</span><span><b>${ent}</b> enterprise</span>`+
-  `<span><b>${starred}</b> ns-prefixed</span><span><b>${debtN}</b> unfilled</span><span><b>${TEAMS.length}</b> teams</span>`;
+  `<span title='namespaces not yet moved to match the module name'><b>${starred}</b> ns-prefixed</span>`+
+  `<span title='modules with an unfilled boundary (:api :any, :uses :any, or :model-imports :bypass)'><b>${debtN}</b> unfilled</span>`+
+  `<span><b>${TEAMS.length}</b> teams</span>`;
 
 const legend = document.getElementById('legend');
 legend.innerHTML = '<span class=lbl>Teams</span>';
 for(const t of TEAMS){
   const el = document.createElement('span');
-  el.className='tchip'; el.dataset.team=t;
+  el.className='tchip'; el.dataset.team=t; el.title='Show only this team';
   el.innerHTML=`<span class=dot style='background:${teamColor[t]}'></span>${t}<span class=ct>${teamCount[t]}</span>`;
   el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); };
   legend.appendChild(el);
 }
-const hint=document.createElement('span');
-hint.style.cssText='margin-left:auto;color:var(--ink-soft);font-size:11.5px';
-hint.innerHTML=`each row: <span class=mono><span class=cnt-in>used-by</span> →●→ <span class=cnt-out>uses</span></span> (● = the module) · select one to trace deps`;
-legend.appendChild(hint);
 
 // ---- tree rendering ------------------------------------------------------
 const treeEl = document.getElementById('tree');
@@ -302,17 +339,22 @@ let visibleIds = [];   // module ids currently rendered, in visual order (for ke
 
 function appendBadges(row, m){
   if(m.enterprise){ const b=document.createElement('span'); b.className='badge ent'; b.textContent='EE'; row.appendChild(b); }
-  if(m['ns-prefix']){ const b=document.createElement('span'); b.className='badge star'; b.textContent='∗'; b.title='namespaces not yet moved: '+m['ns-prefix']; row.appendChild(b); }
   if(m['api-any']||m['uses-any']){ const b=document.createElement('span'); b.className='badge debt'; b.textContent='any';
     b.title=[m['api-any']?'no API namespace (:api :any)':'', m['uses-any']?'unrestricted deps (:uses :any)':''].filter(Boolean).join(' · '); row.appendChild(b); }
   if(m['model-imports-bypass']){ const b=document.createElement('span'); b.className='badge bypass'; b.textContent='bypass'; b.title='imports any model (:model-imports :bypass)'; row.appendChild(b); }
+}
+// ns-prefixed modules get a dotted underline instead of a badge — quieter at 70+ occurrences
+function makeName(m, label, extraClass){
+  const name=document.createElement('span'); name.className='name'+(extraClass||''); name.textContent=label;
+  if(m&&m['ns-prefix']){ name.classList.add('nsmoved'); name.title='namespaces still at '+m['ns-prefix']+' — not yet moved to match the module name'; }
+  return name;
 }
 function appendCounts(row, m){
   const c=document.createElement('span'); c.className='mini';
   const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
   const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
-  c.append(inN, ' →●→ ', outN);   // used-by → (this module) → uses
-  c.title=`${m['used-by'].length} used by · uses ${m.uses.length}`; row.appendChild(c);
+  c.append(inN, ' in · ', outN, ' out');
+  c.title=`${m['used-by'].length} modules depend on it · it depends on ${m.uses.length}`; row.appendChild(c);
 }
 // Build a row's shared content (caret slot, team dot, name, badges, counts, dep-marks).
 function buildRow(m, label, hasKids){
@@ -323,10 +365,20 @@ function buildRow(m, label, hasKids){
   const dot=document.createElement('span'); dot.className='dot'+(m?'':' group');
   if(m&&m.team) dot.style.background=teamColor[m.team]; else if(m) dot.style.background='var(--group)';
   row.appendChild(dot);
-  const name=document.createElement('span'); name.className='name'+(m?'':' group'); name.textContent=label; row.appendChild(name);
+  row.appendChild(makeName(m, label, m?'':' group'));
   if(m){ appendBadges(row,m); appendCounts(row,m); }
   appendDepMarks(row,m);
   return {row, caret};
+}
+
+// Shown while the unfilled-boundaries filter is active, so the lens explains itself.
+function debtNotice(){
+  const d=document.createElement('div'); d.className='viewbar';
+  d.innerHTML=`<b>Unfilled boundaries</b><span class=desc>the ${debtN} modules whose config still has an `+
+    `escape hatch instead of a real boundary: <code>:api :any</code> (no API namespace — every namespace is `+
+    `public), <code>:uses :any</code> (may depend on any module), or <code>:model-imports :bypass</code> `+
+    `(may use any module&#39;s models). The badge on each row says which.</span>`;
+  return d;
 }
 
 function render(){
@@ -335,6 +387,7 @@ function render(){
   const scroll = treeEl.scrollTop;   // full rebuild resets scroll; restore it so selecting a node doesn't jump
   const keep = visibleKeys();
   treeEl.innerHTML='';
+  if(debtOnly) treeEl.appendChild(debtNotice());
   const frag = document.createDocumentFragment();
   (function walk(node, path, container, visible){
     for(const kid of sortedKids(node)){
@@ -362,21 +415,68 @@ function render(){
   treeEl.scrollTop = scroll;
 }
 
-// Flat, sortable coupling view: rank modules by fan-in (used-by) or fan-out (uses).
+// Flat coupling view: rank modules by direct dependency counts. All edges come from the module
+// config, so a hotspot is a graph-coupling fact, not a code-quality judgement.
+const SORTS = {
+  'used-by': {label:'dependents (fan-in)',
+              metric:m=>m['used-by'].length,
+              desc:'how many modules depend on it directly — a change here has the widest blast radius'},
+  'uses':    {label:'dependencies (fan-out)',
+              metric:m=>m.uses.length,
+              desc:'how many modules it depends on directly — the most entangled consumers in the graph'},
+  'coupling':{label:'total coupling (in + out)',
+              metric:m=>m['used-by'].length+m.uses.length,
+              desc:'dependents plus dependencies — modules that are both load-bearing and entangled'},
+};
 function renderHotspots(){
   const scroll = treeEl.scrollTop;
   treeEl.innerHTML='';
-  const frag = document.createDocumentFragment();
+  const s = SORTS[sortBy];
   const list = MODULES.filter(m => matches(m) && teamOk(m))
-    .sort((a,b) => (sortBy==='uses' ? b.uses.length-a.uses.length : b['used-by'].length-a['used-by'].length)
-                   || a.id.localeCompare(b.id));
-  for(const m of list){
-    const {row} = buildRow(m, m.id, false);
-    row.classList.add('flat');
+    .sort((a,b) => s.metric(b)-s.metric(a) || a.id.localeCompare(b.id));
+
+  const bar=document.createElement('div'); bar.className='viewbar';
+  const ttl=document.createElement('b'); ttl.textContent='Ranked by'; bar.appendChild(ttl);
+  const sel=document.createElement('select');
+  for(const [k,v] of Object.entries(SORTS)){
+    const o=document.createElement('option'); o.value=k; o.textContent=v.label; sel.appendChild(o);
+  }
+  sel.value=sortBy; sel.onchange=()=>{ sortBy=sel.value; render(); };
+  bar.appendChild(sel);
+  const d=document.createElement('span'); d.className='desc';
+  d.innerHTML=`${s.desc}. Bars share one scale: <span class=swatch style='background:var(--usedby)'></span>dependents + <span class=swatch style='background:var(--uses)'></span>dependencies.`;
+  bar.appendChild(d);
+  treeEl.appendChild(bar);
+  if(debtOnly) treeEl.appendChild(debtNotice());
+
+  const maxTotal = Math.max(1, ...list.map(m=>m['used-by'].length+m.uses.length));
+  const frag = document.createDocumentFragment();
+  list.forEach((m,i)=>{
+    const row=document.createElement('div');
+    row.className='row flat'+(m.id===selected?' sel':'');
+    row.dataset.id=m.id;
+    const rank=document.createElement('span'); rank.className='rank'; rank.textContent=i+1; row.appendChild(rank);
+    const nm=document.createElement('span'); nm.className='hname';
+    const dot=document.createElement('span'); dot.className='dot';
+    dot.style.background=m.team?teamColor[m.team]:'var(--group)'; nm.appendChild(dot);
+    nm.appendChild(makeName(m, m.id, ''));
+    appendBadges(nm,m); row.appendChild(nm);
+    const track=document.createElement('span'); track.className='track';
+    const inSeg=document.createElement('span'); inSeg.className='in';
+    inSeg.style.width=(m['used-by'].length/maxTotal*100)+'%'; track.appendChild(inSeg);
+    const outSeg=document.createElement('span'); outSeg.className='out';
+    outSeg.style.width=(m.uses.length/maxTotal*100)+'%'; track.appendChild(outSeg);
+    track.title=`${m['used-by'].length} dependents · ${m.uses.length} dependencies`;
+    row.appendChild(track);
+    const c=document.createElement('span'); c.className='hcounts';
+    const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
+    const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=m.uses.length;
+    c.append(inN, ' in · ', outN, ' out'); row.appendChild(c);
+    appendDepMarks(row,m);
     row.onclick=(e)=>{ e.stopPropagation(); select(m.id); };
     visibleIds.push(m.id);
     frag.appendChild(row);
-  }
+  });
   treeEl.appendChild(frag);
   treeEl.scrollTop = scroll;
 }
@@ -430,8 +530,11 @@ function keyboardSelect(id){   // coalesce a run of arrow moves into one history
   clearTimeout(kbRunTimer);
   kbRunTimer=setTimeout(endKbRun, 500);
 }
+const EMPTY_DETAIL='<div class=d-empty>Select a module to see its team, API surface, and dependencies.'+
+  '<br>Its relatives light up in the tree: <span class=\"dep-mark uses\"></span> ones it uses, <span class=\"dep-mark usedby\"></span> ones that use it.'+
+  '<div class=keys><kbd>/</kbd> search &nbsp; <kbd>↑</kbd><kbd>↓</kbd> move selection &nbsp; <kbd>Esc</kbd> clear</div></div>';
 function renderDetail(){
-  if(!selected){ detailEl.classList.remove('show'); detailEl.innerHTML='<div class=d-empty>Select a module to see its team, API surface, and dependencies.</div>'; return; }
+  if(!selected){ detailEl.classList.remove('show'); detailEl.innerHTML=EMPTY_DETAIL; return; }
   const m=byId[selected];
   detailEl.classList.add('show');
   detailEl.innerHTML='';
@@ -489,22 +592,24 @@ function applyTheme(v){ v ? rootEl.setAttribute('data-theme',v) : rootEl.removeA
 try{ const saved=localStorage.getItem('mb-modtree-theme'); if(saved!==null){ themeSel.value=saved; applyTheme(saved); } }catch(e){}
 themeSel.onchange=()=>{ applyTheme(themeSel.value); try{ localStorage.setItem('mb-modtree-theme', themeSel.value); }catch(e){} };
 
-// tech-debt lens + hotspots view + sort
+// unfilled-boundaries lens + tree/hotspots view
 const qInput=document.getElementById('q');
 const debtBtn=document.getElementById('debt');
 debtBtn.onclick=()=>{ debtOnly=!debtOnly; debtBtn.classList.toggle('on',debtOnly); render(); };
-const viewBtn=document.getElementById('view');
-const sortSel=document.getElementById('sortby');
 function syncView(){
-  viewBtn.textContent = view==='tree' ? 'Hotspots' : 'Tree';
-  viewBtn.classList.toggle('on', view==='hotspots');
-  document.getElementById('expand').style.display = view==='tree' ? '' : 'none';
-  document.getElementById('collapse').style.display = view==='tree' ? '' : 'none';
-  sortSel.style.display = view==='hotspots' ? '' : 'none';
+  document.getElementById('view-tree').classList.toggle('on', view==='tree');
+  document.getElementById('view-hotspots').classList.toggle('on', view==='hotspots');
+  document.getElementById('foldctl').style.display = view==='tree' ? '' : 'none';
 }
-viewBtn.onclick=()=>{ view = view==='tree'?'hotspots':'tree'; syncView();
-  if(view==='tree'&&selected) expandAncestors(selected); render(); if(view==='tree'&&selected) scrollToSelected(); };
-sortSel.onchange=()=>{ sortBy=sortSel.value; render(); };
+function setView(v){
+  if(view===v) return;
+  view=v; syncView();
+  if(view==='tree'&&selected) expandAncestors(selected);
+  render();
+  if(view==='tree'&&selected) scrollToSelected();
+}
+document.getElementById('view-tree').onclick=()=>setView('tree');
+document.getElementById('view-hotspots').onclick=()=>setView('hotspots');
 syncView();
 
 // keyboard: / focuses search, Esc clears/deselects, ↑/↓ move selection through visible rows
@@ -531,7 +636,7 @@ window.addEventListener('hashchange', ()=>{ const h=decodeURIComponent(location.
 // fully expanded by default
 expandAll();
 render();
-{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) applySelected(h); }
+{ const h=decodeURIComponent(location.hash.slice(1)); if(byId[h]) applySelected(h); else renderDetail(); }
 ")
 
 (def ^:private html-head
