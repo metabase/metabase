@@ -941,13 +941,29 @@ describe("Remote Sync", () => {
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
+      // The conflict modal only renders after two async requests settle, so assert on them rather
+      // than racing the default 4s command timeout: the dirty-changes query flips the control into
+      // its "has unsynced local changes" state, and the pull it triggers issues an export-preflight
+      // whose response is what dispatches the modal.
+      cy.intercept("GET", "/api/ee/remote-sync/dirty").as("dirtyChanges");
+      cy.intercept("GET", "/api/ee/remote-sync/export-preflight*").as(
+        "exportPreflight",
+      );
+
       H.DataStudio.Transforms.visit();
 
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
+      // Wait until the control knows there are unsynced changes before pulling, so the pull takes
+      // the conflict-preflight path deterministically instead of a plain import.
+      cy.wait("@dirtyChanges");
+
       H.clickPullOption();
+
+      // The conflict modal is only dispatched once the export-preflight resolves.
+      cy.wait("@exportPreflight");
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
