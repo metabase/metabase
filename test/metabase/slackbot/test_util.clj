@@ -87,6 +87,7 @@
     {:request-options {:headers {"x-slack-signature" signature
                                  "x-slack-request-timestamp" timestamp}}}))
 
+;; flagged for the `!` vars it rebinds, not calls; with-dynamic-fn-redefs keeps the redefs thread-safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn with-slackbot-mocks
   "Helper to set up common mocks for slackbot tests.
