@@ -5,8 +5,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common]
    [metabase.api.util.handlers :as handlers]
+   ;; this router keeps mounting the deprecated pulse/alert routes until the notification APIs replace them
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.api.alert]
+   ;; this router keeps mounting the deprecated pulse/alert routes until the notification APIs replace them
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.api.pulse]
    [metabase.pulse.api.unsubscribe]

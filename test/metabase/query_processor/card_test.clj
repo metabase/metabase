@@ -17,6 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   ;; asserts on the store's miscellaneous-value slot that the results-metadata middleware writes
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]

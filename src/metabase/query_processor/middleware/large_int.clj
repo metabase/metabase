@@ -2,6 +2,7 @@
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
   (:refer-clojure :exclude [mapv])
   (:require
+   ;; the store's miscellaneous-value slot is the only channel for passing state between middleware stages
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :refer [mapv]])
   (:import
