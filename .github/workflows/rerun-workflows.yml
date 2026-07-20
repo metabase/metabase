@@ -35,10 +35,6 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
-      - uses: actions/setup-node@v6.4.0
-        with:
-          node-version: lts/Jod # 22.x.x
-      - run: npm install @slack/web-api
       - name: Trigger a re-run
         uses: actions/github-script@v9
         with:
@@ -51,8 +47,6 @@ jobs:
             const AUTHOR = process.env.AUTHOR_NAME;
             const AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
             const BRANCH = process.env.BRANCH_NAME;
-
-            const { mentionUserByGithubLogin } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               try {
@@ -70,8 +64,7 @@ jobs:
               }
             } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
-              const { WebClient } = require('@slack/web-api');
-              const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
+              const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
               // find out which jobs failed
               const { owner, repo } = context.repo;
@@ -102,9 +95,9 @@ jobs:
                 ]
               }));
 
-              await slack.chat.postMessage({
-                channel: 'engineering-ci',
-                text: 'Failing tests',
+              await sendSlackMessage({
+                channelName: 'engineering-ci',
+                message: 'Failing tests',
                 blocks: [
                   {
                     "type": "header",
