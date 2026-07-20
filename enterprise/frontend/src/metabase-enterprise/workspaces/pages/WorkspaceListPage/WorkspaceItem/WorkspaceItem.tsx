@@ -61,6 +61,9 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
           ) : (
             <WorkspaceStatusItem workspace={workspace} />
           )}
+          {workspace.target_branch != null && (
+            <WorkspaceBranchItem targetBranch={workspace.target_branch} />
+          )}
           {databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -157,6 +160,21 @@ function WorkspaceInstanceItem({ instanceUrl }: WorkspaceInstanceItemProps) {
         ) : (
           t`No workspace instance yet`
         )}
+      </Group>
+    </Box>
+  );
+}
+
+type WorkspaceBranchItemProps = {
+  targetBranch: string;
+};
+
+function WorkspaceBranchItem({ targetBranch }: WorkspaceBranchItemProps) {
+  return (
+    <Box c="text-secondary" lh="1rem">
+      <Group gap="xs" wrap="nowrap">
+        <FixedSizeIcon name="git_branch" aria-hidden />
+        {targetBranch}
       </Group>
     </Box>
   );

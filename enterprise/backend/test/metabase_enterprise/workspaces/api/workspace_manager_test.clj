@@ -99,6 +99,23 @@
           (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                 {:name "Nope" :database_ids []}))))))
 
+(deftest create-workspace-target-branch-test
+  (testing "POST / accepts an optional target_branch and enforces its uniqueness"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (is (=? {:target_branch "feature-x"}
+                (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                      {:name "First" :target_branch "feature-x" :database_ids [db-id]})))
+        (testing "a duplicate target_branch is rejected"
+          (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                {:name "Second" :target_branch "feature-x" :database_ids [db-id]}))
+        (testing "target_branch is optional"
+          (is (=? {:target_branch nil}
+                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name "Second" :database_ids [db-id]}))))))))
+
 (deftest provision-endpoint-test
   (testing "POST /:id/provision provisions the databases and drives the workspace status"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres

@@ -77,6 +77,54 @@ describe("NewWorkspaceModal", () => {
     ).toBe(true);
   });
 
+  it("fills the branch with the sluggified name until manually edited", async () => {
+    setup();
+
+    await userEvent.type(screen.getByLabelText("Name"), "Brand New Workspace");
+    expect(screen.getByLabelText("Branch")).toHaveValue("brand-new-workspace");
+  });
+
+  it("keeps a manually edited branch when the name changes", async () => {
+    setup();
+
+    await userEvent.type(screen.getByLabelText("Branch"), "custom-branch");
+    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
+
+    expect(screen.getByLabelText("Branch")).toHaveValue("custom-branch");
+  });
+
+  it("sends the branch when creating a workspace", async () => {
+    const { onCreate } = setup();
+
+    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Postgres" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    const call = fetchMock.callHistory.lastCall(
+      "path:/api/ee/workspace-manager",
+      { method: "POST" },
+    );
+    expect(await call?.request?.json()).toMatchObject({
+      target_branch: "brand-new-workspace",
+    });
+  });
+
+  it("requires a branch", async () => {
+    const { onCreate } = setup();
+
+    await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
+    await userEvent.clear(screen.getByLabelText("Branch"));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Postgres" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
+
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
   it("preselects the database when it is the only one available", async () => {
     const { onCreate, createdWorkspace } = setup({ databases: [DATABASE] });
 

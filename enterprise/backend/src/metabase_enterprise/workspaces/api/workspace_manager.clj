@@ -17,6 +17,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -26,8 +27,9 @@
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:name          ms/NonBlankString]
+   [:target_branch {:optional true} [:maybe ms/NonBlankString]]
+   [:database_ids  [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -61,6 +63,7 @@
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:name           ms/NonBlankString]
+   [:target_branch  [:maybe :string]]
    [:status         ::ws.schema/workspace-status]
    [:status_details [:maybe :string]]
    [:instance_id    [:maybe :string]]
@@ -86,7 +89,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :status :status_details :instance_id :instance_url :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :target_branch :status :status_details :instance_id :instance_url :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
@@ -113,11 +116,15 @@
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces). The workspace and its databases start `:unprovisioned` —
    start provisioning explicitly via `POST /:id/provision`."
-  [_route-params _query-params {:keys [database_ids] :as params} :- CreateWorkspaceParams]
+  [_route-params _query-params {:keys [target_branch database_ids] :as params} :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (-> (workspace/create-workspace! {:name       (:name params)
-                                    :creator_id api/*current-user-id*
-                                    :databases  (workspace/workspace-databases database_ids)})
+  (when target_branch
+    (api/check-400 (not (t2/exists? :model/Workspace :target_branch target_branch))
+                   (tru "A workspace with this target branch already exists")))
+  (-> (workspace/create-workspace! {:name          (:name params)
+                                    :target_branch target_branch
+                                    :creator_id    api/*current-user-id*
+                                    :databases     (workspace/workspace-databases database_ids)})
       (t2/hydrate :creator [:databases :database])
       present-workspace))
 

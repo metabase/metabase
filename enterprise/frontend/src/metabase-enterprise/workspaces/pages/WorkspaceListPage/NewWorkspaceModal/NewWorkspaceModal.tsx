@@ -1,3 +1,6 @@
+import { useFormikContext } from "formik";
+import { type ChangeEvent, useState } from "react";
+import slugg from "slugg";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -51,17 +54,20 @@ export function NewWorkspaceModal({
 
 type NewWorkspaceFormValues = {
   name: string;
+  target_branch: string;
   database_ids: string[];
 };
 
 const NEW_WORKSPACE_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
+  target_branch: Yup.string().required(Errors.required),
   database_ids: Yup.array().of(Yup.string()).min(1, Errors.required),
 });
 
 function getInitialValues(databases: Database[]): NewWorkspaceFormValues {
   return {
     name: "",
+    target_branch: "",
     database_ids: databases.length === 1 ? [String(databases[0].id)] : [],
   };
 }
@@ -83,10 +89,12 @@ function NewWorkspaceForm({
 
   const handleSubmit = async ({
     name,
+    target_branch,
     database_ids,
   }: NewWorkspaceFormValues) => {
     const workspace = await createWorkspace({
       name,
+      target_branch,
       database_ids: database_ids.map(Number),
     }).unwrap();
     trackWorkspaceCreated({ workspaceId: workspace.id });
@@ -103,23 +111,7 @@ function NewWorkspaceForm({
     >
       <Form>
         <Stack gap="lg">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My workspace`}
-            data-autofocus
-          />
-          <FormCheckboxGroup name="database_ids" label={t`Databases`}>
-            <Stack gap="sm" mt="sm">
-              {databases.map((database) => (
-                <Checkbox
-                  key={database.id}
-                  value={String(database.id)}
-                  label={database.name}
-                />
-              ))}
-            </Stack>
-          </FormCheckboxGroup>
+          <NewWorkspaceFormFields databases={databases} />
           <FormErrorMessage />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
@@ -128,5 +120,49 @@ function NewWorkspaceForm({
         </Stack>
       </Form>
     </FormProvider>
+  );
+}
+
+type NewWorkspaceFormFieldsProps = {
+  databases: Database[];
+};
+
+function NewWorkspaceFormFields({ databases }: NewWorkspaceFormFieldsProps) {
+  const { setFieldValue } = useFormikContext<NewWorkspaceFormValues>();
+  const [isBranchTouched, setIsBranchTouched] = useState(false);
+
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!isBranchTouched) {
+      setFieldValue("target_branch", slugg(event.target.value));
+    }
+  };
+
+  return (
+    <>
+      <FormTextInput
+        name="name"
+        label={t`Name`}
+        placeholder={t`My workspace`}
+        data-autofocus
+        onChange={handleNameChange}
+      />
+      <FormTextInput
+        name="target_branch"
+        label={t`Branch`}
+        placeholder={t`my-workspace`}
+        onChange={() => setIsBranchTouched(true)}
+      />
+      <FormCheckboxGroup name="database_ids" label={t`Databases`}>
+        <Stack gap="sm" mt="sm">
+          {databases.map((database) => (
+            <Checkbox
+              key={database.id}
+              value={String(database.id)}
+              label={database.name}
+            />
+          ))}
+        </Stack>
+      </FormCheckboxGroup>
+    </>
   );
 }
