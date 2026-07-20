@@ -19,7 +19,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Callable ExecutorService Executors Future Semaphore TimeUnit TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -225,6 +227,41 @@
               (sort-by :rrf >)
               (map :search-result)))))))
 
+(def ^:private max-parallel-searches
+  "Ceiling on subsearches running at once when one call fans out across several queries — a floor of
+   protection for every caller, independent of any per-tool input cap."
+  10)
+
+(def ^:private search-timeout-ms
+  "Per-subsearch deadline. A subsearch that overruns is cancelled and surfaces a timeout, rather than
+   pinning a thread (and a DB connection) indefinitely."
+  10000)
+
+(defn- bounded-pmap
+  "Map `f` over `coll` on virtual threads, at most `max-concurrency` running at once and each bounded
+   to `timeout-ms`, returning results in order. Conveys the caller's dynamic bindings to each task
+   (like `future`), so work that reads dynamic vars — e.g. the current user's permission set — sees
+   them. A task that overruns is cancelled and the whole call throws a timeout error."
+  [max-concurrency timeout-ms f coll]
+  (let [sem (Semaphore. (int max-concurrency))]
+    (with-open [executor ^ExecutorService (Executors/newVirtualThreadPerTaskExecutor)]
+      (let [tasks    (mapv (fn [x]
+                             (.submit executor
+                                      ^Callable (bound-fn* (fn []
+                                                             (.acquire sem)
+                                                             (try (f x) (finally (.release sem)))))))
+                           coll)
+            deadline (+ (System/nanoTime) (* (long timeout-ms) 1000000))]
+        (try
+          (mapv (fn [^Future fut]
+                  (.get fut (max 0 (- deadline (System/nanoTime))) TimeUnit/NANOSECONDS))
+                tasks)
+          (catch TimeoutException _
+            (run! (fn [^Future fut] (.cancel fut true)) tasks)
+            (throw (ex-info (format "Search timed out after %ds — send fewer or narrower queries, then retry."
+                                    (quot timeout-ms 1000))
+                            {:status-code 400}))))))))
+
 (defn- join-results-by-rrf
   "Execute multiple search queries in parallel and combine results using Reciprocal Rank Fusion.
    Items appearing in multiple result lists are boosted in the final ranking.
@@ -233,10 +270,8 @@
   ;; Zero queries case is handled nicely by the >1 branch
   (if (= 1 (count all-queries))
     (search-fn (first all-queries) search-engine)
-    ;; Create futures for parallel execution
-    (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
-      (reciprocal-rank-fusion result-lists))))
+    (reciprocal-rank-fusion
+     (bounded-pmap max-parallel-searches search-timeout-ms #(search-fn % search-engine) all-queries))))
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.

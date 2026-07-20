@@ -15,6 +15,36 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(deftest ^:parallel bounded-pmap-conveys-bindings-test
+  (testing "GHY-4137: bounded-pmap runs f on virtual threads with the caller's dynamic bindings
+            conveyed (like future did), so each per-query subsearch keeps the current user's
+            permission bindings — without this, permission filtering would silently break"
+    (binding [api/*current-user-id* 4242]
+      (is (= [4242 4242 4242]
+             (#'search/bounded-pmap 10 10000 (fn [_] api/*current-user-id*) [:a :b :c]))))))
+
+(deftest ^:parallel bounded-pmap-bounds-concurrency-test
+  (testing "GHY-4137: at most max-concurrency tasks run at once, so one call's fan-out can't
+            saturate the DB / embedding provider"
+    (let [running (atom 0)
+          peak    (atom 0)
+          f       (fn [_]
+                    (let [n (swap! running inc)]
+                      (swap! peak max n)
+                      (Thread/sleep 30)
+                      (swap! running dec)
+                      n))]
+      (#'search/bounded-pmap 3 10000 f (range 12))
+      (is (<= @peak 3) "never exceeds the concurrency limit"))))
+
+(deftest ^:parallel bounded-pmap-times-out-test
+  (testing "GHY-4137: a task exceeding the timeout is cancelled and surfaces a timeout error rather
+            than hanging the request thread"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                          (#'search/bounded-pmap 4 50 (fn [_] (Thread/sleep 5000) :done) [:a :b]))))
+  (testing "tasks that finish within the timeout return normally"
+    (is (= [:done :done] (#'search/bounded-pmap 4 10000 (fn [_] :done) [:a :b])))))
+
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
