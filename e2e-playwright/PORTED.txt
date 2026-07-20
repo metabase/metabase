@@ -382,3 +382,4 @@ question/notebook-native-preview-sidebar.cy.spec.ts
 dashboard-filters/dashboard-filters-boolean.cy.spec.ts
 dashboard-filters/dashboard-filters-source.cy.spec.js
 admin/databases/database-writable-connection.cy.spec.ts
+admin/database-connection-strings.cy.spec.ts

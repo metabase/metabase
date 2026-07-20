@@ -2204,3 +2204,52 @@ open item, not as evidence.
     *contents*, because `create_time` proved unreliable (the container clock runs
     ~7h behind the host). **Upstream has the same cache-schema leak**, so this is
     not port-specific.
+
+### A truthy-string coercion, and a candidate bug scoped honestly
+
+126. **`?ssl=false` in a connection string turns the SSL switch ON**
+    (`database-connection-strings`). `database-field-mapper.ts` passes the raw
+    string straight into `details.ssl`, and the string `"false"` is **truthy**.
+
+    The agent scoped the claim tightly and I am keeping it that way: this was
+    **measured at the form layer only**. It did not check what the *saved record*
+    ends up containing, so this is **not** an end-to-end bug claim. Recorded as a
+    candidate, with the exact boundary of what was observed.
+
+    The same coercion explains one of its mutation survivors: `ssl=true` →
+    `ssl=false` survived because both strings are truthy. Rather than filing that
+    as vacuity, the agent ran the presence probe — `.not.toBeChecked()` under the
+    same mutation failed with "Received: checked" — establishing **coincidence,
+    not a blind assertion**.
+
+### A vacuity proven by where the mutant died
+
+127. **`should("have.value", "on")` on a checkbox is near-tautological**
+    (`database-connection-strings`). `"on"` is the HTML default `value` for a
+    checkbox and **does not track checkedness** at all.
+
+    Proven rather than argued: the mutation that genuinely unchecks the box
+    **died at `toBeChecked()` and sailed straight past the value check**. That
+    ordering is the evidence — the value assertion cannot distinguish the states
+    it appears to be testing. Kept **verbatim with the analysis inline**.
+
+### Mutation-tooling hygiene: verify the mutation you think you made
+
+128. **A `perl`-based mutation silently clobbered a fixture line to `X`**
+    (`database-connection-strings`). It was caught only by **reading the file
+    back** after mutating.
+
+    This is a failure mode the spike had not recorded: a mutation that does
+    something *other* than intended produces a result that looks like a finding —
+    a mutant that "kills" for the wrong reason, or "survives" because the intended
+    change never landed. It sits alongside the known bad-mutation shapes
+    (mutating a shared constant so assertions move with it; removing a value the
+    app persists).
+
+    **Adopted remedy, worth generalising:** use an **anchored replace with a
+    `count == 1` assertion**, and **read the file back** before drawing any
+    conclusion from the run. Every later mutation in that port did so.
+
+    Related, from the same agent: it also **sanity-checked its own dead-import
+    checker** after a greedy regex reported `test` as a dead import — the real
+    answer was zero. **Verify the tool before trusting its verdict.**
