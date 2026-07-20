@@ -27,8 +27,8 @@ describe("useConfirmOnRouteLeave", () => {
 
     const { history, ...rest } = renderWithProviders(
       <div>
-        <Route path="/a" component={PageA} />
-        <Route path="/b" component={PageB} />
+        <Route path="/a" element={<PageA />} />
+        <Route path="/b" element={<PageB />} />
       </div>,
       { withRouter: true, initialRoute: "/a" },
     );

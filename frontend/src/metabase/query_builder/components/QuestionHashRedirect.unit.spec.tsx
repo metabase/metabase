@@ -6,10 +6,10 @@ import { QuestionHashRedirect } from "./QuestionHashRedirect";
 const setup = (initialRoute: string) =>
   renderWithProviders(
     <>
-      <Route path="/q" component={QuestionHashRedirect} />
-      <Route path="/card/:slug" component={QuestionHashRedirect} />
-      <Route path="/question" component={() => <div>question</div>} />
-      <Route path="/question/:slug" component={() => <div>question</div>} />
+      <Route path="/q" element={<QuestionHashRedirect />} />
+      <Route path="/card/:slug" element={<QuestionHashRedirect />} />
+      <Route path="/question" element={<div>question</div>} />
+      <Route path="/question/:slug" element={<div>question</div>} />
     </>,
     { withRouter: true, initialRoute },
   );

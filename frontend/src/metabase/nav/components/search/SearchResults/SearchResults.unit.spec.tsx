@@ -59,7 +59,7 @@ const setup = async ({
   const { history } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SearchResults
           onEntitySelect={onEntitySelect}
           forceEntitySelect={forceEntitySelect}
@@ -67,7 +67,7 @@ const setup = async ({
           footerComponent={footer}
           context="search-bar"
         />
-      )}
+      }
     />,
     {
       withRouter: true,
