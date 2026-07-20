@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
+import { trackTransformRunsViewToggled } from "metabase/transforms/analytics";
 import { Switch } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -17,6 +18,8 @@ export function DetailedViewSwitch({
   const dispatch = useDispatch();
 
   const handleChange = () => {
+    const nextView = detailed ? "grouped" : "detailed";
+    trackTransformRunsViewToggled({ view: nextView });
     dispatch(
       push(
         detailed

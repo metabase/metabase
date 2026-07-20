@@ -47,6 +47,17 @@ export function trackTransformJobTriggerManualRun({
   });
 }
 
+export function trackTransformRunsViewToggled({
+  view,
+}: {
+  view: "detailed" | "grouped";
+}) {
+  trackSimpleEvent({
+    event: "transform_runs_view_toggled",
+    event_detail: view,
+  });
+}
+
 export function trackTransformCreate({
   creationType,
 }: {
