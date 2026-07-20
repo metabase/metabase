@@ -1,0 +1,31 @@
+## Content Diagnostics - `duplicated` finding type.
+## Adds the per-type verdict magnitude column + composite index the `duplicated` checker/serve path needs.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.q8vh2n
+      author: yb
+      comment: Content Diagnostics - duplicate_count verdict magnitude for duplicated findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: duplicate_count
+                  type: bigint
+                  remarks: Verdict magnitude for duplicated findings - the number of other same-type entities sharing the normalized name (cluster size minus 1); null on all other finding types (per-type named magnitude column).
+
+  - changeSet:
+      id: v64.j5tk9w
+      author: yb
+      comment: Content Diagnostics - index findings by finding_type + duplicate_count
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_duplicate_count
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: duplicate_count
