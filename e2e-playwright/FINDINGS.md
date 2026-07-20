@@ -3974,3 +3974,53 @@ open item, not as evidence.
     measured (after the mutation verifiers, #128/#146/#172, and the stale "~13m
     setup floor"). **The suspicious-looking output is the signal; check the tool
     before believing the number.**
+
+### ✅ #157 FIXED — `resetWritableDb` ported, and the 403 cluster is gone
+
+212. **`support/reset-writable-db.ts` ports `resetWritableDb`
+    (`e2e/support/db_tasks.js:41`), wired into `mb.restore()` for any
+    `*-writable` snapshot — before the restore, matching upstream's ordering
+    (`e2e-setup-helpers.js:44-49`).**
+
+    Measured effect on the local container: **30 schemas → 3**.
+
+    | spec | before | after |
+    | --- | --- | --- |
+    | `transforms-permissions` | 1 failed (403) | **12 passed / 2 skipped** |
+    | `dependency-graph` | 2 failed (403) | **15 passed**, 1 failed (different test) |
+    | `datamodel-data-studio-search` | 2 passed / 6 failed | **7 passed / 1** |
+
+    In the CI run this targets, **9 tests failed with
+    `403 A table with that name already exists`** across `dependency-broken-list`
+    (5), `dependency-graph` (2), `transforms-permissions` (1) and neighbours,
+    plus **8 flaky in `transforms` alone**. That cluster is the reset gap.
+
+    **Two deliberate deviations from upstream, both stated:**
+    - postgres tables are dropped `IF EXISTS … CASCADE` rather than upstream's
+      bare `DROP TABLE`. Ports create views and FKs upstream's fixtures do not,
+      and a dependency error mid-loop would abort the reset **half-done** —
+      worse than not resetting.
+    - mysql suspends `FOREIGN_KEY_CHECKS` around the drops, since
+      `information_schema` gives no FK-safe ordering.
+
+    The module is **self-contained** rather than importing `knexClient` from
+    `support/actions-on-dashboards.ts`: that is a per-spec module, and shared
+    infrastructure must not depend on one. The connection config is duplicated
+    from `cypress_data.js` with a comment saying why.
+
+### The last `datamodel-data-studio-search` failure is a STALE LOCAL FIXTURE
+
+213. **The one remaining failure is not the reset and not the port.** The test
+    asserts on `Accounts` and `Analytic Events`; this box's Sample Database has
+    only **4 tables** — `Orders, People, Products, Reviews`. CI generates the
+    extended sample DB and **passes this spec outright** (it does not appear in
+    the CI failure list at all).
+
+    Confirmed by querying `/api/database/1/metadata` directly rather than
+    inferring from the symptom.
+
+    Fourth member of the stale-local-fixture family, after the corrupt
+    `blank.sql` (#97), the 30-day `instance-creation` fuse (#145), and the
+    postgres heap-order accident (#103). **The pattern is now strong enough to
+    state as a rule: when a local failure looks like missing data, check the
+    fixture against what CI generates before touching the port.**

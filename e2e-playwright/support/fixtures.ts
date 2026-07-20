@@ -1,6 +1,10 @@
 import { test as base, BrowserContext, APIRequestContext } from "@playwright/test";
 
 import { MetabaseApi } from "./api";
+import {
+  resetWritableDb,
+  writableDialectFor,
+} from "./reset-writable-db";
 import { BASE_URL } from "./env";
 import { LOGIN_CACHE, USERS, UserName } from "./sample-data";
 import type { SnowplowCollector } from "./snowplow-collector";
@@ -89,6 +93,15 @@ class MetabaseHarness {
   }
 
   async restore(name = "default") {
+    // Upstream's restore() resets the warehouse first whenever the snapshot is
+    // a "-writable" one (e2e-setup-helpers.js:44-49). That was never ported, so
+    // warehouse state accumulated forever on a long-lived container while the
+    // app DB was reset each time — 9 CI failures with "403 A table with that
+    // name already exists", ~30 debris schemas, and one spec that could not
+    // pass at all (FINDINGS #157). Order matters: reset BEFORE the snapshot.
+    if (name.includes("-writable")) {
+      await resetWritableDb({ type: writableDialectFor(name) });
+    }
     await this.api.restore(name);
     // The restore triggers an async search-index rebuild. A frontend search
     // fired inside that window renders a permanent empty state (the FE never
