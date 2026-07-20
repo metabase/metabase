@@ -3365,3 +3365,43 @@ open item, not as evidence.
     And upstream carries **no tag at all** despite a live writable-DB dependency —
     the "live dependency, missing tag" case again (#123, #171). Gate-OFF control:
     8 skipped / 0 executed.
+
+### 🔴 The maildev inbox is SHARED across slots — and `setupSMTP` deletes it
+
+186. **`setupSMTP` DELETEs the shared maildev inbox**, so any spec reading
+    delivered mail can have its messages destroyed by a concurrent slot
+    (`alert-permissions`). Observed directly: the inbox went **5 → 4 across one
+    run** while sibling agents were delivering into it.
+
+    This makes the **request-count-delta probe (#171) useless for maildev**,
+    though it remains sound for webhook-tester (re-measured here as 1 before / 1
+    after, confirming the sibling's finding rather than inheriting it). The agent
+    substituted a mechanism probe instead: `PUT /api/email` at dead port 1026 →
+    **400**, live 1025 → **200**.
+
+    This sharpens #178's split. Shared across slots: **warehouse containers,
+    maildev (including its inbox), webhook-tester**. Per-slot: **everything in
+    the app DB**. **Any spec asserting on delivered mail is exposed to
+    concurrent slots**, and that is a genuine parallelism limit rather than a
+    hygiene issue — worth knowing before anyone raises the worker count.
+
+### `beforeAll` re-runs under `--repeat-each` — each repeat is a separate worker
+
+187. **Playwright dispatches each `--repeat-each` iteration as a separate
+    worker, so `beforeAll` re-runs and module state resets**
+    (`alert-permissions`). Proven, not assumed: the recipient test passed in
+    repeats 2 and 3 **despite** repeat 1's unsubscribe having removed that
+    recipient.
+
+    That matters for how we read `--repeat-each` results generally — it is **not**
+    a clean test of intra-file order-dependence for anything held in `beforeAll`
+    or module scope, because that state is rebuilt each time. It still catches
+    ordering effects *within* a single repeat.
+
+    The same agent found **upstream's "all tests can run independently" comment
+    is false as written** — the unsubscribe test destroys the recipient test's
+    precondition. Recorded, not "fixed": reordering would change coverage.
+
+    Also: **`tsc`'s silence on dead imports (#162) bit this port for real** — the
+    hand-audit found a dead `currentUser` export that `tsc` said nothing about.
+    The audit is not ceremonial.
