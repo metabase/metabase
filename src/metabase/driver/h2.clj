@@ -762,7 +762,8 @@
   [driver database workspace]
   (let [schema-name (:schema workspace)
         [_file {username "USER" password "PASSWORD"}]
-        (connection-string->file+options (-> workspace :database_details :db))]
+        (connection-string->file+options (-> workspace :database_details :db))
+        escaped-password (sql.u/escape-sql password :ansi)]
     ;; No transaction: H2 DDL (CREATE USER/SCHEMA, GRANT) commits any open
     ;; transaction, so a wrapper would be decorative. Failure recovery is
     ;; compensation via the idempotent destroy, not rollback.
@@ -770,17 +771,17 @@
      driver database {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+         (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
                       ;; the user may survive a failed teardown; without this it would keep
                       ;; its old password while the new one gets persisted
-                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username password)
+                      (format "ALTER USER \"%s\" SET PASSWORD '%s'" username escaped-password)
                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                       (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
            (.addBatch ^Statement stmt ^String sql))
          (try
            (.executeBatch ^Statement stmt)
            (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password])))))))
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :h2

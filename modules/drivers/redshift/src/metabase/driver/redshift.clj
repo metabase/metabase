@@ -1003,14 +1003,15 @@
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
-  (let [schema-name    (:schema workspace)
-        read-user      (:database_details workspace)
-        quoted-schema  (quote-schema schema-name)
-        quoted-user    (quote-field (:user read-user))]
+  (let [schema-name      (:schema workspace)
+        read-user        (:database_details workspace)
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        quoted-schema    (quote-schema schema-name)
+        quoted-user      (quote-field (:user read-user))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
-                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
+                       (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
+                       (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           ;; Schema-level grant only (Redshift's two schema privileges):
           ;;   USAGE  - access the schema
@@ -1025,7 +1026,7 @@
           (try
             (.executeBatch ^Statement stmt)
             (catch Throwable t
-              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift

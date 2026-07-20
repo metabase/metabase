@@ -1183,7 +1183,8 @@
         db-name          (:db details)
         warehouse        (:warehouse details)
         role-name        (-> workspace :database_details :role)
-        read-user        (select-keys (:database_details workspace) [:user :password])]
+        read-user        (select-keys (:database_details workspace) [:user :password])
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
     (when-not db-name
       (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
                       {:database-id (:id database) :step :init})))
@@ -1219,7 +1220,7 @@
                (.addBatch ^Statement stmt ^String sql))
              (.executeBatch ^Statement stmt))))
         (catch Throwable t
-          (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))
+          (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :snowflake

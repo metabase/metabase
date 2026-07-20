@@ -551,6 +551,7 @@
   (let [db-name             (:schema workspace)
         canonical-db        (:db (driver.conn/effective-details database))
         read-user           (:database_details workspace)
+        escaped-password    (sql.u/escape-sql (:password read-user) :ansi)
         quoted-db           (quote-schema db-name)
         quoted-user         (quote-field (:user read-user))
         quoted-canonical-db (when-not (str/blank? canonical-db)
@@ -563,11 +564,11 @@
        (with-open [stmt (.createStatement conn)]
          (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                               (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
-                                      quoted-user (:password read-user))
+                                      quoted-user escaped-password)
                               ;; the user may survive a failed teardown; without this it would keep
                               ;; its old password while the new one gets persisted
                               (format "ALTER USER %s IDENTIFIED BY '%s'"
-                                      quoted-user (:password read-user))
+                                      quoted-user escaped-password)
                               ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
                               ;; owner auto-privileges, so grant each verb explicitly):
                               ;;   SELECT       - read its own tables
@@ -584,7 +585,7 @@
          (try
            (.executeBatch ^Statement stmt)
            (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user)])))))))
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
