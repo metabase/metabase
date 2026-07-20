@@ -24,14 +24,6 @@ import type {
   RenderedChart,
 } from "./types";
 
-// Slim entry for the custom-viz-only static bundle (lib-static-viz-custom.bundle.js),
-// loaded into the untrusted plugin isolate via ../app-static-viz-custom.ts. It exposes
-// the same render surface as ./index (minus the legacy funnel/gauge charts, the
-// visualizer and choropleth paths, and getCellBackgroundColors, which only the trusted
-// pool invokes) but renders exclusively `custom:` cards, so the built-in chart
-// implementations and the ECharts/visx/geo stack never enter this bundle.
-// See StaticVisualizationCustom.
-
 export type { RenderChartOptions, RenderedChart } from "./types";
 
 /**

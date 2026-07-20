@@ -4,13 +4,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
-/**
- * Custom-viz-only counterpart to StaticVisualization, for the slim bundle loaded
- * into the untrusted plugin isolate. It deliberately imports none of the built-in
- * chart components and never calls registerStaticVisualizations, so the
- * ECharts/visx stack stays out of the bundle. The isolate only ever renders
- * `custom:` cards.
- */
 export const StaticVisualizationCustom = ({
   rawSeries,
   renderingContext,
