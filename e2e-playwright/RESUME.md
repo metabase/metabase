@@ -1,10 +1,127 @@
 # Resume here
 
-Written 2026-07-17 when the session ran out of model usage mid-wave. This is
-the "you've been away" doc: current state, what's half-done, what to do first.
-Read this, then PORTING.md (the playbook — rules, gotchas, environment facts).
+This is the "you've been away" doc: current state, what's half-done, what to do
+first. Read this, then PORTING.md (the playbook — rules, gotchas, env facts).
 
-> ## ⏱ Latest (2026-07-20) — session ended on the subagent cap. Read this block first.
+> ## ⏱ LATEST (2026-07-20, batches 12–17) — READ THIS BLOCK, THE REST IS HISTORY
+>
+> **The porting phase is essentially DONE. 334 specs ported. Every spec that can
+> run against the uberjar in the spike's current CI config is ported.** The
+> queue's remaining 80 specs / 58,451 lines are all one tier — see "The one real
+> decision left" below. Do not start a porting wave without reading that first.
+>
+> **Branch state:** `playwright-e2e-spike`, pushed through `bb8f30e4932`. Working
+> tree clean. PORTED.txt 334, QUEUE.md 80.
+>
+> ### 🔴 The one real decision left: the QA-DB tier
+>
+> **FINDINGS #50 is RETRACTED — I got this wrong and it matters.** I claimed
+> these specs "can never run in CI" because `e2e/snapshots/postgres_writable.sql`
+> is gitignored. Wrong on every limb: **all** snapshots are gitignored
+> (`/e2e/snapshots/*`, including `default.sql` that every landed spec uses) and
+> are generated at CI time; and `.github/workflows/e2e-test.yml` provisions
+> postgres/mysql/mongo/maildev/openldap/webhook/snowplow and runs
+> `grepTags="-@mongo+-@python+-@OSS+-@skip"`, which does **not** exclude
+> `@external`. **Cypress CI runs these specs today.**
+>
+> The gap is *our* workflow, and it is three edits, not one:
+> 1. add the `e2e-prepare-containers` action (it already exists; `e2e-test.yml`
+>    uses it) — our workflow currently starts **no containers at all**;
+> 2. drop `-@external` from the snapshot step (`e2e-playwright.yml:114`);
+> 3. set `PW_QA_DB_ENABLED=1` in the test step — it is currently set **nowhere**,
+>    so every gated spec would still skip itself silently (#67's failure mode).
+>
+> **Validated locally, 2026-07-20** — started `postgres-sample` from
+> `e2e/test/scenarios/docker-compose.yml`, ran two gated specs with
+> `PW_QA_DB_ENABLED=1`:
+> - `transforms-codegen` 4 passed / 1 failed (the failure is `402 Premium
+>   features required` — Python transforms need a token feature
+>   `pro-self-hosted` lacks; **not** an infra problem)
+> - `table-editing` 16 passed / 5 failed
+>
+> So **20 of 26 pass on their first-ever execution**. Expect ~20–25% of the
+> gated tier to need real debugging (those specs were written, typechecked and
+> never run — the ported-and-gated tier #49 warns about). The 5 `table-editing`
+> failures are undiagnosed; a locator waiting on
+> `browse-schemas → Many Data Types → edit-table-icon`. **That is the obvious
+> next task and nobody has started it.**
+>
+> Cost caveat: snapshot generation is ~13 min and **each of 20 shards re-pays
+> it**. Adding QA-DB snapshots makes that worse ×20. The shared-snapshot-artifact
+> idea (below) probably wants doing first.
+>
+> ### What landed in batches 12–17
+>
+> The **SDK-iframe tier went 0 → 23 specs** (12 Group A + 11 Group B) after a
+> feasibility probe found all three assumed blockers were false. **`support/sdk-iframe.ts`
+> and `support/sdk-embed-setup.ts` each needed ZERO changes across all 23** —
+> built once, consumed read-only. Best evidence yet for #61 (marginal port cost
+> in a covered domain ≈ the diff, not the harness).
+>
+> Also: the SSO trio, data-studio pairs, the permissions/tenant tail, and a
+> 66-entry findings-inbox reconciliation into FINDINGS #45–82.
+>
+> ### 🟡 Owed / open
+>
+> - **CI is green** on the pushed tip apart from what's noted below. Two real
+>   failures in run 29711801159 were fixed in `68281ccb2fb`; both were artifact
+>   drift, not product bugs. **Watch the next run** — the SDK tier and batch-17
+>   have not had a full CI pass yet.
+> - **`sdk-iframe-embed-options` now FAILS on the stale local jar** by design —
+>   its fix matches current master (`select-frequency`), which our 2026-07-18 jar
+>   predates. Local re-verification of that spec needs a newer jar. Documented in
+>   its header.
+> - **`instance-stats-snowplow` is 2 × `test.fixme` and UNPORTABLE as-is** —
+>   backend-emitted events have no browser seam (#82). Fixing it means booting
+>   slot backends with `MB_SNOWPLOW_URL=http://localhost:<per-slot port>` in
+>   `worker-backend.ts`. **Do not bodge it from inside the spec** — the collector
+>   port is global across slots and a clean/CI backend would fire real events at
+>   `sp.metabase.com`.
+> - **`embedding-admin-settings-oss` has 1 `test.fixme`** — the upsell-CTA
+>   `role=link` assertion is OSS-**build**-only (`PLUGIN_IS_EE_BUILD`, not a token
+>   feature), so no token can reproduce it on an EE jar.
+> - **Prettier has never been run on `e2e-playwright/`** — the dir isn't in
+>   `.prettierignore` and produces ~50 lines of churn per file. Wants its own pass.
+> - **Consolidation debt** is inventoried at the end of PORTING.md and has grown
+>   large (`commandPaletteSearch` ×5, `dataStudioNav` ×4, `createCollection` ×5,
+>   `updatePermissionsGraph` ×3, the SSO surface across 3 modules, `waitForDashCardQuery`
+>   ×2, `embedPreview`, `loadedEmbedFrame`). Rule still: **only consolidate toward
+>   a shape Cypress already has.**
+> - **Viewport drift** (#41) still unresolved: suite runs 1280×720, config says
+>   1280×800. One-liner, but moves ground under 334 specs — needs its own task.
+> - Shared snapshot artifact across shards (see the sharding note further down).
+>
+> ### ⚠️ Two hazards this session paid for — internalise these
+>
+> **1. CI builds a MERGE commit, so its jar contains master code this branch
+> lacks (#79).** A faithful port of a pre-move original legitimately failed on
+> CI. **A spec verified only against the local jar may be stale against CI**, and
+> this branch is long-lived. To debug a CI-only failure: **download the exact
+> uberjar CI ran** from the run's artifact and boot a slot from it — that turns
+> "can't reproduce" into ordinary debugging and gives before-red/after-green on
+> the *same* artifact.
+>
+> **2. "Ported and green" is NOT sufficient grounds to delete the Cypress suite
+> (#81).** `coverage-baseline.cy.spec.js` is instrumentation, not a product spec:
+> `build-coverage-manifest.mjs` subtracts its coverage from every other spec. The
+> Playwright port is faithful, passes, and is **functionally inert** — deleting
+> the Cypress original would break baseline subtraction and surface as *wrong
+> selective-test plans, not a failing test*. Any spec that feeds tooling rather
+> than asserting behaviour needs its consumers checked independently.
+>
+> ### Scoreboard honesty (don't drift from this)
+>
+> 1 jar-confirmed product bug (#1), 2 open product *questions* (#45, #46 — not
+> bugs), **7 retractions** — six product-bug claims plus #50, which was ours.
+> Coverage needs two numbers: ported-and-verified vs ported-and-gated. The case
+> rests on capability + test-quality evidence, not bug count. FINDINGS #47/#48
+> are deliberate entries **against** the migration; keep them.
+>
+> ---
+>
+> ## Older history below (batches ≤11) — superseded, kept for provenance
+>
+> ### ⏱ Prior (2026-07-20) — session ended on the subagent cap.
 >
 > **Why it stopped:** the session hit `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`
 > (200 spawns, cumulative over the whole session — it counts agents *spawned*,
