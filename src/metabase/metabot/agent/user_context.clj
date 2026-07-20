@@ -11,6 +11,7 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -222,6 +223,17 @@
 
 ;;; Viewing Context Formatting
 
+(defn- query-if-database-readable
+  "The client-supplied adhoc query, only when the current user can read its database.
+  Exporting resolves table/field ids to names through an unfiltered metadata provider,
+  so gate it like the metabase://chart|query resources do. Queries with no :database
+  only ever pprint (no name resolution), so they pass through."
+  [query]
+  (let [database-id (and (map? query) (:database query))]
+    (when (or (not database-id)
+              (mi/can-read? :model/Database database-id))
+      query)))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
@@ -230,7 +242,7 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item) llm-shape/export-query-for-llm))
+              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
