@@ -1138,6 +1138,43 @@ evidence isn't worth making.
     spec passed before probing began. `token_check.clj`'s 12h soft-TTL cache is
     the obvious candidate; it was not proven and is not claimed.
 
+81. **A port can be faithful line-by-line and still functionally inert — and
+    deleting the original would break tooling SILENTLY** (`coverage-baseline`).
+    `coverage-baseline.cy.spec.js` is not a product spec: it is instrumentation
+    scaffolding. `.github/scripts/e2e-spec-globs.mjs` exports it as
+    `BASELINE_SPEC` and `listSpecFiles()` explicitly `ignore:`s it, while
+    `config.js:250`'s `after:spec` hook writes raw coverage that
+    `build-coverage-manifest.mjs` **subtracts from every other spec** to strip
+    boot noise. It was ported 1:1 (it is a real sub-second smoke test and passes),
+    **but the Playwright harness has no coverage instrumentation, so the port does
+    not reproduce the original's function.** Retiring the Cypress spec on the
+    strength of a green port would break baseline subtraction — and would surface
+    as **wrong selective-test plans, not a failing test**.
+
+    Generalises to the migration plan: "every spec is ported and green" is not
+    sufficient grounds to delete the Cypress suite. Specs that exist to feed
+    *tooling* rather than to assert behaviour need their consumers checked
+    independently, because their failure mode is silent.
+
+82. **The snowplow capture covers the FE-emitted class only — `instance-stats`
+    is backend-emitted and has no browser seam.** `instance_stats` goes
+    `stats.clj:1054` → `snowplow.clj track-event!` → Java `Tracker` → Apache
+    HttpClient, never touching the browser. Measured rather than argued: a
+    `node:http` server on the collector port received exactly one
+    `POST /…/tp2` (`iglu:com.metabase/instance_stats/jsonschema/2-0-0`) ~1s after
+    `POST /api/testing/stats` returned 200, with zero browser traffic. **The app
+    is fine; there is no seam to observe it from.**
+
+    The two tests are `test.fixme`'d rather than faked. Re-pointing the collector
+    per-test is impossible — `snowplow.clj` builds the tracker in a `defonce`
+    whose `network-config` reads `snowplow-url` **once at backend boot** — so the
+    fix is a harness change (`MB_SNOWPLOW_URL=http://localhost:<per-slot port>`
+    in `worker-backend.ts`). Doing it from inside the spec was explicitly
+    rejected: the collector port is global across five slots, and on a clean or
+    CI backend `snowplow-url` defaults to `https://sp.metabase.com`, so the
+    "fix" would both degrade to a #49 green-that-never-ran **and fire real events
+    at Metabase's production collector**. Correctly left undone.
+
 ### Capability: `page.clock` reaches into embed iframes
 
 75. **`page.clock` installs into the embed iframe, where upstream gave up on

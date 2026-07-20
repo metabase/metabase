@@ -900,7 +900,21 @@ matching element.
   assertion is about and show the test stays green. Reading the source is not
   enough.
 
-  ⚠️ **But a SURVIVING MUTANT is not proof of vacuity either.** If the content
+  ⚠️ **Two ways a mutation lies to you, both of which read as "vacuous":**
+  - **`PUT /api/setting/:key` returning 2xx is NOT evidence the setting
+    changed.** `non-table-chart-generated` has a custom `:setter` that only ever
+    applies `true` (`analytics/settings.clj:97`), so a "clear the gate" mutation
+    silently no-ops — and looks exactly like a surviving mutant, i.e. like the
+    assertion is vacuous. Same shape as the `MB_SITE_URL` env-beats-app-DB trap
+    (#39). **Read the `defsetting` before using a setting write as a mutation
+    lever.**
+  - **A mutation that shrinks both the input AND the expectation is not an
+    inversion.** `Array.from({length: 3})` → `{length: 1}` survives and means
+    nothing, because the assertion moved with the fixture. Corrupt something the
+    assertion does *not* track — e.g. the name sent to the API — which kills
+    immediately.
+
+  ⚠️ **And a SURVIVING MUTANT is not proof of vacuity either.** If the content
   under test renders only under a **conjunction** of settings, inverting either
   one alone leaves the test green — and that looks exactly like vacuity while
   the assertion is perfectly sound. Measured in `embed-flow-enable-embed-js-*`
@@ -1062,6 +1076,26 @@ for this technique** — the capture overrides client-side, so the backend value
 never reaches the tracker. `visualizer-snowplow-tracking` ran green on a slot
 that had those vars set. The reboot advice applies to ports that drive snowplow
 through *backend* settings, not to `installSnowplowCapture`.
+
+⚠️ **SCOPE — this covers exactly the FE-emitted class, not "snowplow specs"
+generally.** Measured on `instance-stats-snowplow`: `instance_stats` is
+**backend-emitted** (`stats.clj:1054` → `snowplow.clj track-event!` → Java
+`Tracker` → Apache HttpClient POST). It never touches the browser, so the
+capture is **structurally blind** to it. Proven, not inferred: a `node:http`
+server bound on the collector port received one
+`POST /com.snowplowanalytics.snowplow/tp2` (`iglu:com.metabase/instance_stats/…`)
+~1s after `POST /api/testing/stats` returned, while the browser issued nothing.
+- **`trackSchemaEvent` / `trackSimpleEvent` call sites in `frontend/`** →
+  capturable with this technique.
+- **`track-event!` call sites in `src/`** → NOT capturable. Re-pointing the
+  collector at test time is impossible: `snowplow.clj` builds the tracker in a
+  `defonce` whose `network-config` reads `snowplow-url` **once at backend boot**.
+  The only real fix is a harness change — boot slot backends with
+  `MB_SNOWPLOW_URL=http://localhost:<per-slot port>` in `worker-backend.ts`.
+  Doing it from inside a spec is wrong: the port is global across five slots,
+  and on a clean/CI backend `snowplow-url` defaults to `https://sp.metabase.com`,
+  so it degrades into a FINDINGS #49 "green run that never executed" — and would
+  fire real events at Metabase's **production collector**.
 
 **Reuse status: proven on four independent specs** (`search-snowplow`,
 `data-studio-metrics`, `visualizer-snowplow-tracking`, `reference-databases`)

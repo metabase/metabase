@@ -2317,8 +2317,27 @@
 - `getTableId` — Port of H.getTableId (e2e-qa-databases-helpers.js). */
 - `resyncDatabase` — Port of H.resyncDatabase + waitForSyncToFinish
 
+## sdk-embed-setup-guest-embed-ee.ts
+- `capturePreviewEmbedRequests` — Port of `cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed")`
+
+## sdk-embed-setup-select-embed-entity.ts
+- `captureWizardDashboardResponses` — the preview), and `cy.wait` consumes a past response. An armed
+- `waitForDashboardResponse`
+- `capturePreviewEmbedDashboardRequests` — Port of `cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed")`
+
+## sdk-embed-setup-select-embed-experience.ts
+- `waitForRecentSelections` — Port of `cy.intercept("GET", "/api/activity/recents?context=selections*")
+- `throttleRecents` — req.on("response", (res) => res.setThrottle(0.3));
+- `patchExampleDashboardId` — });
+
+## sdk-embed-setup-select-embed-options.ts
+- `embedPreview` — IMPORTANT — the Cypress helper is not just an accessor: before scoping into
+- `tooltipWarningInfoIcon` — `getEmbedSidebar().findByLabelText(label).closest("[data-testid=tooltip-warning]").icon("info")`.
+- `optionSwitch` — Port of `getEmbedSidebar().findByLabelText(label)` for the wizard's Mantine
+- `toggleOptionSwitch` — Click a Mantine switch and assert its resulting state, mirroring upstream's
+
 ## sdk-embed-setup.ts
-- `getEmbedSidebar` — Port of `getEmbedSidebar`.
+- `getEmbedSidebar` — modal scope, use `modal(page).first()` directly rather than widening this.
 - `getResourceSelectorButton` — Port of `getResourceSelectorButton`. Upstream takes a Cypress
 - `codeBlock` — Port of `codeBlock`: the CodeMirror content of the generated snippet. */
 - `embedModalContent` — Port of H.embedModalContent. */
@@ -2335,6 +2354,56 @@
 - `assertRecentItemName` — Port of `assertRecentItemName`. Upstream reads the `@recentActivity` alias;
 - `assertDashboard` — Port of `assertDashboard`. Same alias→awaited-body inversion. */
 - `logRecent` — Port of the `logRecent` helper duplicated in select-embed-entity /
+
+## sdk-iframe-custom-elements-api.ts
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (cypress_sample_instance_data.js). */
+- `loadedEmbedFrame` — Port of `H.getSimpleEmbedIframeContent(index)`.
+- `pasteText` — Port of the `cy.paste(text)` custom command
+
+## sdk-iframe-eajs-internal-navigation.ts
+- `TARGET_DASHBOARD_FILTER` — Port of the spec's `TARGET_DASHBOARD_FILTER`, which upstream builds with
+- `getSignedJwtForResource` — Port of H.getSignedJwtForResource (e2e-embedding-helpers.js). Upstream signs
+- `waitForDashboardGet` — Port of the `@getDashboard` alias registered by
+- `setupClickBehaviorNavigation` — Port of the `click behavior navigation` describe's `beforeEach` body (minus
+- `setupBrowserBreadcrumbs` — Port of the `<metabase-browser> breadcrumbs` describe's `beforeEach` body
+
+## sdk-iframe-embedding.ts
+- `ORDERS_COUNT_QUESTION_ID` — Port of ORDERS_COUNT_QUESTION_ID (cypress_sample_instance_data.js). */
+- `ORDERS_DASHBOARD_ENTITY_ID` — Port of ORDERS_DASHBOARD_ENTITY_ID (cypress_sample_instance_data.js). */
+- `HTTPS_AUTH_PROVIDER_URL` — findings-inbox/sdk-iframe-harness.md §3b) — and an https document may not
+- `useHttpsMockJwtProvider` — Points the instance's JWT provider at `HTTPS_AUTH_PROVIDER_URL` and mocks it.
+- `getEmbedFrame` — The embed iframe's `Frame` (not `FrameLocator`), for the two tests that need
+- `countDashCardQueries`
+- `waitForDashCardQuery` — Port of the `@getDashCardQuery` alias used as a wait. */
+- `waitForCardQuery` — Port of the `@getCardQuery` alias used as a wait. */
+- `assertTableRowsCount` — Port of H.assertTableRowsCount, scoped to the embed frame. */
+- `tableInteractive` — Port of H.tableInteractive(), scoped. */
+- `assertOrdersDashboardVisible` — Port of the repeated "dashboard rendered" block:
+- `assertSdkInteractiveQuestionOrdersUsable` — Port of H.assertSdkInteractiveQuestionOrdersUsable
+- `assertSdkNotebookEditorUsable` — Port of H.assertSdkNotebookEditorUsable
+
+## sdk-iframe-guest-embed.ts
+- `createGuestEmbedQuestion` — Port of the spec's `createQuestion({ name: "47563", ... })`.
+- `EMBED_CARD_QUERY_RE` — The alias `prepareGuestEmbedSdkIframeEmbedTest` registers as
+- `waitForEmbedCardQuery` — Port of `cy.wait("@getCardQuery")`. Arm before the page load, await after
+- `downloadEmbedCsvFromFrame` — Two deliberate differences from the Cypress helper, both strengthenings of
+
+## sdk-iframe-guest-token-refresh.ts
+- `PROVIDER_PATH` — Port of the spec's PROVIDER_PATH. */
+- `mockGuestTokenProvider` — Port of `cy.intercept({ method: "POST", pathname: PROVIDER_PATH }, req =>
+- `waitForGuestTokenProvider` — Port of `cy.wait("@guestTokenProvider")`.
+- `forceGuestTokenRefresh` — Port of
+- `signGuestJwt` — Port of the spec-local `signJwt` (which calls the `signJwt` cy.task →
+- `prepareGuestEmbedSdkIframeEmbedTest` — (e2e/support/helpers/e2e-embedding-iframe-sdk-helpers.ts:235).
+- `PRICE_DASHBOARD_PARAMETER`
+- `CATEGORY_DASHBOARD_PARAMETER`
+- `createDashboardWithQuestion` — Port of the spec-local createDashboardWithQuestion. */
+- `createDashboardWithPriceFilter` — Port of the spec-local createDashboardWithPriceFilter. */
+- `createDashboardWithCategoryFilter` — Port of the spec-local createDashboardWithCategoryFilter. */
+- `createStandaloneQuestion` — Port of the spec-local createStandaloneQuestion.
+- `createQuestionWithPriceFilter` — Port of the spec-local createQuestionWithPriceFilter. Same
+- `createQuestionWithCategoryFilter` — Port of the spec-local createQuestionWithCategoryFilter. Same
+- `assertTableData` — Port of H.assertTableData scoped to the embed frame. Upstream calls it inside
 
 ## sdk-iframe.ts
 - `AUTH_PROVIDER_URL` — Port of e2e/support/helpers/embedding-sdk-helpers/constants.ts. */

@@ -327,3 +327,11 @@ embedding/sdk-iframe-embedding/missing-tokens.cy.spec.ts
 embedding/sdk-iframe-embedding/sdk-pdf-downloads.cy.spec.ts
 embedding/sdk-iframe-embedding/reproductions.cy.spec.ts
 embedding/sdk-iframe-embedding/theming.cy.spec.ts
+admin/security-center-snowplow.cy.spec.ts
+stats/instance-stats-snowplow.cy.spec.js
+coverage-baseline.cy.spec.js
+dashboard/visualizer/filters.cy.spec.ts
+permissions/database-details-permissions.cy.spec.js
+collections/tenant-collections-list.cy.spec.ts
+collections/tenant-collection-trash.cy.spec.ts
+question/question-analytics.cy.spec.js
