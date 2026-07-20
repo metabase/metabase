@@ -84,6 +84,16 @@ const getDefaultPluginCustomViz = () => ({
     mount: WidgetMount;
     widgetProps: Record<string, unknown>;
   }>,
+
+  // Static viz rendering (GraalJS context)
+  customVizRegistry: new Map<string, Record<string, ComponentType<any>>>(),
+  registerCustomVizPlugin: (
+    _factory: (
+      props: Record<string, unknown>,
+    ) => Record<string, ComponentType<any>>,
+    _identifier: string,
+    _pluginId: CustomVizPluginId,
+  ) => {},
 });
 
 export const PLUGIN_CUSTOM_VIZ = getDefaultPluginCustomViz();

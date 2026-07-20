@@ -5,6 +5,7 @@ import ReactDOMServer from "react-dom/server";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -28,6 +29,7 @@ import {
 } from "metabase/visualizer/utils/split-series";
 import type {
   Card,
+  CustomVizPluginId,
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
@@ -117,11 +119,7 @@ function getVisualizerRawSeries(
   ];
 }
 
-function RenderChart(
-  rawSeries: RawSeries,
-  dashcardSettings: RenderChartDashcardSettings,
-  options: RenderChartOptions,
-) {
+export function initializeContext(options: RenderChartOptions) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set(
     // Unjustified type cast. FIXME
@@ -134,6 +132,23 @@ function RenderChart(
   }
 
   MetabaseSettings.set("custom-formatting", options.customFormatting);
+  MetabaseSettings.set("site-locale", options.locale ?? "en");
+}
+
+export function registerCustomVizPlugin(
+  factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
+  identifier: string,
+  pluginId: CustomVizPluginId,
+) {
+  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, pluginId);
+}
+
+function RenderChart(
+  rawSeries: RawSeries,
+  dashcardSettings: RenderChartDashcardSettings,
+  options: RenderChartOptions,
+) {
+  initializeContext(options);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
