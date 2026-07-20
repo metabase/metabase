@@ -2660,3 +2660,64 @@ open item, not as evidence.
 
     Third instance of the same shape today (#119 boolean filter, #137 checkpoint
     `hi`/`lo`), and the first where the weak assertion looks *deliberate*.
+
+### 🔴 #64406, THIRD independent derivation — now with a direct measurement
+
+151. **`native-database-source` hit the `DataSelector.skipSteps` regression and
+    measured the window directly** (after `native-reproductions-js` and
+    `admin-datamodel-reproductions`, #113). A navigate-and-poll probe on the CI
+    jar:
+
+    - `last-used-native-database-id` is **`""` after restore** — this
+      **eliminates the dirty-snapshot explanation**, which was the main
+      alternative still standing.
+    - **+159ms**: popover open, both rows present, `topBar="Select a database"`,
+      nothing selected.
+    - **+280ms**: `selected=["QA Postgres12"]`, popover gone,
+      `PUT …/last-used-native-database-id → 204`.
+
+    So the observable window for "no database selected" is **~150ms wide**.
+
+    **7 tests are `test.fixme`** — exactly those whose subject is *"no database
+    selected → user picks one"*, which the regression makes impossible to test.
+    The agent lifted two fixmes and ran `--repeat-each=5`: **0/5 and 0/5**. So an
+    earlier single green elsewhere was **a race win, not evidence**.
+
+    Three independent agents, three different specs, three different symptoms,
+    and now a measurement that excludes the alternatives. **The Cypress
+    cross-check has still not been run** (barred while slots are live), so
+    whether upstream is red is **unknown and not claimed** — but the code change
+    and its consequence are established beyond reasonable doubt.
+
+    **This is worth raising with the frontend team as a product bug**, separate
+    from the migration.
+
+### A token gate proven by a two-arm control
+
+152. **`enable-advanced-permissions?` is a bare `define-premium-feature` with no
+    `(not is-hosted?)` escape** (`native-database-source`) — traced *and*
+    measured with both arms: no token → `PUT /api/permissions/graph` with
+    `view-data: "blocked"` returns **402**; `pro-self-hosted` → **200**.
+
+    So `activateToken` is load-bearing here. Fifth distinct token outcome
+    established by the same tracing method, and the two-arm control is the
+    pattern worth copying — it proves the gate is real *and* that the token
+    actually lifts it, rather than only one of the two.
+
+### Two hazards traced through the helper and found inapplicable
+
+153. **The 75ms autocomplete `interactionDelay` and the
+    "`{Enter}`-is-a-completion-accept" trap do not arise in
+    `native-database-source`** — the spec never presses Enter into a completion
+    list. The agent went further than asserting that: it **traced both
+    `NativeEditor.type` strings through the helper's parser** and confirmed it
+    swallows nothing here (net keystrokes equal the source), so a literal
+    `keyboard.type` is faithful.
+
+    That is the right standard for dismissing a brief warning — not "I didn't see
+    it" but "I checked the mechanism that would cause it". The placeholder
+    focus-drop *does* apply and was handled.
+
+    It also flagged **one of its own mutants as partially blunt**: M7 kills, but
+    one assertion earlier than aimed, leaving `contains "New Database"`
+    **reached-but-unproven**. Recorded rather than counted as coverage.

@@ -392,3 +392,4 @@ admin/database-routing/database-routing-usage.cy.spec.ts
 data-studio/data-model/model-to-transform.cy.spec.ts
 onboarding/add-initial-data.cy.spec.ts
 permissions/sandboxing/sandboxing-via-ui.cy.spec.ts
+native/native-database-source.cy.spec.js
