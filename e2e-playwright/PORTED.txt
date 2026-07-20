@@ -374,3 +374,4 @@ question/notebook-data-source.cy.spec.ts
 permissions/permissions-reproductions.cy.spec.js
 actions/actions-reproductions.cy.spec.js
 dashboard/dashboard-back-navigation.cy.spec.js
+data-studio/transforms/transforms-inspect.cy.spec.ts

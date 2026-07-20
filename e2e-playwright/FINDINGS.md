@@ -1812,3 +1812,56 @@ open item, not as evidence.
     different defects with different fixes, and conflating them would have led to
     "weakening" a sound test. Tags have now been found wrong in both directions
     on four specs today — missing, stale, over-broad, and red-herring.
+
+### The transforms token debt was largely imaginary
+
+106. **`transforms-basic` is absent from the local token but does not gate the
+    inspect tier** (`transforms-inspect`). The predicate is
+    `query-transforms-enabled?` (`token_check.clj:715`):
+    `(and transforms-enabled (or (not is-hosted?) (has-feature? :transforms-basic)))`.
+    The slot backend reports **`is-hosted? = false`**, so the `or` short-circuits
+    and the feature check never runs. The docstring is explicit: *"OSS
+    intentionally gets query transforms without a license."*
+
+    Verified end-to-end before a line was written: create → run (`succeeded`) →
+    `GET /inspect` → **200**, `available_lenses: [generic-summary,
+    column-comparison]`. Result: **9/9 ported, 9/9 executing**, gate-off control
+    showing 9 skipped / 0 executed.
+
+    **This retracts part of the standing brief guidance.** I had been telling
+    agents that the missing `transforms-basic` might block the whole transforms
+    tier and that a token refresh was owed for it. For the inspect tier a refresh
+    would recover **zero** tests. The debt is real only for the sibling
+    `transforms.spec.ts`. **A missing feature flag is not a gate until you have
+    read the predicate that consumes it.**
+
+### An environmental trap that manufactures false "no features" conclusions
+
+107. **`.env` has a trailing comma on every token value** (`transforms-inspect`).
+    A naive parse yields a 65-char token that **400s on activation**, after which
+    `token-features` reads `ON (0)` — indistinguishable at a glance from "this
+    token genuinely has no features".
+
+    This is exactly the shape of the over-gating failure mode that has already
+    cost this spike two sessions (the false "transforms is 402-blocked" claim).
+    The agent nearly logged it as a finding and checked instead. Also measured:
+    `MB_ALL_FEATURES_TOKEN` is 61 chars and 400s the same way, so **bleeding-edge
+    features may be silently unusable on this box** — worth knowing before anyone
+    concludes a bleeding-edge surface is broken.
+
+    **Strip the comma and re-check before concluding a feature is unavailable.**
+
+### A survivor that was the assertion being right
+
+108. **Corrupting the warehouse cannot reach a fingerprint-derived statistic**
+    (`transforms-inspect`). A mutation NULLing a source column to move a
+    null-percentage **survived**. The agent confirmed the mutation applied
+    against the DB, then ran a sentinel probe: the cell renders `0.00 %`
+    regardless, because the null-percentage is **fingerprint-derived, not
+    recomputed live**.
+
+    So the assertion is sound and discriminating; the mutation simply could not
+    reach it. Recorded honestly as **"no input-side mutant kills the field-stats
+    block — not triggered by any failure mode I could induce"** rather than
+    claimed as coverage. That is the distinction this spike keeps having to make:
+    *unkillable by me* is not *vacuous*.

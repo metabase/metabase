@@ -1410,6 +1410,25 @@ for *advancing* time.
   from `UpsellDevInstances`. Harmless for matcher-based assertions, but a port
   that **counts upsells page-wide**, or asserts the absence of EE-build chrome,
   will read the wrong answer. Check before relying on the equivalence.
+- 🔴 **`.env` has a TRAILING COMMA on every token value.** A naive parse yields a
+  65-char token that **400s on activation**, after which `token-features` reads
+  `ON (0)` — which looks **exactly** like "this token has no features". That is
+  the precise shape of the over-gating failure mode that has already cost this
+  spike two sessions. **Strip the comma and re-check before concluding a feature
+  is unavailable.** `MB_ALL_FEATURES_TOKEN` is 61 chars and 400s the same way, so
+  bleeding-edge features may be silently unusable on this box. (transforms-inspect)
+- 🔴 **A missing token feature does not imply the surface is gated — read the
+  actual predicate.** `transforms-basic` genuinely IS absent from the local
+  token, and a whole tier was briefed as possibly blocked on it. It isn't:
+  `query-transforms-enabled?` (`token_check.clj:715`) is
+  `(and transforms-enabled (or (not is-hosted?) (has-feature? :transforms-basic)))`,
+  and the slot backend reports `is-hosted? = false`, so the `or` **short-circuits
+  before the feature check ever runs**. The docstring says so outright: *"OSS
+  intentionally gets query transforms without a license."* Verified end-to-end —
+  create → run (`succeeded`) → `GET /inspect` → **200**.
+  **Consequence: a token refresh would recover ZERO tests on the transforms
+  inspect tier.** Trace the predicate before assuming a feature flag gates
+  anything. (transforms-inspect)
 - **Tier gating does NOT generalise across specs — check each one.** Two
   measured results that point opposite ways: `select-embed-options`'s gating is
   **not real** (both its OSS and unlicensed-EE describes pass on the EE jar),
