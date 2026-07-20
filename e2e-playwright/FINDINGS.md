@@ -2965,3 +2965,55 @@ open item, not as evidence.
     clean the scratchpad between dispatches. The underlying lesson is the same
     one as #163: **state that outlives an agent is a hazard to the next one**,
     whether it is a scratch file, a backend token, or a warehouse table.
+
+### An unbounded absence assertion satisfied by an auto-expiry timer
+
+167. **Removing the click from `closeUndoToast` survived, because undo toasts
+    auto-expire** (`data-studio-single-table`, M6). An unbounded
+    `toHaveCount(0)` is satisfied by the **timer**, not by the dismissal it is
+    supposed to verify.
+
+    **The tell was runtime, not the result: 19.4s versus 6.5s.** The agent
+    noticed the duration, bounded the gate at 3s rather than report a survivor,
+    and M6 then dies.
+
+    This is a new vacuity shape for the collection — distinct from the pre-fetch
+    empty-state family. **Any absence assertion against something that
+    self-dismisses is time-bounded whether you say so or not**, and an unbounded
+    retry will eventually pass for the wrong reason. Worth sweeping other toast
+    and transient-banner absence checks.
+
+### Four persistence assertions were vacuous, and upstream has the same race
+
+168. **The "navigate away and back" assertions in `data-studio-single-table` did
+    not verify persistence.** M4 asserted the **wrong** value for `Source` and
+    **passed**.
+
+    The agent's first hypothesis (anchor on the name input) was wrong — the
+    mutant still survived — so it **measured instead of theorising again**:
+    dumping all four inputs read back the correct settled values, and merely
+    adding those round-trips killed the mutant. Mechanism is the pre-fetch render
+    family: clicking a table re-renders the section before `query_metadata`
+    lands, and **the name input flips before the selects settle**, so an
+    assertion anchored on the name reads stale selects.
+
+    Fixed with a declared `query_metadata` anchor; **assertions unchanged and
+    verbatim**. Mutant now dies 3/3.
+
+    **Cypress retries identically, so upstream has the same structural race** —
+    stated as a structural inference, with the agent explicitly noting it ran no
+    cross-check and cannot claim upstream fails.
+
+### Tag drift in the opposite direction: a live assertion with no tag
+
+169. **`data-studio-single-table` makes a live snowplow assertion and carries no
+    `@snowplow` tag** — the inverse of the dead-setup case (#110, where the tag
+    existed and the assertions didn't). Eighth way the tag metadata misleads.
+
+    Also on that spec: **two token predicates, not one** — `:library`
+    (publish/unpublish) **and** `:dependencies` (graph link, Dependencies rows),
+    which its bulk-table sibling never hit. Both hard gates, proven with a
+    two-arm control (`POST publish-tables` → **402** without, route reached
+    with). **Nuance worth keeping: the Library nav item renders in BOTH arms,
+    merely `isGated`** — so a presence-only assertion there would be a false
+    negative.
