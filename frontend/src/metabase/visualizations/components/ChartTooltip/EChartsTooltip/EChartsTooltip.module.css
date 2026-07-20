@@ -5,6 +5,8 @@
   border: none !important;
   padding: 0 !important;
   color: var(--mb-color-tooltip-text) !important;
+  max-height: 80vh;
+  overflow-y: auto !important;
 }
 
 .Table {
@@ -14,8 +16,6 @@
 }
 
 .TableWrapper {
-  max-height: 80vh;
-  overflow-y: auto;
   position: relative;
   margin: 0.25rem 0 0.875rem;
 }

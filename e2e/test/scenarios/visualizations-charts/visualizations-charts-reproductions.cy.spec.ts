@@ -507,7 +507,7 @@ union all select 'Medium length category', 30 as count`;
 });
 
 describe("issue 68337", () => {
-  const longTooltipValue = "a".repeat(1000);
+  const longTooltipValue = "a".repeat(10000);
 
   beforeEach(() => {
     H.restore();
@@ -539,10 +539,20 @@ union all select 2, 20, 'short value'`,
 
     cy.window().then((appWindow) => {
       H.echartsTooltip().then(($tooltip) => {
-        const tooltipBounds = $tooltip[0].getBoundingClientRect();
+        const tooltipRoot = $tooltip[0].parentElement;
+        expect(tooltipRoot).not.to.be.null;
+        if (tooltipRoot == null) {
+          return;
+        }
+
+        const tooltipBounds = tooltipRoot.getBoundingClientRect();
 
         expect(tooltipBounds.left).to.be.at.least(0);
         expect(tooltipBounds.right).to.be.at.most(appWindow.innerWidth);
+        expect(tooltipBounds.height).to.be.at.most(appWindow.innerHeight * 0.8);
+        expect(tooltipRoot.scrollHeight).to.be.greaterThan(
+          tooltipRoot.clientHeight,
+        );
       });
     });
 
