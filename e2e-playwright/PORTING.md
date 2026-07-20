@@ -667,11 +667,15 @@ give them an explicit `timeout` too — don't rely on the 30s default.
 
 ## Gotchas added in wave 11 (viz-tabular / multiple-column-breakouts / embedding / collections / actions)
 
-- **ECharts SVG axis `<text>` carries leading/trailing spaces** (e.g. `" 1월 2027 "`).
-  testing-library trims before matching so Cypress's `findByText(/^1월/)` worked;
-  Playwright's `getByText` does NOT trim, so `^`/`\b`-anchored regexes match
+- **ECharts SVG axis `<text>` carries leading/trailing spaces** (e.g. `" 1월 2027 "`),
+  which breaks **anchored regexes**. Cypress's `findByText(/^1월/)` worked because
+  testing-library trims first; a `^`/`\b`-anchored regex in Playwright matches
   nothing. Drop the anchors and match as a substring (or `.trim()` in an
   evaluate). (embedding-reproductions)
+  ⚠️ **Scope corrected 2026-07-20:** an earlier version said "Playwright's
+  `getByText` does NOT trim", which overreaches — **`getByText` normalizes
+  whitespace even with `exact: true`**, so string matching is unaffected. The
+  rule bites **regex matching only**. (viz-charts-reproductions)
 - **`filter({ has: scope.getByText(...) })` breaks when `scope` is a Locator.**
   The `has` sub-locator gets re-anchored to the outer scope, not matched within
   each candidate row, so it never resolves (hover/click times out though the row
@@ -1445,10 +1449,84 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   Playwright's hit-test refuses the hover. `realHover` did no hit-testing, so
   Cypress never saw this. Use `hover({ force: true })` (or a synthetic
   mousemove), not just for pie wedges but for any dense cartesian series.
-- **`QuestionDisplayToggle`'s segments are `disabled: true` BY DESIGN** — the
-  `SegmentedControl` *root* carries the `onClick`. Any port toggling the QB
-  data/visualization switch needs `click({ force: true })` on it; the disabled
-  attribute is not a bug and not a reason to hunt for another selector.
+- **The containers named `postgres-sample` / `mysql-sample` ARE the writable
+  hosts** — `writable_db` lives on **:5404 / :3304** inside them. *"postgres-writable
+  isn't running"* is an easy and wrong inference from the container names; both
+  `postgres_writable.sql` and `mysql_writable.sql` snapshots exist locally.
+  Check the port before concluding a QA dialect is unavailable.
+- **🔴 Driving `/auth/sso` through `mb.api` POISONS the `APIRequestContext`
+  cookie jar — and `signInAsAdmin()` cannot undo it.** `signIn*` swaps the
+  *browser* context's session; the `APIRequestContext` keeps the SSO cookie. So
+  every later `mb.api.*` call silently runs as the SSO'd user — measured as
+  `POST /api/card → 403` across four tests, with the UI looking correctly
+  signed-in as admin. If you drive SSO at the API layer, use a **separate**
+  request context for it, or re-establish the api client afterwards.
+- **🔴 `cy.get(sel).should("contain.text", X)` on a MULTI-element subject is a
+  CONCATENATION, not an any-of.** chai-jquery joins the matched elements' text,
+  so the assertion passes if `X` spans two elements. This is the **inverse** of
+  the rule-3 any-of case (`should("be.visible")`/`be.disabled`), and it means
+  porting it as `.first()` would **silently STRENGTHEN** the test. Port it as a
+  join over all matches, or state explicitly that you strengthened it.
+- **A `fill()` deadlocks a Formik submit gated on `dirty` + a derived sibling
+  field** — and the intermediate assertion still passes, so the failure surfaces
+  at the submit. Use the click + `pressSequentially` + blur shape.
+- **🔴 CORRECTION: Python transforms are NOT premium-gated, and `@python` is
+  OVER-gating.** I claimed `pro-self-hosted` lacks the feature and that a `402`
+  blocks them; that is **false**, probed directly: `pro-self-hosted` carries
+  `transforms-python: true`, and `GET`/`PUT /api/ee/transforms-python/library/common.py`
+  both return **200**. The real blocker is only the dead python-runner/localstack
+  containers (:5001/:4566), and it applies to just the **2** tests that call
+  `setPythonRunnerSettings()` and actually run a transform — **the other 3
+  `@python` tests execute green**. Two sessions treated the whole tier as blocked
+  on my say-so. Probe the gate; don't inherit a claim.
+- **🔴 `findByDisplayValue` used PAGE-WIDE is a latent flake — scope it to the
+  widget.** The shared imperative scan (`support/filters-repros.ts`) resolves an
+  `nth()` index, which **goes stale when the page re-renders between the scan
+  and the click**. Measured as a 30s click timeout on a *different* widget's
+  hidden input — a fingerprint that points nowhere near the cause. Fix by
+  scoping to the widget's testid.
+  **Blast radius, measured 2026-07-20: 12 page-wide calls across 6 specs** —
+  `chart-drill`, `filters-reproductions`, `instance-analytics`,
+  `personal-collections`, `models-reproductions-3`, `user-settings` (several via
+  `page.locator("body")` or `page.getByRole("main")`, which are page-wide in
+  effect). **These are sites to CHECK, not 12 bugs**: it only bites where the
+  page re-renders in that window AND multiple hidden inputs match. Someone
+  should walk them.
+- **🔴 TWO upstream specs can share a basename, differing only in `.js` vs `.ts`
+  — check before choosing a target filename.**
+  `visualizations-charts/visualizations-charts-reproductions.cy.spec.**ts**`
+  (issues 43075, 41133, 45255…) and `…**.js**` (issues 16170, 17524, 63671…)
+  are disjoint specs. A brief that named the obvious target
+  `tests/visualizations-charts-reproductions.spec.ts` would have **silently
+  overwritten the landed `.ts` port**; the agent caught it and used
+  `tests/viz-charts-reproductions.spec.ts`. PORTED.txt itself is fine (its
+  entries carry the full extension) — the hazard is in choosing the *Playwright*
+  filename. **Before writing, `ls` the source directory for same-basename
+  siblings and `ls tests/` for an existing target.**
+- **🔴 Playwright's actionability check reads `disabled` off ANCESTORS; Cypress
+  does not.** This is the general rule behind several "the element is right there
+  but the click deadlocks" reports. A faithful port of a control nested inside a
+  disabled wrapper will hang on "element is not enabled" over a fully-rendered,
+  correct page. `QuestionDisplayToggle` is the canonical case: both segments are
+  `disabled: true` **by design** and the `SegmentedControl` *root* handles the
+  click, so any port toggling the QB data/visualization switch needs
+  `click({ force: true })`.
+  ⚠️ **Scope it — do NOT apply reflexively to every "Visualization" string.** The
+  `view-footer` "Visualization" button is the **chart-type** control, a different
+  element entirely, and a plain `click()` works there. Check which control you
+  actually have before reaching for `force`.
+  The disabled attribute is not a bug and not a reason
+  to hunt for another selector.
+- **The parked-cursor gotcha INVERTS for hover-gated controls.** Wave-9 recorded
+  that a parked real cursor opens a tooltip that eats the next Escape. The
+  opposite also bites: Cypress's `realHover` plus later *synthetic* clicks leave
+  the element `:hover` for the rest of the test, whereas Playwright's real mouse
+  moves away and the hover-revealed overlay stops accepting clicks. **Re-hover
+  before acting** on anything hover-gated.
+- **`H.createQuestion(..., { visitQuestion: true })` does NOT call `visitQuestion`
+  for models** — it routes to `visitModel`, and the difference matters:
+  `/model/:id` runs `POST /api/dataset` and never `/api/card/:id/query`, so a
+  wait on the card endpoint hangs.
 - **`boundingBox()` is a SECOND round trip and returns `null` if the element
   re-rendered in between** — even immediately after a passing `toBeVisible()`
   from inside a helper. Bit a port right after a summarize re-query. When porting

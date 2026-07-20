@@ -346,3 +346,11 @@ question-reproductions/reproductions-3.cy.spec.js
 sharing/sharing-reproductions.cy.spec.js
 data-studio/data-model/source-replacement.cy.spec.ts
 visualizations-tabular/table.cy.spec.js
+permissions/sandboxing/sandboxing-via-api.cy.spec.js
+admin-2/settings.cy.spec.js
+question-reproductions/reproductions-4.cy.spec.js
+visualizations-charts/visualizations-charts-reproductions.cy.spec.js
+filters-reproductions/filters-reproductions.cy.spec.js
+admin-2/tenants.cy.spec.ts
+permissions/view-data.cy.spec.js
+visualizations-tabular/object_detail.cy.spec.js

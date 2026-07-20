@@ -1257,6 +1257,22 @@ evidence isn't worth making.
     and fail again once sibling runs repopulate it. Nothing was weakened to
     accommodate it.
 
+    **Narrowed 2026-07-20** (`transforms` session 3): contamination comes from
+    **running** transforms, not from **creating** them. That session's batch
+    created transforms in collections but never ran any, and added **zero** new
+    tables — 29 schemas before and after, identical to the prior baseline. So the
+    fix surface is narrower than "every QA-DB spec": it's the specs that
+    materialise physical tables.
+
+    **🔴 NOW BLOCKING, NOT COSMETIC** (`filters-reproductions`, 2026-07-20): the
+    debris makes the notebook mini picker render a **schema level upstream never
+    sees** — a clean `writable_db` has only `public`, so the picker skips
+    straight to tables. And because the list is virtualized, `public` is **not in
+    the DOM at all** (`count()` → 0; `scrollIntoViewIfNeeded` times out). Ports
+    now have to *work around* the contamination (wheel the virtual list, pin the
+    schema) rather than merely tolerate it. That is a cost paid by every future
+    QA-DB port until the reset is fixed.
+
     **🔴 A GREEN CYPRESS CROSS-CHECK IS NOT EVIDENCE THE CONTAINER IS CLEAN —
     and on this tier it actively misleads** (`entity-picker`, 2026-07-20).
     Measured: after a Cypress run Metabase sees **3** tables in `writable_db`;
@@ -1286,7 +1302,9 @@ evidence isn't worth making.
     Fixed by pinning the schema (a no-op on a clean container, and what upstream
     does everywhere else) rather than dropping foreign schemas. Note the
     relationship is **mutual** — that spec injects `Schema A`…`Schema Z` itself,
-    so every QA-DB spec is both victim and contaminator.
+    so every QA-DB spec is both victim and contaminator. Its later batch adds
+    generically-named `table_a`/`table_b`/`table_c` too, which is exactly the
+    naming most likely to collide with another spec's unpinned lookup.
 
     **MECHANISM NAMED 2026-07-20** (`admin-datamodel`): the admin table picker
     is **virtualized** (`@tanstack/react-virtual`, `Results.tsx`). With 26 debris
@@ -1316,7 +1334,18 @@ evidence isn't worth making.
     control, and disclosed that a concurrently-running sibling could have been
     disturbed by it.
 
-86. **A second instance of the untagged-`@external` pattern** (`datamodel-data-studio`).
+86. **The untagged-`@external` pattern — now FOUR sightings, so it is systemic**
+    (`datamodel-data-studio`, `data-model-shared-1`, schema-viewer via #26, and
+    `admin-settings`). The newest is the sharpest: `admin-settings`' Pro-cloud
+    SMTP test needs a **third container nobody had running — `maildev-ssl`**
+    (`:465` plus a root CA in the JVM keystore), because
+    `PUT /api/ee/email/override` live-validates. Measured: 400 *"Wrong host or
+    port"*, `nc -z localhost 465` closed. **Upstream carries no `@external` tag
+    on it at all.**
+
+    Original entry follows.
+
+    **A second instance of the untagged-`@external` pattern** (`datamodel-data-studio`).
     `Extra info about tables` (3 tests) and `should filter unused tables only`
     restore `postgres-writable` with **no `@external` tag**, so on a
     `-@external` CI leg they run against a container that isn't there. The first
@@ -1324,6 +1353,96 @@ evidence isn't worth making.
     the same shape for schema-viewer. Three sightings makes it a pattern in the
     upstream suite rather than an oversight: **restoring a QA snapshot and
     carrying an `@external` tag are independently maintained, and they drift.**
+
+87. **🔴 Two sandboxing tests have silently-disabled column assertions — and the
+    shared helper's fallback is weaker than it looks** (`sandboxing-via-api`).
+    This is the highest-stakes instance of the vacuity family, because the
+    surface is data-access security.
+
+    `assertDatasetReqIsSandboxed` degrades to an **`is_sandboxed`-only** check
+    when either option is falsy. And `is_sandboxed` is the query processor
+    **self-reporting that a sandbox ran** — never that data was actually
+    *filtered*. So a silently-dropped option turns a data-restriction assertion
+    into "the sandbox code path executed", which is a much weaker claim.
+
+    Two call sites do exactly that, both by typo, both measured:
+    - *"should be sandboxed even after applying a filter"* passes
+      **`columnAssetion`** (sic) — the column check never runs. Fixing the typo
+      alone still fails (string `"3"` vs a numeric column); `Number(ATTRIBUTE_VALUE)`
+      passes.
+    - *"dashboard question as a sandbox source"* passes
+      **`columnId: PEOPLE.USER_ID`**, which is `undefined` — PEOPLE has no
+      `USER_ID`. `PEOPLE.ID` passes.
+
+    Both are **test defects, not product bugs**: the sandboxing itself works.
+    Ported verbatim with the analysis inline rather than shipped as strengthened
+    green tests — the fix is upstream's to make, and silently "fixing" a security
+    test in a port would hide that it had been disabled.
+
+    **The sandbox restriction itself is genuinely observed**, proven by the
+    strongest available mutation: swapping `sandboxTable` for plain unrestricted
+    access (so the user still has data access, isolating the *sandbox* rather
+    than access itself) kills at the row count — `"11 rows"` vs
+    `"Showing first 2,000 rows"` — and, with the row count also removed, kills
+    again inside `assertDatasetReqIsSandboxed`. Two independent proxies observe
+    the restriction.
+
+88. **`H.popover()` returns a SET, and destructuring takes the FIRST one — so a
+    hovercard test never looked at the hovercard** (`filters-reproductions`,
+    issue 50731). `const [container] = $element` grabs the first visible popover,
+    which is the filter column-list popover; the hovercard the test is *named
+    for* mounts **second**. Both popovers' contents were measured.
+
+    The proof is the strongest form available: **deleting the `hover()` line
+    entirely — the entire subject of the test — leaves it green in 1.6s.** Same
+    shape as #76, and the second time a test has survived deletion of the very
+    interaction it exists to exercise.
+
+    Cypress has identical destructuring semantics, so this is an **upstream
+    hole, not port drift**. Ported verbatim with the analysis inline rather than
+    silently strengthened. Caveat stated by the agent: with cross-checks banned
+    while sibling slots run, the claim rests on the mutation plus a
+    byte-identical popover selector, not on a cross-harness comparison.
+
+89. **🔴 SYSTEMIC: the permissions/security test helpers silently drop
+    assertions — four independent instances, all measured.** Individually each
+    looks like a typo. Together they mean the suite's *security* coverage is
+    materially thinner than its test titles claim, and it is the strongest
+    test-quality finding of the spike.
+
+    - **`assertPermissionTable` never compares the trailing column**
+      (`view-data`). Its `.each` iterates the **actual** cells — every table
+      renders **5** — while many expectation rows list **6**, so
+      `permissions[5]` is never read. Proved with a deliberately-surviving
+      mutant: the 6th value was replaced with `"MUTANT-M5-GARBAGE"` and the test
+      still passed.
+    - **The same helper, hit from the other side** (`downgrade-ee-to-oss`):
+      upstream asserts six values for the Sample Database row where the table
+      renders five, so the 6th has never been evaluated — confirmed by a control
+      run of the unmodified Cypress spec.
+    - **`assertPermissionForItem`'s 4th argument is discarded at 12 call sites**
+      (`view-data`). The helper takes three parameters; the spec passes
+      `…, "No", true` meaning "and it is disabled". So the test titled *"should
+      allow saving 'blocked' and **disable create queries dropdown when set**"*
+      never checks the disabling — and a working `isPermissionDisabled` exists
+      and is used elsewhere **in the same file**.
+    - **Two sandboxing assertions disabled by typo** (#87): `columnAssetion`
+      (sic) and a `columnId` that evaluates to `undefined`, where
+      `assertDatasetReqIsSandboxed` then degrades to an `is_sandboxed`-only
+      check — the QP self-reporting that a sandbox *ran*, never that data was
+      *filtered*.
+
+    **All four are vacuous in Cypress too** — identical semantics — so this is
+    upstream's problem, not port drift, and not something the migration
+    introduced. Every one was ported **verbatim with the analysis inline**
+    rather than silently strengthened: on a security surface, quietly fixing a
+    disabled assertion in a port would hide that it had ever been disabled.
+
+    The common mechanism is worth stating plainly: **these helpers take options
+    they do not validate, and a dropped or misspelled option degrades the
+    assertion instead of erroring.** That is what makes the failure silent and
+    repeatable. TypeScript catches the argument-count case at the boundary,
+    which is one concrete argument for the ported suite over the original.
 
 ### Capability: `page.clock` reaches into embed iframes
 
