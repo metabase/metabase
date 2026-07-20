@@ -176,7 +176,6 @@ function visit({
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
-  cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
   );
@@ -198,7 +197,6 @@ function visit({
     if (!skipWaiting) {
       cy.wait([
         "@datamodel/visit/databases",
-        "@datamodel/visit/database",
         "@datamodel/visit/schemas",
         "@datamodel/visit/schema",
         "@datamodel/visit/metadata",
