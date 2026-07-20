@@ -2937,3 +2937,31 @@ open item, not as evidence.
     `contain.text "transform_table"` then `"mb__isolation/__transform_table"` —
     the second string contains the first, so the first **cannot fail
     independently**. Ported verbatim with the analysis inline.
+
+### Two thirds of one upstream test does nothing — proven, not inferred
+
+165. **`#15170`'s `semantic_type: type/PK` on `uuid` and its dashcard
+    `parameter_mappings` target are both provably non-load-bearing**
+    (`dashboard-chained-filters`). Two mutations survived, and the agent
+    separated "vacuous" from "my mutation was bad" with a **presence probe** — a
+    bogus assertion target **failed**, proving the assertion is live.
+
+    So roughly **two thirds of that test's body has no effect on its only
+    assertion**. Recorded, not strengthened.
+
+### My slot-prefix scheme collides across sequential agents
+
+166. **`s4-mutate.py`, `s4-spec.baseline.ts`, `s4-spec.orig.ts` were found in the
+    scratchpad by a slot-4 agent that did not create them** — they belonged to an
+    *earlier* slot-4 agent. My fix for #130 (prefix scratch files by slot) only
+    prevents collisions between **concurrent** slots; it does nothing for
+    **sequential** agents reusing the same slot number.
+
+    No harm this time — the agent used distinct names and verified its restore
+    clean — but it correctly flagged the risk rather than ignoring unfamiliar
+    files. Scratchpad swept; only the live slot's files kept.
+
+    **Better scheme: prefix by slot *and* spec** (`s4-chained-filters-…`), or
+    clean the scratchpad between dispatches. The underlying lesson is the same
+    one as #163: **state that outlives an agent is a hazard to the next one**,
+    whether it is a scratch file, a backend token, or a warehouse table.
