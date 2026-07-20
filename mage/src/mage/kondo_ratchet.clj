@@ -131,6 +131,31 @@
   [row inserted-rows]
   (+ row (count (filter #(<= % row) inserted-rows))))
 
+(defn- site-restore-plan
+  "Restore sites annotated with `:comment` (and sometimes an adjusted `:row`), so every restored
+  ignore ends up with its own marker adjacent and no insert splits an existing marker from the line
+  it marks. Whole-line restores each carry a marker; when the line above already holds one that marks
+  the code line's own ignore, the whole-line block moves above that marker instead of splitting the
+  pair -- unless the code line has no ignore, in which case the marker marked the removed site itself
+  (an --audit re-restore) and no new marker is needed. A row's inline restores share one marker,
+  directly above the code line, unless the row already carries one."
+  [lines sites]
+  (mapcat (fn [[row row-sites]]
+            (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)
+                  above-marker? (marker-on-line? (get lines (- row 2)))
+                  code-ignored? (seq (kondo-ratchet/line-linters (str (get lines (dec row)))))]
+              (concat (for [s wl]
+                        (cond
+                          (and above-marker? code-ignored?) (assoc s :row (dec row), :comment keep-comment)
+                          above-marker?                     (assoc s :comment nil)
+                          :else                             (assoc s :comment keep-comment)))
+                      (when (seq inl)
+                        (if (marked-row? lines row)
+                          (map #(assoc % :comment nil) inl)
+                          (cons (assoc (first inl) :comment keep-comment)
+                                (map #(assoc % :comment nil) (rest inl))))))))
+          (group-by :row sites)))
+
 (defn- strip-orphan-keep-comments
   "`text` minus [[keep-marker]] markers no longer attached to an ignore form -- what an `--audit`
   removal that stuck leaves behind. A stamped whole-line marker comment is deleted; a hand-written
@@ -309,18 +334,8 @@
                                        (for [[file sites] (sort-by key file->sites)]
                                          (let [text  (slurp file)
                                                lines (vec (str/split-lines text))
-                                               ;; every whole-line restore gets its own marker; a row's
-                                               ;; inline restores share one, directly above the code line
-                                               sites (mapcat (fn [[row row-sites]]
-                                                               (if (marked-row? lines row)
-                                                                 (map #(assoc % :comment nil) row-sites)
-                                                                 (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)]
-                                                                   (concat (map #(assoc % :comment keep-comment) wl)
-                                                                           (when (seq inl)
-                                                                             (cons (assoc (first inl) :comment keep-comment)
-                                                                                   (map #(assoc % :comment nil) (rest inl))))))))
-                                                             (group-by :row sites))
-                                               {:keys [text inserted-rows]} (reinsert-ignores text sites)]
+                                               {:keys [text inserted-rows]}
+                                               (reinsert-ignores text (site-restore-plan lines sites))]
                                            (spit file text)
                                            [file inserted-rows]))))
                 finish!  (fn [exposed mismatched restored covered rounds-run]

@@ -1,5 +1,6 @@
 (ns mage.kondo-ratchet-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.kondo-ratchet :as kondo-ratchet]))
 
@@ -75,6 +76,19 @@
               :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 1, :comment ";; kept B"
               :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+  (testing "consecutive whole-line restores on one row each keep their own marker adjacent"
+    (is (= {:text          (str ";; kept B\n"
+                                "#_{:clj-kondo/ignore [:y]}\n"
+                                ";; kept A\n"
+                                "#_{:clj-kondo/ignore [:x]}\n"
+                                "(f)\n")
+            :inserted-rows [1 1 1 1]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(f)\n"
+            [{:row 1, :comment ";; kept A"
+              :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
+             {:row 1, :comment ";; kept B"
+              :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
   (testing "multiple sites in one file restore bottom-up"
     (is (= {:text          "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             :inserted-rows [2 1]}
@@ -82,6 +96,27 @@
             "(a)\n(b)\n"
             [{:row 1, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 2, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:y]}"}}])))))
+
+(deftest site-restore-plan-test
+  (let [stamp @#'kondo-ratchet/keep-comment
+        wl    (fn [row] {:row row, :linters [:x], :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}})
+        plan  (fn [text sites] (#'kondo-ratchet/site-restore-plan (vec (str/split-lines text)) sites))]
+    (testing "a whole-line restore onto an unmarked row gets its own marker"
+      (is (= [[1 stamp]]
+             (map (juxt :row :comment) (plan "(f)\n" [(wl 1)])))))
+    (testing "a marker above a still-ignored code line belongs to that line; the block moves above it"
+      (is (= [[1 stamp]]
+             (map (juxt :row :comment)
+                  (plan (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n") [(wl 2)])))))
+    (testing "a marker above a plain code line marked the removed site itself; re-restore under it, no new marker"
+      (is (= [[2 nil]]
+             (map (juxt :row :comment)
+                  (plan (str stamp "\n(f)\n") [(wl 2)])))))
+    (testing "cross-round end to end: the round-two whole-line block lands above the round-one marker"
+      (let [round1 (str stamp "\n(do #_{:clj-kondo/ignore [:y]} (f))\n")]
+        (is (= {:text          (str stamp "\n#_{:clj-kondo/ignore [:x]}\n" round1)
+                :inserted-rows [1 1]}
+               (#'kondo-ratchet/reinsert-ignores round1 (plan round1 [(wl 2)]))))))))
 
 (deftest strip-orphan-keep-comments-test
   (let [stamp-line @#'kondo-ratchet/keep-comment
