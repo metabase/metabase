@@ -1354,6 +1354,7 @@
               sync
               system
               task
+              tracing
               transforms
               transforms-base
               util

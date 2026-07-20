@@ -7,8 +7,11 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -382,6 +385,27 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest search-emits-execute-span-test
+  (testing "GHY-4137: agent search must still emit the search.execute span so its traffic shows up
+            in search traces — the span used to live inside search/search, which the tool no longer
+            calls, so it has to be re-established around the ranked-results/search-results pair."
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/disjunction (fn [_ terms] terms)]
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])
+                                    search-core/search-results (fn [_ _ _] {:data [] :total 0})]
+          (try
+            (tracing/init-enabled-groups! "search" "INFO")
+            (tracing.tu/with-span-exporter [exporter]
+              (search/search {:term-queries ["orders"] :entity-types ["table"]})
+              (is (some #(= "search.execute" (:name %))
+                        (tracing.tu/finished-spans exporter))
+                  "a search.execute span is emitted for an agent search"))
+            (finally
+              (tracing/shutdown-groups!))))))))
 
 (deftest metabot-search-collection-scoping-test
   (testing "GHY-4137: `search` scopes by whatever collection-id it is handed and never overrides it

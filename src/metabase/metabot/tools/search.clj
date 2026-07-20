@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -324,44 +325,51 @@
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
-                          (search.engine/fallback-engine semantic-engine))
-        fused-ranked    (cond
-                          ;; A pure listing over the filters: one search with no search string.
-                          (and filters-only?
-                               (empty? term-queries)
-                               (empty? semantic-queries))
-                          (ranked-fn nil nil)
+                          (search.engine/fallback-engine semantic-engine))]
+    ;; Trace the whole search — the per-query ranked-results fetches and the one-time
+    ;; paginate/hydrate — under one span, as search/search did before the tool drove the two
+    ;; steps directly, so agent search traffic keeps showing up in search traces.
+    (tracing/with-span :search "search.execute"
+      {:search/model-count (count search-models)
+       :search/query-count (+ (count term-queries) (count semantic-queries))
+       :search/engine      (if semantic-engine (name semantic-engine) "default")}
+      (let [fused-ranked (cond
+                           ;; A pure listing over the filters: one search with no search string.
+                           (and filters-only?
+                                (empty? term-queries)
+                                (empty? semantic-queries))
+                           (ranked-fn nil nil)
 
-                          ;; Perform semantic and non-semantic search respectively, then fuse results.
-                          semantic-engine
-                          (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
-                                {semantic-engine semantic-queries
-                                 fallback-engine term-queries}))
+                           ;; Perform semantic and non-semantic search respectively, then fuse results.
+                           semantic-engine
+                           (reciprocal-rank-fusion
+                            (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
+                                 {semantic-engine semantic-queries
+                                  fallback-engine term-queries}))
 
-                          ;; Search for all the terms on equal footing, using the default engine.
-                          :else
-                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
-        ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
-        ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
-        ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
-        {:keys [data total]} (search/search-results
-                              (search/search-context {:search-string      nil
-                                                      :models             search-models
-                                                      :current-user-id    api/*current-user-id*
-                                                      :current-user-perms @api/*current-user-permissions-set*
-                                                      :is-superuser?      api/*is-superuser?*
-                                                      :offset             (or offset 0)
-                                                      :limit              limit})
-                              search/model-set
-                              (vec fused-ranked))
-        results         (->> data
-                             (map postprocess-search-result)
-                             enrich-with-collection-descriptions
-                             enrich-with-database-engines
-                             enrich-with-portable-entity-ids
-                             enrich-with-metric-base-tables)]
-    (vary-meta results assoc :total total)))
+                           ;; Search for all the terms on equal footing, using the default engine.
+                           :else
+                           (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+            ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
+            ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
+            ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
+            {:keys [data total]} (search/search-results
+                                  (search/search-context {:search-string      nil
+                                                          :models             search-models
+                                                          :current-user-id    api/*current-user-id*
+                                                          :current-user-perms @api/*current-user-permissions-set*
+                                                          :is-superuser?      api/*is-superuser?*
+                                                          :offset             (or offset 0)
+                                                          :limit              limit})
+                                  search/model-set
+                                  (vec fused-ranked))
+            results         (->> data
+                                 (map postprocess-search-result)
+                                 enrich-with-collection-descriptions
+                                 enrich-with-database-engines
+                                 enrich-with-portable-entity-ids
+                                 enrich-with-metric-base-tables)]
+        (vary-meta results assoc :total total)))))
 
 (defn- table-refs->results
   [ids]
