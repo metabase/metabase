@@ -36,19 +36,24 @@
 
 ;;; ------------------------------------------------- helpers ------------------------------------------------------
 
-(defn- browse
-  "Call `browse_collection` as `:crowberto` (nil token-scopes bypasses the scope gate — this is
-   an internal caller). Returns `{:error <text>}` for a teaching error, else
+(defn- browse-as
+  "Call `browse_collection` as `user` (nil token-scopes bypasses the scope gate — this is an
+   internal caller). Returns `{:error <text>}` for a teaching error, else
    `{:json <parsed> :line <steering line>}` — the success text is the JSON envelope optionally
    followed by a newline and the line."
-  [args]
-  (mt/with-test-user :crowberto
+  [user args]
+  (mt/with-test-user user
     (let [result (registry/call-tool nil nil "browse_collection" args)
           text   (-> result :content first :text)]
       (if (:isError result)
         {:error text}
         (let [[body line] (str/split text #"\n" 2)]
           {:json (json/decode+kw body) :line line})))))
+
+(defn- browse
+  "[[browse-as]] `:crowberto`."
+  [args]
+  (browse-as :crowberto args))
 
 (defn- parse-arg-value
   [v]
@@ -303,6 +308,62 @@
         (is (str/includes? line "offset: 1"))))
     (testing "a complete page carries no steering line"
       (is (nil? (:line (browse {:id (:id p) :limit 50})))))))
+
+;;; ------------------------------------------- items: created_by --------------------------------------------------
+
+(deftest ^:parallel items-created-by-me-filters-to-current-user-test
+  (testing "GHY-4139: created_by \"me\" returns only the items the calling user created"
+    (mt/with-temp [:model/Collection p       {:name "browse-creator-parent"}
+                   :model/Dashboard  _mine   {:name "browse-creator-mine"   :collection_id (:id p)
+                                              :creator_id (mt/user->id :crowberto)}
+                   :model/Dashboard  _theirs {:name "browse-creator-theirs" :collection_id (:id p)
+                                              :creator_id (mt/user->id :rasta)}]
+      (let [names (surfaced-names (browse {:id (:id p) :created_by "me"}))]
+        (is (contains? names "browse-creator-mine"))
+        (is (not (contains? names "browse-creator-theirs")))))))
+
+(deftest ^:parallel items-created-by-composes-with-type-test
+  (testing "GHY-4139: created_by composes with type — only the caller's items of that type"
+    (mt/with-temp [:model/Collection p        {:name "browse-creator-type-parent"}
+                   :model/Dashboard  _mine    {:name "browse-creator-type-mine-dash" :collection_id (:id p)
+                                               :creator_id (mt/user->id :crowberto)}
+                   :model/Document   _minedoc {:name "browse-creator-type-mine-doc"  :collection_id (:id p)
+                                               :creator_id (mt/user->id :crowberto)}
+                   :model/Dashboard  _theirs  {:name "browse-creator-type-theirs-dash" :collection_id (:id p)
+                                               :creator_id (mt/user->id :rasta)}]
+      (let [names (surfaced-names (browse {:id (:id p) :created_by "me" :type ["dashboard"]}))]
+        (testing "the caller's dashboard survives both filters"
+          (is (contains? names "browse-creator-type-mine-dash")))
+        (testing "the caller's document is dropped by `type`"
+          (is (not (contains? names "browse-creator-type-mine-doc"))))
+        (testing "another user's dashboard is dropped by `created_by`"
+          (is (not (contains? names "browse-creator-type-theirs-dash"))))))))
+
+(deftest items-created-by-me-is-per-caller-test
+  ;; grants read on a shared collection to all users, mutating global perms rows — not ^:parallel
+  (testing "GHY-4139: \"me\" resolves to the calling user, so one user's items never show for another"
+    (mt/with-temp [:model/Collection p      {:name "browse-creator-x-parent"}
+                   :model/Dashboard  _crow  {:name "browse-creator-x-crow"  :collection_id (:id p)
+                                             :creator_id (mt/user->id :crowberto)}
+                   :model/Dashboard  _rasta {:name "browse-creator-x-rasta" :collection_id (:id p)
+                                             :creator_id (mt/user->id :rasta)}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) (:id p))
+      (testing "crowberto sees only their own"
+        (let [names (surfaced-names (browse-as :crowberto {:id (:id p) :created_by "me"}))]
+          (is (contains? names "browse-creator-x-crow"))
+          (is (not (contains? names "browse-creator-x-rasta")))))
+      (testing "rasta sees only their own — the same call, a different caller"
+        (let [names (surfaced-names (browse-as :rasta {:id (:id p) :created_by "me"}))]
+          (is (contains? names "browse-creator-x-rasta"))
+          (is (not (contains? names "browse-creator-x-crow"))))))))
+
+(deftest ^:parallel tree-mode-rejects-created-by-test
+  (testing "GHY-4139: created_by is an item filter; tree mode rejects it with a teaching error"
+    (mt/with-temp [:model/Collection c {:name "browse-creator-tree"}]
+      (let [{:keys [error]} (browse {:id (:id c) :mode "tree" :created_by "me"})]
+        (is (some? error))
+        (is (str/includes? error "`created_by`"))
+        (is (str/includes? error "does not apply to tree mode"))))))
 
 ;;; ------------------------------------------------ resolution ----------------------------------------------------
 

@@ -555,7 +555,7 @@
 ;;; ------------------------------------------ browse_collection validation ----------------------------------------
 
 (def ^:private collection-items-mode-args
-  #{:id :mode :namespace :type :pinned_state :sort_column :sort_direction :limit :offset
+  #{:id :mode :namespace :type :created_by :pinned_state :sort_column :sort_direction :limit :offset
     :response_format :fields})
 
 (def ^:private collection-tree-mode-args
@@ -645,21 +645,23 @@
     "analytics"  #{:collection}))
 
 (defn- collection-items-content
-  [{:keys [type pinned_state sort_column sort_direction] :as args} {:keys [root? collection]}]
+  [{:keys [type created_by pinned_state sort_column sort_direction] :as args} {:keys [root? collection]}]
   (let [{:keys [limit offset]} (page-args args)
-        ns-str    (some-> (:namespace collection) u/qualified-name)
-        _         (when (and (seq type) (some? ns-str))
-                    (common/throw-teaching-error
-                     (format "`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."
-                             ns-str)))
-        models    (if root?
-                    (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
-                    (into #{} (map type->rest-model) type))
-        trash?    (collection/is-trash? collection)
+        ns-str        (some-> (:namespace collection) u/qualified-name)
+        _             (when (and (seq type) (some? ns-str))
+                        (common/throw-teaching-error
+                         (format "`type` applies to the content namespace only — the %s namespace returns its own model plus subfolders; drop `type`."
+                                 ns-str)))
+        created-by-id (when (= created_by "me") api/*current-user-id*)
+        models        (if root?
+                        (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
+                        (into #{} (map type->rest-model) type))
+        trash?        (collection/is-trash? collection)
         options   {:show-dashboard-questions? false
                    :include-library?          (not root?)
                    :archived?                 (boolean (or (:archived collection) trash?))
                    :models                    models
+                   :created-by-id             created-by-id
                    :pinned-state              (keyword (or pinned_state "all"))
                    :sort-info                 {:sort-column                 (keyword (str/replace (or sort_column "name") "_" "-"))
                                                :sort-direction              (keyword (or sort_direction "asc"))
@@ -795,6 +797,9 @@
    [:type {:optional true}
     [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
                           "question" "model" "metric" "dashboard" "collection" "document"]]]]
+   [:created_by {:optional true}
+    [:maybe [:enum {:description "items mode: me restricts results to items the current user created (questions, models, metrics, dashboards, documents — other types return nothing under this filter). Composes with type."}
+             "me"]]]
    [:pinned_state {:optional true}
     [:maybe [:enum {:description "items mode: all (default) interleaves pinned and unpinned rows. Pinned-first as in the product is two calls — is_pinned, then is_not_pinned — each paging independently."}
              "all" "is_pinned" "is_not_pinned"]]]
@@ -815,7 +820,7 @@
     [:maybe [:sequential [:string {:min 1 :description "items mode: dot-paths picked from the detailed row shape, item-relative (e.g. \"last-edit-info.email\"). Mutually exclusive with response_format."}]]]]])
 
 (registry/deftool browse-collection
-  "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
+  "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
   {:name        "browse_collection"
    :scope       metabot.scope/agent-resource-read
    :annotations {:readOnlyHint true :idempotentHint true}
