@@ -42,8 +42,12 @@ for (const file of files) {
   // the ungated tests — ported, green, and not executing. That cost 9 of 11
   // tests on dashboard-filters-source before the gate-off control caught it
   // (FINDINGS #121). So for describe-level tags, report the coverage as n/N.
-  const describeCount = (content.match(/^\s*describe(?:\.\w+)?\(/gm) || [])
-    .length;
+  // Count only TOP-LEVEL describes (column 0). @cypress/grep propagates suite
+  // tags DOWNWARD, so a nested describe inherits its parent's tags — counting
+  // nested ones as siblings produced false "1/6"/"3/6" figures that sent two
+  // agents in the wrong direction (FINDINGS #129 neighbours). A tag on the sole
+  // top-level describe means the whole file is gated.
+  const describeCount = (content.match(/^describe(?:\.\w+)?\(/gm) || []).length;
   const taggedDescribes = (tag) =>
     (content.match(new RegExp(`\\{[^}]*tags:[^}]*${tag}`, "g")) || []).length;
 
@@ -108,6 +112,18 @@ const out = [
   "",
   `${rows.length} specs remaining, ${rows.reduce((s, r) => s + r.lines, 0)} lines total.`,
   "Dispatch from the top (largest first — they must never be tail latency).",
+  "",
+  "> ⚠️ **The gates column is a HINT, not a specification.** It is a keyword scan.",
+  "> It cannot see a tag on an individual `it` (which reads here as if the whole",
+  "> file were gated), and it cannot tell a container dependency from a spec that",
+  "> merely mentions the word. Tags have been found wrong in six ways — missing,",
+  "> stale, over-broad, red-herring, dead-setup, and systematically absent (~20 of",
+  "> ~50 `*-writable` specs carry no `@external` at all, FINDINGS #123).",
+  ">",
+  "> **Read the spec's `beforeEach` to see what it actually restores, and treat the",
+  "> gate-OFF control as the only trustworthy signal** — a green run with the gate",
+  "> off is either real coverage or silent skipping, and only the executed-vs-",
+  "> skipped counts distinguish them.",
   "",
   "| lines | spec | gates |",
   "|---|---|---|",

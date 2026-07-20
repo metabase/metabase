@@ -2253,3 +2253,87 @@ open item, not as evidence.
     Related, from the same agent: it also **sanity-checked its own dead-import
     checker** after a greedy regex reported `test` as a dead import — the real
     answer was zero. **Verify the tool before trusting its verdict.**
+
+### ⚠️ #107 NARROWED: the trailing-comma trap does not affect this harness
+
+129. **`.env` does have a trailing comma on its token values, but the harness
+    never reads `.env`** (`transforms-permissions`; narrows #107). Verified
+    directly: `support/env.ts:8-15` loads the gitignored repo-root
+    **`cypress.env.json`**, whose four tokens are clean 64-char strings that all
+    activate **204**.
+
+    So the operational advice I propagated into roughly a dozen briefs —
+    "strip the comma and re-check before concluding a feature is unavailable" —
+    was **aimed at a file this harness does not consult**. The measurement behind
+    #107 was real (a 65-char token does 400), but the inference that it explains
+    a `token-features` reading of `ON (0)` was wrong.
+
+    **The actual explanation for `ON (0)`: a backend with no token activated
+    yet.** That is the thing to check first.
+
+    #107 stands as a fact about `.env`; its *conclusion* is retracted. Eighth
+    coordinator claim corrected on evidence.
+
+### 🔴 The scratchpad is NOT agent-isolated — it caused real data loss
+
+130. **A sibling agent wrote `spec.orig.ts` over another agent's file mid-run**
+    (`transforms-permissions`). The victim's revert `cp` then clobbered its own
+    spec with the sibling's content.
+
+    The agent rebuilt and re-verified the spec functionally, and — importantly —
+    reported it as **"re-verified", explicitly not "restored byte-identical"**,
+    because the md5 differs in whitespace. That distinction is the correct call:
+    every other port this session claims a byte-identical md5 restore, and
+    silently claiming it here would have made an unverifiable statement.
+
+    **Generic scratchpad filenames are already colliding.** Five slots share one
+    scratchpad directory, and names like `spec.orig.ts`, `run4.log` and
+    `mutation.bak` are the obvious things for an agent to reach for.
+
+    **Fix to propagate: slot-prefix every scratchpad filename** (`s3-spec.orig.ts`,
+    `s3-run4.log`). Cheap, and the failure mode is silent overwrite of another
+    agent's in-flight work — which git cannot recover, because scratch files are
+    never tracked.
+
+### 🔴 #100 RETRACTED AND REPLACED: snowplow events are QUEUED, not dropped
+
+131. **The "backend event dropped before leaving the JVM" hypothesis is wrong.
+    Events are queued with a persistent offset, and a test can pass on its
+    PREDECESSOR's event** (`collections-uploads`; replaces the hypothesis in
+    #100).
+
+    Mechanism, measured: `snowplow.clj` uses one JVM-wide `defonce` Tracker with
+    `batchSize(1)`. A POST that fails while the collector is down is **re-queued**,
+    so the queue never recovers on its own.
+
+    The evidence is specific and damning:
+    - A `POST /api/dashboard` flushed a **stale `csv_append_failed` from an
+      earlier run**.
+    - 45 dashboard creations flushed **6 stale `csv_upload_successful` payloads
+      with `model_id` 98–102 from the prior run**.
+
+    **The consequence is worse than flakiness. At offset 1, a test passes on the
+    event emitted by its predecessor** — a hollow green, not a red. Measured:
+    a fresh backend gives 20/21; a backlogged backend gives **4 failures plus 2
+    hollow passes**. CI is unaffected, since each run gets a fresh JVM.
+
+    This retracts #100's mechanism entirely. #100 was correctly filed as a
+    *hypothesis* rather than a finding, which is exactly why it was cheap to
+    replace — the earlier agent said it could not confirm the mechanism, and it
+    was right not to.
+
+    **One thing left unexplained, and recorded as such:** an in-spec drain worked
+    from a standalone script but never converged inside the harness. The agent
+    removed it rather than ship machinery it could not account for.
+
+### Two upstream defects in the uploads spec
+
+132. **The invalid-file "no table created" check is vacuous**
+    (`collections-uploads`): `tableName` is `undefined`, so the query becomes
+    `LIKE '%undefined_%'` and can never match. Kept verbatim with analysis inline.
+
+    Also: the `permissions` and `Upload Table Cleanup` describes **silently
+    create tables in the read-only QA `sample` database and never clean up**.
+    This port does clean up. That is a second confirmed instance of the
+    self-inflicted-debris pattern behind #101 — specs, not slots, are the
+    dominant source of container contamination.

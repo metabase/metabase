@@ -383,3 +383,5 @@ dashboard-filters/dashboard-filters-boolean.cy.spec.ts
 dashboard-filters/dashboard-filters-source.cy.spec.js
 admin/databases/database-writable-connection.cy.spec.ts
 admin/database-connection-strings.cy.spec.ts
+collections/uploads.cy.spec.js
+permissions/transforms-permissions.cy.spec.ts
