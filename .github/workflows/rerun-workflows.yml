@@ -15,13 +15,25 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
+      AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
     steps:
       - name: Generate job summary
         run: |
-          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:"
+            echo ""
+            echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:"
+            echo "${{ github.event.workflow_run.html_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            release
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - uses: actions/setup-node@v6.4.0
         with:
@@ -37,7 +49,10 @@ jobs:
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
             const AUTHOR = process.env.AUTHOR_NAME;
+            const AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
             const BRANCH = process.env.BRANCH_NAME;
+
+            const { mentionUserByGithubLogin } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               try {
@@ -107,7 +122,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} (${mentionUserByGithubLogin(AUTHOR_LOGIN)}) has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
                       },
                     },
                     {
