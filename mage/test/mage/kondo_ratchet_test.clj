@@ -71,14 +71,6 @@
             [{:row 1, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 2, :comment nil, :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:y]}"}}])))))
 
-(deftest surviving-slots-test
-  (testing "slots shrink by the attributed findings that must have been pre-existing, floored at zero"
-    (is (= 0 (#'kondo-ratchet/surviving-slots 1 2 2)))
-    (is (= 1 (#'kondo-ratchet/surviving-slots 1 2 1)))
-    (is (= 2 (#'kondo-ratchet/surviving-slots 2 3 1)))
-    (is (= 0 (#'kondo-ratchet/surviving-slots 2 3 3)))
-    (is (= 1 (#'kondo-ratchet/surviving-slots 2 3 2)))))
-
 (deftest strip-orphan-keep-comments-test
   (let [stamp-line @#'kondo-ratchet/keep-comment
         hand-line  (str ";; real explanation. " kondo-ratchet/keep-marker)]
@@ -106,23 +98,6 @@
     (testing "a marker separated from its ignore by another comment line survives"
       (let [text (str stamp-line "\n;; more context\n#_{:clj-kondo/ignore [:x]}\n(a)\n")]
         (is (= text (#'kondo-ratchet/strip-orphan-keep-comments text)))))))
-
-(deftest beyond-baseline-test
-  (let [f (fn [filename row type col] {:filename filename, :row row, :type type, :col col})]
-    (testing "findings with no baseline entry are all beyond it"
-      (is (= [(f "a.clj" 3 :x 1)]
-             (#'kondo-ratchet/beyond-baseline {} [(f "a.clj" 3 :x 1)]))))
-    (testing "a group matching its baseline count is fully absorbed"
-      (is (= []
-             (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1} [(f "a.clj" 3 :x 1)]))))
-    (testing "a group over its baseline count returns ALL its findings tagged :collision? -- an exposed
-              finding can't be told apart from a pre-existing same-row one, so restore conservatively
-              but say so"
-      (is (= [(assoc (f "a.clj" 3 :x 1) :collision? true)
-              (assoc (f "a.clj" 3 :x 20) :collision? true)]
-             (sort-by :col
-                      (#'kondo-ratchet/beyond-baseline {["a.clj" 3 :x] 1}
-                                                       [(f "a.clj" 3 :x 20) (f "a.clj" 3 :x 1)])))))))
 
 (deftest shift-past-inserts-test
   (testing "each insertion at or above the row pushes it down one, measured against the original row"
@@ -171,24 +146,22 @@
   (testing "a standalone ignore line disappears entirely; :sites points at the uncovered form"
     (is (= {:text      "(defn f [x]\n  (= true x))\n"
             :sites     [{:row 2, :linters [:equals-true]}]
-            :deletions [[2 1]]
             :skipped   []}
            (remove-ignores-at'
             "(defn f [x]\n  #_{:clj-kondo/ignore [:equals-true]}\n  (= true x))\n"
             [2]))))
   (testing "an inline ignore is cut out of its line, swallowing a doubled space"
-    (is (= {:text "(do (foo))\n", :sites [{:row 1, :linters [:x]}], :deletions [[1 0]], :skipped []}
+    (is (= {:text "(do (foo))\n", :sites [{:row 1, :linters [:x]}], :skipped []}
            (remove-ignores-at' "(do #_{:clj-kondo/ignore [:x]} (foo))\n" [1]))))
   (testing "a multi-line ignore vector goes too"
-    (is (= {:text "(a)\n(b)\n", :sites [{:row 2, :linters [:x :y]}], :deletions [[2 2]], :skipped []}
+    (is (= {:text "(a)\n(b)\n", :sites [{:row 2, :linters [:x :y]}], :skipped []}
            (remove-ignores-at' "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n" [2]))))
   (testing "an ignore map with extra keys is removed whole, not truncated at the vector"
-    (is (= {:text "(a)\n", :sites [{:row 1, :linters [:x]}], :deletions [[1 1]], :skipped []}
+    (is (= {:text "(a)\n", :sites [{:row 1, :linters [:x]}], :skipped []}
            (remove-ignores-at' "#_{:clj-kondo/ignore [:x] :reason \"legacy\"}\n(a)\n" [1]))))
   (testing "an extra-key map with NESTED braces would be truncated by the regex, so it is skipped whole"
     (is (= {:text      "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             :sites     []
-            :deletions []
             :skipped   [1]}
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
@@ -196,7 +169,6 @@
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
     (is (= {:text      "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             :sites     [{:row 1, :linters [:x]}]
-            :deletions [[1 1]]
             :skipped   [2]}
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
@@ -206,7 +178,6 @@
                             "#_{:clj-kondo/ignore [:x :clojure-lsp/unused-public-var]}\n"
                             "(bar)\n")
             :sites     [{:row 1, :linters [:x]}]
-            :deletions [[1 0]]
             :skipped   []}
            (remove-ignores-at'
             (str "(do #_{:clj-kondo/ignore [:x]} #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]} (foo))\n"
@@ -216,7 +187,6 @@
   (testing "an inline removal of a wrapped ignore still counts its deleted newlines, shifting later rows"
     (is (= {:text      "(do (foo))\n(a)\n(b)\n"
             :sites     [{:row 3, :linters [:z]} {:row 1, :linters [:x :y]}]
-            :deletions [[4 1] [1 1]]
             :skipped   []}
            (remove-ignores-at'
             "(do #_{:clj-kondo/ignore [:x\n                          :y]} (foo))\n(a)\n#_{:clj-kondo/ignore [:z]}\n(b)\n"
@@ -224,7 +194,6 @@
   (testing "rows without an ignore are left alone; multiple removals shift later :sites rows up"
     (is (= {:text      "(a)\n(b)\n"
             :sites     [{:row 2, :linters [:y]} {:row 1, :linters [:x]}]
-            :deletions [[3 1] [1 1]]
             :skipped   []}
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"

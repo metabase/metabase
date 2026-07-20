@@ -32,9 +32,6 @@
 (def ^:private keep-comment
   (str ";; " keep-marker " suppresses a warning :redundant-ignore can't see; --audit rechecks"))
 
-(def ^:private collision-comment
-  (str ";; " keep-marker " same-row collision; one of these may be pre-existing debt -- verify by hand"))
-
 (defn- comment-start
   "Index of the `;` starting `line`'s comment, skipping semicolons inside string literals and after a
   backslash (char literals, string escapes). Line-local: a string opened on an earlier line isn't
@@ -123,34 +120,11 @@
     {:text          (str (str/join "\n" (:lines result)) ending)
      :inserted-rows (:inserted result)}))
 
-(defn- beyond-baseline
-  "Findings beyond the per-`[filename row type]` counts of `baseline-freq`.
-  A group holding more findings than its non-zero baseline count returns ALL of them, tagged
-  `:collision? true`: an exposed finding can't be told apart from a pre-existing one on the same row,
-  and an extra restore is visible in the diff where a silently dropped one is not. Callers stamp
-  collision restores with [[collision-comment]] instead of claiming verified provenance."
-  [baseline-freq findings]
-  (mapcat (fn [[key key-findings]]
-            (let [n (get baseline-freq key 0)]
-              (cond
-                (zero? n)                  key-findings
-                (> (count key-findings) n) (map #(assoc % :collision? true) key-findings)
-                :else                      ())))
-          (group-by (fn [{:keys [filename row type]}] [filename row type]) findings)))
-
 (defn- shift-past-inserts
   "`row` moved down one for each line inserted at or above it, `inserted-rows` being in the same
   pre-insertion coordinates as `row`."
   [row inserted-rows]
   (+ row (count (filter #(<= % row) inserted-rows))))
-
-(defn- surviving-slots
-  "New baseline slot count for a collision key after a restore round: of the `a` attributed findings,
-  `c - n` were genuinely new (`c` observed against `n` slots), so the rest must have been pre-existing
-  findings the restore suppressed -- their slots go. Slots for findings left unattributed stay, so a
-  pre-existing warning outside the restored ignore's scope isn't misread as new next round."
-  [n c a]
-  (max 0 (- n (max 0 (- a (- c n))))))
 
 (defn- strip-orphan-keep-comments
   "`text` minus [[keep-marker]] markers no longer attached to an ignore form -- what an `--audit`
@@ -162,7 +136,7 @@
   (let [lines    (vec (str/split-lines text))
         ending   (if (str/ends-with? text "\n") "\n" "")
         ignored? (fn [line] (str/includes? (str line) ":clj-kondo/ignore"))
-        stamped? #{keep-comment collision-comment}
+        stamped? #{keep-comment}
         orphan?  (fn [i line]
                    (and (marker-on-line? line)
                         (re-matches #"\s*;.*" line)
@@ -207,11 +181,9 @@
   that half of the suppression. Forms whose matched span has unbalanced braces (nested maps the regex
   can't span) are skipped and reported under `:skipped` rather than corrupted.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows one space.
-  Returns `{:text _, :sites [{:row _, :linters _} ...], :deletions [[line rows-deleted] ...],
-  :skipped [rows...]}`.
-  `:sites` carries the post-removal row of the form each ignore covered and the linters it named;
-  `:deletions` maps each removal's original line to how many lines it deleted, so a verifying re-lint
-  can shift pre-removal finding rows into post-removal coordinates."
+  Returns `{:text _, :sites [{:row _, :linters _, :original _} ...], :skipped [rows...]}`.
+  `:sites` carries the post-removal row of the form each ignore covered, the linters it named, and
+  `:original` -- the removed form's exact text and placement, so a restore can put it back verbatim."
   [text rows]
   (let [rowset (set rows)
         masked (kondo-ratchet/mask-strings-and-comments text)
@@ -260,24 +232,24 @@
         post-removal-row (fn [line]
                            (- line (transduce (keep (fn [{l :line, k :rows-deleted}] (when (< l line) k)))
                                               + deletions)))]
-    {:text      (:text result)
-     :sites     (for [{:keys [line linters original]} deletions]
-                  {:row      (post-removal-row line)
-                   :linters  linters
-                   :original original})
-     :deletions (mapv (fn [{:keys [line rows-deleted]}] [line rows-deleted]) deletions)
+    {:text    (:text result)
+     :sites   (for [{:keys [line linters original]} deletions]
+                {:row      (post-removal-row line)
+                 :linters  linters
+                 :original original})
      ;; adjusted like :sites, so warnings point at the rewritten file
-     :skipped   (map (comp post-removal-row :line) unbalanced)}))
+     :skipped (map (comp post-removal-row :line) unbalanced)}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
   findings with no location, and ignores that only name linters kondo doesn't run (clojure-lsp/*).
   Sites whose comment (directly above, or trailing on the ignore's line) carries [[keep-marker]] are
   proven false positives and are skipped too, unless `--audit` rechecks them.
-  With `--fix`, remove the candidates, then verify against a pre-removal baseline lint of the touched
-  files: any finding not in the baseline was exposed by a removal, whose ignore is put back exactly as
-  it was -- a coarse form-level ignore returns as the same single form-level ignore -- with the marker
-  stamped above it. An `--audit` removal that sticks takes its stale marker comment with it."
+  With `--fix`, remove the candidates and re-lint the touched files: every finding was exposed by a
+  removal, whose ignore is put back exactly as it was -- a coarse form-level ignore returns as the
+  same single form-level ignore -- with the marker stamped above it. That inference requires a clean
+  pre-removal baseline, so files with pre-existing findings are excluded from the sweep and reported.
+  An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
@@ -303,126 +275,108 @@
                  (format "Including %d %s sites in the audit." (count marked) keep-marker)
                  (format "Skipped %d sites marked %s; recheck them with --audit." (count marked) keep-marker))))
     (when (and (get-in parsed [:options :fix]) (seq candidates))
-      (let [files    (vec (sort (distinct (map :filename candidates))))
-            _        (println (format "Baseline-linting %d files before removal..." (count files)))
-            baseline (filter :row (kondo-findings! nil files))
-            removals (into {}
-                           (for [[file file-candidates] (group-by :filename candidates)]
-                             (let [{:keys [text sites deletions skipped]}
-                                   (remove-ignores-at (slurp file) (map :row file-candidates))]
-                               (spit file text)
-                               (doseq [row skipped]
-                                 (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
-                                                  file row)))
-                               [file {:sites sites, :deletions deletions}])))
-            adjusted-row (fn [file row]
-                           (- row (transduce (keep (fn [[l k]] (when (< l row) k)))
-                                             + (:deletions (removals file)))))
-            named        (fn [file] (into #{} (mapcat :linters) (:sites (removals file))))
-            restore-sites! (fn [file->sites collision-site?]
-                             ;; puts each removed ignore back exactly as it was; returns
-                             ;; {file [inserted-anchor-rows...]} for shifting row bookkeeping
-                             (into {}
-                                   (for [[file sites] (sort-by key file->sites)]
-                                     (let [text  (slurp file)
-                                           lines (vec (str/split-lines text))
-                                           ;; one comment per row, however many sites restore onto it
-                                           sites (mapcat (fn [[row row-sites]]
-                                                           (let [comment (when-not (marked-row? lines row)
-                                                                           (if (some collision-site? row-sites)
-                                                                             collision-comment
-                                                                             keep-comment))]
-                                                             (cons (assoc (first row-sites) :comment comment)
-                                                                   (map #(assoc % :comment nil) (rest row-sites)))))
-                                                         (group-by :row sites))
-                                           {:keys [text inserted-rows]} (reinsert-ignores text sites)]
-                                       (spit file text)
-                                       [file inserted-rows]))))
-            _              (println (format "Removed them across %d files; re-linting to verify..." (count files)))]
-        ;; A finding beyond the (row-shifted) baseline was exposed by a removal. Attribute it to the
-        ;; nearest preceding removed site naming its type and put that ignore back verbatim -- a coarse
-        ;; ignore returns as the same coarse ignore, never as several narrow ones. Hook linters can
-        ;; report only the first occurrence per form, so a round may surface findings a restored form
-        ;; already covers; iterate until the lint comes back clean.
-        (let [finish! (fn [exposed mismatched restored covered rounds-run]
-                        (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) exposed)]
-                          (println (format "WARNING: %s:%d still exposes %s after %d restore rounds -- re-ignore by hand"
-                                           filename row type rounds-run)))
-                        (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) mismatched)]
-                          (println (format "WARNING: %s:%d has a new %s finding no removed ignore in the file named -- fix or re-ignore by hand"
-                                           filename row type)))
-                        (when audit?
-                          (doseq [file files]
-                            (spit file (strip-orphan-keep-comments (slurp file)))))
-                        (doseq [[file row] (sort (distinct (map (juxt :file :row) (filter :collision? restored))))]
-                          (println (format "NOTE: %s:%d restored over a same-row collision -- it may cover pre-existing debt; verify by hand"
-                                           file row)))
-                        (if (empty? restored)
-                          (println "Verified: the removals exposed no findings.")
-                          (println (format "Restored %d removed ignores covering %d findings (%s), stamped %s."
-                                           (count restored)
-                                           (count covered)
-                                           (str/join ", " (sort (distinct (map :type covered))))
-                                           keep-marker)))
-                        (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
-                        (when (or (seq exposed) (seq mismatched))
-                          (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
-                                          {:exit-code 1}))))]
-          (loop [round         1
-                 pending       (update-vals removals :sites)
-                 baseline-freq (frequencies
-                                (map (fn [{:keys [filename row type]}]
-                                       [filename (adjusted-row filename row) type])
-                                     baseline))
-                 restored      []
-                 covered       []]
-            (let [{exposed true, mismatched false}
-                  (group-by (fn [{:keys [filename type]}]
-                              (boolean (some #{:all type} (named filename))))
-                            (beyond-baseline baseline-freq (filter :row (kondo-findings! nil files))))
-                  ;; nearest preceding pending site naming the finding's type; else nearest overall
-                  pick (fn [{:keys [filename row type]}]
-                         (let [match? (fn [s] (boolean (some #{:all type} (:linters s))))
-                               sites  (filter match? (get pending filename))]
-                           (or (last (sort-by :row (filter #(<= (:row %) row) sites)))
-                               (first (sort-by #(abs (- (:row %) row)) sites)))))
-                  picks (map (juxt identity pick) exposed)
-                  attributable (filter second picks)]
-              (if (and (seq attributable) (< round 6))
-                (let [file->sites (into {}
-                                        (for [[file fps] (group-by (comp :filename first) attributable)]
-                                          [file (vec (distinct (map second fps)))]))
-                      collisions  (into #{} (map second) (filter (comp :collision? first) attributable))
-                      key-of      (fn [{:keys [filename row type]}] [filename row type])
-                      observed    (frequencies (map key-of (filter :collision? exposed)))
-                      attributed  (frequencies (map key-of (filter :collision? (map first attributable))))
-                      inserted    (restore-sites! file->sites collisions)
-                      shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
-                  (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
-                                   round
-                                   (reduce + (map count (vals file->sites)))
-                                   (count attributable)))
-                  (recur (inc round)
-                         (into {}
-                               (for [[file sites] pending
-                                     :let [gone (set (get file->sites file))]]
-                                 [file (vec (for [s sites :when (not (gone s))]
-                                              (shift-site file s)))]))
-                         ;; a collision restore suppresses pre-existing findings too, so shrink those
-                         ;; keys' slots ([[surviving-slots]]) before shifting the rest
-                         (into {}
-                               (comp (keep (fn [[key n]]
-                                             (let [n' (if (contains? observed key)
-                                                        (surviving-slots n (observed key) (get attributed key 0))
-                                                        n)]
-                                               (when (pos? n') [key n']))))
-                                     (map (fn [[[file row type] n]]
-                                            [[file (shift-past-inserts row (get inserted file [])) type] n])))
-                               baseline-freq)
-                         (into restored (for [[file sites] file->sites, s sites]
-                                          {:file file, :row (:row s), :collision? (contains? collisions s)}))
-                         (into covered (map first attributable))))
-                (finish! exposed mismatched restored covered (dec round))))))))))
+      ;; Precondition: swept files must baseline-lint clean, so that afterwards EVERY finding the
+      ;; verify lint reports was exposed by our removal. Files with pre-existing findings are excluded
+      ;; -- there is no way to tell their old warnings from newly exposed ones.
+      (let [all-files  (vec (sort (distinct (map :filename candidates))))
+            _          (println (format "Baseline-linting %d files before removal..." (count all-files)))
+            dirty      (into #{} (map :filename) (filter :row (kondo-findings! nil all-files)))
+            candidates (remove (comp dirty :filename) candidates)
+            files      (vec (sort (distinct (map :filename candidates))))]
+        (doseq [file (sort dirty)]
+          (println (format "WARNING: %s has pre-existing findings; its candidates are excluded this run -- clean it up or mark them by hand"
+                           file)))
+        (when (seq candidates)
+          (let [removals (into {}
+                               (for [[file file-candidates] (group-by :filename candidates)]
+                                 (let [{:keys [text sites skipped]}
+                                       (remove-ignores-at (slurp file) (map :row file-candidates))]
+                                   (spit file text)
+                                   (doseq [row skipped]
+                                     (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
+                                                      file row)))
+                                   [file sites])))
+                named    (fn [file] (into #{} (mapcat :linters) (removals file)))
+                restore-sites! (fn [file->sites]
+                                 ;; puts each removed ignore back exactly as it was; returns
+                                 ;; {file [inserted-anchor-rows...]} for shifting row bookkeeping
+                                 (into {}
+                                       (for [[file sites] (sort-by key file->sites)]
+                                         (let [text  (slurp file)
+                                               lines (vec (str/split-lines text))
+                                               ;; one comment per row, however many sites restore onto it
+                                               sites (mapcat (fn [[row row-sites]]
+                                                               (let [comment (when-not (marked-row? lines row)
+                                                                               keep-comment)]
+                                                                 (cons (assoc (first row-sites) :comment comment)
+                                                                       (map #(assoc % :comment nil) (rest row-sites)))))
+                                                             (group-by :row sites))
+                                               {:keys [text inserted-rows]} (reinsert-ignores text sites)]
+                                           (spit file text)
+                                           [file inserted-rows]))))
+                finish!  (fn [exposed mismatched restored covered rounds-run]
+                           (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) exposed)]
+                             (println (format "WARNING: %s:%d still exposes %s after %d restore rounds -- re-ignore by hand"
+                                              filename row type rounds-run)))
+                           (doseq [{:keys [filename row type]} (sort-by (juxt :filename :row) mismatched)]
+                             (println (format "WARNING: %s:%d has a new %s finding no removed ignore in the file named -- fix or re-ignore by hand"
+                                              filename row type)))
+                           (when audit?
+                             (doseq [file files]
+                               (spit file (strip-orphan-keep-comments (slurp file)))))
+                           (if (empty? restored)
+                             (println "Verified: the removals exposed no findings.")
+                             (println (format "Restored %d removed ignores covering %d findings (%s), stamped %s."
+                                              (count restored)
+                                              (count covered)
+                                              (str/join ", " (sort (distinct (map :type covered))))
+                                              keep-marker)))
+                           (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
+                           (when (or (seq exposed) (seq mismatched))
+                             (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
+                                             {:exit-code 1}))))
+                _        (println (format "Removed them across %d files; re-linting to verify..." (count files)))]
+            ;; The baseline was clean, so every finding here was exposed by a removal. Attribute it to
+            ;; the nearest preceding removed site naming its type and put that ignore back verbatim --
+            ;; a coarse ignore returns as the same coarse ignore, never as several narrow ones. Hook
+            ;; linters can report only the first occurrence per form, so a round may surface findings
+            ;; a restored form already covers; iterate until the lint comes back clean.
+            (loop [round    1
+                   pending  removals
+                   restored []
+                   covered  []]
+              (let [{exposed true, mismatched false}
+                    (group-by (fn [{:keys [filename type]}]
+                                (boolean (some #{:all type} (named filename))))
+                              (filter :row (kondo-findings! nil files)))
+                    ;; nearest preceding pending site naming the finding's type; else nearest overall
+                    pick (fn [{:keys [filename row type]}]
+                           (let [match? (fn [s] (boolean (some #{:all type} (:linters s))))
+                                 sites  (filter match? (get pending filename))]
+                             (or (last (sort-by :row (filter #(<= (:row %) row) sites)))
+                                 (first (sort-by #(abs (- (:row %) row)) sites)))))
+                    picks (map (juxt identity pick) exposed)
+                    attributable (filter second picks)]
+                (if (and (seq attributable) (< round 6))
+                  (let [file->sites (into {}
+                                          (for [[file fps] (group-by (comp :filename first) attributable)]
+                                            [file (vec (distinct (map second fps)))]))
+                        inserted    (restore-sites! file->sites)
+                        shift-site  (fn [file s] (update s :row #(shift-past-inserts % (get inserted file []))))]
+                    (println (format "Round %d: put back %d removed ignores covering %d findings; re-linting..."
+                                     round
+                                     (reduce + (map count (vals file->sites)))
+                                     (count attributable)))
+                    (recur (inc round)
+                           (into {}
+                                 (for [[file sites] pending
+                                       :let [gone (set (get file->sites file))]]
+                                   [file (vec (for [s sites :when (not (gone s))]
+                                                (shift-site file s)))]))
+                           (into restored (for [[file sites] file->sites, s sites]
+                                            {:file file, :row (:row s)}))
+                           (into covered (map first attributable))))
+                  (finish! exposed mismatched restored covered (dec round)))))))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; kondo-insert-ignores
