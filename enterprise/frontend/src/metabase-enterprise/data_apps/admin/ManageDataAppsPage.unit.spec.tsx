@@ -36,7 +36,7 @@ const setup = ({
     </>
   );
 
-  renderWithProviders(<Route path="/" component={Page} />, {
+  renderWithProviders(<Route path="/" element={<Page />} />, {
     withRouter: true,
   });
 };

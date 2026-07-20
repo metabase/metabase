@@ -58,7 +58,7 @@ export const setup = async ({
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <Tabs>
             <Tabs.List>
               {isForADashboard ? (
@@ -68,15 +68,15 @@ export const setup = async ({
               )}
             </Tabs.List>
           </Tabs>
-        )}
+        }
       />
       <Route
         path="/dashboard/201"
-        component={() => <div data-testid="usage-analytics-dashboard" />}
+        element={<div data-testid="usage-analytics-dashboard" />}
       />
       <Route
         path="/dashboard/202"
-        component={() => <div data-testid="usage-analytics-dashboard" />}
+        element={<div data-testid="usage-analytics-dashboard" />}
       />
     </>,
     {

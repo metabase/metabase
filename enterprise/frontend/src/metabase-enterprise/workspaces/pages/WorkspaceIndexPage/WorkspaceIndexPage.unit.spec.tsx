@@ -57,7 +57,7 @@ function setup({ isAdmin = true, workspace = null }: SetupOpts = {}) {
     }),
   });
 
-  renderWithProviders(<Route path="*" component={WorkspaceIndexPage} />, {
+  renderWithProviders(<Route path="*" element={<WorkspaceIndexPage />} />, {
     withRouter: true,
     storeInitialState: state,
   });

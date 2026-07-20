@@ -29,7 +29,7 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
-  Route,
+  ReactRouterRoute,
   RouterProvider,
   routerMiddleware,
   routing as routingReducer,
@@ -144,7 +144,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const WrapperWithRoute = ({ children, ...props }: any) => {
     return (
       <Wrapper {...props}>
-        <Route path="/" component={() => <>{children}</>} />
+        <ReactRouterRoute path="/" component={() => <>{children}</>} />
       </Wrapper>
     );
   };

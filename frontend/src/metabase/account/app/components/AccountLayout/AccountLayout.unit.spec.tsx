@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -10,9 +11,13 @@ type SetupOpts = {
 
 function setup({ user = createMockUser() }: SetupOpts = {}) {
   renderWithProviders(
-    <AccountLayout user={user} onChangeLocation={() => {}}>
-      Content
-    </AccountLayout>,
+    <Route
+      path="/"
+      element={<AccountLayout user={user} onChangeLocation={() => {}} />}
+    >
+      <Route index element={<>Content</>} />
+    </Route>,
+    { withRouter: true, initialRoute: "/" },
   );
 }
 

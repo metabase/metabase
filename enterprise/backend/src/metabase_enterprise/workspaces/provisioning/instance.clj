@@ -8,11 +8,11 @@
   (:require
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase-enterprise.workspaces.config :as ws.config]
-   [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.schema :as ws.schema]
    [metabase.config.core :as config]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.malli :as mu]
    [potemkin.types :as p]
    [toucan2.core :as t2]))
@@ -116,11 +116,13 @@
    [[instance-poll-timeout-ms]] elapses first."
   [provisioner instance-id :- :string]
   (let [{:keys [status] :as instance}
-        (ws.execute/poll-until
-         {:thunk       #(fetch provisioner instance-id)
-          :done?       #(contains? #{:active :error} (:status %))
-          :interval-ms instance-poll-interval-ms
-          :timeout-ms  instance-poll-timeout-ms})]
+        (u.jvm/poll {:thunk       #(fetch provisioner instance-id)
+                     :done?       #(contains? #{:active :error} (:status %))
+                     :interval-ms instance-poll-interval-ms
+                     :timeout-ms  instance-poll-timeout-ms})]
+    (when-not instance
+      (throw (ex-info "Timed out waiting for the workspace instance to start"
+                      {:instance_id instance-id, :timeout-ms instance-poll-timeout-ms})))
     (when-not (= :active status)
       (throw (ex-info "Workspace instance failed to start"
                       {:instance_id instance-id, :status status})))
