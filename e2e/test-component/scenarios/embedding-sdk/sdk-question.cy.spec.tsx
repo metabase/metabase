@@ -658,14 +658,16 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.log("close any existing open popovers to reduce flakes");
     cy.get("body").type("{esc}");
 
-    getSdkRoot().within(() => {
-      cy.log("open the data picker");
-      cy.findByText("Pick your starting data").click();
+    getSdkRoot().findByText("Pick your starting data").click();
 
-      cy.log("ensure that the interactive question still works");
-      H.popover().findByRole("link", { name: "Orders" }).click();
-      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
-    });
+    cy.log("ensure that the interactive question still works");
+    // The data picker renders in a Mantine popover portal that mounts outside
+    // the SDK root, so query it at the document level (not scoped to getSdkRoot).
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    getSdkRoot()
+      .findByRole("button", { name: "Visualize" })
+      .should("be.visible");
   });
 
   it("should not show any sdk error when showing a question in strict mode", () => {
