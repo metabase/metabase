@@ -638,10 +638,24 @@ describe("scenarios > table-editing", () => {
         )`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TABLE_NAME,
+        retrigger: true,
+      });
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
       cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
+      // The create-row form's field metadata (which columns are required) is
+      // fetched by a POST to execute-form when the edit page mounts. If the
+      // modal opens before that resolves, the form validates against an empty
+      // parameter set and the submit button never becomes disabled — the flake.
+      // Alias the create-row description so we can wait for it before opening.
+      cy.intercept("POST", "/api/ee/action-v2/execute-form", (req) => {
+        if (req.body?.action === "data-grid.row/create") {
+          req.alias = "describeCreateForm";
+        }
+      });
 
       H.getTableId({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
         (tableId) => {
@@ -651,6 +665,9 @@ describe("scenarios > table-editing", () => {
         },
       );
       cy.wait("@getTableMetadata");
+      // Ensure the required-column metadata is loaded before the modal opens so
+      // the form validates against the real parameters and disables the button.
+      cy.wait("@describeCreateForm");
 
       cy.findByTestId("new-record-button").click();
       H.modal().findByText("Create a new record").should("be.visible");
