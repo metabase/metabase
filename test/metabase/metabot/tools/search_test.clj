@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel bounded-pmap-conveys-bindings-test
   (testing "GHY-4137: bounded-pmap runs f on virtual threads with the caller's dynamic bindings
             conveyed (like future did), so each per-query subsearch keeps the current user's
