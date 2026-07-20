@@ -112,10 +112,9 @@
 
   After the update, the just-applied changesets that follow the legacy `vNN.` id scheme are split by Metabase major
   version: each major's rows are reassigned a distinct synthetic `deployment_id` and given a `databasechangelog_version`
-  row (`x.<major>.0.0`). In a single JVM all of these migrations would otherwise share one Liquibase `deployment_id`
-  (it is generated once per service), so this mirrors how separate production upgrades each record their own deployment +
-  version -- which the deployment-based rollback logic relies on -- letting `migrate! :down N` find a boundary at major
-  `N`."
+  row (`x.<major>.0.0`). A single update run covers many majors but records only one `deployment_id`, so this mirrors
+  how separate production upgrades each record their own deployment + version -- which the deployment-based rollback
+  logic relies on -- letting `migrate! :down N` find a boundary at major `N`."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
                                 [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?]
                                                          :or {inclusive-start? true

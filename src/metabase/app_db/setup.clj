@@ -103,10 +103,14 @@
         ;; clear the lock in that case, so handle that case separately
         (catch LockException e
           (.rollback conn)
+          ;; the rollback may have undone the lazy CREATE of databasechangelog_version (transactional DDL), so the
+          ;; in-memory "already created" marker must be dropped with it
+          (liquibase/forget-databasechangelog-versions-table!)
           (throw e))
         ;; If for any reason any part of the migrations fail then rollback all changes
         (catch Throwable e
           (.rollback conn)
+          (liquibase/forget-databasechangelog-versions-table!)
           ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
           ;; operation without releasing the lock first, the real error will get hidden behind a lock error
           (liquibase/release-lock-if-needed! liquibase)

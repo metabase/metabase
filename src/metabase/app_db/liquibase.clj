@@ -92,8 +92,9 @@
   (if (fresh-install? conn database)
     changelog-file
     (let [{latest-migration :id, latest-filename :filename}
+          ;; `orderexecuted` breaks ties between rows sharing a `dateexecuted` (e.g. MySQL second precision)
           (first (jdbc/query {:connection conn}
-                             [(format "select id, filename from %s order by dateexecuted desc limit 1"
+                             [(format "select id, filename from %s order by dateexecuted desc, orderexecuted desc limit 1"
                                       (.getDatabaseChangeLogTableName database))]))
           ;; major version parsed from a legacy "vNN.*" id, or nil for version-less (year-directory) ids
           major (some-> (re-find #"^v(\d+)\." (str latest-migration)) second parse-long)]
@@ -320,6 +321,13 @@
                      ;; scope.
                      :lock-depth   *lock-depth*}))))
 
+(defn- fresh-deployment-id
+  "A new Liquibase-style deployment id: the last 10 digits of the current epoch millis (the same format
+  `liquibase.Scope/generateDeploymentId` uses, fitting the `varchar(10)` DEPLOYMENT_ID column)."
+  ^String []
+  (let [s (str (System/currentTimeMillis))]
+    (subs s (max 0 (- (count s) 10)))))
+
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
    Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
@@ -335,8 +343,11 @@
       (throw (LockException. "Attempted to take a Liquibase lock, but we already are holding it."))))
   (let [database      (.getDatabase liquibase)
         lock-service  (lock-service liquibase)
-        scope-objects {(.name Scope$Attr/database)         database
-                       (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
+        scope-objects (cond-> {(.name Scope$Attr/database)         database
+                               (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}
+                        ;; a re-entrant (prod-only) nested scope must not change the deployment id mid-run
+                        (not (holding-lock? liquibase))
+                        (assoc (.name Scope$Attr/deploymentId) (fresh-deployment-id)))]
     (Scope/child ^Map scope-objects
                  (reify Scope$ScopedRunner
                    (run [_]
@@ -389,6 +400,19 @@
       (jdbc/execute! {:connection conn} [(databasechangelog-versions-table-ddl)])
       (swap! databasechangelog-versions-table-created conj app-db))))
 
+(defn forget-databasechangelog-versions-table!
+  "Forget that the `databasechangelog_version` table was ensured for the current application database. Must be called
+  when a migration transaction is rolled back: on databases with transactional DDL (Postgres) the rollback undoes the
+  lazy CREATE TABLE, and a stale in-memory marker would make every later insert in this process fail with 'relation
+  does not exist'. Re-ensuring when the table actually survived is a cheap CREATE IF NOT EXISTS no-op."
+  []
+  (swap! databasechangelog-versions-table-created disj (mdb.connection/unique-identifier)))
+
+(defn- versions-table-exists?
+  [^Connection conn]
+  (boolean (or (table-exists? databasechangelog-versions-table conn)
+               (table-exists? (u/upper-case-en databasechangelog-versions-table) conn))))
+
 (defn version->major
   "Parse the Metabase major version out of a recorded version string."
   [version]
@@ -405,21 +429,30 @@
   (boolean (and major (>= major synthetic-major-floor))))
 
 (defn- compute-synthetic-version
+  "One past the highest recorded synthetic major, or the floor when nothing synthetic is recorded. Read-only: a
+  missing version table computes the floor rather than creating the table, since this also runs on paths that must
+  not mutate the database (`migrate print`)."
   [^Connection conn]
-  (ensure-databasechangelog-versions-table! conn)
-  (let [highest (->> (jdbc/query {:connection conn}
-                                 [(format "SELECT metabase_version FROM %s" databasechangelog-versions-table)])
-                     (keep (comp version->major :metabase_version))
-                     (reduce max (dec synthetic-major-floor)))]
+  (let [highest (if (versions-table-exists? conn)
+                  (->> (jdbc/query {:connection conn}
+                                   [(format "SELECT metabase_version FROM %s" databasechangelog-versions-table)])
+                       (keep (comp version->major :metabase_version))
+                       (reduce max (dec synthetic-major-floor)))
+                  (dec synthetic-major-floor))]
     (format "x.%d.0.0" (inc highest))))
 
-(def ^:private synthetic-dev-version*
-  (memoize (fn [_app-db-id]
-             (with-open [conn (.getConnection (mdb.connection/data-source))]
-               (compute-synthetic-version conn)))))
-
-(defn- synthetic-dev-version []
-  (synthetic-dev-version* (mdb.connection/unique-identifier)))
+(defn- synthetic-dev-version
+  "The synthetic development version this process would record right now. Deliberately NOT memoized: after a migration
+  run records its version, the next run in the same process must compute the next major, so consecutive dev
+  `migrate up` runs create distinct rollback boundaries (see [[migrate-up-if-needed!]])."
+  []
+  (when config/is-prod?
+    (log/errorf (str "Could not parse a release version from this build's version tag %s; recording synthetic "
+                     "development versions instead. Version tracking and downgrade detection will be degraded. "
+                     "This usually means version.properties is missing or malformed.")
+                (pr-str (:tag config/mb-version-info))))
+  (with-open [conn (.getConnection (mdb.connection/data-source))]
+    (compute-synthetic-version conn)))
 
 (defn- real-recorded-version
   "The edition-agnostic real version string from the build tag, or nil in dev where there is no real version."
@@ -441,22 +474,31 @@
   (version->major (current-recorded-version)))
 
 (defn- insert-deployment-version!
-  "Insert a `(deployment-id, version, now)` row into `databasechangelog_version`, unless that exact pair already exists."
+  "Insert a `(deployment-id, version, now)` row into `databasechangelog_version`, unless that exact pair already
+  exists. No-op when `deployment-id` is nil (an empty changelog has no deployment to stamp). Safe to call concurrently
+  from multiple instances: every path tolerates the pair appearing between check and insert."
   [^Connection conn deployment-id version]
-  (ensure-databasechangelog-versions-table! conn)
-  (let [values "(deployment_id, metabase_version, deployed_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
-        upsert (case (mdb.connection/db-type)
-                 :postgres (format "INSERT INTO %s %s ON CONFLICT DO NOTHING" databasechangelog-versions-table values)
-                 :mysql (format "INSERT IGNORE INTO %s %s" databasechangelog-versions-table values)
-                 nil)]
-    (if upsert
-      (jdbc/execute! {:connection conn} [upsert deployment-id version])
-      (when (empty? (jdbc/query {:connection conn}
-                                [(format "SELECT 1 FROM %s WHERE deployment_id = ? AND metabase_version = ?"
-                                         databasechangelog-versions-table) deployment-id version]))
-        (jdbc/execute! {:connection conn}
-                       [(format "INSERT INTO %s %s" databasechangelog-versions-table values)
-                        deployment-id version])))))
+  (when (and deployment-id version)
+    (ensure-databasechangelog-versions-table! conn)
+    (let [values       "(deployment_id, metabase_version, deployed_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
+          upsert       (case (mdb.connection/db-type)
+                         :postgres (format "INSERT INTO %s %s ON CONFLICT DO NOTHING" databasechangelog-versions-table values)
+                         :mysql (format "INSERT IGNORE INTO %s %s" databasechangelog-versions-table values)
+                         nil)
+          pair-exists? #(seq (jdbc/query {:connection conn}
+                                         [(format "SELECT 1 FROM %s WHERE deployment_id = ? AND metabase_version = ?"
+                                                  databasechangelog-versions-table) deployment-id version]))]
+      (if upsert
+        (jdbc/execute! {:connection conn} [upsert deployment-id version])
+        (when-not (pair-exists?)
+          (try
+            (jdbc/execute! {:connection conn}
+                           [(format "INSERT INTO %s %s" databasechangelog-versions-table values)
+                            deployment-id version])
+            (catch java.sql.SQLException e
+              ;; lost the check-then-insert race with another instance; the unique constraint makes the loss benign
+              (when-not (pair-exists?)
+                (throw e)))))))))
 
 (defn record-deployment-version!
   "Record `version` for `deployment-id` in `databasechangelog_version` (idempotent: no-op if that exact pair already
@@ -649,9 +691,11 @@
         deployment-id  (.getDeploymentId (Scope/getCurrentScope))
         version        (current-recorded-version)
         major          (current-recorded-major)
-        _              (ensure-databasechangelog-versions-table! conn)
-        backfill       (when (empty? (jdbc/query {:connection conn}
-                                                 [(format "SELECT 1 FROM %s LIMIT 1" databasechangelog-versions-table)]))
+        ;; read-only: this runs on the `migrate print` path, which must not mutate the database -- the CREATE TABLE
+        ;; is part of the generated SQL instead
+        backfill       (when (or (not (versions-table-exists? conn))
+                                 (empty? (jdbc/query {:connection conn}
+                                                     [(format "SELECT 1 FROM %s LIMIT 1" databasechangelog-versions-table)])))
                          (backfill-version-row conn database))
         insert-version (fn [{version' :version, deployment-id' :deployment-id}]
                          (format "INSERT INTO %s (deployment_id, metabase_version, deployed_at) VALUES ('%s', '%s', CURRENT_TIMESTAMP);\n"
@@ -810,6 +854,11 @@
     (when-not (fresh-install? conn (.getDatabase ^Liquibase liquibase))
       ;; Skip mutating the table if the filenames are already correct. It assumes we have never moved the boundary
       ;; between the two files, i.e. that update-migrations still start from v45.
+      ;; NOTE: this `when` is always truthy (`filter` returns a truthy lazy seq even when empty), so the UPDATE below
+      ;; runs on every non-fresh boot. That matches long-standing master behavior -- the UPDATE is an idempotent no-op
+      ;; once filenames are consolidated -- and pre-consolidation installs' filenames don't reliably match this filter,
+      ;; so the always-run semantics are what actually consolidates them. Do not "fix" the guard without auditing the
+      ;; filenames of pre-consolidation installs.
       (when (->> (str "SELECT DISTINCT(FILENAME) AS filename FROM " liquibase-table-name)
                  (jdbc/query conn-spec)
                  (into #{} (map :filename))
@@ -837,15 +886,6 @@
           changeset-id    (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
       (some-> changeset-id extract-numbers first))))
 
-(defn changesets-from-later-version
-  "Returns changeset IDs applied from versions later than `latest-available` up to `latest-applied`, ordered by execution date."
-  [conn ^Database database latest-available latest-applied]
-  (let [table    (.getDatabaseChangeLogTableName database)
-        versions (range (inc latest-available) (inc latest-applied))
-        clauses  (str/join " OR " (map #(format "id LIKE 'v%d.%%'" %) versions))
-        query    (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC, orderexecuted ASC" table clauses)]
-    (mapv :id (jdbc/query {:connection conn} [query]))))
-
 ;;; ------------------------------------ databasechangelog_version table -------------------------------------------
 ;;;
 ;;; The `databasechangelog_version` table records, for each Liquibase `deployment_id`, the Metabase version that ran it.
@@ -854,10 +894,11 @@
 ;;; table created by a tracked changeset would need to record the version of the very deployment that creates it.
 ;;;
 ;;; Note: Liquibase generates the deployment id once per process (it lives in the root `Scope`), not once per update
-;;; run. In production each boot is its own JVM, so every upgrade gets a distinct `deployment_id` -- but in a
-;;; long-lived dev REPL every migration run shares one `deployment_id` (and one synthetic dev version), so successive
-;;; runs merge into a single deployment that `migrate down` rolls back as one unit. Restarting the REPL starts a new
-;;; deployment.
+;;; run. [[run-in-scope-locked]] therefore stamps every locked scope with a fresh deployment id, so each migration run
+;;; records as its own deployment even inside a long-lived process (a dev REPL) -- and, because the dev synthetic
+;;; version is recomputed rather than memoized (see [[synthetic-dev-version]]), each run also records the next
+;;; synthetic major. Together these make `migrate down` roll back exactly the most recent run, in production and in
+;;; dev alike.
 
 (defn- recorded-deployments
   "All `databasechangelog_version` rows grouped into deployments, newest deployment first (a deployment's position is
@@ -877,6 +918,26 @@
          :versions      versions
          ;; rows are newest-first, so the deployment's earliest row -- the version that ran it -- is the last one
          :ran-version   (peek versions)}))))
+
+(defn changesets-from-later-version
+  "Returns changeset IDs applied by versions later than `latest-available` up to `latest-applied`, ordered by execution
+  position. Version-prefixed ids are matched by the major in the id; version-less changesets carry no version in their
+  id, so they are matched by the recorded ran-version major of their deployment (see [[recorded-deployments]])."
+  [conn ^Database database latest-available latest-applied]
+  (ensure-databasechangelog-versions-table! conn)
+  (let [table      (.getDatabaseChangeLogTableName database)
+        versions   (range (inc latest-available) (inc latest-applied))
+        later-deps (->> (recorded-deployments conn)
+                        (filter #(when-let [major (version->major (:ran-version %))]
+                                   (and (> major latest-available) (<= major latest-applied))))
+                        (mapv :deployment_id))
+        clauses    (concat (map #(format "id LIKE 'v%d.%%'" %) versions)
+                           (when (seq later-deps)
+                             [(format "deployment_id IN (%s)"
+                                      (str/join ", " (repeat (count later-deps) "?")))]))
+        query      (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC, orderexecuted ASC"
+                           table (str/join " OR " clauses))]
+    (mapv :id (jdbc/query {:connection conn} (into [query] later-deps)))))
 
 (defn deployment-versions
   "Return a map of `deployment_id` -> the version that *ran* it, for the deployments we allow rolling back to.

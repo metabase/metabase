@@ -155,7 +155,11 @@
                                           (let [cs-id (get-in change-set [:changeSet :id])]
                                             (and cs-id
                                                  (if version
-                                                   (changeset-at-or-after? file cs-id version id)
+                                                   ;; year-dir changesets have version-less ids that
+                                                   ;; `changeset-at-or-after?` cannot parse, but they are by
+                                                   ;; definition newer than every `vNN.` threshold
+                                                   (or (year-dir-migration-file? file)
+                                                       (changeset-at-or-after? file cs-id version id))
                                                    true)))))
                                 (filter #(check-change-set-use-types? target-types %))
                                 (map #(get-in % [:changeSet :id]))

@@ -197,20 +197,6 @@
             (liquibase/record-deployment-version! conn "dep-real" "x.63.1.0")
             (is (= "x.1006.0.0" (compute)))))))))
 
-(deftest synthetic-version-stable-within-process-test
-  (testing "current-recorded-version is memoized per app DB, so it stays stable even after the version is recorded"
-    (mt/test-drivers #{:h2 :mysql :postgres}
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (liquibase/with-liquibase [_liquibase conn]
-          (liquibase/ensure-databasechangelog-versions-table! conn)
-          (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
-            (let [v (liquibase/current-recorded-version)]
-              (is (= "x.1000.0.0" v) "first dev boot against an empty history")
-              (is (= 1000 (liquibase/current-recorded-major)))
-              (liquibase/record-deployment-version! conn "dep" v)
-              (is (= v (liquibase/current-recorded-version))
-                  "same process keeps reporting its version, not max+1, after recording it"))))))))
-
 (deftest databasechangelog-versions-recording-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -220,13 +206,16 @@
           (liquibase/ensure-databasechangelog-versions-table! conn)
           (testing "no version is recorded before any migrations have run"
             (is (nil? (liquibase/last-deployment-version conn db))))
-          (migrate-with-recording! liquibase)
-          (testing "exactly one version row is recorded for the single deployment, with the running version"
-            (let [rows (jdbc/query {:connection conn} [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])]
-              (is (= 1 (count rows)))
-              (is (= (liquibase/current-recorded-version) (-> rows first :metabase_version)))))
-          (testing "last-deployment-version returns the recorded version"
-            (is (= (liquibase/current-recorded-version) (liquibase/last-deployment-version conn db))))
+          ;; capture the version the run will record BEFORE running: in dev the synthetic current-recorded-version
+          ;; advances past a version once it is recorded (so the next run gets its own major)
+          (let [run-version (liquibase/current-recorded-version)]
+            (migrate-with-recording! liquibase)
+            (testing "exactly one version row is recorded for the single deployment, with the running version"
+              (let [rows (jdbc/query {:connection conn} [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])]
+                (is (= 1 (count rows)))
+                (is (= run-version (-> rows first :metabase_version)))))
+            (testing "last-deployment-version returns the recorded version"
+              (is (= run-version (liquibase/last-deployment-version conn db)))))
           (testing "ensure-table! and recording are idempotent across a second (no-op) run"
             (liquibase/ensure-databasechangelog-versions-table! conn)
             (migrate-with-recording! liquibase)
@@ -696,7 +685,19 @@
                 (is (= @#'liquibase/changelog-file (decide)) id)))
             (testing "version-numbered directories (060/) are NOT year directories"
               (set-latest! "v60.abc" "migrations/060/20260101_foo.yaml")
-              (is (= @#'liquibase/changelog-file (decide))))))))))
+              (is (= @#'liquibase/changelog-file (decide))))
+            (testing "rows with the same dateexecuted (e.g. MySQL second precision): higher orderexecuted decides"
+              ;; the 'latest changeset' must be resolved on the [dateexecuted orderexecuted] pair like the rest of the
+              ;; version machinery, not on dateexecuted alone (which leaves the winner arbitrary among ties)
+              (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" changelog-table)])
+              (doseq [[id filename oe] [["316" "migrations/000_legacy_migrations.yaml" 1]
+                                        ["v64.abc" "migrations/064/20260101_foo.yaml" 2]]]
+                (jdbc/execute! {:connection conn}
+                               [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype) "
+                                             "VALUES (?, 't', ?, TIMESTAMP '2020-01-01 00:00:00', ?, 'EXECUTED')")
+                                        changelog-table) id filename oe]))
+              (is (= @#'liquibase/changelog-file (decide))
+                  "the v64 row (orderexecuted 2) outranks the legacy row at the same timestamp"))))))))
 
 (deftest consolidate-does-not-clobber-version-less-ids-test
   (testing "consolidate-liquibase-changesets! rewrites legacy ids' filenames but leaves version-less ids alone"
@@ -903,3 +904,109 @@
               (is (nil? (liquibase/previous-recorded-major conn db false)))
               (is (nil? (liquibase/rollback-major-version! conn liquibase false))
                   "no earlier recorded version -> logs and returns without throwing"))))))))
+
+(defn- versions-table-exists?*
+  "Whether `databasechangelog_version` exists, checked without creating it. Unquoted DDL identifiers are folded to
+  upper case by H2 and lower case by Postgres, so check both."
+  [^java.sql.Connection conn]
+  (boolean (or (liquibase/table-exists? "databasechangelog_version" conn)
+               (liquibase/table-exists? "DATABASECHANGELOG_VERSION" conn))))
+
+(deftest dev-consecutive-migration-runs-are-separate-deployments-test
+  (testing "two `migrate up` runs in ONE process (a long-lived dev REPL) create separate deployments with successive
+            synthetic versions, so `migrate down` reverts exactly the last run"
+    ;; Regression: the deployment id was generated once per process (Liquibase root Scope) and the synthetic version
+    ;; was memoized per process, so a fresh install plus a later dev migration in the same JVM merged into a single
+    ;; deployment at x.1000 -- `migrate down` then had no earlier boundary and could not undo the added migration.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+          (let [ct       (liquibase/changelog-table-name conn)
+                applied? (fn [id] (boolean (seq (jdbc/query {:connection conn}
+                                                            [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))
+                versions (fn [] (mapv :metabase_version
+                                      (jdbc/query {:connection conn}
+                                                  [(format "SELECT metabase_version FROM %s ORDER BY id"
+                                                           liquibase/databasechangelog-versions-table)])))
+                dep-of   (fn [id] (:deployment_id (first (jdbc/query {:connection conn}
+                                                                     [(format "SELECT deployment_id FROM %s WHERE id = ?" ct) id]))))]
+            (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
+              (mdb/migrate! (mdb/data-source) :up))
+            (is (true? (applied? "dev_run_a")))
+            (is (= ["x.1000.0.0"] (versions)))
+            ;; the developer adds a migration and runs `migrate up` again in the same process
+            (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
+              (mdb/migrate! (mdb/data-source) :up)
+              (is (true? (applied? "dev_run_b")))
+              (is (= ["x.1000.0.0" "x.1001.0.0"] (versions))
+                  "the second run computes and records the next synthetic version")
+              (is (not= (dep-of "dev_run_a") (dep-of "dev_run_b"))
+                  "each run is its own deployment, even within one process")
+              (mdb/migrate! (mdb/data-source) :down)
+              (is (false? (applied? "dev_run_b")) "migrate down reverts exactly the second run")
+              (is (true? (applied? "dev_run_a")) "the first run's migration survives")
+              (is (= ["x.1000.0.0"] (versions)) "the second run's version row is gone"))))))))
+
+(deftest migrate-failure-clears-version-table-memo-test
+  (testing "a failed migrate! forgets the in-memory 'version table already created' marker"
+    ;; On Postgres DDL is transactional: when migrate!'s transaction rolls back, the lazily-created
+    ;; databasechangelog_version table is rolled back with it. If the in-memory marker survived, every later insert
+    ;; in this process would fail with 'relation does not exist'. The DROP below simulates that rollback so the
+    ;; mechanism is testable on every driver.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/ensure-databasechangelog-versions-table! conn)
+        (is (true? (versions-table-exists?* conn)))
+        (jdbc/execute! {:connection conn} [(format "DROP TABLE %s" liquibase/databasechangelog-versions-table)])
+        (mt/with-dynamic-fn-redefs [liquibase/migrate-up-if-needed! (fn [& _] (throw (ex-info "boom" {})))]
+          (is (thrown-with-msg? Exception #"boom" (mdb/migrate! (mdb/data-source) :up))))
+        (liquibase/ensure-databasechangelog-versions-table! conn)
+        (is (true? (versions-table-exists?* conn))
+            "after a failed migrate!, ensure-databasechangelog-versions-table! must re-create the table instead of trusting the stale marker")))))
+
+(deftest compute-synthetic-version-read-only-test
+  (testing "computing the synthetic version never creates the version table (it may run on read-only paths like `migrate print`)"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (is (= "x.1000.0.0" (#'liquibase/compute-synthetic-version conn))
+            "a missing version table computes the floor")
+        (is (false? (versions-table-exists?* conn))
+            "the table must not be created as a side effect")))))
+
+(deftest synthetic-version-advances-after-recording-test
+  (testing "the dev synthetic version is always one past the highest recorded major, even within one process"
+    ;; Deliberate design change: this used to be memoized per process ('stable within process'), but then a second
+    ;; migration run in the same process recorded the SAME synthetic major as the first, collapsing the rollback
+    ;; boundary between them. Each run must see the previous run's recording and compute the next major.
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [_liquibase conn]
+          (liquibase/ensure-databasechangelog-versions-table! conn)
+          (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+            (let [v (liquibase/current-recorded-version)]
+              (is (= "x.1000.0.0" v) "first dev boot against an empty history")
+              (is (= 1000 (liquibase/current-recorded-major)))
+              (liquibase/record-deployment-version! conn "dep" v)
+              (is (= "x.1001.0.0" (liquibase/current-recorded-version))
+                  "after a run records its version, the next run computes the next synthetic major"))))))))
+
+(deftest record-deployment-version-nil-guard-test
+  (testing "recording with a nil deployment id (empty changelog) is a no-op instead of a NOT NULL violation"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/ensure-databasechangelog-versions-table! conn)
+        (liquibase/record-deployment-version! conn nil "x.1.0")
+        (is (empty? (jdbc/query {:connection conn}
+                                [(format "SELECT 1 FROM %s" liquibase/databasechangelog-versions-table)])))))))
+
+(deftest prod-synthetic-version-fallback-warns-test
+  (testing "a prod-mode binary that cannot parse its own version tag logs loudly before recording synthetic versions"
+    (mt/with-temp-empty-app-db [conn :h2]
+      (liquibase/ensure-databasechangelog-versions-table! conn)
+      (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vUNKNOWN")
+                    config/is-prod?        true]
+        (mt/with-log-messages-for-level [messages :error]
+          (is (= "x.1000.0.0" (liquibase/current-recorded-version))
+              "still falls back to the synthetic version so the instance can run")
+          (is (some #(re-find #"synthetic" (:message %)) (messages))
+              "and logs an error explaining the degraded version tracking"))))))

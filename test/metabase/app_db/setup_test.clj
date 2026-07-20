@@ -233,6 +233,13 @@
                                [(format "SELECT deployment_id, metabase_version FROM %s"
                                         liquibase/databasechangelog-versions-table)]))))))))
 
+(defn- versions-table-exists?*
+  "Whether `databasechangelog_version` exists, checked without creating it. Unquoted DDL identifiers are folded to
+  upper case by H2 and lower case by Postgres, so check both."
+  [conn]
+  (boolean (or (liquibase/table-exists? "databasechangelog_version" conn)
+               (liquibase/table-exists? "DATABASECHANGELOG_VERSION" conn))))
+
 (deftest migrations-sql-includes-version-tracking-test
   (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
     ;; Regression: the version row and the vNN.legacy-version-tracking marker are written by the exec listener, which
@@ -251,7 +258,11 @@
               (testing "records the upgrading version"
                 (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.64\.0" sql)))
               (testing "adds the legacy version-tracking marker so older binaries detect downgrades"
-                (is (re-find #"v64\.legacy-version-tracking" sql)))))))))
+                (is (re-find #"v64\.legacy-version-tracking" sql)))
+              (testing "the version table is created by the printed SQL, not on the live database"
+                (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
+                (is (false? (versions-table-exists?* conn))
+                    "`migrate print` must not mutate the database"))))))))
   (testing "a dev build's SQL records its synthetic version but never a marker"
     (mt/with-temp-empty-app-db [conn :h2]
       (update-to-changelog-id "v45.00-001" conn)
@@ -259,7 +270,9 @@
         (liquibase/with-liquibase [liquibase conn]
           (let [sql (liquibase/migrations-sql liquibase)]
             (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
-            (is (not (re-find #"legacy-version-tracking" sql)))))))))
+            (is (not (re-find #"legacy-version-tracking" sql)))
+            (is (false? (versions-table-exists?* conn))
+                "computing the dev synthetic version on the print path must not create the table")))))))
 
 (deftest changesets-from-later-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -277,15 +290,25 @@
                                      VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
                                     table)
                             id (+ 99990 i)]))
+          ;; ... plus a version-less changeset applied by a later deployment: nothing in its id reveals its version,
+          ;; only its deployment's recorded ran-version does
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_versionless_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99993, 'EXECUTED', 'fake', 'futuredep')"
+                                  table)])
+          (liquibase/record-deployment-version! conn "futuredep" "x.999.1")
           (try
             (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
-              (testing "returns exactly the fake changeset IDs in execution order"
-                (is (= fake-ids later))))
+              (testing "returns the versioned AND version-less changeset IDs in execution order"
+                (is (= (conj fake-ids "zz_versionless_cs") later))))
             (finally
               ;; Clean up fake rows
-              (doseq [id fake-ids]
+              (doseq [id (conj fake-ids "zz_versionless_cs")]
                 (jdbc/execute! db-conn
-                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
+                               [(format "DELETE FROM %s WHERE id = ?" table) id]))
+              (jdbc/execute! db-conn
+                             [(format "DELETE FROM %s WHERE deployment_id = 'futuredep'"
+                                      liquibase/databasechangelog-versions-table)]))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}

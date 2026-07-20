@@ -287,6 +287,44 @@
                         (update (mock-change-set :id "aeiagus09e" :changes [{:sql {:sql "select 1"}}])
                                 :changeSet dissoc :rollback))))))
 
+(deftest ^:parallel year-dir-prevent-bare-types-test
+  ;; Regression: the bare-type checks filter changesets through changeset-version+id, which only parses `vNN.` ids --
+  ;; version-less year-dir ids returned nil and were silently EXEMPT from the boolean/datetime checks.
+  (let [year-file (io/file "migrations/2026/20260616_workspaces.yaml")]
+    (testing "year-dir migrations may use the parameterized types"
+      (is (= :ok
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type "${boolean.type}")])]))))
+      (is (= :ok
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type "${timestamp_type}")])])))))
+    (testing "year-dir migrations cannot add bare boolean columns"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"uses invalid types"
+           (validate-file year-file
+                          (mock-change-set
+                           :id "aeiagus09e"
+                           :changes [(mock-add-column-changes
+                                      :columns [(mock-column :type "boolean")])])))))
+    (testing "year-dir migrations cannot add bare datetime/timestamp columns"
+      (doseq [bad-type ["datetime" "timestamp" "timestamp without time zone"]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"uses invalid types"
+             (validate-file year-file
+                            (mock-change-set
+                             :id "aeiagus09e"
+                             :changes [(mock-add-column-changes
+                                        :columns [(mock-column :type bad-type)])])))
+            bad-type)))))
+
 (deftest ^:parallel prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
