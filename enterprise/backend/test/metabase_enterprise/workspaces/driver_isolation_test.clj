@@ -1059,15 +1059,16 @@
                           :when (some? pw)]
                     (is (not (str/includes? text pw))
                         (str "workspace password leaked into exception text:\n" text)))
-                  ;; pgjdbc (and redshift's fork of it) echoes the aborted
-                  ;; statement in the batch exception message; requiring the
-                  ;; redaction marker proves this test reached the CREATE USER
-                  ;; echo rather than failing earlier and passing vacuously.
-                  ;; Only these two drivers get the database-level CREATE
-                  ;; grant that lets execution reach CREATE USER.
+                  ;; init unwraps the JDBC batch envelope (which echoed the
+                  ;; aborted CREATE USER statement) and rethrows the scrubbed
+                  ;; server error. Requiring the create-role permission error
+                  ;; proves this test reached CREATE USER rather than failing
+                  ;; earlier and passing vacuously. Only these two drivers get
+                  ;; the database-level CREATE grant that lets execution reach
+                  ;; CREATE USER.
                   (when (#{:postgres :redshift} driver)
-                    (is (str/includes? text "****")
-                        (str "expected redacted CREATE USER echo in exception text:\n" text)))))))
+                    (is (re-find #"(?i)permission denied|must be superuser|not authorized|privilege" text)
+                        (str "expected the CREATE USER permission error in exception text:\n" text)))))))
           (finally
             ;; If init for ws-b unexpectedly succeeded (isolation regression),
             ;; a user with a live password exists — tear it down too. Also
