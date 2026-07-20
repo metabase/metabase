@@ -13,15 +13,19 @@ const ELIGIBLE_DATABASE = createMockDatabase({
 
 type SetupOpts = {
   databases?: Database[];
+  isRemoteSyncEnabled?: boolean;
 };
 
-function setup({ databases = [] }: SetupOpts = {}) {
+function setup({ databases = [], isRemoteSyncEnabled = true }: SetupOpts = {}) {
   renderWithProviders(
     <Route path="*" element={<WorkspaceEmptyState databases={databases} />} />,
     {
       withRouter: true,
       storeInitialState: {
-        settings: createMockSettingsState({ "show-metabase-links": true }),
+        settings: createMockSettingsState({
+          "show-metabase-links": true,
+          "remote-sync-enabled": isRemoteSyncEnabled,
+        }),
       },
     },
   );
@@ -43,11 +47,40 @@ describe("WorkspaceEmptyState", () => {
       screen.queryByRole("button", { name: "Create a workspace" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/enable workspaces on at least one database/),
+      screen.getByText("To create a workspace, you need to:"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "admin settings" }),
+      screen.getByRole("link", {
+        name: "Enable workspaces on at least one database",
+      }),
     ).toHaveAttribute("href", "/admin/databases");
+    expect(
+      screen.queryByRole("link", { name: "Set up remote sync" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("links to the remote sync settings when remote sync is not set up", () => {
+    setup({ databases: [ELIGIBLE_DATABASE], isRemoteSyncEnabled: false });
+
+    expect(
+      screen.queryByRole("button", { name: "Create a workspace" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Set up remote sync" }),
+    ).toHaveAttribute("href", "/admin/settings/remote-sync");
+  });
+
+  it("shows all errors at once", () => {
+    setup({ databases: [], isRemoteSyncEnabled: false });
+
+    expect(
+      screen.getByRole("link", {
+        name: "Enable workspaces on at least one database",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Set up remote sync" }),
+    ).toBeInTheDocument();
   });
 
   it("renders docs link buttons", () => {
