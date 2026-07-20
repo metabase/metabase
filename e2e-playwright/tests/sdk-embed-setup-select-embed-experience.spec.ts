@@ -284,23 +284,59 @@ test.describe("scenarios > embedding > sdk iframe embed setup > select embed exp
   test("should show a fake loading indicator in embed preview", async ({
     page,
   }) => {
+    // The indicator is a TRANSIENT state, and upstream never synchronises on
+    // it: `EmbedPreviewLoadingOverlay` renders from the moment the preview
+    // mounts (modal open) until the embed element fires `ready`, which the
+    // runtime emits on the iframe's `metabase.embed.iframeReady` postMessage —
+    // the same instant it stamps `data-iframe-loaded`. So the window is
+    // "modal open → iframe app booted", and the two steps between the open and
+    // the assertion (`embedModalEnableEmbedding`'s visibility check + card
+    // probe) race it. On CI that race was lost: the run-29715675294 error
+    // context shows the wizard fully rendered with the preview iframe present
+    // and no overlay, i.e. the indicator had already mounted AND cleared before
+    // the first poll. See FINDINGS #54 — a fixed `setTimeout` hold is not
+    // enough here, because the elapsed pre-assertion time on a contended
+    // runner is unbounded. Instead the iframe document request is held open
+    // until the test releases it, which makes the window deterministic.
+    let releaseEmbedIframe!: () => void;
+    let heldEmbedIframeRequests = 0;
+    const embedIframeHeld = new Promise<void>((resolve) => {
+      releaseEmbedIframe = resolve;
+    });
+    await page.route("**/embed/sdk/v1?**", async (route) => {
+      heldEmbedIframeRequests += 1;
+      await embedIframeHeld;
+      await route.continue();
+    });
+
     await page.goto(`/question/${ORDERS_QUESTION_ID}`);
 
     await openEmbedJsModal(page);
     await embedModalEnableEmbedding(page);
-
+    // Strictly stronger than upstream: with the iframe document held, `ready`
+    // CANNOT have fired, so this asserts the overlay is shown *because* the
+    // preview has not loaded, rather than catching a flicker.
     await expect(
       page
         .locator("#iframe-embed-container")
         .getByTestId("preview-loading-indicator"),
     ).toBeVisible({ timeout: 20_000 });
 
+    // Guards the scaffolding: if the embed runtime's iframe URL ever moves
+    // (`EMBEDDING_ROUTE` in embedding-iframe-sdk/embed.ts), the route above
+    // would silently match nothing and this test would quietly revert to the
+    // race it is meant to remove. Fail loudly instead.
+    expect(heldEmbedIframeRequests).toBeGreaterThan(0);
+
+    releaseEmbedIframe();
+
     await expect(loadedPreviewIframe(page)).toHaveCount(1, { timeout: 20_000 });
 
     // ANCHOR for the absence below: the `toHaveCount(1)` above proves the
     // preview finished loading, which is exactly the transition that removes
     // the indicator. `toHaveCount(0)` retries, matching upstream's
-    // `should("not.exist")`.
+    // `should("not.exist")`. Because the load only happened after the release,
+    // this now also proves the clear is *caused* by the load.
     await expect(page.getByTestId("preview-loading-indicator")).toHaveCount(0);
   });
 

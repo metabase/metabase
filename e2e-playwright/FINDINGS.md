@@ -1100,6 +1100,15 @@ evidence isn't worth making.
     CI's merge jar does. The port was faithful to the original as it existed at
     fork time, and CI was right to fail it.
 
+    ⚠️ **Caveat on the technique, learned the hard way 2026-07-20:**
+    `PW_KEEP_SLOT_BACKENDS=1` **silently ignores `JAR_PATH` if the slot backend
+    is already up** — it prints `(reused)` and keeps its original jar. A later
+    agent produced a whole evidence table against the stale local jar while
+    believing it was on the CI one, caught it via `ps`, and redid every
+    load-bearing run. **Kill the slot backend before switching jars, and verify
+    with `ps` or `version.hash` vs `COMMIT-ID` rather than trusting the env
+    var.** This is the same "reports success while doing nothing" class as #67.
+
     **The technique that settled it, worth reusing:** download **the exact
     uberjar CI ran** (from the run's artifact — here `COMMIT-ID e45bd0c9`), boot
     a slot from it, and reproduce locally. That converts "CI-only, can't
@@ -1204,6 +1213,117 @@ evidence isn't worth making.
     browser-side check in `search-snowplow.ts` was deliberately left alone, since
     retrofitting it would change assertion strength across ~26 landed tests and
     deserves its own verification pass.
+
+83. **`should("be.empty")` on an `<input>` is vacuous** (`embedding-hub`) — a
+    new member of the chai-jquery-semantics family (#6, #36, #23). chai-jquery's
+    `empty` means "has no child nodes", which is **trivially true of a void
+    element**: an `<input>` can never have children regardless of its value. So
+    the assertion passes whatever the field contains. Ported as
+    `toHaveValue("")`, which is what the test meant.
+
+84. **An absence assertion that sails past a 500 — and the honest finding is
+    that it's faithful** (`embedding-hub`). Mutation D fulfilled
+    `PUT /api/permissions/graph` with a 500, and upstream's
+    `undoToast().should("not.exist")` passed in three tests. The agent confirmed
+    the toast is genuinely emitted rather than assuming — flipping the same
+    assertion to `toHaveCount(1)` under the same mutation *found* it — so the
+    absence check simply samples before the toast paints.
+
+    **This is a no-op upstream too**, since Cypress's `should("not.exist")` has
+    identical first-absent semantics (#74). So it is not port drift and not a
+    Playwright weakness; it is an upstream assertion that cannot fail. Fixed per
+    the standing rule — **anchor, don't change the assertion form** — by gating
+    each of the three on the success signal the same submit produces (the `check`
+    icon on *Select data to make available*). Re-running mutation D against the
+    anchored version kills it.
+
+    Worth noting as the pattern that keeps recurring: a *surviving* mutant is the
+    signal, and the follow-up question is always "is this vacuous, or is the
+    mutation wrong?" — answered here by asserting presence under the same
+    mutation.
+
+85. **🔴 The QA-DB tier is not safely parallelisable as built — one writable
+    container is shared by all five slots** (`datamodel-data-studio`). Each
+    spec's reset creates only *its own* fixture; upstream's `multi_schema` reset
+    does **not** drop foreign schemas, because CI hands every run a fresh
+    container and never had to. On our long-lived shared container the debris
+    accumulates: measured `Schema A`…`Schema Z` plus six stray `public` tables
+    from other slots' runs.
+
+    **It fails in the shape of a product bug**, which is what makes it dangerous:
+    a database checkbox stuck `indeterminate`; a `Wild` schema unclickable
+    because it sorted after 26 injected schemas and never rendered. Cause and
+    cure were both confirmed — all 5 affected tests pass on a cleaned container
+    and fail again once sibling runs repopulate it. Nothing was weakened to
+    accommodate it.
+
+    **🔴 A GREEN CYPRESS CROSS-CHECK IS NOT EVIDENCE THE CONTAINER IS CLEAN —
+    and on this tier it actively misleads** (`entity-picker`, 2026-07-20).
+    Measured: after a Cypress run Metabase sees **3** tables in `writable_db`;
+    after the port's run it sees **29**. Cause: `H.resyncDatabase({ dbId })` with
+    no `tables` returns instantly (satisfied by the snapshot's own metadata), so
+    **Cypress reads the picker before the background sync has discovered the
+    debris**. The port passes `tables` — the correct, documented behaviour — and
+    therefore waits long enough to see it.
+
+    So the cross-check says "Cypress passes, your port drifted" when the truth is
+    "the port is more correct and the container is dirty". This is a new way for
+    the fidelity cross-check to mislead, on top of #31's shared-cause problem:
+    here the two harnesses genuinely observe **different application state**.
+    Concretely, `GET /api/search?q=anim` returns 28 results with the target at
+    rank **27** — below the virtualized render window, so never in the DOM; on a
+    clean container the same query returns 2 results at ranks 0 and 1.
+
+    **🔴 ESCALATION — contamination also causes vacuous GREENS, not just reds**
+    (`transforms`, 2026-07-20). `Domestic.Animals` — another spec's fixture,
+    left in the shared container — exists with **zero rows**, and can win
+    upstream's *unpinned* table lookup. At that point the `metabase#64473`
+    test's absence assertion **passes on an empty result pane**. So this is a
+    #49 vacuous green arriving through the *container* rather than through a
+    gate, which is strictly harder to notice: nothing skips, nothing fails,
+    and the count looks like coverage.
+
+    Fixed by pinning the schema (a no-op on a clean container, and what upstream
+    does everywhere else) rather than dropping foreign schemas. Note the
+    relationship is **mutual** — that spec injects `Schema A`…`Schema Z` itself,
+    so every QA-DB spec is both victim and contaminator.
+
+    **MECHANISM NAMED 2026-07-20** (`admin-datamodel`): the admin table picker
+    is **virtualized** (`@tanstack/react-virtual`, `Results.tsx`). With 26 debris
+    schemas present the backend reports **29 schemas while the DOM holds only
+    20** — `Domestic, public, Schema A … Schema R`. **`Wild` sorts after
+    `Schema Z` and is therefore never in the DOM at all.** That single fact
+    explains every observed failure, including the puzzling one where
+    `getDatabases()` returned 0 after clearing a search: the virtualizer had
+    scrolled to the selected row at the bottom and unmounted the *database* rows
+    too. So the symptom isn't "the app is broken" or "the locator is wrong" —
+    it's that the element genuinely does not exist in the DOM.
+
+    Neat corollary: the port could be proven correct **without touching the
+    container** — the three non-count-based tests pass 3/3 with
+    `viewport: {width:1280, height:1800}` as the only change, because a taller
+    viewport virtualizes more rows into the DOM. The fourth is inherently
+    contamination-fatal since it counts rendered schemas.
+
+    **Consequence for the migration plan, and it is a real one:** the per-worker
+    *backend* isolation that #8 celebrates does not extend to the QA databases.
+    Before more of this tier lands, it needs either a **per-slot writable DB** or
+    a **"drop everything not mine" reset**. Until then, QA-DB specs verified
+    concurrently may not reproduce, and a green result carries less weight than
+    the same result obtained serially.
+
+    Recorded honestly: the agent dropped the foreign schemas once to run its
+    control, and disclosed that a concurrently-running sibling could have been
+    disturbed by it.
+
+86. **A second instance of the untagged-`@external` pattern** (`datamodel-data-studio`).
+    `Extra info about tables` (3 tests) and `should filter unused tables only`
+    restore `postgres-writable` with **no `@external` tag**, so on a
+    `-@external` CI leg they run against a container that isn't there. The first
+    instance was `data-model-shared-1`'s untagged mysql-8 test, and #26 recorded
+    the same shape for schema-viewer. Three sightings makes it a pattern in the
+    upstream suite rather than an oversight: **restoring a QA snapshot and
+    carrying an `@external` tag are independently maintained, and they drift.**
 
 ### Capability: `page.clock` reaches into embed iframes
 

@@ -335,3 +335,14 @@ permissions/database-details-permissions.cy.spec.js
 collections/tenant-collections-list.cy.spec.ts
 collections/tenant-collection-trash.cy.spec.ts
 question/question-analytics.cy.spec.js
+admin/datamodel/datamodel.cy.spec.ts
+custom-column/custom-column-reproductions-1.cy.spec.js
+data-studio/data-model/datamodel-data-studio.cy.spec.ts
+embedding/embedding-hub/embedding-hub.cy.spec.ts
+organization/entity-picker.cy.spec.ts
+filters/filter-bigint.cy.spec.ts
+question/notebook.cy.spec.js
+question-reproductions/reproductions-3.cy.spec.js
+sharing/sharing-reproductions.cy.spec.js
+data-studio/data-model/source-replacement.cy.spec.ts
+visualizations-tabular/table.cy.spec.js

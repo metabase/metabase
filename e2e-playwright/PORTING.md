@@ -403,11 +403,18 @@ lead that survived did so because the agent happened to narrate it out loud.
   what makes it look like an app bug. Before a keyboard Escape that must
   reach the app, park the mouse (`parkMouseAwayFromTooltips` in
   documents.ts). Applies to any window-level key handler, not just Escape.
-- **Pace repeated key presses.** Every `cy.realPress` is its own Cypress
-  command, so the original always had queue latency between presses;
+- **Pace repeated key presses** — **but NOT with `press(k, { delay })`; that
+  option does not do what this rule used to say.** Every `cy.realPress` is its
+  own Cypress command, so the original always had queue latency between presses;
   `page.keyboard.press` in a loop has none. ProseMirror then drops/coalesces
-  selection updates and formatting marks land on the wrong words. Use a
-  ~25ms cadence (the same one `realType` → `keyboard.type({delay})` uses).
+  selection updates and formatting marks land on the wrong words.
+
+  ⚠️ **CORRECTED 2026-07-20:** `keyboard.press(key, { delay })` is the
+  **keydown→keyup hold duration**, not a gap *between* presses. Measured: five
+  `ArrowDown`s with a delay advanced a completions selection by **2**. You need
+  a real `waitForTimeout` after each press (or `keyboard.type({delay})`, where
+  the option genuinely does pace successive characters). An earlier version of
+  this bullet had the mechanism wrong.
 - **Async-filtered suggestion lists: gate on the element the handler reads.**
   The emoji picker's Enter handler reads
   `[data-active] || [frimousse-row][aria-rowindex="0"] [data-emoji]` from the
@@ -750,6 +757,15 @@ duplicates were collapsed (along with the create* superset in `support/factories
 
 ## Gotchas & lessons added during continuous-dispatch waves (Opus, post-consolidation)
 
+**🔴 `PW_KEEP_SLOT_BACKENDS=1` SILENTLY IGNORES `JAR_PATH` when the slot backend
+is already up.** A reused backend prints `(reused)` and keeps whatever jar it
+booted with — so setting `JAR_PATH` to a downloaded CI jar can leave you
+verifying against the **stale local jar** while believing otherwise. This cost
+one agent an entire evidence table, which it caught and redid. **Verify with
+`ps` (or `version.hash` vs the jar's `COMMIT-ID`), never trust the env var** —
+this is exactly why every port is asked to confirm the jar before reporting.
+Kill the slot backend first when switching jars.
+
 **To debug a CI-only failure: download the exact uberjar CI ran.** Pull it from
 the failing run's artifact, boot a slot from it, and reproduce locally — this
 turns "CI-only, can't reproduce" into an ordinary debugging loop and gives you a
@@ -896,30 +912,9 @@ matching element.
   the one-shot form, 63/63 after converting to retrying `toHaveCount(0)`.
   **Default to `toHaveCount(0)`; justify any one-shot in a comment.**
 
-  **How to prove vacuity** (do this before claiming it): invert the input the
-  assertion is about and show the test stays green. Reading the source is not
-  enough.
-
-  ⚠️ **Two ways a mutation lies to you, both of which read as "vacuous":**
-  - **`PUT /api/setting/:key` returning 2xx is NOT evidence the setting
-    changed.** `non-table-chart-generated` has a custom `:setter` that only ever
-    applies `true` (`analytics/settings.clj:97`), so a "clear the gate" mutation
-    silently no-ops — and looks exactly like a surviving mutant, i.e. like the
-    assertion is vacuous. Same shape as the `MB_SITE_URL` env-beats-app-DB trap
-    (#39). **Read the `defsetting` before using a setting write as a mutation
-    lever.**
-  - **A mutation that shrinks both the input AND the expectation is not an
-    inversion.** `Array.from({length: 3})` → `{length: 1}` survives and means
-    nothing, because the assertion moved with the fixture. Corrupt something the
-    assertion does *not* track — e.g. the name sent to the API — which kills
-    immediately.
-
-  ⚠️ **And a SURVIVING MUTANT is not proof of vacuity either.** If the content
-  under test renders only under a **conjunction** of settings, inverting either
-  one alone leaves the test green — and that looks exactly like vacuity while
-  the assertion is perfectly sound. Measured in `embed-flow-enable-embed-js-*`
-  test 3. The decisive probe is **"can this locator ever match?"**, not "does one
-  inverted input kill it". Run that before writing a vacuity claim.
+  **How to prove vacuity**: see the dedicated section
+  **"Mutation testing — proving a green test is load-bearing"** below. Do not
+  claim vacuity from source-reading alone.
 - **Read a Cypress helper's SIGNATURE before porting its call shape.**
   `tooltipHeader(x)`, `completions(x)`, `assertOrdersExport(n)` all silently
   discard their arguments. Strengthening them into real assertions can turn a
@@ -1032,6 +1027,60 @@ matching element.
   `postgres-writable` and never touched it (swapping to `"default"` freed 54
   cases onto the bare jar), and the SQLite x-ray tests need no container at all
   (built-in driver, repo-root fixture, slot backends run from `REPO_ROOT`).
+
+## Mutation testing — proving a green test is load-bearing
+
+**Why this exists.** A ported spec that has never run proves nothing by being
+green. It may be green because it asserts something that *cannot fail*. That is
+not hypothetical here — it has produced a dozen findings: absence checks
+satisfied before the page painted (#73), helpers silently discarding their
+arguments (#25, #53), `should("be.empty")` on a void element (#83), a test whose
+entire subject can be deleted without it going red (#76). **Mutation testing is
+the cheapest way to tell a real green from a hollow one, and it is now expected
+on every port.**
+
+**The method.** Break something the test claims to check; the test must go red.
+- A **killed** mutant (test fails) = the assertion is load-bearing. Good.
+- A **surviving** mutant (test still passes) = a question, not yet a verdict.
+
+**Invert the INPUT, not the expectation.** Change the fixture *and* the
+assertion and they move together, so the test passes and you have proved
+nothing. The strongest form is corrupting something **no assertion references** —
+`filter-bigint` altered one digit in the QA-DB fixture and three tests failed.
+
+**If every mutant dies at the FIRST assertion, later assertions stay unproven.**
+Several ports had to add follow-on mutants aimed specifically at the tail
+assertions. Check *where* each mutant died, not just that it died.
+
+### Four ways a mutation lies to you
+
+1. **The mutation silently didn't apply.** `PUT /api/setting/:key` returning 2xx
+   is NOT evidence the setting changed — `non-table-chart-generated` has a custom
+   `:setter` that only ever applies `true` (`analytics/settings.clj:97`), so the
+   "mutation" no-ops and reads as a surviving mutant. Same family as the
+   `MB_SITE_URL` env-beats-app-DB trap (#39). **Read the `defsetting` first.**
+2. **It shrank both sides.** `Array.from({length: 3})` → `{length: 1}` survives
+   and means nothing. Corrupt what the assertion does *not* track.
+3. **The content is conjunction-gated.** If it renders only under settings A
+   AND B, inverting either alone leaves the test green — which looks exactly
+   like vacuity while the assertion is sound. Measured in
+   `embed-flow-enable-embed-js-*`. The decisive probe is **"can this locator ever
+   match?"**
+4. **The environment moved, not the code.** On the QA-DB tier a shared writable
+   container (#85) makes results non-reproducible; a "surviving" mutant may just
+   be a contaminated DB.
+
+### When a mutant survives, ask "vacuous, or bad mutation?"
+
+Answer it by asserting **presence** under the same mutation. `embedding-hub` did
+exactly this: an absence check sailed past a 500, so it flipped the assertion to
+`toHaveCount(1)` under the same mutation and *found* the element — proving the
+check was sampling too early rather than asserting nothing. Different problem,
+different fix.
+
+And when the answer is "vacuous": if Cypress has the same semantics, **it is
+vacuous upstream too** — not port drift, not a Playwright weakness. Fix it with
+an anchor and say so.
 
 ## Capturing snowplow without micro (batch-12, search-snowplow)
 
@@ -1334,6 +1383,139 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   email under test arrives. If any earlier mail is already sitting there (an
   enrollment notification, say), the poll returns immediately and the following
   `to.exist` is a timing coin flip. Port as a subject-matching wait.
+- **An `afterEach` runs even when a skipped `beforeEach` short-circuits — and
+  can fail every test in a gate-OFF control.** One QA-DB port's gate-off run
+  reported **48 failed instead of 48 skipped** purely because of this, which
+  would read as "the port is broken without the gate". Guard teardown on the
+  same condition as the gate. Found *by* running the control, which is a point
+  in favour of always running it.
+- **Pin the schema in table lookups** (`"public"."foo"`, not `foo`). Upstream
+  does this nearly everywhere; where it doesn't, another spec's same-named table
+  in the shared container can win the lookup — and if that table is empty, an
+  absence assertion **passes vacuously**. See #85's escalation.
+- **🔴 OWED DURABLE FIX (#85): `multi_schema` reset in `support/data-model.ts`
+  should drop schemas it does not own** — or the shared writable container needs
+  a between-sessions teardown. Until then, QA-DB specs touching schema/table
+  listing are contamination-fragile. Not done yet because siblings were live;
+  **do this when the slots drain.** Mechanism: the picker is virtualized, so
+  debris schemas push the target out of the DOM entirely — a taller viewport
+  (`height: 1800`) is a diagnostic, not a fix.
+- **🔴 Do NOT run a Cypress cross-check while parallel Playwright slots are
+  live.** `H.restore()` re-points **database 1 at the shared `e2e/tmp` H2 file**,
+  which breaks every concurrently-running slot (the same lock contention that
+  manufactured the #22 evidence). Cross-checks require a quiesced box — that
+  constraint is now about slot safety, not just result validity.
+  **Measured consequence:** one agent ran a cross-check against its slot backend
+  and **wedged it** — every subsequent `restore` timed out at 90s with
+  `(reused)` in the log. Recovery is `kill -9` plus
+  `rm -rf $TMPDIR/mb-pw-slot-<N>`. It recorded the trigger without isolating the
+  cause, so the mechanism is unproven; the operational rule stands regardless.
+  **If you must cross-check, do it LAST.**
+- **🔴 On the QA-DB tier, a GREEN Cypress cross-check does NOT mean your port
+  drifted — it may mean Cypress never saw the debris.** `resyncDatabase` without
+  `tables` returns instantly, so Cypress reads the UI before the background sync
+  discovers foreign tables (measured: Cypress sees 3 tables, the port sees 29).
+  The two harnesses observe genuinely different application state. See #85.
+- **🔴 An `{Enter}` inside a Cypress formula string is a COMPLETION ACCEPT, and
+  needs `acceptCompletion`'s 300ms settle.** Ported literally, CodeMirror inserts
+  a **newline** instead — `[Tot` + Enter becomes `"[Tot\n  ]"`. This hit one port
+  in 4 tests with 4 different fingerprints. **Asserting the completion popup is
+  visible is NOT sufficient** — the list is recomputed asynchronously and the
+  selection resets to index 0 mid-sequence (measured `0→1→0→1→2→3` at a 300ms
+  settle vs `0→5` at 1s, 3/3 and 5/5 runs).
+- **The notebook data-step search input is autofocused and lives OUTSIDE
+  `[data-testid=mini-picker]`** — so `H.miniPicker().within(() => cy.realType(…))`'s
+  scope is decorative, and `miniPicker.getByRole("textbox")` matches nothing.
+  Type at the focused element instead.
+- **🔴 A real hover can CREATE the overlay that then intercepts its own click.**
+  Playwright moves the mouse, the app renders a hover-triggered overlay at that
+  point, and the follow-up click lands on the overlay it just summoned. Cypress
+  never saw this because its synthetic click doesn't move the cursor.
+  `dispatchEvent("click")` is the faithful port. (Same family as the
+  `click({force:true})` trap, but the overlay is *caused by you*, which makes it
+  much harder to spot in a snapshot.)
+- **`H.NativeEditor.get(".ace_line")` silently discards its argument**, and
+  **`CustomExpressionEditor.completion()` is an override whose base
+  implementation (`.cm-completionLabel`) matches nothing in that editor** — two
+  more members of the read-the-helper-before-porting-its-call-shape family
+  (#25, #53).
+- **Dense ECharts series defeat a real hover — the wave-12 pie-label rule
+  generalises.** A weekly series in a dashcard packs ~3px dots a few px apart, so
+  a *neighbouring* circle path is topmost at your target's centre and
+  Playwright's hit-test refuses the hover. `realHover` did no hit-testing, so
+  Cypress never saw this. Use `hover({ force: true })` (or a synthetic
+  mousemove), not just for pie wedges but for any dense cartesian series.
+- **`QuestionDisplayToggle`'s segments are `disabled: true` BY DESIGN** — the
+  `SegmentedControl` *root* carries the `onClick`. Any port toggling the QB
+  data/visualization switch needs `click({ force: true })` on it; the disabled
+  attribute is not a bug and not a reason to hunt for another selector.
+- **`boundingBox()` is a SECOND round trip and returns `null` if the element
+  re-rendered in between** — even immediately after a passing `toBeVisible()`
+  from inside a helper. Bit a port right after a summarize re-query. When porting
+  `.trigger()` with coordinates, read the rect **inside** the `evaluate`.
+- **`[data-index=0]` is invalid CSS** — Sizzle (Cypress) accepts the unquoted
+  numeric attribute value, `querySelectorAll` throws. Quote it: `[data-index="0"]`.
+- **A `withinPortal: false` Select dropdown renders OVER the next control and
+  eats a click silently** — the click lands on the dropdown, not the control you
+  targeted, and the failure surfaces later.
+- **`keyboard.press("Escape")` can be delivered to `<body>`** rather than the
+  combobox input you think is focused — assert focus first if Escape is
+  load-bearing.
+- **🔴 `resyncDatabase({ dbId })` with no `tables` gates on NOTHING.** It returns
+  as soon as the DB has *any* synced table — which the snapshot's own tables
+  satisfy immediately — so it does not wait for the table you just created.
+  Cypress's command-queue latency hid this; Playwright's back-to-back calls do
+  not. Cost `source-replacement` **27 of 30 tests on run 1**, with a misleading
+  fingerprint: first "table not found", then "Field `amount` cannot be found on
+  table 235", which reads like a metadata bug. **Pass the helper's `tables`
+  option.**
+
+  **Blast radius, measured 2026-07-20: 13 call sites use the bare
+  `{ dbId: WRITABLE_DB_ID }` form**, across `data-model-shared-1` (3),
+  `datamodel-data-studio` (5), `table-editing` (2), `interactive-embedding` (2),
+  `embedding-hub` (1) — several already pushed. **These are sites to CHECK, not
+  13 confirmed bugs**: the hole only bites when the test then depends on a
+  *newly created* table appearing. Where the test only needs "a sync happened",
+  the bare form is harmless. Someone should walk them.
+- **🔴 `click({ force: true })` is NOT the port of Cypress's `{force: true}`.**
+  Cypress **dispatches** the event at the resolved element. Playwright moves the
+  **real mouse** to that element's coordinates and clicks **whatever is topmost
+  there**. So a force-click under an overlay hits the overlay. Measured: the
+  shared `verifyAndCloseToast`'s toast-close force-click landed on a **modal
+  overlay and closed the modal**, surfacing three steps later as "Save button is
+  not stable" — which reads as an app bug and sends you debugging the wrong
+  thing. **`dispatchEvent("click")` is the faithful equivalent.**
+  This is in a SHARED helper, so treat any unexplained "element became unstable /
+  modal vanished" failure downstream of a force-click as this until ruled out.
+- **Mantine `Select` option rows: `getByRole("option", { name, exact: true })`
+  matches NOTHING.** `renderOption` injects an `Icon` (`aria-label`) and FK
+  descriptions into the row, so the accessible name is never just the label —
+  measured 0 vs 1. Upstream's `.contains`/`findByText` is substring anyway, so
+  drop `exact`. Cost one port 4 failures that all looked like "the dropdown
+  didn't open".
+- **`.blur()` must hit the element Cypress typed into.** Re-querying a field
+  input by its *new* name deadlocks: the accessible name only updates once the
+  PUT that the blur itself triggers has landed.
+- **`.closest("button")` on a Mantine `Card` gives you the STEP, not the card.**
+  Hub cards are `Card` divs; the nearest `button` ancestor is the `Stepper.Step`
+  `UnstyledButton` wrapping the *whole step*. It only looks unambiguous because
+  each hub step happens to contain exactly one card.
+- **`H.addPostgresDatabase` is not a thin POST** — it blocks on sync completion
+  and field analysis (the `documents-core` copy does not). Budget for it, and
+  don't swap one for the other.
+- **Strengthening an assertion can RECREATE the bug under test.** `filter-bigint`'s
+  export test doesn't verify exported digits — and neither does upstream. The
+  tempting fix is to assert on `readSheetRows`' output, but that goes through
+  `XLSX`, which **coerces those cells to JS numbers** — i.e. the strengthened
+  assertion would itself lose the precision the spec exists to protect. Before
+  strengthening, check that your assertion path doesn't pass the value through
+  the very lossy step under test.
+- **The MultiAutocomplete blur trap also fires on the FILTER PICKER's value
+  input**, not just ID widgets: `NumberFilterPicker` renders a pill combobox
+  (not `BigIntNumberInput`) when the column has field values, so
+  `getByLabel("Filter value")` is a `MultiAutocomplete` and the "Add filter"
+  click is swallowed. Fingerprint is misleading — it surfaces two steps later,
+  with the pill committed and the popover still open.
 - **Submitting a form while a `MultiAutocomplete`/`PillsInput` holds focus
   silently does nothing.** A real Playwright mousedown on the submit button blurs
   the focused `PillsInput`, whose blur handler re-renders the form — mouseup then
