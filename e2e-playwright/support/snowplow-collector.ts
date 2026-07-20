@@ -175,8 +175,14 @@ export class SnowplowCollector {
       // slot backend advertises this URL in `snowplow-url`), which preflights.
       // Answering permissively costs nothing and keeps those events observable
       // instead of silently dropped by CORS.
+      // The tracker POSTs with `credentials: "include"`. Without
+      // `Allow-Credentials` the browser rejects the response and only the
+      // OPTIONS is ever recorded — measured: `omit` and `same-origin` 200,
+      // `include` net::ERR_FAILED. A credentialed request also forbids a `*`
+      // origin, so the echo above is load-bearing, not a nicety.
       const cors = {
         "Access-Control-Allow-Origin": request.headers.origin ?? "*",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
         "Access-Control-Allow-Headers": "content-type, sp-anonymous",
         "Access-Control-Max-Age": "600",

@@ -3869,3 +3869,51 @@ open item, not as evidence.
 
     Recorded as open, and worth pursuing: **it taxes every email spec through the
     shared helper**, so it is a real if small cost across the suite.
+
+## Post-queue fixes (2026-07-21)
+
+### ✅ #133 FIXED — collector CORS preflight
+
+208. **`Access-Control-Allow-Credentials: "true"` added to
+    `support/snowplow-collector.ts`.** Verified by driving the collector directly:
+    OPTIONS **200** with `allow-origin: http://localhost:4101` (echoed, not `*` —
+    a credentialed request forbids the wildcard) and `allow-credentials: true`;
+    POST likewise.
+
+    **Scope of what that proves, stated precisely: the headers are now correct.
+    It does NOT yet prove an FE event is captured end-to-end**, which needs a
+    spec that actually asserts on one through the collector. `metric-page` fell
+    back to the browser boundary because of this bug and is the natural candidate
+    to re-point as confirmation.
+
+### ✅ #139/#148 FIXED — and the leak demonstrated both ways
+
+209. **`signInWithCredentials` now POSTs `/api/session` through a throwaway
+    request context that is disposed immediately**, so the `Set-Cookie` never
+    reaches the shared jar. `sandboxing-via-api`: **29/29 green**, `tsc` clean.
+
+    **The fix is proven load-bearing by a two-way probe** — `mb.api`'s identity
+    read immediately before and after the call:
+
+    | | before | after |
+    | --- | --- | --- |
+    | **with the fix** | `u1@metabase.test` | `u1@metabase.test` — unchanged |
+    | **reverted to the old code** | `u1@metabase.test` | **`u2@metabase.test`** |
+
+    **The test passed in both cases.** That is the whole point: the leak was
+    invisible to the suite, which is why `sandboxing-via-api`'s green was marked
+    UNVERIFIED. **That mark can now be lifted.**
+
+    **A bad probe of my own, called out.** My first attempt asserted `mb.api`
+    should be `admin@metabase.test` after the call. It failed — and I nearly read
+    that as "the fix didn't work". It was my probe that was wrong: the test does
+    `mb.signIn("sandboxed")` three lines earlier, and `u1@metabase.test` **is**
+    the sandboxed user. I had asserted an expected value without checking what
+    the test had already done. The before/after form is the discriminating one,
+    because it needs no assumption about which user *should* be active.
+
+    **A second self-inflicted error worth recording:** my first version of the
+    fix used the module-level `BASE_URL`, which is **:4000** — not the slot's
+    backend under `PW_PER_WORKER_BACKEND`. It failed loudly with
+    `ECONNREFUSED ::1:4000`, which is the safe direction, and the signature now
+    takes `baseUrl` explicitly (callers pass `mb.baseUrl`).

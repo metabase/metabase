@@ -360,10 +360,12 @@ test.describe("admin > permissions > sandboxes (tested via the API)", () => {
       await verifyCategoryList(page, ["Widget"]);
 
       // field values for the second sandboxed user
-      const userApi = await signInWithCredentials(context, mb.api, {
-        username: user.email,
-        password: user.password,
-      });
+      const userApi = await signInWithCredentials(
+        context,
+        mb.api,
+        { username: user.email, password: user.password },
+        mb.baseUrl,
+      );
       await visitDashboard(page, userApi, ORDERS_DASHBOARD_ID);
       await filterWidget(page).click();
       await verifyCategoryList(page, ["Gadget"]);

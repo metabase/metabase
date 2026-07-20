@@ -22,7 +22,7 @@
  *   Playwright means registering the waitForResponse BEFORE the navigation
  *   (porting rule 2) and holding the Response object.
  */
-import { expect } from "@playwright/test";
+import { expect, request as playwrightRequest } from "@playwright/test";
 import type { BrowserContext, Locator, Page, Response } from "@playwright/test";
 
 import { MetabaseApi } from "./api";
@@ -302,11 +302,32 @@ export async function signInWithCredentials(
   context: BrowserContext,
   api: MetabaseApi,
   { username, password }: { username: string; password: string },
+  // Pass `mb.baseUrl`. The module-level BASE_URL is :4000 and is NOT the slot's
+  // backend under PW_PER_WORKER_BACKEND.
+  baseUrl: string = BASE_URL,
 ): Promise<MetabaseApi> {
-  const response = await api.post("/api/session", { username, password });
-  const { id } = (await response.json()) as { id: string };
+  // The session POST MUST NOT go through `api`'s shared request context. Its
+  // Set-Cookie would land in that context's jar, and Metabase's
+  // `wrap-session-key` resolves the cookie BEFORE the header — so every later
+  // `api` call would silently run as this user, and `mb.signInAsAdmin()` would
+  // not undo it. Measured: that makes sandboxing baselines pass while asserting
+  // nothing (FINDINGS #139, #148). A throwaway context keeps the jar clean.
+  const throwaway = await playwrightRequest.newContext({ baseURL: baseUrl });
+  let id: string;
+  try {
+    const response = await throwaway.post("/api/session", {
+      data: { username, password },
+    });
+    expect(
+      response.ok(),
+      `POST /api/session for ${username} -> ${response.status()}`,
+    ).toBeTruthy();
+    id = ((await response.json()) as { id: string }).id;
+  } finally {
+    await throwaway.dispose();
+  }
 
-  const { hostname } = new URL(BASE_URL);
+  const { hostname } = new URL(baseUrl);
   const cookie = { domain: hostname, path: "/" };
   await context.addCookies([
     { name: "metabase.SESSION", value: id, httpOnly: true, ...cookie },
