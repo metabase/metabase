@@ -3480,3 +3480,42 @@ open item, not as evidence.
     recorded as owed work rather than something to chase mid-wave. It also means
     any of these 41 that are currently **green have already demonstrated** their
     targets behave consistently under both notions.
+
+### A cross-slot write window that exists only because we run in parallel
+
+191. **`dashboard-filters-sql-text-category` writes to the QA `sample` postgres,
+    which is shared across slots — so for ~2s another slot querying db 2 sees
+    `New Category`.** Upstream has the identical property and never suffers from
+    it, **because Cypress runs serially**.
+
+    This is a new category in the shared-state picture: not debris that
+    accumulates (#85/#157), not a fixture-name collision (#138/#156), and not a
+    deleted shared inbox (#186), but a **transient write visible to a concurrent
+    reader**. It is **unfixable without diverging from upstream**, so it is
+    documented rather than worked around. Post-run state was verified clean
+    (Doohickey 42 rows, no residue).
+
+    Worth knowing as a **parallelism limit**: some upstream specs are only safe
+    because Cypress is serial, and porting them faithfully imports that
+    assumption into a parallel runner.
+
+### Two more things done the way I want them done
+
+192. From the same port:
+    - **It probed a suspiciously fast runtime instead of accepting it.** 2.6s
+      looked impossible, so it injected a sanity-probe string and confirmed the
+      body executes through the visualizer flow before failing at that line. The
+      speed is real (warm backend, API-driven setup). That is the third agent to
+      interrogate its own green rather than bank it.
+    - **It verified the existing positive anchors rather than adding new ones.**
+      The spec has **no absence assertions** — all four upstream assertions are
+      `should("exist")` — and the two shared-helper `toHaveCount(0)` checks
+      already carried anchors, which it **checked** rather than assuming or
+      duplicating.
+    - **It called out its own weak mutation**: M3 dies at the same line as M1 and
+      its failure is **over-determined**, so it doesn't independently prove
+      anything. M2 is the load-bearing one — tail-aimed, killing at the final
+      dropdown assertion, the only assertion it is visible to.
+
+    One deviation stated plainly: `should("exist")` → `toBeVisible()` is a
+    **strengthening**, because testing-library matches hidden nodes.

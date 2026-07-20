@@ -407,3 +407,4 @@ data-studio/transforms/transforms-indexes.cy.spec.ts
 data-studio/data-model/datamodel-data-studio-search.cy.spec.ts
 sharing/alert/alert-permissions.cy.spec.js
 sharing/alert/alert-types.cy.spec.js
+dashboard-filters/dashboard-filters-sql-text-category.cy.spec.js
