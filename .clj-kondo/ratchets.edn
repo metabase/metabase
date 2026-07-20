@@ -5,14 +5,14 @@
 ;; to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts {:aliased-namespace-symbol                                            3
-                 :all                                                                 51
+                 :all                                                                 50
                  :case-symbol-test                                                    1
                  :clojure-lsp/unused-public-var                                       9
                  :def-fn                                                              1
-                 :deprecated-namespace                                                98
-                 :deprecated-var                                                      89
+                 :deprecated-namespace                                                97
+                 :deprecated-var                                                      81
                  :discouraged-java-method                                             3
-                 :discouraged-namespace                                               83
+                 :discouraged-namespace                                               81
                  :discouraged-var                                                     106
                  :equals-true                                                         1
                  :main-without-gen-class                                              1
@@ -40,7 +40,7 @@
                  :unresolved-symbol                                                   4
                  :unsorted-required-namespaces                                        1
                  :unused-alias                                                        1
-                 :unused-binding                                                      10
+                 :unused-binding                                                      9
                  :unused-excluded-var                                                 2
                  :unused-namespace                                                    1
                  :unused-private-var                                                  8
