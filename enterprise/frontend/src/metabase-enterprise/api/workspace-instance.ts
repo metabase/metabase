@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { tag } from "./tags";
+import { invalidateTags, tag } from "./tags";
 
 export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,6 +19,14 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
         response.data,
       providesTags: [tag("workspace")],
     }),
+    deleteCurrentWorkspace: builder.mutation<void, void>({
+      query: () => ({
+        method: "DELETE",
+        url: "/api/ee/workspace-instance/current",
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("table-remapping")]),
+    }),
     listTableRemappings: builder.query<TableRemapping[], void>({
       query: () => ({
         method: "GET",
@@ -30,5 +38,8 @@ export const workspaceInstanceApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetCurrentWorkspaceQuery, useListTableRemappingsQuery } =
-  workspaceInstanceApi;
+export const {
+  useGetCurrentWorkspaceQuery,
+  useDeleteCurrentWorkspaceMutation,
+  useListTableRemappingsQuery,
+} = workspaceInstanceApi;

@@ -13,6 +13,7 @@ export type CurrentWorkspaceDatabase = {
 export type CurrentWorkspace = {
   name: string;
   databases: Record<DatabaseId, CurrentWorkspaceDatabase>;
+  can_write: boolean;
 };
 
 export type GetCurrentWorkspaceResponse = {

@@ -1802,7 +1802,6 @@ serdes/meta:
   (reify source.p/Source
     (branches [_] ["main"])
     (create-branch [_ _ _] nil)
-    (delete-branch [_ _] nil)
     (default-branch [_] "main")
     (snapshot [_] (export-test-snapshot "remote-R"))
     (snapshot-at [_ v] (export-test-snapshot v))))
@@ -1887,7 +1886,6 @@ serdes/meta:
             no-resolve-source (reify source.p/Source
                                 (branches [_] ["main"])
                                 (create-branch [_ _ _] nil)
-                                (delete-branch [_ _] nil)
                                 (default-branch [_] "main")
                                 (snapshot [_] (export-test-snapshot "remote-R"))
                                 (snapshot-at [_ _] nil))]
@@ -2005,7 +2003,6 @@ serdes/meta:
     (let [no-base-source (reify source.p/Source
                            (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
-                           (delete-branch [_ _] nil)
                            (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]

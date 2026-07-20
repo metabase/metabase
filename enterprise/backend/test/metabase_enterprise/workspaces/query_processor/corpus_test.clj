@@ -15,8 +15,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.instance :as ws.instance]
-   [metabase-enterprise.workspaces.provisioning.database :as provisioning.database]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -301,7 +300,7 @@
               ;; The from-spec handed to the rewriter must match what the driver
               ;; actually *emits* in SQL, which is governed by qualified-name-components.
               emitted-slots    (set (driver/qualified-name-components driver))
-              input-positions  (provisioning.database/engine-namespace-positions fake-db {:schema first-input})
+              input-positions  (ws/engine-namespace-positions fake-db {:schema first-input})
               from-spec        {:db     (if (:db emitted-slots)     (or (:db input-positions)     "") "")
                                 :schema (if (:schema emitted-slots) (or (:schema input-positions) "") "")
                                 :table  source-table}]
@@ -312,7 +311,7 @@
                   ;; 1. Load through the production loader. Populates the atom.
                   (advanced-config.file.workspace/apply-workspace-section! section)
                   ;; 2. Read the namespace via the production reader.
-                  (let [ws-ns      (ws.instance/db-workspace-namespace db-id)
+                  (let [ws-ns      (ws/db-workspace-namespace db-id)
                         to-spec    (merge from-spec ws-ns)
                         {:keys [tables rewritten]} (rewrite-and-parse
                                                     driver canonical-sql
@@ -345,4 +344,4 @@
                             (is (re-find (re-pattern (java.util.regex.Pattern/quote output-db)) from-text)
                                 (str "expected " (pr-str output-db) " in FROM; got: " from-text)))))))
                   (finally
-                    (ws.instance/clear-instance-workspace!)))))))))))
+                    (ws/clear-instance-workspace!)))))))))))

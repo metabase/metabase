@@ -286,9 +286,3 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      ## No-op rollback: after any later ALTER TABLE on workspace_database, H2
-      ## re-binds fk_workspace_database_workspace_id to this index, so the
-      ## auto-generated DROP INDEX fails and aborts the whole downgrade. Any
-      ## rollback that crosses this changeset also rolls back the createTable
-      ## below, which removes the index with the table.
-      rollback: []
