@@ -17,11 +17,9 @@ const { StyleSheet } = require(
   }),
 );
 
-// Emotion runs its style sheets in non-speedy mode outside production:
-// every rule is appended as a text node, and jsdom reparses the whole sheet
-// each time (quadratic). Speedy mode uses insertRule, which jsdom handles
-// incrementally, and the rules still land in the CSSOM so visibility
-// assertions (toBeVisible) keep working.
+// Emotion runs its style sheets in non-speedy mode outside production by default.
+// Every rule is appended as a text node, and jsdom reparses the whole sheet
+// each time (quadratic). Speedy mode uses insertRule which jsdom handles incrementally.
 Object.defineProperty(StyleSheet.prototype, "isSpeedy", {
   configurable: true,
   get: () => true,
