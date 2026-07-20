@@ -894,7 +894,7 @@ describe("scenarios > admin > people > group managers", () => {
 
 // TODO: remove skip when this issue gets fixed. Initial attempt: https://github.com/metabase/metabase/pull/23825,
 // reverted in https://github.com/metabase/metabase/pull/24760 to fix a security vulnerability.
-describe.skip("issue 23689", () => {
+describe("issue 23689", { tags: "@skip" }, () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);
