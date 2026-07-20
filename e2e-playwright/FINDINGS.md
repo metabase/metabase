@@ -3917,3 +3917,60 @@ open item, not as evidence.
     backend under `PW_PER_WORKER_BACKEND`. It failed loudly with
     `ECONNREFUSED ::1:4000`, which is the safe direction, and the signature now
     takes `baseUrl` explicitly (callers pass `mb.baseUrl`).
+
+### 🔴 THE TIMING ANSWER: Playwright is ~1.7x SLOWER per spec, and wins only on parallelism
+
+210. **Matched per-spec against Cypress's `timings.json` across 387 specs:
+    Playwright 665.7 min vs Cypress 389.2 min — 1.71x slower. Only 35 of 387
+    specs (9%) are faster in Playwright.** Reproducible via
+    `scripts/compare-timings.mjs`.
+
+    **This retracts the earlier "22% faster" framing entirely.** That number came
+    from a run where **831 tests silently skipped** (the QA tier had no
+    containers), so it compared less work against more.
+
+    **Why per-spec is the only honest pairing.** Neither of the other two numbers
+    means anything on its own:
+    - **Shard wall-time is not comparable** — we run `workers=2`, so a
+      shard-minute contains up to two minutes of test execution.
+    - **Job time includes setup**, which is a parallel constant, not test cost.
+    Both sides here are summed per-spec durations, measuring the same thing.
+
+    **What Playwright actually buys is parallelism, not speed.** The 50-shard
+    wall clock is **19.0 min** (14.3 min of tests + a ~4.9 min setup floor) while
+    executing 1.71x more total work than Cypress's recorded timings. That is a
+    real operational win and it is a different claim from "faster".
+
+    **The figure is a floor, not a ceiling.** Playwright's per-test `duration`
+    covers the test and its `beforeEach`, but **not `beforeAll` or worker
+    fixtures** — and our per-worker backend boot lives there. Cypress's per-spec
+    duration includes everything. So the true gap is **at least** 1.71x.
+
+    Worst offenders, all far above the mean: `transforms` (+7.5m),
+    `interactive-embedding` (+5.3m), `subscriptions` (+5.0m),
+    `public-sharing-embed-button-behavior` (+4.4m),
+    `sdk-embed-setup-select-embed-options` (+4.3m), `data-model-shared-2`
+    (+3.9m). **Those six are where any optimisation effort should start**, and
+    several are plausibly our own waits rather than framework cost.
+
+### A matching bug of mine that produced a wrong ratio first time
+
+211. **My first pass matched specs on BASENAME and got 1.67x.** That is wrong:
+    `reproductions.cy.spec.ts` exists in several directories
+    (`data-studio/transforms/`, `models/`, `question-reproductions/`, …), so
+    multiple ports silently collapsed onto a single Cypress entry — which is why
+    the "wins" column was full of implausible `cy=2.99m` repeats against
+    `pw=0.11m`.
+
+    I noticed because the repeated value looked like a default, checked whether
+    `timings.json` had a default cluster (**it does not** — only 2 entries near
+    179s), and found the real cause was my own key collapsing distinct specs.
+
+    Corrected to match on the **full path below `scenarios/`**, with an explicit
+    duplicate-rejection guard. `scripts/compare-timings.mjs` carries the warning
+    in its header so the next person does not repeat it.
+
+    Third time in this spike that a *tool* was wrong rather than the thing it
+    measured (after the mutation verifiers, #128/#146/#172, and the stale "~13m
+    setup floor"). **The suspicious-looking output is the signal; check the tool
+    before believing the number.**
