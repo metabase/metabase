@@ -44,6 +44,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; CLI entry point: stdout/stderr is the user interface
 #_{:clj-kondo/ignore [:discouraged-var]}
 (def ^:private output!
   "Alias for println so the lint suppression stays in one place."

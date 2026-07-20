@@ -789,6 +789,7 @@
   (^String [x]
    #?(:clj
       (with-out-str
+        ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
       :cljs-dev
@@ -796,6 +797,7 @@
       ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
+          ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
       :default

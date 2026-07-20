@@ -43,6 +43,7 @@
   ;; do we really use this in dev?
   ([direction & [version]]
    (mdb/migrate! (mdb/data-source) direction version)
+   ;; dev migration CLI; status goes to stdout for the human running it
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
 
@@ -115,6 +116,7 @@
    (let [n (case (keyword k)
              :last-deployment (last-deployment))]
      (rollback-n-migrations! n)
+     ;; dev migration CLI; status goes to stdout for the human running it
      #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
 
@@ -124,12 +126,14 @@
              :id               (migration-since target)
              :count            (maybe-parse-long target))]
      (rollback-n-migrations! n)
+     ;; dev migration CLI; status goes to stdout for the human running it
      #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration))))))
 
 (defn migration-status
   "Print the latest migration ID."
   []
+  ;; dev migration CLI; status goes to stdout for the human running it
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Current migration:" (latest-migration)))
 

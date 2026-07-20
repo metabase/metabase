@@ -601,6 +601,7 @@
                                            frequencies
                                            (into (sorted-map))))]))])))
 
+  ;; REPL tuning harness in (comment): ASCII histograms print to the console by design
   #_{:clj-kondo/ignore [:discouraged-var]}
   (defn- print-histogram [m]
     (let [mode   (reduce max 0 (vals m))
@@ -619,6 +620,7 @@
 
   (print-histogram (get-in stats [0.04 0.34]))
 
+  ;; REPL tuning harness in (comment): ASCII histograms print to the console by design
   #_{:clj-kondo/ignore [:discouraged-var]}
   (defn- print-stats [st]
     (doseq [[p-reset inner] st
