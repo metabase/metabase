@@ -697,7 +697,8 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.popover().findByText(SECOND_DB_NAME).click();
 
     dataReferenceSidebar().within(() => {
-      cy.findByText("In this database").should("not.exist");
+      cy.findByText("In this database").should("exist");
+      cy.findByText("No tables").should("exist");
 
       cy.findByText("In other databases").should("be.visible");
       cy.findByText("Orders").should("be.visible");
