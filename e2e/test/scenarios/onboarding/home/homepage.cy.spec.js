@@ -664,7 +664,16 @@ describe("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
 
-    H.undoToast().findByText("Changes saved").should("be.visible");
+    // The earlier radio-setting change and this dashboard selection each fire a
+    // "Changes saved" undo toast. Mantine notifications stack rather than mutate
+    // in place, and the first can linger past Cypress's retry window, so the
+    // singular H.undoToast() (cy.findByTestId) sees two elements and fails with
+    // "Found multiple elements". Assert against the list and scope to the toast
+    // we care about.
+    H.undoToastList()
+      .filter(`:contains("Changes saved")`)
+      .first()
+      .should("be.visible");
 
     H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
