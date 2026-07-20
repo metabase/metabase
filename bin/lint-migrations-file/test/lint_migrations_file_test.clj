@@ -258,14 +258,24 @@
       (is (= :ok
              (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
                             (mock-change-set :id "v60.aeiagus09e"))))))
-  (testing "year-based directories reject IDs with dashes (timestamps) or dots (version prefixes)"
+  (testing "year-based directories accept lowercase alphanumeric/underscore IDs with at least one letter"
+    (doseq [good-id ["aeiagus09e" "workspaces_init" "a1234567"]]
+      (is (= :ok
+             (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                            (mock-change-set :id good-id)))
+          good-id)))
+  (testing "year-based directories reject invalid version-less IDs"
     (doseq [bad-id ["2026-02-09T12:00:00" ; timestamp
                     "foo-bar"             ; dash
                     "v60.aeiagus09e"      ; version-prefixed
-                    "foo.bar"]]           ; dot
+                    "foo.bar"             ; dot
+                    "20260703"            ; all digits: looks like a pre-4.2 changeset id to decide-liquibase-file
+                    "12345"               ; all digits
+                    "v60abc"              ; leading v<digit>: pollutes old binaries' `id LIKE 'v%'` version scans
+                    "Foo_bar"]]           ; uppercase
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"IDs with dashes or dots"
+           #"invalid changeset IDs"
            (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
                           (mock-change-set :id bad-id)))
           bad-id)))
