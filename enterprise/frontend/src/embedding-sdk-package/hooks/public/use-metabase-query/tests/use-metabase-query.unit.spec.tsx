@@ -3,7 +3,7 @@
 import {
   TEST_DATASET_QUERY,
   createDeferred,
-  mbqlQuery,
+  createMockDatasetQuery,
   mockUseLazySelector,
   resetTestState,
   stubSdkBundle,
@@ -113,7 +113,9 @@ describe("useMetabaseQueryObject", () => {
       limit: 20,
     };
 
-    const secondDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 20 }]);
+    const secondDatasetQuery = createMockDatasetQuery([
+      { "source-table": 1, limit: 20 },
+    ]);
 
     // Which deferred a call gets is decided by the only field that differs.
     const resolveDatasetQuery = jest.fn(
@@ -163,8 +165,12 @@ describe("useMetabaseQuery", () => {
       limit: 20,
     };
 
-    const firstDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 10 }]);
-    const secondDatasetQuery = mbqlQuery([{ "source-table": 1, limit: 20 }]);
+    const firstDatasetQuery = createMockDatasetQuery([
+      { "source-table": 1, limit: 10 },
+    ]);
+    const secondDatasetQuery = createMockDatasetQuery([
+      { "source-table": 1, limit: 20 },
+    ]);
 
     const firstResponse = createDeferred<QueryDatasetResult>();
     const secondResponse = createDeferred<QueryDatasetResult>();

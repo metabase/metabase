@@ -71,7 +71,7 @@ export const createMockStore = (): SdkStore =>
 
 type MbqlStage = Record<string, unknown>;
 
-export const mbqlQuery = (stages: MbqlStage[]): DatasetQuery =>
+export const createMockDatasetQuery = (stages: MbqlStage[]): DatasetQuery =>
   // `DatasetQuery` is opaque, so a test cannot construct it as a literal.
   ({
     "lib/type": "mbql/query",
@@ -83,7 +83,9 @@ export const stagesOf = (query: DatasetQuery): MbqlStage[] =>
   // `DatasetQuery` does not expose its stages in its public type.
   (query as unknown as { stages: MbqlStage[] }).stages;
 
-export const TEST_DATASET_QUERY = mbqlQuery([{ "source-table": 1 }]);
+export const TEST_DATASET_QUERY = createMockDatasetQuery([
+  { "source-table": 1 },
+]);
 
 export const mockPropsStore = (reduxStore: SdkStore) =>
   mockUseMetabaseProviderPropsStore.mockReturnValue({
