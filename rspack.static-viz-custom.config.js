@@ -1,3 +1,4 @@
+// @ts-check
 const {
   createStaticVizConfig,
 } = require("./frontend/build/shared/rspack/static-viz-config");
