@@ -38,15 +38,18 @@ export const DashboardSubscriptionsButton = () => {
     return null;
   }
 
-  const isDisabled = !isAdmin && !hasAnySubscriptionChannel;
+  // Hide subscriptions from non-admins when the instance has no email or Slack
+  // channel configured, since only admins can set those channels up.
+  if (!isAdmin && !hasAnySubscriptionChannel) {
+    return null;
+  }
 
   return (
     <ToolbarButton
       icon="subscription"
       aria-label={t`Subscriptions`}
-      tooltipLabel={isDisabled ? t`Can't send subscriptions` : t`Subscriptions`}
+      tooltipLabel={t`Subscriptions`}
       isActive={isSharing}
-      disabled={isDisabled}
       onClick={() => dispatch(toggleSharing())}
       data-testid="dashboard-subscriptions-button"
     />
