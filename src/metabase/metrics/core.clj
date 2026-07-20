@@ -241,7 +241,14 @@
                                       :mapping   (assoc (:mapping pair) :dimension-id (:id d))}))
                                  api-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)]
+        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)
+        added?              (> (count dimensions) (count persisted-dims))
+        default-dimension   (when (and added? (not-any? :default dimensions))
+                              (lib-metric/pick-default-dimension
+                               (remove #(= :status/orphaned (:status %)) dimensions)))
+        dimensions          (cond-> dimensions
+                              default-dimension
+                              (lib-metric/set-default-dimension (:id default-dimension)))]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
@@ -251,8 +258,15 @@
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
+        removed-ids        (set dimension-ids)
+        removed-default?   (some #(and (:default %) (removed-ids (:id %))) persisted-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)]
+        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)
+        next-default       (when removed-default?
+                             (lib-metric/pick-default-dimension
+                              (remove #(= :status/orphaned (:status %)) dimensions)))
+        dimensions         (cond-> dimensions
+                             next-default (lib-metric/set-default-dimension (:id next-default)))]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 

@@ -259,12 +259,45 @@
         (is (not (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) price-id))
             "removal is persisted")))))
 
-(deftest add-dimensions-test
-  (testing "POST /api/metric/:id/dimension/add adds a full dimension object and persists its UUID"
+(deftest remove-default-dimension-test
+  (testing "removing the default dimension assigns the preferred remaining active dimension"
     (with-seeded-metric [metric]
-      (let [addable (-> (mt/user-http-request :crowberto :get 200
-                                              (str "metric/" (:id metric) "/dimension") :with_addable true)
-                        :addable first :dimensions first)]
+      (let [dimensions       (:dimensions (t2/select-one :model/Card :id (:id metric)))
+            current-default (m/find-first :default dimensions)
+            remaining-ids   (into #{}
+                                  (comp (remove #(= (:id current-default) (:id %)))
+                                        (remove #(= :status/orphaned (:status %)))
+                                        (map :id))
+                                  dimensions)]
+        (is (some? current-default))
+        (is (seq remaining-ids))
+        (when current-default
+          (let [resp     (mt/user-http-request :crowberto :post 200
+                                               (str "metric/" (:id metric) "/dimension/remove")
+                                               {:dimension_ids [(:id current-default)]})
+                defaults (filter :default resp)]
+            (is (= 1 (count defaults)))
+            (is (contains? remaining-ids (:id (first defaults))))))))))
+
+(deftest remove-all-dimensions-test
+  (testing "removing all dimensions leaves the metric without a default"
+    (with-seeded-metric [metric]
+      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))
+            resp          (mt/user-http-request :crowberto :post 200
+                                                (str "metric/" (:id metric) "/dimension/remove")
+                                                {:dimension_ids dimension-ids})]
+        (is (empty? resp))
+        (is (empty? (:dimensions (t2/select-one :model/Card :id (:id metric)))))))))
+
+(deftest add-dimensions-test
+  (testing "POST /api/metric/:id/dimension/add adds a full dimension object and preserves the default"
+    (with-seeded-metric [metric]
+      (let [default-id (-> (m/find-first :default
+                                         (:dimensions (t2/select-one :model/Card :id (:id metric))))
+                           :id)
+            addable    (-> (mt/user-http-request :crowberto :get 200
+                                                 (str "metric/" (:id metric) "/dimension") :with_addable true)
+                           :addable first :dimensions first)]
         (is (some? addable) "there should be an addable joinable dimension")
         (let [resp      (mt/user-http-request :crowberto :post 200
                                               (str "metric/" (:id metric) "/dimension/add")
@@ -275,7 +308,29 @@
           (is (contains? field-ids (-> addable :sources first :field-id))
               "added dimension targets the chosen column")
           (is (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) (:id addable))
-              "the addition is persisted"))))))
+              "the addition is persisted")
+          (is (= [default-id] (mapv :id (filter :default resp)))
+              "the existing default is preserved"))))))
+
+(deftest add-first-dimension-assigns-default-test
+  (testing "adding a dimension to an empty curated list makes it the default"
+    (with-seeded-metric [metric]
+      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))]
+        (mt/user-http-request :crowberto :post 200
+                              (str "metric/" (:id metric) "/dimension/remove")
+                              {:dimension_ids dimension-ids})
+        (let [addable (-> (mt/user-http-request :crowberto :get 200
+                                                (str "metric/" (:id metric) "/dimension") :with_addable true)
+                          :addable first :dimensions first)
+              resp    (mt/user-http-request :crowberto :post 200
+                                            (str "metric/" (:id metric) "/dimension/add")
+                                            {:dimensions [addable]})]
+          (is (= [(:id addable)] (mapv :id (filter :default resp))))
+          (is (= [(:id addable)]
+                 (->> (t2/select-one :model/Card :id (:id metric))
+                      :dimensions
+                      (filter :default)
+                      (mapv :id)))))))))
 
 (deftest update-dimension-display-name-test
   (testing "POST /api/metric/:id/dimension/:id updates display_name"
@@ -313,13 +368,12 @@
                                      (str "metric/" (:id metric) "/dimension/remove")
                                      {:dimension_ids [fake-dimension-id]})))))))
 
-(deftest default-dimension-absent-by-default-test
-  (testing "a freshly seeded metric has no default dimension"
+(deftest default-dimension-picked-on-seed-test
+  (testing "a freshly seeded metric has one default dimension"
     (with-seeded-metric [metric]
       (let [added (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))]
         (is (seq added))
-        (is (every? (comp false? :default) added)
-            "no dimension is default until one is set")))))
+        (is (= 1 (count (filter :default added))))))))
 
 (deftest set-default-dimension-test
   (testing "POST /api/metric/:id/dimension/set-default keeps exactly one dimension as the default"

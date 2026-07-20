@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 
-import { useGetMetricQuery } from "metabase/api";
-import { useCardQueryData } from "metabase/common/data-studio/hooks/use-card-query-data";
+import {
+  skipToken,
+  useGetMetricDatasetQuery,
+  useGetMetricQuery,
+} from "metabase/api";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import { DEFAULT_DISPLAY_TYPE_BY_DIMENSION } from "metabase/common/metrics/utils/dimension-types";
 import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
@@ -9,6 +12,7 @@ import {
   useMetricDefinition,
   useMetricDimensionQuery,
 } from "metabase/metrics/common/hooks";
+import * as LibMetric from "metabase-lib/metric";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card } from "metabase-types/api";
 
@@ -19,7 +23,9 @@ export function useMetricAboutQuery(
   const { data: metric, isLoading: isLoadingMetric } = useGetMetricQuery(
     card.id,
   );
-  const { definition } = useMetricDefinition(card.id);
+  const { definition, isLoading: isLoadingDefinition } = useMetricDefinition(
+    card.id,
+  );
 
   const defaultDimensionId =
     metric?.dimensions.find(
@@ -52,18 +58,24 @@ export function useMetricAboutQuery(
       ? (dimensionDescriptors.get(activeDimensionId)?.dimensionType ?? null)
       : null;
 
-  const isWaitingForDefinition = activeDimensionId != null && !definition;
   const useDimension = activeDimensionType != null;
+  const useScalar = metric != null && !useDimension;
+  const isWaitingForDefinition = metric != null && !definition;
   const { data: dimensionData, isLoading: isLoadingDimension } =
     useMetricDimensionQuery(
       definition,
       useDimension ? activeDimensionId : null,
     );
-  const { data: cardData, isLoading: isLoadingCard } = useCardQueryData(card, {
-    skip: isLoadingMetric || isWaitingForDefinition || useDimension,
-  });
+  const scalarRequest = useMemo(() => {
+    if (!useScalar || !definition) {
+      return null;
+    }
 
-  const data = useDimension ? dimensionData : cardData;
+    return { definition: LibMetric.toJsMetricDefinition(definition) };
+  }, [definition, useScalar]);
+  const { data: scalarData, isLoading: isLoadingScalar } =
+    useGetMetricDatasetQuery(scalarRequest ?? skipToken);
+  const data = useDimension ? dimensionData : scalarData;
   const activeDimensionLabel = dimensionOptions.find(
     (option) => option.value === activeDimensionId,
   )?.label;
@@ -74,11 +86,16 @@ export function useMetricAboutQuery(
   const isLoading =
     isLoadingMetric ||
     isWaitingForDefinition ||
-    (useDimension ? isLoadingDimension : isLoadingCard);
+    (useDimension && isLoadingDimension) ||
+    (useScalar && (isLoadingDefinition || isLoadingScalar));
 
   const visualizationCard = useMemo(() => {
     if (!activeDimensionType) {
-      return card;
+      return {
+        ...card,
+        display: "scalar" as const,
+        visualization_settings: {},
+      };
     }
 
     return {

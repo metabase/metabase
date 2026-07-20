@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
-  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupMetricDatasetEndpoint,
@@ -71,7 +70,7 @@ function makeMetricCard(resultMetadata: Field[]): Card {
 const SCALAR_DATASET = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockNumericColumn({ name: "count" })],
-    rows: [],
+    rows: [[150]],
   }),
 });
 
@@ -133,13 +132,10 @@ function setup(
     card,
     createMockCardQueryMetadata({ databases: [SAMPLE_DB] }),
   );
-  setupCardQueryEndpoints(card, dataset);
   setupMetricEndpoint(
     metric ?? createMockMetric({ id: card.id, name: card.name }),
   );
-  if (metricDataset) {
-    setupMetricDatasetEndpoint(metricDataset);
-  }
+  setupMetricDatasetEndpoint(metricDataset ?? dataset);
 
   renderWithProviders(
     <Route
@@ -427,79 +423,82 @@ describe("MetricAbout", () => {
     });
   });
 
-  /**
-   * The value preview (latest value + period-over-period change) only renders
-   * for a time series, so its presence/absence tells us which branch was chosen.
-   */
-  describe("value + change-over-time preview", () => {
-    it("shows the latest value when results are a (date, value) time series", async () => {
+  describe("scalar fallback", () => {
+    it("shows a scalar when the curated default cannot be charted", async () => {
       setup(
         makeMetricCard([
           createMockField({ name: "created_at", base_type: "type/DateTime" }),
           createMockField({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
+        {
+          metric: createMockMetric({
+            id: 42,
+            dimensions: [
+              createMockMetricDimension({
+                id: "user-id",
+                effective_type: "type/Integer",
+                semantic_type: "type/FK",
+                default: true,
+                status: "status/active",
+              }),
+            ],
+            dimension_mappings: [
+              {
+                dimension_id: "user-id",
+                table_id: ORDERS_ID,
+                target: ["field", {}, ORDERS.USER_ID],
+              },
+            ],
+          }),
+          metricDataset: SCALAR_DATASET,
+        },
       );
 
-      expect(
-        await screen.findByTestId("metric-value-preview"),
-      ).toHaveTextContent("150");
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
       expect(
         fetchMock.callHistory.calls("path:/api/card/42/query"),
-      ).toHaveLength(1);
-      expect(
-        fetchMock.callHistory.calls("path:/api/metric/dataset"),
       ).toHaveLength(0);
-    });
-
-    it("does not show the value preview for a scalar metric with no date column", async () => {
-      setup(
-        makeMetricCard([
-          createMockField({ name: "count", base_type: "type/Integer" }),
-        ]),
-      );
-
-      expect(await screen.findByText("Source")).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("metric-value-preview"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("does not show the value preview when broken out by a non-temporal dimension", async () => {
-      setup(
-        makeMetricCard([
-          createMockField({
-            name: "category",
-            base_type: "type/Text",
-            semantic_type: "type/Category",
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
           }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
-        ]),
+        }),
       );
-
-      expect(await screen.findByText("Source")).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("metric-value-preview"),
-      ).not.toBeInTheDocument();
     });
 
-    it("does not show the value preview for a multi-breakout series where the value is not the second column", async () => {
+    it("shows a scalar when there are no curated dimensions", async () => {
       setup(
         makeMetricCard([
           createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({
-            name: "category",
-            base_type: "type/Text",
-            semantic_type: "type/Category",
-          }),
           createMockField({ name: "count", base_type: "type/Integer" }),
         ]),
+        TIME_SERIES,
+        {
+          metric: createMockMetric({ id: 42, dimensions: [] }),
+          metricDataset: SCALAR_DATASET,
+        },
       );
 
-      expect(await screen.findByText("Source")).toBeInTheDocument();
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
       expect(
-        screen.queryByTestId("metric-value-preview"),
+        screen.queryByRole("button", { name: "Dimension" }),
       ).not.toBeInTheDocument();
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
+          }),
+        }),
+      );
+      expect(
+        fetchMock.callHistory.calls("path:/api/card/42/query"),
+      ).toHaveLength(0);
     });
   });
 });
