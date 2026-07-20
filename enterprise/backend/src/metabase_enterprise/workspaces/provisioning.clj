@@ -13,9 +13,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- workspace-databases [ws-id]
-  (t2/select :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
-
 (mu/defn- set-initial-workspace-status! :- ::ws.schema/workspace
   "Atomically flip `workspace` to `status`, the first status of a run, unless
    its current status is in `disallowed-statuses`. The conditional UPDATE is
@@ -33,15 +30,6 @@
       (throw (ex-info "The workspace status does not allow starting this run"
                       {:status-code 400, :workspace-id (:id workspace)})))
     (assoc workspace :status status, :status_details nil)))
-
-(mu/defn- set-workspace-status! :- ::ws.schema/workspace
-  "Persist `status`/`status-details` on the row and return `workspace` with them
-   assoc'ed, so callers can keep threading the updated copy."
-  [workspace :- ::ws.schema/workspace
-   status :- ::ws.schema/workspace-status
-   status-details :- [:maybe :string]]
-  (t2/update! :model/Workspace (:id workspace) {:status status, :status_details status-details})
-  (assoc workspace :status status, :status_details status-details))
 
 (mu/defn set-initial-workspace-provisioning-status! :- ::ws.schema/workspace
   "Atomically set `:database-provisioning`, the first status of the
@@ -62,6 +50,18 @@
   [workspace :- ::ws.schema/workspace]
   (set-initial-workspace-status! workspace :instance-deprovisioning
                                  (conj ws.schema/in-flight-statuses :unprovisioned)))
+
+(defn- workspace-databases [ws-id]
+  (t2/select :model/WorkspaceDatabase :workspace_id ws-id {:order-by [[:id :asc]]}))
+
+(mu/defn- set-workspace-status! :- ::ws.schema/workspace
+  "Persist `status`/`status-details` on the row and return `workspace` with them
+   assoc'ed, so callers can keep threading the updated copy."
+  [workspace :- ::ws.schema/workspace
+   status :- ::ws.schema/workspace-status
+   status-details :- [:maybe :string]]
+  (t2/update! :model/Workspace (:id workspace) {:status status, :status_details status-details})
+  (assoc workspace :status status, :status_details status-details))
 
 (mu/defn provision-workspace! :- ::ws.schema/workspace
   "Provision `workspace` (blocking): every database, then the child instance,
