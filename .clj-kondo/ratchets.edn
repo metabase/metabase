@@ -72,7 +72,6 @@
                    :deprecated-var
                    :discouraged-namespace
                    :discouraged-var
-                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
                    :metabase/modules
                    :metabase/test-helpers-use-non-thread-safe-functions
                    :metabase/validate-defendpoint-has-response-schema

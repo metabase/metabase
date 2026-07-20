@@ -2022,6 +2022,7 @@
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
 
+;; every scenario reuses one expensive test-migrations rollback window; splitting re-runs it per case
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:mb/old-migrations-test split-data-permissions-legacy-no-self-service-migration-test
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"

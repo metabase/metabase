@@ -108,6 +108,7 @@
   [entity]
   (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
+;; one generated random dump feeds all storage+ingestion assertions; splitting regenerates it per test
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

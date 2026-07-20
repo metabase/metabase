@@ -693,6 +693,7 @@
                        :database (:id @db1d)}
                       (:definition @msr1d))))))))))
 
+;; full serdes round-trip: source graph, export, load, then cross-check remapped IDs -- one indivisible flow
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
