@@ -3302,3 +3302,66 @@ open item, not as evidence.
     exists", because Cypress's `restore` calls `resetWritableDb` and ours does
     not. It drops two exact names in one schema — no `LIKE`, no foreign schemas —
     and the `--repeat-each=3` green is the proof.
+
+### 🔴 The sharpest #85 reproduction: a spec that CANNOT pass until the reset lands
+
+183. **`datamodel-data-studio-search` is ported and proven correct, but it is
+    RED on the real shared container — 2 passed / 6 failed.** Under a diagnostic
+    shim presenting the writable DB as pristine it is **8/8, and 24/24 under
+    `--repeat-each=3`**.
+
+    **This is not being recorded as a green.** It is ported-and-blocked, and it
+    stays that way until the `resetWritableDb` fix (#157) lands.
+
+    Port drift was ruled out three ways rather than assumed: upstream's numbers
+    fall out **exactly** on a pristine container (`an`→3, `a`→4); a direct API
+    read returns **31** rows for `term=an`, of which **28 are `Animals`** left by
+    the `many_schemas` fixture across `Schema A`–`Z`; and filtering only that
+    response flips 2/8 to 8/8.
+
+    **It is the sharpest reproduction we have, because it asserts *exact*
+    counts** — a single stray table breaks it. That also makes it the natural
+    **acceptance test for the owed fix**: when `resetWritableDb` lands, this spec
+    should go 2/8 → 8/8 with no other change.
+
+    **Bonus finding that explains why upstream never noticed:** the UI showed **9
+    rows where the API returned 51** — the results grid is **virtualized**, so
+    `getTables()` counts *rendered* rows. On a clean container the two coincide.
+
+### `pressSequentially` types at caret 0 — second confirmation
+
+184. **`type("c")` on `"a"` produced `"ca"`, read straight off the failure
+    snapshot** (`datamodel-data-studio-search`). `cy.type()` appends;
+    `pressSequentially` inserts at the current caret, which is 0. Fixed with
+    `press("End")`.
+
+    Independent confirmation of the `transforms-incremental` finding (#138),
+    where the same behaviour surfaced **two assertions later** and was much
+    harder to attribute. Now measured twice, from opposite directions.
+
+    Two more genuine port bugs from the same spec, both measured:
+    - **The shared `selectFilterOption` is unscoped** where upstream's `within()`
+      scopes it → two "Visibility layer" textboxes → strict-mode violation. Local
+      scoped variant added; shared module untouched.
+    - **Upstream's second `selectFilterOption("Visibility layer","Final")` is not
+      a filter at all** — measured filter-form count 0, table-section count 0,
+      one textbox. It is the **bulk-attribute editor performing a metadata
+      write**. The agent's first reading was wrong, the diagnostic disproved it,
+      and it explicitly **did not inherit the sibling's explanation** (#174).
+
+    It also flagged its own bad guess: it anchored the bulk write on
+    `PUT /api/table` and timed out; the real endpoint is
+    `POST /api/data-studio/table/edit`.
+
+### Another token red herring, and another missing tag
+
+185. **`datamodel-data-studio-search`'s token gate is a pure red herring**, proven
+    with a full tokenless run: 0 features, `library: false`, and
+    `POST /api/data-studio/table/edit` still returns **200** — it is the OSS
+    route, while only `/api/ee/data-studio` is `:library`-gated. **The whole spec
+    passes 8/8 tokenless.** Kept for faithfulness; slot verified back at 42
+    features, `library: true`.
+
+    And upstream carries **no tag at all** despite a live writable-DB dependency —
+    the "live dependency, missing tag" case again (#123, #171). Gate-OFF control:
+    8 skipped / 0 executed.
