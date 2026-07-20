@@ -378,7 +378,7 @@
 (deftest create-all-nil-test
   (testing "table.row/create with no optional fields provided"
     ;; This has been broken since Basic Actions were first built.
-    ;; It was recently fixed for postgres, but we still need to fix the other drivers.
+    ;; It was recently fixed for postgres, but we still need to fix the other drivers. [kondo-keep]
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers #{:postgres} #_(mt/normal-drivers-with-feature :actions)
       (actions.tu/with-actions-temp-db action-nullable

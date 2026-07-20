@@ -290,7 +290,6 @@
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
         (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   #_{:clj-kondo/ignore [:deprecated-var]}
                    'connection-with-timezone
                    'do-with-connection-with-options)
         ;; for compatibility, make sure we pass it an actual Database instance.
