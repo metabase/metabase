@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import Database from "metabase-lib/v1/metadata/Database";
-import type { TokenFeatures } from "metabase-types/api";
+import type { DatabaseId, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -15,15 +15,15 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  sampleDatabaseId?: number | null;
+  sampleDatabaseId: DatabaseId | null;
 }
 
 export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
-  sampleDatabaseId = 99,
-}: SetupOpts = {}) => {
+  sampleDatabaseId,
+}: SetupOpts) => {
   const state = createMockState({
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,

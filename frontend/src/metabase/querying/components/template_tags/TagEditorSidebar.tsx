@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -60,18 +61,12 @@ export function TagEditorSidebar({
   getEmbeddedParameterVisibility,
   parametersAreUserVisible = true,
 }: TagEditorSidebarProps) {
-  const [section, setSection] = useState<TabId>(() => {
-    const tags = query.variableTemplateTags();
-    return tags.length === 0 ? "help" : "settings";
-  });
+  const [section, setSection] = useState<TabId>("settings");
 
   const tags = query.variableTemplateTags();
   const database = question.database();
   const parameters = question.parameters();
   const parametersById = _.indexBy(parameters, "id");
-
-  const settingsTabVisible = tags.length !== 0;
-  const effectiveSection = settingsTabVisible ? section : "help";
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
@@ -83,16 +78,14 @@ export function TagEditorSidebar({
   return (
     <SidebarContent title={t`Variables and parameters`} onClose={onClose}>
       <div data-testid="tag-editor-sidebar">
-        {settingsTabVisible && (
-          <Tabs radius={0} value={effectiveSection} onChange={handleTabChange}>
-            <Tabs.List grow>
-              <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
-              <Tabs.Tab value="help">{t`Help`}</Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-        )}
+        <Tabs radius={0} value={section} onChange={handleTabChange}>
+          <Tabs.List grow>
+            <Tabs.Tab value="settings">{t`Settings`}</Tabs.Tab>
+            <Tabs.Tab value="help">{t`Help`}</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
 
-        {effectiveSection === "settings" ? (
+        {section === "settings" ? (
           <SettingsPane
             tags={tags}
             parametersById={parametersById}
@@ -149,6 +142,16 @@ const SettingsPane = ({
   getEmbeddedParameterVisibility,
   parametersAreUserVisible = true,
 }: SettingsPaneProps) => {
+  if (tags.length === 0) {
+    return (
+      <Box p="lg">
+        <EmptyState
+          message={t`Add a variable to your query, like {{variable_name}}, to configure it here.`}
+        />
+      </Box>
+    );
+  }
+
   return tags.map((tag) => (
     <div key={tag.id}>
       <TagEditorParam

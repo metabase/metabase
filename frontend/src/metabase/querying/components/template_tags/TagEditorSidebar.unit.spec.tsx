@@ -58,17 +58,22 @@ const setup = ({ query, templateTags = {} }: SetupOpts) => {
 };
 
 describe("TagEditorSidebar", () => {
-  it("hides the Settings/Help tabs when the query has no variables (metabase#78037)", () => {
+  it("keeps the Settings/Help tabs visible even when the query has no variables (metabase#78037)", () => {
+    setup({ query: "SELECT 1" });
+
+    expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Help" })).toBeInTheDocument();
+  });
+
+  it("shows an empty state in the Settings tab when the query has no variables", () => {
     setup({ query: "SELECT 1" });
 
     expect(
-      screen.queryByRole("tab", { name: "Settings" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Help" })).not.toBeInTheDocument();
-    expect(screen.getByText("Read the full documentation")).toBeInTheDocument();
+      screen.getByText(/Add a variable to your query/),
+    ).toBeInTheDocument();
   });
 
-  it("shows the Settings/Help tabs when the query has a variable", () => {
+  it("shows the variable's settings when the query has a variable", () => {
     setup({
       query: "SELECT {{x}}",
       templateTags: {
@@ -81,6 +86,9 @@ describe("TagEditorSidebar", () => {
     });
 
     expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Help" })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Add a variable to your query/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("X")).toBeInTheDocument();
   });
 });
