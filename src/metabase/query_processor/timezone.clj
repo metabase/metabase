@@ -11,6 +11,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   ;; ms/InstanceOf validates a Toucan Database instance; lib.schema has no equivalent
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZonedDateTime)))

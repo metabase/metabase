@@ -20,6 +20,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv select-keys get-in]]
+   ;; persists recomputed result_metadata back to the Card row; the metadata provider is read-only
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

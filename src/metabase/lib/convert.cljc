@@ -6,7 +6,9 @@
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
+   ;; this ns is the legacy <-> MBQL 5 converter; legacy input must be normalized before lifting
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; the converter validates against the legacy schema it converts from
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]

@@ -24,6 +24,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
+   ;; 404-checks dashcard/series membership in the app db; an existence check, not query metadata
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

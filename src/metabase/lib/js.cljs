@@ -63,6 +63,7 @@
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.experiment]
    [metabase.analytics.impl]
+   ;; the FE still hands this entry point legacy MBQL; it must normalize before converting to MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
