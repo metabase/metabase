@@ -97,7 +97,7 @@ function CreateWorkspaceSection({ databases }: CreateWorkspaceSectionProps) {
   if (!isRemoteSyncEnabled) {
     return (
       <Text>
-        {jt`You need to set up remote sync. You can do this in ${(
+        {jt`To create a workspace, you need to set up remote sync in ${(
           <Anchor
             key="link"
             component={Link}
