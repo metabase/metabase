@@ -3,10 +3,11 @@ import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Flex, Stack, Switch, Text, TextInput } from "metabase/ui";
+import { Box, Flex, Stack, Switch, Text } from "metabase/ui";
 
 import { CursorInstallLink } from "./CursorInstallLink";
 import { McpServerUrlSection } from "./MCPServerUrlSection";
@@ -79,6 +80,8 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
         </ExternalLink>
       )}`}
     >
+      <McpServerUrlSection />
+
       {isEnabled && (
         <Stack gap="lg">
           <CommonMcpClientsSection />
@@ -86,7 +89,6 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
           <CustomMcpOriginsSection />
         </Stack>
       )}
-      <McpServerUrlSection />
     </SettingsSection>
   );
 };
@@ -144,35 +146,16 @@ function CommonMcpClientsSection() {
 }
 
 function CustomMcpOriginsSection() {
-  const { value: savedValue, updateSetting } = useAdminSetting(
-    "mcp-apps-cors-custom-origins",
-  );
-
-  const [localValue, setLocalValue] = useState(savedValue ?? "");
-
-  const handleBlur = useCallback(() => {
-    if (localValue !== savedValue) {
-      updateSetting({
-        key: "mcp-apps-cors-custom-origins",
-        value: localValue,
-      });
-    }
-  }, [localValue, savedValue, updateSetting]);
-
   return (
     <Box>
-      <SettingHeader
-        id="custom-mcp-origins"
-        title={t`Custom inline chart origins`}
-        description={t`Add custom origins for MCP clients that should display inline charts. Separate values with a space.`}
-      />
-      <TextInput
-        mt="md"
-        value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
-        onBlur={handleBlur}
+      <AdminSettingInput
+        name="mcp-apps-cors-custom-origins"
+        title={t`Custom MCP client origins to show inline charts`}
+        description={t`Add the origins for self-hosted MCP clients, such as LibreChat and Open WebUI, where we want to show inline charts. Separate values with a space.`}
+        inputType="text"
         placeholder="https://*.example.com"
       />
+
       <Text c="text-disabled" fz="sm" mt="xs">
         {t`Changes will take effect within one minute.`}
       </Text>
