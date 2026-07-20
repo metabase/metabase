@@ -354,3 +354,7 @@ filters-reproductions/filters-reproductions.cy.spec.js
 admin-2/tenants.cy.spec.ts
 permissions/view-data.cy.spec.js
 visualizations-tabular/object_detail.cy.spec.js
+data-studio/transforms/transforms.cy.spec.ts
+admin-2/people.cy.spec.js
+question-reproductions/reproductions.cy.spec.ts
+native/native-reproductions.cy.spec.ts

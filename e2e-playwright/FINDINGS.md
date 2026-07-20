@@ -1334,7 +1334,21 @@ evidence isn't worth making.
     control, and disclosed that a concurrently-running sibling could have been
     disturbed by it.
 
-86. **The untagged-`@external` pattern — now FOUR sightings, so it is systemic**
+86. **QUANTIFIED 2026-07-20 (`native-reproductions`): tag-based classification
+    misses most container tests.** That spec has **5 tests needing a QA
+    container** (postgres-12 ×3, postgres-writable ×1, mongo-5 ×1) and **only
+    one carries `@external`** — 55951, 57644-multi and 59356 restore postgres
+    snapshots while untagged. So **3 of 5, i.e. 60%, are invisible to the tag.**
+
+    Consequence for planning: any "how many specs need QA infra" number derived
+    from tags — including the tier split I produced earlier — is a **lower
+    bound** on tests and unreliable per-spec. The only sound method is opening
+    the spec. (Conversely the tag over-reports at spec granularity, since it also
+    covers maildev and `@mongo` — which is how four specs briefed as QA-DB
+    turned out to need no container at all.) **The tag is not the tier, in
+    either direction.**
+
+    **The untagged-`@external` pattern — now FIVE+ sightings, so it is systemic**
     (`datamodel-data-studio`, `data-model-shared-1`, schema-viewer via #26, and
     `admin-settings`). The newest is the sharpest: `admin-settings`' Pro-cloud
     SMTP test needs a **third container nobody had running — `maildev-ssl`**
@@ -1443,6 +1457,55 @@ evidence isn't worth making.
     assertion instead of erroring.** That is what makes the failure silent and
     repeatable. TypeScript catches the argument-count case at the boundary,
     which is one concrete argument for the ported suite over the original.
+
+90. **`expect(rect).to.deep.eq(otherRect)` on two DOMRects is ALWAYS TRUE**
+    (`question-reproductions`, issue 39487). A `DOMRect`'s `x/y/width/height`
+    live on the **prototype** as accessors, so `Object.keys(rect)` is `[]` and
+    deep-eql's `objectEqual` compares two empty own-property sets — which always
+    match. **Two of that test's three assertions cannot fail upstream**, whatever
+    the geometry.
+
+    Verified against the repo's `deep-eql@5.0.2`. Caveat stated by the agent:
+    Cypress bundles 4.x and the check wasn't run directly against that version,
+    though it is the same code path.
+
+    This one **was** strengthened rather than ported verbatim (compare the
+    numeric fields explicitly), and the deviation is documented in the spec — the
+    assertion's intent is unambiguous and there is no security surface involved,
+    unlike the #89 cluster where preserving the defect was the honest choice.
+
+    Generalises: **any `deep.eq` between two DOM-API objects whose fields are
+    prototype accessors is vacuous** — `DOMRect`, `DOMStringMap`, `CSSStyleDeclaration`.
+
+91. **🔴 ACTIONABLE: the local `MB_PRO_SELF_HOSTED_TOKEN` is STALE — it lacks
+    `transforms-basic`** (`transforms` session 4). Measured immediately after a
+    `beforeEach` activated it: `transforms-python: true`, **`transforms-basic:
+    false`** — absent from all 40 truthy features. The reason is dating:
+    `:transforms-basic` is `^{:added "0.59.0"}` while `:transforms-python` is
+    `"0.57.0"`, so **the token predates the feature**.
+
+    **This resolved a prior unexplained finding.** Session 3 had recorded, and
+    correctly declined to explain, that the transforms Move picker's root item
+    list computes to zero (`item-picker-level-0` empty, while
+    `GET /api/collection/root?namespace=transforms` returns 200). The cause is
+    `use-get-root-items.ts:52` — literally `useHasTokenFeature("transforms-basic")`
+    — so the transforms root is never pushed. **Their observations were all
+    correct; only their assumption that the token carried the feature was
+    wrong.** No cross-check was needed; a later measurement settled it.
+
+    That is the process working as intended: an honest "unexplained" survived
+    long enough to be explained, rather than being closed with an invented
+    mechanism.
+
+    **Concretely actionable: refreshing the token recovers 3 tests and removes
+    every remaining fixme in that file.** It also means any *other* spec gated on
+    a post-0.57 feature may be silently under-running here — worth an audit of
+    `token-features` against the current feature list.
+
+    Also settled while probing: the `@python` script test-run is blocked by
+    `POST /api/ee/transforms-python/test-run` → **500, "Connection refused" to
+    localhost:4566** (the localstack S3), which fails before :5001 is reached.
+    No 402 anywhere — the final nail in my retracted premium-gating claim.
 
 ### Capability: `page.clock` reaches into embed iframes
 

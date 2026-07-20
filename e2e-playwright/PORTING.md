@@ -903,6 +903,15 @@ matching element.
   DOM signal exists for "the interaction was ignored", a bounded settle well
   clear of the measured paint time is the honest fallback — document the margin.
 
+  **🔴 An EMPTY-STATE component renders PRE-FETCH, so it is not a valid anchor.**
+  The sharpest measured case: `admin-people`'s unsubscribe test anchors on a bell
+  icon that is `NotificationEmptyState`, which renders whenever
+  `items.length === 0` — **including before the fetch resolves**. Bell paints at
+  **+68ms**, the real card at **+134ms**, and all three assertions fit in that
+  gap. Result: replacing the "Unsubscribe" click with Escape — i.e. never
+  unsubscribing — leaves the test **green**. Anchor on something that only exists
+  in the *loaded* state.
+
   **Beware pre-interaction placeholders**: a locator that also exists in an empty
   state does not gate anything. `data-step-cell` resolves in ~3ms because the
   empty notebook step is already mounted; anchor on the step *naming Orders*.
@@ -1449,6 +1458,40 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   Playwright's hit-test refuses the hover. `realHover` did no hit-testing, so
   Cypress never saw this. Use `hover({ force: true })` (or a synthetic
   mousemove), not just for pie wedges but for any dense cartesian series.
+- **🔴 Two testing-library → Playwright swaps that are silently LOOSER than the
+  original** — the dangerous direction, since the test still passes:
+  - **`findByPlaceholderText` NORMALIZES whitespace; `getByPlaceholder` does
+    not.** The cron placeholder has triple spaces, so a literal transcription
+    never resolves.
+  - **`findByLabelText` is EXACT; `getByLabel` is a SUBSTRING match.**
+    `getByLabel("Time")` also matched `aria-label="Your Metabase timezone"`.
+    Pass `{ exact: true }`.
+- **A getter written BEFORE its first use is unverified.** Both bugs above lived
+  in helpers authored ahead of the tests that would exercise them, and survived
+  until a later session actually called them. If you write support helpers
+  speculatively, say so — or exercise them immediately.
+- **🔴 Cypress's `not.be.visible` is an OCCLUSION test for `fixed`/`sticky`
+  elements — and neither `toBeHidden()` nor `toBeInViewport()` ports it.**
+  Measured: `table-header` is sticky, unclipped and `opacity: 1`, so Playwright
+  correctly calls it visible — but `elementFromPoint` at its centre *and* all
+  four corners returns the SQL sidebar's `DIV.cm-line`, which is what Cypress
+  was actually asserting. A naive port therefore **fails on a correct app**.
+  Port it as an occlusion probe (`elementFromPoint` at the centre and corners).
+  Note `question-reproductions-4`'s `expectCypressHidden` helper **lacks this
+  branch** — extend it rather than writing a third copy.
+- **🔴 Cypress's `.click(position)` coordinates are ROUNDED** — `left` →
+  `Math.ceil`, `right` → `floor - 1`. On text this matters: a naive `{x: 0}`
+  lands on a token boundary and CodeMirror selects whitespace instead of the
+  leading quote (the app's error banner read `select foobar'` rather than
+  `select 'foobar'`). Reproduce Cypress's rounding, don't pass the raw edge.
+- **Native parameter widgets drop their `placeholder` on focus** — re-resolving
+  the input after `click()` finds nothing, the click itself succeeds, and the
+  failure surfaces on the *next* line. (Same family as the token-field rule; this
+  is the native-query instance.)
+- **The first `Mod-j` after a completion tooltip appears is silently refused** —
+  keydown is delivered with `defaultPrevented: false`, a second press ~400ms
+  later works, and `ArrowDown` works throughout. Cypress's queue latency masked
+  it; use the sanctioned re-nudge.
 - **The containers named `postgres-sample` / `mysql-sample` ARE the writable
   hosts** — `writable_db` lives on **:5404 / :3304** inside them. *"postgres-writable
   isn't running"* is an easy and wrong inference from the container names; both
@@ -1547,6 +1590,13 @@ JSON-schema validator (`ajv` is already in the repo root) — worthwhile follow-
   fingerprint: first "table not found", then "Field `amount` cannot be found on
   table 235", which reads like a metadata bug. **Pass the helper's `tables`
   option.**
+
+  ⚠️ **Refined 2026-07-20: passing `tables` does NOT always close the hole.**
+  If the app DB already carries a stale row for that table with
+  `initial_sync_status: "complete"` — which the `postgres-writable` snapshot does
+  for `products` — the wait is satisfied **instantly by the stale row**, `tables`
+  or not. Anchor on something that proves the *new* sync ran (a field the resync
+  should have changed), not on sync-status alone.
 
   **Blast radius, measured 2026-07-20: 13 call sites use the bare
   `{ dbId: WRITABLE_DB_ID }` form**, across `data-model-shared-1` (3),
