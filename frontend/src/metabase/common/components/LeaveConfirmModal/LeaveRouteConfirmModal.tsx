@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
-import type { InjectedRouter, Route } from "metabase/router";
-import { useRoute, withRouter } from "metabase/router";
+import type { Route } from "metabase/router";
+import { useRoute, useRouter } from "metabase/router";
 
 import { LeaveConfirmModal } from "./LeaveConfirmModal";
 
@@ -17,26 +17,26 @@ interface LeaveRouteConfirmModalProps {
    * v3-injected `route`. Still accepted for callers that pass it explicitly.
    */
   route?: Route;
-  router: InjectedRouter;
-  routes: Route[];
   onConfirm?: () => void;
   onOpenChange?: (opened: boolean) => void;
 }
 
-const LeaveRouteConfirmModalInner = ({
+export const LeaveRouteConfirmModal = ({
   isEnabled,
   isLocationAllowed,
   route,
-  router,
-  routes,
   onConfirm,
   onOpenChange,
 }: LeaveRouteConfirmModalProps) => {
+  const { router, routes } = useRouter();
   const routeFromContext = useRoute();
+  // The matched-route chain's leaf is this page's own route, which
+  // `setRouteLeaveHook` (a no-op on v7) receives.
+  const leafRoute = routes[routes.length - 1];
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
     isLocationAllowed,
-    route: route ?? routeFromContext ?? routes[routes.length - 1],
+    route: route ?? routeFromContext ?? leafRoute,
     router,
   });
   const previousIsOpened = usePrevious(opened);
@@ -60,5 +60,3 @@ const LeaveRouteConfirmModalInner = ({
     />
   );
 };
-
-export const LeaveRouteConfirmModal = withRouter(LeaveRouteConfirmModalInner);
