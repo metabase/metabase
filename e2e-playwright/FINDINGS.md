@@ -2505,3 +2505,52 @@ open item, not as evidence.
     If that banner really is zero-size for MBQL routing failures, **no current
     assertion can see it**. Recorded as unexplained. No Cypress cross-check was
     run, so whether upstream sees it is unknown.
+
+### The dependency graph is backfilled ASYNC — a conversion can outrun it and still report success
+
+142. **A model→transform conversion that outruns the async backfill rewrites
+    nothing and still reports `succeeded`** (`model-to-transform`). The
+    replacement runner resolves dependents from the **dependency graph**, which
+    card create/update only marks **stale** — `dependencies/events.clj` says
+    outright that "the backfill task does the actual computation".
+
+    Symptom: the test failed with `data-step-cell` reading "Dashboard model" and
+    **passed in isolation** — the classic pacing signature. Fixed by polling the
+    product's own `GET /api/ee/dependencies/backfill-status` rather than a sleep.
+
+    **This is a pacing difference, not a product bug, and it generalises to the
+    whole dependency/replacement tier.** Any port that creates a card and
+    immediately triggers a dependency-driven operation is exposed.
+
+    A second required wait in the same spec: `MigrateModelsPage` reads the
+    **search index** via RTK-Query, cached per mount, so a raced read is
+    **unrecoverable by assertion retry** — retrying the assertion can never fix a
+    stale cached read.
+
+### A mutation that disproved the agent's own vacuity worry
+
+143. **`toBeDisabled()` is not satisfied by the `isLoading` window**
+    (`model-to-transform`). The agent had flagged its own assertion as possibly
+    vacuous — the button might read disabled merely because the page was still
+    loading. M4a settled it: under the mutation the locator reads **`enabled`**,
+    so the assertion genuinely tracks the disabled state.
+
+    Worth recording as method: the agent raised a doubt **about its own port**,
+    then designed a mutation to answer it rather than either defending or
+    silently softening the assertion. All 5 mutations landed (read back), all 7
+    tests killed, no unexplained survivors and no bad mutations — the first port
+    today with a clean sweep on both counts.
+
+### `schemas[0]` is `Domestic`, not `public`, on this box
+
+144. **`ReplaceWithTransformModal` defaults its target schema to `schemas[0]`**,
+    which under the #85 debris is **`Domestic`** rather than `public`
+    (`model-to-transform`). Nothing asserted depends on it, so the port stays
+    faithful — but the consequence is that **upstream's unqualified
+    `DROP TABLE mtt_output_table` cannot reach the output table here**.
+
+    That is a cleanup path silently missing its target because of container
+    contamination, which is how debris accumulates in the first place. Fifth
+    distinct mechanism in the #85 family, after self-inflicted fixtures,
+    virtualized pickers, unpinned lookups, and a spec's cleanup reaching into
+    another spec's fixtures.

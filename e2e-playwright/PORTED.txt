@@ -389,3 +389,4 @@ metrics/metric-page.cy.spec.ts
 data-studio/data-model/data-studio-bulk-table.cy.spec.ts
 data-studio/transforms/transforms-incremental.cy.spec.ts
 admin/database-routing/database-routing-usage.cy.spec.ts
+data-studio/data-model/model-to-transform.cy.spec.ts
