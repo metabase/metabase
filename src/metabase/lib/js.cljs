@@ -1647,6 +1647,7 @@
                              legacy-refs)]
       (if (every? #(and % (>= % 0)) exact-matches)
         (to-array exact-matches)
+        ;; the exported JS contract is a parallel list of indexes; only this fn yields positions
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 

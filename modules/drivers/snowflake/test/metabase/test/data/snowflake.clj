@@ -220,6 +220,7 @@
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
         (doseq [dataset-name old-datasets]
+          ;; test-harness cleanup output goes to the CI console, not the app log
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "[Snowflake] Deleting old dataset:" dataset-name)
           (try
@@ -230,6 +231,7 @@
             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
             (catch Throwable e
+              ;; test-harness cleanup output goes to the CI console, not the app log
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
@@ -240,11 +242,13 @@
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
         (doseq [{:keys [schema-name database-name]} old-schemas]
+          ;; test-harness cleanup output goes to the CI console, not the app log
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "[Snowflake] Deleting old isolation schema:" database-name "." schema-name)
           (try
             (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\".\"%s\";" database-name schema-name))
             (catch Throwable e
+              ;; test-harness cleanup output goes to the CI console, not the app log
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old isolation schema:" (ex-message e)))))))))
 
@@ -256,11 +260,13 @@
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
         (doseq [username old-users]
+          ;; test-harness cleanup output goes to the CI console, not the app log
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "[Snowflake] Deleting old isolation user:" username)
           (try
             (.execute stmt (format "DROP USER IF EXISTS \"%s\";" username))
             (catch Throwable e
+              ;; test-harness cleanup output goes to the CI console, not the app log
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old isolation user:" (ex-message e)))))))))
 
@@ -273,11 +279,13 @@
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
         (doseq [role-name old-roles]
+          ;; test-harness cleanup output goes to the CI console, not the app log
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "[Snowflake] Deleting old isolation role:" role-name)
           (try
             (.execute stmt (format "DROP ROLE IF EXISTS \"%s\";" role-name))
             (catch Throwable e
+              ;; test-harness cleanup output goes to the CI console, not the app log
               #_{:clj-kondo/ignore [:discouraged-var]}
               (println "[Snowflake] Error deleting old isolation role:" (ex-message e)))))))))
 
@@ -349,6 +357,7 @@
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    ;; test-harness cleanup output goes to the CI console, not the app log
     #_{:clj-kondo/ignore [:discouraged-var]}
     (println "[Snowflake] destroy database " database-name (:database-name dbdef))
     (jdbc/query (no-db-connection-spec)

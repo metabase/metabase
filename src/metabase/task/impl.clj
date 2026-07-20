@@ -354,6 +354,7 @@
          (log/error e# msg#)
          (throw (JobExecutionException. msg# e# true))))))
 
+;; this is the sanctioned metabase.task/defjob wrapper; it must expand to the quartzite macro
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro defjob
   "Like `clojurewerkz.quartzite.task/defjob` but with a log context and an OpenTelemetry tracing span."

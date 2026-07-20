@@ -358,6 +358,7 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          ;; pr renders the value into the testing label via with-out-str; nothing hits the console
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]

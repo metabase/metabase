@@ -2091,6 +2091,7 @@
       (let [db-name "sync_writable_test"
             details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
         (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        ;; fixture DDL on a scratch pg database with no :model/Database row, so raw jdbc on the spec
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try

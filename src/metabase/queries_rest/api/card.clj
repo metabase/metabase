@@ -263,6 +263,7 @@
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
+                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))

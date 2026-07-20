@@ -37,6 +37,7 @@
 ;;;   java -jar metabase.jar --mode complexity-score [scorer-specific args...]
 ;;; ===========================================================================
 
+;; standalone-mode CLI output: stdout is the user interface, not the log
 #_{:clj-kondo/ignore [:discouraged-var]}
 (def output!
   "Alias for println so can suppress warning in one place"

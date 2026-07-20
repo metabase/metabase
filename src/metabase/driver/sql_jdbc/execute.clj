@@ -281,6 +281,7 @@
     ;; directly.
     (reify DataSource
       (getConnection [_this]
+        ;; inside do-with-connection-with-options' own default impl; a raw jdbc spec has no DataSource
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/get-connection db-or-id-or-spec)))
     ;; otherwise this is either a Database or Database ID.

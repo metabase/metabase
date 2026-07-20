@@ -40,6 +40,7 @@
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
+  ;; u/lower-case-en would be a circular dep (metabase.util requires config); os.name is ASCII
   #_{:clj-kondo/ignore [:discouraged-var]}
   (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 

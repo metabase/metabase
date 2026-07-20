@@ -404,6 +404,7 @@
       (f))))
 
 (defn- log! [fmt & args]
+  ;; drop-dataset! is a clojure -X CLI entry point; stdout is the user interface
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println (apply format fmt args)))
 

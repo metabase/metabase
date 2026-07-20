@@ -150,11 +150,13 @@
   ([] (process-instances nil))
   ([{:keys [print-stats?]}]
    (when print-stats?
+     ;; opt-in CSV stats for REPL analysis runs; console output is the point
      #_{:clj-kondo/ignore [:discouraged-var]}
      (println "instance,metrics,metric consuming cards,all cards"))
    (doseq [{instance-name :instance :as instance} (read-instance)]
      (let [{:keys [v2-metrics cards]} (process-instance instance)]
        (when print-stats?
+         ;; opt-in CSV stats for REPL analysis runs; console output is the point
          #_{:clj-kondo/ignore [:discouraged-var]}
          (printf "%s,%d,%d%n" instance-name (count v2-metrics) (count cards)))
        (doseq [{:keys [input metric-card]} v2-metrics

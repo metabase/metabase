@@ -38,6 +38,7 @@
   Normalize before converting so rehydrated queries have their canonical enum
   values restored."
   [query]
+  ;; frontend /question# URL hashes only decode legacy MBQL; conversion is the contract here
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query) (:lib/type query))
     (lib/->legacy-MBQL (lib/normalize query))
