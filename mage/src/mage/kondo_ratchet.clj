@@ -99,7 +99,9 @@
                                  #(compare %2 %1)
                                  sites))
         ;; phase 2: line insertions (comments, whole-line originals), bottom-up; splicing first means
-        ;; a comment inserted above a row can no longer displace a same-row splice target
+        ;; a comment inserted above a row can no longer displace a same-row splice target. Within a
+        ;; row, inline comments insert first so they end up directly above the code line, below any
+        ;; whole-line block that lands on the same row -- each ignore keeps its own marker adjacent.
         result  (reduce
                  (fn [{:keys [lines] :as acc} {:keys [row original comment]}]
                    (let [original-lines (str/split-lines (:text original))
@@ -116,7 +118,10 @@
                                       (subvec lines (dec row)))
                       :inserted (into (:inserted acc) (repeat n-added row))}))
                  {:lines spliced, :inserted []}
-                 (sort-by :row > sites))]
+                 (sort-by (fn [{:keys [row original]}]
+                            [row (if (:whole-line? original) 0 1)])
+                          #(compare %2 %1)
+                          sites))]
     {:text          (str (str/join "\n" (:lines result)) ending)
      :inserted-rows (:inserted result)}))
 
@@ -304,12 +309,16 @@
                                        (for [[file sites] (sort-by key file->sites)]
                                          (let [text  (slurp file)
                                                lines (vec (str/split-lines text))
-                                               ;; one comment per row, however many sites restore onto it
+                                               ;; every whole-line restore gets its own marker; a row's
+                                               ;; inline restores share one, directly above the code line
                                                sites (mapcat (fn [[row row-sites]]
-                                                               (let [comment (when-not (marked-row? lines row)
-                                                                               keep-comment)]
-                                                                 (cons (assoc (first row-sites) :comment comment)
-                                                                       (map #(assoc % :comment nil) (rest row-sites)))))
+                                                               (if (marked-row? lines row)
+                                                                 (map #(assoc % :comment nil) row-sites)
+                                                                 (let [{wl true, inl false} (group-by (comp boolean :whole-line? :original) row-sites)]
+                                                                   (concat (map #(assoc % :comment keep-comment) wl)
+                                                                           (when (seq inl)
+                                                                             (cons (assoc (first inl) :comment keep-comment)
+                                                                                   (map #(assoc % :comment nil) (rest inl))))))))
                                                              (group-by :row sites))
                                                {:keys [text inserted-rows]} (reinsert-ignores text sites)]
                                            (spit file text)

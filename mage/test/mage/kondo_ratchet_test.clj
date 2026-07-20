@@ -63,6 +63,18 @@
             "(do (f) (g))\n"
             [{:row 1, :comment ";; why", :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:x]}"}}
              {:row 1, :comment nil, :original {:whole-line? false, :col 9, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
+  (testing "a whole-line and an inline restore sharing a row each keep their marker adjacent"
+    (is (= {:text          (str ";; kept A\n"
+                                "#_{:clj-kondo/ignore [:x]}\n"
+                                ";; kept B\n"
+                                "(do #_{:clj-kondo/ignore [:y]} (f))\n")
+            :inserted-rows [1 1 1]}
+           (#'kondo-ratchet/reinsert-ignores
+            "(do (f))\n"
+            [{:row 1, :comment ";; kept A"
+              :original {:whole-line? true, :text "#_{:clj-kondo/ignore [:x]}"}}
+             {:row 1, :comment ";; kept B"
+              :original {:whole-line? false, :col 5, :text "#_{:clj-kondo/ignore [:y]}"}}]))))
   (testing "multiple sites in one file restore bottom-up"
     (is (= {:text          "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             :inserted-rows [2 1]}
